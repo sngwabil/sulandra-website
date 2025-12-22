@@ -50,21 +50,21 @@
       min-width: 260px;
     }
     .brandLogo {
-  height: 160px;          /* Increased from 64px for better visibility */
-  width: auto;           /* Maintains original aspect ratio */
-  max-width: 850px;      /* Allows the full name and logo to expand */
+  height: 90px;          /* Significant size for a professional presence */
+  width: auto;           /* Keeps the logo's natural shape */
+  max-width: 420px;      /* Ensures the text portion is fully visible */
   object-fit: contain;
-  display: block;        /* Ensures proper spacing */
-  margin: 1px 0;         /* Adds slight breathing room */
+  display: block;
+  mix-blend-mode: multiply; /* Optional: ensures perfect blending on light backgrounds */
 }
 
-/* Ensure the nav bar adjusts its height for the larger logo */
+/* Adjust navigation bar for the larger logo */
 .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 0;       /* Tightened padding to account for taller logo */
-  gap: 16px;
+  padding: 12px 0;       
+  gap: 20px;
 }
 
     .brand .name{
