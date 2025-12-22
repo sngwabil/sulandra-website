@@ -1,254 +1,329 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sulandra Community Living Services LLC</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        /* CSS Variables for consistent colors */
-        :root {
-            --sulandra-dark-blue: #1a4a73;
-            --sulandra-bright-blue: #008ccf;
-            --text-gray: #4a4a4a;
-            --bg-light-blue: #f1f6fa;
-        }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sulandra Community Living Services LLC — Draft</title>
 
-        body {
-            font-family: 'Open Sans', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: var(--text-gray);
-            line-height: 1.6;
-        }
+  <style>
+    :root{
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --brand:#1e88e5;
+      --brandDark:#0b2a4a;
+      --line:#e6edf5;
+      --shadow: 0 10px 24px rgba(15, 23, 42, .06);
+      --radius: 16px;
+    }
 
-        /* Header & Navigation */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 8%;
-            background: #fff;
-            border-bottom: 1px solid #e1e8ed;
-        }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
 
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+    /* ===== Top Bar / Nav ===== */
+    .topbar{
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+    }
+    .container{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 18px;
+    }
+    .nav{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 14px 0;
+      gap: 16px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      min-width: 260px;
+    }
+    .brand img{
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
+    .brand .name{
+      line-height: 1.05;
+    }
+    .brand .name strong{
+      display:block;
+      font-size: 20px;
+      letter-spacing: .2px;
+    }
+    .brand .name span{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
 
-        .logo-symbol {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #004a8f, #00a4e4);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.8rem;
-            font-weight: bold;
-            font-family: 'Montserrat', sans-serif;
-        }
+    .menu{
+      display:flex;
+      gap: 22px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .menu a{
+      text-decoration:none;
+      color:#1f2937;
+      font-weight:600;
+      font-size: 14px;
+      padding: 8px 2px;
+      border-bottom: 2px solid transparent;
+    }
+    .menu a:hover{
+      color: var(--brandDark);
+      border-bottom-color: rgba(30,136,229,.35);
+    }
 
-        .logo-text h1 {
-            margin: 0;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 2.2rem;
-            color: var(--sulandra-dark-blue);
-            line-height: 1;
-        }
+    /* ===== Hero ===== */
+    .hero{
+      padding: 26px 0 34px;
+    }
+    .heroCard{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
 
-        .logo-text p {
-            margin: 0;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-gray);
-            letter-spacing: 0.5px;
-        }
+    .heroGrid{
+      display:grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
 
-        nav ul {
-            display: flex;
-            list-style: none;
-            gap: 35px;
-            margin: 0;
-        }
+    .partners{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfdff;
+    }
+    .partners h3{
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      color: #1f2937;
+      letter-spacing:.2px;
+      text-align:center;
+    }
 
-        nav a {
-            text-decoration: none;
-            color: var(--sulandra-dark-blue);
-            font-weight: 700;
-            font-size: 1.1rem;
-            transition: color 0.3s;
-        }
+    .logoGrid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .logoTile{
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      height: 76px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .logoTile img{
+      max-width: 90%;
+      max-height: 70%;
+      object-fit: contain;
+      filter: saturate(1.02);
+    }
+    .logoTile span{
+      font-size: 12px;
+      color: var(--muted);
+      text-align:center;
+      padding: 0 6px;
+    }
 
-        nav a:hover {
-            color: var(--sulandra-bright-blue);
-        }
+    .heroText{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px 18px;
+      background: #ffffff;
+    }
+    .heroText h1{
+      margin: 0 0 10px 0;
+      font-size: 30px;
+      line-height: 1.1;
+      color: #244b6a; /* similar to screenshot */
+      letter-spacing:.2px;
+    }
+    .heroText p{
+      margin: 0 0 18px 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14.5px;
+    }
 
-        /* Hero Container */
-        .hero {
-            background-color: var(--bg-light-blue);
-            display: flex;
-            padding: 100px 8%;
-            align-items: center;
-            gap: 60px;
-            min-height: 550px;
-        }
+    .btnRow{
+      display:flex;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+    .btn{
+      border:0;
+      cursor:pointer;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing:.2px;
+    }
+    .btnPrimary{
+      background: var(--brand);
+      color:#fff;
+      box-shadow: 0 10px 18px rgba(30,136,229,.22);
+    }
+    .btnPrimary:hover{ filter: brightness(.97); }
+    .btnGhost{
+      background: #eef6ff;
+      color: #0b2a4a;
+      border: 1px solid rgba(30,136,229,.25);
+    }
 
-        /* Left side: Partner Card */
-        .hero-left {
-            flex: 1.2;
-        }
+    /* ===== Section heading ===== */
+    .sectionTitle{
+      margin: 22px 0 10px;
+      font-size: 18px;
+      letter-spacing: .12em;
+      color: #1f3a52;
+    }
 
-        .partner-card {
-            background: white;
-            padding: 40px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
-            border-radius: 4px;
-        }
+    /* ===== Affiliations ===== */
+    .affiliations{
+      padding-bottom: 40px;
+    }
+    .affCard{
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .affRow{
+      display:flex;
+      gap: 12px;
+      flex-wrap:wrap;
+    }
+    .affBadge{
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 12px;
+      background: #fbfdff;
+      font-weight: 600;
+      color:#334155;
+      font-size: 13px;
+    }
 
-        .partner-card h3 {
-            text-align: center;
-            color: var(--sulandra-dark-blue);
-            font-size: 1.6rem;
-            margin-bottom: 30px;
-            font-family: 'Montserrat', sans-serif;
-        }
-
-        .logo-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            align-items: center;
-        }
-
-        .grid-item {
-            padding: 10px;
-            text-align: center;
-            background: #fafafa;
-            border: 1px solid #eee;
-            min-height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
-            color: #888;
-        }
-
-        .affiliation-tag {
-            margin-top: 30px;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 800;
-            font-size: 1.6rem;
-            color: var(--sulandra-dark-blue);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        /* Right side: Text and Button */
-        .hero-right {
-            flex: 1;
-        }
-
-        .hero-right h2 {
-            font-family: 'Montserrat', sans-serif;
-            font-size: 3.8rem;
-            color: var(--sulandra-dark-blue);
-            line-height: 1.05;
-            margin-bottom: 25px;
-            font-weight: 700;
-        }
-
-        .hero-right p {
-            font-size: 1.2rem;
-            color: #333;
-            line-height: 1.7;
-            margin-bottom: 45px;
-            max-width: 580px;
-        }
-
-        .btn-impact {
-            background-color: var(--sulandra-bright-blue);
-            color: white;
-            padding: 18px 60px;
-            text-decoration: none;
-            font-weight: 800;
-            border-radius: 4px;
-            display: inline-block;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            box-shadow: 0 4px 15px rgba(0, 140, 207, 0.3);
-            transition: all 0.3s;
-        }
-
-        .btn-impact:hover {
-            background-color: var(--sulandra-dark-blue);
-            transform: translateY(-2px);
-        }
-
-        /* Responsive Mobile View */
-        @media (max-width: 1100px) {
-            .hero { flex-direction: column; text-align: center; padding: 60px 5%; }
-            .hero-right p { margin: 0 auto 45px auto; }
-            .logo-grid { grid-template-columns: repeat(2, 1fr); }
-            nav { display: none; }
-        }
-    </style>
+    /* ===== Responsive ===== */
+    @media (max-width: 900px){
+      .heroGrid{ grid-template-columns: 1fr; }
+      .brand{ min-width: auto; }
+      .menu{ justify-content:flex-start; }
+      .heroText h1{ font-size: 26px; }
+    }
+  </style>
 </head>
+
 <body>
-
-    <header>
-        <div class="logo-area">
-            <div class="logo-symbol">S</div>
-            <div class="logo-text">
-                <h1>Sulandra</h1>
-                <p>Community Living Services LLC</p>
-            </div>
+  <!-- Top navigation -->
+  <div class="topbar">
+    <div class="container">
+      <div class="nav">
+        <div class="brand">
+          <!-- Replace with your logo file later -->
+          <img src="assets/logo.png" alt="Sulandra logo" onerror="this.style.display='none';" />
+          <div class="name">
+            <strong>Sulandra</strong>
+            <span>Community Living Services LLC</span>
+          </div>
         </div>
-        <nav>
-            <ul>
-                <li><a href="about.html">About Us</a></li>
-                <li><a href="services.html">Services</a></li>
-                <li><a href="media.html">Media</a></li>
-                <li><a href="careers.html">Careers</a></li>
-                <li><a href="contact.html">Contact Us</a></li>
-            </ul>
+
+        <nav class="menu" aria-label="Primary">
+          <a href="about.html">About Us</a>
+          <a href="services.html">Services</a>
+          <a href="media.html">Media</a>
+          <a href="careers.html">Careers</a>
+          <a href="contact.html">Contact Us</a>
         </nav>
-    </header>
+      </div>
+    </div>
+  </div>
 
-    <main class="hero">
-        <div class="hero-left">
-            <div class="partner-card">
-                <h3>Partner Organizations</h3>
-                <div class="logo-grid">
-                    <div class="grid-item">Sulandra Organizations</div>
-                    <div class="grid-item">Sulandra Community</div>
-                    <div class="grid-item">WLLUAIDE</div>
-                    <div class="grid-item">World Health Org</div>
-                    <div class="grid-item">Dismorda Health</div>
-                    <div class="grid-item">Community Health</div>
-                    <div class="grid-item">IIDB</div>
-                    <div class="grid-item">Mencap</div>
-                    <div class="grid-item">Health Partner</div>
-                </div>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="heroCard">
+        <div class="heroGrid">
+
+          <!-- Left: Partner Organizations -->
+          <div class="partners">
+            <h3>Partner Organizations</h3>
+            <div class="logoGrid">
+              <!-- Replace src with real partner logos later (assets/partners/...) -->
+              <div class="logoTile"><span>Sulandra Organizations</span></div>
+              <div class="logoTile"><span>Sulandra Community Living</span></div>
+              <div class="logoTile"><span>WLLAIDE</span></div>
+
+              <div class="logoTile"><span>World Health Organization</span></div>
+              <div class="logoTile"><span>Disomdra Health</span></div>
+              <div class="logoTile"><span>Community Health</span></div>
+
+              <div class="logoTile"><span>IIDB</span></div>
+              <div class="logoTile"><span>mencap</span></div>
+              <div class="logoTile"><span>Community Partners</span></div>
             </div>
-            <div class="affiliation-tag">Affiliations</div>
-        </div>
+          </div>
 
-        <div class="hero-right">
-            <h2>A leader in community living services.</h2>
+          <!-- Right: Headline + text + button -->
+          <div class="heroText">
+            <h1>A leader in community living services.</h1>
             <p>
-                Welcome to Sulandra Community Living Services, a leading provider 
-                of comprehensive home and community-based support for individuals 
-                with unique needs. Our mission is making a difference in the lives 
-                of people and communities. Our passion is helping people live their best life.
+              Welcome to Sulandra Community Living Services, a leading provider of comprehensive home and
+              community-based support for individuals with unique needs. Our mission is making a difference
+              in the lives of people and communities. Our passion is helping people live their best life.
             </p>
-            <a href="impact.html" class="btn-impact">Impact</a>
-        </div>
-    </main>
 
+            <div class="btnRow">
+              <button class="btn btnPrimary" type="button" onclick="location.href='impact.html'">IMPACT</button>
+              <button class="btn btnGhost" type="button" onclick="location.href='contact.html'">Contact Us</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Affiliations -->
+        <h2 class="sectionTitle">AFFILIATIONS</h2>
+        <div class="affCard">
+          <div class="affRow">
+            <div class="affBadge">County Boards (DD)</div>
+            <div class="affBadge">Supported Living</div>
+            <div class="affBadge">HPC</div>
+            <div class="affBadge">24-Hour Supports</div>
+            <div class="affBadge">Community Partnerships</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
 </body>
 </html>
