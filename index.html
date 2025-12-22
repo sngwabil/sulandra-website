@@ -50,10 +50,23 @@
     }
     .rule{height:1px;background:#d9e3ef;margin:0}
 
-    /* NAV */
-    .topbar{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
-    .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 0;gap:20px}
-    .brandWrap{display:flex;align-items:center;gap:14px}
+    /* Update these specific classes */
+.topbar {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: auto; /* Ensures it stays snug around the content */
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0; /* Reduced padding to remove unnecessary space */
+  gap: 20px;
+}
     .brandLogo {
   height: 360px;          /* Significant size for a professional presence */
   width: auto;           /* Keeps the logo's natural shape */
