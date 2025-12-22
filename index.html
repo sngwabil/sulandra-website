@@ -1,186 +1,238 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sulandra Health — Applications (Draft)</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f6f7f9; color:#111; }
-    header { background:#0b2a4a; color:#fff; padding: 28px 18px; }
-    header h1 { margin: 0 0 6px 0; font-size: 22px; }
-    header p { margin: 0; opacity: .9; }
-    main { max-width: 920px; margin: 18px auto; padding: 0 12px 40px; }
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius: 14px; padding: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); margin: 14px 0; }
-    h2 { margin: 0 0 10px 0; font-size: 18px; }
-    .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    label { display:block; font-size: 13px; margin-bottom: 6px; color:#374151; }
-    input, select, textarea { width:100%; padding: 10px; border:1px solid #d1d5db; border-radius: 10px; font-size: 14px; background:#fff; }
-    textarea { min-height: 92px; }
-    .full { grid-column: 1 / -1; }
-    .note { font-size: 13px; color:#6b7280; margin-top: 8px; }
-    .btn { background:#0b2a4a; color:#fff; border:0; padding: 11px 14px; border-radius: 10px; cursor:pointer; font-size: 14px; }
-    .btn:disabled { opacity: .6; cursor:not-allowed; }
-    footer { text-align:center; color:#6b7280; font-size: 12px; padding: 18px; }
-    .badge { display:inline-block; font-size:12px; padding:4px 8px; border-radius:999px; background:#fff; color:#0b2a4a; border:1px solid rgba(255,255,255,.35); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sulandra Community Living Services LLC</title>
+    <style>
+        /* Typography & Variables */
+        :root {
+            --dark-blue: #1b4b72;
+            --bright-blue: #008ccf;
+            --text-gray: #4a4a4a;
+            --bg-tint: #f1f6fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--text-gray);
+        }
+
+        /* Header Navigation */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px 8%;
+            background: #fff;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #0056b3, #00d2ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .logo-text h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: var(--dark-blue);
+            letter-spacing: 1px;
+        }
+
+        .logo-text p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-gray);
+            font-weight: 600;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 40px;
+            margin: 0;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--dark-blue);
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--bright-blue);
+        }
+
+        /* Hero Section */
+        .hero {
+            background-color: var(--bg-tint);
+            display: flex;
+            padding: 80px 8%;
+            align-items: center;
+            gap: 60px;
+            min-height: 60vh;
+        }
+
+        /* Left: Partner Box */
+        .hero-left {
+            flex: 1;
+        }
+
+        .partner-box {
+            background: white;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .partner-box h4 {
+            color: var(--dark-blue);
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            margin-top: 0;
+        }
+
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .grid-item {
+            height: 60px;
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: #999;
+            padding: 5px;
+        }
+
+        .affiliation-label {
+            margin-top: 25px;
+            color: var(--dark-blue);
+            font-weight: 800;
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Right: Main Content */
+        .hero-right {
+            flex: 1;
+        }
+
+        .hero-right h2 {
+            font-size: 3.2rem;
+            color: var(--dark-blue);
+            line-height: 1.1;
+            margin-bottom: 25px;
+            font-weight: 700;
+        }
+
+        .hero-right p {
+            font-size: 1.15rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            max-width: 550px;
+        }
+
+        .impact-btn {
+            background-color: var(--bright-blue);
+            color: white;
+            padding: 16px 50px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 4px;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background 0.3s;
+        }
+
+        .impact-btn:hover {
+            background-color: var(--dark-blue);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero { flex-direction: column; text-align: center; }
+            .hero-right p { margin: 0 auto 40px auto; }
+            nav { display: none; }
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <div style="max-width:920px;margin:0 auto;">
-      <span class="badge">DRAFT • Not Live Yet</span>
-      <h1>Sulandra Health</h1>
-      <p>Intake applications (client/guardian) + staff interest form (DSP). This page is for internal testing only.</p>
-    </div>
-  </header>
 
-  <main>
-    <div class="card">
-      <h2>Client / Guardian Intake (Interest Form)</h2>
-      <p class="note">
-        This does <strong>not</strong> enroll services yet. It collects contact details so we can schedule an assessment once approvals are in place.
-      </p>
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon">S</div>
+            <div class="logo-text">
+                <h1>Sulandra</h1>
+                <p>Community Living Services LLC</p>
+            </div>
+        </div>
+        <nav>
+            <ul>
+                <li><a href="about.html">About Us</a></li>
+                <li><a href="services.html">Services</a></li>
+                <li><a href="media.html">Media</a></li>
+                <li><a href="careers.html">Careers</a></li>
+                <li><a href="contact.html">Contact Us</a></li>
+            </ul>
+        </nav>
+    </header>
 
-      <!-- For now this form does NOT submit anywhere (safe). We will connect it later. -->
-      <form id="clientForm" onsubmit="return handleSubmit(event,'client');">
-        <div class="grid">
-          <div>
-            <label>Client Full Name</label>
-            <input name="client_name" required />
-          </div>
-          <div>
-            <label>Guardian / Primary Contact Name</label>
-            <input name="contact_name" required />
-          </div>
-
-          <div>
-            <label>Phone</label>
-            <input name="phone" required />
-          </div>
-          <div>
-            <label>Email</label>
-            <input name="email" type="email" required />
-          </div>
-
-          <div>
-            <label>County</label>
-            <input name="county" placeholder="Montgomery" />
-          </div>
-          <div>
-            <label>Preferred Support Type</label>
-            <select name="support_type" required>
-              <option value="">Select…</option>
-              <option>Supported Living</option>
-              <option>Homemaker/Personal Care (HPC)</option>
-              <option>24-hour staffing</option>
-              <option>Other</option>
-            </select>
-          </div>
-
-          <div class="full">
-            <label>Brief needs summary (hours needed, behaviors, medical needs, etc.)</label>
-            <textarea name="needs"></textarea>
-          </div>
-
-          <div class="full">
-            <label>Housing preference</label>
-            <select name="housing_pref" required>
-              <option value="">Select…</option>
-              <option>Apartment in client’s name (preferred)</option>
-              <option>Family home</option>
-              <option>Group home (if available)</option>
-              <option>Not sure</option>
-            </select>
-          </div>
+    <main class="hero">
+        <div class="hero-left">
+            <div class="partner-box">
+                <h4>Partner Organizations</h4>
+                <div class="logo-grid">
+                    <div class="grid-item">Sulandra Org</div>
+                    <div class="grid-item">Community Living</div>
+                    <div class="grid-item">WLLUAIDE</div>
+                    <div class="grid-item">World Health</div>
+                    <div class="grid-item">Dismorda Health</div>
+                    <div class="grid-item">Community Health</div>
+                    <div class="grid-item">IIDB</div>
+                    <div class="grid-item">Mencap</div>
+                    <div class="grid-item">Partnership</div>
+                </div>
+            </div>
+            <div class="affiliation-label">Affiliations</div>
         </div>
 
-        <p class="note">
-          Please do not enter Social Security numbers, Medicaid ID numbers, or medical record numbers on this form.
-        </p>
-
-        <button class="btn" type="submit">Submit (draft)</button>
-        <p id="clientMsg" class="note"></p>
-      </form>
-    </div>
-
-    <div class="card">
-      <h2>DSP / Staff Interest Form</h2>
-      <p class="note">This collects info from potential DSPs. We will follow up for background checks and onboarding later.</p>
-
-      <form id="staffForm" onsubmit="return handleSubmit(event,'staff');">
-        <div class="grid">
-          <div>
-            <label>Full Name</label>
-            <input name="name" required />
-          </div>
-          <div>
-            <label>Phone</label>
-            <input name="phone" required />
-          </div>
-
-          <div>
-            <label>Email</label>
-            <input name="email" type="email" required />
-          </div>
-          <div>
-            <label>City</label>
-            <input name="city" placeholder="Dayton" />
-          </div>
-
-          <div>
-            <label>Do you have DSP experience?</label>
-            <select name="experience" required>
-              <option value="">Select…</option>
-              <option>Yes</option>
-              <option>No</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Availability</label>
-            <select name="availability" required>
-              <option value="">Select…</option>
-              <option>Days</option>
-              <option>Nights</option>
-              <option>Weekends</option>
-              <option>Overnights</option>
-              <option>Flexible</option>
-            </select>
-          </div>
-
-          <div class="full">
-            <label>Notes (certifications, reliable transportation, start date, etc.)</label>
-            <textarea name="notes"></textarea>
-          </div>
+        <div class="hero-right">
+            <h2>A leader in community living services.</h2>
+            <p>
+                Welcome to Sulandra Community Living Services, a leading provider 
+                of comprehensive home and community-based support for individuals 
+                with unique needs. Our mission is making a difference in the lives 
+                of people and communities. Our passion is helping people live their best life.
+            </p>
+            <a href="impact.html" class="impact-btn">Impact</a>
         </div>
+    </main>
 
-        <button class="btn" type="submit">Submit (draft)</button>
-        <p id="staffMsg" class="note"></p>
-      </form>
-    </div>
-
-    <div class="card">
-      <h2>Status</h2>
-      <ul class="note">
-        <li>✅ Repository created</li>
-        <li>✅ Homepage draft created</li>
-        <li>🔒 Forms currently do not send data anywhere (safe). We will connect to a secure intake method later.</li>
-      </ul>
-    </div>
-  </main>
-
-  <footer>
-    Sulandra Health • Draft site (not public)
-  </footer>
-
-  <script>
-    function handleSubmit(e, type) {
-      e.preventDefault();
-      const msg = document.getElementById(type === 'client' ? 'clientMsg' : 'staffMsg');
-      msg.textContent = "Saved locally (draft). We’ll connect this form when ready.";
-      // Draft behavior only: prevents sending data anywhere.
-      e.target.reset();
-      return false;
-    }
-  </script>
 </body>
 </html>
