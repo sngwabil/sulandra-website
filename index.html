@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sulandra Community Living Services LLC</title>
+    <style>
+        /* Modern Reset & Colors */
+        :root {
+            --bright-blue: #0056b3;
+            --text-dark: #2c3e50;
+            --text-gray: #555;
+            --bg-light-blue: #f0f7ff;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--text-dark);
+        }
+
+        /* Top Small Link */
+        .top-nav {
+            text-align: right;
+            padding: 10px 10%;
+            font-size: 0.9rem;
+        }
+        .top-nav a {
+            color: var(--bright-blue);
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* Main Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 10%;
+            border-bottom: 1px solid #eee;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #003366;
+            display: flex;
+            align-items: center;
+        }
+        .logo span { color: var(--bright-blue); margin-right: 5px; }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            padding: 80px 10%;
+            background-color: white;
+            align-items: center;
+            gap: 50px;
+        }
+
+        /* Left Side: Affiliation Logos */
+        .hero-left {
+            flex: 1;
+            text-align: center;
+        }
+
+        .logo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            background: #fff;
+            padding: 20px;
+        }
+
+        .logo-placeholder {
+            height: 80px;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: #999;
+            border: 1px solid #ddd;
+        }
+
+        .hero-left h3 {
+            color: var(--bright-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+        }
+
+        /* Right Side: Text Content */
+        .hero-right {
+            flex: 1;
+        }
+
+        .hero-right h1 {
+            font-size: 3rem;
+            color: #003366;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+
+        .hero-right p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: var(--text-gray);
+            margin-bottom: 30px;
+        }
+
+        .impact-btn {
+            background-color: var(--bright-blue);
+            color: white;
+            padding: 15px 45px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 4px;
+            display: inline-block;
+            text-transform: uppercase;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .hero { flex-direction: column-reverse; text-align: center; }
+            nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <a href="#">Staff Portal</a>
+    </div>
+
+    <header>
+        <div class="logo">
+            <span>S</span> SULANDRA
+        </div>
+        <nav>
+            <ul>
+                <li><a href="about.html">About Us</a></li>
+                <li><a href="services.html">Services</a></li>
+                <li><a href="media.html">Media</a></li>
+                <li><a href="careers.html">Careers</a></li>
+                <li><a href="contact.html">Contact Us</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="hero">
+        <div class="hero-left">
+            <div class="logo-grid">
+                <div class="logo-placeholder">Partner Logo 1</div>
+                <div class="logo-placeholder">Partner Logo 2</div>
+                <div class="logo-placeholder">Partner Logo 3</div>
+                <div class="logo-placeholder">Partner Logo 4</div>
+            </div>
+            <h3>Affiliations & Research</h3>
+        </div>
+
+        <div class="hero-right">
+            <h1>A leader in community living services.</h1>
+            <p>
+                Welcome to Sulandra Community Living Services LLC, a leading provider of 
+                comprehensive home and community-based support for individuals with unique needs. 
+                Our mission is making a difference in the lives of people and communities. 
+                Our passion is helping people live their best life.
+            </p>
+            <a href="#" class="impact-btn">Impact</a>
+        </div>
+    </main>
+
+</body>
+</html>
