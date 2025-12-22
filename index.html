@@ -49,11 +49,12 @@
       gap: 12px;
       min-width: 260px;
     }
-    .brand img{
-      width: 44px;
-      height: 44px;
-      object-fit: contain;
-    }
+    .brandLogo{
+  height: 64px;          /* SAME visual weight as the text */
+  max-width: 320px;      /* allows full wordmark */
+  object-fit: contain;
+}
+
     .brand .name{
       line-height: 1.05;
     }
@@ -249,14 +250,8 @@
     <div class="container">
       <div class="nav">
         <div class="brand">
-          <!-- Replace with your logo file later -->
-          <img src="assets/logo.png" alt="Sulandra logo" onerror="this.style.display='none';" />
-          <div class="name">
-            <strong>Sulandra</strong>
-            <span>Community Living Services LLC</span>
-          </div>
-        </div>
-
+  <img src="assets/logo.png" alt="Sulandra Community Living Services" class="brandLogo" />
+</div>
         <nav class="menu" aria-label="Primary">
           <a href="about.html">About Us</a>
           <a href="services.html">Services</a>
