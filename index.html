@@ -4,180 +4,196 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sulandra Community Living Services LLC</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        /* Typography & Variables */
+        /* CSS Variables for consistent colors */
         :root {
-            --dark-blue: #1b4b72;
-            --bright-blue: #008ccf;
+            --sulandra-dark-blue: #1a4a73;
+            --sulandra-bright-blue: #008ccf;
             --text-gray: #4a4a4a;
-            --bg-tint: #f1f6fa;
+            --bg-light-blue: #f1f6fa;
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Open Sans', sans-serif;
             margin: 0;
             padding: 0;
             color: var(--text-gray);
+            line-height: 1.6;
         }
 
-        /* Header Navigation */
+        /* Header & Navigation */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 25px 8%;
+            padding: 20px 8%;
             background: #fff;
+            border-bottom: 1px solid #e1e8ed;
         }
 
-        .logo-container {
+        .logo-area {
             display: flex;
             align-items: center;
             gap: 15px;
         }
 
-        .logo-icon {
+        .logo-symbol {
             width: 50px;
             height: 50px;
-            background: linear-gradient(135deg, #0056b3, #00d2ff);
+            background: linear-gradient(135deg, #004a8f, #00a4e4);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
+            font-size: 1.8rem;
             font-weight: bold;
-            font-size: 1.5rem;
+            font-family: 'Montserrat', sans-serif;
         }
 
         .logo-text h1 {
             margin: 0;
-            font-size: 1.8rem;
-            color: var(--dark-blue);
-            letter-spacing: 1px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.2rem;
+            color: var(--sulandra-dark-blue);
+            line-height: 1;
         }
 
         .logo-text p {
             margin: 0;
-            font-size: 0.8rem;
-            color: var(--text-gray);
+            font-size: 0.85rem;
             font-weight: 600;
+            color: var(--text-gray);
+            letter-spacing: 0.5px;
         }
 
         nav ul {
             display: flex;
             list-style: none;
-            gap: 40px;
+            gap: 35px;
             margin: 0;
         }
 
         nav a {
             text-decoration: none;
-            color: var(--dark-blue);
+            color: var(--sulandra-dark-blue);
             font-weight: 700;
             font-size: 1.1rem;
             transition: color 0.3s;
         }
 
         nav a:hover {
-            color: var(--bright-blue);
+            color: var(--sulandra-bright-blue);
         }
 
-        /* Hero Section */
+        /* Hero Container */
         .hero {
-            background-color: var(--bg-tint);
+            background-color: var(--bg-light-blue);
             display: flex;
-            padding: 80px 8%;
+            padding: 100px 8%;
             align-items: center;
             gap: 60px;
-            min-height: 60vh;
+            min-height: 550px;
         }
 
-        /* Left: Partner Box */
+        /* Left side: Partner Card */
         .hero-left {
-            flex: 1;
+            flex: 1.2;
         }
 
-        .partner-box {
+        .partner-card {
             background: white;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            text-align: center;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            border-radius: 4px;
         }
 
-        .partner-box h4 {
-            color: var(--dark-blue);
-            font-size: 1.4rem;
-            margin-bottom: 25px;
-            margin-top: 0;
+        .partner-card h3 {
+            text-align: center;
+            color: var(--sulandra-dark-blue);
+            font-size: 1.6rem;
+            margin-bottom: 30px;
+            font-family: 'Montserrat', sans-serif;
         }
 
         .logo-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 20px;
+            align-items: center;
         }
 
         .grid-item {
-            height: 60px;
-            background: #f9f9f9;
+            padding: 10px;
+            text-align: center;
+            background: #fafafa;
             border: 1px solid #eee;
+            min-height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
-            color: #999;
-            padding: 5px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #888;
         }
 
-        .affiliation-label {
-            margin-top: 25px;
-            color: var(--dark-blue);
+        .affiliation-tag {
+            margin-top: 30px;
+            font-family: 'Montserrat', sans-serif;
             font-weight: 800;
-            font-size: 1.4rem;
+            font-size: 1.6rem;
+            color: var(--sulandra-dark-blue);
             text-transform: uppercase;
             letter-spacing: 2px;
         }
 
-        /* Right: Main Content */
+        /* Right side: Text and Button */
         .hero-right {
             flex: 1;
         }
 
         .hero-right h2 {
-            font-size: 3.2rem;
-            color: var(--dark-blue);
-            line-height: 1.1;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 3.8rem;
+            color: var(--sulandra-dark-blue);
+            line-height: 1.05;
             margin-bottom: 25px;
             font-weight: 700;
         }
 
         .hero-right p {
-            font-size: 1.15rem;
-            line-height: 1.6;
-            margin-bottom: 40px;
-            max-width: 550px;
+            font-size: 1.2rem;
+            color: #333;
+            line-height: 1.7;
+            margin-bottom: 45px;
+            max-width: 580px;
         }
 
-        .impact-btn {
-            background-color: var(--bright-blue);
+        .btn-impact {
+            background-color: var(--sulandra-bright-blue);
             color: white;
-            padding: 16px 50px;
+            padding: 18px 60px;
             text-decoration: none;
-            font-weight: bold;
+            font-weight: 800;
             border-radius: 4px;
             display: inline-block;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: background 0.3s;
+            letter-spacing: 1.5px;
+            box-shadow: 0 4px 15px rgba(0, 140, 207, 0.3);
+            transition: all 0.3s;
         }
 
-        .impact-btn:hover {
-            background-color: var(--dark-blue);
+        .btn-impact:hover {
+            background-color: var(--sulandra-dark-blue);
+            transform: translateY(-2px);
         }
 
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .hero { flex-direction: column; text-align: center; }
-            .hero-right p { margin: 0 auto 40px auto; }
+        /* Responsive Mobile View */
+        @media (max-width: 1100px) {
+            .hero { flex-direction: column; text-align: center; padding: 60px 5%; }
+            .hero-right p { margin: 0 auto 45px auto; }
+            .logo-grid { grid-template-columns: repeat(2, 1fr); }
             nav { display: none; }
         }
     </style>
@@ -185,8 +201,8 @@
 <body>
 
     <header>
-        <div class="logo-container">
-            <div class="logo-icon">S</div>
+        <div class="logo-area">
+            <div class="logo-symbol">S</div>
             <div class="logo-text">
                 <h1>Sulandra</h1>
                 <p>Community Living Services LLC</p>
@@ -205,21 +221,21 @@
 
     <main class="hero">
         <div class="hero-left">
-            <div class="partner-box">
-                <h4>Partner Organizations</h4>
+            <div class="partner-card">
+                <h3>Partner Organizations</h3>
                 <div class="logo-grid">
-                    <div class="grid-item">Sulandra Org</div>
-                    <div class="grid-item">Community Living</div>
+                    <div class="grid-item">Sulandra Organizations</div>
+                    <div class="grid-item">Sulandra Community</div>
                     <div class="grid-item">WLLUAIDE</div>
-                    <div class="grid-item">World Health</div>
+                    <div class="grid-item">World Health Org</div>
                     <div class="grid-item">Dismorda Health</div>
                     <div class="grid-item">Community Health</div>
                     <div class="grid-item">IIDB</div>
                     <div class="grid-item">Mencap</div>
-                    <div class="grid-item">Partnership</div>
+                    <div class="grid-item">Health Partner</div>
                 </div>
             </div>
-            <div class="affiliation-label">Affiliations</div>
+            <div class="affiliation-tag">Affiliations</div>
         </div>
 
         <div class="hero-right">
@@ -230,7 +246,7 @@
                 with unique needs. Our mission is making a difference in the lives 
                 of people and communities. Our passion is helping people live their best life.
             </p>
-            <a href="impact.html" class="impact-btn">Impact</a>
+            <a href="impact.html" class="btn-impact">Impact</a>
         </div>
     </main>
 
