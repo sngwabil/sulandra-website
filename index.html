@@ -49,10 +49,22 @@
       gap: 12px;
       min-width: 260px;
     }
-    .brandLogo{
-  height: 64px;          /* SAME visual weight as the text */
-  max-width: 320px;      /* allows full wordmark */
+    .brandLogo {
+  height: 85px;          /* Increased from 64px for better visibility */
+  width: auto;           /* Maintains original aspect ratio */
+  max-width: 450px;      /* Allows the full name and logo to expand */
   object-fit: contain;
+  display: block;        /* Ensures proper spacing */
+  margin: 5px 0;         /* Adds slight breathing room */
+}
+
+/* Ensure the nav bar adjusts its height for the larger logo */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;       /* Tightened padding to account for taller logo */
+  gap: 16px;
 }
 
     .brand .name{
