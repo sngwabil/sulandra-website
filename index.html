@@ -433,6 +433,81 @@
       .careersRow{grid-template-columns:1fr}
       .sectionTitle{font-size:40px}
     }
+    /* ===== ADD-ON OVERRIDES: BIG LOGO + SLIDESHOWS (DO NOT REMOVE EXISTING CSS) ===== */
+
+/* Make logo area fill left top */
+.nav{
+  align-items: stretch;                 /* overrides existing align-items:center */
+  padding: 0;                           /* overrides existing padding:14px 0 */
+  min-height: 92px;
+}
+.brandWrap{
+  flex: 0 0 360px;                      /* left area width */
+  padding: 10px 0;
+}
+.brandLogo{
+  height: 78px;                         /* bigger logo */
+}
+
+/* HERO: convert background hero into a slideshow without deleting your current background rule */
+.heroMedia{
+  background: none !important;          /* overrides your background:url(hero.jpg) */
+  overflow: hidden;
+}
+.heroMedia::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.75) 60%,
+    rgba(255,255,255,1) 100%
+  );
+  z-index: 3;
+  pointer-events:none;
+}
+
+/* Slideshow container */
+.slides{
+  position:absolute;
+  inset:0;
+  z-index:1;
+}
+
+/* Shared slideshow image styling */
+.slideImg,
+.circleImg .circleSlide,
+.mediaFrame .newsSlide{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  opacity:0;
+  transition: opacity 900ms ease;
+  transform: scale(1.03);
+  transform-origin:center;
+}
+
+/* Active slide */
+.slideImg.active,
+.circleImg .circleSlide.active,
+.mediaFrame .newsSlide.active{
+  opacity:1;
+  z-index:2;
+  animation: kenburns 10s ease-in-out infinite alternate;
+}
+
+/* Slow zoom in/out */
+@keyframes kenburns{
+  0%   { transform: scale(1.03) translate3d(0,0,0); }
+  100% { transform: scale(1.10) translate3d(-1%, -1%, 0); }
+}
+
+/* Ensure circle + news frames are positioned for absolute slides */
+.circleImg{ position: relative; }
+.mediaFrame{ position: relative; }
+
   </style>
 </head>
 
@@ -464,7 +539,16 @@
     <div class="container">
       <div class="heroCard">
         <div class="heroGrid">
-          <div class="heroMedia" role="img" aria-label="Support in action"></div>
+          <div class="heroMedia" role="img" aria-label="Support in action">
+  <div class="slides" id="heroSlides">
+    <img class="slideImg active" src="assets/hero1.jpg" alt="">
+    <img class="slideImg" src="assets/hero2.jpg" alt="">
+    <img class="slideImg" src="assets/hero3.jpg" alt="">
+    <img class="slideImg" src="assets/hero4.jpg" alt="">
+    <img class="slideImg" src="assets/hero5.jpg" alt="">
+  </div>
+</div>
+
 
           <div class="heroText">
             <h1>A leader in community living services.</h1>
@@ -598,9 +682,13 @@
         </div>
 
         <!-- Replace with your own photo (circle crop) -->
-        <div class="circleImg" aria-label="Testimonial photo">
-          <img src="assets/testimonial.jpg" alt="Testimonial photo">
-        </div>
+        <div class="circleImg" aria-label="Testimonial photo" id="testimonialCircle">
+  <img class="circleSlide active" src="assets/testimonial1.jpg" alt="Testimonial photo">
+  <img class="circleSlide" src="assets/testimonial2.jpg" alt="">
+  <img class="circleSlide" src="assets/testimonial3.jpg" alt="">
+  <img class="circleSlide" src="assets/testimonial4.jpg" alt="">
+  <img class="circleSlide" src="assets/testimonial5.jpg" alt="">
+</div>
       </div>
     </div>
   </section>
@@ -646,9 +734,13 @@
   <section class="section" id="careers">
     <div class="container">
       <div class="careersRow">
-        <div class="circleImg" style="width:260px;height:260px">
-          <img src="assets/careers.jpg" alt="Team photo">
-        </div>
+        <div class="circleImg" style="width:260px;height:260px" id="careersCircle">
+  <img class="circleSlide active" src="assets/careers1.jpg" alt="Team photo">
+  <img class="circleSlide" src="assets/careers2.jpg" alt="">
+  <img class="circleSlide" src="assets/careers3.jpg" alt="">
+  <img class="circleSlide" src="assets/careers4.jpg" alt="">
+  <img class="circleSlide" src="assets/careers5.jpg" alt="">
+</div>
 
         <div>
           <h3 class="careersTitle">Think you’d like to join the Sulandra team?</h3>
@@ -714,8 +806,33 @@
   </footer>
 
   <script>
-    document.getElementById("yr").textContent = new Date().getFullYear();
-  </script>
+  document.getElementById("yr").textContent = new Date().getFullYear();
+
+  // ===== ADD-ON: slideshow helper (every 5 seconds) =====
+  function startSlideshow(container, intervalMs = 5000) {
+    if (!container) return;
+    const slides = Array.from(container.querySelectorAll("img"));
+    if (slides.length < 2) return;
+
+    let idx = slides.findIndex(s => s.classList.contains("active"));
+    if (idx < 0) {
+      idx = 0;
+      slides[0].classList.add("active");
+    }
+
+    setInterval(() => {
+      slides[idx].classList.remove("active");
+      idx = (idx + 1) % slides.length;
+      slides[idx].classList.add("active");
+    }, intervalMs);
+  }
+
+  // Start all slideshows
+  startSlideshow(document.getElementById("heroSlides"), 5000);
+  startSlideshow(document.getElementById("testimonialCircle"), 5000);
+  startSlideshow(document.getElementById("careersCircle"), 5000);
+  startSlideshow(document.getElementById("newsFrame"), 5000);
+</script>
 
 </body>
 </html>
