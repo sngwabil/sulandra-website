@@ -54,7 +54,23 @@
     .topbar{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
     .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 0;gap:20px}
     .brandWrap{display:flex;align-items:center;gap:14px}
-    .brandLogo{height:160px;width:auto;display:block;object-fit:contain}
+    .brandLogo {
+  height: 90px;          /* Significant size for a professional presence */
+  width: auto;           /* Keeps the logo's natural shape */
+  max-width: 420px;      /* Ensures the text portion is fully visible */
+  object-fit: contain;
+  display: block;
+  mix-blend-mode: multiply; /* Optional: ensures perfect blending on light backgrounds */
+}
+
+/* Adjust navigation bar for the larger logo */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;       
+  gap: 20px;
+}
 
     .menu{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
     .menu a{
