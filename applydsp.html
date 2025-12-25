@@ -1036,30 +1036,35 @@
             <div class="checkboxline"><input type="checkbox" name="sa5" value="assume" /> <span>Assumptions about motives</span></div>
           </div>
 
-          <!-- 5 Fill in the blank -->
+                    <!-- 5 Scenario Responses -->
           <div class="quiz-q" data-qid="fb1" data-type="fb">
-            <h4>11) Fill in the blank: The goal of DSP support is to help people live as ________ as possible.</h4>
-            <input type="text" name="fb1" placeholder="One word" />
+            <h4>11) Scenario: A client refuses to take a shower and starts yelling when you bring it up. What do you do next?</h4>
+            <textarea name="fb1" placeholder="Write how you would handle this step-by-step (tone, safety, choices, de-escalation)."></textarea>
+            <div class="muted">Tip: Explain what you would say/do first, and what you would do if it escalates.</div>
           </div>
 
           <div class="quiz-q" data-qid="fb2" data-type="fb">
-            <h4>12) Fill in the blank: When lifting/moving someone, protect yourself by using proper body ________.</h4>
-            <input type="text" name="fb2" placeholder="One word" />
+            <h4>12) Scenario: You notice a client has a new bruise. They seem nervous and say “I’m fine” and won’t explain. What do you do?</h4>
+            <textarea name="fb2" placeholder="Explain your approach, what you document, and who you notify."></textarea>
+            <div class="muted">Tip: Focus on safety, reporting, confidentiality, and objective documentation.</div>
           </div>
 
           <div class="quiz-q" data-qid="fb3" data-type="fb">
-            <h4>13) Fill in the blank: Personal health information should be kept ________.</h4>
-            <input type="text" name="fb3" placeholder="One word" />
+            <h4>13) Scenario: A client wants to go to the store alone, but their care plan notes poor safety awareness. How do you support choice while managing risk?</h4>
+            <textarea name="fb3" placeholder="Explain how you balance independence with safety and person-centered supports."></textarea>
+            <div class="muted">Tip: Include alternatives, skill-building, supervision options, and plan-following.</div>
           </div>
 
           <div class="quiz-q" data-qid="fb4" data-type="fb">
-            <h4>14) Fill in the blank: If you see something unsafe, you should ________ it right away.</h4>
-            <input type="text" name="fb4" placeholder="One word" />
+            <h4>14) Scenario: You are running behind and a client’s medication time is approaching. What do you do to stay safe and compliant?</h4>
+            <textarea name="fb4" placeholder="Explain what you do immediately and how you communicate/report delays."></textarea>
+            <div class="muted">Tip: Think: safety first, policy, documentation, notifying supervisor/coverage.</div>
           </div>
 
           <div class="quiz-q" data-qid="fb5" data-type="fb">
-            <h4>15) Fill in the blank: A written record of services provided is called ________.</h4>
-            <input type="text" name="fb5" placeholder="One word" />
+            <h4>15) Scenario: Another staff member speaks disrespectfully to a client in front of others. What do you do?</h4>
+            <textarea name="fb5" placeholder="Explain what you do in the moment and what you do afterward."></textarea>
+            <div class="muted">Tip: Include dignity/respect, immediate client support, reporting, and professionalism.</div>
           </div>
 
           <div class="helpbox">
@@ -1406,9 +1411,9 @@ function quizAnsweredCount(){
     if(getCheckedValues(`sa${i}`).length > 0) count++;
   }
 
-  // FB: 5
+    // Scenario responses: 5
   for(let i=1;i<=5;i++){
-    const v = document.querySelector(`input[name="fb${i}"]`)?.value || '';
+    const v = document.querySelector(`[name="fb${i}"]`)?.value || '';
     if(v.trim().length > 0) count++;
   }
 
@@ -1428,6 +1433,7 @@ function validateQuizComplete(){
 const QUIZ_KEY = {
   // multiple choice correct option letters
   mc: { mc1:'b', mc2:'b', mc3:'b', mc4:'b', mc5:'b' },
+
   // select-all: set of correct values (must match exactly: all correct selected, no incorrect selected)
   sa: {
     sa1: new Set(['bathing','dressing','toileting','eating']),
@@ -1435,14 +1441,6 @@ const QUIZ_KEY = {
     sa3: new Set(['askpref','plainlang','privacy']),
     sa4: new Set(['injury','mederror','abuse','missing']),
     sa5: new Set(['times','quotes','observed'])
-  },
-  // fill blank: acceptable answers (case-insensitive)
-  fb: {
-    fb1: ['independent','independently','independence'],
-    fb2: ['mechanics','mechanic'],
-    fb3: ['confidential','private'],
-    fb4: ['report'],
-    fb5: ['documentation','documenting','charting','notes']
   }
 };
 
@@ -1453,9 +1451,9 @@ function normalizeText(s){
 function scoreQuiz(){
   const breakdown = { mc:{}, sa:{}, fb:{} };
   let score = 0;
-  let max = 15;
+  let max = 10; // only objective questions are auto-scored (1-10)
 
-  // MC
+  // MC (1-5)
   for(let i=1;i<=5;i++){
     const q = `mc${i}`;
     const ans = document.querySelector(`input[name="${q}"]:checked`)?.value || '';
@@ -1465,17 +1463,15 @@ function scoreQuiz(){
     if(ok) score++;
   }
 
-  // SA exact match
+  // SA exact match (6-10)
   for(let i=1;i<=5;i++){
     const q = `sa${i}`;
     const selected = new Set(getCheckedValues(q));
     const correct = QUIZ_KEY.sa[q];
 
     let ok = true;
-    // all correct selected
-    for(const c of correct){ if(!selected.has(c)) ok = false; }
-    // no extras
-    for(const s of selected){ if(!correct.has(s)) ok = false; }
+    for(const c of correct){ if(!selected.has(c)) ok = false; }   // all correct selected
+    for(const s of selected){ if(!correct.has(s)) ok = false; }   // no extras
 
     breakdown.sa[q] = {
       answer: Array.from(selected),
@@ -1485,19 +1481,16 @@ function scoreQuiz(){
     if(ok) score++;
   }
 
-  // FB
+  // Scenario responses (11-15): stored for you to review; not auto-scored
   for(let i=1;i<=5;i++){
     const q = `fb${i}`;
-    const ansRaw = document.querySelector(`input[name="${q}"]`)?.value || '';
-    const ans = normalizeText(ansRaw);
-    const acceptable = (QUIZ_KEY.fb[q] || []).map(normalizeText);
-    const ok = acceptable.includes(ans);
-    breakdown.fb[q] = { answer: ansRaw || null, acceptable: QUIZ_KEY.fb[q], ok };
-    if(ok) score++;
+    const ansRaw = document.querySelector(`[name="${q}"]`)?.value || '';
+    breakdown.fb[q] = { answer: ansRaw || null };
   }
 
   return { score, max, breakdown };
 }
+
 
 /* =========================
    Dynamic Certifications UI
