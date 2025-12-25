@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DSP Application | Sulandra Community Living Services</title>
+  <meta name="description" content="Apply for Direct Support Professional (DSP) roles. Upload resume, enter experience, availability, and complete required disclosures." />
   <style>
     :root{
       --bg:#f6f7f8;
@@ -15,121 +16,62 @@
       --focus:#2563eb;
       --danger:#b91c1c;
       --ok:#166534;
+      --warn:#92400e;
       --shadow: 0 6px 18px rgba(0,0,0,.08);
       --radius: 14px;
       --pad: 16px;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
-    body{
-      margin:0;
-      background:var(--bg);
-      color:var(--text);
-    }
-    header{
-      background: #ffffff;
-      border-bottom: 1px solid var(--border);
-    }
-    .wrap{
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 18px 16px;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:12px;
-    }
+    body{ margin:0; background:var(--bg); color:var(--text); }
+    header{ background:#fff; border-bottom:1px solid var(--border); }
+    .wrap{ max-width: 1100px; margin:0 auto; padding:18px 16px; }
+
+    .brand{ display:flex; align-items:center; gap:12px; }
     .logo{
-      width: 50px;
-      height: 50px;
-      border-radius: 10px;
+      width: 52px; height: 52px; border-radius: 12px;
       background: linear-gradient(135deg, var(--brand), #374151);
-      display:grid;
-      place-items:center;
-      color:#fff;
-      font-weight:900;
-      letter-spacing:.5px;
-      font-size: 14px;
-      text-align: center;
-      line-height: 1;
+      display:grid; place-items:center; color:#fff; font-weight:900;
+      letter-spacing:.5px; font-size: 14px; text-align:center; line-height: 1;
     }
-    .titleblock h1{
-      margin:0;
-      font-size: 20px;
-      line-height:1.2;
-      color: var(--brand);
-    }
-    .titleblock p{
-      margin:3px 0 0 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .titleblock h1{ margin:0; font-size: 20px; line-height:1.2; color: var(--brand); }
+    .titleblock p{ margin:3px 0 0; color: var(--muted); font-size: 13px; }
 
     main .grid{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 18px;
-      align-items:start;
-      margin-top: 18px;
+      display:grid; grid-template-columns: 1.25fr .75fr; gap: 18px;
+      align-items:start; margin-top: 18px;
     }
-    @media (max-width: 860px){
-      main .grid{ grid-template-columns: 1fr; }
-    }
+    @media (max-width: 920px){ main .grid{ grid-template-columns: 1fr; } }
 
     .card{
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 24px;
+      padding: 22px;
     }
 
-    .card h2{
-      margin:0 0 4px 0;
-      font-size: 18px;
-      font-weight: 800;
-    }
-    .card p.sub{
-      margin:0 0 14px 0;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .card h2{ margin:0 0 4px; font-size: 18px; font-weight: 850; }
+    .card p.sub{ margin:0 0 14px; color: var(--muted); font-size: 13px; }
 
-    .section{
-      border-top: 1px dashed var(--border);
-      padding-top: 16px;
-      margin-top: 24px;
-    }
+    .section{ border-top: 1px dashed var(--border); padding-top: 16px; margin-top: 22px; }
+    .section .minihead{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+    .section .minihead small{ color: var(--muted); }
 
-    .row{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    @media (max-width: 640px){
-      .row{ grid-template-columns: 1fr; }
-    }
+    .row{ display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 680px){ .row{ grid-template-columns: 1fr; } }
 
     label{
-      display:block;
-      font-weight: 700;
-      font-size: 13px;
-      margin-bottom: 6px;
-      color: var(--brand);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .hint{
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 6px;
+      display:block; font-weight: 750; font-size: 12px; margin-bottom: 6px;
+      color: var(--brand); text-transform: uppercase; letter-spacing: 0.5px;
     }
 
+    .hint{ font-size: 12px; color: var(--muted); margin-top: 6px; }
+
     input[type="text"], input[type="email"], input[type="tel"],
-    input[type="number"], input[type="date"], select, textarea{
-      width:100%;
-      box-sizing:border-box;
+    input[type="number"], input[type="date"], input[type="url"],
+    select, textarea{
+      width:100%; box-sizing:border-box;
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 12px;
@@ -137,7 +79,7 @@
       background:#fff;
       outline: none;
     }
-    textarea{ min-height: 100px; resize: vertical; }
+    textarea{ min-height: 96px; resize: vertical; }
 
     input:focus, select:focus, textarea:focus{
       border-color: var(--focus);
@@ -145,93 +87,147 @@
     }
 
     .checkboxline, .radioline{
-      display:flex;
-      gap:10px;
-      align-items:flex-start;
-      margin: 10px 0;
-      font-size: 14px;
+      display:flex; gap:10px; align-items:flex-start;
+      margin: 10px 0; font-size: 14px;
     }
-    .checkboxline input, .radioline input{
-      transform: translateY(2px);
-    }
+    .checkboxline input, .radioline input{ transform: translateY(2px); }
 
     .btnrow{
-      display:flex;
-      gap: 12px;
-      flex-wrap:wrap;
-      margin-top: 20px;
+      display:flex; gap: 12px; flex-wrap:wrap; margin-top: 18px;
+      align-items:center;
     }
     button{
-      border: 0;
-      border-radius: 12px;
-      padding: 14px 24px;
-      font-weight: 800;
+      border: 0; border-radius: 12px;
+      padding: 14px 22px;
+      font-weight: 850;
       cursor:pointer;
       font-size: 15px;
-      transition: all 0.2s ease;
+      transition: transform .05s ease, filter 0.2s ease, background 0.2s ease;
     }
-    .primary{
-      background: var(--brand);
-      color:#fff;
-    }
-    .primary:hover{ background: #1a4d8f; }
+    button:active{ transform: translateY(1px); }
+    .primary{ background: var(--brand); color:#fff; }
+    .primary:hover{ filter: brightness(0.95); }
     .ghost{
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text);
     }
     .ghost:hover{ background: #f9fafb; }
+    .danger{
+      background: #fee2e2;
+      color: #7f1d1d;
+      border: 1px solid #fecaca;
+    }
 
     .side h3{
-      margin: 0 0 10px 0;
-      font-size: 14px;
-      text-transform: uppercase;
-      color: var(--brand);
+      margin: 0 0 10px; font-size: 12px;
+      text-transform: uppercase; color: var(--brand);
+      letter-spacing:.6px;
     }
     .kv{
-      display:flex;
-      justify-content:space-between;
-      gap: 10px;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(209,213,219,.6);
+      display:flex; justify-content:space-between; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid rgba(209,213,219,.6);
       font-size: 13px;
     }
-    .kv span:first-child{ color: var(--muted); font-weight: 600; }
-    .kv span:last-child{ font-weight: 700; text-align: right; }
+    .kv span:first-child{ color: var(--muted); font-weight: 650; }
+    .kv span:last-child{ font-weight: 800; text-align: right; }
 
-    .required::after{
-      content:" *";
-      color: var(--danger);
-      font-weight:700;
-    }
+    .required::after{ content:" *"; color: var(--danger); font-weight:800; }
 
-    .file-input-wrapper {
-      position: relative;
-      overflow: hidden;
-      display: inline-block;
-      width: 100%;
+    .file-input-wrapper{ position: relative; overflow: hidden; display:block; width: 100%; }
+    .file-input-wrapper input[type=file]{
+      font-size: 100px; position:absolute; left:0; top:0;
+      opacity:0; cursor:pointer; width:100%; height:100%;
     }
-    .file-input-wrapper input[type=file] {
-      font-size: 100px;
-      position: absolute;
-      left: 0;
-      top: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-    .file-custom-btn {
-      display: block;
+    .file-custom-btn{
+      display:flex; justify-content:space-between; gap:12px; align-items:center;
       padding: 12px;
       border: 2px dashed var(--border);
       border-radius: 10px;
-      text-align: center;
       color: var(--muted);
-      font-weight: 600;
+      font-weight: 650;
       background: #fafafa;
     }
-    .file-input-wrapper:hover .file-custom-btn {
-      border-color: var(--brand);
-      color: var(--brand);
+    .file-input-wrapper:hover .file-custom-btn{ border-color: var(--brand); color: var(--brand); }
+    .file-meta{ font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 6px 10px; border-radius: 999px;
+      border: 1px solid var(--border); background:#fff;
+      font-size: 12px; color: var(--muted); font-weight: 650;
+    }
+
+    .statusbar{
+      display:none;
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fcfcfd;
+    }
+    .statusbar.show{ display:block; }
+    .statusrow{ display:flex; justify-content:space-between; gap:10px; align-items:center; font-size: 13px; }
+    .progress{
+      height: 10px; border-radius: 999px; background: #eef2ff;
+      border: 1px solid rgba(209,213,219,.7);
+      overflow:hidden; margin-top: 10px;
+    }
+    .progress > div{
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--brand), var(--focus));
+      transition: width .25s ease;
+    }
+
+    .toast{
+      position: fixed;
+      right: 16px; bottom: 16px;
+      width: min(420px, calc(100vw - 32px));
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      display:none;
+      z-index: 999;
+    }
+    .toast.show{ display:block; }
+    .toast strong{ display:block; margin-bottom:4px; }
+    .toast small{ color: var(--muted); }
+    .toast .tbtns{ margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap; }
+    .toast .tbtns button{ padding:10px 14px; font-size: 13px; border-radius: 10px; }
+
+    .error{
+      margin-top: 8px;
+      color: var(--danger);
+      font-size: 12px;
+      display:none;
+    }
+    .error.show{ display:block; }
+    .helpbox{
+      background:#f8fafc;
+      border: 1px solid rgba(209,213,219,.7);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 12px;
+    }
+    .two-col{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 680px){ .two-col{ grid-template-columns: 1fr; } }
+
+    .small{ font-size: 13px; color: var(--text); }
+    .muted{ color: var(--muted); }
+
+    .sr-only{
+      position:absolute;
+      width:1px; height:1px;
+      padding:0; margin:-1px;
+      overflow:hidden; clip:rect(0,0,0,0);
+      white-space:nowrap; border:0;
     }
   </style>
 </head>
@@ -239,8 +235,8 @@
 
 <header>
   <div class="wrap">
-    <div class="brand">
-      <div class="logo">SCLS</div>
+    <div class="brand" role="banner" aria-label="Company header">
+      <div class="logo" aria-hidden="true">SCLS</div>
       <div class="titleblock">
         <h1>Direct Support Professional Application</h1>
         <p>Helping people live their best life in the community.</p>
@@ -249,47 +245,144 @@
   </div>
 </header>
 
-<main class="wrap">
+<main class="wrap" role="main">
   <div class="grid">
-    <section class="card">
+    <section class="card" aria-label="Application form">
       <h2>Application for: Direct Support Professional (DSP)</h2>
-      <p class="sub">Complete the form below to begin your best career. Required fields are marked with an asterisk.</p>
+      <p class="sub">
+        This is a “typical Indeed-style” application flow: contact info, eligibility, experience, availability,
+        resume upload, and disclosures. Required fields are marked with an asterisk.
+      </p>
 
-      <form id="appForm">
-        <div class="row">
-          <div>
-            <label class="required" for="firstName">First name</label>
-            <input id="firstName" name="firstName" type="text" required />
-          </div>
-          <div>
-            <label class="required" for="lastName">Last name</label>
-            <input id="lastName" name="lastName" type="text" required />
-          </div>
-        </div>
+      <!--
+        BACKEND NOTE (to make it truly functional end-to-end):
+        - Create POST /api/applications that accepts multipart/form-data (resume + optional docs)
+        - Store files (S3, Azure Blob, etc.), store application record (DB), send confirmation email
+        - Update action="YOUR_ENDPOINT" below and remove the JS "simulateSubmit" branch if desired
+      -->
+      <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
+        <!-- Hidden meta fields typical on job boards -->
+        <input type="hidden" name="jobTitle" value="Direct Support Professional (DSP)" />
+        <input type="hidden" name="company" value="Sulandra Community Living Services" />
+        <input type="hidden" name="source" value="indeed" />
+        <input type="hidden" name="version" value="1.0" />
 
-        <div class="row" style="margin-top:16px;">
-          <div>
-            <label class="required" for="email">Email</label>
-            <input id="email" name="email" type="email" required />
-            <div class="hint">Your email will be used to create your profile.</div>
+        <div class="section" style="border-top:none; padding-top:0; margin-top:0;">
+          <div class="minihead">
+            <h2>Contact Information</h2>
+            <small class="muted">Step 1 of 6</small>
           </div>
-          <div>
-            <label class="required" for="phone">Phone</label>
-            <input id="phone" name="phone" type="tel" placeholder="(555) 555-5555" required />
+          <p class="sub">Tell us how to reach you.</p>
+
+          <div class="row">
+            <div>
+              <label class="required" for="firstName">First name</label>
+              <input id="firstName" name="firstName" type="text" autocomplete="given-name" required />
+              <div class="error" id="err-firstName">Please enter your first name.</div>
+            </div>
+            <div>
+              <label class="required" for="lastName">Last name</label>
+              <input id="lastName" name="lastName" type="text" autocomplete="family-name" required />
+              <div class="error" id="err-lastName">Please enter your last name.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" required />
+              <div class="hint">Used for confirmations and profile access.</div>
+              <div class="error" id="err-email">Please enter a valid email.</div>
+            </div>
+            <div>
+              <label class="required" for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="(555) 555-5555" required />
+              <div class="error" id="err-phone">Please enter a valid phone number.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="address1">Address</label>
+              <input id="address1" name="address1" type="text" autocomplete="address-line1" required />
+              <div class="error" id="err-address1">Please enter your address.</div>
+            </div>
+            <div>
+              <label for="address2">Apt / Unit</label>
+              <input id="address2" name="address2" type="text" autocomplete="address-line2" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="city">City</label>
+              <input id="city" name="city" type="text" autocomplete="address-level2" required />
+              <div class="error" id="err-city">Please enter your city.</div>
+            </div>
+            <div>
+              <label class="required" for="state">State</label>
+              <select id="state" name="state" autocomplete="address-level1" required>
+                <option value="">Select…</option>
+                <option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option><option>CO</option>
+                <option>CT</option><option>DE</option><option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+                <option>IL</option><option>IN</option><option>IA</option><option>KS</option><option>KY</option><option>LA</option>
+                <option>ME</option><option>MD</option><option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+                <option>MO</option><option>MT</option><option>NE</option><option>NV</option><option>NH</option><option>NJ</option>
+                <option>NM</option><option>NY</option><option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+                <option>OR</option><option>PA</option><option>RI</option><option>SC</option><option>SD</option><option>TN</option>
+                <option>TX</option><option>UT</option><option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+                <option>WI</option><option>WY</option>
+              </select>
+              <div class="error" id="err-state">Please select your state.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="zip">ZIP</label>
+              <input id="zip" name="zip" type="text" inputmode="numeric" autocomplete="postal-code" required />
+              <div class="error" id="err-zip">Please enter a valid ZIP code.</div>
+            </div>
+            <div>
+              <label for="preferredContact">Preferred contact method</label>
+              <select id="preferredContact" name="preferredContact">
+                <option value="email">Email</option>
+                <option value="phone">Phone</option>
+                <option value="text">Text</option>
+              </select>
+            </div>
           </div>
         </div>
 
         <div class="section">
-          <h2>Availability & Preferences</h2>
-          <p class="sub">Help us match you with the individuals we support.</p>
+          <div class="minihead">
+            <h2>Role Preferences & Availability</h2>
+            <small class="muted">Step 2 of 6</small>
+          </div>
+          <p class="sub">Help us match you with schedules and locations.</p>
 
           <div class="row">
             <div>
               <label class="required" for="startDate">Earliest start date</label>
               <input id="startDate" name="startDate" type="date" required />
+              <div class="error" id="err-startDate">Please select a start date.</div>
             </div>
             <div>
-              <label class="required" for="shiftPref">Preferred Shift</label>
+              <label class="required" for="employmentType">Employment type</label>
+              <select id="employmentType" name="employmentType" required>
+                <option value="">Select…</option>
+                <option value="full-time">Full-time</option>
+                <option value="part-time">Part-time</option>
+                <option value="prn">PRN / As-needed</option>
+                <option value="seasonal">Seasonal</option>
+              </select>
+              <div class="error" id="err-employmentType">Please select an employment type.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="shiftPref">Preferred shift</label>
               <select id="shiftPref" name="shiftPref" required>
                 <option value="">Select…</option>
                 <option value="1st">1st Shift (Morning/Day)</option>
@@ -298,11 +391,17 @@
                 <option value="weekend">Weekends Only</option>
                 <option value="flexible">Flexible</option>
               </select>
+              <div class="error" id="err-shiftPref">Please select a shift preference.</div>
+            </div>
+            <div>
+              <label for="hoursPerWeek">Desired hours per week</label>
+              <input id="hoursPerWeek" name="hoursPerWeek" type="number" min="0" max="80" step="1" placeholder="e.g., 30" />
+              <div class="hint">Optional—helps with scheduling.</div>
             </div>
           </div>
 
           <div style="margin-top:16px;">
-            <label class="required">Days Available</label>
+            <label class="required">Days available</label>
             <div class="row">
               <div>
                 <div class="checkboxline"><input type="checkbox" name="days" value="Mon" /> <span>Monday</span></div>
@@ -316,26 +415,53 @@
                 <div class="checkboxline"><input type="checkbox" name="days" value="Sun" /> <span>Sunday</span></div>
               </div>
             </div>
+            <div class="error" id="err-days">Please select at least one day.</div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label for="travelRadius">Max travel distance</label>
+              <select id="travelRadius" name="travelRadius">
+                <option value="5">Up to 5 miles</option>
+                <option value="10">Up to 10 miles</option>
+                <option value="20" selected>Up to 20 miles</option>
+                <option value="30">Up to 30 miles</option>
+                <option value="50">Up to 50 miles</option>
+              </select>
+            </div>
+            <div>
+              <label for="reliableTransport">Reliable transportation?</label>
+              <select id="reliableTransport" name="reliableTransport">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="hint">Some DSP roles require travel between homes/community activities.</div>
+            </div>
           </div>
         </div>
 
         <div class="section">
-          <h2>Experience & Requirements</h2>
-          <p class="sub">DODD Waiver and Community Support requirements.</p>
+          <div class="minihead">
+            <h2>Experience, Certifications, Skills</h2>
+            <small class="muted">Step 3 of 6</small>
+          </div>
+          <p class="sub">Tell us about your background (OK if you’re new—we train!).</p>
 
           <div class="row">
             <div>
-              <label class="required" for="exp">Years of Experience</label>
+              <label class="required" for="exp">Caregiving / DSP experience</label>
               <select id="exp" name="experience" required>
                 <option value="">Select…</option>
-                <option value="0">Less than 1 year</option>
-                <option value="1">1-2 years</option>
-                <option value="3">3-5 years</option>
-                <option value="5">5+ years</option>
+                <option value="0">No experience</option>
+                <option value="lt1">Less than 1 year</option>
+                <option value="1-2">1-2 years</option>
+                <option value="3-5">3-5 years</option>
+                <option value="5plus">5+ years</option>
               </select>
+              <div class="error" id="err-exp">Please select experience.</div>
             </div>
             <div>
-              <label class="required" for="education">Highest Education</label>
+              <label class="required" for="education">Highest education</label>
               <select id="education" name="education" required>
                 <option value="">Select…</option>
                 <option value="hs">High School / GED</option>
@@ -343,17 +469,96 @@
                 <option value="bach">Bachelor's Degree</option>
                 <option value="grad">Graduate Degree</option>
               </select>
+              <div class="error" id="err-education">Please select education.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label for="certs">Certifications (optional)</label>
+              <select id="certs" name="certs" multiple size="6" aria-describedby="certHint">
+                <option value="cpr">CPR</option>
+                <option value="firstAid">First Aid</option>
+                <option value="medAdmin">Medication Administration</option>
+                <option value="dd">Developmental Disabilities Training</option>
+                <option value="pmT">CPI / PMT / De-escalation</option>
+                <option value="other">Other</option>
+              </select>
+              <div class="hint" id="certHint">Hold Ctrl/Command to select multiple.</div>
+            </div>
+            <div>
+              <label for="languages">Languages spoken</label>
+              <input id="languages" name="languages" type="text" placeholder="e.g., English, Spanish" />
+              <div class="hint">Optional—helps with matching.</div>
             </div>
           </div>
 
           <div style="margin-top:16px;">
-            <label class="required" for="license">Do you have a valid driver's license?</label>
-            <select id="license" name="license" required>
-              <option value="">Select…</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-            <div class="hint">DSPs often transport individuals to community activities.</div>
+            <label for="skills">Relevant skills (optional)</label>
+            <div class="two-col">
+              <div class="checkboxline"><input type="checkbox" name="skills" value="adl" /> <span>ADLs (hygiene, meals, routines)</span></div>
+              <div class="checkboxline"><input type="checkbox" name="skills" value="community" /> <span>Community integration</span></div>
+              <div class="checkboxline"><input type="checkbox" name="skills" value="behavior" /> <span>Behavior support</span></div>
+              <div class="checkboxline"><input type="checkbox" name="skills" value="mobility" /> <span>Mobility / transfers</span></div>
+              <div class="checkboxline"><input type="checkbox" name="skills" value="meds" /> <span>Medication reminders/admin</span></div>
+              <div class="checkboxline"><input type="checkbox" name="skills" value="documentation" /> <span>Documentation / charting</span></div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label for="why">Why do you want to be a DSP?</label>
+            <textarea id="why" name="why" placeholder="Tell us briefly what interests you about this role."></textarea>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="minihead">
+            <h2>Eligibility & Screening</h2>
+            <small class="muted">Step 4 of 6</small>
+          </div>
+          <p class="sub">Standard hiring questions (as commonly seen on Indeed).</p>
+
+          <div class="row">
+            <div>
+              <label class="required" for="age18">Are you at least 18 years old?</label>
+              <select id="age18" name="age18" required>
+                <option value="">Select…</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="error" id="err-age18">Please answer this question.</div>
+            </div>
+            <div>
+              <label class="required" for="workAuth">Work authorization (U.S.)</label>
+              <select id="workAuth" name="workAuth" required>
+                <option value="">Select…</option>
+                <option value="yes">I am authorized to work in the U.S.</option>
+                <option value="needSponsor">I will need sponsorship now or in the future</option>
+              </select>
+              <div class="error" id="err-workAuth">Please select an option.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="license">Valid driver’s license?</label>
+              <select id="license" name="license" required>
+                <option value="">Select…</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="hint">Some roles require transporting individuals.</div>
+              <div class="error" id="err-license">Please select an option.</div>
+            </div>
+            <div>
+              <label for="cleanRecord">Driving record (optional)</label>
+              <select id="cleanRecord" name="cleanRecord">
+                <option value="">Select…</option>
+                <option value="good">No major violations in last 3 years</option>
+                <option value="some">Some violations / accidents</option>
+                <option value="na">Not applicable</option>
+              </select>
+            </div>
           </div>
 
           <div style="margin-top:16px;">
@@ -366,38 +571,185 @@
               <input type="radio" name="screening" value="no" />
               <span>No.</span>
             </div>
+            <div class="error" id="err-screening">Please select an option.</div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label for="accommodations">Do you need a reasonable accommodation to complete the hiring process?</label>
+            <select id="accommodations" name="accommodations">
+              <option value="no" selected>No</option>
+              <option value="yes">Yes</option>
+            </select>
+            <div id="accomBox" style="display:none; margin-top:10px;">
+              <label for="accomDetails" style="text-transform:none; letter-spacing:0; color:var(--text); font-weight:650;">Accommodation details</label>
+              <textarea id="accomDetails" name="accomDetails" placeholder="Tell us what you need (optional)."></textarea>
+            </div>
           </div>
         </div>
 
         <div class="section">
-          <h2>Resume</h2>
-          <p class="sub">Upload your resume from your device (PDF, DOCX).</p>
-          <div class="file-input-wrapper">
-            <div class="file-custom-btn" id="file-chosen">Click to choose resume from device...</div>
-            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required onchange="document.getElementById('file-chosen').textContent = this.files[0].name" />
+          <div class="minihead">
+            <h2>Resume & Documents</h2>
+            <small class="muted">Step 5 of 6</small>
+          </div>
+          <p class="sub">Upload your resume and any supporting files.</p>
+
+          <div>
+            <label class="required" for="resume">Resume (PDF, DOC, DOCX)</label>
+            <div class="file-input-wrapper" style="min-height:54px;">
+              <div class="file-custom-btn">
+                <span id="resume-chosen">Click to choose resume…</span>
+                <span class="pill" id="resume-pill">No file</span>
+              </div>
+              <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required />
+            </div>
+            <div class="file-meta" id="resume-meta">Max 10MB. Required.</div>
+            <div class="error" id="err-resume">Please upload your resume.</div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label for="coverLetter">Cover letter (optional)</label>
+            <div class="file-input-wrapper" style="min-height:54px;">
+              <div class="file-custom-btn">
+                <span id="cover-chosen">Click to choose cover letter…</span>
+                <span class="pill" id="cover-pill">Optional</span>
+              </div>
+              <input type="file" id="coverLetter" name="coverLetter" accept=".pdf,.doc,.docx" />
+            </div>
+            <div class="file-meta">Max 10MB.</div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label for="certUpload">Certifications / other documents (optional, multiple)</label>
+            <div class="file-input-wrapper" style="min-height:54px;">
+              <div class="file-custom-btn">
+                <span id="cert-chosen">Click to choose documents…</span>
+                <span class="pill" id="cert-pill">0 files</span>
+              </div>
+              <input type="file" id="certUpload" name="certUpload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple />
+            </div>
+            <div class="file-meta">Allowed: PDF, JPG/PNG, DOC/DOCX. Max 10MB per file.</div>
+          </div>
+
+          <div class="helpbox">
+            <strong class="small">Privacy tip:</strong>
+            <span class="muted">Don’t include Social Security numbers on uploads. If required later, you’ll be asked securely.</span>
           </div>
         </div>
 
         <div class="section">
-          <h2>Final Consent</h2>
-          <div class="checkboxline">
-            <input id="consentTruth" type="checkbox" required />
-            <label for="consentTruth" style="display:inline; color: var(--text); font-weight: 500; text-transform: none;">I certify that all information provided is true and accurate.</label>
+          <div class="minihead">
+            <h2>References, Voluntary Disclosures & Consent</h2>
+            <small class="muted">Step 6 of 6</small>
           </div>
-          <div class="checkboxline">
-            <input id="consentProfile" type="checkbox" checked disabled />
-            <label for="consentProfile" style="display:inline; color: var(--text); font-weight: 500; text-transform: none;">I understand a Sulandra candidate profile will be automatically created using my email address.</label>
-          </div>
-        </div>
+          <p class="sub">Review and submit.</p>
 
-        <div class="btnrow">
-          <button type="submit" class="primary">Submit Application</button>
-          <button type="button" class="ghost" onclick="location.href='careers.html'">Cancel</button>
+          <div class="row">
+            <div>
+              <label for="refName">Reference name (optional)</label>
+              <input id="refName" name="refName" type="text" placeholder="e.g., Jane Manager" />
+            </div>
+            <div>
+              <label for="refPhone">Reference phone (optional)</label>
+              <input id="refPhone" name="refPhone" type="tel" placeholder="(555) 555-5555" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label for="refRelation">Relationship (optional)</label>
+              <input id="refRelation" name="refRelation" type="text" placeholder="e.g., Supervisor, Coworker" />
+            </div>
+            <div>
+              <label for="linkedIn">LinkedIn (optional)</label>
+              <input id="linkedIn" name="linkedIn" type="url" placeholder="https://linkedin.com/in/username" />
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label for="eeo">Voluntary self-identification (optional)</label>
+            <select id="eeo" name="eeo">
+              <option value="">Prefer not to answer</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="nonbinary">Non-binary</option>
+              <option value="other">Another gender identity</option>
+            </select>
+            <div class="hint">This is optional and not used in hiring decisions.</div>
+          </div>
+
+          <div class="section" style="border-top: 1px solid rgba(209,213,219,.7);">
+            <h2>Final consent</h2>
+
+            <div class="checkboxline">
+              <input id="consentTruth" name="consentTruth" type="checkbox" required />
+              <label for="consentTruth" style="display:inline; color: var(--text); font-weight: 550; text-transform:none; letter-spacing:0;">
+                I certify that all information provided is true and accurate.
+              </label>
+            </div>
+            <div class="error" id="err-consentTruth">You must certify before submitting.</div>
+
+            <div class="checkboxline">
+              <input id="consentContact" name="consentContact" type="checkbox" required />
+              <label for="consentContact" style="display:inline; color: var(--text); font-weight: 550; text-transform:none; letter-spacing:0;">
+                I consent to be contacted by Sulandra Community Living Services about my application.
+              </label>
+            </div>
+            <div class="error" id="err-consentContact">You must consent to be contacted.</div>
+
+            <div class="checkboxline">
+              <input id="consentESign" name="consentESign" type="checkbox" required />
+              <label for="consentESign" style="display:inline; color: var(--text); font-weight: 550; text-transform:none; letter-spacing:0;">
+                I agree that typing my name below serves as my electronic signature.
+              </label>
+            </div>
+            <div class="error" id="err-consentESign">E-sign consent is required.</div>
+
+            <div class="row" style="margin-top:12px;">
+              <div>
+                <label class="required" for="signature">Electronic signature (type full name)</label>
+                <input id="signature" name="signature" type="text" required />
+                <div class="error" id="err-signature">Please type your full name as signature.</div>
+              </div>
+              <div>
+                <label class="required" for="signatureDate">Signature date</label>
+                <input id="signatureDate" name="signatureDate" type="date" required />
+                <div class="error" id="err-signatureDate">Please select a date.</div>
+              </div>
+            </div>
+
+            <div class="helpbox">
+              <strong class="small">What happens after you apply?</strong>
+              <div class="muted" style="margin-top:6px;">
+                You’ll receive a confirmation. If selected, we’ll contact you for an interview and next steps
+                (screening, onboarding documents, and training).
+              </div>
+            </div>
+          </div>
+
+          <div class="btnrow">
+            <button type="submit" class="primary" id="submitBtn">Submit Application</button>
+            <button type="button" class="ghost" id="saveBtn">Save & Continue Later</button>
+            <button type="button" class="ghost" id="previewBtn">Preview</button>
+            <button type="button" class="danger" id="resetBtn">Clear Form</button>
+            <span class="pill" id="autosavePill" title="Autosave status">Autosave: off</span>
+          </div>
+
+          <div class="statusbar" id="statusbar" aria-live="polite">
+            <div class="statusrow">
+              <strong id="statusTitle">Submitting…</strong>
+              <span class="muted" id="statusHint">Please don’t close this tab.</span>
+            </div>
+            <div class="progress" aria-label="Submission progress">
+              <div id="progressFill"></div>
+            </div>
+          </div>
+
         </div>
       </form>
     </section>
 
-    <aside class="side">
+    <aside class="side" aria-label="Job overview">
       <div class="card">
         <h3>Position Summary</h3>
         <div class="kv"><span>Role:</span><span>Direct Support Professional</span></div>
@@ -405,37 +757,609 @@
         <div class="kv"><span>Department:</span><span>Community Living Services</span></div>
         <div class="kv"><span>Type:</span><span>Full-Time / Part-Time</span></div>
 
-        <div style="margin-top:20px;">
+        <div style="margin-top:16px;">
           <h3>Core Responsibilities</h3>
           <p class="small">
             • Support individuals with daily living tasks (hygiene, meals, routines).<br>
-            • Foster independence through skill-building.<br>
+            • Foster independence through skill-building and person-centered supports.<br>
             • Facilitate community integration and inclusion.<br>
-            • Implement person-centered outcomes and safety standards.
+            • Document services and follow safety protocols.
           </p>
+        </div>
+
+        <div style="margin-top:16px;">
+          <h3>Pay & Benefits (example)</h3>
+          <div class="kv"><span>Pay:</span><span>$XX–$YY / hr</span></div>
+          <div class="kv"><span>Benefits:</span><span>Health, PTO, 401(k)</span></div>
+          <div class="hint">Update these fields to match the posting.</div>
         </div>
 
         <div class="section" style="border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
           <p class="small" style="color: var(--muted); font-style: italic;">
             Sulandra Community Living Services is an Equal Opportunity Employer.
           </p>
+          <p class="small muted" style="margin-top:8px;">
+            If you need help completing this application, contact HR.
+          </p>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3>Progress</h3>
+        <div class="kv"><span>Required fields complete:</span><span id="reqCount">0%</span></div>
+        <div class="kv"><span>Resume uploaded:</span><span id="resumeStatus">No</span></div>
+        <div class="kv"><span>Saved draft:</span><span id="draftStatus">No</span></div>
+        <div class="hint">Draft saves to your browser (localStorage).</div>
       </div>
     </aside>
   </div>
 </main>
 
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <strong id="toastTitle">Saved</strong>
+  <small id="toastBody">Your draft has been saved on this device.</small>
+  <div class="tbtns">
+    <button class="ghost" id="toastCloseBtn" type="button">Close</button>
+    <button class="primary" id="toastDownloadBtn" type="button">Download copy (JSON)</button>
+  </div>
+</div>
+
 <script>
-  document.getElementById('appForm').onsubmit = function(e) {
-    e.preventDefault();
-    const email = document.getElementById('email').value;
-    
-    // Application submission simulation
-    alert(`Thank you! Your application for Direct Support Professional has been submitted successfully.\n\nA Sulandra candidate profile has been automatically created for ${email}.\n\nYou will receive a welcome email shortly with instructions on how to log in and track your status.`);
-    
-    // Redirect back to careers
-    window.location.href = 'careers.html';
-  };
+/* ==========
+   Utilities
+   ========== */
+
+const $ = (id) => document.getElementById(id);
+
+function show(el, on=true){ el.classList.toggle('show', !!on); }
+function setText(el, t){ el.textContent = t; }
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+function toast(title, body){
+  setText($('toastTitle'), title);
+  setText($('toastBody'), body);
+  show($('toast'), true);
+}
+
+$('toastCloseBtn').addEventListener('click', () => show($('toast'), false));
+
+$('toastDownloadBtn').addEventListener('click', () => {
+  const draft = collectFormDataAsObject(true);
+  const blob = new Blob([JSON.stringify(draft, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `dsp-application-draft-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+});
+
+function validEmail(v){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+}
+function validPhone(v){
+  const digits = String(v||'').replace(/\D/g,'');
+  return digits.length >= 10;
+}
+function validZip(v){
+  return /^\d{5}(-\d{4})?$/.test(String(v||'').trim());
+}
+function bytesToHuman(bytes){
+  const u = ['B','KB','MB','GB'];
+  let i = 0, n = bytes;
+  while(n >= 1024 && i < u.length-1){ n/=1024; i++; }
+  return `${n.toFixed(n<10 && i>0 ? 1 : 0)} ${u[i]}`;
+}
+function fileOk(file, maxMB=10){
+  if(!file) return true;
+  const max = maxMB * 1024 * 1024;
+  return file.size <= max;
+}
+
+/* ==================================
+   Draft save/restore (localStorage)
+   ================================== */
+
+const DRAFT_KEY = 'scls_dsp_application_draft_v1';
+
+function collectFormDataAsObject(includeFilesMeta=false){
+  const form = $('appForm');
+  const obj = {};
+  const fd = new FormData(form);
+
+  // Multi-checkbox groups (days/skills) come as multiple entries; capture as arrays.
+  const multiKeys = new Set(['days', 'skills', 'certs']);
+
+  for(const [k, v] of fd.entries()){
+    if(v instanceof File){
+      if(includeFilesMeta){
+        if(v && v.name){
+          obj[k] = { name: v.name, type: v.type || 'unknown', size: v.size };
+        } else {
+          obj[k] = null;
+        }
+      }
+      continue; // don't persist actual file blobs in localStorage
+    }
+
+    if(multiKeys.has(k)){
+      obj[k] = obj[k] || [];
+      obj[k].push(v);
+    } else {
+      // handle multi-select (certs) which may appear as repeated keys
+      if(obj[k] !== undefined){
+        if(!Array.isArray(obj[k])) obj[k] = [obj[k]];
+        obj[k].push(v);
+      } else {
+        obj[k] = v;
+      }
+    }
+  }
+
+  obj._savedAt = new Date().toISOString();
+  return obj;
+}
+
+function saveDraft(){
+  const data = collectFormDataAsObject(true);
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  setText($('draftStatus'), 'Yes');
+  setText($('autosavePill'), 'Autosave: saved');
+  toast('Draft saved', 'Your draft has been saved on this device.');
+}
+
+function loadDraft(){
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if(!raw) return false;
+
+  let data;
+  try { data = JSON.parse(raw); } catch { return false; }
+
+  // Restore basics
+  const form = $('appForm');
+  for(const [k, v] of Object.entries(data)){
+    if(k.startsWith('_')) continue;
+
+    // arrays = checkbox groups or multi-select
+    if(Array.isArray(v)){
+      // try checkboxes first
+      const nodes = form.querySelectorAll(`[name="${CSS.escape(k)}"]`);
+      if(nodes && nodes.length){
+        nodes.forEach(n => {
+          if(n.type === 'checkbox' || n.type === 'radio'){
+            n.checked = v.includes(n.value);
+          } else if(n.tagName === 'SELECT' && n.multiple){
+            Array.from(n.options).forEach(opt => opt.selected = v.includes(opt.value));
+          }
+        });
+      }
+    } else {
+      const el = form.querySelector(`[name="${CSS.escape(k)}"]`);
+      if(!el) continue;
+
+      if(el.type === 'checkbox'){
+        el.checked = !!v;
+      } else if(el.type === 'radio'){
+        const radio = form.querySelector(`[name="${CSS.escape(k)}"][value="${CSS.escape(v)}"]`);
+        if(radio) radio.checked = true;
+      } else if(el.tagName === 'SELECT' && el.multiple){
+        Array.from(el.options).forEach(opt => opt.selected = (v || []).includes(opt.value));
+      } else {
+        el.value = v ?? '';
+      }
+    }
+  }
+
+  setText($('draftStatus'), 'Yes');
+  setText($('autosavePill'), 'Autosave: loaded');
+  toast('Draft loaded', 'We restored a saved draft from this device. You may need to re-attach files.');
+  return true;
+}
+
+function clearDraft(){
+  localStorage.removeItem(DRAFT_KEY);
+  setText($('draftStatus'), 'No');
+  setText($('autosavePill'), 'Autosave: off');
+}
+
+/* =========================
+   Field validation helpers
+   ========================= */
+
+function setError(id, on){
+  const el = $(id);
+  if(!el) return;
+  el.classList.toggle('show', !!on);
+}
+
+function getCheckedValues(name){
+  const nodes = document.querySelectorAll(`input[name="${CSS.escape(name)}"]:checked`);
+  return Array.from(nodes).map(n => n.value);
+}
+
+function validateForm(){
+  let ok = true;
+
+  // Clear existing errors
+  [
+    'err-firstName','err-lastName','err-email','err-phone','err-address1','err-city','err-state','err-zip',
+    'err-startDate','err-employmentType','err-shiftPref','err-days',
+    'err-exp','err-education',
+    'err-age18','err-workAuth','err-license','err-screening',
+    'err-resume',
+    'err-consentTruth','err-consentContact','err-consentESign','err-signature','err-signatureDate'
+  ].forEach(eid => setError(eid,false));
+
+  const firstName = $('firstName').value.trim();
+  const lastName  = $('lastName').value.trim();
+  const email     = $('email').value.trim();
+  const phone     = $('phone').value.trim();
+  const address1  = $('address1').value.trim();
+  const city      = $('city').value.trim();
+  const state     = $('state').value;
+  const zip       = $('zip').value.trim();
+
+  const startDate = $('startDate').value;
+  const employmentType = $('employmentType').value;
+  const shiftPref = $('shiftPref').value;
+  const days      = getCheckedValues('days');
+
+  const exp = $('exp').value;
+  const education = $('education').value;
+
+  const age18 = $('age18').value;
+  const workAuth = $('workAuth').value;
+  const license = $('license').value;
+  const screening = document.querySelector('input[name="screening"]:checked')?.value;
+
+  const resumeFile = $('resume').files[0];
+
+  const consentTruth = $('consentTruth').checked;
+  const consentContact = $('consentContact').checked;
+  const consentESign = $('consentESign').checked;
+  const signature = $('signature').value.trim();
+  const signatureDate = $('signatureDate').value;
+
+  if(!firstName){ setError('err-firstName', true); ok=false; }
+  if(!lastName){ setError('err-lastName', true); ok=false; }
+  if(!validEmail(email)){ setError('err-email', true); ok=false; }
+  if(!validPhone(phone)){ setError('err-phone', true); ok=false; }
+  if(!address1){ setError('err-address1', true); ok=false; }
+  if(!city){ setError('err-city', true); ok=false; }
+  if(!state){ setError('err-state', true); ok=false; }
+  if(!validZip(zip)){ setError('err-zip', true); ok=false; }
+
+  if(!startDate){ setError('err-startDate', true); ok=false; }
+  if(!employmentType){ setError('err-employmentType', true); ok=false; }
+  if(!shiftPref){ setError('err-shiftPref', true); ok=false; }
+  if(!days.length){ setError('err-days', true); ok=false; }
+
+  if(!exp){ setError('err-exp', true); ok=false; }
+  if(!education){ setError('err-education', true); ok=false; }
+
+  if(!age18){ setError('err-age18', true); ok=false; }
+  if(!workAuth){ setError('err-workAuth', true); ok=false; }
+  if(!license){ setError('err-license', true); ok=false; }
+  if(!screening){ setError('err-screening', true); ok=false; }
+
+  if(!resumeFile){ setError('err-resume', true); ok=false; }
+  if(resumeFile && !fileOk(resumeFile, 10)){
+    setError('err-resume', true);
+    $('err-resume').textContent = 'Resume file must be 10MB or less.';
+    ok=false;
+  }
+
+  if(!consentTruth){ setError('err-consentTruth', true); ok=false; }
+  if(!consentContact){ setError('err-consentContact', true); ok=false; }
+  if(!consentESign){ setError('err-consentESign', true); ok=false; }
+  if(!signature){ setError('err-signature', true); ok=false; }
+  if(!signatureDate){ setError('err-signatureDate', true); ok=false; }
+
+  return ok;
+}
+
+/* =========================
+   UI wiring & enhancements
+   ========================= */
+
+function updateResumeUI(){
+  const f = $('resume').files[0];
+  if(!f){
+    setText($('resume-chosen'), 'Click to choose resume…');
+    setText($('resume-pill'), 'No file');
+    setText($('resumeStatus'), 'No');
+    return;
+  }
+  setText($('resume-chosen'), f.name);
+  setText($('resume-pill'), bytesToHuman(f.size));
+  setText($('resumeStatus'), 'Yes');
+}
+
+function updateCoverUI(){
+  const f = $('coverLetter').files[0];
+  if(!f){
+    setText($('cover-chosen'), 'Click to choose cover letter…');
+    setText($('cover-pill'), 'Optional');
+    return;
+  }
+  setText($('cover-chosen'), f.name);
+  setText($('cover-pill'), bytesToHuman(f.size));
+}
+
+function updateCertUI(){
+  const files = $('certUpload').files;
+  const n = files ? files.length : 0;
+  setText($('cert-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
+  setText($('cert-pill'), `${n} files`);
+}
+
+$('resume').addEventListener('change', updateResumeUI);
+$('coverLetter').addEventListener('change', updateCoverUI);
+$('certUpload').addEventListener('change', updateCertUI);
+
+$('accommodations').addEventListener('change', (e) => {
+  const on = e.target.value === 'yes';
+  $('accomBox').style.display = on ? 'block' : 'none';
+});
+
+$('saveBtn').addEventListener('click', () => saveDraft());
+
+$('resetBtn').addEventListener('click', () => {
+  if(confirm('Clear the entire form and remove the saved draft from this device?')){
+    $('appForm').reset();
+    clearDraft();
+    updateResumeUI(); updateCoverUI(); updateCertUI();
+    $('accomBox').style.display = 'none';
+    setText($('reqCount'), '0%');
+    toast('Cleared', 'Form and saved draft were cleared.');
+  }
+});
+
+$('previewBtn').addEventListener('click', () => {
+  const data = collectFormDataAsObject(true);
+  const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
+  if(!w) return alert('Pop-up blocked. Please allow pop-ups to preview.');
+  w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`);
+  w.document.close();
+});
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[s]));
+}
+
+/* =========================
+   Required-fields progress
+   ========================= */
+
+const requiredSelectors = [
+  '#firstName','#lastName','#email','#phone','#address1','#city','#state','#zip',
+  '#startDate','#employmentType','#shiftPref',
+  '#exp','#education',
+  '#age18','#workAuth','#license',
+  'input[name="screening"]',
+  '#resume',
+  '#consentTruth','#consentContact','#consentESign','#signature','#signatureDate'
+];
+
+function isFieldComplete(sel){
+  if(sel === 'input[name="screening"]'){
+    return !!document.querySelector('input[name="screening"]:checked');
+  }
+  const el = document.querySelector(sel);
+  if(!el) return true;
+
+  if(el.type === 'checkbox') return el.checked;
+  if(el.type === 'file') return el.files && el.files.length > 0;
+  return String(el.value || '').trim().length > 0;
+}
+
+function updateProgress(){
+  // days is also required (special)
+  const req = requiredSelectors.length + 1;
+  let done = 0;
+  requiredSelectors.forEach(s => { if(isFieldComplete(s)) done++; });
+  if(getCheckedValues('days').length > 0) done++;
+
+  const pct = Math.round((done / req) * 100);
+  setText($('reqCount'), `${pct}%`);
+}
+
+document.addEventListener('input', () => {
+  updateProgress();
+  scheduleAutosave();
+});
+document.addEventListener('change', () => {
+  updateProgress();
+  scheduleAutosave();
+});
+
+/* =========
+   Autosave
+   ========= */
+
+let autosaveTimer = null;
+function scheduleAutosave(){
+  // don't autosave if form is completely empty (basic check)
+  const any = ['firstName','lastName','email','phone'].some(id => String($(id).value||'').trim().length > 0);
+  if(!any) return;
+
+  setText($('autosavePill'), 'Autosave: pending…');
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    saveDraft();
+  }, 1200);
+}
+
+/* ===============================
+   Submit: REAL upload via fetch()
+   ===============================
+   This uses FormData so file upload works.
+   - Set USE_SIMULATION=false and set SUBMIT_URL to your backend endpoint.
+   - The backend should return JSON: { ok:true, applicationId:"...", message:"..." }
+   =============================== */
+
+const USE_SIMULATION = true; // flip to false when you have a backend
+const SUBMIT_URL = '/api/applications'; // your endpoint
+
+function setSubmitting(on){
+  $('submitBtn').disabled = on;
+  $('saveBtn').disabled = on;
+  $('previewBtn').disabled = on;
+  $('resetBtn').disabled = on;
+  show($('statusbar'), on);
+}
+
+function setProgress(pct, title, hint){
+  $('progressFill').style.width = `${clamp(pct,0,100)}%`;
+  if(title) setText($('statusTitle'), title);
+  if(hint) setText($('statusHint'), hint);
+}
+
+async function simulateSubmit(){
+  setSubmitting(true);
+  setProgress(10, 'Submitting…', 'Uploading files…');
+
+  await sleep(450);
+  setProgress(35, 'Submitting…', 'Validating information…');
+
+  await sleep(450);
+  setProgress(60, 'Submitting…', 'Creating candidate profile…');
+
+  await sleep(450);
+  setProgress(85, 'Submitting…', 'Finalizing…');
+
+  await sleep(400);
+  setProgress(100, 'Submitted!', 'A confirmation will be shown next.');
+  await sleep(250);
+
+  setSubmitting(false);
+
+  // “Indeed-like” confirmation
+  const email = $('email').value.trim();
+  alert(
+    `Thank you! Your application for Direct Support Professional has been submitted.\n\n` +
+    `Confirmation will be sent to: ${email}\n\n` +
+    `Next: Our hiring team will review your application and contact you if you’re selected for an interview.`
+  );
+
+  clearDraft(); // optional: remove draft once submitted
+  window.location.href = 'careers.html';
+}
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+async function submitToBackend(){
+  const form = $('appForm');
+  const fd = new FormData(form);
+
+  // enforce 10MB per uploaded file (client-side)
+  const files = [
+    fd.get('resume'),
+    fd.get('coverLetter'),
+    ...(fd.getAll('certUpload') || [])
+  ].filter(Boolean);
+
+  for(const f of files){
+    if(f instanceof File && f.name && !fileOk(f, 10)){
+      throw new Error(`File too large: ${f.name} (max 10MB).`);
+    }
+  }
+
+  setSubmitting(true);
+  setProgress(15, 'Submitting…', 'Uploading files…');
+
+  const res = await fetch(SUBMIT_URL, {
+    method: 'POST',
+    body: fd
+  });
+
+  setProgress(70, 'Submitting…', 'Saving your application…');
+
+  let out = null;
+  const ct = res.headers.get('content-type') || '';
+  if(ct.includes('application/json')){
+    out = await res.json();
+  } else {
+    const text = await res.text();
+    out = { ok: res.ok, message: text };
+  }
+
+  if(!res.ok || !out || out.ok === false){
+    throw new Error(out?.message || 'Submission failed. Please try again.');
+  }
+
+  setProgress(100, 'Submitted!', 'Success.');
+  await sleep(250);
+  setSubmitting(false);
+
+  toast('Submitted', `Application received. ID: ${out.applicationId || 'N/A'}`);
+  clearDraft();
+  window.location.href = 'careers.html';
+}
+
+/* ===========
+   Form submit
+   =========== */
+
+$('appForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  updateResumeUI(); // in case user didn't blur
+  updateProgress();
+
+  const ok = validateForm();
+  if(!ok){
+    toast('Fix required fields', 'Please review the highlighted items and try again.');
+    // Scroll to first visible error
+    const firstErr = document.querySelector('.error.show');
+    if(firstErr) firstErr.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
+  // Ensure at least one day selected (our custom required)
+  if(getCheckedValues('days').length === 0){
+    setError('err-days', true);
+    toast('Days available required', 'Please select at least one day and submit again.');
+    $('err-days').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
+  try{
+    if(USE_SIMULATION){
+      await simulateSubmit();
+    } else {
+      await submitToBackend();
+    }
+  } catch(err){
+    setSubmitting(false);
+    setProgress(0);
+    toast('Submission error', err?.message || 'Something went wrong.');
+  }
+});
+
+/* ==============
+   Initial boot
+   ============== */
+
+(function init(){
+  // default signature date to today
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  if(!$('signatureDate').value) $('signatureDate').value = `${yyyy}-${mm}-${dd}`;
+
+  // load draft if available
+  loadDraft();
+
+  updateResumeUI();
+  updateCoverUI();
+  updateCertUI();
+  updateProgress();
+})();
 </script>
 
 </body>
