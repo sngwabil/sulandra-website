@@ -3,226 +3,103 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Careers | Sulandra Community Living Services</title>
-  <meta name="description" content="Explore a career at Sulandra. Join our integrated team in pharmacy, home health, community living, and specialized rehab services." />
-
+  <title>Apply for Direct Support Professional | Sulandra</title>
   <style>
     :root{
       --bg:#ffffff; --ink:#0b1220; --muted:#55657e; --brand:#1f5aa6; --brand2:#2c74d6;
-      --line:#e7eef8; --card:#f7fbff; --soft:#f2f6fb; --shadow:0 10px 28px rgba(10,30,60,.08);
-      --radius:22px; --headerH: 92px; --sideW: 360px;
+      --line:#e7eef8; --soft:#f2f6fb; --shadow:0 10px 28px rgba(10,30,60,.08);
+      --radius:22px; --headerH: 92px;
     }
     *{box-sizing:border-box}
-    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
-    a{color:inherit; text-decoration:none}
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; padding-bottom: 80px;}
+    .topbar{ height: var(--headerH); background: #fff; border-bottom:1px solid #e7eef8; display:flex; align-items:center; }
+    .container{ max-width: 800px; margin: 40px auto; padding: 40px; background: var(--soft); border-radius: 30px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .header{ margin-bottom: 30px; }
+    .header h1{ color: var(--brand); margin: 0; font-size: 32px; font-weight: 950; }
+    .header a{ color: var(--muted); font-weight: 800; text-decoration: underline; font-size: 14px; }
     
-    .topbar{ position: sticky; top: 0; z-index: 50; height: var(--headerH); background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom:1px solid #e7eef8; }
-    .topbarInner{ height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 18px; display:flex; align-items:center; justify-content:space-between; }
-    .brandLogo{ height: 240px; width: auto; display: block; }
-    .topnav{ display:flex; gap:18px; font-weight:800; color:#20446e; }
-    .topnav a{ padding:10px; border-radius:12px; }
-    .topnav a.active{ background: #eaf2ff; color:var(--brand); box-shadow: inset 0 0 0 1px #d7e6ff; }
-
-    .container{ max-width: 1200px; margin: 0 auto; padding: 22px 18px 80px; }
-    .pageTitle{ margin: 18px 0 8px; font-size: clamp(34px, 4vw, 54px); color:var(--brand); font-weight: 950; line-height: 1.1; }
-    .pageLead{ max-width: 980px; color: var(--muted); font-size: 18px; margin-bottom: 24px; }
-
-    .aboutWrap{ display:grid; grid-template-columns: var(--sideW) 1fr; gap: 24px; align-items: start; }
-
-    .aboutSidebar{ position: sticky; top: calc(var(--headerH) + 18px); background: linear-gradient(180deg, #1f5aa6, #2c74d6); border-radius: 26px; box-shadow: var(--shadow); overflow: hidden; }
-    .sideHeader{ padding: 22px; color:#fff; }
-    .sideHeader h2{ margin:0; font-size: 18px; text-transform: uppercase; font-weight: 950; }
-    .sideNav{ list-style:none; margin:0; padding: 10px 14px 18px; display:flex; flex-direction:column; gap:10px; }
-    .sideNav a{ display:flex; align-items:center; justify-content:space-between; padding: 14px; border-radius: 14px; background: rgba(255,255,255,.10); color:#fff; font-weight: 900; }
-    .sideNav a[aria-current="true"]{ background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 2px rgba(255,255,255,.38); }
-    .caret{ width:26px; height:26px; border-radius:10px; display:grid; place-items:center; background: rgba(255,255,255,.20); font-weight: 950; }
-
-    .aboutContent{ background: var(--soft); border: 1px solid var(--line); border-radius: 26px; padding: 22px; box-shadow: var(--shadow); }
-    .section{ margin-top: 18px; background: #fff; border-radius: 22px; border: 1px solid var(--line); padding: 22px 20px; }
-    .section h2{ margin:0 0 10px; color: var(--brand); font-size: 34px; font-weight: 950; }
+    .formGrid{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .formGroup{ margin-bottom: 20px; display: flex; flex-direction: column; }
+    .full{ grid-column: span 2; }
+    label{ font-weight: 800; font-size: 14px; color: var(--brand); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select, textarea{ padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font-family: inherit; font-size: 16px; }
+    input:focus{ outline: 2px solid var(--brand); }
     
-    /* Career Fields Pills */
-    .fieldGrid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 20px 0; }
-    .fieldPill{ padding: 12px; background: #eaf2ff; border: 1px solid #d7e6ff; border-radius: 14px; font-weight: 800; font-size: 13px; color: var(--brand); text-align: center; }
-
-    /* Job Listings */
-    .jobGrid{ display:grid; grid-template-columns: 1fr; gap:14px; margin-top: 20px; }
-    .jobCard{ background: var(--card); border: 1px solid #dcebff; border-radius: 18px; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .jobInfo h4{ margin: 0 0 4px; font-size: 18px; font-weight: 950; color: var(--brand); }
-    .jobInfo p{ margin: 0; color: var(--muted); font-size: 14px; font-weight: 700; }
+    .fileUpload{ border: 2px dashed var(--brand); padding: 30px; text-align: center; border-radius: 18px; background: #fff; cursor: pointer; }
+    .btnSubmit{ background: var(--brand); color: #fff; padding: 18px; border-radius: 15px; border: none; font-weight: 950; font-size: 18px; cursor: pointer; margin-top: 20px; transition: background 0.2s; }
+    .btnSubmit:hover{ background: var(--brand2); }
     
-    .btnApply{ background: var(--brand); color: #fff; padding: 12px 24px; border-radius: 12px; font-weight: 900; font-size: 14px; transition: transform 0.2s; cursor: pointer; border:none; }
-    .btnApply:hover{ transform: translateY(-2px); background: var(--brand2); }
-
-    .scamAlert{ background: #fff5f5; border: 1px solid #feb2b2; padding: 18px; border-radius: 18px; margin-top: 20px; }
-    .scamAlert h3{ margin: 0 0 8px; color: #c53030; font-size: 16px; font-weight: 950; text-transform: uppercase; }
-    .scamAlert p{ margin: 0; font-size: 14px; color: #742a2a; line-height: 1.4; }
-
-    .kicker{ display:inline-flex; padding: 7px 10px; border-radius: 999px; background: #eaf2ff; color: var(--brand); font-weight: 950; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; }
-
-    .anchor{ scroll-margin-top: calc(var(--headerH) + 24px); }
-
-    @media (max-width: 980px){
-      .aboutWrap{ grid-template-columns: 1fr; }
-      .aboutSidebar{ position: relative; top:auto; margin-bottom: 24px; }
-      .jobCard{ flex-direction: column; align-items: flex-start; gap: 16px; }
-    }
+    @media (max-width: 600px){ .formGrid{ grid-template-columns: 1fr; } .full{ grid-column: span 1; } }
   </style>
 </head>
-
 <body>
-  <header class="topbar">
-    <div class="topbarInner">
-      <div class="brandRow"><img src="assets/logo.png" alt="Sulandra" class="brandLogo"></div>
-      <nav class="topnav">
-        <a href="index.html">Home</a>
-        <a href="about.html">About Us</a>
-        <a href="services.html">Services</a>
-        <a href="quality.html">Quality</a>
-        <a href="stories.html">Stories</a>
-        <a class="active" href="careers.html">Careers</a>
-        <a href="contact.html">Contact</a>
-      </nav>
+  <div class="topbar"><div style="max-width:1200px; margin:0 auto; width:100%; padding:0 20px;"><img src="assets/logo.png" style="height:60px;"></div></div>
+
+  <div class="container">
+    <div class="header">
+      <a href="careers.html">← Back to Careers</a>
+      <h1>Application for Direct Support Professional</h1>
     </div>
-  </header>
 
-  <main class="container">
-    <h1 class="pageTitle">Not just your best career.<br>Your best life.</h1>
-    <p class="pageLead">
-      Sulandra lets you choose the healthcare field that fits you best. We need excellent people to do excellent things[cite: 38, 39, 44].
-    </p>
-
-    <div class="aboutWrap">
-      <aside class="aboutSidebar">
-        <div class="sideHeader"><h2>Careers</h2></div>
-        <ul class="sideNav">
-          <li><a href="#fields" data-target="fields"><span class="caret">^</span><span>Healthcare Fields</span></a></li>
-          <li><a href="#open-roles" data-target="open-roles"><span class="caret">^</span><span>Open Positions</span></a></li>
-          <li><a href="#development" data-target="development"><span class="caret">^</span><span>Grow With Us</span></a></li>
-          <li><a href="#initiatives" data-target="initiatives"><span class="caret">^</span><span>Hiring Initiatives</span></a></li>
-        </ul>
-      </aside>
-
-      <section class="aboutContent">
-        <section id="fields" class="section anchor">
-          <span class="kicker">Choice</span>
-          <h2>Where do you fit best?</h2>
-          <p>We invite you to explore various career paths across our integrated platform[cite: 44, 62].</p>
-          <div class="fieldGrid">
-            <div class="fieldPill">Applied Behavior Analysis [cite: 45]</div>
-            <div class="fieldPill">Behavioral Health [cite: 46]</div>
-            <div class="fieldPill">Behavioral Health (I/DD) Pharmacy [cite: 47]</div>
-            <div class="fieldPill">Community Living Services [cite: 48]</div>
-            <div class="fieldPill">Family & Youth Services [cite: 49]</div>
-            <div class="fieldPill">Home & Community Pharmacy [cite: 50]</div>
-            <div class="fieldPill">Home Based Primary Care [cite: 51]</div>
-            <div class="fieldPill">Home Health and Hospice [cite: 52]</div>
-            <div class="fieldPill">HomeCare Services [cite: 53]</div>
-            <div class="fieldPill">Hospice Pharmacy [cite: 54]</div>
-            <div class="fieldPill">Mental Health Services [cite: 55]</div>
-            <div class="fieldPill">Neuro Rehabilitation [cite: 56]</div>
-            <div class="fieldPill">Nursing Services [cite: 57]</div>
-            <div class="fieldPill">Specialty Infusion [cite: 58]</div>
-            <div class="fieldPill">Specialty/Oncology Pharmacy [cite: 59]</div>
-            <div class="fieldPill">Telecare & Remote Support [cite: 60]</div>
+    <form id="jobApp">
+      <div class="formGrid">
+        <div class="formGroup">
+          <label>First Name</label>
+          <input type="text" required placeholder="John">
+        </div>
+        <div class="formGroup">
+          <label>Last Name</label>
+          <input type="text" required placeholder="Doe">
+        </div>
+        <div class="formGroup">
+          <label>Email Address</label>
+          <input type="email" required placeholder="john@example.com">
+        </div>
+        <div class="formGroup">
+          <label>Phone Number</label>
+          <input type="tel" required placeholder="(000) 000-0000">
+        </div>
+        <div class="formGroup">
+          <label>Years of Relevant Experience</label>
+          <select required>
+            <option value="">Select experience level</option>
+            <option value="0">Less than 1 year</option>
+            <option value="1">1-2 years</option>
+            <option value="3">3-5 years</option>
+            <option value="5">5+ years</option>
+            <option value="10">10+ years</option>
+          </select>
+        </div>
+        <div class="formGroup">
+          <label>Earliest Start Date</label>
+          <input type="date" required>
+        </div>
+        <div class="formGroup full">
+          <label>Upload Resume (PDF, DOCX)</label>
+          <div class="fileUpload" onclick="document.getElementById('fileIn').click()">
+            <p id="fileName">Click to choose from device or drag and drop</p>
+            <input type="file" id="fileIn" style="display:none" onchange="updateName(this)" accept=".pdf,.doc,.docx">
           </div>
-        </section>
-
-        <section id="open-roles" class="section anchor">
-          <span class="kicker">Get Started</span>
-          <h2>Featured Opportunities</h2>
-          <p>We are looking for caregivers, nurses, specialists, and innovators to shape the future of health care[cite: 61, 62].</p>
-          
-          <div class="jobGrid">
-            <div class="jobCard">
-              <div class="jobInfo">
-                <h4>Pharmacy Specialist</h4>
-                <p>Full-Time · Specialty/Oncology Pharmacy [cite: 59]</p>
-              </div>
-              <button class="btnApply" onclick="location.href='contact.html?role=pharmacy'">Apply Now</button>
-            </div>
-            
-            <div class="jobCard">
-              <div class="jobInfo">
-                <h4>Direct Support Professional</h4>
-                <p>Full-Time / Part-Time · Community Living [cite: 48]</p>
-              </div>
-              <button class="btnApply" onclick="location.href='contact.html?role=dsp'">Apply Now</button>
-            </div>
-            
-            <div class="jobCard">
-              <div class="jobInfo">
-                <h4>Home Health Nurse (RN/LPN)</h4>
-                <p>Full-Time · Nursing Services [cite: 57]</p>
-              </div>
-              <button class="btnApply" onclick="location.href='contact.html?role=nurse'">Apply Now</button>
-            </div>
-          </div>
-
-          <div class="scamAlert">
-            <h3>Scam Alert [cite: 63]</h3>
-            <p>During the recruitment process, no recruiter or employee will request financial or personal information (Social Security, credit card, bank information, or payment for equipment) from you via text or email[cite: 66]. If suspicious, please contact us[cite: 67].</p>
-          </div>
-        </section>
-
-        <section id="development" class="section anchor">
-          <span class="kicker">Excellence</span>
-          <h2>Grow With Us</h2>
-          <p>We encourage and support the professional development of our employees to help them reach their career goals[cite: 79, 80].</p>
-          <ul style="padding-left:20px;">
-            <li>No limit to the training you can receive throughout your career[cite: 42].</li>
-            <li>Dedicated support for skill development and career advancement[cite: 80, 81].</li>
-            <li>Real-world success stories from across our integrated platform[cite: 81, 82].</li>
-          </ul>
-        </section>
-
-        <section id="initiatives" class="section anchor">
-          <span class="kicker">Diversity & Education</span>
-          <h2>Hiring Initiatives</h2>
-          <p>We value diverse employees with unique skill sets gained through service and education[cite: 73].</p>
-          <div class="grid2">
-            <div class="card">
-              <h4>Veteran Employment [cite: 71]</h4>
-              <p>Learn about how we hire and support veterans across our organization[cite: 70].</p>
-              <button class="btnApply" style="margin-top:10px;" onclick="location.href='contact.html?role=veteran'">Veteran Interest</button>
-            </div>
-            <div class="card">
-              <h4>Student & Graduate Employment [cite: 72]</h4>
-              <p>We offer internship opportunities, tuition reimbursement, and scholarships[cite: 74].</p>
-              <button class="btnApply" style="margin-top:10px;" onclick="location.href='contact.html?role=student'">Student Interest</button>
-            </div>
-          </div>
-        </section>
-
-        <footer style="margin-top:40px; padding-top:20px; border-top:1px solid var(--line); font-size: 14px; color: var(--muted); text-align: center;">
-          © 2025 Sulandra Community Living Services. Sulandra is an Equal Opportunity Employer[cite: 86, 87].
-        </footer>
-      </section>
-    </div>
-  </main>
+        </div>
+        <div class="formGroup full">
+          <label>Why are you a good fit for Sulandra?</label>
+          <textarea rows="4" placeholder="Tell us about your passion for community care..."></textarea>
+        </div>
+      </div>
+      <button type="submit" class="btnSubmit">Submit My Application</button>
+    </form>
+  </div>
 
   <script>
-    (function () {
-      const header = document.querySelector(".topbar");
-      function setHeaderHeightVar() {
-        document.documentElement.style.setProperty("--headerH", `${Math.ceil(header.getBoundingClientRect().height)}px`);
-      }
-      window.addEventListener("load", setHeaderHeightVar);
-      window.addEventListener("resize", setHeaderHeightVar);
-      setHeaderHeightVar();
-
-      const navLinks = [...document.querySelectorAll('.sideNav a')];
-      const sections = navLinks.map(a => document.getElementById(a.getAttribute('href').substring(1)));
-
-      window.addEventListener('scroll', () => {
-        let current = "";
-        const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--headerH')) + 50;
-        sections.forEach(s => {
-          if (window.scrollY >= s.offsetTop - offset) current = s.id;
-        });
-        if (current) navLinks.forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${current}` ? 'true' : 'false'));
-      });
-    })();
+    function updateName(input) {
+      const name = input.files[0] ? input.files[0].name : "Click to choose from device or drag and drop";
+      document.getElementById('fileName').innerText = name;
+    }
+    document.getElementById('jobApp').onsubmit = (e) => {
+      e.preventDefault();
+      alert('Application successfully submitted! Our Talent Acquisition team will review your profile shortly.');
+      window.location.href = 'careers.html';
+    };
   </script>
 </body>
 </html>
