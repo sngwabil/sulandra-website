@@ -478,15 +478,14 @@
   height: 160px;                         /* bigger logo */
 }
 
-/* HERO: convert background hero into a slideshow without deleting your current background rule */
-/* HERO: BrightSpring-style transition (keep your slideshow) */
+/* HERO (override): keep slideshow, keep dark blur, remove white wash */
 .heroMedia{
-  background: none !important;   /* keep slideshow */
-  overflow: hidden;
+  background: none !important; /* keep slideshow */
   position: relative;
+  overflow: hidden;
 }
 
-/* Dark blur you like (kept mostly on the photo side, not across the whole image) */
+/* Dark blur you like — stays on the photo side, fades out before text */
 .heroMedia::before{
   content:"";
   position:absolute;
@@ -494,33 +493,30 @@
   z-index:2;
   pointer-events:none;
 
-  /* darker on the left, then fades out before the text edge */
   background: linear-gradient(90deg,
-    rgba(11,42,74,.55) 0%,
-    rgba(11,42,74,.38) 42%,
-    rgba(11,42,74,0) 68%
+    rgba(10, 28, 55, .62) 0%,
+    rgba(10, 28, 55, .48) 38%,
+    rgba(10, 28, 55, 0) 62%
   );
 
-  /* “dark blur” feel */
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-/* BrightSpring-ish white angled panel that creates the crisp split */
+/* Curved “panel” edge — pushed right so it doesn’t cover the whole image */
 .heroMedia::after{
   content:"";
   position:absolute;
-  top:-90px;
-  right:-240px;
-  width:560px;
-  height:calc(100% + 180px);
-  background: rgba(255,255,255,.94);
-  transform: rotate(12deg);
+  top:-60px;
+  right:-210px;
+  width:480px;
+  height:calc(100% + 120px);
+  background: rgba(255,255,255,.92);
   border-radius: 999px;
+  transform: rotate(12deg);
   z-index:3;
   pointer-events:none;
 }
-
 
 /* Slideshow container */
 .slides{
