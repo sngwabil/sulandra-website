@@ -485,7 +485,23 @@
   overflow: hidden;
 }
 
-/* Dark blur you like — stays on the photo side, fades out before text */
+/* === HERO FIX: clean diagonal + keep dark blur + stop clipping === */
+
+/* prevent text clipping */
+.heroCard{ overflow: visible; } /* was hiding the top of the H1 */
+
+/* give the hero more breathing room so nothing gets cut */
+.heroGrid{ min-height: 600px; }  /* was 520px */
+.heroText{ padding: 56px 56px; } /* was 70px 56px */
+
+/* remove ALL existing hero wash/gradients */
+.heroMedia{
+  background: none !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* if you have any old ::before rules, neutralize them */
 .heroMedia::before{
   content:"";
   position:absolute;
@@ -493,27 +509,27 @@
   z-index:2;
   pointer-events:none;
 
+  /* dark blur stays on the left image side and fades out */
   background: linear-gradient(90deg,
-    rgba(10, 28, 55, .62) 0%,
-    rgba(10, 28, 55, .48) 38%,
-    rgba(10, 28, 55, 0) 62%
+    rgba(11,42,74,.70) 0%,
+    rgba(11,42,74,.55) 40%,
+    rgba(11,42,74,0) 62%
   );
 
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
 }
 
-/* Curved “panel” edge — pushed right so it doesn’t cover the whole image */
+/* replace the big curved blob with a clean diagonal white panel */
 .heroMedia::after{
   content:"";
   position:absolute;
-  top:-60px;
-  right:-210px;
-  width:480px;
-  height:calc(100% + 120px);
-  background: rgba(255,255,255,.92);
-  border-radius: 999px;
-  transform: rotate(12deg);
+  top:-80px;
+  left:52%;
+  width:70%;
+  height:calc(100% + 160px);
+  background: rgba(255,255,255,.96);
+  transform: skewX(-12deg);
   z-index:3;
   pointer-events:none;
 }
