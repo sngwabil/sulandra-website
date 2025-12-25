@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Candidate Profile | Sulandra</title>
+  <style>
+    :root{ --bg:#f8fafc; --ink:#0b1220; --brand:#1f5aa6; --line:#e7eef8; }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family: system-ui, -apple-system, sans-serif; color:var(--ink); background:var(--bg); padding: 60px 20px; }
+    .loginContainer{ max-width: 440px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 24px; border: 1px solid var(--line); box-shadow: 0 20px 40px rgba(0,0,0,0.04); text-align: center; }
+    .brandLogo{ height: 80px; margin-bottom: 20px; }
+    h1{ font-size: 24px; font-weight: 900; color: var(--brand); margin: 0 0 8px; }
+    p{ color: #64748b; font-size: 15px; margin-bottom: 30px; }
+    .formGroup{ text-align: left; margin-bottom: 20px; }
+    label{ font-weight: 800; font-size: 12px; text-transform: uppercase; color: var(--brand); margin-bottom: 6px; display: block; }
+    input{ width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--line); font-size: 16px; }
+    .btnAction{ width: 100%; padding: 16px; border-radius: 12px; background: var(--brand); color: #fff; font-weight: 900; border: none; cursor: pointer; font-size: 16px; }
+    .toggleLink{ margin-top: 20px; font-size: 14px; color: #64748b; }
+    .toggleLink a{ color: var(--brand); font-weight: 800; text-decoration: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="loginContainer">
+  <img src="assets/logo.png" alt="Sulandra" class="brandLogo">
+  <div id="authView">
+    <h1 id="authTitle">Welcome Back</h1>
+    <p id="authSubtitle">Sign in to check your application status.</p>
+
+    <form onsubmit="alert('Profile Found! Redirecting to status dashboard...'); return false;">
+      <div class="formGroup">
+        <label>Email Address</label>
+        <input type="email" placeholder="email@example.com" required>
+      </div>
+      <div class="formGroup">
+        <label>Password</label>
+        <input type="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btnAction" id="submitBtn">Sign In</button>
+    </form>
+
+    <div class="toggleLink">
+      <span id="toggleText">Don't have a profile?</span> 
+      <a onclick="toggleAuth()" id="toggleBtn">Create One</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  let isSignup = false;
+  // Handle URL parameters for direct signup from careers page
+  window.onload = () => {
+    if(new URLSearchParams(window.location.search).get('action') === 'signup') toggleAuth();
+  };
+
+  function toggleAuth() {
+    isSignup = !isSignup;
+    document.getElementById('authTitle').innerText = isSignup ? "Create Profile" : "Welcome Back";
+    document.getElementById('authSubtitle').innerText = isSignup ? "Join the Sulandra network to view job status." : "Sign in to check your application status.";
+    document.getElementById('submitBtn').innerText = isSignup ? "Create Profile" : "Sign In";
+    document.getElementById('toggleText').innerText = isSignup ? "Already have a profile?" : "Don't have a profile?";
+    document.getElementById('toggleBtn').innerText = isSignup ? "Sign In" : "Create One";
+  }
+</script>
+
+</body>
+</html>
