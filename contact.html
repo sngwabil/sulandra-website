@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contact & Apply | Sulandra Community Living Services</title>
+  <meta name="description" content="Contact Sulandra for integrated care services or apply for a career in our 3,000+ locations across 50 states." />
+
+  <style>
+    :root{
+      --bg:#ffffff; --ink:#0b1220; --muted:#55657e; --brand:#1f5aa6; --brand2:#2c74d6;
+      --line:#e7eef8; --card:#f7fbff; --soft:#f2f6fb; --shadow:0 10px 28px rgba(10,30,60,.08);
+      --radius:22px; --headerH: 92px; --sideW: 360px;
+    }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+    a{color:inherit; text-decoration:none}
+    
+    .topbar{ position: sticky; top: 0; z-index: 50; height: var(--headerH); background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom:1px solid #e7eef8; }
+    .topbarInner{ height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 18px; display:flex; align-items:center; justify-content:space-between; }
+    .brandLogo{ height: 240px; width: auto; display: block; }
+    .topnav{ display:flex; gap:18px; font-weight:800; color:#20446e; }
+    .topnav a{ padding:10px; border-radius:12px; }
+    .topnav a.active{ background: #eaf2ff; color:var(--brand); box-shadow: inset 0 0 0 1px #d7e6ff; }
+
+    .container{ max-width: 1200px; margin: 0 auto; padding: 22px 18px 80px; }
+    .pageTitle{ margin: 18px 0 8px; font-size: clamp(34px, 4vw, 54px); color:var(--brand); font-weight: 950; }
+    .pageLead{ max-width: 980px; color: var(--muted); font-size: 18px; margin-bottom: 24px; }
+
+    .aboutWrap{ display:grid; grid-template-columns: var(--sideW) 1fr; gap: 24px; align-items: start; }
+
+    .aboutSidebar{ position: sticky; top: calc(var(--headerH) + 18px); background: linear-gradient(180deg, #1f5aa6, #2c74d6); border-radius: 26px; box-shadow: var(--shadow); overflow: hidden; }
+    .sideHeader{ padding: 22px; color:#fff; }
+    .sideHeader h2{ margin:0; font-size: 18px; text-transform: uppercase; font-weight: 950; }
+    .sideNav{ list-style:none; margin:0; padding: 10px 14px 18px; display:flex; flex-direction:column; gap:10px; }
+    .sideNav a{ display:flex; align-items:center; justify-content:space-between; padding: 14px; border-radius: 14px; background: rgba(255,255,255,.10); color:#fff; font-weight: 900; }
+    .sideNav a[aria-current="true"]{ background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 2px rgba(255,255,255,.38); }
+    .caret{ width:26px; height:26px; border-radius:10px; display:grid; place-items:center; background: rgba(255,255,255,.20); font-weight: 950; }
+
+    .aboutContent{ background: var(--soft); border: 1px solid var(--line); border-radius: 26px; padding: 22px; box-shadow: var(--shadow); }
+    .section{ margin-top: 18px; background: #fff; border-radius: 22px; border: 1px solid var(--line); padding: 22px 20px; }
+    .section h2{ margin:0 0 10px; color: var(--brand); font-size: 34px; font-weight: 950; }
+    
+    /* Form Styles */
+    .formGroup{ margin-bottom: 18px; }
+    .formLabel{ display: block; font-weight: 800; margin-bottom: 6px; font-size: 14px; color: var(--brand); }
+    .formInput{ width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--soft); font-family: inherit; font-size: 16px; }
+    .formInput:focus{ outline: 2px solid var(--brand); background: #fff; }
+    .btnSubmit{ background: var(--brand); color: #fff; padding: 14px 28px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; width: 100%; font-size: 16px; }
+    .btnSubmit:hover{ background: var(--brand2); }
+
+    .kicker{ display:inline-flex; padding: 7px 10px; border-radius: 999px; background: #eaf2ff; color: var(--brand); font-weight: 950; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; }
+
+    .scamNotice{ background: #fff5f5; border: 1px solid #feb2b2; padding: 18px; border-radius: 18px; margin-top: 20px; }
+    .scamNotice h3{ margin: 0 0 8px; color: #c53030; font-size: 16px; font-weight: 950; text-transform: uppercase; }
+    .scamNotice p{ margin: 0; font-size: 13px; color: #742a2a; }
+
+    .anchor{ scroll-margin-top: calc(var(--headerH) + 24px); }
+
+    #successMsg{ display:none; background: #f0fff4; border: 1px solid #68d391; color: #22543d; padding: 20px; border-radius: 18px; font-weight: 800; text-align: center; margin-top: 20px; }
+
+    @media (max-width: 980px){
+      .aboutWrap{ grid-template-columns: 1fr; }
+      .aboutSidebar{ position: relative; top:auto; margin-bottom: 24px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbarInner">
+      <div class="brandRow"><img src="assets/logo.png" alt="Sulandra" class="brandLogo"></div>
+      <nav class="topnav">
+        <a href="index.html">Home</a>
+        <a href="about.html">About Us</a>
+        <a href="services.html">Services</a>
+        <a href="quality.html">Quality</a>
+        <a href="stories.html">Stories</a>
+        <a href="careers.html">Careers</a>
+        <a class="active" href="contact.html">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="pageTitle">Get in Touch</h1>
+    <p class="pageLead">
+      Whether you are seeking integrated care services or looking to join our national team, we are here to help. Our network spans 3,000 locations across all 50 states.
+    </p>
+
+    <div class="aboutWrap">
+      <aside class="aboutSidebar">
+        <div class="sideHeader"><h2>Contact</h2></div>
+        <ul class="sideNav">
+          <li><a href="#general-inquiry" data-target="general-inquiry"><span class="caret">^</span><span>General Inquiry</span></a></li>
+          <li><a href="#apply" data-target="apply"><span class="caret">^</span><span>Career Application</span></a></li>
+          <li><a href="#reach" data-target="reach"><span class="caret">^</span><span>Our Locations</span></a></li>
+          <li><a href="#help" data-target="help"><span class="caret">^</span><span>Assistance</span></a></li>
+        </ul>
+      </aside>
+
+      <section class="aboutContent">
+        <section id="general-inquiry" class="section anchor">
+          <span class="kicker">Service Request</span>
+          <h2>Inquire About Services</h2>
+          <p>Request information regarding our Pharmacy Solutions, Home Health, or Community Living supports[cite: 28, 29].</p>
+          
+          <form id="contactForm" onsubmit="return handleForm(event)">
+            <div class="formGroup">
+              <label class="formLabel">Full Name</label>
+              <input type="text" class="formInput" placeholder="Enter your name" required>
+            </div>
+            <div class="formGroup">
+              <label class="formLabel">Email Address</label>
+              <input type="email" class="formInput" placeholder="name@example.com" required>
+            </div>
+            <div class="formGroup">
+              <label class="formLabel">Service Interest</label>
+              <select class="formInput">
+                <option>Community Living Services</option>
+                <option>Pharmacy Solutions</option>
+                <option>Home Health & Hospice</option>
+                <option>Rehab & Recovery</option>
+              </select>
+            </div>
+            <div class="formGroup">
+              <label class="formLabel">Message</label>
+              <textarea class="formInput" style="height:120px;" placeholder="How can we help?"></textarea>
+            </div>
+            <button type="submit" class="btnSubmit">Send Inquiry</button>
+          </form>
+        </section>
+
+        <section id="apply" class="section anchor">
+          <span class="kicker">Employment</span>
+          <h2>Join Our Talent Network</h2>
+          <p id="jobContext">Fill out the form below to begin your best career and your best life[cite: 38].</p>
+          
+          <form id="applyForm" onsubmit="return handleForm(event)">
+            <div class="formGroup">
+              <label class="formLabel">Interested Role</label>
+              <input type="text" id="roleInput" class="formInput" readonly>
+            </div>
+            <div class="grid2">
+              <div class="formGroup">
+                <label class="formLabel">First Name</label>
+                <input type="text" class="formInput" required>
+              </div>
+              <div class="formGroup">
+                <label class="formLabel">Last Name</label>
+                <input type="text" class="formInput" required>
+              </div>
+            </div>
+            <div class="formGroup">
+              <label class="formLabel">Email Address</label>
+              <input type="email" class="formInput" required>
+            </div>
+            <div class="formGroup">
+              <label class="formLabel">Resume (URL/Link)</label>
+              <input type="url" class="formInput" placeholder="Link to your resume">
+            </div>
+            <button type="submit" class="btnSubmit">Submit Application</button>
+          </form>
+
+          <div class="scamNotice">
+            <h3>Scam Alert</h3>
+            <p>We are aware of imposters posing as employees. No recruiter will request financial information, credit card numbers, or bank details via text or email during recruitment [cite: 63-66].</p>
+          </div>
+        </section>
+
+        <section id="reach" class="section anchor">
+          <span class="kicker">Our Reach</span>
+          <h2>National Scale</h2>
+          <p>Sulandra is a leading, diversified provider with unique contracts with over 5,000 payors[cite: 7, 28].</p>
+          
+          
+          
+          <p style="margin-top:20px;">We filled <strong>33 million prescriptions in 2021</strong> and continue to expand our daily census for senior and specialty populations[cite: 12, 13, 27].</p>
+        </section>
+
+        <section id="help" class="section anchor">
+          <span class="kicker">Support</span>
+          <h2>Accommodation Assistance</h2>
+          <p>If you have a disability and are unable to use our online tools to apply for jobs, we are here to assist you[cite: 89, 90].</p>
+          <p>Contact our Talent Acquisition team for accommodation assistance or to report suspicious job postings[cite: 67, 90].</p>
+        </section>
+
+        <div id="successMsg">Success! Your information has been submitted. Our team will contact you shortly.</div>
+
+        <footer style="margin-top:40px; padding-top:20px; border-top:1px solid var(--line); font-size: 14px; color: var(--muted); text-align: center;">
+          © 2025 Sulandra Community Living Services. An Equal Opportunity Employer[cite: 86].
+        </footer>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // Handle form submissions
+    function handleForm(e) {
+      e.preventDefault();
+      document.getElementById("successMsg").style.display = "block";
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      e.target.reset();
+      return false;
+    }
+
+    // Dynamic role handling from URL parameters
+    (function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const role = urlParams.get('role') || urlParams.get('job');
+      const roleMap = {
+        'pharmacy': 'Pharmacy Specialist',
+        'dsp': 'Direct Support Professional',
+        'nurse': 'Registered Nurse / LPN',
+        'veteran': 'Veteran Hiring Initiative',
+        'student': 'Student & Graduate Program'
+      };
+      
+      const input = document.getElementById("roleInput");
+      if(role && roleMap[role]) {
+        input.value = roleMap[role];
+        document.getElementById("jobContext").innerText = `Applying for: ${roleMap[role]}. Thank you for your interest in joining our team!`;
+      } else {
+        input.value = "General Application";
+      }
+
+      // Sidebar and scroll logic
+      const header = document.querySelector(".topbar");
+      function setHeaderHeightVar() {
+        document.documentElement.style.setProperty("--headerH", `${Math.ceil(header.getBoundingClientRect().height)}px`);
+      }
+      window.addEventListener("load", setHeaderHeightVar);
+      window.addEventListener("resize", setHeaderHeightVar);
+      setHeaderHeightVar();
+
+      const navLinks = [...document.querySelectorAll('.sideNav a')];
+      const sections = navLinks.map(a => document.getElementById(a.getAttribute('href').substring(1)));
+
+      window.addEventListener('scroll', () => {
+        let current = "";
+        const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--headerH')) + 50;
+        sections.forEach(s => {
+          if (window.scrollY >= s.offsetTop - offset) current = s.id;
+        });
+        if (current) navLinks.forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${current}` ? 'true' : 'false'));
+      });
+    })();
+  </script>
+</body>
+</html>
