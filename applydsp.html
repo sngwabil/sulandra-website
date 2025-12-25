@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DSP Application | Sulandra Community Living Services</title>
-  <meta name="description" content="Apply for Direct Support Professional (DSP) roles. Upload resume, enter experience, availability, and complete required disclosures." />
+  <meta name="description" content="Direct Support Professional application with resume upload, certifications, references, work history, and skills assessment." />
   <style>
     :root{
       --bg:#f6f7f8;
@@ -16,16 +16,14 @@
       --focus:#2563eb;
       --danger:#b91c1c;
       --ok:#166534;
-      --warn:#92400e;
       --shadow: 0 6px 18px rgba(0,0,0,.08);
       --radius: 14px;
-      --pad: 16px;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
     body{ margin:0; background:var(--bg); color:var(--text); }
     header{ background:#fff; border-bottom:1px solid var(--border); }
-    .wrap{ max-width: 1100px; margin:0 auto; padding:18px 16px; }
+    .wrap{ max-width: 1140px; margin:0 auto; padding:18px 16px; }
 
     .brand{ display:flex; align-items:center; gap:12px; }
     .logo{
@@ -79,7 +77,7 @@
       background:#fff;
       outline: none;
     }
-    textarea{ min-height: 96px; resize: vertical; }
+    textarea{ min-height: 92px; resize: vertical; }
 
     input:focus, select:focus, textarea:focus{
       border-color: var(--focus);
@@ -155,6 +153,7 @@
       padding: 6px 10px; border-radius: 999px;
       border: 1px solid var(--border); background:#fff;
       font-size: 12px; color: var(--muted); font-weight: 650;
+      white-space:nowrap;
     }
 
     .statusbar{
@@ -203,6 +202,7 @@
       display:none;
     }
     .error.show{ display:block; }
+
     .helpbox{
       background:#f8fafc;
       border: 1px solid rgba(209,213,219,.7);
@@ -212,6 +212,7 @@
       color: var(--muted);
       margin-top: 12px;
     }
+
     .two-col{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -219,15 +220,54 @@
     }
     @media (max-width: 680px){ .two-col{ grid-template-columns: 1fr; } }
 
+    .cert-details{
+      margin: 10px 0 0 28px;
+      padding: 12px;
+      border: 1px solid rgba(209,213,219,.7);
+      border-radius: 12px;
+      background:#fff;
+      display:none;
+    }
+    .cert-details.show{ display:block; }
+
+    .ref-card{
+      border: 1px solid rgba(209,213,219,.7);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 12px;
+      background:#fff;
+    }
+    .ref-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom: 8px;
+    }
+    .ref-head strong{ font-size: 13px; }
+    .ref-head button{ padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+
+    .quiz-q{
+      border: 1px solid rgba(209,213,219,.7);
+      border-radius: 14px;
+      padding: 14px;
+      background:#fff;
+      margin-top: 12px;
+    }
+    .quiz-q h4{
+      margin:0 0 10px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .quiz-q .muted{ color: var(--muted); font-size: 12px; margin-top: 6px; }
+
     .small{ font-size: 13px; color: var(--text); }
     .muted{ color: var(--muted); }
 
     .sr-only{
-      position:absolute;
-      width:1px; height:1px;
-      padding:0; margin:-1px;
-      overflow:hidden; clip:rect(0,0,0,0);
-      white-space:nowrap; border:0;
+      position:absolute; width:1px; height:1px;
+      padding:0; margin:-1px; overflow:hidden;
+      clip:rect(0,0,0,0); white-space:nowrap; border:0;
     }
   </style>
 </head>
@@ -249,30 +289,27 @@
   <div class="grid">
     <section class="card" aria-label="Application form">
       <h2>Application for: Direct Support Professional (DSP)</h2>
-      <p class="sub">
-        This is a “typical Indeed-style” application flow: contact info, eligibility, experience, availability,
-        resume upload, and disclosures. Required fields are marked with an asterisk.
-      </p>
+      <p class="sub">Complete the form below. Required fields are marked with an asterisk.</p>
 
-      <!--
-        BACKEND NOTE (to make it truly functional end-to-end):
-        - Create POST /api/applications that accepts multipart/form-data (resume + optional docs)
-        - Store files (S3, Azure Blob, etc.), store application record (DB), send confirmation email
-        - Update action="YOUR_ENDPOINT" below and remove the JS "simulateSubmit" branch if desired
+      <!-- BACKEND NOTE (for live submission):
+           - Create POST /api/applications to accept multipart/form-data (resume + docs + JSON fields)
+           - Store files + application record + test responses + computed score (if you choose to keep it)
+           - Set USE_SIMULATION=false and SUBMIT_URL below
       -->
+
       <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
-        <!-- Hidden meta fields typical on job boards -->
         <input type="hidden" name="jobTitle" value="Direct Support Professional (DSP)" />
         <input type="hidden" name="company" value="Sulandra Community Living Services" />
-        <input type="hidden" name="source" value="indeed" />
-        <input type="hidden" name="version" value="1.0" />
+        <input type="hidden" name="version" value="1.1" />
+        <input type="hidden" name="assessmentScore" id="assessmentScore" value="" />
+        <input type="hidden" name="assessmentMax" id="assessmentMax" value="" />
+        <input type="hidden" name="assessmentBreakdown" id="assessmentBreakdown" value="" />
 
         <div class="section" style="border-top:none; padding-top:0; margin-top:0;">
           <div class="minihead">
-            <h2>Contact Information</h2>
-            <small class="muted">Step 1 of 6</small>
+            <h2>Basic Information</h2>
+            <small>Step 1</small>
           </div>
-          <p class="sub">Tell us how to reach you.</p>
 
           <div class="row">
             <div>
@@ -289,9 +326,30 @@
 
           <div class="row" style="margin-top:16px;">
             <div>
+              <label class="required" for="dob">Date of birth</label>
+              <input id="dob" name="dob" type="date" required />
+              <div class="error" id="err-dob">Please enter your date of birth.</div>
+            </div>
+            <div>
+              <label class="required" for="maritalStatus">Marital status</label>
+              <select id="maritalStatus" name="maritalStatus" required>
+                <option value="">Select…</option>
+                <option value="single">Single</option>
+                <option value="married">Married</option>
+                <option value="divorced">Divorced</option>
+                <option value="separated">Separated</option>
+                <option value="widowed">Widowed</option>
+                <option value="other">Other</option>
+                <option value="preferNot">Prefer not to say</option>
+              </select>
+              <div class="error" id="err-maritalStatus">Please select a marital status.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
               <label class="required" for="email">Email</label>
               <input id="email" name="email" type="email" autocomplete="email" required />
-              <div class="hint">Used for confirmations and profile access.</div>
               <div class="error" id="err-email">Please enter a valid email.</div>
             </div>
             <div>
@@ -356,10 +414,42 @@
 
         <div class="section">
           <div class="minihead">
-            <h2>Role Preferences & Availability</h2>
-            <small class="muted">Step 2 of 6</small>
+            <h2>Emergency Contact</h2>
+            <small>Step 2</small>
           </div>
-          <p class="sub">Help us match you with schedules and locations.</p>
+          <p class="sub">Required.</p>
+
+          <div class="row">
+            <div>
+              <label class="required" for="emgName">Emergency contact name</label>
+              <input id="emgName" name="emgName" type="text" required />
+              <div class="error" id="err-emgName">Please enter an emergency contact name.</div>
+            </div>
+            <div>
+              <label class="required" for="emgRelation">Relationship</label>
+              <input id="emgRelation" name="emgRelation" type="text" required />
+              <div class="error" id="err-emgRelation">Please enter relationship.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="emgPhone">Emergency contact phone</label>
+              <input id="emgPhone" name="emgPhone" type="tel" placeholder="(555) 555-5555" required />
+              <div class="error" id="err-emgPhone">Please enter a valid phone number.</div>
+            </div>
+            <div>
+              <label for="emgAltPhone">Alternate phone (optional)</label>
+              <input id="emgAltPhone" name="emgAltPhone" type="tel" placeholder="(555) 555-5555" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="minihead">
+            <h2>Availability & Preferences</h2>
+            <small>Step 3</small>
+          </div>
 
           <div class="row">
             <div>
@@ -396,7 +486,6 @@
             <div>
               <label for="hoursPerWeek">Desired hours per week</label>
               <input id="hoursPerWeek" name="hoursPerWeek" type="number" min="0" max="80" step="1" placeholder="e.g., 30" />
-              <div class="hint">Optional—helps with scheduling.</div>
             </div>
           </div>
 
@@ -435,17 +524,15 @@
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
               </select>
-              <div class="hint">Some DSP roles require travel between homes/community activities.</div>
             </div>
           </div>
         </div>
 
         <div class="section">
           <div class="minihead">
-            <h2>Experience, Certifications, Skills</h2>
-            <small class="muted">Step 3 of 6</small>
+            <h2>Experience & Education</h2>
+            <small>Step 4</small>
           </div>
-          <p class="sub">Tell us about your background (OK if you’re new—we train!).</p>
 
           <div class="row">
             <div>
@@ -473,38 +560,6 @@
             </div>
           </div>
 
-          <div class="row" style="margin-top:16px;">
-            <div>
-              <label for="certs">Certifications (optional)</label>
-              <select id="certs" name="certs" multiple size="6" aria-describedby="certHint">
-                <option value="cpr">CPR</option>
-                <option value="firstAid">First Aid</option>
-                <option value="medAdmin">Medication Administration</option>
-                <option value="dd">Developmental Disabilities Training</option>
-                <option value="pmT">CPI / PMT / De-escalation</option>
-                <option value="other">Other</option>
-              </select>
-              <div class="hint" id="certHint">Hold Ctrl/Command to select multiple.</div>
-            </div>
-            <div>
-              <label for="languages">Languages spoken</label>
-              <input id="languages" name="languages" type="text" placeholder="e.g., English, Spanish" />
-              <div class="hint">Optional—helps with matching.</div>
-            </div>
-          </div>
-
-          <div style="margin-top:16px;">
-            <label for="skills">Relevant skills (optional)</label>
-            <div class="two-col">
-              <div class="checkboxline"><input type="checkbox" name="skills" value="adl" /> <span>ADLs (hygiene, meals, routines)</span></div>
-              <div class="checkboxline"><input type="checkbox" name="skills" value="community" /> <span>Community integration</span></div>
-              <div class="checkboxline"><input type="checkbox" name="skills" value="behavior" /> <span>Behavior support</span></div>
-              <div class="checkboxline"><input type="checkbox" name="skills" value="mobility" /> <span>Mobility / transfers</span></div>
-              <div class="checkboxline"><input type="checkbox" name="skills" value="meds" /> <span>Medication reminders/admin</span></div>
-              <div class="checkboxline"><input type="checkbox" name="skills" value="documentation" /> <span>Documentation / charting</span></div>
-            </div>
-          </div>
-
           <div style="margin-top:16px;">
             <label for="why">Why do you want to be a DSP?</label>
             <textarea id="why" name="why" placeholder="Tell us briefly what interests you about this role."></textarea>
@@ -513,10 +568,57 @@
 
         <div class="section">
           <div class="minihead">
-            <h2>Eligibility & Screening</h2>
-            <small class="muted">Step 4 of 6</small>
+            <h2>Driver’s License</h2>
+            <small>Step 5</small>
           </div>
-          <p class="sub">Standard hiring questions (as commonly seen on Indeed).</p>
+
+          <div class="row">
+            <div>
+              <label class="required" for="licenseNumber">Driver’s license number</label>
+              <input id="licenseNumber" name="licenseNumber" type="text" required />
+              <div class="error" id="err-licenseNumber">Please enter your driver’s license number.</div>
+            </div>
+            <div>
+              <label class="required" for="licenseExp">Driver’s license expiration date</label>
+              <input id="licenseExp" name="licenseExp" type="date" required />
+              <div class="error" id="err-licenseExp">Please enter license expiration date.</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label class="required" for="dlState">Issuing state</label>
+              <select id="dlState" name="dlState" required>
+                <option value="">Select…</option>
+                <option>AL</option><option>AK</option><option>AZ</option><option>AR</option><option>CA</option><option>CO</option>
+                <option>CT</option><option>DE</option><option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+                <option>IL</option><option>IN</option><option>IA</option><option>KS</option><option>KY</option><option>LA</option>
+                <option>ME</option><option>MD</option><option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+                <option>MO</option><option>MT</option><option>NE</option><option>NV</option><option>NH</option><option>NJ</option>
+                <option>NM</option><option>NY</option><option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+                <option>OR</option><option>PA</option><option>RI</option><option>SC</option><option>SD</option><option>TN</option>
+                <option>TX</option><option>UT</option><option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+                <option>WI</option><option>WY</option>
+              </select>
+              <div class="error" id="err-dlState">Please select issuing state.</div>
+            </div>
+            <div>
+              <label class="required" for="hasValidDL">Do you have a valid driver’s license?</label>
+              <select id="hasValidDL" name="hasValidDL" required>
+                <option value="">Select…</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="error" id="err-hasValidDL">Please select an option.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="minihead">
+            <h2>Eligibility & Screening</h2>
+            <small>Step 6</small>
+          </div>
 
           <div class="row">
             <div>
@@ -539,28 +641,6 @@
             </div>
           </div>
 
-          <div class="row" style="margin-top:16px;">
-            <div>
-              <label class="required" for="license">Valid driver’s license?</label>
-              <select id="license" name="license" required>
-                <option value="">Select…</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-              <div class="hint">Some roles require transporting individuals.</div>
-              <div class="error" id="err-license">Please select an option.</div>
-            </div>
-            <div>
-              <label for="cleanRecord">Driving record (optional)</label>
-              <select id="cleanRecord" name="cleanRecord">
-                <option value="">Select…</option>
-                <option value="good">No major violations in last 3 years</option>
-                <option value="some">Some violations / accidents</option>
-                <option value="na">Not applicable</option>
-              </select>
-            </div>
-          </div>
-
           <div style="margin-top:16px;">
             <label class="required">Can you pass a background check and drug screening?</label>
             <div class="radioline">
@@ -573,26 +653,150 @@
             </div>
             <div class="error" id="err-screening">Please select an option.</div>
           </div>
+        </div>
 
-          <div style="margin-top:16px;">
-            <label for="accommodations">Do you need a reasonable accommodation to complete the hiring process?</label>
-            <select id="accommodations" name="accommodations">
-              <option value="no" selected>No</option>
-              <option value="yes">Yes</option>
-            </select>
-            <div id="accomBox" style="display:none; margin-top:10px;">
-              <label for="accomDetails" style="text-transform:none; letter-spacing:0; color:var(--text); font-weight:650;">Accommodation details</label>
-              <textarea id="accomDetails" name="accomDetails" placeholder="Tell us what you need (optional)."></textarea>
+        <div class="section">
+          <div class="minihead">
+            <h2>Certifications</h2>
+            <small>Step 7</small>
+          </div>
+          <p class="sub">Select all that apply. If you select a certification, the issue date and expiration date are required.</p>
+
+          <div class="error" id="err-certs">Please select at least one option (or select “No current certifications”).</div>
+
+          <div>
+            <div class="checkboxline">
+              <input type="checkbox" id="cert_none" name="cert_none" value="none" />
+              <span><strong>No current certifications</strong></span>
+            </div>
+
+            <div class="checkboxline">
+              <input type="checkbox" id="cert_cpr" name="certs" value="CPR" />
+              <span>CPR</span>
+            </div>
+            <div class="cert-details" id="cert_cpr_details">
+              <div class="row">
+                <div>
+                  <label class="required" for="cert_cpr_issue">CPR issue date</label>
+                  <input type="date" id="cert_cpr_issue" name="cert_cpr_issue" />
+                  <div class="error" id="err-cert_cpr_issue">Issue date required.</div>
+                </div>
+                <div>
+                  <label class="required" for="cert_cpr_exp">CPR expiration date</label>
+                  <input type="date" id="cert_cpr_exp" name="cert_cpr_exp" />
+                  <div class="error" id="err-cert_cpr_exp">Expiration date required.</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <label for="cert_cpr_org">Issuing organization (optional)</label>
+                <input type="text" id="cert_cpr_org" name="cert_cpr_org" placeholder="e.g., American Red Cross" />
+              </div>
+            </div>
+
+            <div class="checkboxline">
+              <input type="checkbox" id="cert_firstaid" name="certs" value="First Aid" />
+              <span>First Aid</span>
+            </div>
+            <div class="cert-details" id="cert_firstaid_details">
+              <div class="row">
+                <div>
+                  <label class="required" for="cert_firstaid_issue">First Aid issue date</label>
+                  <input type="date" id="cert_firstaid_issue" name="cert_firstaid_issue" />
+                  <div class="error" id="err-cert_firstaid_issue">Issue date required.</div>
+                </div>
+                <div>
+                  <label class="required" for="cert_firstaid_exp">First Aid expiration date</label>
+                  <input type="date" id="cert_firstaid_exp" name="cert_firstaid_exp" />
+                  <div class="error" id="err-cert_firstaid_exp">Expiration date required.</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <label for="cert_firstaid_org">Issuing organization (optional)</label>
+                <input type="text" id="cert_firstaid_org" name="cert_firstaid_org" />
+              </div>
+            </div>
+
+            <div class="checkboxline">
+              <input type="checkbox" id="cert_medadmin" name="certs" value="Medication Administration" />
+              <span>Medication Administration</span>
+            </div>
+            <div class="cert-details" id="cert_medadmin_details">
+              <div class="row">
+                <div>
+                  <label class="required" for="cert_medadmin_issue">Issue date</label>
+                  <input type="date" id="cert_medadmin_issue" name="cert_medadmin_issue" />
+                  <div class="error" id="err-cert_medadmin_issue">Issue date required.</div>
+                </div>
+                <div>
+                  <label class="required" for="cert_medadmin_exp">Expiration date</label>
+                  <input type="date" id="cert_medadmin_exp" name="cert_medadmin_exp" />
+                  <div class="error" id="err-cert_medadmin_exp">Expiration date required.</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <label for="cert_medadmin_org">Issuing organization (optional)</label>
+                <input type="text" id="cert_medadmin_org" name="cert_medadmin_org" />
+              </div>
+            </div>
+
+            <div class="checkboxline">
+              <input type="checkbox" id="cert_cpi" name="certs" value="CPI/De-escalation" />
+              <span>CPI / De-escalation</span>
+            </div>
+            <div class="cert-details" id="cert_cpi_details">
+              <div class="row">
+                <div>
+                  <label class="required" for="cert_cpi_issue">Issue date</label>
+                  <input type="date" id="cert_cpi_issue" name="cert_cpi_issue" />
+                  <div class="error" id="err-cert_cpi_issue">Issue date required.</div>
+                </div>
+                <div>
+                  <label class="required" for="cert_cpi_exp">Expiration date</label>
+                  <input type="date" id="cert_cpi_exp" name="cert_cpi_exp" />
+                  <div class="error" id="err-cert_cpi_exp">Expiration date required.</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <label for="cert_cpi_org">Issuing organization (optional)</label>
+                <input type="text" id="cert_cpi_org" name="cert_cpi_org" />
+              </div>
+            </div>
+
+            <div class="checkboxline">
+              <input type="checkbox" id="cert_other" name="certs" value="Other" />
+              <span>Other certification</span>
+            </div>
+            <div class="cert-details" id="cert_other_details">
+              <div style="margin-bottom:10px;">
+                <label class="required" for="cert_other_name">Certification name</label>
+                <input type="text" id="cert_other_name" name="cert_other_name" />
+                <div class="error" id="err-cert_other_name">Certification name required.</div>
+              </div>
+              <div class="row">
+                <div>
+                  <label class="required" for="cert_other_issue">Issue date</label>
+                  <input type="date" id="cert_other_issue" name="cert_other_issue" />
+                  <div class="error" id="err-cert_other_issue">Issue date required.</div>
+                </div>
+                <div>
+                  <label class="required" for="cert_other_exp">Expiration date</label>
+                  <input type="date" id="cert_other_exp" name="cert_other_exp" />
+                  <div class="error" id="err-cert_other_exp">Expiration date required.</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <label for="cert_other_org">Issuing organization (optional)</label>
+                <input type="text" id="cert_other_org" name="cert_other_org" />
+              </div>
             </div>
           </div>
         </div>
 
         <div class="section">
           <div class="minihead">
-            <h2>Resume & Documents</h2>
-            <small class="muted">Step 5 of 6</small>
+            <h2>Resume & Optional Documents</h2>
+            <small>Step 8</small>
           </div>
-          <p class="sub">Upload your resume and any supporting files.</p>
 
           <div>
             <label class="required" for="resume">Resume (PDF, DOC, DOCX)</label>
@@ -604,7 +808,7 @@
               <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required />
             </div>
             <div class="file-meta" id="resume-meta">Max 10MB. Required.</div>
-            <div class="error" id="err-resume">Please upload your resume.</div>
+            <div class="error" id="err-resume">Please upload your resume (10MB or less).</div>
           </div>
 
           <div style="margin-top:16px;">
@@ -620,110 +824,298 @@
           </div>
 
           <div style="margin-top:16px;">
-            <label for="certUpload">Certifications / other documents (optional, multiple)</label>
+            <label for="cnaDoc">CNA document (optional)</label>
             <div class="file-input-wrapper" style="min-height:54px;">
               <div class="file-custom-btn">
-                <span id="cert-chosen">Click to choose documents…</span>
-                <span class="pill" id="cert-pill">0 files</span>
+                <span id="cna-chosen">Click to choose CNA document…</span>
+                <span class="pill" id="cna-pill">Optional</span>
               </div>
-              <input type="file" id="certUpload" name="certUpload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple />
+              <input type="file" id="cnaDoc" name="cnaDoc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
             </div>
-            <div class="file-meta">Allowed: PDF, JPG/PNG, DOC/DOCX. Max 10MB per file.</div>
+            <div class="file-meta">Max 10MB.</div>
           </div>
 
-          <div class="helpbox">
-            <strong class="small">Privacy tip:</strong>
-            <span class="muted">Don’t include Social Security numbers on uploads. If required later, you’ll be asked securely.</span>
+          <div style="margin-top:16px;">
+            <label for="stnaDoc">STNA document (optional)</label>
+            <div class="file-input-wrapper" style="min-height:54px;">
+              <div class="file-custom-btn">
+                <span id="stna-chosen">Click to choose STNA document…</span>
+                <span class="pill" id="stna-pill">Optional</span>
+              </div>
+              <input type="file" id="stnaDoc" name="stnaDoc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+            </div>
+            <div class="file-meta">Max 10MB.</div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label for="otherDocs">Other documents (optional, multiple)</label>
+            <div class="file-input-wrapper" style="min-height:54px;">
+              <div class="file-custom-btn">
+                <span id="otherdocs-chosen">Click to choose documents…</span>
+                <span class="pill" id="otherdocs-pill">0 files</span>
+              </div>
+              <input type="file" id="otherDocs" name="otherDocs" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple />
+            </div>
+            <div class="file-meta">Max 10MB per file.</div>
           </div>
         </div>
 
         <div class="section">
           <div class="minihead">
-            <h2>References, Voluntary Disclosures & Consent</h2>
-            <small class="muted">Step 6 of 6</small>
+            <h2>Work History</h2>
+            <small>Step 9</small>
           </div>
-          <p class="sub">Review and submit.</p>
+          <p class="sub">Most recent job.</p>
 
           <div class="row">
             <div>
-              <label for="refName">Reference name (optional)</label>
-              <input id="refName" name="refName" type="text" placeholder="e.g., Jane Manager" />
+              <label class="required" for="lastEmployer">Last employer</label>
+              <input id="lastEmployer" name="lastEmployer" type="text" required />
+              <div class="error" id="err-lastEmployer">Please enter your last employer.</div>
             </div>
             <div>
-              <label for="refPhone">Reference phone (optional)</label>
-              <input id="refPhone" name="refPhone" type="tel" placeholder="(555) 555-5555" />
+              <label class="required" for="lastJobTitle">Job title</label>
+              <input id="lastJobTitle" name="lastJobTitle" type="text" required />
+              <div class="error" id="err-lastJobTitle">Please enter your job title.</div>
             </div>
           </div>
 
           <div class="row" style="margin-top:16px;">
             <div>
-              <label for="refRelation">Relationship (optional)</label>
-              <input id="refRelation" name="refRelation" type="text" placeholder="e.g., Supervisor, Coworker" />
+              <label class="required" for="lastStartDate">Start date</label>
+              <input id="lastStartDate" name="lastStartDate" type="date" required />
+              <div class="error" id="err-lastStartDate">Please enter start date.</div>
             </div>
             <div>
-              <label for="linkedIn">LinkedIn (optional)</label>
-              <input id="linkedIn" name="linkedIn" type="url" placeholder="https://linkedin.com/in/username" />
+              <label class="required" for="lastEndDate">End date</label>
+              <input id="lastEndDate" name="lastEndDate" type="date" required />
+              <div class="error" id="err-lastEndDate">Please enter end date.</div>
             </div>
           </div>
 
           <div style="margin-top:16px;">
-            <label for="eeo">Voluntary self-identification (optional)</label>
-            <select id="eeo" name="eeo">
-              <option value="">Prefer not to answer</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-              <option value="nonbinary">Non-binary</option>
-              <option value="other">Another gender identity</option>
-            </select>
-            <div class="hint">This is optional and not used in hiring decisions.</div>
+            <label class="required" for="leaveReason">Reason for leaving</label>
+            <textarea id="leaveReason" name="leaveReason" required placeholder="Brief explanation"></textarea>
+            <div class="error" id="err-leaveReason">Please provide a reason for leaving.</div>
           </div>
 
-          <div class="section" style="border-top: 1px solid rgba(209,213,219,.7);">
-            <h2>Final consent</h2>
-
-            <div class="checkboxline">
-              <input id="consentTruth" name="consentTruth" type="checkbox" required />
-              <label for="consentTruth" style="display:inline; color: var(--text); font-weight: 550; text-transform:none; letter-spacing:0;">
-                I certify that all information provided is true and accurate.
-              </label>
+          <div class="row" style="margin-top:16px;">
+            <div>
+              <label for="prevEmployerPhone">Supervisor/HR phone (optional)</label>
+              <input id="prevEmployerPhone" name="prevEmployerPhone" type="tel" placeholder="(555) 555-5555" />
             </div>
-            <div class="error" id="err-consentTruth">You must certify before submitting.</div>
-
-            <div class="checkboxline">
-              <input id="consentContact" name="consentContact" type="checkbox" required />
-              <label for="consentContact" style="display:inline; color: var(--text); font-weight: 550; text-transform:none; letter-spacing:0;">
-                I consent to be contacted by Sulandra Community Living Services about my application.
-              </label>
+            <div>
+              <label class="required" for="contactPrevEmployer">Consent to contact previous employer?</label>
+              <select id="contactPrevEmployer" name="contactPrevEmployer" required>
+                <option value="">Select…</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <div class="error" id="err-contactPrevEmployer">Please select an option.</div>
             </div>
-            <div class="error" id="err-consentContact">You must consent to be contacted.</div>
+          </div>
+        </div>
 
-            <div class="checkboxline">
-              <input id="consentESign" name="consentESign" type="checkbox" required />
-              <label for="consentESign" style="display:inline; color: var(--text); font-weight: 550; text-transform:none; letter-spacing:0;">
-                I agree that typing my name below serves as my electronic signature.
-              </label>
+        <div class="section">
+          <div class="minihead">
+            <h2>Professional References</h2>
+            <small>Step 10</small>
+          </div>
+          <p class="sub">Provide at least two professional references. You may add more.</p>
+
+          <div class="error" id="err-refs">Please provide at least 2 complete references.</div>
+
+          <div class="checkboxline" style="margin-top:0;">
+            <input id="consentContactRefs" name="consentContactRefs" type="checkbox" required />
+            <label for="consentContactRefs" style="display:inline; color:var(--text); font-weight:550; text-transform:none; letter-spacing:0;">
+              I consent to contact my references.
+            </label>
+          </div>
+          <div class="error" id="err-consentContactRefs">Consent to contact references is required.</div>
+
+          <div id="refsContainer"></div>
+
+          <div class="btnrow">
+            <button type="button" class="ghost" id="addRefBtn">+ Add Reference</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="minihead">
+            <h2>DSP Knowledge Assessment</h2>
+            <small>Step 11</small>
+          </div>
+          <p class="sub">Answer all 15 questions. Your answers will be submitted with your application.</p>
+
+          <div class="error" id="err-quiz">Please answer all assessment questions.</div>
+
+          <!-- 5 Multiple Choice -->
+          <div class="quiz-q" data-qid="mc1" data-type="mc">
+            <h4>1) What is the best first step when you notice an individual is becoming upset?</h4>
+            <div class="radioline"><input type="radio" name="mc1" value="a" /> <span>A. Tell them to stop immediately</span></div>
+            <div class="radioline"><input type="radio" name="mc1" value="b" /> <span>B. Speak calmly, give space, and assess what they need</span></div>
+            <div class="radioline"><input type="radio" name="mc1" value="c" /> <span>C. Leave without notifying anyone</span></div>
+            <div class="radioline"><input type="radio" name="mc1" value="d" /> <span>D. Post about it on social media for advice</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="mc2" data-type="mc">
+            <h4>2) Which choice best protects confidentiality?</h4>
+            <div class="radioline"><input type="radio" name="mc2" value="a" /> <span>A. Discussing client details in a public hallway</span></div>
+            <div class="radioline"><input type="radio" name="mc2" value="b" /> <span>B. Sharing information only with authorized staff who need it for care</span></div>
+            <div class="radioline"><input type="radio" name="mc2" value="c" /> <span>C. Sharing details with friends if names are not used</span></div>
+            <div class="radioline"><input type="radio" name="mc2" value="d" /> <span>D. Leaving paperwork visible on a counter</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="mc3" data-type="mc">
+            <h4>3) If you suspect abuse, the correct action is to:</h4>
+            <div class="radioline"><input type="radio" name="mc3" value="a" /> <span>A. Wait to see if it happens again</span></div>
+            <div class="radioline"><input type="radio" name="mc3" value="b" /> <span>B. Report immediately following agency/state policy</span></div>
+            <div class="radioline"><input type="radio" name="mc3" value="c" /> <span>C. Confront the suspected person privately and keep it secret</span></div>
+            <div class="radioline"><input type="radio" name="mc3" value="d" /> <span>D. Ignore it unless you have proof</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="mc4" data-type="mc">
+            <h4>4) Person-centered support means:</h4>
+            <div class="radioline"><input type="radio" name="mc4" value="a" /> <span>A. Staff decide what is best without input</span></div>
+            <div class="radioline"><input type="radio" name="mc4" value="b" /> <span>B. Supporting the individual’s goals, preferences, and choices</span></div>
+            <div class="radioline"><input type="radio" name="mc4" value="c" /> <span>C. Doing everything for the individual to save time</span></div>
+            <div class="radioline"><input type="radio" name="mc4" value="d" /> <span>D. Only focusing on medical tasks</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="mc5" data-type="mc">
+            <h4>5) When documenting care, you should write:</h4>
+            <div class="radioline"><input type="radio" name="mc5" value="a" /> <span>A. Opinions and guesses</span></div>
+            <div class="radioline"><input type="radio" name="mc5" value="b" /> <span>B. Objective, factual observations and actions taken</span></div>
+            <div class="radioline"><input type="radio" name="mc5" value="c" /> <span>C. Only what went wrong</span></div>
+            <div class="radioline"><input type="radio" name="mc5" value="d" /> <span>D. Nothing if the shift was quiet</span></div>
+          </div>
+
+          <!-- 5 Select all that apply -->
+          <div class="quiz-q" data-qid="sa1" data-type="sa">
+            <h4>6) Select all tasks that are typically considered ADLs (Activities of Daily Living).</h4>
+            <div class="checkboxline"><input type="checkbox" name="sa1" value="bathing" /> <span>Bathing</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa1" value="dressing" /> <span>Dressing</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa1" value="shopping" /> <span>Shopping for groceries</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa1" value="toileting" /> <span>Toileting</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa1" value="eating" /> <span>Eating/feeding</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="sa2" data-type="sa">
+            <h4>7) Select all ways to reduce the spread of infection.</h4>
+            <div class="checkboxline"><input type="checkbox" name="sa2" value="handwashing" /> <span>Handwashing</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa2" value="gloves" /> <span>Using gloves appropriately</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa2" value="sharecups" /> <span>Sharing personal cups/utensils</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa2" value="cleaning" /> <span>Cleaning/disinfecting high-touch surfaces</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa2" value="covercough" /> <span>Covering coughs/sneezes</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="sa3" data-type="sa">
+            <h4>8) Select all examples of respectful communication.</h4>
+            <div class="checkboxline"><input type="checkbox" name="sa3" value="askpref" /> <span>Asking preferences and listening</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa3" value="talkover" /> <span>Talking over the person to others</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa3" value="plainlang" /> <span>Using clear, calm, respectful language</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa3" value="privacy" /> <span>Protecting privacy during personal care</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa3" value="nicknames" /> <span>Using a nickname they did not choose</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="sa4" data-type="sa">
+            <h4>9) Select all situations that should be reported immediately to a supervisor.</h4>
+            <div class="checkboxline"><input type="checkbox" name="sa4" value="injury" /> <span>Injury or fall</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa4" value="mederror" /> <span>Medication error</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa4" value="abuse" /> <span>Suspected abuse/neglect</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa4" value="latebus" /> <span>Running 5 minutes late for a routine outing (no risk)</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa4" value="missing" /> <span>Individual is missing/unaccounted for</span></div>
+          </div>
+
+          <div class="quiz-q" data-qid="sa5" data-type="sa">
+            <h4>10) Select all items that belong in objective documentation.</h4>
+            <div class="checkboxline"><input type="checkbox" name="sa5" value="times" /> <span>Times and specific actions taken</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa5" value="quotes" /> <span>Direct quotes when relevant</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa5" value="labels" /> <span>Labels like “lazy” or “bad attitude”</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa5" value="observed" /> <span>What you saw/heard (observable facts)</span></div>
+            <div class="checkboxline"><input type="checkbox" name="sa5" value="assume" /> <span>Assumptions about motives</span></div>
+          </div>
+
+          <!-- 5 Fill in the blank -->
+          <div class="quiz-q" data-qid="fb1" data-type="fb">
+            <h4>11) Fill in the blank: The goal of DSP support is to help people live as ________ as possible.</h4>
+            <input type="text" name="fb1" placeholder="One word" />
+          </div>
+
+          <div class="quiz-q" data-qid="fb2" data-type="fb">
+            <h4>12) Fill in the blank: When lifting/moving someone, protect yourself by using proper body ________.</h4>
+            <input type="text" name="fb2" placeholder="One word" />
+          </div>
+
+          <div class="quiz-q" data-qid="fb3" data-type="fb">
+            <h4>13) Fill in the blank: Personal health information should be kept ________.</h4>
+            <input type="text" name="fb3" placeholder="One word" />
+          </div>
+
+          <div class="quiz-q" data-qid="fb4" data-type="fb">
+            <h4>14) Fill in the blank: If you see something unsafe, you should ________ it right away.</h4>
+            <input type="text" name="fb4" placeholder="One word" />
+          </div>
+
+          <div class="quiz-q" data-qid="fb5" data-type="fb">
+            <h4>15) Fill in the blank: A written record of services provided is called ________.</h4>
+            <input type="text" name="fb5" placeholder="One word" />
+          </div>
+
+          <div class="helpbox">
+            <strong class="small">Scoring:</strong>
+            <span class="muted">The application will include your answers and an automatically computed score for objective questions. Final review may include manual scoring if needed.</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="minihead">
+            <h2>Final Consents</h2>
+            <small>Step 12</small>
+          </div>
+
+          <div class="checkboxline">
+            <input id="consentTruth" name="consentTruth" type="checkbox" required />
+            <label for="consentTruth" style="display:inline; color:var(--text); font-weight:550; text-transform:none; letter-spacing:0;">
+              I certify that all information provided is true and accurate.
+            </label>
+          </div>
+          <div class="error" id="err-consentTruth">You must certify before submitting.</div>
+
+          <div class="checkboxline">
+            <input id="consentContact" name="consentContact" type="checkbox" required />
+            <label for="consentContact" style="display:inline; color:var(--text); font-weight:550; text-transform:none; letter-spacing:0;">
+              I consent to be contacted about my application.
+            </label>
+          </div>
+          <div class="error" id="err-consentContact">Consent is required.</div>
+
+          <div class="checkboxline">
+            <input id="consentPunctual" name="consentPunctual" type="checkbox" required />
+            <label for="consentPunctual" style="display:inline; color:var(--text); font-weight:550; text-transform:none; letter-spacing:0;">
+              I understand punctuality is essential and I can commute to work on time as scheduled.
+            </label>
+          </div>
+          <div class="error" id="err-consentPunctual">This acknowledgement is required.</div>
+
+          <div class="checkboxline">
+            <input id="consentESign" name="consentESign" type="checkbox" required />
+            <label for="consentESign" style="display:inline; color:var(--text); font-weight:550; text-transform:none; letter-spacing:0;">
+              I agree that typing my name below serves as my electronic signature.
+            </label>
+          </div>
+          <div class="error" id="err-consentESign">E-sign consent is required.</div>
+
+          <div class="row" style="margin-top:12px;">
+            <div>
+              <label class="required" for="signature">Electronic signature (type full name)</label>
+              <input id="signature" name="signature" type="text" required />
+              <div class="error" id="err-signature">Please type your full name as signature.</div>
             </div>
-            <div class="error" id="err-consentESign">E-sign consent is required.</div>
-
-            <div class="row" style="margin-top:12px;">
-              <div>
-                <label class="required" for="signature">Electronic signature (type full name)</label>
-                <input id="signature" name="signature" type="text" required />
-                <div class="error" id="err-signature">Please type your full name as signature.</div>
-              </div>
-              <div>
-                <label class="required" for="signatureDate">Signature date</label>
-                <input id="signatureDate" name="signatureDate" type="date" required />
-                <div class="error" id="err-signatureDate">Please select a date.</div>
-              </div>
-            </div>
-
-            <div class="helpbox">
-              <strong class="small">What happens after you apply?</strong>
-              <div class="muted" style="margin-top:6px;">
-                You’ll receive a confirmation. If selected, we’ll contact you for an interview and next steps
-                (screening, onboarding documents, and training).
-              </div>
+            <div>
+              <label class="required" for="signatureDate">Signature date</label>
+              <input id="signatureDate" name="signatureDate" type="date" required />
+              <div class="error" id="err-signatureDate">Please select a date.</div>
             </div>
           </div>
 
@@ -744,7 +1136,6 @@
               <div id="progressFill"></div>
             </div>
           </div>
-
         </div>
       </form>
     </section>
@@ -766,29 +1157,14 @@
             • Document services and follow safety protocols.
           </p>
         </div>
-
-        <div style="margin-top:16px;">
-          <h3>Pay & Benefits (example)</h3>
-          <div class="kv"><span>Pay:</span><span>$XX–$YY / hr</span></div>
-          <div class="kv"><span>Benefits:</span><span>Health, PTO, 401(k)</span></div>
-          <div class="hint">Update these fields to match the posting.</div>
-        </div>
-
-        <div class="section" style="border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
-          <p class="small" style="color: var(--muted); font-style: italic;">
-            Sulandra Community Living Services is an Equal Opportunity Employer.
-          </p>
-          <p class="small muted" style="margin-top:8px;">
-            If you need help completing this application, contact HR.
-          </p>
-        </div>
       </div>
 
       <div class="card" style="margin-top:18px;">
         <h3>Progress</h3>
         <div class="kv"><span>Required fields complete:</span><span id="reqCount">0%</span></div>
         <div class="kv"><span>Resume uploaded:</span><span id="resumeStatus">No</span></div>
-        <div class="kv"><span>Saved draft:</span><span id="draftStatus">No</span></div>
+        <div class="kv"><span>Draft saved:</span><span id="draftStatus">No</span></div>
+        <div class="kv"><span>Assessment answered:</span><span id="quizStatus">0/15</span></div>
         <div class="hint">Draft saves to your browser (localStorage).</div>
       </div>
     </aside>
@@ -808,7 +1184,6 @@
 /* ==========
    Utilities
    ========== */
-
 const $ = (id) => document.getElementById(id);
 
 function show(el, on=true){ el.classList.toggle('show', !!on); }
@@ -823,17 +1198,11 @@ function toast(title, body){
 
 $('toastCloseBtn').addEventListener('click', () => show($('toast'), false));
 
-$('toastDownloadBtn').addEventListener('click', () => {
-  const draft = collectFormDataAsObject(true);
-  const blob = new Blob([JSON.stringify(draft, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `dsp-application-draft-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
-});
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[s]));
+}
 
 function validEmail(v){
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
@@ -860,16 +1229,13 @@ function fileOk(file, maxMB=10){
 /* ==================================
    Draft save/restore (localStorage)
    ================================== */
-
-const DRAFT_KEY = 'scls_dsp_application_draft_v1';
+const DRAFT_KEY = 'scls_dsp_application_draft_v11';
 
 function collectFormDataAsObject(includeFilesMeta=false){
   const form = $('appForm');
   const obj = {};
   const fd = new FormData(form);
-
-  // Multi-checkbox groups (days/skills) come as multiple entries; capture as arrays.
-  const multiKeys = new Set(['days', 'skills', 'certs']);
+  const multiKeys = new Set(['days', 'certs', 'sa1','sa2','sa3','sa4','sa5']);
 
   for(const [k, v] of fd.entries()){
     if(v instanceof File){
@@ -880,22 +1246,21 @@ function collectFormDataAsObject(includeFilesMeta=false){
           obj[k] = null;
         }
       }
-      continue; // don't persist actual file blobs in localStorage
+      continue;
     }
-
     if(multiKeys.has(k)){
       obj[k] = obj[k] || [];
       obj[k].push(v);
     } else {
-      // handle multi-select (certs) which may appear as repeated keys
       if(obj[k] !== undefined){
         if(!Array.isArray(obj[k])) obj[k] = [obj[k]];
         obj[k].push(v);
-      } else {
-        obj[k] = v;
-      }
+      } else obj[k] = v;
     }
   }
+
+  // references are dynamic; capture them explicitly
+  obj.references = getReferencesAsArray();
 
   obj._savedAt = new Date().toISOString();
   return obj;
@@ -916,39 +1281,43 @@ function loadDraft(){
   let data;
   try { data = JSON.parse(raw); } catch { return false; }
 
-  // Restore basics
+  // restore standard inputs
   const form = $('appForm');
   for(const [k, v] of Object.entries(data)){
-    if(k.startsWith('_')) continue;
+    if(k.startsWith('_') || k === 'references') continue;
 
-    // arrays = checkbox groups or multi-select
     if(Array.isArray(v)){
-      // try checkboxes first
       const nodes = form.querySelectorAll(`[name="${CSS.escape(k)}"]`);
       if(nodes && nodes.length){
         nodes.forEach(n => {
-          if(n.type === 'checkbox' || n.type === 'radio'){
+          if(n.type === 'checkbox'){
             n.checked = v.includes(n.value);
-          } else if(n.tagName === 'SELECT' && n.multiple){
-            Array.from(n.options).forEach(opt => opt.selected = v.includes(opt.value));
+          } else if(n.type === 'radio'){
+            n.checked = v.includes(n.value);
           }
         });
       }
     } else {
       const el = form.querySelector(`[name="${CSS.escape(k)}"]`);
       if(!el) continue;
-
       if(el.type === 'checkbox'){
         el.checked = !!v;
       } else if(el.type === 'radio'){
         const radio = form.querySelector(`[name="${CSS.escape(k)}"][value="${CSS.escape(v)}"]`);
         if(radio) radio.checked = true;
-      } else if(el.tagName === 'SELECT' && el.multiple){
-        Array.from(el.options).forEach(opt => opt.selected = (v || []).includes(opt.value));
       } else {
         el.value = v ?? '';
       }
     }
+  }
+
+  // restore references
+  if(Array.isArray(data.references) && data.references.length){
+    $('refsContainer').innerHTML = '';
+    data.references.forEach((r, idx) => addReferenceCard(r, idx >= 2));
+  } else {
+    // default refs if not stored
+    ensureMinReferences();
   }
 
   setText($('draftStatus'), 'Yes');
@@ -964,9 +1333,8 @@ function clearDraft(){
 }
 
 /* =========================
-   Field validation helpers
+   Errors / Validation
    ========================= */
-
 function setError(id, on){
   const el = $(id);
   if(!el) return;
@@ -978,90 +1346,281 @@ function getCheckedValues(name){
   return Array.from(nodes).map(n => n.value);
 }
 
-function validateForm(){
+function validateCerts(){
+  // must select at least one: either "none" or one/more certs
+  const none = $('cert_none').checked;
+  const selected = getCheckedValues('certs');
+  if(!none && selected.length === 0) return { ok:false, missing: true };
+
+  // if none is selected, no cert details required
+  if(none) return { ok:true };
+
+  // validate details for each selected cert
   let ok = true;
-
-  // Clear existing errors
-  [
-    'err-firstName','err-lastName','err-email','err-phone','err-address1','err-city','err-state','err-zip',
-    'err-startDate','err-employmentType','err-shiftPref','err-days',
-    'err-exp','err-education',
-    'err-age18','err-workAuth','err-license','err-screening',
-    'err-resume',
-    'err-consentTruth','err-consentContact','err-consentESign','err-signature','err-signatureDate'
-  ].forEach(eid => setError(eid,false));
-
-  const firstName = $('firstName').value.trim();
-  const lastName  = $('lastName').value.trim();
-  const email     = $('email').value.trim();
-  const phone     = $('phone').value.trim();
-  const address1  = $('address1').value.trim();
-  const city      = $('city').value.trim();
-  const state     = $('state').value;
-  const zip       = $('zip').value.trim();
-
-  const startDate = $('startDate').value;
-  const employmentType = $('employmentType').value;
-  const shiftPref = $('shiftPref').value;
-  const days      = getCheckedValues('days');
-
-  const exp = $('exp').value;
-  const education = $('education').value;
-
-  const age18 = $('age18').value;
-  const workAuth = $('workAuth').value;
-  const license = $('license').value;
-  const screening = document.querySelector('input[name="screening"]:checked')?.value;
-
-  const resumeFile = $('resume').files[0];
-
-  const consentTruth = $('consentTruth').checked;
-  const consentContact = $('consentContact').checked;
-  const consentESign = $('consentESign').checked;
-  const signature = $('signature').value.trim();
-  const signatureDate = $('signatureDate').value;
-
-  if(!firstName){ setError('err-firstName', true); ok=false; }
-  if(!lastName){ setError('err-lastName', true); ok=false; }
-  if(!validEmail(email)){ setError('err-email', true); ok=false; }
-  if(!validPhone(phone)){ setError('err-phone', true); ok=false; }
-  if(!address1){ setError('err-address1', true); ok=false; }
-  if(!city){ setError('err-city', true); ok=false; }
-  if(!state){ setError('err-state', true); ok=false; }
-  if(!validZip(zip)){ setError('err-zip', true); ok=false; }
-
-  if(!startDate){ setError('err-startDate', true); ok=false; }
-  if(!employmentType){ setError('err-employmentType', true); ok=false; }
-  if(!shiftPref){ setError('err-shiftPref', true); ok=false; }
-  if(!days.length){ setError('err-days', true); ok=false; }
-
-  if(!exp){ setError('err-exp', true); ok=false; }
-  if(!education){ setError('err-education', true); ok=false; }
-
-  if(!age18){ setError('err-age18', true); ok=false; }
-  if(!workAuth){ setError('err-workAuth', true); ok=false; }
-  if(!license){ setError('err-license', true); ok=false; }
-  if(!screening){ setError('err-screening', true); ok=false; }
-
-  if(!resumeFile){ setError('err-resume', true); ok=false; }
-  if(resumeFile && !fileOk(resumeFile, 10)){
-    setError('err-resume', true);
-    $('err-resume').textContent = 'Resume file must be 10MB or less.';
-    ok=false;
+  function reqDates(prefix){
+    const issue = $(prefix + '_issue');
+    const exp = $(prefix + '_exp');
+    const errIssue = $('err-' + prefix + '_issue');
+    const errExp = $('err-' + prefix + '_exp');
+    const hasIssue = !!(issue && issue.value);
+    const hasExp = !!(exp && exp.value);
+    if(errIssue) errIssue.classList.toggle('show', !hasIssue);
+    if(errExp) errExp.classList.toggle('show', !hasExp);
+    if(!hasIssue || !hasExp) ok = false;
   }
 
-  if(!consentTruth){ setError('err-consentTruth', true); ok=false; }
-  if(!consentContact){ setError('err-consentContact', true); ok=false; }
-  if(!consentESign){ setError('err-consentESign', true); ok=false; }
-  if(!signature){ setError('err-signature', true); ok=false; }
-  if(!signatureDate){ setError('err-signatureDate', true); ok=false; }
+  selected.forEach(v => {
+    if(v === 'CPR') reqDates('cert_cpr');
+    if(v === 'First Aid') reqDates('cert_firstaid');
+    if(v === 'Medication Administration') reqDates('cert_medadmin');
+    if(v === 'CPI/De-escalation') reqDates('cert_cpi');
+    if(v === 'Other'){
+      const name = $('cert_other_name');
+      const hasName = !!(name && name.value.trim());
+      setError('err-cert_other_name', !hasName);
+      if(!hasName) ok = false;
+      reqDates('cert_other');
+    }
+  });
 
-  return ok;
+  return { ok };
+}
+
+function validateReferences(){
+  const refs = getReferencesAsArray();
+  // need at least 2 complete refs
+  const complete = refs.filter(r => r.name && r.phone && r.relationship).length;
+  return { ok: complete >= 2, completeCount: complete, total: refs.length };
+}
+
+function quizAnsweredCount(){
+  let count = 0;
+
+  // MC: 5
+  for(let i=1;i<=5;i++){
+    if(document.querySelector(`input[name="mc${i}"]:checked`)) count++;
+  }
+
+  // SA: 5 (must select at least one option to count as answered)
+  for(let i=1;i<=5;i++){
+    if(getCheckedValues(`sa${i}`).length > 0) count++;
+  }
+
+  // FB: 5
+  for(let i=1;i<=5;i++){
+    const v = document.querySelector(`input[name="fb${i}"]`)?.value || '';
+    if(v.trim().length > 0) count++;
+  }
+
+  return count;
+}
+
+function validateQuizComplete(){
+  return quizAnsweredCount() === 15;
 }
 
 /* =========================
-   UI wiring & enhancements
+   Assessment scoring
+   =========================
+   - Objective scoring done client-side and included in hidden fields.
+   - You can still rescore on server for integrity.
+*/
+const QUIZ_KEY = {
+  // multiple choice correct option letters
+  mc: { mc1:'b', mc2:'b', mc3:'b', mc4:'b', mc5:'b' },
+  // select-all: set of correct values (must match exactly: all correct selected, no incorrect selected)
+  sa: {
+    sa1: new Set(['bathing','dressing','toileting','eating']),
+    sa2: new Set(['handwashing','gloves','cleaning','covercough']),
+    sa3: new Set(['askpref','plainlang','privacy']),
+    sa4: new Set(['injury','mederror','abuse','missing']),
+    sa5: new Set(['times','quotes','observed'])
+  },
+  // fill blank: acceptable answers (case-insensitive)
+  fb: {
+    fb1: ['independent','independently','independence'],
+    fb2: ['mechanics','mechanic'],
+    fb3: ['confidential','private'],
+    fb4: ['report'],
+    fb5: ['documentation','documenting','charting','notes']
+  }
+};
+
+function normalizeText(s){
+  return String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+}
+
+function scoreQuiz(){
+  const breakdown = { mc:{}, sa:{}, fb:{} };
+  let score = 0;
+  let max = 15;
+
+  // MC
+  for(let i=1;i<=5;i++){
+    const q = `mc${i}`;
+    const ans = document.querySelector(`input[name="${q}"]:checked`)?.value || '';
+    const correct = QUIZ_KEY.mc[q];
+    const ok = ans === correct;
+    breakdown.mc[q] = { answer: ans || null, correct, ok };
+    if(ok) score++;
+  }
+
+  // SA exact match
+  for(let i=1;i<=5;i++){
+    const q = `sa${i}`;
+    const selected = new Set(getCheckedValues(q));
+    const correct = QUIZ_KEY.sa[q];
+
+    let ok = true;
+    // all correct selected
+    for(const c of correct){ if(!selected.has(c)) ok = false; }
+    // no extras
+    for(const s of selected){ if(!correct.has(s)) ok = false; }
+
+    breakdown.sa[q] = {
+      answer: Array.from(selected),
+      correct: Array.from(correct),
+      ok
+    };
+    if(ok) score++;
+  }
+
+  // FB
+  for(let i=1;i<=5;i++){
+    const q = `fb${i}`;
+    const ansRaw = document.querySelector(`input[name="${q}"]`)?.value || '';
+    const ans = normalizeText(ansRaw);
+    const acceptable = (QUIZ_KEY.fb[q] || []).map(normalizeText);
+    const ok = acceptable.includes(ans);
+    breakdown.fb[q] = { answer: ansRaw || null, acceptable: QUIZ_KEY.fb[q], ok };
+    if(ok) score++;
+  }
+
+  return { score, max, breakdown };
+}
+
+/* =========================
+   Dynamic Certifications UI
    ========================= */
+function toggleCertDetails(){
+  const none = $('cert_none').checked;
+  const certBoxes = document.querySelectorAll('input[name="certs"]');
+  certBoxes.forEach(cb => { cb.disabled = none; if(none) cb.checked = false; });
+
+  // hide all details by default
+  ['cert_cpr','cert_firstaid','cert_medadmin','cert_cpi','cert_other'].forEach(prefix => {
+    $(''+prefix+'_details').classList.remove('show');
+  });
+
+  // if none selected, hide everything
+  if(none) return;
+
+  const selected = getCheckedValues('certs');
+  if(selected.includes('CPR')) $('cert_cpr_details').classList.add('show');
+  if(selected.includes('First Aid')) $('cert_firstaid_details').classList.add('show');
+  if(selected.includes('Medication Administration')) $('cert_medadmin_details').classList.add('show');
+  if(selected.includes('CPI/De-escalation')) $('cert_cpi_details').classList.add('show');
+  if(selected.includes('Other')) $('cert_other_details').classList.add('show');
+}
+$('cert_none').addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); });
+document.querySelectorAll('input[name="certs"]').forEach(cb => cb.addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); }));
+
+/* =========================
+   References (2 required + add more)
+   ========================= */
+let refCounter = 0;
+
+function addReferenceCard(prefill=null, allowRemove=true){
+  refCounter++;
+  const idx = refCounter;
+  const box = document.createElement('div');
+  box.className = 'ref-card';
+  box.dataset.refId = String(idx);
+
+  box.innerHTML = `
+    <div class="ref-head">
+      <strong>Reference</strong>
+      ${allowRemove ? `<button type="button" class="ghost" data-remove="1">Remove</button>` : `<span class="pill">Required</span>`}
+    </div>
+
+    <div class="row">
+      <div>
+        <label class="required" for="ref_name_${idx}">Name</label>
+        <input id="ref_name_${idx}" name="ref_name_${idx}" type="text" value="${prefill?.name ? escapeHtml(prefill.name) : ''}" required />
+      </div>
+      <div>
+        <label class="required" for="ref_relationship_${idx}">Relationship</label>
+        <input id="ref_relationship_${idx}" name="ref_relationship_${idx}" type="text" value="${prefill?.relationship ? escapeHtml(prefill.relationship) : ''}" required />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div>
+        <label class="required" for="ref_phone_${idx}">Phone</label>
+        <input id="ref_phone_${idx}" name="ref_phone_${idx}" type="tel" placeholder="(555) 555-5555" value="${prefill?.phone ? escapeHtml(prefill.phone) : ''}" required />
+      </div>
+      <div>
+        <label for="ref_email_${idx}">Email (optional)</label>
+        <input id="ref_email_${idx}" name="ref_email_${idx}" type="email" value="${prefill?.email ? escapeHtml(prefill.email) : ''}" />
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label for="ref_company_${idx}">Company / Organization (optional)</label>
+      <input id="ref_company_${idx}" name="ref_company_${idx}" type="text" value="${prefill?.company ? escapeHtml(prefill.company) : ''}" />
+    </div>
+  `;
+
+  box.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-remove="1"]');
+    if(btn){
+      box.remove();
+      updateProgress();
+      scheduleAutosave();
+    }
+  });
+
+  box.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
+
+  $('refsContainer').appendChild(box);
+}
+
+function ensureMinReferences(){
+  $('refsContainer').innerHTML = '';
+  refCounter = 0;
+  addReferenceCard(null, false);
+  addReferenceCard(null, false);
+}
+
+function getReferencesAsArray(){
+  const cards = Array.from(document.querySelectorAll('.ref-card'));
+  return cards.map(card => {
+    const id = card.dataset.refId;
+    const name = document.querySelector(`#ref_name_${id}`)?.value?.trim() || '';
+    const relationship = document.querySelector(`#ref_relationship_${id}`)?.value?.trim() || '';
+    const phone = document.querySelector(`#ref_phone_${id}`)?.value?.trim() || '';
+    const email = document.querySelector(`#ref_email_${id}`)?.value?.trim() || '';
+    const company = document.querySelector(`#ref_company_${id}`)?.value?.trim() || '';
+    return { name, relationship, phone, email, company };
+  });
+}
+
+$('addRefBtn').addEventListener('click', () => addReferenceCard(null, true));
+
+/* =========================
+   File UI
+   ========================= */
+function updateFileUI(inputId, chosenId, pillId, emptyLabel, optionalPillText='Optional'){
+  const input = $(inputId);
+  const f = input.files[0];
+  if(!f){
+    setText($(chosenId), emptyLabel);
+    setText($(pillId), optionalPillText);
+    return;
+  }
+  setText($(chosenId), f.name);
+  setText($(pillId), bytesToHuman(f.size));
+}
 
 function updateResumeUI(){
   const f = $('resume').files[0];
@@ -1076,32 +1635,29 @@ function updateResumeUI(){
   setText($('resumeStatus'), 'Yes');
 }
 
-function updateCoverUI(){
-  const f = $('coverLetter').files[0];
-  if(!f){
-    setText($('cover-chosen'), 'Click to choose cover letter…');
-    setText($('cover-pill'), 'Optional');
-    return;
-  }
-  setText($('cover-chosen'), f.name);
-  setText($('cover-pill'), bytesToHuman(f.size));
-}
-
-function updateCertUI(){
-  const files = $('certUpload').files;
-  const n = files ? files.length : 0;
-  setText($('cert-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
-  setText($('cert-pill'), `${n} files`);
-}
-
-$('resume').addEventListener('change', updateResumeUI);
-$('coverLetter').addEventListener('change', updateCoverUI);
-$('certUpload').addEventListener('change', updateCertUI);
-
-$('accommodations').addEventListener('change', (e) => {
-  const on = e.target.value === 'yes';
-  $('accomBox').style.display = on ? 'block' : 'none';
+$('resume').addEventListener('change', () => { updateResumeUI(); updateProgress(); scheduleAutosave(); });
+$('coverLetter').addEventListener('change', () => { updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…'); updateProgress(); scheduleAutosave(); });
+$('cnaDoc').addEventListener('change', () => { updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…'); updateProgress(); scheduleAutosave(); });
+$('stnaDoc').addEventListener('change', () => { updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…'); updateProgress(); scheduleAutosave(); });
+$('otherDocs').addEventListener('change', () => {
+  const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
+  setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
+  setText($('otherdocs-pill'), `${n} files`);
+  updateProgress(); scheduleAutosave();
 });
+
+/* =========
+   Autosave
+   ========= */
+let autosaveTimer = null;
+function scheduleAutosave(){
+  const any = ['firstName','lastName','email','phone'].some(id => String($(id).value||'').trim().length > 0);
+  if(!any) return;
+
+  setText($('autosavePill'), 'Autosave: pending…');
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => saveDraft(), 1100);
+}
 
 $('saveBtn').addEventListener('click', () => saveDraft());
 
@@ -1109,39 +1665,48 @@ $('resetBtn').addEventListener('click', () => {
   if(confirm('Clear the entire form and remove the saved draft from this device?')){
     $('appForm').reset();
     clearDraft();
-    updateResumeUI(); updateCoverUI(); updateCertUI();
-    $('accomBox').style.display = 'none';
-    setText($('reqCount'), '0%');
+    ensureMinReferences();
+    updateResumeUI();
+    updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
+    updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
+    updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
+    setText($('otherdocs-chosen'), 'Click to choose documents…');
+    setText($('otherdocs-pill'), '0 files');
+    toggleCertDetails();
+    updateProgress();
+    updateQuizStatus();
     toast('Cleared', 'Form and saved draft were cleared.');
   }
 });
 
 $('previewBtn').addEventListener('click', () => {
-  const data = collectFormDataAsObject(true);
+  const draft = collectFormDataAsObject(true);
+  // include quiz score preview
+  const scored = scoreQuiz();
+  draft.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
+
   const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
   if(!w) return alert('Pop-up blocked. Please allow pop-ups to preview.');
-  w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(data, null, 2))}</pre>`);
+  w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(draft, null, 2))}</pre>`);
   w.document.close();
 });
-
-function escapeHtml(str){
-  return String(str).replace(/[&<>"']/g, s => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[s]));
-}
 
 /* =========================
    Required-fields progress
    ========================= */
-
 const requiredSelectors = [
-  '#firstName','#lastName','#email','#phone','#address1','#city','#state','#zip',
+  '#firstName','#lastName','#dob','#maritalStatus',
+  '#email','#phone','#address1','#city','#state','#zip',
+  '#emgName','#emgRelation','#emgPhone',
   '#startDate','#employmentType','#shiftPref',
   '#exp','#education',
-  '#age18','#workAuth','#license',
+  '#licenseNumber','#licenseExp','#dlState','#hasValidDL',
+  '#age18','#workAuth',
   'input[name="screening"]',
   '#resume',
-  '#consentTruth','#consentContact','#consentESign','#signature','#signatureDate'
+  '#lastEmployer','#lastJobTitle','#lastStartDate','#lastEndDate','#leaveReason','#contactPrevEmployer',
+  '#consentContactRefs',
+  '#consentTruth','#consentContact','#consentPunctual','#consentESign','#signature','#signatureDate'
 ];
 
 function isFieldComplete(sel){
@@ -1150,59 +1715,49 @@ function isFieldComplete(sel){
   }
   const el = document.querySelector(sel);
   if(!el) return true;
-
   if(el.type === 'checkbox') return el.checked;
   if(el.type === 'file') return el.files && el.files.length > 0;
   return String(el.value || '').trim().length > 0;
 }
 
+function updateQuizStatus(){
+  const answered = quizAnsweredCount();
+  setText($('quizStatus'), `${answered}/15`);
+}
+
 function updateProgress(){
-  // days is also required (special)
-  const req = requiredSelectors.length + 1;
+  // special required groups: days + certs selection + refs completeness + quiz completeness
+  const base = requiredSelectors.length + 4;
   let done = 0;
+
   requiredSelectors.forEach(s => { if(isFieldComplete(s)) done++; });
+
   if(getCheckedValues('days').length > 0) done++;
 
-  const pct = Math.round((done / req) * 100);
+  // certifications selection completeness
+  const certCheck = validateCerts();
+  if(certCheck.ok) done++;
+
+  // references (at least 2 complete)
+  const refsCheck = validateReferences();
+  if(refsCheck.ok) done++;
+
+  // quiz complete
+  updateQuizStatus();
+  if(validateQuizComplete()) done++;
+
+  const pct = Math.round((done / base) * 100);
   setText($('reqCount'), `${pct}%`);
 }
 
-document.addEventListener('input', () => {
-  updateProgress();
-  scheduleAutosave();
-});
-document.addEventListener('change', () => {
-  updateProgress();
-  scheduleAutosave();
-});
-
-/* =========
-   Autosave
-   ========= */
-
-let autosaveTimer = null;
-function scheduleAutosave(){
-  // don't autosave if form is completely empty (basic check)
-  const any = ['firstName','lastName','email','phone'].some(id => String($(id).value||'').trim().length > 0);
-  if(!any) return;
-
-  setText($('autosavePill'), 'Autosave: pending…');
-  clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(() => {
-    saveDraft();
-  }, 1200);
-}
+document.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
+document.addEventListener('change', () => { updateProgress(); scheduleAutosave(); });
 
 /* ===============================
    Submit: REAL upload via fetch()
-   ===============================
-   This uses FormData so file upload works.
-   - Set USE_SIMULATION=false and set SUBMIT_URL to your backend endpoint.
-   - The backend should return JSON: { ok:true, applicationId:"...", message:"..." }
    =============================== */
-
-const USE_SIMULATION = true; // flip to false when you have a backend
-const SUBMIT_URL = '/api/applications'; // your endpoint
+const USE_SIMULATION = true; // set false for production
+const SUBMIT_URL = '/api/applications';
 
 function setSubmitting(on){
   $('submitBtn').disabled = on;
@@ -1218,51 +1773,45 @@ function setProgress(pct, title, hint){
   if(hint) setText($('statusHint'), hint);
 }
 
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
 async function simulateSubmit(){
   setSubmitting(true);
   setProgress(10, 'Submitting…', 'Uploading files…');
-
   await sleep(450);
-  setProgress(35, 'Submitting…', 'Validating information…');
-
+  setProgress(40, 'Submitting…', 'Saving your application…');
   await sleep(450);
-  setProgress(60, 'Submitting…', 'Creating candidate profile…');
-
+  setProgress(70, 'Submitting…', 'Final checks…');
   await sleep(450);
-  setProgress(85, 'Submitting…', 'Finalizing…');
-
-  await sleep(400);
-  setProgress(100, 'Submitted!', 'A confirmation will be shown next.');
-  await sleep(250);
-
+  setProgress(100, 'Submitted!', 'Success.');
+  await sleep(200);
   setSubmitting(false);
 
-  // “Indeed-like” confirmation
-  const email = $('email').value.trim();
-  alert(
-    `Thank you! Your application for Direct Support Professional has been submitted.\n\n` +
-    `Confirmation will be sent to: ${email}\n\n` +
-    `Next: Our hiring team will review your application and contact you if you’re selected for an interview.`
-  );
-
-  clearDraft(); // optional: remove draft once submitted
+  alert('Thank you! Your application has been submitted.');
+  clearDraft();
   window.location.href = 'careers.html';
 }
-
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 async function submitToBackend(){
   const form = $('appForm');
   const fd = new FormData(form);
 
-  // enforce 10MB per uploaded file (client-side)
-  const files = [
-    fd.get('resume'),
-    fd.get('coverLetter'),
-    ...(fd.getAll('certUpload') || [])
-  ].filter(Boolean);
+  // attach references array as JSON
+  fd.set('referencesJson', JSON.stringify(getReferencesAsArray()));
 
-  for(const f of files){
+  // attach assessment breakdown JSON already put in hidden fields
+  // (also included by default in form via hidden inputs)
+
+  // file size checks
+  const fileKeys = ['resume','coverLetter','cnaDoc','stnaDoc'];
+  for(const k of fileKeys){
+    const f = fd.get(k);
+    if(f instanceof File && f.name && !fileOk(f, 10)){
+      throw new Error(`File too large: ${f.name} (max 10MB).`);
+    }
+  }
+  const other = fd.getAll('otherDocs') || [];
+  for(const f of other){
     if(f instanceof File && f.name && !fileOk(f, 10)){
       throw new Error(`File too large: ${f.name} (max 10MB).`);
     }
@@ -1271,61 +1820,155 @@ async function submitToBackend(){
   setSubmitting(true);
   setProgress(15, 'Submitting…', 'Uploading files…');
 
-  const res = await fetch(SUBMIT_URL, {
-    method: 'POST',
-    body: fd
-  });
+  const res = await fetch(SUBMIT_URL, { method:'POST', body: fd });
 
-  setProgress(70, 'Submitting…', 'Saving your application…');
+  setProgress(75, 'Submitting…', 'Saving…');
 
   let out = null;
   const ct = res.headers.get('content-type') || '';
-  if(ct.includes('application/json')){
-    out = await res.json();
-  } else {
-    const text = await res.text();
-    out = { ok: res.ok, message: text };
-  }
+  if(ct.includes('application/json')) out = await res.json();
+  else out = { ok: res.ok, message: await res.text() };
 
-  if(!res.ok || !out || out.ok === false){
+  if(!res.ok || out.ok === false){
     throw new Error(out?.message || 'Submission failed. Please try again.');
   }
 
   setProgress(100, 'Submitted!', 'Success.');
-  await sleep(250);
+  await sleep(200);
   setSubmitting(false);
 
-  toast('Submitted', `Application received. ID: ${out.applicationId || 'N/A'}`);
   clearDraft();
   window.location.href = 'careers.html';
 }
 
-/* ===========
-   Form submit
-   =========== */
+/* =========================
+   Main validation + submit
+   ========================= */
+function validateForm(){
+  let ok = true;
+
+  // clear errors
+  [
+    'err-firstName','err-lastName','err-dob','err-maritalStatus','err-email','err-phone','err-address1','err-city','err-state','err-zip',
+    'err-emgName','err-emgRelation','err-emgPhone',
+    'err-startDate','err-employmentType','err-shiftPref','err-days',
+    'err-exp','err-education',
+    'err-licenseNumber','err-licenseExp','err-dlState','err-hasValidDL',
+    'err-age18','err-workAuth','err-screening',
+    'err-certs',
+    'err-resume',
+    'err-lastEmployer','err-lastJobTitle','err-lastStartDate','err-lastEndDate','err-leaveReason','err-contactPrevEmployer',
+    'err-refs','err-consentContactRefs',
+    'err-quiz',
+    'err-consentTruth','err-consentContact','err-consentPunctual','err-consentESign','err-signature','err-signatureDate'
+  ].forEach(eid => setError(eid,false));
+
+  // basic
+  if(!$('firstName').value.trim()){ setError('err-firstName', true); ok=false; }
+  if(!$('lastName').value.trim()){ setError('err-lastName', true); ok=false; }
+  if(!$('dob').value){ setError('err-dob', true); ok=false; }
+  if(!$('maritalStatus').value){ setError('err-maritalStatus', true); ok=false; }
+
+  if(!validEmail($('email').value)){ setError('err-email', true); ok=false; }
+  if(!validPhone($('phone').value)){ setError('err-phone', true); ok=false; }
+  if(!$('address1').value.trim()){ setError('err-address1', true); ok=false; }
+  if(!$('city').value.trim()){ setError('err-city', true); ok=false; }
+  if(!$('state').value){ setError('err-state', true); ok=false; }
+  if(!validZip($('zip').value)){ setError('err-zip', true); ok=false; }
+
+  // emergency
+  if(!$('emgName').value.trim()){ setError('err-emgName', true); ok=false; }
+  if(!$('emgRelation').value.trim()){ setError('err-emgRelation', true); ok=false; }
+  if(!validPhone($('emgPhone').value)){ setError('err-emgPhone', true); ok=false; }
+
+  // availability
+  if(!$('startDate').value){ setError('err-startDate', true); ok=false; }
+  if(!$('employmentType').value){ setError('err-employmentType', true); ok=false; }
+  if(!$('shiftPref').value){ setError('err-shiftPref', true); ok=false; }
+  if(getCheckedValues('days').length === 0){ setError('err-days', true); ok=false; }
+
+  // exp/edu
+  if(!$('exp').value){ setError('err-exp', true); ok=false; }
+  if(!$('education').value){ setError('err-education', true); ok=false; }
+
+  // DL
+  if(!$('licenseNumber').value.trim()){ setError('err-licenseNumber', true); ok=false; }
+  if(!$('licenseExp').value){ setError('err-licenseExp', true); ok=false; }
+  if(!$('dlState').value){ setError('err-dlState', true); ok=false; }
+  if(!$('hasValidDL').value){ setError('err-hasValidDL', true); ok=false; }
+
+  // eligibility
+  if(!$('age18').value){ setError('err-age18', true); ok=false; }
+  if(!$('workAuth').value){ setError('err-workAuth', true); ok=false; }
+  if(!document.querySelector('input[name="screening"]:checked')){ setError('err-screening', true); ok=false; }
+
+  // certs
+  const certCheck = validateCerts();
+  if(!certCheck.ok){
+    setError('err-certs', true);
+    ok = false;
+  }
+  if(certCheck.missing){
+    setError('err-certs', true);
+    ok = false;
+  }
+
+  // resume
+  const resume = $('resume').files[0];
+  if(!resume || !fileOk(resume, 10)){ setError('err-resume', true); ok=false; }
+
+  // work history
+  if(!$('lastEmployer').value.trim()){ setError('err-lastEmployer', true); ok=false; }
+  if(!$('lastJobTitle').value.trim()){ setError('err-lastJobTitle', true); ok=false; }
+  if(!$('lastStartDate').value){ setError('err-lastStartDate', true); ok=false; }
+  if(!$('lastEndDate').value){ setError('err-lastEndDate', true); ok=false; }
+  if(!$('leaveReason').value.trim()){ setError('err-leaveReason', true); ok=false; }
+  if(!$('contactPrevEmployer').value){ setError('err-contactPrevEmployer', true); ok=false; }
+
+  // references
+  const refCheck = validateReferences();
+  if(!refCheck.ok){
+    setError('err-refs', true);
+    ok = false;
+  }
+  if(!$('consentContactRefs').checked){ setError('err-consentContactRefs', true); ok=false; }
+
+  // quiz
+  if(!validateQuizComplete()){
+    setError('err-quiz', true);
+    ok = false;
+  }
+
+  // consents/signature
+  if(!$('consentTruth').checked){ setError('err-consentTruth', true); ok=false; }
+  if(!$('consentContact').checked){ setError('err-consentContact', true); ok=false; }
+  if(!$('consentPunctual').checked){ setError('err-consentPunctual', true); ok=false; }
+  if(!$('consentESign').checked){ setError('err-consentESign', true); ok=false; }
+  if(!$('signature').value.trim()){ setError('err-signature', true); ok=false; }
+  if(!$('signatureDate').value){ setError('err-signatureDate', true); ok=false; }
+
+  return ok;
+}
 
 $('appForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  updateResumeUI(); // in case user didn't blur
+  updateResumeUI();
   updateProgress();
 
   const ok = validateForm();
   if(!ok){
     toast('Fix required fields', 'Please review the highlighted items and try again.');
-    // Scroll to first visible error
     const firstErr = document.querySelector('.error.show');
     if(firstErr) firstErr.scrollIntoView({behavior:'smooth', block:'center'});
     return;
   }
 
-  // Ensure at least one day selected (our custom required)
-  if(getCheckedValues('days').length === 0){
-    setError('err-days', true);
-    toast('Days available required', 'Please select at least one day and submit again.');
-    $('err-days').scrollIntoView({behavior:'smooth', block:'center'});
-    return;
-  }
+  // score quiz and attach to hidden fields (so you receive it on submit)
+  const scored = scoreQuiz();
+  $('assessmentScore').value = String(scored.score);
+  $('assessmentMax').value = String(scored.max);
+  $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
 
   try{
     if(USE_SIMULATION){
@@ -1340,24 +1983,53 @@ $('appForm').addEventListener('submit', async (e) => {
   }
 });
 
-/* ==============
-   Initial boot
-   ============== */
-
+/* ===========
+   Init
+   =========== */
 (function init(){
-  // default signature date to today
+  // signature date default today
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth()+1).padStart(2,'0');
   const dd = String(today.getDate()).padStart(2,'0');
   if(!$('signatureDate').value) $('signatureDate').value = `${yyyy}-${mm}-${dd}`;
 
-  // load draft if available
-  loadDraft();
+  // load or build references
+  const loaded = loadDraft();
+  if(!loaded) ensureMinReferences();
 
+  // wire toast download
+  $('toastDownloadBtn').addEventListener('click', () => {
+    const draft = collectFormDataAsObject(true);
+    const scored = scoreQuiz();
+    draft.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
+
+    const blob = new Blob([JSON.stringify(draft, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `dsp-application-draft-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // cert details init
+  toggleCertDetails();
+
+  // file ui init
   updateResumeUI();
-  updateCoverUI();
-  updateCertUI();
+  updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
+  updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
+  updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
+  const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
+  setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
+  setText($('otherdocs-pill'), `${n} files`);
+
+  // quiz status init
+  updateQuizStatus();
+
+  // progress init
   updateProgress();
 })();
 </script>
