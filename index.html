@@ -510,6 +510,12 @@
       .sectionTitle{font-size:40px}
       .topbarInner{min-height: auto}
     }
+    /* Logo in top navigation (matches about page sizing) */
+.brandLogo{
+  height: 48px;
+  width: auto;
+  display: block;
+}
   </style>
 </head>
 
@@ -519,11 +525,12 @@
   <header class="topbar" role="banner">
     <div class="topbarInner">
       <div class="brandRow" aria-label="Sulandra Community Living Services">
-        <div class="brandMark" aria-hidden="true"></div>
-        <div>
-          Sulandra<br><span style="font-weight:850; font-size:12px; color:#2b5d9b;">Community Living Services</span>
-        </div>
-      </div>
+  <img
+    src="assets/logo.png"
+    alt="Sulandra Community Living Services"
+    class="brandLogo"
+  >
+</div>
 
       <nav class="topnav" aria-label="Primary">
         <a class="active" href="index.html">Home</a>
