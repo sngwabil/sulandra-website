@@ -3,111 +3,48 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Our Services | Sulandra Community Living Services</title>
-  <meta name="description" content="Explore our integrated provider services, including community living support, home health, and specialized pharmacy solutions." />
-
+  <title>Our Integrated Services | Sulandra Community Living Services</title>
   <style>
     :root{
-      --bg:#ffffff;
-      --ink:#0b1220;
-      --muted:#55657e;
-      --brand:#1f5aa6;
-      --brand2:#2c74d6;
-      --line:#e7eef8;
-      --card:#f7fbff;
-      --soft:#f2f6fb;
-      --shadow:0 10px 28px rgba(10,30,60,.08);
-      --radius:22px;
-      --headerH: 92px;
-      --sideW: 360px;
+      --bg:#ffffff; --ink:#0b1220; --muted:#55657e; --brand:#1f5aa6; --brand2:#2c74d6;
+      --line:#e7eef8; --card:#f7fbff; --soft:#f2f6fb; --shadow:0 10px 28px rgba(10,30,60,.08);
+      --radius:22px; --headerH: 92px; --sideW: 360px;
     }
-
     *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      color:var(--ink);
-      background:var(--bg);
-      line-height:1.55;
-    }
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
     a{color:inherit; text-decoration:none}
-    img{max-width:100%; display:block}
-
-    /* ---- Top nav ---- */
-    .topbar{
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      height: var(--headerH);
-      background: rgba(255,255,255,.92);
-      backdrop-filter: blur(8px);
-      border-bottom:1px solid #e7eef8;
-    }
-    .topbarInner{
-      height: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 18px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:16px;
-    }
+    
+    .topbar{ position: sticky; top: 0; z-index: 50; height: var(--headerH); background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom:1px solid #e7eef8; }
+    .topbarInner{ height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 18px; display:flex; align-items:center; justify-content:space-between; }
     .brandLogo{ height: 240px; width: auto; display: block; }
-    .topnav{ display:flex; gap:18px; align-items:center; flex-wrap:wrap; font-weight:800; color:#20446e; }
-    .topnav a{ padding:10px 10px; border-radius:12px; opacity:.92; }
+    .topnav{ display:flex; gap:18px; font-weight:800; color:#20446e; }
+    .topnav a{ padding:10px; border-radius:12px; }
     .topnav a.active{ background: #eaf2ff; color:var(--brand); box-shadow: inset 0 0 0 1px #d7e6ff; }
 
-    /* ---- Page shell ---- */
     .container{ max-width: 1200px; margin: 0 auto; padding: 22px 18px 80px; }
-    .pageTitle{ margin: 18px 0 8px; font-size: clamp(34px, 4vw, 54px); letter-spacing:-.6px; color:var(--brand); line-height:1.05; font-weight:950; }
-    .pageLead{ margin:0; max-width: 980px; color: var(--muted); font-size: 18px; }
+    .pageTitle{ margin: 18px 0 8px; font-size: clamp(34px, 4vw, 54px); color:var(--brand); font-weight: 950; }
+    .pageLead{ max-width: 980px; color: var(--muted); font-size: 18px; }
 
     .aboutWrap{ margin-top: 22px; display:grid; grid-template-columns: var(--sideW) 1fr; gap: 24px; align-items: start; }
 
-    /* ---- Sidebar (STICKY) ---- */
-    .aboutSidebar{
-      position: sticky;
-      top: calc(var(--headerH) + 18px);
-      background: linear-gradient(180deg, rgba(31,90,166,.92), rgba(31,90,166,.82));
-      border-radius: 26px;
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,.18);
-    }
-    .sideHeader{ padding: 22px 22px 14px; color:#fff; display:flex; align-items:flex-end; justify-content:space-between; gap:10px; }
-    .sideHeader h2{ margin:0; font-size: 18px; letter-spacing:.6px; text-transform: uppercase; font-weight: 950; }
+    .aboutSidebar{ position: sticky; top: calc(var(--headerH) + 18px); background: linear-gradient(180deg, #1f5aa6, #2c74d6); border-radius: 26px; box-shadow: var(--shadow); overflow: hidden; }
+    .sideHeader{ padding: 22px; color:#fff; }
+    .sideHeader h2{ margin:0; font-size: 18px; text-transform: uppercase; font-weight: 950; }
     .sideNav{ list-style:none; margin:0; padding: 10px 14px 18px; display:flex; flex-direction:column; gap:10px; }
-    .sideNav a{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 14px 14px; border-radius: 14px; background: rgba(255,255,255,.10); color:#fff; font-weight: 900; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+    .sideNav a{ display:flex; align-items:center; justify-content:space-between; padding: 14px; border-radius: 14px; background: rgba(255,255,255,.10); color:#fff; font-weight: 900; }
     .sideNav a[aria-current="true"]{ background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 2px rgba(255,255,255,.38); }
-    .caret{ width:26px;height:26px;border-radius:10px; display:grid; place-items:center; background: rgba(255,255,255,.20); font-weight: 950; }
+    .caret{ width:26px; height:26px; border-radius:10px; display:grid; place-items:center; background: rgba(255,255,255,.20); font-weight: 950; }
 
-    /* ---- Content Blocks ---- */
     .aboutContent{ background: var(--soft); border: 1px solid var(--line); border-radius: 26px; padding: 22px; box-shadow: var(--shadow); }
     .section{ margin-top: 18px; background: #fff; border-radius: 22px; border: 1px solid var(--line); padding: 22px 20px; }
-    .section h2{ margin:0 0 10px; color: var(--brand); font-size: 34px; letter-spacing:-.35px; line-height:1.1; font-weight: 950; }
-    .section p{ color:#1b2a44; margin: 10px 0; }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top: 14px; }
-    .card{ background: var(--card); border: 1px solid #dcebff; border-radius: 18px; padding: 16px 16px; }
-    .kicker{ display:inline-flex; padding: 7px 10px; border-radius: 999px; background: #eaf2ff; color: var(--brand); font-weight: 950; font-size: 11px; letter-spacing:.55px; text-transform: uppercase; margin-bottom: 8px; }
-    .card h4{ margin: 0 0 6px; font-size: 18px; font-weight: 950; }
+    .section h2{ margin:0 0 10px; color: var(--brand); font-size: 34px; font-weight: 950; }
     
-    .featureList{ list-style: none; padding: 0; margin: 14px 0; }
-    .featureList li{ position: relative; padding-left: 24px; margin-bottom: 8px; font-weight: 600; color: #1b2a44; }
-    .featureList li::before{ content: "✓"; position: absolute; left: 0; color: var(--brand); font-weight: 900; }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top: 14px; }
+    .card{ background: var(--card); border: 1px solid #dcebff; border-radius: 18px; padding: 16px; }
+    .kicker{ display:inline-flex; padding: 7px 10px; border-radius: 999px; background: #eaf2ff; color: var(--brand); font-weight: 950; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; }
+    .card h4{ margin: 0 0 6px; font-size: 18px; font-weight: 950; }
 
     .anchor{ scroll-margin-top: calc(var(--headerH) + 24px); }
-
-    .infographic-placeholder {
-      background: var(--card);
-      border: 2px dashed var(--brand);
-      border-radius: 18px;
-      padding: 40px;
-      text-align: center;
-      margin: 20px 0;
-      color: var(--brand);
-      font-weight: 800;
-    }
 
     @media (max-width: 980px){
       .aboutWrap{ grid-template-columns: 1fr; }
@@ -116,13 +53,10 @@
     }
   </style>
 </head>
-
 <body>
   <header class="topbar">
     <div class="topbarInner">
-      <div class="brandRow">
-        <img src="assets/logo.png" alt="Sulandra Community Living Services" class="brandLogo">
-      </div>
+      <div class="brandRow"><img src="assets/logo.png" alt="Sulandra" class="brandLogo"></div>
       <nav class="topnav">
         <a href="index.html">Home</a>
         <a href="about.html">About Us</a>
@@ -136,167 +70,106 @@
   </header>
 
   <main class="container">
-    <h1 class="pageTitle">Our Integrated Care Services</h1>
+    <h1 class="pageTitle">Our Integrated Care Platform</h1>
     <p class="pageLead">
-      We provide a complete circle of support. By combining professional pharmacy solutions with dedicated home and community-based provider services, we ensure that complex needs are met with consistency and care.
+      We provide complimentary pharmacy and provider services that more completely address the multiple needs of complex Senior and Specialty patients across their various settings and over time.
     </p>
 
     <div class="aboutWrap">
       <aside class="aboutSidebar">
-        <div class="sideHeader">
-          <h2>Services Menu</h2>
-        </div>
+        <div class="sideHeader"><h2>Our Solutions</h2></div>
         <ul class="sideNav">
-          <li><a href="#integrated-care" data-target="integrated-care"><span class="caret">^</span><span>Integrated Care</span></a></li>
-          <li><a href="#community-living" data-target="community-living"><span class="caret">^</span><span>Community Living</span></a></li>
-          <li><a href="#pharmacy-solutions" data-target="pharmacy-solutions"><span class="caret">^</span><span>Pharmacy Solutions</span></a></li>
-          <li><a href="#home-health-rehab" data-target="home-health-rehab"><span class="caret">^</span><span>Home Health & Rehab</span></a></li>
-          <li><a href="#respite-support" data-target="respite-support"><span class="caret">^</span><span>Respite Support</span></a></li>
-          <li><a href="#life-skills" data-target="life-skills"><span class="caret">^</span><span>Life Skills & Growth</span></a></li>
+          <li><a href="#pharmacy" data-target="pharmacy"><span class="caret">^</span><span>Pharmacy Solutions</span></a></li>
+          <li><a href="#provider" data-target="provider"><span class="caret">^</span><span>Provider Services</span></a></li>
+          <li><a href="#community" data-target="community"><span class="caret">^</span><span>Community Support</span></a></li>
+          <li><a href="#rehab" data-target="rehab"><span class="caret">^</span><span>Rehab & Recovery</span></a></li>
         </ul>
       </aside>
 
       <section class="aboutContent">
-        
-        <section id="integrated-care" class="section anchor">
-          <span class="kicker">The Sulandra Difference</span>
-          <h2>A Comprehensive Care Model</h2>
-          <p>
-            Our model is built around the individual. We coordinate front-line healthcare services to deliver improved outcomes in the comfort of home and community settings, which are often lower-cost and higher-satisfaction than institutional care.
-          </p>
-
-          
-
-          <div class="grid2">
-            <div class="card">
-              <h4>Coordinated Support</h4>
-              <p>We bridge the gap between medical needs and daily living, ensuring all parts of your care team are in sync.</p>
-            </div>
-            <div class="card">
-              <h4>Clinical Excellence</h4>
-              <p>Our scaled platform allows us to provide high-touch specialty care across various settings over time.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="community-living" class="section anchor">
-          <span class="kicker">Core Provider Service</span>
-          <h2>Community Living Support</h2>
-          <p>
-            We provide support where it's needed most—in the home. Our focus is on maintaining independence while ensuring a safety net of professional care is always present.
-          </p>
-          <div class="grid2">
-            <div class="card">
-              <h4>In-Home Assistance</h4>
-              <p>Personalized help with daily routines, hygiene, and household management to foster confidence.</p>
-            </div>
-            <div class="card">
-              <h4>Shared Living</h4>
-              <p>Residential support options that offer community connection alongside professional oversight.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="pharmacy-solutions" class="section anchor">
-          <span class="kicker">Medical Integration</span>
+        <section id="pharmacy" class="section anchor">
+          <span class="kicker">Clinical Support</span>
           <h2>Pharmacy Solutions</h2>
-          <p>
-            Managing complex medications shouldn't be a burden. We provide specialized pharmacy services that are delivered directly to your home or community setting.
-          </p>
-          <ul class="featureList">
-            <li><strong>Infusion & Specialty Pharmacy:</strong> Clinical support for chronic and complex medication needs.</li>
-            <li><strong>Home & Community Pharmacy:</strong> Accurate, on-time prescription fulfillment and delivery.</li>
-            <li><strong>Medication Coordination:</strong> Our teams work with your doctors to ensure safety and compliance.</li>
-          </ul>
-        </section>
-
-        <section id="home-health-rehab" class="section anchor">
-          <span class="kicker">Recovery & Wellness</span>
-          <h2>Home Health & Rehabilitative Care</h2>
-          <p>
-            Whether recovering from an injury or managing a long-term condition, our professional clinical teams bring high-quality medical care to you.
-          </p>
-
-          
-
+          <p>We provide pharmacy services when and where demanded and as required to customers and patients in their homes and communities.</p>
           <div class="grid2">
             <div class="card">
-              <h4>Skilled Nursing</h4>
-              <p>Professional medical oversight and wound care provided by licensed nurses in the home.</p>
+              <h4>Infusion & Specialty</h4>
+              <p>High-touch clinical pharmacy support for complex, chronic conditions.</p>
             </div>
             <div class="card">
-              <h4>Rehabilitative Therapy</h4>
-              <p>Physical and occupational therapy designed to restore function and increase daily independence.</p>
+              <h4>Home & Community</h4>
+              <p>Specialized pharmacy services coordinated with frontline healthcare teams.</p>
             </div>
           </div>
         </section>
 
-        <section id="respite-support" class="section anchor">
-          <span class="kicker">For Families</span>
-          <h2>Respite & Personal Care</h2>
-          <p>
-            Caregiving is a journey that requires support for the whole family. Our respite services provide primary caregivers with the peace of mind they need to recharge.
-          </p>
-          <ul class="featureList">
-            <li>Flexible in-home respite scheduling</li>
-            <li>Assistance with personal care and daily hygiene</li>
-            <li>Compassionate companionship and safety monitoring</li>
-            <li>Direct support during family transitions or emergencies</li>
-          </ul>
-        </section>
-
-        <section id="life-skills" class="section anchor">
-          <span class="kicker">Independence</span>
-          <h2>Life Skills & Vocational Support</h2>
-          <p>
-            True inclusion means participating in the community. We help individuals build the practical skills needed for work and social connection.
-          </p>
+        <section id="provider" class="section anchor">
+          <span class="kicker">At Home Care</span>
+          <h2>Provider Services</h2>
+          <p>We deliver impactful and valuable provider services to high-need, chronic, and complex patients in home and community settings.</p>
           <div class="grid2">
             <div class="card">
-              <h4>Supported Employment</h4>
-              <p>Helping individuals find and keep meaningful work through coaching and placement assistance.</p>
+              <h4>Home Health Care</h4>
+              <p>Skilled nursing and medical support delivered directly in the residence.</p>
             </div>
             <div class="card">
-              <h4>Community Integration</h4>
-              <p>Building social confidence through participation in local events, libraries, and faith groups.</p>
+              <h4>Personal Care</h4>
+              <p>Helping with daily routines to maintain independence and dignity.</p>
             </div>
           </div>
         </section>
 
-        <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); text-align: center;">
-          <p><strong>Sulandra Community Living Services</strong> | Focused on Quality, Safety, and Dignity.</p>
-          <p>© 2025. All Rights Reserved.</p>
+        <section id="community" class="section anchor">
+          <span class="kicker">Living & Inclusion</span>
+          <h2>Community Living & Youth</h2>
+          <p>Supporting individuals through every stage of life, from family and youth services to adult community living.</p>
+          <ul style="padding-left:20px;">
+            <li>DODD Waiver support and Homemaker/Personal Care (HPC).</li>
+            <li>Family and Youth Services for long-term stability.</li>
+            <li>Behavioral Health support for I/DD populations.</li>
+          </ul>
+        </section>
+
+        <section id="rehab" class="section anchor">
+          <span class="kicker">Recovery</span>
+          <h2>Rehab & Specialized Care</h2>
+          <p>Our rehabilitation services focus on functional independence through clinical and operational excellence.</p>
+          <div class="grid2">
+            <div class="card">
+              <h4>Neuro Rehabilitation</h4>
+              <p>Specialized recovery programs for complex neurological needs.</p>
+            </div>
+            <div class="card">
+              <h4>Hospice Care</h4>
+              <p>Compassionate end-of-life care coordinated with hospice pharmacy services.</p>
+            </div>
+          </div>
+        </section>
+
+        <footer style="margin-top:40px; padding-top:20px; border-top:1px solid var(--line); font-size: 14px; color: var(--muted); text-align: center;">
+          © 2025 Sulandra Community Living Services.
         </footer>
       </section>
     </div>
   </main>
-
   <script>
     (function () {
       const header = document.querySelector(".topbar");
       function setHeaderHeightVar() {
-        const h = header.getBoundingClientRect().height;
-        document.documentElement.style.setProperty("--headerH", `${Math.ceil(h)}px`);
+        document.documentElement.style.setProperty("--headerH", `${Math.ceil(header.getBoundingClientRect().height)}px`);
       }
       window.addEventListener("load", setHeaderHeightVar);
       window.addEventListener("resize", setHeaderHeightVar);
       setHeaderHeightVar();
-
-      // Smooth scroll and active state logic
       const navLinks = [...document.querySelectorAll('.sideNav a')];
       const sections = navLinks.map(a => document.getElementById(a.getAttribute('href').substring(1)));
-
-      function setActive(id){
-        navLinks.forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${id}` ? 'true' : 'false'));
-      }
-
       window.addEventListener('scroll', () => {
         let current = "";
         const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--headerH')) + 50;
         sections.forEach(s => {
           if (window.scrollY >= s.offsetTop - offset) current = s.id;
         });
-        if (current) setActive(current);
+        if (current) navLinks.forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${current}` ? 'true' : 'false'));
       });
     })();
   </script>
