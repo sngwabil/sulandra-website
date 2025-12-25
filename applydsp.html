@@ -269,22 +269,89 @@
       padding:0; margin:-1px; overflow:hidden;
       clip:rect(0,0,0,0); white-space:nowrap; border:0;
     }
+    /* ===== TOP BAR (MATCHES INDEX.HTML) ===== */
+:root{
+  --headerH: 92px;
+}
+
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--headerH);
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  border-bottom:1px solid #e7eef8;
+}
+
+.topbarInner{
+  height: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.brandRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.brandLogo{
+  height: 64px;
+  width: auto;
+  display:block;
+}
+
+.topnav{
+  display:flex;
+  gap:18px;
+  align-items:center;
+  flex-wrap:wrap;
+  font-weight:800;
+  color:#20446e;
+}
+
+.topnav a{
+  padding:10px;
+  border-radius:12px;
+  text-decoration:none;
+  color:#20446e;
+}
+
+.topnav a.active{
+  background:#eaf2ff;
+  color:#1f5aa6;
+  box-shadow: inset 0 0 0 1px #d7e6ff;
+}
   </style>
 </head>
 <body>
-
-<header>
-  <div class="wrap">
-    <div class="brand" role="banner" aria-label="Company header">
-      <div class="logo" aria-hidden="true">SCLS</div>
-      <div class="titleblock">
-        <h1>Direct Support Professional Application</h1>
-        <p>Helping people live their best life in the community.</p>
-      </div>
+  <header class="topbar" role="banner">
+  <div class="topbarInner">
+    <div class="brandRow" aria-label="Sulandra Community Living Services">
+      <img
+        src="assets/logo.png"
+        alt="Sulandra Community Living Services"
+        class="brandLogo"
+      >
     </div>
-  </div>
-</header>
 
+    <nav class="topnav" aria-label="Primary">
+      <a href="index.html">Home</a>
+      <a href="about.html">About Us</a>
+      <a href="services.html">Services</a>
+      <a href="quality.html">Quality</a>
+      <a href="stories.html">Stories</a>
+      <a class="active" href="careers.html">Careers</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>  
 <main class="wrap" role="main">
   <div class="grid">
     <section class="card" aria-label="Application form">
