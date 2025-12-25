@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>About Us | Sulandra Community Living Services</title>
-  <meta name="description" content="Learn about Sulandra Community Living Services—what we do, who we serve, our impact, and our commitment to quality, safety, compliance, and community." />
+  <meta name="description" content="Learn about Sulandra Community Living Services—what we do, who we serve, our impact, and our commitment to quality, safety, and community." />
 
   <style>
     :root{
@@ -19,7 +19,7 @@
       --shadow:0 10px 28px rgba(10,30,60,.08);
       --radius:22px;
 
-      /* If your main site has a fixed header, set this to that height */
+      /* header height (auto-adjusted by JS) */
       --headerH: 92px;
 
       /* sidebar width */
@@ -37,7 +37,7 @@
     a{color:inherit; text-decoration:none}
     img{max-width:100%; display:block}
 
-    /* ---- Top nav (simple, compatible with your index header style) ---- */
+    /* ---- Top nav ---- */
     .topbar{
       position: sticky;
       top: 0;
@@ -58,7 +58,7 @@
     }
     .brandRow{
       display:flex; align-items:center; gap:12px;
-      font-weight:900;
+      font-weight:950;
       letter-spacing:-.2px;
       color:var(--brand);
       font-size:18px;
@@ -73,7 +73,7 @@
       gap:18px;
       align-items:center;
       flex-wrap:wrap;
-      font-weight:700;
+      font-weight:800;
       color:#20446e;
     }
     .topnav a{
@@ -121,7 +121,7 @@
     .aboutSidebar{
       position: sticky;
       top: calc(var(--headerH) + 18px);
-      background: linear-gradient(180deg, rgba(31,90,166,.90), rgba(31,90,166,.80));
+      background: linear-gradient(180deg, rgba(31,90,166,.92), rgba(31,90,166,.82));
       border-radius: 26px;
       box-shadow: var(--shadow);
       overflow: hidden;
@@ -141,12 +141,12 @@
       font-size: 18px;
       letter-spacing:.6px;
       text-transform: uppercase;
-      font-weight: 900;
+      font-weight: 950;
     }
     .sideHint{
       font-size: 12px;
       opacity: .85;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .sideNav{
@@ -166,7 +166,7 @@
       border-radius: 14px;
       background: rgba(255,255,255,.10);
       color:#fff;
-      font-weight: 800;
+      font-weight: 900;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
       transition: transform .15s ease, background .15s ease;
     }
@@ -193,6 +193,7 @@
       font-size: 13px;
     }
     .sideFooter strong{color:#fff}
+    .sideFooter a{ text-decoration: underline; }
 
     /* ---- Right content ---- */
     .aboutContent{
@@ -257,7 +258,7 @@
       margin: 18px 0 8px;
       font-size: 20px;
       letter-spacing:-.2px;
-      font-weight: 900;
+      font-weight: 950;
       color:#0b1220;
     }
     .section p{color:#1b2a44; margin: 10px 0}
@@ -284,7 +285,7 @@
       border-radius: 999px;
       background: #eaf2ff;
       color: var(--brand);
-      font-weight: 900;
+      font-weight: 950;
       font-size: 12px;
       letter-spacing:.55px;
       text-transform: uppercase;
@@ -329,7 +330,7 @@
     .numLabel{
       margin-top: 6px;
       color: #244060;
-      font-weight: 750;
+      font-weight: 800;
       font-size: 13px;
     }
 
@@ -342,7 +343,7 @@
     }
     summary{
       cursor: pointer;
-      font-weight: 900;
+      font-weight: 950;
       color:#0b1220;
       list-style:none;
     }
@@ -360,7 +361,7 @@
       border-radius: 999px;
       background: #eef5ff;
       border: 1px solid #dcebff;
-      font-weight: 850;
+      font-weight: 900;
       color:#20446e;
       font-size: 13px;
     }
@@ -444,7 +445,7 @@
       <div class="brandRow" aria-label="Sulandra Community Living Services">
         <div class="brandMark" aria-hidden="true"></div>
         <div>
-          Sulandra<br><span style="font-weight:800; font-size:12px; color:#2b5d9b;">Community Living Services</span>
+          Sulandra<br><span style="font-weight:850; font-size:12px; color:#2b5d9b;">Community Living Services</span>
         </div>
       </div>
 
@@ -463,8 +464,8 @@
   <main class="container" role="main">
     <h1 class="pageTitle">About Us</h1>
     <p class="pageLead">
-      Sulandra Community Living Services provides high-trust, person-centered supports in homes and communities.
-      We focus on the outcomes that matter most—safety, dignity, stability, independence, and meaningful participation in everyday life.
+      Sulandra Community Living Services supports people in homes and communities with care that is steady, respectful, and built around the person.
+      We focus on safety, dignity, daily independence, and a life that feels connected and meaningful.
     </p>
 
     <div class="aboutWrap">
@@ -472,7 +473,7 @@
       <aside class="aboutSidebar" aria-label="About page navigation">
         <div class="sideHeader">
           <h2>About Us</h2>
-          <div class="sideHint">Scroll &amp; the menu updates</div>
+          <div class="sideHint">You’re here</div>
         </div>
 
         <ul class="sideNav" id="sideNav">
@@ -487,11 +488,11 @@
         </ul>
 
         <div class="sideFooter">
-          <strong>Need help now?</strong><br>
-          Visit <a href="contact.html" style="text-decoration:underline;">Contact</a> or call your coordinator.
+          <strong>Want to talk?</strong><br>
+          We’d love to learn what you need. Visit <a href="contact.html">Contact</a>.
           <div class="divider" style="background:rgba(255,255,255,.22)"></div>
-          <span class="muted" style="color:rgba(255,255,255,.9)">
-            We lead with safety, transparency, and consistent communication.
+          <span class="muted" style="color:rgba(255,255,255,.92)">
+            Clear communication. Reliable support. Respect every day.
           </span>
         </div>
       </aside>
@@ -502,8 +503,8 @@
           <h3>Our purpose</h3>
           <div class="bigLine">Providing support where and when people need it.</div>
           <p>
-            We exist to help people live full lives in the community—supported by respectful professionals, dependable routines,
-            and a system built for quality, safety, and accountability.
+            People do best when support is consistent and respectful. Sulandra builds services around everyday life—home routines, community participation,
+            relationships, and the practical skills that help someone live more independently over time.
           </p>
 
           <div class="ctaRow" aria-label="About page actions">
@@ -517,118 +518,114 @@
         <section id="what-we-do" class="section anchor">
           <h2>What We Do</h2>
           <p class="subhead">
-            Sulandra provides home and community-based supports that are practical, consistent, and aligned to the person’s goals.
-            We build services around real life—not paperwork—so people can experience stability, growth, and community belonging.
+            We provide home and community-based supports that help people feel safe, valued, and capable—at home, at work, and in the community.
+            Our approach is person-centered, practical, and built around consistency.
           </p>
 
-          <h3>Our service model: stable, person-centered, measurable</h3>
+          <h3>Our approach: personal, steady, and respectful</h3>
           <p>
-            People thrive when support is predictable and respectful. Our teams work with individuals, families/guardians, county boards,
-            and interdisciplinary partners to create service plans that fit the person’s daily environment and build skills over time.
+            We start by listening—what matters, what’s hard, what a good day looks like, and what support would make life easier. From there, we build a plan
+            that fits the person’s routines and goals, and we deliver support with professionalism and care.
           </p>
 
           <div class="grid2">
             <div class="card">
-              <span class="kicker">Foundation</span>
-              <h4>Safety and dignity</h4>
+              <span class="kicker">What you’ll feel</span>
+              <h4>More stability at home</h4>
               <p>
-                Support is delivered with professionalism, boundaries, and respect—protecting the person’s rights while reducing risk.
-                We treat safety as a daily practice, not a policy on a shelf.
+                Predictable routines, clear communication, and dependable support so daily life feels calmer and more manageable.
               </p>
             </div>
             <div class="card">
-              <span class="kicker">Execution</span>
-              <h4>Consistency and follow-through</h4>
+              <span class="kicker">What you’ll see</span>
+              <h4>Progress you can recognize</h4>
               <p>
-                We prioritize reliable staffing, clear documentation, and active supervision so plans become real routines.
-                Families know what to expect—and who to call.
+                Skill-building in real life—cooking, hygiene, budgeting, organization, community navigation, and healthier daily habits.
               </p>
             </div>
           </div>
 
-          <h3>What we provide (core supports)</h3>
-          <div class="pillRow" aria-label="Service pillars">
-            <span class="pill">Community Living Supports</span>
-            <span class="pill">Respite &s</span>
-            <span class="pill">Skill Building & Independence</span>
-            <span class="pill">Community Inclusion</span>
-            <span class="pill">Care Coordination Support</span>
-            <span class="pill">Medication Support (non-medical)</span>
-            <span class="pill">Behavioral Support Coordination</span>
+          <h3>Core support areas</h3>
+          <div class="pillRow" aria-label="Support areas">
+            <span class="pill">Daily Living Support</span>
+            <span class="pill">Respite for Families</span>
+            <span class="pill">Life Skills & Independence</span>
+            <span class="pill">Community Participation</span>
+            <span class="pill">Routine Building</span>
+            <span class="pill">Positive Behavior Support</span>
+            <span class="pill">Healthy Living Support</span>
             <span class="pill">Transportation Support (as authorized)</span>
           </div>
 
           <div class="divider"></div>
 
-          <h3>How we work (from intake to ongoing support)</h3>
-          <table class="miniTable" aria-label="Service workflow">
+          <h3>What working with us looks like</h3>
+          <table class="miniTable" aria-label="Working with Sulandra">
             <thead>
               <tr>
-                <th>Phase</th>
-                <th>What you can expect</th>
-                <th>How we keep it strong</th>
+                <th>Step</th>
+                <th>What happens</th>
+                <th>How you’re supported</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>1) Welcome & Discovery</strong></td>
+                <td><strong>1) Welcome</strong></td>
                 <td>
-                  We listen first—what’s working, what’s hard, what matters most. We review authorizations, risks, routines,
-                  strengths, and supports already in place.
+                  We learn about needs, goals, preferences, routines, and what support would make life better day-to-day.
                 </td>
                 <td class="muted">
-                  Clear intake checklist, risk screening, communication plan, emergency contacts, and service expectations.
+                  Clear communication, service expectations, and a plan for next steps.
                 </td>
               </tr>
               <tr>
-                <td><strong>2) Person-Centered Plan</strong></td>
+                <td><strong>2) Planning</strong></td>
                 <td>
-                  Goals become practical routines: skill steps, community participation, health/safety supports, and
-                  family/guardian preferences.
+                  We align supports to the person’s goals and daily rhythms—what’s realistic, helpful, and sustainable.
                 </td>
                 <td class="muted">
-                  Documentation standards, training plan for staff, measurable outcomes, and supervisor review.
+                  A plan that focuses on dignity, safety, and practical progress.
                 </td>
               </tr>
               <tr>
-                <td><strong>3) Staffing & Training</strong></td>
+                <td><strong>3) Matching</strong></td>
                 <td>
-                  Thoughtful matching, orientation, and competency checks—so the right staff are prepared for the person’s needs.
+                  We match staff to needs and personality fit, so support feels comfortable and respectful.
                 </td>
                 <td class="muted">
-                  Background checks, role-based training, coaching, and early shift shadowing before independent assignment.
+                  Training and coaching so staff are prepared for the work.
                 </td>
               </tr>
               <tr>
-                <td><strong>4) Support in Real Life</strong></td>
+                <td><strong>4) Support</strong></td>
                 <td>
-                  Support shows up on time, follows the plan, documents correctly, and communicates changes quickly.
+                  Support becomes routine—consistent schedules, predictable communication, and steady follow-through.
                 </td>
                 <td class="muted">
-                  Supervisory visits, shift notes review, outcome tracking, and continuous feedback loops.
+                  Supervisory oversight and open lines of communication.
                 </td>
               </tr>
               <tr>
-                <td><strong>5) Improve & Prevent</strong></td>
+                <td><strong>5) Improve</strong></td>
                 <td>
-                  We learn from feedback and incidents, strengthen plans, and raise the quality bar over time.
+                  We check what’s working, make adjustments, and strengthen supports as needs change.
                 </td>
                 <td class="muted">
-                  Incident review, corrective action, refresher training, audits, and ongoing improvement.
+                  Ongoing feedback, plan updates, and continuous improvement.
                 </td>
               </tr>
             </tbody>
           </table>
 
           <details>
-            <summary>Our promise to families, guardians, and partners</summary>
+            <summary>Our promise to you</summary>
             <div class="detailsBody">
               <ul>
-                <li><strong>Clear communication:</strong> You will know who is supporting, who is supervising, and how to reach us.</li>
-                <li><strong>Professionalism:</strong> Staff are trained for boundaries, dignity, confidentiality, and respectful support.</li>
-                <li><strong>Reliability:</strong> We plan for coverage, staffing transitions, and continuity.</li>
-                <li><strong>Transparency:</strong> Concerns are logged, addressed, and followed through.</li>
-                <li><strong>Outcome focus:</strong> Services are evaluated by real improvements in daily life and stability.</li>
+                <li><strong>Respect first:</strong> We honor voice, choice, privacy, and dignity.</li>
+                <li><strong>Clear communication:</strong> You’ll know who to contact and what to expect.</li>
+                <li><strong>Consistency:</strong> We build stable routines and reliable support.</li>
+                <li><strong>Professional care:</strong> We train, coach, and supervise staff for quality and safety.</li>
+                <li><strong>Continuous improvement:</strong> We learn, adjust, and strengthen support over time.</li>
               </ul>
             </div>
           </details>
@@ -638,66 +635,64 @@
         <section id="who-we-serve" class="section anchor">
           <h2>Who We Serve</h2>
           <p class="subhead">
-            We support people with a wide range of needs and life goals—always tailoring services to the individual,
-            their communication style, their routines, and their vision for community life.
+            We support individuals and families who want dependable, respectful care—delivered in a way that protects dignity and builds confidence.
+            Support is individualized, because no two people are the same.
           </p>
 
           <h3>Support across settings</h3>
           <ul>
-            <li>In-home supports and community-based assistance</li>
-            <li>Supported living environments and shared living support (as authorized)</li>
-            <li>Respite services for family/caregiver relief</li>
-            <li>Community participation and life skills development</li>
-            <li>Coordination support that strengthens continuity of care</li>
+            <li>In-home support and community-based assistance</li>
+            <li>Supported living environments and shared support (as authorized)</li>
+            <li>Respite support to strengthen families and caregivers</li>
+            <li>Life skills development and community access</li>
+            <li>Collaboration with care partners to keep support consistent</li>
           </ul>
 
           <div class="grid2" style="margin-top:14px;">
             <div class="card">
               <span class="kicker">Approach</span>
-              <h4>Person-centered planning that’s actually practical</h4>
+              <h4>Support that fits real life</h4>
               <p>
-                We translate goals into daily routines, step-by-step skills, and real-world practice. Support adapts as needs change,
-                while keeping safety and dignity consistent.
+                We build routines that work in the person’s actual environment—home, neighborhood, and community spaces—so support feels natural, not disruptive.
               </p>
             </div>
             <div class="card">
               <span class="kicker">Partnership</span>
-              <h4>Families & guardians are essential partners</h4>
+              <h4>Families & guardians are part of the team</h4>
               <p>
-                We collaborate closely with families/guardians and care teams—sharing updates, addressing concerns quickly,
-                and aligning support with what matters most.
+                We collaborate closely and communicate clearly—so questions get answered, concerns get addressed, and progress stays visible.
               </p>
             </div>
           </div>
 
-          <h3>Specialized support priorities (where we go deeper)</h3>
+          <h3>Where we’re especially strong</h3>
           <div class="grid3">
             <div class="card">
-              <span class="kicker">Health & Safety</span>
-              <h4>Complex routines</h4>
-              <p>Support for safe daily living tasks, risk awareness, crisis prevention basics, and consistent supervision.</p>
+              <span class="kicker">Daily routines</span>
+              <h4>Consistency that reduces stress</h4>
+              <p>Predictable support helps people feel safer, calmer, and more confident—especially during transitions.</p>
             </div>
             <div class="card">
-              <span class="kicker">Communication</span>
-              <h4>Understanding first</h4>
-              <p>Respectful support aligned to each person’s communication style, preferences, and sensory needs.</p>
+              <span class="kicker">Community</span>
+              <h4>Inclusion that feels meaningful</h4>
+              <p>We support community participation that aligns with interests—recreation, learning, volunteering, faith, or work.</p>
             </div>
             <div class="card">
-              <span class="kicker">Independence</span>
-              <h4>Skill-building</h4>
-              <p>Cooking, budgeting, hygiene, scheduling, transportation practice, community navigation, and household routines.</p>
+              <span class="kicker">Skill building</span>
+              <h4>Progress through practice</h4>
+              <p>We focus on small, steady steps that build independence and improve quality of life over time.</p>
             </div>
           </div>
 
           <details>
-            <summary>What “good support” looks like day-to-day</summary>
+            <summary>What a great day of support looks like</summary>
             <div class="detailsBody">
               <ul>
-                <li>Stable routines that reduce stress and increase confidence.</li>
-                <li>Meaningful participation—relationships, recreation, learning, volunteering, and work opportunities.</li>
-                <li>Respectful staff who support without taking over.</li>
-                <li>Consistent documentation that protects the person and the team.</li>
-                <li>Proactive planning for changes (health shifts, schedule changes, staffing transitions).</li>
+                <li>Support happens on time and with respect.</li>
+                <li>The person is heard and involved in decisions.</li>
+                <li>Daily life feels organized, not overwhelming.</li>
+                <li>Skills are practiced naturally during real routines.</li>
+                <li>Communication is clear and proactive.</li>
               </ul>
             </div>
           </details>
@@ -707,63 +702,57 @@
         <section id="impact" class="section anchor">
           <h2>Impact</h2>
           <p class="subhead">
-            Impact is measured in real outcomes: safer homes, stronger routines, fewer crises, better continuity, and
-            more participation in community life. We focus on building systems that produce consistent results.
+            We measure success by what changes in everyday life: more stability, fewer crises, stronger independence, and more connection to community.
+            Real impact is built through consistent support and a system that keeps getting better.
           </p>
 
-          <h3>How we define “impact” (outcomes that matter)</h3>
+          <h3>Outcomes we work toward</h3>
           <div class="grid2">
             <div class="card">
-              <span class="kicker">Individual outcomes</span>
-              <h4>Independence & stability</h4>
+              <span class="kicker">For individuals</span>
+              <h4>Confidence and independence</h4>
               <p>
-                Improved daily living skills, stable routines, consistent attendance at activities, and greater confidence in everyday life.
+                Stronger daily skills, better routines, more community participation, and more opportunities to choose and grow.
               </p>
             </div>
             <div class="card">
-              <span class="kicker">Family outcomes</span>
-              <h4>Peace of mind</h4>
+              <span class="kicker">For families</span>
+              <h4>Reliability and peace of mind</h4>
               <p>
-                Reliable staffing, clear communication, timely incident response, and coordinated teamwork reduce caregiver stress.
+                Clear communication, dependable staffing, and a team that takes concerns seriously and responds quickly.
               </p>
             </div>
           </div>
 
-          <h3>Our measurable commitments (targets we publish and improve)</h3>
-          <p class="muted">
-            Because you’re early-stage, the best approach is to publish commitments and track them transparently as you scale.
-            Below are strong “measurement-ready” KPIs you can keep or adjust.
-          </p>
-
-          <div class="numbers" aria-label="Impact targets">
+          <h3>Commitments we live by</h3>
+          <div class="numbers" aria-label="Commitments">
             <div class="numCard">
-              <div class="numBig">24/7</div>
-              <div class="numLabel">Timely reporting + escalation support pathway for urgent safety concerns</div>
+              <div class="numBig">Safety</div>
+              <div class="numLabel">We plan ahead, stay alert to risk, and respond quickly to concerns.</div>
             </div>
             <div class="numCard">
-              <div class="numBig">72h</div>
-              <div class="numLabel">Care plan update window after significant change, incident trend, or new risk</div>
+              <div class="numBig">Respect</div>
+              <div class="numLabel">We protect dignity, privacy, and choice in every interaction.</div>
             </div>
             <div class="numCard">
-              <div class="numBig">100%</div>
-              <div class="numLabel">Staff onboarding includes rights, safety, abuse/neglect prevention, and reporting expectations</div>
+              <div class="numBig">Consistency</div>
+              <div class="numLabel">We build stable routines that make daily life calmer and more predictable.</div>
             </div>
           </div>
 
           <div class="callout">
-            <strong>Value to stakeholders:</strong> We build stability at home and in the community by preventing avoidable issues,
-            strengthening communication, and using structured quality improvement—similar to how robust organizations frame impact and outcomes. :contentReference[oaicite:5]{index=5}
+            <strong>What matters most:</strong> People should feel safe, understood, and supported—without losing their voice or independence.
+            That’s the outcome we work toward every day.
           </div>
 
           <details>
-            <summary>Impact reporting we can publish as we grow (recommended)</summary>
+            <summary>How we keep progress moving</summary>
             <div class="detailsBody">
               <ul>
-                <li>Service reliability (coverage rate, late/failed shifts, replacement time).</li>
-                <li>Training completion and competency checks by role.</li>
-                <li>Incident trends and prevention actions (what changed because we learned).</li>
-                <li>Family/guardian satisfaction and response time to concerns.</li>
-                <li>Community participation indicators (attendance, engagement, natural supports).</li>
+                <li>Regular check-ins to confirm what’s working and what needs to change.</li>
+                <li>Coaching and supervision that supports strong day-to-day care.</li>
+                <li>Clear communication with families and care partners.</li>
+                <li>Support that adapts as goals, needs, and routines evolve.</li>
               </ul>
             </div>
           </details>
@@ -773,120 +762,65 @@
         <section id="quality-innovation" class="section anchor">
           <h2>Quality and Innovation</h2>
           <p class="subhead">
-            Quality is not a slogan—it’s a system: consistent training, supervision, documentation, incident learning,
-            and ongoing improvement. We build an environment where the right support happens at the right time in the safest setting.
+            Quality is how care feels in the moment—and how reliable it is over time. We build quality through training, supervision, clear communication,
+            and a culture that takes safety and professionalism seriously.
           </p>
 
-          <h3>Our Quality-First operating system</h3>
-          <p>
-            We use a “quality-first” approach to guide hiring, training, staffing decisions, supervision, and service improvement,
-            similar to what high-performing organizations describe as a framework that keeps everything focused on outcomes and experience. :contentReference[oaicite:6]{index=6}
-          </p>
-
+          <h3>How we protect quality</h3>
           <div class="grid3">
             <div class="card">
-              <span class="kicker">Standardize</span>
-              <h4>Clear expectations</h4>
-              <p>Role clarity, service documentation standards, and daily routines that match the plan.</p>
+              <span class="kicker">Training</span>
+              <h4>Prepared, confident staff</h4>
+              <p>Staff are trained for dignity, safety, documentation, and respectful support—before they work independently.</p>
             </div>
             <div class="card">
-              <span class="kicker">Coach</span>
-              <h4>Competency first</h4>
-              <p>Training + shadowing + coaching so staff can deliver safe support in real situations.</p>
+              <span class="kicker">Supervision</span>
+              <h4>Support that doesn’t disappear</h4>
+              <p>Leaders check in, coach, and address issues quickly—so services stay steady and reliable.</p>
             </div>
             <div class="card">
-              <span class="kicker">Improve</span>
-              <h4>Measure and refine</h4>
-              <p>We track outcomes, review incidents, and implement corrective actions with follow-through.</p>
+              <span class="kicker">Improvement</span>
+              <h4>We learn and strengthen</h4>
+              <p>We review feedback, address concerns, and improve systems so support becomes stronger over time.</p>
             </div>
           </div>
 
           <div class="divider"></div>
 
-          <h3>Safety & incident learning (stronger systems, faster visibility)</h3>
+          <h3>Safety is built into the day</h3>
           <p>
-            We maintain an internal incident tracking and escalation pathway designed to make leadership aware quickly,
-            increase visibility, and enable immediate action—an approach aligned with robust incident systems described in your PDF. :contentReference[oaicite:7]{index=7}
+            Safety isn’t only about emergencies—it’s about daily prevention. We emphasize predictable routines, clear expectations, and calm, respectful support.
+            When concerns arise, we respond promptly, communicate clearly, and take action.
           </p>
 
           <div class="grid2">
             <div class="card">
-              <span class="kicker">Reporting</span>
-              <h4>Report early. Update often.</h4>
-              <p>
-                Staff are trained to report concerns promptly and add updates as information becomes available.
-                Our goal is learning + prevention, not blame.
-              </p>
+              <span class="kicker">Prevention</span>
+              <h4>Reduce risk before it becomes a crisis</h4>
+              <p>We focus on early signals—routine changes, stress triggers, environment issues—so support stays steady and safe.</p>
             </div>
             <div class="card">
-              <span class="kicker">Corrective action</span>
-              <h4>Fix the system, not just the moment</h4>
-              <p>
-                We evaluate whether policy, training, supervision, staffing, or environmental safeguards need strengthening,
-                then implement corrective actions with timelines and accountability. :contentReference[oaicite:8]{index=8}
-              </p>
+              <span class="kicker">Response</span>
+              <h4>Clear steps when something happens</h4>
+              <p>Concerns are documented, addressed, and followed through—so families aren’t left wondering what happened next.</p>
             </div>
           </div>
 
-          <details>
-            <summary>Regulatory alignment (Ohio DODD standards we build around)</summary>
-            <div class="detailsBody">
-              <ul>
-                <li><strong>Incident reporting & continuous quality improvement:</strong> systems aligned to the intent of OAC 5123-17-02. :contentReference[oaicite:9]{index=9}</li>
-                <li><strong>Background investigations:</strong> hiring safeguards aligned to OAC 5123-2-02. :contentReference[oaicite:10]{index=10}</li>
-                <li><strong>Provider certification:</strong> operational standards aligned to OAC 5123-2-08. :contentReference[oaicite:11]{index=11}</li>
-                <li><strong>Compliance reviews:</strong> readiness for audits aligned to OAC 5123-2-04. :contentReference[oaicite:12]{index=12}</li>
-              </ul>
-            </div>
-          </details>
-
-          <h3>Compliance program: speak up culture + real follow-through</h3>
+          <h3>Tools that help care stay consistent</h3>
           <p>
-            We promote a “speak up” culture with a dedicated reporting pathway and zero tolerance for retaliation.
-            Your PDF highlights a compliance action line concept (“See it, say it”), broad reporting access, and mandatory training—this page mirrors that structure with original wording. :contentReference[oaicite:13]{index=13}
-          </p>
-
-          <div class="callout">
-            <strong>Speak Up:</strong> Anyone—individuals served, families, staff, partners—can report concerns.
-            Reports are documented, investigated appropriately, and resolved with corrective actions and communication.
-          </div>
-
-          <h3>Training that prepares staff for real life</h3>
-          <p>
-            Training is a key element of effective compliance and quality programs. We require annual compliance education and use results to strengthen focus areas—mirroring the “train + analyze + reinforce” model referenced in your PDF. :contentReference[oaicite:14]{index=14}
-          </p>
-
-          <div class="grid2">
-            <div class="card">
-              <span class="kicker">Onboarding</span>
-              <h4>Rights, safety, reporting, documentation</h4>
-              <p>Every new hire learns expectations for dignity, confidentiality, boundaries, incident reporting, and service notes.</p>
-            </div>
-            <div class="card">
-              <span class="kicker">Ongoing</span>
-              <h4>De-escalation & crisis prevention skills</h4>
-              <p>
-                Staff practice safe interactions, emotional regulation support, and prevention strategies—similar in intent
-                to de-escalation-focused trainings described in your PDF. :contentReference[oaicite:15]{index=15}
-              </p>
-            </div>
-          </div>
-
-          <h3>Technology that supports human care</h3>
-          <p>
-            We use technology to improve consistency—scheduling reliability, documentation quality, alerts, training tracking,
-            and communication. Your PDF emphasizes EHR/telehealth/monitoring as part of high-tech, high-touch care; we apply that same principle to community living operations. :contentReference[oaicite:16]{index=16}
+            We use simple, effective tools to support communication and service quality: training tracking, documentation standards, supervisor review routines,
+            and clear channels for family updates and concerns.
           </p>
 
           <details>
-            <summary>Innovation roadmap (what we are building)</summary>
+            <summary>What “quality” means to Sulandra</summary>
             <div class="detailsBody">
               <ul>
-                <li>Training + competency dashboard by role and assignment.</li>
-                <li>Shift documentation and supervisor review workflows.</li>
-                <li>Incident trend tracking and prevention action tracker.</li>
-                <li>Family communication logs and response-time monitoring.</li>
-                <li>Readiness binder for audits and compliance reviews.</li>
+                <li>The person feels safe and respected.</li>
+                <li>Support is consistent and predictable.</li>
+                <li>Staff know what to do and how to communicate.</li>
+                <li>Concerns are taken seriously and addressed.</li>
+                <li>Progress is supported with patience and professionalism.</li>
               </ul>
             </div>
           </details>
@@ -896,48 +830,44 @@
         <section id="culture" class="section anchor">
           <h2>Culture</h2>
           <p class="subhead">
-            Culture is how people experience us every day—individuals served, families, staff, and partners.
-            We build culture through leadership behaviors, training, accountability, and daily communication.
+            Culture is created by everyday actions—how we speak, how we listen, and how we show up. We build culture around respect,
+            professionalism, and a shared commitment to doing the right thing.
           </p>
 
-          <h3>Our culture in one sentence</h3>
-          <p>
-            <strong>High standards + high support</strong>: We set clear expectations, and we invest deeply in the people who carry them out.
-          </p>
-
+          <h3>What we stand for</h3>
           <div class="grid3">
             <div class="card">
-              <span class="kicker">Respect</span>
-              <h4>Dignity in every interaction</h4>
-              <p>We support choice, privacy, and personal voice—especially in moments that matter.</p>
+              <span class="kicker">Dignity</span>
+              <h4>People first, always</h4>
+              <p>We honor voice, choice, privacy, and personal identity.</p>
             </div>
             <div class="card">
-              <span class="kicker">Reliability</span>
-              <h4>We do what we say</h4>
-              <p>Schedules, documentation, follow-up—consistency builds trust and reduces stress.</p>
+              <span class="kicker">Professionalism</span>
+              <h4>Respectful boundaries</h4>
+              <p>We keep support safe and ethical with clear expectations and accountability.</p>
             </div>
             <div class="card">
-              <span class="kicker">Growth</span>
-              <h4>We get better on purpose</h4>
-              <p>Feedback becomes improvement: training updates, supervision changes, and prevention planning.</p>
+              <span class="kicker">Teamwork</span>
+              <h4>We communicate</h4>
+              <p>We share updates, solve problems early, and keep families and partners informed.</p>
             </div>
           </div>
 
-          <h3>Workplace safety & wellness</h3>
+          <h3>A workplace people can be proud of</h3>
           <p>
-            We maintain clear expectations for reporting injuries and safety hazards promptly, and we treat
-            prevention as part of the job—consistent with the “report quickly, correct quickly” posture described in your PDF. :contentReference[oaicite:17]{index=17}
+            We want great staff to feel supported. That means clear direction, training that matches real work, leaders who respond,
+            and recognition for consistent, high-quality care.
           </p>
 
           <details>
-            <summary>What staff can expect from Sulandra</summary>
+            <summary>How we support staff success</summary>
             <div class="detailsBody">
               <ul>
-                <li>Training that matches real assignments, not generic modules.</li>
-                <li>Supervision that supports—not only audits.</li>
-                <li>Clear escalation pathways for safety concerns.</li>
-                <li>Recognition for steady, high-quality work.</li>
-                <li>Team communication standards so no one is “left guessing.”</li>
+                <li>Structured onboarding and role-based training.</li>
+                <li>Coaching and supervision that builds skill and confidence.</li>
+                <li>Clear escalation paths for safety and support questions.</li>
+                <li>Respectful teamwork and professional standards.</li>
+                <li>Opportunities to grow into lead and supervisor roles.</li>
               </ul>
             </div>
           </details>
@@ -947,68 +877,40 @@
         <section id="leadership" class="section anchor">
           <h2>Leadership</h2>
           <p class="subhead">
-            Leadership exists to protect quality, support staff, and keep services stable. We believe leadership is practiced daily—
-            through clarity, responsiveness, accountability, and fairness.
+            Leadership is responsible for protecting quality and supporting teams. We lead with clarity, fairness, and responsiveness—so services stay stable
+            and people feel supported.
           </p>
 
           <div class="grid2">
             <div class="card">
               <span class="kicker">How we lead</span>
-              <h4>Transparent, measurable, responsive</h4>
-              <p>
-                We set clear expectations, track outcomes, investigate concerns, and make improvements that show up in day-to-day life.
-              </p>
+              <h4>Visible and responsive</h4>
+              <p>We stay connected to what’s happening day-to-day and respond quickly when needs change.</p>
             </div>
             <div class="card">
               <span class="kicker">What we protect</span>
-              <h4>Safety, rights, stability</h4>
-              <p>
-                Every decision—staffing, training, supervision—must protect dignity and reduce risk in the person’s environment.
-              </p>
+              <h4>Safety, dignity, and consistency</h4>
+              <p>We make decisions that keep support respectful, reliable, and aligned with the person’s goals.</p>
             </div>
           </div>
 
-          <h3>Leadership structure (easy to audit, easy to understand)</h3>
-          <table class="miniTable" aria-label="Leadership roles">
-            <thead>
-              <tr>
-                <th>Role</th>
-                <th>Primary accountability</th>
-                <th>What you can expect</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Executive Director</strong></td>
-                <td>Quality system, compliance readiness, operational reliability</td>
-                <td class="muted">Clear priorities, timely response, and resourcing what improves outcomes.</td>
-              </tr>
-              <tr>
-                <td><strong>Program/Operations Lead</strong></td>
-                <td>Staffing, supervision cadence, documentation standards</td>
-                <td class="muted">Consistent oversight, coaching, and problem-solving.</td>
-              </tr>
-              <tr>
-                <td><strong>Quality & Compliance Lead</strong></td>
-                <td>Audits, training adherence, incident learning, corrective actions</td>
-                <td class="muted">Structured prevention plans and measurable improvements.</td>
-              </tr>
-              <tr>
-                <td><strong>On-Call Supervisor</strong></td>
-                <td>Escalations, urgent support, safety communication</td>
-                <td class="muted">A real response pathway when issues happen—any time.</td>
-              </tr>
-            </tbody>
-          </table>
+          <h3>Leadership priorities</h3>
+          <ul>
+            <li>Clear expectations for quality and professionalism</li>
+            <li>Timely communication with families and partners</li>
+            <li>Reliable staffing and continuity</li>
+            <li>Supportive supervision and coaching</li>
+            <li>Continuous improvement through feedback</li>
+          </ul>
 
           <details>
-            <summary>Leadership commitments we publish</summary>
+            <summary>What families can expect from leadership</summary>
             <div class="detailsBody">
               <ul>
-                <li>Response-time expectations for family/guardian concerns.</li>
-                <li>Supervision visit cadence and documentation review.</li>
-                <li>Training completion rates and competency checks.</li>
-                <li>Incident trend review + prevention actions implemented.</li>
+                <li>Responsive communication when questions or concerns come up.</li>
+                <li>Follow-through—clear next steps, not vague promises.</li>
+                <li>A focus on stability and safe, respectful support.</li>
+                <li>Commitment to learning and improving when something needs to change.</li>
               </ul>
             </div>
           </details>
@@ -1018,37 +920,35 @@
         <section id="community" class="section anchor">
           <h2>Community Involvement</h2>
           <p class="subhead">
-            Community inclusion isn’t optional—it’s a core outcome. We support people to participate in everyday community life
-            in ways that match their interests, culture, and goals.
+            Community life matters. We support people to participate in the places and activities that make life feel meaningful—relationships, recreation,
+            volunteering, learning, and work.
           </p>
 
-          <h3>Inclusion looks like real life</h3>
+          <h3>Inclusion that feels real</h3>
           <ul>
-            <li>Building routines around community access (libraries, parks, events, faith communities, recreation)</li>
-            <li>Supporting volunteering and service opportunities</li>
-            <li>Helping people develop natural relationships and social connections</li>
-            <li>Practicing life skills in the environments where they are used</li>
-            <li>Partnering with local organizations and resources</li>
+            <li>Helping people participate in activities that match their interests</li>
+            <li>Supporting volunteering and community events</li>
+            <li>Building social connections and natural supports</li>
+            <li>Practicing skills in real community settings</li>
+            <li>Partnering with local resources and programs</li>
           </ul>
 
           <div class="callout">
-            <strong>Our annual commitment:</strong> Each program site participates in structured community engagement efforts—service projects,
-            inclusion activities, and partnerships—so community impact stays consistent as we grow. This mirrors the “challenge/commitment”
-            structure shown in your PDF, without copying wording. :contentReference[oaicite:18]{index=18}
+            <strong>Our goal:</strong> Support that helps people be part of the community—not just present, but truly included.
           </div>
 
           <details>
-            <summary>Examples of community partnership categories</summary>
+            <summary>Examples of community activities</summary>
             <div class="detailsBody">
               <div class="pillRow">
-                <span class="pill">Local nonprofits</span>
-                <span class="pill">Food & clothing banks</span>
-                <span class="pill">Parks & recreation</span>
                 <span class="pill">Libraries</span>
-                <span class="pill">Workforce programs</span>
+                <span class="pill">Parks & recreation</span>
+                <span class="pill">Volunteer projects</span>
+                <span class="pill">Fitness & wellness</span>
+                <span class="pill">Classes & workshops</span>
+                <span class="pill">Community events</span>
                 <span class="pill">Faith communities</span>
-                <span class="pill">Cultural organizations</span>
-                <span class="pill">Health & wellness groups</span>
+                <span class="pill">Work experiences</span>
               </div>
             </div>
           </details>
@@ -1058,75 +958,53 @@
         <section id="our-people" class="section anchor">
           <h2>Our People</h2>
           <p class="subhead">
-            Great services come from supported teams. We hire carefully, train intentionally, supervise consistently,
-            and build professional pride in dependable, respectful work.
+            Our team is the heart of Sulandra. We hire people who are dependable, kind, and professional—and we train and support them so they can do the work well.
           </p>
 
-          <h3>Hiring that protects people</h3>
-          <p>
-            We follow a hiring process designed to protect individuals served and strengthen trust—aligning to background investigation expectations
-            in Ohio’s DD service delivery system (OAC 5123-2-02). :contentReference[oaicite:19]{index=19}
-          </p>
-
-          <div class="grid2">
+          <h3>What you can expect from our staff</h3>
+          <div class="grid3">
             <div class="card">
-              <span class="kicker">Screening</span>
-              <h4>Right fit + right values</h4>
-              <p>
-                We screen for professionalism, reliability, boundaries, and commitment to dignity—because values show up in daily interactions.
-              </p>
+              <span class="kicker">Respect</span>
+              <h4>Dignity and privacy</h4>
+              <p>Support that honors the person and protects their voice, space, and choices.</p>
             </div>
             <div class="card">
-              <span class="kicker">Readiness</span>
-              <h4>Competency before assignment</h4>
-              <p>
-                Staff receive role-based training, shadowing, and coaching so they can support safely—not just “clock in.”
-              </p>
+              <span class="kicker">Reliability</span>
+              <h4>Consistent routines</h4>
+              <p>Dependable support that fits the plan and helps daily life run smoother.</p>
+            </div>
+            <div class="card">
+              <span class="kicker">Professionalism</span>
+              <h4>Clear communication</h4>
+              <p>Staff who document, communicate, and work as a team—so everyone stays informed.</p>
             </div>
           </div>
 
-          <h3>Professional development pathway</h3>
+          <h3>How we support staff excellence</h3>
           <p>
-            We offer growth pathways for strong DSPs and supervisors—so quality stays high and people stay supported.
-            This includes mentorship, leadership training, and skill specialization (documentation excellence, de-escalation, coaching).
+            We believe excellent care comes from supported professionals. That’s why we focus on onboarding, training, coaching, and leadership availability—especially
+            when situations are complex or stressful.
           </p>
 
           <details>
-            <summary>Our code of conduct (plain language)</summary>
+            <summary>Interested in joining the team?</summary>
             <div class="detailsBody">
-              <ul>
-                <li>Protect privacy and confidentiality.</li>
-                <li>Respect rights, voice, and personal choice.</li>
-                <li>Maintain boundaries and professionalism.</li>
-                <li>Report concerns promptly and honestly.</li>
-                <li>Document clearly—because documentation protects everyone.</li>
-                <li>No retaliation for speaking up.</li>
-              </ul>
+              <p>
+                If you’re dependable, compassionate, and ready to make a real difference, we’d love to meet you.
+                Visit our Careers page to explore openings and apply.
+              </p>
+              <div class="ctaRow">
+                <a class="btn primary" href="careers.html">View Careers</a>
+                <a class="btn" href="contact.html">Ask a Question</a>
+              </div>
             </div>
           </details>
-
-          <div class="divider"></div>
-
-          <h3>Compliance & reporting: always open, always documented</h3>
-          <p>
-            Your PDF emphasizes broad access reporting, 24/7/365 availability, and “speak up” culture tied to training and visible posting. :contentReference[oaicite:20]{index=20}
-            We implement that same model with original wording:
-          </p>
-
-          <div class="callout">
-            <strong>Speak Up Line (coming live):</strong> A confidential way to raise concerns about safety, fraud/waste/abuse, rights, or professionalism.
-            Reports are logged, reviewed by leadership, investigated appropriately, and resolved with corrective action and follow-up communication.
-          </div>
-
-          <p class="muted">
-            If you want, tell me the phone/email you want displayed for your Speak Up Line and I’ll wire it into this section.
-          </p>
         </section>
 
         <div class="footer" role="contentinfo">
           <div>
             <strong>Sulandra Community Living Services</strong><br>
-            <span class="muted">Helping people live safely, independently, and meaningfully in the community.</span>
+            <span class="muted">Support that feels steady, respectful, and personal.</span>
           </div>
           <div class="muted">
             <a href="privacy.html" style="text-decoration:underline;">Privacy Policy</a> &nbsp;·&nbsp;
@@ -1139,7 +1017,22 @@
   </main>
 
   <script>
-    // --- Smooth scroll with offset friendly behavior ---
+    // Auto-measure header height so sidebar never slides under it
+    (function () {
+      const header = document.querySelector(".topbar");
+      if (!header) return;
+
+      function setHeaderHeightVar() {
+        const h = header.getBoundingClientRect().height;
+        document.documentElement.style.setProperty("--headerH", `${Math.ceil(h)}px`);
+      }
+
+      window.addEventListener("load", setHeaderHeightVar);
+      window.addEventListener("resize", setHeaderHeightVar);
+      setHeaderHeightVar();
+    })();
+
+    // Smooth scroll
     document.querySelectorAll('.sideNav a').forEach(a => {
       a.addEventListener('click', (e) => {
         const id = a.getAttribute('href');
@@ -1152,7 +1045,7 @@
       });
     });
 
-    // --- Scrollspy: highlight current section in sidebar ---
+    // Scrollspy: highlight current section in sidebar
     const navLinks = [...document.querySelectorAll('.sideNav a')];
     const sections = navLinks
       .map(a => document.getElementById(a.dataset.target))
@@ -1165,8 +1058,13 @@
       });
     }
 
+    function getHeaderOffset(){
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--headerH');
+      const h = parseInt(raw, 10);
+      return (Number.isFinite(h) ? h : 92) + 40;
+    }
+
     const observer = new IntersectionObserver((entries) => {
-      // Choose the entry closest to the top that is intersecting
       const visible = entries
         .filter(e => e.isIntersecting)
         .sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -1176,13 +1074,27 @@
       }
     }, {
       root: null,
-      rootMargin: `-${Math.round(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--headerH')) + 40)}px 0px -65% 0px`,
+      rootMargin: () => `-${getHeaderOffset()}px 0px -65% 0px`,
       threshold: [0.12, 0.2, 0.35, 0.5, 0.65]
     });
 
-    sections.forEach(s => observer.observe(s));
+    // Some browsers don't accept rootMargin as a function; fallback:
+    try{
+      sections.forEach(s => observer.observe(s));
+    } catch(e){
+      const obs = new IntersectionObserver((entries) => {
+        const visible = entries.filter(x=>x.isIntersecting)
+          .sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+        if (visible && visible.target && visible.target.id) setActive(visible.target.id);
+      }, {
+        root: null,
+        rootMargin: `-${getHeaderOffset()}px 0px -65% 0px`,
+        threshold: [0.12, 0.2, 0.35, 0.5, 0.65]
+      });
+      sections.forEach(s => obs.observe(s));
+    }
 
-    // Set initial state
+    // Initial state
     const hash = (location.hash || '').replace('#','');
     if (hash && document.getElementById(hash)) setActive(hash);
     else if (sections[0]) setActive(sections[0].id);
