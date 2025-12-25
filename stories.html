@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stories of Impact | Sulandra Community Living Services</title>
+  <meta name="description" content="Read real success stories of independence, community integration, and personal growth through Sulandra’s DODD waiver services." />
+
+  <style>
+    :root{
+      --bg:#ffffff; --ink:#0b1220; --muted:#55657e; --brand:#1f5aa6; --brand2:#2c74d6;
+      --line:#e7eef8; --card:#f7fbff; --soft:#f2f6fb; --shadow:0 10px 28px rgba(10,30,60,.08);
+      --radius:22px; --headerH: 92px; --sideW: 360px;
+    }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; }
+    a{color:inherit; text-decoration:none}
+    
+    .topbar{ position: sticky; top: 0; z-index: 50; height: var(--headerH); background: rgba(255,255,255,.92); backdrop-filter: blur(8px); border-bottom:1px solid #e7eef8; }
+    .topbarInner{ height: 100%; max-width: 1200px; margin: 0 auto; padding: 0 18px; display:flex; align-items:center; justify-content:space-between; }
+    .brandLogo{ height: 240px; width: auto; display: block; }
+    .topnav{ display:flex; gap:18px; font-weight:800; color:#20446e; }
+    .topnav a{ padding:10px; border-radius:12px; }
+    .topnav a.active{ background: #eaf2ff; color:var(--brand); box-shadow: inset 0 0 0 1px #d7e6ff; }
+
+    .container{ max-width: 1200px; margin: 0 auto; padding: 22px 18px 80px; }
+    .pageTitle{ margin: 18px 0 8px; font-size: clamp(34px, 4vw, 54px); color:var(--brand); font-weight: 950; }
+    .pageLead{ max-width: 980px; color: var(--muted); font-size: 18px; }
+
+    .contentWrap{ margin-top: 22px; display:grid; grid-template-columns: var(--sideW) 1fr; gap: 24px; align-items: start; }
+
+    .sidebar{ position: sticky; top: calc(var(--headerH) + 18px); background: linear-gradient(180deg, #1f5aa6, #2c74d6); border-radius: 26px; box-shadow: var(--shadow); overflow: hidden; }
+    .sideHeader{ padding: 22px; color:#fff; }
+    .sideHeader h2{ margin:0; font-size: 18px; text-transform: uppercase; font-weight: 950; }
+    .sideNav{ list-style:none; margin:0; padding: 10px 14px 18px; display:flex; flex-direction:column; gap:10px; }
+    .sideNav a{ display:flex; align-items:center; justify-content:space-between; padding: 14px; border-radius: 14px; background: rgba(255,255,255,.10); color:#fff; font-weight: 900; }
+    .sideNav a[aria-current="true"]{ background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 2px rgba(255,255,255,.38); }
+    .caret{ width:26px; height:26px; border-radius:10px; display:grid; place-items:center; background: rgba(255,255,255,.20); font-weight: 950; }
+
+    .mainContent{ background: var(--soft); border: 1px solid var(--line); border-radius: 26px; padding: 22px; box-shadow: var(--shadow); }
+    .storyCard{ background: #fff; border-radius: 22px; border: 1px solid var(--line); padding: 30px; margin-bottom: 24px; }
+    .storyLabel{ display:inline-flex; padding: 7px 12px; border-radius: 999px; background: #eaf2ff; color: var(--brand); font-weight: 950; font-size: 11px; text-transform: uppercase; margin-bottom: 14px; }
+    .storyTitle{ margin:0 0 12px; font-size: 28px; font-weight: 950; color: var(--brand); }
+    .storyText{ color: #1b2a44; font-size: 17px; }
+    
+    .quoteBlock{ padding: 20px; background: var(--card); border-left: 4px solid var(--brand); border-radius: 0 14px 14px 0; margin: 20px 0; }
+    .quoteText{ font-style: italic; font-weight: 700; color: #0b1220; }
+    .quoteAuthor{ font-size: 13px; font-weight: 900; text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+
+    .anchor{ scroll-margin-top: calc(var(--headerH) + 24px); }
+
+    @media (max-width: 980px){
+      .contentWrap{ grid-template-columns: 1fr; }
+      .sidebar{ position: relative; top:auto; margin-bottom: 24px; }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbarInner">
+      <div class="brandRow"><img src="assets/logo.png" alt="Sulandra" class="brandLogo"></div>
+      <nav class="topnav">
+        <a href="index.html">Home</a>
+        <a href="about.html">About Us</a>
+        <a href="services.html">Services</a>
+        <a href="quality.html">Quality</a>
+        <a class="active" href="stories.html">Stories</a>
+        <a href="careers.html">Careers</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="pageTitle">Stories of Independence</h1>
+    <p class="pageLead">
+      We believe every individual has the right to live their life to the fullest. These stories highlight the progress, joy, and independence achieved through person-centered DODD waiver support.
+    </p>
+
+    <div class="contentWrap">
+      <aside class="sidebar">
+        <div class="sideHeader"><h2>Our Stories</h2></div>
+        <ul class="sideNav">
+          <li><a href="#supported-living" data-target="supported-living"><span class="caret">^</span><span>Supported Living</span></a></li>
+          <li><a href="#community-integration" data-target="community-integration"><span class="caret">^</span><span>Community Success</span></a></li>
+          <li><a href="#respite-impact" data-target="respite-impact"><span class="caret">^</span><span>Respite Care</span></a></li>
+          <li><a href="#daily-skills" data-target="daily-skills"><span class="caret">^</span><span>Daily Skill Growth</span></a></li>
+        </ul>
+      </aside>
+
+      <section class="mainContent">
+        
+        <section id="supported-living" class="storyCard anchor">
+          <span class="storyLabel">HPC & Supported Living</span>
+          <h2 class="storyTitle">A Home of One's Own</h2>
+          <p class="storyText">
+            For years, Marcus dreamed of having his own space. Through the Individualized Service Plan (ISP) process and Sulandra's Homemaker/Personal Care (HPC) services, Marcus successfully transitioned from a family home to his own apartment. Our team provides the "behind-the-scenes" support he needs—like budgeting for rent and organizing his kitchen—while Marcus enjoys the pride of having his own front door key.
+          </p>
+          <div class="quoteBlock">
+            <p class="quoteText">"I never thought I could do this, but Sulandra showed me I just needed the right tools. I love my new home."</p>
+            <p class="quoteAuthor">— Marcus, Resident</p>
+          </div>
+        </section>
+
+        <section id="community-integration" class="storyCard anchor">
+          <span class="storyLabel">Community Involvement</span>
+          <h2 class="storyTitle">Connecting Through Volunteering</h2>
+          
+          <p class="storyText">
+            Belonging means being an active part of the neighborhood. Using Sulandra's non-medical transportation and community integration support, Elena began volunteering at the local animal shelter. This wasn't just about a task; it was about building relationships. Today, Elena is a well-known face at the shelter, fostering social connections that have significantly boosted her confidence and happiness.
+          </p>
+          <div class="quoteBlock">
+            <p class="quoteText">"Elena doesn't just 'attend' events anymore—she's a leader in her community. Seeing her confidence grow has been the greatest gift."</p>
+            <p class="quoteAuthor">— Elena's Guardian</p>
+          </div>
+        </section>
+
+        <section id="respite-impact" class="storyCard anchor">
+          <span class="storyLabel">Respite Support</span>
+          <h2 class="storyTitle">Supporting the Whole Family</h2>
+          <p class="storyText">
+            The Miller family provides constant care for their son, Leo. When they needed to travel for a family emergency, they turned to Sulandra for respite care. Our trained staff stepped in seamlessly, following Leo’s routine perfectly. For the Millers, the "quality" wasn't just in the care Leo received, but in the peace of mind they felt knowing he was safe and happy while they were away.
+          </p>
+        </section>
+
+        <section id="daily-skills" class="storyCard anchor">
+          <span class="storyLabel">Skill Building</span>
+          <h2 class="storyTitle">Mastering the Kitchen</h2>
+          
+          <p class="storyText">
+            Independence often starts in the kitchen. James wanted to learn how to cook healthy meals instead of relying on pre-packaged food. Our HPC staff worked with James to create a visual recipe book and practiced safety skills on the stove. Six months later, James is cooking three nights a week and has even started a small "cooking club" with his roommates.
+          </p>
+          <div class="quoteBlock">
+            <p class="quoteText">"James is so proud when he invites us over for dinner. Sulandra didn't just cook for him; they taught him a skill for life."</p>
+            <p class="quoteAuthor">— Case Manager</p>
+          </div>
+        </section>
+
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); text-align: center;">
+          <p><strong>Every story is proof that with the right support, anything is possible.</strong></p>
+          <p>© 2025 Sulandra Community Living Services.</p>
+        </footer>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const header = document.querySelector(".topbar");
+      function setHeaderHeightVar() {
+        document.documentElement.style.setProperty("--headerH", `${Math.ceil(header.getBoundingClientRect().height)}px`);
+      }
+      window.addEventListener("load", setHeaderHeightVar);
+      window.addEventListener("resize", setHeaderHeightVar);
+      setHeaderHeightVar();
+
+      const navLinks = [...document.querySelectorAll('.sideNav a')];
+      const sections = navLinks.map(a => document.getElementById(a.getAttribute('href').substring(1)));
+
+      window.addEventListener('scroll', () => {
+        let current = "";
+        const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--headerH')) + 50;
+        sections.forEach(s => {
+          if (window.scrollY >= s.offsetTop - offset) current = s.id;
+        });
+        if (current) navLinks.forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${current}` ? 'true' : 'false'));
+      });
+    })();
+  </script>
+</body>
+</html>
