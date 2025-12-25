@@ -39,23 +39,25 @@
 
     /* ---- Top nav ---- */
     .topbar{
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(255,255,255,.92);
-      backdrop-filter: blur(8px);
-      border-bottom:1px solid var(--line);
-    }
-    .topbarInner{
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 14px 18px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:16px;
-      min-height: var(--headerH);
-    }
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--headerH);          /* 🔒 LOCK HEIGHT */
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  border-bottom:1px solid #e7eef8;
+}
+
+.topbarInner{
+  height: 100%;                    /* fill locked height */
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 18px;                 /* vertical padding REMOVED */
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
     .brandRow{
       display:flex; align-items:center; gap:12px;
       font-weight:950;
