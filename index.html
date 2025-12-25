@@ -479,22 +479,48 @@
 }
 
 /* HERO: convert background hero into a slideshow without deleting your current background rule */
+/* HERO: BrightSpring-style transition (keep your slideshow) */
 .heroMedia{
-  background: none !important;          /* overrides your background:url(hero.jpg) */
+  background: none !important;   /* keep slideshow */
   overflow: hidden;
+  position: relative;
 }
+
+/* Dark blur you like (kept mostly on the photo side, not across the whole image) */
 .heroMedia::before{
   content:"";
   position:absolute;
   inset:0;
+  z-index:2;
+  pointer-events:none;
+
+  /* darker on the left, then fades out before the text edge */
   background: linear-gradient(90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,.75) 60%,
-    rgba(255,255,255,1) 100%
+    rgba(11,42,74,.55) 0%,
+    rgba(11,42,74,.38) 42%,
+    rgba(11,42,74,0) 68%
   );
-  z-index: 3;
+
+  /* “dark blur” feel */
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* BrightSpring-ish white angled panel that creates the crisp split */
+.heroMedia::after{
+  content:"";
+  position:absolute;
+  top:-90px;
+  right:-240px;
+  width:560px;
+  height:calc(100% + 180px);
+  background: rgba(255,255,255,.94);
+  transform: rotate(12deg);
+  border-radius: 999px;
+  z-index:3;
   pointer-events:none;
 }
+
 
 /* Slideshow container */
 .slides{
