@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Services | Sulandra Community Living Services</title>
-  <meta name="description" content="Explore Sulandra Community Living Services—home and community-based supports designed to be consistent, respectful, and person-centered." />
+  <title>Our Services | Sulandra Community Living Services</title>
+  <meta name="description" content="Explore our integrated provider services, including community living support, respite care, and life skills development." />
 
   <style>
     :root{
@@ -21,276 +21,253 @@
       --headerH: 92px;
       --sideW: 360px;
     }
+
     *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
     body{
       margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       color:var(--ink);
       background:var(--bg);
       line-height:1.55;
     }
-    a{color:inherit;text-decoration:none}
-    img{max-width:100%;display:block}
+    a{color:inherit; text-decoration:none}
+    img{max-width:100%; display:block}
 
-    /* Top bar */
+    /* ---- Top nav ---- */
     .topbar{
-      position:sticky;
-      top:0;
-      z-index:50;
-      height:var(--headerH);
-      background:rgba(255,255,255,.92);
-      backdrop-filter:blur(8px);
-      border-bottom:1px solid var(--line);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      height: var(--headerH);
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      border-bottom:1px solid #e7eef8;
     }
     .topbarInner{
-      max-width:1200px;
-      margin:0 auto;
-      height:100%;
-      padding:0 18px;
+      height: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 18px;
       display:flex;
       align-items:center;
       justify-content:space-between;
+      gap:16px;
     }
-    .brandLogo{height:64px}
-    .topnav{display:flex;gap:18px;font-weight:800}
-    .topnav a{padding:10px;border-radius:12px}
-    .topnav a.active{
-      background:#eaf2ff;
-      color:var(--brand);
-      box-shadow:inset 0 0 0 1px #d7e6ff;
-    }
+    .brandLogo{ height: 240px; width: auto; display: block; }
+    .topnav{ display:flex; gap:18px; align-items:center; flex-wrap:wrap; font-weight:800; color:#20446e; }
+    .topnav a{ padding:10px 10px; border-radius:12px; opacity:.92; }
+    .topnav a.active{ background: #eaf2ff; color:var(--brand); box-shadow: inset 0 0 0 1px #d7e6ff; }
 
-    /* Layout */
-    .container{max-width:1200px;margin:0 auto;padding:22px 18px 80px}
-    .pageTitle{
-      font-size:clamp(34px,4vw,54px);
-      color:var(--brand);
-      font-weight:950;
-      margin:18px 0 8px;
-    }
-    .pageLead{max-width:980px;color:var(--muted);font-size:18px}
+    /* ---- Page shell ---- */
+    .container{ max-width: 1200px; margin: 0 auto; padding: 22px 18px 80px; }
+    .pageTitle{ margin: 18px 0 8px; font-size: clamp(34px, 4vw, 54px); letter-spacing:-.6px; color:var(--brand); line-height:1.05; font-weight:950; }
+    .pageLead{ margin:0; max-width: 980px; color: var(--muted); font-size: 18px; }
 
-    .wrap{
-      display:grid;
-      grid-template-columns:var(--sideW) 1fr;
-      gap:24px;
-      margin-top:22px;
-    }
+    .aboutWrap{ margin-top: 22px; display:grid; grid-template-columns: var(--sideW) 1fr; gap: 24px; align-items: start; }
 
-    /* Sidebar */
-    .sidebar{
-      position:sticky;
-      top:calc(var(--headerH) + 18px);
-      background:linear-gradient(180deg,rgba(31,90,166,.95),rgba(31,90,166,.85));
-      border-radius:26px;
-      color:#fff;
-      box-shadow:var(--shadow);
+    /* ---- Sidebar ---- */
+    .aboutSidebar{
+      position: sticky;
+      top: calc(var(--headerH) + 18px);
+      background: linear-gradient(180deg, rgba(31,90,166,.92), rgba(31,90,166,.82));
+      border-radius: 26px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.18);
     }
-    .sideHeader{padding:22px;font-weight:950;text-transform:uppercase}
-    .sideNav{list-style:none;padding:0 14px 18px;margin:0}
-    .sideNav li{margin-bottom:10px}
-    .sideNav a{
-      display:block;
-      padding:14px;
-      border-radius:14px;
-      background:rgba(255,255,255,.12);
-      font-weight:900;
-    }
-    .sideNav a[aria-current="true"]{
-      background:rgba(255,255,255,.25);
-    }
+    .sideHeader{ padding: 22px 22px 14px; color:#fff; display:flex; align-items:flex-end; justify-content:space-between; gap:10px; }
+    .sideHeader h2{ margin:0; font-size: 18px; letter-spacing:.6px; text-transform: uppercase; font-weight: 950; }
+    .sideNav{ list-style:none; margin:0; padding: 10px 14px 18px; display:flex; flex-direction:column; gap:10px; }
+    .sideNav a{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 14px 14px; border-radius: 14px; background: rgba(255,255,255,.10); color:#fff; font-weight: 900; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+    .sideNav a[aria-current="true"]{ background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 2px rgba(255,255,255,.38); }
+    .caret{ width:26px;height:26px;border-radius:10px; display:grid; place-items:center; background: rgba(255,255,255,.20); font-weight: 950; }
 
-    /* Content */
-    .content{
-      background:var(--soft);
-      border-radius:26px;
-      padding:22px;
-      box-shadow:var(--shadow);
-    }
-    .heroCard{
-      background:#fff;
-      border-radius:22px;
-      padding:20px;
-      border:1px solid var(--line);
-    }
-    .heroCard h3{text-transform:uppercase;font-size:14px;color:var(--brand)}
-    .heroCard .bigLine{
-      font-size:clamp(24px,2.6vw,38px);
-      font-weight:950;
-      margin:10px 0;
-    }
+    /* ---- Content Blocks ---- */
+    .aboutContent{ background: var(--soft); border: 1px solid var(--line); border-radius: 26px; padding: 22px; box-shadow: var(--shadow); }
+    .section{ margin-top: 18px; background: #fff; border-radius: 22px; border: 1px solid var(--line); padding: 22px 20px; }
+    .section h2{ margin:0 0 10px; color: var(--brand); font-size: 34px; letter-spacing:-.35px; line-height:1.1; font-weight: 950; }
+    .section p{ color:#1b2a44; margin: 10px 0; }
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top: 14px; }
+    .card{ background: var(--card); border: 1px solid #dcebff; border-radius: 18px; padding: 16px 16px; }
+    .kicker{ display:inline-flex; padding: 7px 10px; border-radius: 999px; background: #eaf2ff; color: var(--brand); font-weight: 950; font-size: 11px; letter-spacing:.55px; text-transform: uppercase; margin-bottom: 8px; }
+    .card h4{ margin: 0 0 6px; font-size: 18px; font-weight: 950; }
+    
+    .featureList{ list-style: none; padding: 0; margin: 14px 0; }
+    .featureList li{ position: relative; padding-left: 24px; margin-bottom: 8px; font-weight: 600; color: #1b2a44; }
+    .featureList li::before{ content: "✓"; position: absolute; left: 0; color: var(--brand); font-weight: 900; }
 
-    .btn{
-      display:inline-block;
-      padding:12px 14px;
-      border-radius:14px;
-      font-weight:900;
-      border:1px solid #cfe2ff;
-      background:#eaf2ff;
-      color:var(--brand);
-    }
-    .btn.primary{
-      background:linear-gradient(180deg,var(--brand2),var(--brand));
-      color:#fff;
-      border:none;
-    }
+    .anchor{ scroll-margin-top: calc(var(--headerH) + 24px); }
 
-    .section{
-      background:#fff;
-      border-radius:22px;
-      border:1px solid var(--line);
-      padding:22px;
-      margin-top:18px;
-    }
-    .section h2{color:var(--brand);font-size:34px;margin-bottom:10px}
-    .section .subhead{color:var(--muted);max-width:980px}
-
-    ul{padding-left:18px}
-    li{margin:6px 0}
-
-    .footer{
-      margin-top:26px;
-      padding-top:18px;
-      border-top:1px solid var(--line);
-      display:flex;
-      justify-content:space-between;
-      flex-wrap:wrap;
-      color:var(--muted);
-    }
-
-    @media(max-width:980px){
-      .wrap{grid-template-columns:1fr}
-      .sidebar{position:relative;top:auto}
+    @media (max-width: 980px){
+      .aboutWrap{ grid-template-columns: 1fr; }
+      .aboutSidebar{ position: relative; top:auto; margin-bottom: 24px; }
+      .grid2{ grid-template-columns: 1fr; }
     }
   </style>
 </head>
 
 <body>
-<header class="topbar">
-  <div class="topbarInner">
-    <img src="assets/logo.png" alt="Sulandra Community Living Services" class="brandLogo">
-    <nav class="topnav">
-      <a href="index.html">Home</a>
-      <a href="about.html">About Us</a>
-      <a href="services.html" class="active">Services</a>
-      <a href="quality.html">Quality</a>
-      <a href="stories.html">Stories</a>
-      <a href="careers.html">Careers</a>
-      <a href="contact.html">Contact</a>
-    </nav>
-  </div>
-</header>
-
-<main class="container">
-  <h1 class="pageTitle">Services</h1>
-  <p class="pageLead">
-    Home and community-based supports that are consistent, respectful, and built around each individual.
-  </p>
-
-  <div class="wrap">
-    <aside class="sidebar">
-      <div class="sideHeader">Services</div>
-      <ul class="sideNav">
-        <li><a href="#overview">Overview</a></li>
-        <li><a href="#community-living">Community Living Support</a></li>
-        <li><a href="#respite">Respite Services</a></li>
-        <li><a href="#life-skills">Life Skills & Independence</a></li>
-        <li><a href="#employment">Supported Employment</a></li>
-        <li><a href="#transportation">Transportation & Access</a></li>
-        <li><a href="#behavioral">Behavioral Support</a></li>
-        <li><a href="#get-started">Get Started</a></li>
-      </ul>
-    </aside>
-
-    <section class="content">
-      <div class="heroCard">
-        <h3>Integrated Support</h3>
-        <div class="bigLine">Services that work together—at home and in the community.</div>
-        <p>
-          Our services are coordinated to support stability, independence, and quality of life across everyday settings.
-        </p>
-        <p style="margin-top:12px">
-          <a href="contact.html" class="btn primary">Request Services</a>
-        </p>
+  <header class="topbar">
+    <div class="topbarInner">
+      <div class="brandRow">
+        <img src="assets/logo.png" alt="Sulandra Community Living Services" class="brandLogo">
       </div>
+      <nav class="topnav">
+        <a href="index.html">Home</a>
+        <a href="about.html">About Us</a>
+        <a class="active" href="services.html">Services</a>
+        <a href="quality.html">Quality</a>
+        <a href="stories.html">Stories</a>
+        <a href="careers.html">Careers</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+    </div>
+  </header>
 
-      <section id="overview" class="section">
-        <h2>Overview</h2>
-        <p class="subhead">
-          We provide person-centered services that respect individual choice while supporting safety, skill-building, and community inclusion.
-        </p>
-      </section>
+  <main class="container">
+    <h1 class="pageTitle">Integrated Services</h1>
+    <p class="pageLead">
+      We deliver a variety of impactful and valuable provider services to high-need, chronic, and complex patients in home and community settings[cite: 34]. 
+      Our platform addresses the multiple needs of individuals across their various settings and over time[cite: 29].
+    </p>
 
-      <section id="community-living" class="section">
-        <h2>Community Living Support</h2>
-        <p class="subhead">
-          In-home and community-based assistance designed to support daily routines and independence.
-        </p>
-        <ul>
-          <li>Daily living routines and structure</li>
-          <li>Meal preparation and household tasks</li>
-          <li>Community participation</li>
-          <li>Health and safety support (as authorized)</li>
+    <div class="aboutWrap">
+      <aside class="aboutSidebar">
+        <div class="sideHeader">
+          <h2>Our Services</h2>
+        </div>
+        <ul class="sideNav">
+          <li><a href="#community-living" data-target="community-living"><span class="caret">^</span><span>Community Living</span></a></li>
+          <li><a href="#respite-care" data-target="respite-care"><span class="caret">^</span><span>Respite Support</span></a></li>
+          <li><a href="#life-skills" data-target="life-skills"><span class="caret">^</span><span>Life Skills & Growth</span></a></li>
+          <li><a href="#specialized" data-target="specialized"><span class="caret">^</span><span>Specialized Care</span></a></li>
+          <li><a href="#logistics" data-target="logistics"><span class="caret">^</span><span>Logistics & Access</span></a></li>
         </ul>
-      </section>
+      </aside>
 
-      <section id="respite" class="section">
-        <h2>Respite Services</h2>
-        <p class="subhead">
-          Short-term relief for families and caregivers while ensuring consistent, respectful care.
-        </p>
-      </section>
+      <section class="aboutContent">
+        <section id="community-living" class="section anchor">
+          <span class="kicker">Core Provider Service</span>
+          <h2>Community Living Support</h2>
+          <p>
+            We provide services when and where required to individuals in their homes and communities, often in coordination with broader care solutions[cite: 32]. 
+            Our focus is on clinical and operational excellence to deliver improved outcomes in lower-cost settings[cite: 30].
+          </p>
+          <div class="grid2">
+            <div class="card">
+              <h4>In-Home Assistance</h4>
+              <p>Daily support with hygiene, meal preparation, and household routines to foster independence.</p>
+            </div>
+            <div class="card">
+              <h4>Shared Living</h4>
+              <p>Coordinated residential support for individuals who benefit from shared environments and professional oversight.</p>
+            </div>
+          </div>
+        </section>
 
-      <section id="life-skills" class="section">
-        <h2>Life Skills & Independence</h2>
-        <p class="subhead">
-          Coaching and hands-on support to build everyday skills and confidence.
-        </p>
-      </section>
+        <section id="respite-care" class="section anchor">
+          <span class="kicker">Family Support</span>
+          <h2>Respite Services</h2>
+          <p>
+            Personalized respite care designed to provide families and primary caregivers with reliable, high-quality support during scheduled breaks.
+          </p>
+          <ul class="featureList">
+            <li>Short-term residential respite</li>
+            <li>In-home caregiver relief</li>
+            <li>Emergency respite planning</li>
+            <li>Structured activities for the individual</li>
+          </ul>
+        </section>
 
-      <section id="employment" class="section">
-        <h2>Supported Employment</h2>
-        <p class="subhead">
-          Assistance preparing for, obtaining, and maintaining meaningful employment.
-        </p>
-      </section>
+        <section id="life-skills" class="section anchor">
+          <span class="kicker">Independence</span>
+          <h2>Life Skills & Employment</h2>
+          <p>
+            Our "Rehab Care" philosophy focuses on skill-building and vocational success to help individuals integrate fully into their communities[cite: 22].
+          </p>
+          <div class="grid2">
+            <div class="card">
+              <h4>Supported Employment</h4>
+              <p>Job coaching, placement assistance, and ongoing support for meaningful workplace participation.</p>
+            </div>
+            <div class="card">
+              <h4>Financial Literacy</h4>
+              <p>Practical training in budgeting, banking, and managing personal resources.</p>
+            </div>
+          </div>
+        </section>
 
-      <section id="transportation" class="section">
-        <h2>Transportation & Community Access</h2>
-        <p class="subhead">
-          Support accessing appointments, activities, and essential community resources.
-        </p>
-      </section>
+        <section id="specialized" class="section anchor">
+          <span class="kicker">Complex Populations</span>
+          <h2>Specialized Care Coordination</h2>
+          <p>
+            We specialize in serving senior and specialty populations, coordinating care for those with high-need or chronic conditions[cite: 26, 34].
+          </p>
+          <div class="card" style="background:#fff; border-style: dashed; border-color: var(--brand);">
+            <h4>Individualized Care Planning</h4>
+            <p>Every person receives a customized roadmap that aligns their personal goals with our clinical standards for safety and dignity.</p>
+          </div>
+          <ul class="featureList">
+            <li>Behavioral Support Coordination</li>
+            <li>Health & Wellness Monitoring</li>
+            <li>Medication Oversight (in coordination with pharmacy solutions) [cite: 32]</li>
+          </ul>
+        </section>
 
-      <section id="behavioral" class="section">
-        <h2>Behavioral Support</h2>
-        <p class="subhead">
-          Respectful strategies that promote stability, coping skills, and positive daily routines.
-        </p>
-      </section>
+        <section id="logistics" class="section anchor">
+          <span class="kicker">Access</span>
+          <h2>Transportation & Community Access</h2>
+          <p>
+            Reliable logistics to ensure individuals can reach medical appointments, social events, and community resources without barriers.
+          </p>
+          <div class="grid2">
+            <div class="card">
+              <h4>Medical Transport</h4>
+              <p>Safety-first transportation for healthcare visits and therapy sessions.</p>
+            </div>
+            <div class="card">
+              <h4>Social Inclusion</h4>
+              <p>Supporting travel to faith communities, libraries, parks, and recreational events.</p>
+            </div>
+          </div>
+        </section>
 
-      <section id="get-started" class="section">
-        <h2>Get Started</h2>
-        <p class="subhead">
-          Contact us to discuss needs, goals, and next steps.
-        </p>
-        <a href="contact.html" class="btn primary">Contact Us</a>
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted);">
+          © 2025 Sulandra Community Living Services. Focused on clinical and operational excellence[cite: 30].
+        </footer>
       </section>
+    </div>
+  </main>
 
-      <div class="footer">
-        <div>
-          <strong>Sulandra Community Living Services</strong><br>
-          Support that feels steady, respectful, and personal.
-        </div>
-        <div>
-          <a href="privacy.html">Privacy</a> ·
-          <a href="terms.html">Terms</a> ·
-          <a href="contact.html">Contact</a>
-        </div>
-      </div>
-    </section>
-  </div>
-</main>
+  <script>
+    // Header measurement and scrollspy logic matches about.html
+    (function () {
+      const header = document.querySelector(".topbar");
+      function setHeaderHeightVar() {
+        const h = header.getBoundingClientRect().height;
+        document.documentElement.style.setProperty("--headerH", `${Math.ceil(h)}px`);
+      }
+      window.addEventListener("load", setHeaderHeightVar);
+      window.addEventListener("resize", setHeaderHeightVar);
+      setHeaderHeightVar();
+
+      // Scrollspy
+      const navLinks = [...document.querySelectorAll('.sideNav a')];
+      const sections = navLinks.map(a => document.getElementById(a.getAttribute('href').substring(1)));
+
+      function setActive(id){
+        navLinks.forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${id}` ? 'true' : 'false'));
+      }
+
+      window.addEventListener('scroll', () => {
+        let current = "";
+        sections.forEach(s => {
+          const top = s.offsetTop - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--headerH')) - 40;
+          if (window.scrollY >= top) current = s.id;
+        });
+        if (current) setActive(current);
+      });
+    })();
+  </script>
 </body>
 </html>
