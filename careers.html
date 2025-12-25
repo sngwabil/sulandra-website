@@ -38,8 +38,12 @@
     .section{ margin-top: 18px; background: #fff; border-radius: 22px; border: 1px solid var(--line); padding: 22px 20px; }
     .section h2{ margin:0 0 10px; color: var(--brand); font-size: 34px; font-weight: 950; }
     
+    .fieldGrid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 20px 0; }
+    .fieldPill{ padding: 12px; background: #eaf2ff; border: 1px solid #d7e6ff; border-radius: 14px; font-weight: 800; font-size: 13px; color: var(--brand); text-align: center; }
+
     .jobGrid{ display:grid; grid-template-columns: 1fr; gap:14px; margin-top: 20px; }
     .jobCard{ background: var(--card); border: 1px solid #dcebff; border-radius: 18px; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .jobInfo h4{ margin: 0 0 4px; font-size: 18px; font-weight: 950; color: var(--brand); }
     .btnApply{ background: var(--brand); color: #fff; padding: 12px 24px; border-radius: 12px; font-weight: 900; font-size: 14px; transition: transform 0.2s; cursor: pointer; border:none; text-align:center; text-transform: uppercase; }
     .btnApply:hover{ transform: translateY(-2px); background: var(--brand2); }
     .btnComingSoon{ background: #e2e8f0; color: #64748b; padding: 12px 24px; border-radius: 12px; font-weight: 900; font-size: 14px; cursor: not-allowed; border:none; text-transform: uppercase; }
@@ -51,6 +55,8 @@
     .kicker{ display:inline-flex; padding: 7px 10px; border-radius: 999px; background: #eaf2ff; color: var(--brand); font-weight: 950; font-size: 11px; text-transform: uppercase; margin-bottom: 8px; }
 
     .anchor{ scroll-margin-top: calc(var(--headerH) + 24px); }
+
+    .eeoText{ font-size: 12px; color: var(--muted); margin-top: 30px; line-height: 1.6; border-top: 1px solid var(--line); padding-top: 20px; }
 
     @media (max-width: 980px){
       .aboutWrap{ grid-template-columns: 1fr; }
@@ -77,14 +83,20 @@
   </header>
 
   <main class="container">
-    <h1 class="pageTitle">Build Your Future</h1>
-    <p class="pageLead">Sulandra lets you choose the healthcare field that fits you best. We need excellent people to do excellent things.</p>
+    <h1 class="pageTitle">Not just your best career.<br>Your best life.</h1>
+    <p class="pageLead">
+      At Sulandra Community Living Services, we need excellent people. To do excellent things. 
+      Have you wanted to make a difference in the lives of people – or entire communities? At Sulandra you can.
+    </p>
 
     <div class="aboutWrap">
       <aside class="aboutSidebar">
-        <div class="sideHeader"><h2>Careers</h2></div>
+        <div class="sideHeader"><h2>Career Menu</h2></div>
         <ul class="sideNav">
           <li><a href="#open-roles"><span>Open Positions</span></a></li>
+          <li><a href="#fields"><span>Healthcare Fields</span></a></li>
+          <li><a href="#initiatives"><span>Hiring Initiatives</span></a></li>
+          <li><a href="#growth"><span>Grow With Us</span></a></li>
           <li><a href="#talent-network"><span>Talent Network</span></a></li>
           <li><a href="profile.html"><span>My Profile</span></a></li>
         </ul>
@@ -92,15 +104,16 @@
 
       <section class="aboutContent">
         <section id="open-roles" class="section anchor">
-          <span class="kicker">Get Started</span>
-          <h2>Featured Opportunities</h2>
+          <span class="kicker">Current Opportunities</span>
+          <h2>Featured Openings</h2>
+          <p>We’re putting out the call for everyone from caregivers to nurses to specialists to administrators to business leaders and IT innovators.</p>
           <div class="jobGrid">
             <div class="jobCard">
-              <div><h4>Direct Support Professional</h4><p>Community Living Services</p></div>
+              <div><h4>Direct Support Professional (DSP)</h4><p>Community Living Services</p></div>
               <button class="btnApply" onclick="location.href='applydsp.html'">Apply Now</button>
             </div>
             <div class="jobCard">
-              <div><h4>Licensed Practical Nurse (LPN)</h4><p>Nursing Services</p></div>
+              <div><h4>LPN - Licensed Practical Nurse</h4><p>Nursing Services</p></div>
               <button class="btnApply" onclick="location.href='applylpn.html'">Apply Now</button>
             </div>
             <div class="jobCard">
@@ -116,25 +129,104 @@
               <button class="btnComingSoon">Coming Soon!!!</button>
             </div>
           </div>
-          
-          <div class="scamAlert">
-            <h3>Scam Alert</h3>
-            <p>Recruiters will never request financial or personal information (Social Security, credit card, or bank details) via text or email. Beware of imposters posing as employees.</p>
+        </section>
+
+        <section id="fields" class="section anchor">
+          <span class="kicker">Choice</span>
+          <h2>Find your perfect fit</h2>
+          <p>Sulandra lets you choose the healthcare field that fits you best. We invite you to explore paths across our integrated platform.</p>
+          <div class="fieldGrid">
+            <div class="fieldPill">Applied Behavior Analysis</div>
+            <div class="fieldPill">Behavioral Health</div>
+            <div class="fieldPill">Behavioral Health (I/DD) Pharmacy</div>
+            <div class="fieldPill">Community Living Services</div>
+            <div class="fieldPill">Family & Youth Services</div>
+            <div class="fieldPill">Home & Community Pharmacy</div>
+            <div class="fieldPill">Home Based Primary Care</div>
+            <div class="fieldPill">Home Health and Hospice</div>
+            <div class="fieldPill">HomeCare Services</div>
+            <div class="fieldPill">Hospice Pharmacy</div>
+            <div class="fieldPill">Mental Health Services</div>
+            <div class="fieldPill">Neuro Rehabilitation</div>
+            <div class="fieldPill">Nursing Services</div>
+            <div class="fieldPill">Specialty Infusion</div>
+            <div class="fieldPill">Specialty/Oncology Pharmacy</div>
+            <div class="fieldPill">Telecare & Remote Support</div>
           </div>
         </section>
 
+        <section class="scamAlert">
+          <h3>Scam Alert</h3>
+          <p>We are aware of a scam whereby imposters are posing as employees from our company. Beware of anyone requesting financial or personal information, or claiming to be an online hiring manager with a job offer.</p>
+          <p>During the recruitment process, no recruiter or employee will request financial or personal information (Social Security Number, credit card, driver’s license, bank information, or payment for work equipment, etc.) from you via text or email.</p>
+        </section>
+
+        <section id="initiatives" class="section anchor">
+          <span class="kicker">Commitment</span>
+          <h2>Hiring Initiatives</h2>
+          <div class="grid2">
+            <div class="card">
+              <h4>Veteran Employment</h4>
+              <p>Learn about how we hire and support veterans! We value the unique skill sets and leadership qualities you bring to healthcare.</p>
+            </div>
+            <div class="card">
+              <h4>Students & Graduates</h4>
+              <p>We value the knowledge gained through further education. We offer career and internship opportunities that fit your schedule, tuition reimbursement, and the Brighter Futures Scholarship.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="growth" class="section anchor">
+          <span class="kicker">Grow With Us</span>
+          <h2>Professional Development</h2>
+          <p>Sulandra encourages and supports the professional development of our employees. We are dedicated to helping employees develop their skills and reach their career goals.</p>
+          <ul style="padding-left:20px; font-weight: 700; color: #1f5aa6;">
+            <li>No limit to the training you can receive throughout your career.</li>
+            <li>Dedicated skill-building for long-term career advancement.</li>
+            <li>Success stories from team members like RaShai and Tabitha.</li>
+          </ul>
+        </section>
+
         <section id="talent-network" class="section anchor">
-          <span class="kicker">Stay Connected</span>
+          <span class="kicker">Stay Informed</span>
           <h2>Join Our Talent Network</h2>
-          <p>Don't see your dream job? Join our network to receive updates. Signing up will automatically create your Sulandra Candidate Profile.</p>
+          <p>Don’t see your dream job today? Join our talent network to receive email updates with our latest career opportunities and hiring events.</p>
           <button class="btnApply" style="margin-top:10px;" onclick="location.href='profile.html?action=signup'">Sign Up</button>
         </section>
 
-        <footer style="margin-top:40px; padding-top:20px; border-top:1px solid var(--line); font-size: 14px; color: var(--muted); text-align: center;">
-          © 2025 Sulandra Community Living Services. An Equal Opportunity Employer.
+        <footer class="eeoText">
+          <p><strong>Sulandra is an Equal Opportunity Employer.</strong></p>
+          <p>Sulandra and its affiliated companies provide equal employment opportunities to all employees and applicants and prohibits discrimination and harassment of any type without regard to race, color, religion, age, sex, national origin, disability status, genetics, protected veteran status, sexual orientation, gender identity or expression, or any other characteristic protected by federal, state or local laws.</p>
+          <p>This policy applies to all terms and conditions of employment, including recruiting, hiring, placement, promotion, termination, layoff, recall, transfer, leaves of absence, compensation and training.</p>
+          <p>If you have a disability and are unable to use our online tools to search or apply for jobs, we would like to assist. Please contact us for accommodation assistance.</p>
+          <p style="text-align: center; margin-top: 20px;">© 2025 Sulandra Community Living Services</p>
         </footer>
       </section>
     </div>
   </main>
+
+  <script>
+    (function () {
+      const header = document.querySelector(".topbar");
+      function setHeaderHeightVar() {
+        document.documentElement.style.setProperty("--headerH", `${Math.ceil(header.getBoundingClientRect().height)}px`);
+      }
+      window.addEventListener("load", setHeaderHeightVar);
+      window.addEventListener("resize", setHeaderHeightVar);
+      setHeaderHeightVar();
+
+      const navLinks = [...document.querySelectorAll('.sideNav a')];
+      const sections = navLinks.map(a => document.getElementById(a.getAttribute('href').substring(1)));
+
+      window.addEventListener('scroll', () => {
+        let current = "";
+        const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--headerH')) + 50;
+        sections.forEach(s => {
+          if (window.scrollY >= s.offsetTop - offset) current = s.id;
+        });
+        if (current) navLinks.forEach(a => a.setAttribute('aria-current', a.getAttribute('href') === `#${current}` ? 'true' : 'false'));
+      });
+    })();
+  </script>
 </body>
 </html>
