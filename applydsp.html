@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DSP Application | Sulandra Community Living Services</title>
+  <style>
+    :root{
+      --bg:#f6f7f8;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --border:#d1d5db;
+      --brand:#1f5aa6;
+      --focus:#2563eb;
+      --danger:#b91c1c;
+      --ok:#166534;
+      --shadow: 0 6px 18px rgba(0,0,0,.08);
+      --radius: 14px;
+      --pad: 16px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+    }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px 16px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .logo{
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--brand), #374151);
+      display:grid;
+      place-items:center;
+      color:#fff;
+      font-weight:900;
+      letter-spacing:.5px;
+      font-size: 14px;
+      text-align: center;
+      line-height: 1;
+    }
+    .titleblock h1{
+      margin:0;
+      font-size: 20px;
+      line-height:1.2;
+      color: var(--brand);
+    }
+    .titleblock p{
+      margin:3px 0 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    main .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      align-items:start;
+      margin-top: 18px;
+    }
+    @media (max-width: 860px){
+      main .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .card h2{
+      margin:0 0 4px 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .card p.sub{
+      margin:0 0 14px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section{
+      border-top: 1px dashed var(--border);
+      padding-top: 16px;
+      margin-top: 24px;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 640px){
+      .row{ grid-template-columns: 1fr; }
+    }
+
+    label{
+      display:block;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: var(--brand);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    input[type="text"], input[type="email"], input[type="tel"],
+    input[type="number"], input[type="date"], select, textarea{
+      width:100%;
+      box-sizing:border-box;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      background:#fff;
+      outline: none;
+    }
+    textarea{ min-height: 100px; resize: vertical; }
+
+    input:focus, select:focus, textarea:focus{
+      border-color: var(--focus);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+
+    .checkboxline, .radioline{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+    .checkboxline input, .radioline input{
+      transform: translateY(2px);
+    }
+
+    .btnrow{
+      display:flex;
+      gap: 12px;
+      flex-wrap:wrap;
+      margin-top: 20px;
+    }
+    button{
+      border: 0;
+      border-radius: 12px;
+      padding: 14px 24px;
+      font-weight: 800;
+      cursor:pointer;
+      font-size: 15px;
+      transition: all 0.2s ease;
+    }
+    .primary{
+      background: var(--brand);
+      color:#fff;
+    }
+    .primary:hover{ background: #1a4d8f; }
+    .ghost{
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .ghost:hover{ background: #f9fafb; }
+
+    .side h3{
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      color: var(--brand);
+    }
+    .kv{
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(209,213,219,.6);
+      font-size: 13px;
+    }
+    .kv span:first-child{ color: var(--muted); font-weight: 600; }
+    .kv span:last-child{ font-weight: 700; text-align: right; }
+
+    .required::after{
+      content:" *";
+      color: var(--danger);
+      font-weight:700;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+    .file-input-wrapper input[type=file] {
+      font-size: 100px;
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .file-custom-btn {
+      display: block;
+      padding: 12px;
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 600;
+      background: #fafafa;
+    }
+    .file-input-wrapper:hover .file-custom-btn {
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">SCLS</div>
+      <div class="titleblock">
+        <h1>Direct Support Professional Application</h1>
+        <p>Helping people live their best life in the community.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <section class="card">
+      <h2>Application for: Direct Support Professional (DSP)</h2>
+      <p class="sub">Complete the form below to begin your best career. Required fields are marked with an asterisk.</p>
+
+      <form id="appForm">
+        <div class="row">
+          <div>
+            <label class="required" for="firstName">First name</label>
+            <input id="firstName" name="firstName" type="text" required />
+          </div>
+          <div>
+            <label class="required" for="lastName">Last name</label>
+            <input id="lastName" name="lastName" type="text" required />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:16px;">
+          <div>
+            <label class="required" for="email">Email</label>
+            <input id="email" name="email" type="email" required />
+            <div class="hint">Your email will be used to create your profile.</div>
+          </div>
+          <div>
+            <label class="required" for="phone">Phone</label>
+            <input id="phone" name="phone" type="tel" placeholder="(555) 555-5555" required />
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Availability & Preferences</h2>
+          <p class="sub">Help us match you with the individuals we support.</p>
+
+          <div class="row">
+            <div>
+              <label class="required" for="startDate">Earliest start date</label>
+              <input id="startDate" name="startDate" type="date" required />
+            </div>
+            <div>
+              <label class="required" for="shiftPref">Preferred Shift</label>
+              <select id="shiftPref" name="shiftPref" required>
+                <option value="">Select…</option>
+                <option value="1st">1st Shift (Morning/Day)</option>
+                <option value="2nd">2nd Shift (Afternoon/Evening)</option>
+                <option value="3rd">3rd Shift (Overnight)</option>
+                <option value="weekend">Weekends Only</option>
+                <option value="flexible">Flexible</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label class="required">Days Available</label>
+            <div class="row">
+              <div>
+                <div class="checkboxline"><input type="checkbox" name="days" value="Mon" /> <span>Monday</span></div>
+                <div class="checkboxline"><input type="checkbox" name="days" value="Tue" /> <span>Tuesday</span></div>
+                <div class="checkboxline"><input type="checkbox" name="days" value="Wed" /> <span>Wednesday</span></div>
+                <div class="checkboxline"><input type="checkbox" name="days" value="Thu" /> <span>Thursday</span></div>
+              </div>
+              <div>
+                <div class="checkboxline"><input type="checkbox" name="days" value="Fri" /> <span>Friday</span></div>
+                <div class="checkboxline"><input type="checkbox" name="days" value="Sat" /> <span>Saturday</span></div>
+                <div class="checkboxline"><input type="checkbox" name="days" value="Sun" /> <span>Sunday</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Experience & Requirements</h2>
+          <p class="sub">DODD Waiver and Community Support requirements.</p>
+
+          <div class="row">
+            <div>
+              <label class="required" for="exp">Years of Experience</label>
+              <select id="exp" name="experience" required>
+                <option value="">Select…</option>
+                <option value="0">Less than 1 year</option>
+                <option value="1">1-2 years</option>
+                <option value="3">3-5 years</option>
+                <option value="5">5+ years</option>
+              </select>
+            </div>
+            <div>
+              <label class="required" for="education">Highest Education</label>
+              <select id="education" name="education" required>
+                <option value="">Select…</option>
+                <option value="hs">High School / GED</option>
+                <option value="assoc">Associate's Degree</option>
+                <option value="bach">Bachelor's Degree</option>
+                <option value="grad">Graduate Degree</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label class="required" for="license">Do you have a valid driver's license?</label>
+            <select id="license" name="license" required>
+              <option value="">Select…</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+            <div class="hint">DSPs often transport individuals to community activities.</div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label class="required">Can you pass a background check and drug screening?</label>
+            <div class="radioline">
+              <input type="radio" name="screening" value="yes" required />
+              <span>Yes, I consent to screening.</span>
+            </div>
+            <div class="radioline">
+              <input type="radio" name="screening" value="no" />
+              <span>No.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Resume</h2>
+          <p class="sub">Upload your resume from your device (PDF, DOCX).</p>
+          <div class="file-input-wrapper">
+            <div class="file-custom-btn" id="file-chosen">Click to choose resume from device...</div>
+            <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required onchange="document.getElementById('file-chosen').textContent = this.files[0].name" />
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Final Consent</h2>
+          <div class="checkboxline">
+            <input id="consentTruth" type="checkbox" required />
+            <label for="consentTruth" style="display:inline; color: var(--text); font-weight: 500; text-transform: none;">I certify that all information provided is true and accurate.</label>
+          </div>
+          <div class="checkboxline">
+            <input id="consentProfile" type="checkbox" checked disabled />
+            <label for="consentProfile" style="display:inline; color: var(--text); font-weight: 500; text-transform: none;">I understand a Sulandra candidate profile will be automatically created using my email address.</label>
+          </div>
+        </div>
+
+        <div class="btnrow">
+          <button type="submit" class="primary">Submit Application</button>
+          <button type="button" class="ghost" onclick="location.href='careers.html'">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h3>Position Summary</h3>
+        <div class="kv"><span>Role:</span><span>Direct Support Professional</span></div>
+        <div class="kv"><span>Location:</span><span>Home & Community Based</span></div>
+        <div class="kv"><span>Department:</span><span>Community Living Services</span></div>
+        <div class="kv"><span>Type:</span><span>Full-Time / Part-Time</span></div>
+
+        <div style="margin-top:20px;">
+          <h3>Core Responsibilities</h3>
+          <p class="small">
+            • Support individuals with daily living tasks (hygiene, meals, routines).<br>
+            • Foster independence through skill-building.<br>
+            • Facilitate community integration and inclusion.<br>
+            • Implement person-centered outcomes and safety standards.
+          </p>
+        </div>
+
+        <div class="section" style="border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
+          <p class="small" style="color: var(--muted); font-style: italic;">
+            Sulandra Community Living Services is an Equal Opportunity Employer.
+          </p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+  document.getElementById('appForm').onsubmit = function(e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    
+    // Application submission simulation
+    alert(`Thank you! Your application for Direct Support Professional has been submitted successfully.\n\nA Sulandra candidate profile has been automatically created for ${email}.\n\nYou will receive a welcome email shortly with instructions on how to log in and track your status.`);
+    
+    // Redirect back to careers
+    window.location.href = 'careers.html';
+  };
+</script>
+
+</body>
+</html>
