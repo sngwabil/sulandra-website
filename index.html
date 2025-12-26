@@ -31,14 +31,14 @@
     /* --- HEADER --- */
     header { border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 1000; }
     .top-nav {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  height: 80px; /* LOCKED height */
-}
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      height: 80px; /* LOCKED height */
+    }
 
     /* Logo container (used in header + footer) */
     .logo { 
@@ -48,12 +48,19 @@
       gap: 10px; 
       color: var(--primary);
       font-weight: 800;
+      min-width: 0;
     }
 
-    /* NEW: logo image styling */
+    /*
+      LOGO SIZE:
+      You asked for 240px. To keep the top bar locked, we set WIDTH to 240px,
+      but constrain the image to the bar height so it never grows the header.
+    */
     .logo img{
-      height: 240px;          /* adjust if you want bigger/smaller */
-      width: auto;
+      width: 240px;       /* <-- your requested logo size */
+      height: auto;
+      max-height: 100%;   /* prevents increasing the locked bar height */
+      object-fit: contain;
       display: block;
     }
 
@@ -74,7 +81,7 @@
     .logo-icon { width: 35px; height: 35px; background: var(--primary); border-radius: 50%; display: inline-block; }
 
     .header-tools { display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600; }
-    .header-tools a { text-decoration: none; color: var(--text); }
+    .header-tools a { text-decoration: none; color: var(--text); white-space: nowrap; }
     .btn-cta { background: var(--primary); color: white !important; padding: 10px 18px; border-radius: 4px; text-decoration: none; }
 
     /* --- MAIN NAVIGATION --- */
@@ -93,6 +100,7 @@
       color: var(--text);
       font-weight: 600;
       font-size: 15px;
+      white-space: nowrap;
     }
     .nav-links a:hover { color: var(--primary); background: #f0f4f8; }
 
@@ -236,14 +244,66 @@
     .footer-col li { margin-bottom: 10px; font-size: 14px; }
     .footer-col a { text-decoration: none; color: #555; }
 
-    @media (max-width: 800px) {
-      .hero { height: 450px; }
-      .hero-content h1 { font-size: 32px; }
-      .action-bar { grid-template-columns: repeat(2, 1fr); margin-top: 0; }
-      .footer-grid { grid-template-columns: 1fr; }
+    /* LOCK footer logo area similar to top-nav lock */
+    .footer-col .logo{
+      height: 80px;          /* locked logo area */
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .footer-col .logo img{
+      max-height: 100%;      /* prevents the logo from stretching footer */
+      width: 240px;          /* same 240px logo width */
+      height: auto;
+      object-fit: contain;
+    }
 
-      /* optional: slightly smaller logo on mobile */
-      .logo img { height: 38px; }
+    /* --- MOBILE: make it feel natural --- */
+    @media (max-width: 800px) {
+      .alert-bar { font-size: 13px; padding: 10px 12px; }
+
+      /* Keep top bar locked, but tighter so it feels natural */
+      .top-nav {
+        padding: 12px 14px;
+        height: 72px; /* locked on mobile */
+      }
+
+      /* Fit the 240px logo better on small screens */
+      .logo img { width: 200px; max-height: 100%; }
+
+      /* Simplify header tools on mobile (avoid cramped links) */
+      .header-tools { gap: 10px; }
+      .header-tools a:not(.btn-cta) { display: none; } /* keep only the CTA */
+      .btn-cta { padding: 10px 14px; }
+
+      /* Mobile-friendly nav: horizontal scroll instead of wrapping awkwardly */
+      .nav-links {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .nav-links::-webkit-scrollbar { display: none; }
+      .nav-links a { padding: 14px 14px; }
+
+      .hero { height: 450px; }
+      .hero-content { padding: 0 18px; }
+      .hero-content h1 { font-size: 32px; }
+      .hero-content p { font-size: 16px; }
+
+      .action-bar { grid-template-columns: repeat(2, 1fr); margin-top: 0; }
+      .action-item { padding: 18px 10px; }
+
+      .services-grid { grid-template-columns: 1fr; }
+      .service-img { height: 210px; }
+
+      .process-section { padding: 60px 16px; }
+      .section { margin: 40px auto; }
+
+      /* Footer: keep the logo area locked like the header */
+      footer { padding: 40px 16px; }
+      .footer-grid { grid-template-columns: 1fr; gap: 26px; }
+      .footer-col .logo { height: 72px; }
+      .footer-col .logo img { width: 200px; max-height: 100%; }
     }
   </style>
 </head>
@@ -255,7 +315,6 @@
 
   <header>
     <div class="top-nav">
-      <!-- UPDATED: replaces icon + text with your image -->
       <a href="index.html" class="logo" aria-label="Sulandra Health Home">
         <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
         <span class="sr-only">Sulandra Health</span>
@@ -360,11 +419,10 @@
   <footer>
     <div class="footer-grid">
       <div class="footer-col">
-        <!-- UPDATED: footer branding uses the same logo image -->
         <a href="index.html" class="logo" aria-label="Sulandra Health Home">
-  <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
-  <span class="sr-only">Sulandra Health</span>
-</a>
+          <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
+          <span class="sr-only">Sulandra Health</span>
+        </a>
         <p>© 2025 Sulandra Health. <br>Changing the Way the World Ages.</p>
       </div>
       <div class="footer-col">
