@@ -73,6 +73,7 @@
       justify-content: center;
       overflow: hidden;
       color: white;
+      background-color: #000; /* Black base ensures no gray shows through during transitions */
     }
 
     .hero-slideshow {
@@ -86,6 +87,7 @@
       inset: 0;
       background-size: cover;
       background-position: center;
+      background-repeat: no-repeat;
       opacity: 0;
       transition: opacity 1.5s ease-in-out;
     }
@@ -278,7 +280,6 @@
     <div class="section-subtitle">We offer customized care plans to meet the specific physical, cognitive, and personal needs of your loved one.</div>
     
     <div class="services-grid">
-      
       <a href="/services/community-living/" class="service-card">
         <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img">
         <h3>Community Living Support</h3>
@@ -296,7 +297,6 @@
         <h3>Respite Services</h3>
         <p>Giving family caregivers a much-needed break while ensuring their loved ones receive high-quality care.</p>
       </a>
-
     </div>
   </section>
 
@@ -329,17 +329,31 @@
 
   <script>
     (function() {
+      // Ensure we only select actual slide elements
       const slides = document.querySelectorAll('.hero-slide');
+      if (slides.length === 0) return;
+
       let currentSlide = 0;
 
       function nextSlide() {
-        slides[currentSlide].classList.remove('active');
+        // Double check the current slide exists before removing class
+        if (slides[currentSlide]) {
+          slides[currentSlide].classList.remove('active');
+        }
+        
         currentSlide = (currentSlide + 1) % slides.length;
-        slides[currentSlide].classList.add('active');
+        
+        // Ensure the new slide exists before adding class
+        if (slides[currentSlide]) {
+          slides[currentSlide].classList.add('active');
+        }
       }
 
+      // Initial check to make sure the first slide is active
+      if (slides[0]) slides[0].classList.add('active');
+
       if (slides.length > 1) {
-        setInterval(nextSlide, 5000); // Transitions every 5 seconds
+        setInterval(nextSlide, 5000);
       }
     })();
   </script>
