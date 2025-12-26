@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Careers | Sulandra Health</title>
+
+  <style>
+    :root{
+      --primary:#004b8d;
+      --secondary:#0077c8;
+      --accent:#d14124;
+      --text:#333333;
+      --muted:#667085;
+      --bg:#ffffff;
+      --soft:#f7f9fc;
+      --line:#e7eef8;
+      --shadow:0 10px 28px rgba(10,30,60,.08);
+
+      --headerH:80px;        /* LOCKED desktop header height */
+      --footerLogoH:80px;    /* LOCKED desktop footer logo height */
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{
+      font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color:var(--text);
+      background:var(--bg);
+      line-height:1.6;
+    }
+    a{ color:inherit; text-decoration:none; }
+    img{ max-width:100%; display:block; }
+    .container{ max-width:1200px; margin:0 auto; padding:22px 18px 80px; }
+
+    /* ====== ALERT BAR ====== */
+    .alert-bar{
+      background:var(--accent);
+      color:#fff;
+      text-align:center;
+      padding:10px 20px;
+      font-size:14px;
+      font-weight:800;
+    }
+
+    /* ====== HEADER (LOCKED) ====== */
+    header{
+      position:sticky;
+      top:0;
+      z-index:1000;
+      background:#fff;
+      border-bottom:1px solid #ddd;
+    }
+    .top-nav{
+      max-width:1200px;
+      margin:0 auto;
+      padding:15px 20px;
+      height:var(--headerH);           /* locked */
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    /* Logo (240px wide, constrained so it never increases bar height) */
+    .logo{ display:flex; align-items:center; min-width:0; }
+    .logo img{
+      width:240px;        /* requested logo size */
+      height:auto;
+      max-height:100%;    /* prevents header growth */
+      object-fit:contain;
+    }
+    .sr-only{
+      position:absolute;
+      width:1px;height:1px;
+      padding:0;margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+
+    .header-tools{
+      display:flex;
+      gap:16px;
+      align-items:center;
+      font-size:14px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .header-tools a{ color:var(--text); }
+    .btn-cta{
+      background:var(--primary);
+      color:#fff !important;
+      padding:10px 16px;
+      border-radius:6px;
+      font-weight:800;
+    }
+
+    /* Main nav */
+    .main-nav{ background:#fff; border-top:1px solid #eee; }
+    .nav-links{
+      max-width:1200px;
+      margin:0 auto;
+      display:flex;
+      list-style:none;
+      padding:0 20px;
+    }
+    .nav-links a{
+      display:block;
+      padding:15px 18px;
+      font-weight:700;
+      font-size:15px;
+      color:var(--text);
+      white-space:nowrap;
+      border-radius:10px;
+    }
+    .nav-links a:hover{ color:var(--primary); background:#f0f4f8; }
+
+    /* ====== PAGE HERO ====== */
+    .page-hero{
+      background:linear-gradient(180deg, #f6fbff, #ffffff);
+      border-bottom:1px solid var(--line);
+    }
+    .page-hero .container{ padding-top:26px; padding-bottom:26px; }
+    .kicker{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      background:#eaf2ff;
+      color:var(--primary);
+      font-weight:900;
+      font-size:12px;
+      text-transform:uppercase;
+    }
+    .page-title{
+      margin-top:12px;
+      font-size:clamp(30px, 4vw, 52px);
+      line-height:1.1;
+      font-weight:950;
+      color:#102a43;
+    }
+    .page-lead{
+      margin-top:10px;
+      max-width:900px;
+      color:var(--muted);
+      font-size:18px;
+    }
+
+    /* ====== LAYOUT ====== */
+    .grid{
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      gap:22px;
+      align-items:start;
+      margin-top:18px;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      position:sticky;
+      top:calc(var(--headerH) + 14px);
+      border-radius:20px;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+      background:linear-gradient(180deg, var(--primary), #2c74d6);
+      color:#fff;
+    }
+    .sidebar .side-head{
+      padding:18px 18px 10px;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.6px;
+      font-size:13px;
+      opacity:.95;
+    }
+    .side-nav{
+      list-style:none;
+      padding:10px 12px 16px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .side-nav a{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      font-weight:900;
+    }
+    .side-nav a:hover{ background:rgba(255,255,255,.20); }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:26px;height:26px;
+      border-radius:10px;
+      background:rgba(255,255,255,.18);
+      font-weight:950;
+    }
+
+    /* Content sections */
+    .content{
+      background:var(--soft);
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+    .section{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:18px;
+      margin-bottom:14px;
+    }
+    .section h2{
+      color:var(--primary);
+      font-size:28px;
+      font-weight:950;
+      margin-bottom:8px;
+      line-height:1.15;
+    }
+    .section p{ color:var(--muted); }
+    .anchor{ scroll-margin-top: calc(var(--headerH) + 18px); }
+
+    /* Job cards */
+    .job-grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+      margin-top:14px;
+    }
+    .job-card{
+      background:#f7fbff;
+      border:1px solid #dcebff;
+      border-radius:16px;
+      padding:16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+    }
+    .job-title{
+      font-weight:950;
+      color:var(--primary);
+      margin-bottom:2px;
+      font-size:18px;
+    }
+    .job-meta{ color:var(--muted); font-weight:700; font-size:14px; }
+    .btn{
+      border:none;
+      cursor:pointer;
+      border-radius:12px;
+      padding:12px 16px;
+      font-weight:950;
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      white-space:nowrap;
+    }
+    .btn-apply{ background:var(--primary); color:#fff; }
+    .btn-apply:hover{ background:#2c74d6; }
+    .btn-disabled{
+      background:#e5e7eb;
+      color:#6b7280;
+      cursor:not-allowed;
+    }
+
+    /* Application blocks */
+    .job-post{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:18px;
+    }
+    .job-post h3{
+      font-size:22px;
+      font-weight:950;
+      color:#101828;
+      margin-bottom:6px;
+    }
+    .company-line{
+      color:#344054;
+      font-weight:800;
+      margin-bottom:10px;
+    }
+    .company-line small{ color:#667085; font-weight:700; }
+
+    .subhead{
+      font-size:14px;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.6px;
+      color:var(--primary);
+      margin-top:16px;
+      margin-bottom:8px;
+    }
+    .kv-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:8px 10px;
+      border-radius:999px;
+      background:#f2f6ff;
+      border:1px solid #dbe7ff;
+      color:#1f5aa6;
+      font-weight:900;
+      font-size:13px;
+    }
+    .tag.req{ background:#eafaf1; border-color:#ccebd8; color:#11643a; }
+    .divider{ height:1px; background:var(--line); margin:14px 0; }
+    .job-body{
+      color:#344054;
+      font-size:14.5px;
+      white-space:pre-wrap;
+    }
+    .apply-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:12px;
+    }
+    .apply-actions a.btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      text-decoration:none;
+    }
+    .note{
+      margin-top:12px;
+      color:#667085;
+      font-size:12.5px;
+      line-height:1.45;
+      background:#f9fafb;
+      border:1px solid #eaecf0;
+      border-radius:14px;
+      padding:12px;
+    }
+
+    /* Scam alert */
+    .scam{
+      background:#fff5f5;
+      border:1px solid #feb2b2;
+      border-radius:18px;
+      padding:16px;
+    }
+    .scam h3{
+      margin:0 0 6px;
+      color:#c53030;
+      font-size:15px;
+      font-weight:950;
+      text-transform:uppercase;
+    }
+    .scam p{ margin:0; color:#742a2a; font-size:13.5px; }
+
+    /* ====== FOOTER (LOCKED LOGO AREA) ====== */
+    footer{
+      background:#f8f9fa;
+      border-top:1px solid #eee;
+      padding:50px 18px;
+      margin-top:40px;
+    }
+    .footer-grid{
+      max-width:1200px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap:40px;
+    }
+    .footer-col h4{ margin-bottom:14px; font-size:16px; color:var(--primary); font-weight:950; }
+    .footer-col ul{ list-style:none; }
+    .footer-col li{ margin-bottom:10px; font-size:14px; }
+    .footer-col a{ color:#555; text-decoration:none; }
+
+    .footer-col .logo{
+      height:var(--footerLogoH);
+      display:flex;
+      align-items:center;
+      margin-bottom:14px;
+    }
+    .footer-col .logo img{
+      width:240px;
+      height:auto;
+      max-height:100%;
+      object-fit:contain;
+    }
+
+    /* ====== RESPONSIVE ====== */
+    @media (max-width: 980px){
+      .grid{ grid-template-columns: 1fr; }
+      .sidebar{ position:relative; top:auto; }
+      .job-card{ flex-direction:column; align-items:flex-start; }
+    }
+    @media (max-width: 800px){
+      :root{ --headerH:72px; --footerLogoH:72px; }
+
+      .alert-bar{ font-size:13px; padding:10px 12px; }
+      .top-nav{ padding:12px 14px; gap:12px; }
+      .logo img{ width:200px; }
+
+      /* keep header clean on mobile: show CTA only */
+      .header-tools{ gap:10px; }
+      .header-tools a:not(.btn-cta){ display:none; }
+
+      /* nav: horizontal scroll */
+      .nav-links{
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+      }
+      .nav-links::-webkit-scrollbar{ display:none; }
+      .nav-links a{ padding:14px 14px; }
+
+      .page-lead{ font-size:16px; }
+
+      .footer-grid{ grid-template-columns:1fr; gap:22px; }
+      .footer-col .logo img{ width:200px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="alert-bar">
+    Sulandra Health is changing the way the world ages. Call us today for a free consultation.
+  </div>
+
+  <header>
+    <div class="top-nav">
+      <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="assets/mainlogo.png" alt="Sulandra Health Logo" />
+        <span class="sr-only">Sulandra Health</span>
+      </a>
+
+      <div class="header-tools">
+        <a href="#">Reviews</a>
+        <a href="#">Resources</a>
+        <a href="#" class="btn-cta">Free Consultation</a>
+      </div>
+    </div>
+
+    <nav class="main-nav">
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="#" style="color: var(--primary);">Careers</a></li>
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="page-hero">
+    <div class="container">
+      <span class="kicker">Careers at Sulandra Health</span>
+      <h1 class="page-title">Join our team at<br/>Sulandra Community Living Services LLC</h1>
+      <p class="page-lead">
+        Sulandra Community Living Services LLC is currently the active operating company under the Sulandra Health umbrella.
+        All job postings and applications on this page are for Sulandra Community Living Services LLC.
+      </p>
+    </div>
+  </section>
+
+  <main class="container">
+    <div class="grid">
+      <aside class="sidebar">
+        <div class="side-head">Career Menu</div>
+        <ul class="side-nav">
+          <li><a href="#hiring-now"><span>Hiring Now</span><span class="pill">›</span></a></li>
+          <li><a href="#other-services"><span>Other Service Areas</span><span class="pill">›</span></a></li>
+          <li><a href="#apply-dsp"><span>DSP Application</span><span class="pill">›</span></a></li>
+          <li><a href="#apply-lpn"><span>LPN/LVN Application</span><span class="pill">›</span></a></li>
+          <li><a href="#scam-alert"><span>Scam Alert</span><span class="pill">›</span></a></li>
+        </ul>
+      </aside>
+
+      <section class="content">
+        <!-- ===================== HIRING NOW ===================== -->
+        <section id="hiring-now" class="section anchor">
+          <h2>Hiring Now</h2>
+          <p>These roles are currently open with <strong>Sulandra Community Living Services LLC</strong>. Click “Apply” to open the application section in a new tab.</p>
+
+          <div class="job-grid">
+            <div class="job-card">
+              <div>
+                <div class="job-title">Direct Support Professional (DSP)</div>
+                <div class="job-meta">Sulandra Community Living Services LLC • Dayton, OH</div>
+              </div>
+              <a class="btn btn-apply" href="careers.html#apply-dsp" target="_blank" rel="noopener noreferrer">Apply Now</a>
+            </div>
+
+            <div class="job-card">
+              <div>
+                <div class="job-title">LPN/LVN (Licensed Practical/Vocational Nurse)</div>
+                <div class="job-meta">Sulandra Community Living Services LLC • Dayton, OH</div>
+              </div>
+              <a class="btn btn-apply" href="careers.html#apply-lpn" target="_blank" rel="noopener noreferrer">Apply Now</a>
+            </div>
+          </div>
+
+          <div class="note">
+            <strong>Business contact for applications:</strong><br>
+            1406 W Riverview AVE, Dayton, OH 45402 •
+            <a href="mailto:admin@sulandrahealth.com">admin@sulandrahealth.com</a> •
+            <a href="tel:9378586138">(937) 858-6138</a>
+          </div>
+        </section>
+
+        <!-- ===================== OTHER SERVICES ===================== -->
+        <section id="other-services" class="section anchor">
+          <h2>Other Service Areas</h2>
+          <p>
+            Sulandra Health is expanding. The areas below are listed for awareness, but <strong>we are not hiring in these areas at this time</strong>.
+          </p>
+
+          <div class="job-grid">
+            <div class="job-card">
+              <div>
+                <div class="job-title">Transportation Services</div>
+                <div class="job-meta">Not hiring currently</div>
+              </div>
+              <button class="btn btn-disabled" type="button" aria-disabled="true">Not Hiring</button>
+            </div>
+
+            <div class="job-card">
+              <div>
+                <div class="job-title">Respite Services</div>
+                <div class="job-meta">Not hiring currently</div>
+              </div>
+              <button class="btn btn-disabled" type="button" aria-disabled="true">Not Hiring</button>
+            </div>
+
+            <div class="job-card">
+              <div>
+                <div class="job-title">Behavioral Health</div>
+                <div class="job-meta">Not hiring currently</div>
+              </div>
+              <button class="btn btn-disabled" type="button" aria-disabled="true">Not Hiring</button>
+            </div>
+
+            <div class="job-card">
+              <div>
+                <div class="job-title">Rehab Services</div>
+                <div class="job-meta">Not hiring currently</div>
+              </div>
+              <button class="btn btn-disabled" type="button" aria-disabled="true">Not Hiring</button>
+            </div>
+          </div>
+
+          <div class="note">
+            To be notified when openings become available, email
+            <a href="mailto:admin@sulandrahealth.com?subject=Talent%20Network%20Request">admin@sulandrahealth.com</a>
+            with “Talent Network” in the subject line.
+          </div>
+        </section>
+
+        <!-- ===================== DSP APPLICATION ===================== -->
+        <section id="apply-dsp" class="section anchor">
+          <h2>DSP Application</h2>
+          <p>Posting and application details for <strong>Sulandra Community Living Services LLC</strong>.</p>
+
+          <div class="job-post">
+            <h3>Direct Support Professional (DSP)</h3>
+            <div class="company-line">
+              Sulandra Community Living Services LLC<br/>
+              <small>1406 W Riverview AVE, Dayton, OH 45402 • (937) 858-6138 • admin@sulandrahealth.com</small>
+            </div>
+
+            <div class="subhead">Profile insights</div>
+            <div class="job-body">Here’s how the job qualifications align with your profile.</div>
+
+            <div class="subhead">Skills</div>
+            <div class="kv-row">
+              <span class="tag req">Caregiving (Required)</span>
+              <span class="tag">Community support</span>
+              <span class="tag">Daily living assistance</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="subhead">Job details</div>
+            <div class="job-body">Here’s how the job details align with your profile.</div>
+
+            <div class="subhead">Pay</div>
+            <div class="kv-row"><span class="tag">$16 - $19 an hour</span></div>
+
+            <div class="subhead">Job type</div>
+            <div class="kv-row">
+              <span class="tag">Part-time</span>
+              <span class="tag">Full-time</span>
+            </div>
+
+            <div class="subhead">Benefits</div>
+            <div class="job-body">Pulled from the full job description</div>
+            <div class="kv-row" style="margin-top:8px;">
+              <span class="tag">Referral program</span>
+              <span class="tag">Flexible schedule</span>
+              <span class="tag">Paid training</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="subhead">Full job description</div>
+            <div class="job-body">
+As a Direct Support Professional (DSP) with Sulandra Community Living Services LLC, you will build meaningful relationships while supporting individuals to live more independently and safely in their daily lives.
+
+You may assist with:
+- Personal care support (as applicable to the individual’s plan)
+- Meal preparation, light housekeeping, and daily routines
+- Community engagement and transportation to local appointments/activities
+- Promoting independence, dignity, and a safe environment
+- Documenting services and communicating with the care team
+
+What we offer:
+- Flexible scheduling where possible
+- Training and ongoing learning opportunities
+- A supportive team culture
+- Employee referral program
+
+Qualifications (may vary by assignment):
+- Caregiving experience preferred (training provided)
+- Reliable transportation and valid driver’s license preferred
+- Ability to pass required background checks and onboarding
+
+How to apply:
+Email: admin@sulandrahealth.com
+Phone: (937) 858-6138
+Work Location: In person (Dayton, OH area)
+            </div>
+
+            <div class="apply-actions">
+              <a class="btn btn-apply" href="mailto:admin@sulandrahealth.com?subject=DSP%20Application%20-%20Sulandra%20Community%20Living%20Services%20LLC" target="_blank" rel="noopener noreferrer">Email to Apply</a>
+              <a class="btn btn-apply" href="tel:9378586138" target="_blank" rel="noopener noreferrer">Call to Apply</a>
+              <a class="btn btn-apply" href="careers.html#hiring-now" target="_blank" rel="noopener noreferrer">Back to Hiring</a>
+            </div>
+
+            <div class="note">
+              If you require alternative methods of application or screening, please contact Sulandra Community Living Services LLC directly at
+              <a href="mailto:admin@sulandrahealth.com">admin@sulandrahealth.com</a>. Indeed is not responsible for the employer's application process.
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== LPN/LVN APPLICATION ===================== -->
+        <section id="apply-lpn" class="section anchor">
+          <h2>LPN/LVN Application</h2>
+          <p>Posting and application details for <strong>Sulandra Community Living Services LLC</strong>.</p>
+
+          <div class="job-post">
+            <h3>LPN/LVN – Community-Based Support</h3>
+            <div class="company-line">
+              Sulandra Community Living Services LLC<br/>
+              <small>1406 W Riverview AVE, Dayton, OH 45402 • (937) 858-6138 • admin@sulandrahealth.com</small>
+            </div>
+
+            <div class="subhead">Profile insights</div>
+            <div class="job-body">Here’s how the job qualifications align with your profile.</div>
+
+            <div class="subhead">Licenses</div>
+            <div class="kv-row" style="margin-top:6px;">
+              <span class="tag req">LPN/LVN License (Required)</span>
+              <span class="tag">Driver’s License</span>
+            </div>
+
+            <div class="subhead">Certifications</div>
+            <div class="kv-row" style="margin-top:6px;">
+              <span class="tag">BLS / CPR (Preferred)</span>
+            </div>
+
+            <div class="subhead">Skills</div>
+            <div class="kv-row" style="margin-top:6px;">
+              <span class="tag">Medication administration</span>
+              <span class="tag">Clinical documentation</span>
+              <span class="tag">Patient support</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="subhead">Job details</div>
+
+            <div class="subhead" style="margin-top:10px;">Pay</div>
+            <div class="kv-row"><span class="tag">$25 - $28 an hour</span></div>
+
+            <div class="subhead">Job type</div>
+            <div class="kv-row">
+              <span class="tag">Part-time</span>
+              <span class="tag">Full-time</span>
+            </div>
+
+            <div class="subhead">Work setting</div>
+            <div class="kv-row">
+              <span class="tag">Community-based</span>
+              <span class="tag">In person</span>
+            </div>
+
+            <div class="subhead">Location</div>
+            <div class="job-body">Business address: 1406 W Riverview AVE, Dayton, OH 45402</div>
+
+            <div class="subhead">Benefits</div>
+            <div class="job-body">Pulled from the full job description</div>
+            <div class="kv-row" style="margin-top:8px; flex-wrap:wrap;">
+              <span class="tag">Health insurance (where eligible)</span>
+              <span class="tag">Paid time off (where eligible)</span>
+              <span class="tag">Paid training</span>
+              <span class="tag">Flexible scheduling</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="subhead">Full job description</div>
+            <div class="job-body">
+Sulandra Community Living Services LLC is seeking a dedicated LPN/LVN for part-time and full-time opportunities supporting individuals in community-based settings.
+
+You will:
+- Support health-related needs per individualized plans
+- Administer medications and monitor responses as permitted by policy
+- Document services accurately and communicate with the care team
+- Promote a safe, respectful, and supportive environment
+- Participate in training and continuous improvement
+
+Preferred qualifications:
+- Active LPN/LVN license in the State of Ohio
+- Strong communication and interpersonal skills
+- Reliable transportation and valid driver’s license preferred
+- Current CPR/BLS preferred
+
+How to apply:
+Email: admin@sulandrahealth.com
+Phone: (937) 858-6138
+Work Location: In person (Dayton, OH area)
+            </div>
+
+            <div class="apply-actions">
+              <a class="btn btn-apply" href="mailto:admin@sulandrahealth.com?subject=LPN%2FLVN%20Application%20-%20Sulandra%20Community%20Living%20Services%20LLC" target="_blank" rel="noopener noreferrer">Email to Apply</a>
+              <a class="btn btn-apply" href="tel:9378586138" target="_blank" rel="noopener noreferrer">Call to Apply</a>
+              <a class="btn btn-apply" href="careers.html#hiring-now" target="_blank" rel="noopener noreferrer">Back to Hiring</a>
+            </div>
+
+            <div class="note">
+              If you require alternative methods of application or screening, please contact Sulandra Community Living Services LLC directly at
+              <a href="mailto:admin@sulandrahealth.com">admin@sulandrahealth.com</a>. Indeed is not responsible for the employer's application process.
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== SCAM ALERT ===================== -->
+        <section id="scam-alert" class="section anchor">
+          <div class="scam">
+            <h3>Scam Alert</h3>
+            <p>
+              Beware of anyone requesting financial or personal information, or claiming to be an online hiring manager with a job offer.
+              Sulandra Community Living Services LLC will never ask for payment, gift cards, or banking details as a condition of employment.
+              If you have concerns, contact us directly at (937) 858-6138 or admin@sulandrahealth.com.
+            </p>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-col">
+        <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+          <img src="assets/mainlogo.png" alt="Sulandra Health Logo" />
+          <span class="sr-only">Sulandra Health</span>
+        </a>
+        <p style="color:#667085; font-size:14px;">
+          © 2025 Sulandra Health. <br />Changing the Way the World Ages.
+        </p>
+        <p style="color:#667085; font-size:14px; margin-top:10px;">
+          <strong>Operating Company:</strong> Sulandra Community Living Services LLC<br/>
+          1406 W Riverview AVE, Dayton, OH 45402<br/>
+          <a href="mailto:admin@sulandrahealth.com">admin@sulandrahealth.com</a> • <a href="tel:9378586138">(937) 858-6138</a>
+        </p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Careers</h4>
+        <ul>
+          <li><a href="#hiring-now">Hiring Now</a></li>
+          <li><a href="#apply-dsp">DSP Application</a></li>
+          <li><a href="#apply-lpn">LPN/LVN Application</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="#">How to Start Home Care</a></li>
+          <li><a href="#">Care Questionnaire</a></li>
+          <li><a href="#">Contact Us</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
