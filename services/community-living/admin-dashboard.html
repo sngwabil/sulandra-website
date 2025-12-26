@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Dashboard | Sulandra Management</title>
+  <style>
+    :root{ --bg:#f1f5f9; --brand:#1f5aa6; --ink:#0f172a; }
+    body{ margin:0; font-family: system-ui; background: var(--bg); color: var(--ink); }
+    .sidebar{ width: 280px; background: #fff; height: 100vh; position: fixed; border-right: 1px solid #e2e8f0; padding: 30px; }
+    .main{ margin-left: 280px; padding: 40px; }
+    h1{ font-size: 24px; font-weight: 900; }
+    .tableCard{ background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; }
+    table{ width: 100%; border-collapse: collapse; }
+    th{ text-align: left; padding: 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-transform: uppercase; }
+    td{ padding: 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    .badge{ padding: 6px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; }
+    .badge-new{ background: #e0f2fe; color: #0369a1; }
+    .badge-hired{ background: #dcfce7; color: #15803d; }
+    .actionBtn{ padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-weight: 700; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <img src="assets/logo.png" style="width:100%; margin-bottom:40px;">
+  <div style="font-weight:900; color:var(--brand); margin-bottom:20px;">MANAGEMENT</div>
+  <nav>
+    <div style="padding:10px 0; font-weight:700; border-bottom: 1px solid #f1f5f9;">Applicants</div>
+    <div style="padding:10px 0; color:#64748b;">Active Jobs</div>
+    <div style="padding:10px 0; color:#64748b;">Staff Directory</div>
+  </nav>
+</div>
+
+<div class="main">
+  <h1>Applicant Management</h1>
+  <div class="tableCard">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Position</th>
+          <th>Experience</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>John Doe</strong><br><span style="font-size:12px; color:#64748b;">john@example.com</span></td>
+          <td>Direct Support Professional</td>
+          <td>3 Years</td>
+          <td><span class="badge badge-new">NEW APPLICATION</span></td>
+          <td>
+            <button class="actionBtn" onclick="alert('Changing status...')">Change Status</button>
+            <button class="actionBtn" onclick="alert('Opening chat...')">Message</button>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Sarah Smith</strong><br><span style="font-size:12px; color:#64748b;">sarah@example.com</span></td>
+          <td>LPN - Nursing</td>
+          <td>10+ Years</td>
+          <td><span class="badge badge-hired">HIRED</span></td>
+          <td>
+            <button class="actionBtn">View Profile</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>
