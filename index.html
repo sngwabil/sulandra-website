@@ -73,8 +73,12 @@
       justify-content: center;
       overflow: hidden;
       color: white;
-      /* Fallback image: Ensures even if JS fails, the background is NOT black */
-      background: url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80') center/cover no-repeat;
+
+      /* ✅ IMPORTANT: fallback image so there's never a black "slide" */
+      background-image: url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
     }
 
     .hero-slideshow {
@@ -83,7 +87,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 1;
+      z-index: 1; /* Under overlay + content */
     }
 
     .hero-slide {
@@ -95,19 +99,28 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      /* Animation cross-fade is now handled in CSS for zero gaps */
-      transition: opacity 2s ease-in-out; 
       opacity: 0;
+      transition: opacity 1.5s ease-in-out;
     }
 
+    /* Keep the first image visible immediately */
     .hero-slide.active {
       opacity: 1;
       z-index: 2;
     }
 
+    /* ✅ Single overlay layer (instead of per-slide gradients) */
+    .hero-overlay{
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      background: rgba(0,0,0,0.35); /* adjust 0.25–0.45 if needed */
+      pointer-events: none;
+    }
+
     .hero-content {
       position: relative;
-      z-index: 10;
+      z-index: 10; /* Above overlay */
       max-width: 1200px;
       margin: 0 auto;
       width: 100%;
@@ -137,7 +150,7 @@
       max-width: 1000px;
       margin: -40px auto 0;
       position: relative;
-      z-index: 20;
+      z-index: 20; /* Above everything */
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .action-item {
@@ -234,10 +247,14 @@
 
   <section class="hero">
     <div class="hero-slideshow">
-      <div class="hero-slide active" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');"></div>
-      <div class="hero-slide" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=1500&q=80');"></div>
-      <div class="hero-slide" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1500&q=80');"></div>
+      <!-- ✅ Removed linear-gradient from slides -->
+      <div class="hero-slide active" style="background-image: url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');"></div>
+      <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=1500&q=80');"></div>
+      <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1500&q=80');"></div>
     </div>
+
+    <!-- ✅ Single overlay for readability (not a slide) -->
+    <div class="hero-overlay"></div>
 
     <div class="hero-content">
       <h1>Changing The Way The World Ages</h1>
@@ -344,34 +361,16 @@
       let currentSlide = 0;
 
       function nextSlide() {
-        // Find current slide and next slide
-        const current = slides[currentSlide];
-        const next = slides[(currentSlide + 1) % slides.length];
-
-        // Ensure next slide is immediately behind current before fade out
-        next.style.zIndex = "1";
-        next.style.opacity = "1"; 
-        
-        // Fade out the current slide. Because the next is already at opacity 1 behind it, 
-        // the black background will never show.
-        current.style.opacity = "0";
-        current.style.zIndex = "2"; // Keep current on top while it fades out
-
-        // After the transition, reset z-indexes for the next cycle
-        setTimeout(() => {
-            current.style.zIndex = "1";
-            next.style.zIndex = "2";
-        }, 2000); // Matches the 2s transition time
-
+        slides[currentSlide].classList.remove('active');
         currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add('active');
       }
 
-      // Initial setup
-      slides[0].style.opacity = "1";
-      slides[0].style.zIndex = "2";
+      // Ensure first slide is visible immediately
+      slides[0].classList.add('active');
 
       if (slides.length > 1) {
-        setInterval(nextSlide, 5000); 
+        setInterval(nextSlide, 5000);
       }
     })();
   </script>
