@@ -73,7 +73,11 @@
       justify-content: center;
       overflow: hidden;
       color: white;
-      background-color: #333; /* Darker base color just in case */
+      /* STEP 1: Persistent Background Image to prevent gray/black gaps */
+      background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), 
+                  url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');
+      background-size: cover;
+      background-position: center;
     }
 
     .hero-slideshow {
@@ -82,7 +86,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 1; /* Under the content */
+      z-index: 1;
     }
 
     .hero-slide {
@@ -94,11 +98,10 @@
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      opacity: 0;
       transition: opacity 1.5s ease-in-out;
+      opacity: 0;
     }
 
-    /* Keep the first image visible immediately */
     .hero-slide.active {
       opacity: 1;
       z-index: 2;
@@ -106,7 +109,7 @@
 
     .hero-content {
       position: relative;
-      z-index: 10; /* High z-index to stay above slides */
+      z-index: 10;
       max-width: 1200px;
       margin: 0 auto;
       width: 100%;
@@ -136,7 +139,7 @@
       max-width: 1000px;
       margin: -40px auto 0;
       position: relative;
-      z-index: 20; /* Above everything */
+      z-index: 20;
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
     .action-item {
@@ -343,23 +346,33 @@
       let currentSlide = 0;
 
       function nextSlide() {
-        // Fade out the current slide
-        slides[currentSlide].style.opacity = '0';
-        slides[currentSlide].style.zIndex = '1';
-        
+        // Find current and next slides
+        const current = slides[currentSlide];
+        const next = slides[(currentSlide + 1) % slides.length];
+
+        // Ensure next slide is ready behind current
+        next.style.opacity = "1";
+        next.style.zIndex = "1";
+
+        // Fade out current slide to reveal next (or persistent background)
+        current.style.opacity = "0";
+        current.style.zIndex = "2";
+
+        // Reset z-index for next cycle
+        setTimeout(() => {
+          current.style.zIndex = "1";
+          next.style.zIndex = "2";
+        }, 1500);
+
         currentSlide = (currentSlide + 1) % slides.length;
-        
-        // Fade in the new slide and bring it to the top of the stack
-        slides[currentSlide].style.opacity = '1';
-        slides[currentSlide].style.zIndex = '2';
       }
 
-      // Initialize the first slide
-      slides[0].style.opacity = '1';
-      slides[0].style.zIndex = '2';
+      // Initial active slide
+      slides[0].style.opacity = "1";
+      slides[0].style.zIndex = "2";
 
       if (slides.length > 1) {
-        setInterval(nextSlide, 5000); // 5 seconds interval
+        setInterval(nextSlide, 5000); 
       }
     })();
   </script>
