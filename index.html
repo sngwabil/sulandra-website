@@ -2,79 +2,264 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sulandra Health</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sulandra Health | Inspiring Better Health</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      background: #f7f9fc;
-      color: #222;
+    :root {
+      --primary: #004b8d; /* Premier-style Blue */
+      --secondary: #0077c8;
+      --accent: #d14124; /* Alert Red */
+      --text: #333333;
+      --bg-light: #f7f9fc;
+      --white: #ffffff;
     }
-    header {
-      background: #0b3c5d;
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text); background-color: var(--white); line-height: 1.6; }
+
+    /* --- ALERT BAR --- */
+    .alert-bar {
+      background-color: var(--accent);
       color: white;
-      padding: 40px 20px;
       text-align: center;
-    }
-    section {
-      max-width: 1000px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
-    .services {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-    }
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    }
-    .card a {
-      text-decoration: none;
-      color: #0b3c5d;
+      padding: 10px 20px;
+      font-size: 14px;
       font-weight: bold;
     }
-    footer {
+
+    /* --- UTILITY & HEADER --- */
+    header { border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 1000; }
+    .top-nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+    }
+    .logo { font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 35px; height: 35px; background: var(--primary); border-radius: 50%; display: inline-block; }
+
+    .header-tools { display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600; }
+    .header-tools a { text-decoration: none; color: var(--text); }
+    .btn-er { background: var(--accent); color: white !important; padding: 8px 12px; border-radius: 4px; }
+
+    /* --- MAIN NAVIGATION --- */
+    .main-nav { background: #fff; border-top: 1px solid #eee; }
+    .nav-links {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      list-style: none;
+      padding: 0 20px;
+    }
+    .nav-links li { position: relative; }
+    .nav-links a {
+      display: block;
+      padding: 15px 20px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .nav-links a:hover { color: var(--primary); background: #f0f4f8; }
+
+    /* --- HERO SECTION --- */
+    .hero {
+      height: 450px;
+      background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1500&q=80');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      color: white;
+    }
+    .hero-content { max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 40px; }
+    .hero-content h1 { font-size: 48px; font-weight: 900; margin-bottom: 10px; }
+    .hero-content p { font-size: 18px; max-width: 500px; }
+
+    /* --- ACTION BAR (Blue Horizontal Bar) --- */
+    .action-bar {
+      background: var(--secondary);
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      max-width: 1200px;
+      margin: -40px auto 0;
+      position: relative;
+      z-index: 10;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .action-item {
+      color: white;
+      text-decoration: none;
+      padding: 25px 10px;
       text-align: center;
-      padding: 20px;
-      background: #eee;
-      margin-top: 60px;
+      font-weight: bold;
+      font-size: 13px;
+      border-right: 1px solid rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .action-item:hover { background: var(--primary); }
+
+    /* --- SERVICES GRID --- */
+    .section { max-width: 1200px; margin: 60px auto; padding: 0 20px; }
+    .section-title { font-size: 32px; font-weight: 800; color: #333; margin-bottom: 30px; }
+    
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 30px;
+    }
+    .service-card {
+      background: var(--white);
+      text-decoration: none;
+      color: var(--text);
+      transition: transform 0.2s;
+    }
+    .service-card:hover { transform: translateY(-5px); }
+    .service-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+    .service-card h3 {
+      margin: 15px 0 5px;
+      font-size: 20px;
+      color: var(--primary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .service-card h3::after { content: '⊕'; font-size: 24px; color: #666; }
+
+    /* --- FOOTER --- */
+    footer { background: #f8f9fa; padding: 60px 20px; border-top: 1px solid #eee; margin-top: 80px; }
+    .footer-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+    }
+    .footer-col h4 { margin-bottom: 20px; font-size: 16px; color: var(--primary); }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 10px; font-size: 14px; }
+    .footer-col a { text-decoration: none; color: #555; }
+
+    @media (max-width: 900px) {
+      .action-bar { grid-template-columns: repeat(3, 1fr); }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+      .hero-content h1 { font-size: 32px; }
     }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>Sulandra Health</h1>
-  <p>Community-focused healthcare and support services</p>
-</header>
-
-<section>
-  <h2>Our Services</h2>
-
-  <div class="services">
-    <div class="card">
-      <h3>Sulandra Community Living Services</h3>
-      <p>Residential and community-based support services.</p>
-      <a href="/services/community-living/">Visit Service →</a>
-    </div>
-
-    <!-- Future services can go here -->
-    <!--
-    <div class="card">
-      <h3>Another Service</h3>
-      <p>Description here.</p>
-    </div>
-    -->
+  <div class="alert-bar">
+    All Sulandra Health locations will be open from 9 a.m. to 3 p.m. on New Year's Day.
   </div>
-</section>
 
-<footer>
-  © 2025 Sulandra Health. All rights reserved.
-</footer>
+  <header>
+    <div class="top-nav">
+      <a href="index.html" class="logo">
+        <div class="logo-icon"></div>
+        Sulandra Health
+      </a>
+      <div class="header-tools">
+        <a href="#">Schedule Appointment</a>
+        <a href="#">Virtual Care</a>
+        <a href="#" class="btn-er"><strong>ER Wait Time</strong><br>15 MIN</a>
+      </div>
+    </div>
+    <nav class="main-nav">
+      <ul class="nav-links">
+        <li><a href="#">Locations</a></li>
+        <li>
+            <a href="#">Services ▾</a>
+            </li>
+        <li><a href="#">Patient & Visitor Guide</a></li>
+        <li><a href="#">About Sulandra</a></li>
+        <li><a href="#">Careers</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-content">
+      <h1>Inspiring Better Health</h1>
+      <p>Our commitment to compassionate care and community support is at the forefront of everything we do.</p>
+    </div>
+  </section>
+
+  <div class="action-bar">
+    <a href="#" class="action-item">Symptom Checker</a>
+    <a href="#" class="action-item">Find a Doctor</a>
+    <a href="#" class="action-item">MyChart Login</a>
+    <a href="#" class="action-item">Schedule Appointment</a>
+    <a href="/services/community-living/" class="action-item">Community Living</a>
+    <a href="#" class="action-item">Pay My Bill</a>
+  </div>
+
+  <section class="section">
+    <h2 class="section-title">Service Lines</h2>
+    <div class="services-grid">
+      
+      <a href="/services/community-living/" class="service-card">
+        <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img">
+        <h3>Community Living Services</h3>
+        <p>Comprehensive residential and community-based support for individuals and families.</p>
+      </a>
+
+      <a href="#" class="service-card">
+        <img src="https://images.unsplash.com/photo-1527137342181-19aab11a8ee8?auto=format&fit=crop&w=600&q=80" alt="Behavioral Health" class="service-img">
+        <h3>Behavioral Health</h3>
+        <p>Expert mental health services and emotional support programs.</p>
+      </a>
+
+      <a href="#" class="service-card">
+        <img src="https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=600&q=80" alt="Primary Care" class="service-img">
+        <h3>Primary Care</h3>
+        <p>Your partners in long-term health and wellness for the whole family.</p>
+      </a>
+
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-col">
+        <a href="#" class="logo" style="margin-bottom:20px">Sulandra Health</a>
+        <p>© 2025 Sulandra Health. All rights reserved. <br> Dayton, Ohio, United States</p>
+      </div>
+      <div class="footer-col">
+        <h4>Patients</h4>
+        <ul>
+          <li><a href="#">Find a Doctor</a></li>
+          <li><a href="#">Medical Records</a></li>
+          <li><a href="#">Accepted Insurance</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Job Seekers</h4>
+        <ul>
+          <li><a href="#">Search Jobs</a></li>
+          <li><a href="#">Nursing Jobs</a></li>
+          <li><a href="#">Benefits</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="/services/community-living/">Community Living</a></li>
+          <li><a href="#">Contact Us</a></li>
+          <li><a href="#">Newsroom</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
 
 </body>
 </html>
