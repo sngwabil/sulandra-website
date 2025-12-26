@@ -18,53 +18,20 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text); background-color: var(--white); line-height: 1.6; }
 
-    /* --- ALERT BAR --- */
-    .alert-bar {
-      background-color: var(--accent);
-      color: white;
-      text-align: center;
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: bold;
-    }
-
-    /* --- HEADER --- */
+    /* --- HEADER & NAVIGATION --- */
     header { border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 1000; }
-    .top-nav {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px 20px;
-    }
+    .top-nav { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
     .logo { font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 10px; }
     .logo-icon { width: 35px; height: 35px; background: var(--primary); border-radius: 50%; display: inline-block; }
-
     .header-tools { display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600; }
     .header-tools a { text-decoration: none; color: var(--text); }
     .btn-cta { background: var(--primary); color: white !important; padding: 10px 18px; border-radius: 4px; text-decoration: none; }
-
-    /* --- MAIN NAVIGATION --- */
     .main-nav { background: #fff; border-top: 1px solid #eee; }
-    .nav-links {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      list-style: none;
-      padding: 0 20px;
-    }
-    .nav-links a {
-      display: block;
-      padding: 15px 20px;
-      text-decoration: none;
-      color: var(--text);
-      font-weight: 600;
-      font-size: 15px;
-    }
+    .nav-links { max-width: 1200px; margin: 0 auto; display: flex; list-style: none; padding: 0 20px; }
+    .nav-links a { display: block; padding: 15px 20px; text-decoration: none; color: var(--text); font-weight: 600; font-size: 15px; }
     .nav-links a:hover { color: var(--primary); background: #f0f4f8; }
 
-    /* --- HERO & SLIDESHOW STYLES --- */
+    /* --- HERO & SLIDESHOW FIXED --- */
     .hero {
       position: relative;
       height: 550px;
@@ -73,153 +40,70 @@
       justify-content: center;
       overflow: hidden;
       color: white;
-      /* STEP 1: Persistent Background Image to prevent gray/black gaps */
+      /* STEP 1: Ensure the container itself has a solid image that never moves */
       background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), 
-                  url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');
-      background-size: cover;
-      background-position: center;
+                  url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80') center/cover no-repeat;
     }
 
     .hero-slideshow {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0; width: 100%; height: 100%;
       z-index: 1;
     }
 
     .hero-slide {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0; width: 100%; height: 100%;
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      transition: opacity 1.5s ease-in-out;
       opacity: 0;
+      /* Smooth 2-second crossfade */
+      transition: opacity 2000ms ease-in-out;
     }
 
-    .hero-slide.active {
+    /* This class is managed by JavaScript */
+    .hero-slide.visible {
       opacity: 1;
-      z-index: 2;
     }
 
     .hero-content {
       position: relative;
       z-index: 10;
-      max-width: 1200px;
-      margin: 0 auto;
-      width: 100%;
-      padding: 0 40px;
-      text-align: center;
+      max-width: 1200px; margin: 0 auto; width: 100%; padding: 0 40px; text-align: center;
     }
 
-    .hero-content h1 {
-      font-size: 48px;
-      font-weight: 900;
-      margin-bottom: 15px;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.6);
-    }
+    .hero-content h1 { font-size: 48px; font-weight: 900; margin-bottom: 15px; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+    .hero-content p { font-size: 20px; max-width: 800px; margin: 0 auto 30px; text-shadow: 0 1px 5px rgba(0,0,0,0.6); }
 
-    .hero-content p {
-      font-size: 20px;
-      max-width: 800px;
-      margin: 0 auto 30px;
-      text-shadow: 0 1px 5px rgba(0,0,0,0.6);
-    }
-
-    /* --- ACTION BAR --- */
-    .action-bar {
-      background: var(--secondary);
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      max-width: 1000px;
-      margin: -40px auto 0;
-      position: relative;
-      z-index: 20;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    .action-item {
-      color: white;
-      text-decoration: none;
-      padding: 25px 10px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 14px;
-      border-right: 1px solid rgba(255,255,255,0.2);
-    }
-    .action-item:last-child { border-right: none; }
+    /* --- OTHER SECTIONS --- */
+    .action-bar { background: var(--secondary); display: grid; grid-template-columns: repeat(4, 1fr); max-width: 1000px; margin: -40px auto 0; position: relative; z-index: 20; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .action-item { color: white; text-decoration: none; padding: 25px 10px; text-align: center; font-weight: bold; font-size: 14px; border-right: 1px solid rgba(255,255,255,0.2); }
     .action-item:hover { background: var(--primary); }
-
-    /* --- PROCESS SECTION --- */
     .process-section { background: #fff; padding: 80px 20px; text-align: center; }
-    .process-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      max-width: 1200px;
-      margin: 40px auto 0;
-      gap: 30px;
-    }
+    .process-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); max-width: 1200px; margin: 40px auto 0; gap: 30px; }
     .process-step h4 { color: var(--accent); margin: 15px 0 10px; font-size: 18px; text-transform: uppercase; }
-    .process-step p { font-size: 14px; color: #666; padding: 0 10px; }
-
-    /* --- QUESTIONNAIRE STRIP --- */
     .quiz-strip { background: var(--dark-green); color: white; padding: 40px 20px; text-align: center; }
-    .btn-outline { 
-      border: 2px solid white; color: white; padding: 10px 25px; 
-      text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block; margin-top: 15px;
-    }
-
-    /* --- SERVICES GRID --- */
-    .section { max-width: 1200px; margin: 60px auto; padding: 0 20px; }
-    .section-title { font-size: 32px; font-weight: 800; color: var(--primary); margin-bottom: 10px; text-align: center; }
-    .section-subtitle { text-align: center; margin-bottom: 40px; color: #666; }
-    
-    .services-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-      gap: 30px;
-    }
+    .services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); max-width: 1200px; margin: 40px auto; gap: 30px; padding: 0 20px; }
     .service-card { background: var(--white); text-decoration: none; color: var(--text); display: block; }
     .service-img { width: 100%; height: 230px; object-fit: cover; border-radius: 4px; }
-    .service-card h3 { margin: 15px 0 5px; font-size: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-    .service-card h3::after { content: '⊕'; font-size: 24px; color: #999; }
-    .service-card p { color: #666; font-size: 15px; margin-top: 8px; }
 
-    /* --- FOOTER --- */
     footer { background: #f8f9fa; padding: 60px 20px; border-top: 1px solid #eee; }
     .footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
-    .footer-col h4 { margin-bottom: 20px; font-size: 16px; color: var(--primary); }
-    .footer-col ul { list-style: none; }
-    .footer-col li { margin-bottom: 10px; font-size: 14px; }
-    .footer-col a { text-decoration: none; color: #555; }
 
     @media (max-width: 800px) {
       .hero { height: 450px; }
-      .hero-content h1 { font-size: 32px; }
       .action-bar { grid-template-columns: repeat(2, 1fr); margin-top: 0; }
-      .footer-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-  <div class="alert-bar">
-    Sulandra Health is changing the way the world ages. Call us today for a free consultation.
-  </div>
-
   <header>
     <div class="top-nav">
-      <a href="index.html" class="logo">
-        <div class="logo-icon"></div>
-        Sulandra Health
-      </a>
+      <a href="index.html" class="logo"><div class="logo-icon"></div> Sulandra Health</a>
       <div class="header-tools">
-        <a href="#">Reviews</a>
-        <a href="#">Resources</a>
+        <a href="#">Reviews</a> <a href="#">Resources</a>
         <a href="#" class="btn-cta">Free Consultation</a>
       </div>
     </div>
@@ -236,7 +120,7 @@
 
   <section class="hero">
     <div class="hero-slideshow">
-      <div class="hero-slide active" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');"></div>
+      <div class="hero-slide visible" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');"></div>
       <div class="hero-slide" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=1500&q=80');"></div>
       <div class="hero-slide" style="background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1500&q=80');"></div>
     </div>
@@ -256,124 +140,61 @@
   </div>
 
   <section class="process-section">
-    <p style="text-transform: uppercase; letter-spacing: 2px; color: var(--accent); font-weight: bold;">Simple Process</p>
-    <h2 style="font-size: 32px; margin-bottom: 10px;">How To Start Home Care</h2>
-    <p style="max-width: 800px; margin: 0 auto; color: #666;">We make it easy to get extra care whenever you call "home."</p>
-
+    <h2>How To Start Home Care</h2>
     <div class="process-grid">
-      <div class="process-step">
-        <h4>1. Call Us</h4>
-        <p>Speak with one of our experienced Care Advisors to see if our services match your needs.</p>
-      </div>
-      <div class="process-step">
-        <h4>2. Home Consultation</h4>
-        <p>Our care team conducts an in-home evaluation to match you with the right care and caregiver.</p>
-      </div>
-      <div class="process-step">
-        <h4>3. Create Care Plan</h4>
-        <p>No two seniors are alike. Our customized care plans provide just the right home care services.</p>
-      </div>
-      <div class="process-step">
-        <h4>4. Begin Care</h4>
-        <p>No contracts required. You can start home care services, usually in as little as a few days.</p>
-      </div>
+      <div class="process-step"><h4>1. Call Us</h4><p>Speak with one of our advisors to see if our services match your needs.</p></div>
+      <div class="process-step"><h4>2. Home Consultation</h4><p>Our team conducts an in-home evaluation to match you with the right care.</p></div>
+      <div class="process-step"><h4>3. Create Care Plan</h4><p>We provide customized care plans to provide the right home care services.</p></div>
+      <div class="process-step"><h4>4. Begin Care</h4><p>Start home care services, usually in as little as a few days.</p></div>
     </div>
   </section>
 
   <section class="quiz-strip">
     <h2>Is Home Care Right For Me?</h2>
-    <p>Take our 4-minute questionnaire to learn more about your care needs.</p>
     <a href="#" class="btn-outline">START NOW</a>
   </section>
 
-  <section class="section">
-    <div class="section-title">Personalized Home Care Services</div>
-    <div class="section-subtitle">We offer customized care plans to meet the specific physical, cognitive, and personal needs of your loved one.</div>
-    
-    <div class="services-grid">
-      <a href="/services/community-living/" class="service-card">
-        <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img">
-        <h3>Community Living Support</h3>
-        <p>Residential and community-based support services focused on independence and safety.</p>
-      </a>
-
-      <a href="#" class="service-card">
-        <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=600&q=80" alt="Transportation" class="service-img">
-        <h3>Transportation Services</h3>
-        <p>Safe and reliable transportation for medical appointments, grocery shopping, and social outings.</p>
-      </a>
-
-      <a href="#" class="service-card">
-        <img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=600&q=80" alt="Respite Care" class="service-img">
-        <h3>Respite Services</h3>
-        <p>Giving family caregivers a much-needed break while ensuring their loved ones receive high-quality care.</p>
-      </a>
-    </div>
-  </section>
+  <div class="services-grid">
+    <a href="/services/community-living/" class="service-card">
+      <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img">
+      <h3>Community Living Support ⊕</h3>
+    </a>
+    <a href="#" class="service-card">
+      <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=600&q=80" alt="Transportation" class="service-img">
+      <h3>Transportation Services ⊕</h3>
+    </a>
+    <a href="#" class="service-card">
+      <img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=600&q=80" alt="Respite Care" class="service-img">
+      <h3>Respite Services ⊕</h3>
+    </a>
+  </div>
 
   <footer>
     <div class="footer-grid">
-      <div class="footer-col">
-        <a href="#" class="logo" style="margin-bottom:20px">Sulandra Health</a>
-        <p>© 2025 Sulandra Health. <br>Changing the Way the World Ages.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Our Services</h4>
-        <ul>
-          <li><a href="/services/community-living/">Community Living</a></li>
-          <li><a href="#">Transportation</a></li>
-          <li><a href="#">Respite Care</a></li>
-          <li><a href="#">Companion Care</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Resources</h4>
-        <ul>
-          <li><a href="#">How to Start Home Care</a></li>
-          <li><a href="#">Care Questionnaire</a></li>
-          <li><a href="#">Careers</a></li>
-          <li><a href="#">Contact Us</a></li>
-        </ul>
-      </div>
+      <div class="footer-col"><h4>Sulandra Health</h4><p>© 2025 Sulandra Health. Changing the Way the World Ages.</p></div>
+      <div class="footer-col"><h4>Services</h4><ul><li>Community Living</li><li>Transportation</li><li>Respite Care</li></ul></div>
+      <div class="footer-col"><h4>Resources</h4><ul><li>Care Questionnaire</li><li>Careers</li><li>Contact Us</li></ul></div>
     </div>
   </footer>
 
   <script>
     (function() {
       const slides = document.querySelectorAll('.hero-slide');
-      if (slides.length === 0) return;
+      let index = 0;
 
-      let currentSlide = 0;
-
-      function nextSlide() {
-        // Find current and next slides
-        const current = slides[currentSlide];
-        const next = slides[(currentSlide + 1) % slides.length];
-
-        // Ensure next slide is ready behind current
-        next.style.opacity = "1";
-        next.style.zIndex = "1";
-
-        // Fade out current slide to reveal next (or persistent background)
-        current.style.opacity = "0";
-        current.style.zIndex = "2";
-
-        // Reset z-index for next cycle
-        setTimeout(() => {
-          current.style.zIndex = "1";
-          next.style.zIndex = "2";
-        }, 1500);
-
-        currentSlide = (currentSlide + 1) % slides.length;
+      function rotateSlides() {
+        // Remove visibility from current slide
+        slides[index].classList.remove('visible');
+        
+        // Move to next slide
+        index = (index + 1) % slides.length;
+        
+        // Make next slide visible
+        slides[index].classList.add('visible');
       }
 
-      // Initial active slide
-      slides[0].style.opacity = "1";
-      slides[0].style.zIndex = "2";
-
-      if (slides.length > 1) {
-        setInterval(nextSlide, 5000); 
-      }
+      // Interval set to 6 seconds (to allow for the 2s transition)
+      setInterval(rotateSlides, 6000);
     })();
   </script>
 
