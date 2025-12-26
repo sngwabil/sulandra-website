@@ -92,8 +92,8 @@
 
     .service-card { text-decoration: none; display: block; }
     
-    .image-container { width: 100%; height: 220px; overflow: hidden; border-radius: 4px; margin-bottom: 15px; }
-    .service-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+    .image-container { width: 100%; height: 220px; overflow: hidden; border-radius: 4px; margin-bottom: 15px; background: #eee; }
+    .service-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; display: block; }
     .service-card:hover .service-img { transform: scale(1.05); }
 
     .service-info {
@@ -158,18 +158,12 @@
     }
 
     @media (max-width: 800px) {
-      .top-nav {
-        padding: 12px 14px;
-        height: 72px; /* locked on mobile */
-      }
-
-      /* Keep it natural on mobile: fit logo + keep only CTA */
+      .top-nav { padding: 12px 14px; height: 72px; }
       .logo img { width: 200px; max-height: 100%; }
 
       .header-tools { gap: 10px; }
       .header-tools a:not(.btn-cta) { display: none; }
 
-      /* Horizontal scroll nav so it doesn’t wrap awkwardly */
       .nav-links {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -179,7 +173,6 @@
       .nav-links a { padding: 14px 14px; }
 
       .footer-grid { grid-template-columns: 1fr; gap: 26px; }
-
       .footer-col .logo { height: 72px; }
       .footer-col .logo img { width: 200px; max-height: 100%; }
     }
@@ -225,7 +218,7 @@
 
     <div class="services-grid">
       
-      <a href="/services/community-living/" class="service-card">
+      <a href="/services/community-living/" class="service-card" target="_blank" rel="noopener noreferrer">
         <div class="image-container">
           <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img">
         </div>
@@ -235,9 +228,10 @@
         </div>
       </a>
 
-      <a href="#" class="service-card">
+      <!-- FIXED: replaced the broken "Home Health" image with a working Unsplash image -->
+      <a href="/services/home-health/" class="service-card" target="_blank" rel="noopener noreferrer">
         <div class="image-container">
-          <img src="https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=600&q=80" alt="Home Health" class="service-img">
+          <img src="https://images.unsplash.com/photo-1584516150909-c43483ee7932?auto=format&fit=crop&w=600&q=80" alt="Home Health Services" class="service-img">
         </div>
         <div class="service-info">
           <span class="service-name">Home Health Services</span>
@@ -245,7 +239,7 @@
         </div>
       </a>
 
-      <a href="#" class="service-card">
+      <a href="/services/rehab/" class="service-card" target="_blank" rel="noopener noreferrer">
         <div class="image-container">
           <img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=600&q=80" alt="Rehab" class="service-img">
         </div>
@@ -255,7 +249,7 @@
         </div>
       </a>
 
-      <a href="#" class="service-card">
+      <a href="/services/transportation/" class="service-card" target="_blank" rel="noopener noreferrer">
         <div class="image-container">
           <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=600&q=80" alt="Transportation" class="service-img">
         </div>
@@ -265,7 +259,7 @@
         </div>
       </a>
 
-      <a href="#" class="service-card">
+      <a href="/services/behavioral-health/" class="service-card" target="_blank" rel="noopener noreferrer">
         <div class="image-container">
           <img src="https://images.unsplash.com/photo-1527137342181-19aab11a8ee8?auto=format&fit=crop&w=600&q=80" alt="Behavioral Health" class="service-img">
         </div>
@@ -275,7 +269,7 @@
         </div>
       </a>
 
-      <a href="#" class="service-card">
+      <a href="/services/respite-care/" class="service-card" target="_blank" rel="noopener noreferrer">
         <div class="image-container">
           <img src="https://images.unsplash.com/photo-1571772996211-2f02c9727629?auto=format&fit=crop&w=600&q=80" alt="Respite Care" class="service-img">
         </div>
@@ -300,19 +294,19 @@
       <div class="footer-col">
         <h4>Our Services</h4>
         <ul>
-          <li><a href="/services/community-living/">Community Living</a></li>
-          <li><a href="#">Transportation</a></li>
-          <li><a href="#">Respite Care</a></li>
-          <li><a href="#">Companion Care</a></li>
+          <li><a href="/services/community-living/" target="_blank" rel="noopener noreferrer">Community Living</a></li>
+          <li><a href="/services/transportation/" target="_blank" rel="noopener noreferrer">Transportation</a></li>
+          <li><a href="/services/respite-care/" target="_blank" rel="noopener noreferrer">Respite Care</a></li>
+          <li><a href="/services/companion-care/" target="_blank" rel="noopener noreferrer">Companion Care</a></li>
         </ul>
       </div>
       <div class="footer-col">
         <h4>Resources</h4>
         <ul>
-          <li><a href="#">How to Start Home Care</a></li>
-          <li><a href="#">Care Questionnaire</a></li>
-          <li><a href="#">Careers</a></li>
-          <li><a href="#">Contact Us</a></li>
+          <li><a href="#" target="_blank" rel="noopener noreferrer">How to Start Home Care</a></li>
+          <li><a href="#" target="_blank" rel="noopener noreferrer">Care Questionnaire</a></li>
+          <li><a href="#" target="_blank" rel="noopener noreferrer">Careers</a></li>
+          <li><a href="#" target="_blank" rel="noopener noreferrer">Contact Us</a></li>
         </ul>
       </div>
     </div>
