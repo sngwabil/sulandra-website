@@ -11,12 +11,19 @@
       --card:#ffffff;
       --text:#0f172a;
       --muted:#475569;
-      --brand:#1e5aa8;
+
+      /* your existing palette */
+      --brand:#1f5aa6;
+      --brand2:#2c74d6;
+
       --brandDark:#0b2a4a;
       --line:#e6edf5;
       --soft:#eef3f9;
       --shadow: 0 10px 24px rgba(15,23,42,.06);
       --radius:18px;
+
+      /* used for sticky header offsets */
+      --headerH: 92px;
     }
 
     *{box-sizing:border-box}
@@ -50,53 +57,62 @@
     }
     .rule{height:1px;background:#d9e3ef;margin:0}
 
-    /* Update these specific classes */
-.topbar {
-  background: #fff;
-  border-bottom: 1px solid var(--line);
+    /* ==========================================================
+       TOP BAR (EXACT same layout + text sizing as about.html)
+       - Hardcoded to match about page pixel styling
+       - Uses about page font stack just for the header
+       ========================================================== */
+    .topbar{
   position: sticky;
   top: 0;
-  z-index: 100;
-  height: auto; /* Ensures it stays snug around the content */
+  z-index: 50;
+  height: var(--headerH);          /* 🔒 LOCK HEIGHT */
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px);
+  border-bottom:1px solid #e7eef8;
 }
 
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0; /* Reduced padding to remove unnecessary space */
-  gap: 20px;
-}
-    .brandLogo {
-  height: 360px;          /* Significant size for a professional presence */
-  width: auto;           /* Keeps the logo's natural shape */
-  max-width: 820px;      /* Ensures the text portion is fully visible */
-  object-fit: contain;
-  display: block;
-  mix-blend-mode: multiply; /* Optional: ensures perfect blending on light backgrounds */
+.topbarInner{
+  height: 100%;                    /* fill locked height */
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 18px;                 /* vertical padding REMOVED */
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
 }
 
-/* Adjust navigation bar for the larger logo */
-.nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 0;       
-  gap: 20px;
-}
-
-    .menu{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
-    .menu a{
-      text-decoration:none;
-      color:var(--brand);
-      font-weight:850;
-      font-size:15px;
-      letter-spacing:.2px;
-      border-bottom:3px solid transparent;
-      padding:10px 2px;
-      white-space:nowrap;
+    .brandRow{
+      display:flex; align-items:center; gap:12px;
+      font-weight:950;
+      letter-spacing:-.2px;
+      color:#1f5aa6;
+      font-size:18px;
     }
-    .menu a:hover{color:var(--brandDark);border-bottom-color:rgba(30,90,168,.35)}
+    .brandMark{
+      width:44px; height:44px; border-radius:12px;
+      background: radial-gradient(circle at 30% 30%, #67b0ff, #1f5aa6);
+      box-shadow: 0 10px 28px rgba(10,30,60,.08);
+    }
+    .topnav{
+      display:flex;
+      gap:18px;
+      align-items:center;
+      flex-wrap:wrap;
+      font-weight:800;
+      color:#20446e;
+    }
+    .topnav a{
+      padding:10px 10px;
+      border-radius:12px;
+      opacity:.92;
+    }
+    .topnav a.active{
+      background: #eaf2ff;
+      color:#1f5aa6;
+      box-shadow: inset 0 0 0 1px #d7e6ff;
+    }
 
     /* HERO */
     .hero{padding:24px 0 44px}
@@ -224,7 +240,7 @@
     }
     .values li{margin:6px 0}
 
-    /* Quality Focus section (like your example) */
+    /* Quality Focus section */
     .bullets{
       margin:16px 0 26px;
       padding-left:18px;
@@ -247,7 +263,7 @@
       box-shadow:0 10px 18px rgba(30,90,168,.18);
     }
 
-    /* Blue overlay services panel (example page 4) */
+    /* Blue overlay services panel */
     .overlay{
       position:relative;
       border-radius:22px;
@@ -291,7 +307,7 @@
     .caret{font-weight:950;opacity:.9;transform:translateY(2px)}
     .svc span{line-height:1.35}
 
-    /* Slider-like cards (News / Culture) */
+    /* Slider-like cards */
     .sliderShell{
       background:#fff;
       border:1px solid var(--line);
@@ -316,12 +332,13 @@
       width:100%;
       max-width:520px;
       aspect-ratio: 4 / 3;
-      border:4px solid #1e5aa8;
+      border:4px solid #1e5aa6;
       background:#fff;
       display:flex;
       align-items:center;
       justify-content:center;
       overflow:hidden;
+      position:relative;
     }
     .mediaFrame img{width:100%;height:100%;object-fit:contain}
     .smallRule{height:1px;background:#cfd8e6;margin:14px 0 18px}
@@ -388,10 +405,11 @@
       box-shadow:0 10px 18px rgba(15,23,42,.12);
       border:8px solid #fff;
       margin-left:auto;
+      position:relative;
     }
     .circleImg img{width:100%;height:100%;object-fit:cover}
 
-    /* Careers callout (example page 6) */
+    /* Careers callout */
     .careersRow{
       display:grid;
       grid-template-columns: 320px 1fr;
@@ -446,13 +464,44 @@
       line-height:1.7;
     }
 
+    /* ===== Slideshows ===== */
+    .slides{
+      position:absolute;
+      inset:0;
+      z-index:1;
+    }
+    .slideImg,
+    .circleImg .circleSlide{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      opacity:0;
+      transition: opacity 900ms ease;
+      transform: scale(1.03);
+      transform-origin:center;
+    }
+    .slideImg.active,
+    .circleImg .circleSlide.active{
+      opacity:1;
+      z-index:2;
+      animation: kenburns 10s ease-in-out infinite alternate;
+    }
+    @keyframes kenburns{
+      0%   { transform: scale(1.03) translate3d(0,0,0); }
+      100% { transform: scale(1.10) translate3d(-1%, -1%, 0); }
+    }
+
+    /* Prevent sticky header from covering section headings when jumping */
+    section { scroll-margin-top: calc(var(--headerH) + 20px); }
+
     /* Responsive */
     @media(max-width:980px){
       .heroGrid{grid-template-columns:1fr}
       .heroText{padding:46px 24px}
       .heroText h1{font-size:40px}
       .heroMedia::after{display:none}
-      .menu{gap:16px;justify-content:flex-start}
       .grid2{grid-template-columns:1fr}
       .overlay{padding:46px 18px}
       .serviceCols{grid-template-columns:1fr}
@@ -461,147 +510,39 @@
       .circleImg{margin:0 auto}
       .careersRow{grid-template-columns:1fr}
       .sectionTitle{font-size:40px}
+      .topbarInner{min-height: auto}
     }
-    /* ===== ADD-ON OVERRIDES: BIG LOGO + SLIDESHOWS (DO NOT REMOVE EXISTING CSS) ===== */
-
-/* Make logo area fill left top */
-.nav{
-  align-items: stretch;                 /* overrides existing align-items:center */
-  padding: 0;                           /* overrides existing padding:14px 0 */
-  min-height: 92px;
-}
-.brandWrap{
-  flex: 0 0 360px;                      /* left area width */
-  padding: 10px 0;
-}
+    /* Logo in top navigation (matches about page sizing) */
 .brandLogo{
-  height: 160px;                         /* bigger logo */
+  height: 240px;
+  width: auto;
+  display: block;
 }
-
-/* HERO (override): keep slideshow, keep dark blur, remove white wash */
-.heroMedia{
-  background: none !important; /* keep slideshow */
-  position: relative;
-  overflow: hidden;
-}
-
-/* === HERO FIX: clean diagonal + keep dark blur + stop clipping === */
-
-/* prevent text clipping */
-.heroCard{ overflow: visible; } /* was hiding the top of the H1 */
-
-/* give the hero more breathing room so nothing gets cut */
-.heroGrid{ min-height: 600px; }  /* was 520px */
-.heroText{ padding: 56px 56px; } /* was 70px 56px */
-
-/* remove ALL existing hero wash/gradients */
-.heroMedia{
-  background: none !important;
-  position: relative;
-  overflow: hidden;
-}
-
-/* if you have any old ::before rules, neutralize them */
-.heroMedia::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:2;
-  pointer-events:none;
-
-  /* dark blur stays on the left image side and fades out */
-  background: linear-gradient(90deg,
-    rgba(11,42,74,.70) 0%,
-    rgba(11,42,74,.55) 0%,
-    rgba(11,42,74,0) 0%
-  );
-
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
-}
-
-/* replace the big curved blob with a clean diagonal white panel */
-.heroMedia::after{
-  content:"";
-  position:absolute;
-  top:-80px;
-  left:52%;
-  width:5%;
-  height:calc(100% + 160px);
-  background: rgba(255,255,255,.96);
-  transform: skewX(-12deg);
-  z-index:3;
-  pointer-events:none;
-}
-
-/* Slideshow container */
-.slides{
-  position:absolute;
-  inset:0;
-  z-index:1;
-}
-
-/* Shared slideshow image styling */
-.slideImg,
-.circleImg .circleSlide,
-.mediaFrame .newsSlide{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  opacity:0;
-  transition: opacity 900ms ease;
-  transform: scale(1.03);
-  transform-origin:center;
-}
-
-/* Active slide */
-.slideImg.active,
-.circleImg .circleSlide.active,
-.mediaFrame .newsSlide.active{
-  opacity:1;
-  z-index:2;
-  animation: kenburns 10s ease-in-out infinite alternate;
-}
-
-/* Slow zoom in/out */
-@keyframes kenburns{
-  0%   { transform: scale(1.03) translate3d(0,0,0); }
-  100% { transform: scale(1.10) translate3d(-1%, -1%, 0); }
-}
-
-/* Ensure circle + news frames are positioned for absolute slides */
-.circleImg{ position: relative; }
-.mediaFrame{ position: relative; }
-    /* This stops the header from covering titles when you click nav links */
-section {
-  scroll-margin-top: 110px; 
-}
-
   </style>
 </head>
 
 <body>
 
-  <!-- NAV -->
-  <header class="topbar">
-    <div class="container">
-      <div class="nav">
-        <div class="brandWrap">
-          <!-- Use your transparent logo here -->
-          <img src="assets/logo.png" alt="Sulandra Community Living Services" class="brandLogo">
-        </div>
+  <!-- TOP BAR (EXACT SAME HTML STRUCTURE AS ABOUT) -->
+  <header class="topbar" role="banner">
+    <div class="topbarInner">
+      <div class="brandRow" aria-label="Sulandra Community Living Services">
+  <img
+    src="assets/logo.png"
+    alt="Sulandra Community Living Services"
+    class="brandLogo"
+  >
+</div>
 
-        <nav class="menu" aria-label="Primary">
-          <a href="about.html">About Us</a>
-          <a href="#services">Services</a>
-          <a href="#quality">Quality</a>
-          <a href="#stories">Stories</a>
-          <a href="#careers">Careers</a>
-          <a href="#contact">Contact</a>
-        </nav>
-      </div>
+      <nav class="topnav" aria-label="Primary">
+        <a class="active" href="index.html">Home</a>
+        <a href="about.html">About Us</a>
+        <a href="services.html">Services</a>
+        <a href="quality.html">Quality</a>
+        <a href="stories.html">Stories</a>
+        <a href="careers.html">Careers</a>
+        <a href="contact.html">Contact</a>
+      </nav>
     </div>
   </header>
 
@@ -611,15 +552,14 @@ section {
       <div class="heroCard">
         <div class="heroGrid">
           <div class="heroMedia" role="img" aria-label="Support in action">
-  <div class="slides" id="heroSlides">
-    <img class="slideImg active" src="assets/hero1.jpg" alt="">
-    <img class="slideImg" src="assets/hero2.jpg" alt="">
-    <img class="slideImg" src="assets/hero3.jpg" alt="">
-    <img class="slideImg" src="assets/hero4.jpg" alt="">
-    <img class="slideImg" src="assets/hero5.jpg" alt="">
-  </div>
-</div>
-
+            <div class="slides" id="heroSlides">
+              <img class="slideImg active" src="assets/hero1.jpg" alt="">
+              <img class="slideImg" src="assets/hero2.jpg" alt="">
+              <img class="slideImg" src="assets/hero3.jpg" alt="">
+              <img class="slideImg" src="assets/hero4.jpg" alt="">
+              <img class="slideImg" src="assets/hero5.jpg" alt="">
+            </div>
+          </div>
 
           <div class="heroText">
             <h1>A leader in community living services.</h1>
@@ -687,7 +627,7 @@ section {
 
   <div class="rule"></div>
 
-  <!-- PAGE 3: QUALITY FOCUS (like your example page 2) -->
+  <!-- PAGE 3: QUALITY FOCUS -->
   <section class="section compact" id="quality">
     <div class="container">
       <h2 style="margin:0 0 10px;font-size:34px;font-weight:950;color:var(--brand);letter-spacing:-.2px;">Quality Focus</h2>
@@ -713,7 +653,7 @@ section {
 
   <div class="rule"></div>
 
-  <!-- PAGE 4: SERVICES OVERLAY (like your example page 4) -->
+  <!-- PAGE 4: SERVICES OVERLAY -->
   <section class="section" id="services">
     <div class="container">
       <div class="overlay" role="img" aria-label="Services overview background">
@@ -739,7 +679,7 @@ section {
 
   <div class="rule"></div>
 
-  <!-- PAGE 5: STORIES / TESTIMONIALS (like your example page 3) -->
+  <!-- PAGE 5: STORIES / TESTIMONIALS -->
   <section class="section" id="stories">
     <div class="container">
       <div class="testimonialWrap">
@@ -752,21 +692,20 @@ section {
           <div class="attribution">— A FAMILY MEMBER / GUARDIAN</div>
         </div>
 
-        <!-- Replace with your own photo (circle crop) -->
         <div class="circleImg" aria-label="Testimonial photo" id="testimonialCircle">
-  <img class="circleSlide active" src="assets/testimonial1.jpg" alt="Testimonial photo">
-  <img class="circleSlide" src="assets/testimonial2.jpg" alt="">
-  <img class="circleSlide" src="assets/testimonial3.jpg" alt="">
-  <img class="circleSlide" src="assets/testimonial4.jpg" alt="">
-  <img class="circleSlide" src="assets/testimonial5.jpg" alt="">
-</div>
+          <img class="circleSlide active" src="assets/testimonial1.jpg" alt="Testimonial photo">
+          <img class="circleSlide" src="assets/testimonial2.jpg" alt="">
+          <img class="circleSlide" src="assets/testimonial3.jpg" alt="">
+          <img class="circleSlide" src="assets/testimonial4.jpg" alt="">
+          <img class="circleSlide" src="assets/testimonial5.jpg" alt="">
+        </div>
       </div>
     </div>
   </section>
 
   <div class="rule"></div>
 
-  <!-- PAGE 6: RECENT NEWS / CULTURE CARD (like your example page 5) -->
+  <!-- PAGE 6: RECENT NEWS -->
   <section class="section" id="news">
     <div class="container">
       <h2 class="sectionTitle" style="margin-bottom:22px;">Recent updates</h2>
@@ -801,17 +740,17 @@ section {
 
   <div class="rule"></div>
 
-  <!-- CAREERS (like your example page 6 block) -->
+  <!-- CAREERS -->
   <section class="section" id="careers">
     <div class="container">
       <div class="careersRow">
         <div class="circleImg" style="width:260px;height:260px" id="careersCircle">
-  <img class="circleSlide active" src="assets/careers1.jpg" alt="Team photo">
-  <img class="circleSlide" src="assets/careers2.jpg" alt="">
-  <img class="circleSlide" src="assets/careers3.jpg" alt="">
-  <img class="circleSlide" src="assets/careers4.jpg" alt="">
-  <img class="circleSlide" src="assets/careers5.jpg" alt="">
-</div>
+          <img class="circleSlide active" src="assets/careers1.jpg" alt="Team photo">
+          <img class="circleSlide" src="assets/careers2.jpg" alt="">
+          <img class="circleSlide" src="assets/careers3.jpg" alt="">
+          <img class="circleSlide" src="assets/careers4.jpg" alt="">
+          <img class="circleSlide" src="assets/careers5.jpg" alt="">
+        </div>
 
         <div>
           <h3 class="careersTitle">Think you’d like to join the Sulandra team?</h3>
@@ -853,7 +792,7 @@ section {
     </div>
   </section>
 
-  <!-- FOOTER (inspired by your screenshot) -->
+  <!-- FOOTER -->
   <footer>
     <div class="container">
       <div class="footerLinks">
@@ -877,33 +816,47 @@ section {
   </footer>
 
   <script>
-  document.getElementById("yr").textContent = new Date().getFullYear();
+    // Keep footer year correct
+    document.getElementById("yr").textContent = new Date().getFullYear();
 
-  // ===== ADD-ON: slideshow helper (every 5 seconds) =====
-  function startSlideshow(container, intervalMs = 5000) {
-    if (!container) return;
-    const slides = Array.from(container.querySelectorAll("img"));
-    if (slides.length < 2) return;
+    // Measure header height so anchor jumps don't hide headings
+    (function () {
+      const header = document.querySelector(".topbar");
+      if (!header) return;
 
-    let idx = slides.findIndex(s => s.classList.contains("active"));
-    if (idx < 0) {
-      idx = 0;
-      slides[0].classList.add("active");
+      function setHeaderHeightVar() {
+        const h = header.getBoundingClientRect().height;
+        document.documentElement.style.setProperty("--headerH", `${Math.ceil(h)}px`);
+      }
+      window.addEventListener("load", setHeaderHeightVar);
+      window.addEventListener("resize", setHeaderHeightVar);
+      setHeaderHeightVar();
+    })();
+
+    // Slideshow helper
+    function startSlideshow(container, intervalMs = 5000) {
+      if (!container) return;
+      const slides = Array.from(container.querySelectorAll("img"));
+      if (slides.length < 2) return;
+
+      let idx = slides.findIndex(s => s.classList.contains("active"));
+      if (idx < 0) {
+        idx = 0;
+        slides[0].classList.add("active");
+      }
+
+      setInterval(() => {
+        slides[idx].classList.remove("active");
+        idx = (idx + 1) % slides.length;
+        slides[idx].classList.add("active");
+      }, intervalMs);
     }
 
-    setInterval(() => {
-      slides[idx].classList.remove("active");
-      idx = (idx + 1) % slides.length;
-      slides[idx].classList.add("active");
-    }, intervalMs);
-  }
-
-  // Start all slideshows
-  startSlideshow(document.getElementById("heroSlides"), 5000);
-  startSlideshow(document.getElementById("testimonialCircle"), 5000);
-  startSlideshow(document.getElementById("careersCircle"), 5000);
-  startSlideshow(document.getElementById("newsFrame"), 5000);
-</script>
+    // Start slideshows
+    startSlideshow(document.getElementById("heroSlides"), 5000);
+    startSlideshow(document.getElementById("testimonialCircle"), 5000);
+    startSlideshow(document.getElementById("careersCircle"), 5000);
+  </script>
 
 </body>
 </html>
