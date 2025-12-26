@@ -64,7 +64,7 @@
       display: block;
     }
 
-    /* NEW: accessible hidden text (keeps brand name for screen readers / SEO) */
+    /* accessible hidden text */
     .sr-only{
       position: absolute;
       width: 1px;
@@ -76,9 +76,6 @@
       white-space: nowrap;
       border: 0;
     }
-
-    /* Keep old placeholder class (not used anymore, but harmless) */
-    .logo-icon { width: 35px; height: 35px; background: var(--primary); border-radius: 50%; display: inline-block; }
 
     .header-tools { display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600; }
     .header-tools a { text-decoration: none; color: var(--text); white-space: nowrap; }
@@ -262,21 +259,17 @@
     @media (max-width: 800px) {
       .alert-bar { font-size: 13px; padding: 10px 12px; }
 
-      /* Keep top bar locked, but tighter so it feels natural */
       .top-nav {
         padding: 12px 14px;
         height: 72px; /* locked on mobile */
       }
 
-      /* Fit the 240px logo better on small screens */
       .logo img { width: 200px; max-height: 100%; }
 
-      /* Simplify header tools on mobile (avoid cramped links) */
       .header-tools { gap: 10px; }
-      .header-tools a:not(.btn-cta) { display: none; } /* keep only the CTA */
+      .header-tools a:not(.btn-cta) { display: none; }
       .btn-cta { padding: 10px 14px; }
 
-      /* Mobile-friendly nav: horizontal scroll instead of wrapping awkwardly */
       .nav-links {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -299,7 +292,6 @@
       .process-section { padding: 60px 16px; }
       .section { margin: 40px auto; }
 
-      /* Footer: keep the logo area locked like the header */
       footer { padding: 40px 16px; }
       .footer-grid { grid-template-columns: 1fr; gap: 26px; }
       .footer-col .logo { height: 72px; }
@@ -326,12 +318,16 @@
         <a href="#" class="btn-cta">Free Consultation</a>
       </div>
     </div>
+
     <nav class="main-nav">
       <ul class="nav-links">
         <li><a href="index.html">Home</a></li>
         <li><a href="services.html">Services</a></li> 
         <li><a href="#">About Us</a></li>
-        <li><a href="#">Careers</a></li>
+
+        <!-- UPDATED: Careers now points to your Careers.html -->
+        <li><a href="Careers.html">Careers</a></li>
+
         <li><a href="#">Contact</a></li>
       </ul>
     </nav>
@@ -425,6 +421,7 @@
         </a>
         <p>© 2025 Sulandra Health. <br>Changing the Way the World Ages.</p>
       </div>
+
       <div class="footer-col">
         <h4>Our Services</h4>
         <ul>
@@ -434,12 +431,16 @@
           <li><a href="services.html">Companion Care</a></li>
         </ul>
       </div>
+
       <div class="footer-col">
         <h4>Resources</h4>
         <ul>
           <li><a href="#">How to Start Home Care</a></li>
           <li><a href="#">Care Questionnaire</a></li>
-          <li><a href="#">Careers</a></li>
+
+          <!-- UPDATED: Careers now points to your Careers.html -->
+          <li><a href="Careers.html">Careers</a></li>
+
           <li><a href="#">Contact Us</a></li>
         </ul>
       </div>
