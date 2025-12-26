@@ -38,7 +38,38 @@
       align-items: center;
       padding: 15px 20px;
     }
-    .logo { font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 10px; }
+
+    /* Logo container (used in header + footer) */
+    .logo { 
+      text-decoration: none; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      color: var(--primary);
+      font-weight: 800;
+    }
+
+    /* NEW: logo image styling */
+    .logo img{
+      height: 44px;          /* adjust if you want bigger/smaller */
+      width: auto;
+      display: block;
+    }
+
+    /* NEW: accessible hidden text (keeps brand name for screen readers / SEO) */
+    .sr-only{
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* Keep old placeholder class (not used anymore, but harmless) */
     .logo-icon { width: 35px; height: 35px; background: var(--primary); border-radius: 50%; display: inline-block; }
 
     .header-tools { display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600; }
@@ -209,6 +240,9 @@
       .hero-content h1 { font-size: 32px; }
       .action-bar { grid-template-columns: repeat(2, 1fr); margin-top: 0; }
       .footer-grid { grid-template-columns: 1fr; }
+
+      /* optional: slightly smaller logo on mobile */
+      .logo img { height: 38px; }
     }
   </style>
 </head>
@@ -220,10 +254,12 @@
 
   <header>
     <div class="top-nav">
-      <a href="index.html" class="logo">
-        <div class="logo-icon"></div>
-        Sulandra Health
+      <!-- UPDATED: replaces icon + text with your image -->
+      <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="mainlogo.png" alt="Sulandra Health Logo">
+        <span class="sr-only">Sulandra Health</span>
       </a>
+
       <div class="header-tools">
         <a href="#">Reviews</a>
         <a href="#">Resources</a>
@@ -323,7 +359,11 @@
   <footer>
     <div class="footer-grid">
       <div class="footer-col">
-        <a href="#" class="logo" style="margin-bottom:20px">Sulandra Health</a>
+        <!-- UPDATED: footer branding uses the same logo image -->
+        <a href="index.html" class="logo" style="margin-bottom:20px" aria-label="Sulandra Health Home">
+          <img src="mainlogo.png" alt="Sulandra Health Logo">
+          <span class="sr-only">Sulandra Health</span>
+        </a>
         <p>© 2025 Sulandra Health. <br>Changing the Way the World Ages.</p>
       </div>
       <div class="footer-col">
