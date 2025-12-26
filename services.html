@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Lines | Sulandra Health</title>
+  <style>
+    :root {
+      --primary: #004b8d; 
+      --secondary: #0077c8;
+      --accent: #d14124; 
+      --text: #333333;
+      --bg-light: #f7f9fc;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text); background-color: var(--white); line-height: 1.6; }
+
+    /* --- HEADER (Matched to index.html) --- */
+    header { border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 1000; }
+    .top-nav { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
+    .logo { font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 35px; height: 35px; background: var(--primary); border-radius: 50%; display: inline-block; }
+    .header-tools { display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600; }
+    .header-tools a { text-decoration: none; color: var(--text); }
+    .btn-cta { background: var(--primary); color: white !important; padding: 10px 18px; border-radius: 4px; text-decoration: none; }
+    .main-nav { background: #fff; border-top: 1px solid #eee; }
+    .nav-links { max-width: 1200px; margin: 0 auto; display: flex; list-style: none; padding: 0 20px; }
+    .nav-links a { display: block; padding: 15px 20px; text-decoration: none; color: var(--text); font-weight: 600; font-size: 15px; }
+
+    /* --- SERVICE LINES CONTENT --- */
+    .services-container { max-width: 1200px; margin: 60px auto; padding: 0 20px; }
+    
+    .breadcrumb { font-size: 14px; margin-bottom: 20px; color: #666; }
+    .breadcrumb a { color: #666; text-decoration: none; }
+
+    .page-title { font-size: 42px; font-weight: 800; color: #222; margin-bottom: 20px; }
+    
+    .view-all { color: var(--accent); text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; margin-bottom: 40px; }
+    .view-all::after { content: ' ›'; }
+
+    /* Grid Layout */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px 30px;
+    }
+
+    .service-card { text-decoration: none; display: block; }
+    
+    .image-container { width: 100%; height: 220px; overflow: hidden; border-radius: 4px; margin-bottom: 15px; }
+    .service-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+    .service-card:hover .service-img { transform: scale(1.05); }
+
+    .service-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 15px;
+    }
+
+    .service-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #444;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+      text-decoration-color: transparent;
+      transition: text-decoration-color 0.3s;
+    }
+
+    .service-card:hover .service-name { color: var(--primary); text-decoration-color: var(--primary); }
+
+    /* Circular Plus Icon (Matching the image) */
+    .plus-icon {
+      width: 24px;
+      height: 24px;
+      background: #000;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    /* --- FOOTER (Matched to index.html) --- */
+    footer { background: #f8f9fa; padding: 60px 20px; border-top: 1px solid #eee; margin-top: 80px; }
+    .footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
+    .footer-col h4 { margin-bottom: 20px; font-size: 16px; color: var(--primary); }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 10px; font-size: 14px; }
+    .footer-col a { text-decoration: none; color: #555; }
+
+    @media (max-width: 900px) {
+      .services-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .services-grid { grid-template-columns: 1fr; }
+      .page-title { font-size: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="top-nav">
+      <a href="index.html" class="logo">
+        <div class="logo-icon"></div>
+        Sulandra Health
+      </a>
+      <div class="header-tools">
+        <a href="#">Reviews</a>
+        <a href="#">Resources</a>
+        <a href="#" class="btn-cta">Free Consultation</a>
+      </div>
+    </div>
+    <nav class="main-nav">
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="services.html" style="color: var(--primary);">Services</a></li>
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Careers</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="services-container">
+    <div class="breadcrumb">
+      <a href="index.html">🏠</a> / Services
+    </div>
+
+    <h1 class="page-title">Service Lines</h1>
+    <a href="#" class="view-all">View All Services</a>
+
+    <div class="services-grid">
+      
+      <a href="/services/community-living/" class="service-card">
+        <div class="image-container">
+          <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img">
+        </div>
+        <div class="service-info">
+          <span class="service-name">Community Living</span>
+          <span class="plus-icon">+</span>
+        </div>
+      </a>
+
+      <a href="#" class="service-card">
+        <div class="image-container">
+          <img src="https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=600&q=80" alt="Home Health" class="service-img">
+        </div>
+        <div class="service-info">
+          <span class="service-name">Home Health Services</span>
+          <span class="plus-icon">+</span>
+        </div>
+      </a>
+
+      <a href="#" class="service-card">
+        <div class="image-container">
+          <img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=600&q=80" alt="Rehab" class="service-img">
+        </div>
+        <div class="service-info">
+          <span class="service-name">Rehab Services</span>
+          <span class="plus-icon">+</span>
+        </div>
+      </a>
+
+      <a href="#" class="service-card">
+        <div class="image-container">
+          <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=600&q=80" alt="Transportation" class="service-img">
+        </div>
+        <div class="service-info">
+          <span class="service-name">Transportation Services</span>
+          <span class="plus-icon">+</span>
+        </div>
+      </a>
+
+      <a href="#" class="service-card">
+        <div class="image-container">
+          <img src="https://images.unsplash.com/photo-1527137342181-19aab11a8ee8?auto=format&fit=crop&w=600&q=80" alt="Behavioral Health" class="service-img">
+        </div>
+        <div class="service-info">
+          <span class="service-name">Behavioral Health</span>
+          <span class="plus-icon">+</span>
+        </div>
+      </a>
+
+      <a href="#" class="service-card">
+        <div class="image-container">
+          <img src="https://images.unsplash.com/photo-1571772996211-2f02c9727629?auto=format&fit=crop&w=600&q=80" alt="Respite Care" class="service-img">
+        </div>
+        <div class="service-info">
+          <span class="service-name">Respite Care</span>
+          <span class="plus-icon">+</span>
+        </div>
+      </a>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-col">
+        <a href="#" class="logo" style="margin-bottom:20px">Sulandra Health</a>
+        <p>© 2025 Sulandra Health. <br>Changing the Way the World Ages.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Our Services</h4>
+        <ul>
+          <li><a href="/services/community-living/">Community Living</a></li>
+          <li><a href="#">Transportation</a></li>
+          <li><a href="#">Respite Care</a></li>
+          <li><a href="#">Companion Care</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="#">How to Start Home Care</a></li>
+          <li><a href="#">Care Questionnaire</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Contact Us</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
