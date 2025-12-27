@@ -8,10 +8,11 @@
 
   <style>
     :root{
+      /* ===== Form theme (kept) ===== */
       --bg:#f6f7f8;
       --card:#ffffff;
-      --text:#1f2937;
-      --muted:#6b7280;
+      --text:#0f172a;
+      --muted:#475569;
       --border:#d1d5db;
       --brand:#1f5aa6;
       --focus:#2563eb;
@@ -20,62 +21,110 @@
       --shadow: 0 6px 18px rgba(0,0,0,.08);
       --radius: 14px;
 
-      /* sticky header height (matches your site’s topbar concept) */
-      --headerH: 92px;
+      /* ===== Careers header tokens (match Careers header) ===== */
+      --primary:#004b8d;
+      --secondary:#0077c8;
+      --accent:#d14124;
+      --line:#e7eef8;
+
+      --headerH:80px; /* careers header height */
 
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
     *{ box-sizing:border-box; }
     body{ margin:0; background:var(--bg); color:var(--text); }
+    a{ color:inherit; text-decoration:none; }
+    img{ max-width:100%; display:block; }
 
-    a{ color: inherit; }
-
-    /* ===== TOP BAR (same structure as index.html) ===== */
-    .topbar{
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      height: var(--headerH);
-      background: rgba(255,255,255,.92);
-      backdrop-filter: blur(8px);
-      border-bottom:1px solid #e7eef8;
+    /* ====== ALERT BAR (CAREERS) ====== */
+    .alert-bar{
+      background:var(--accent);
+      color:#fff;
+      text-align:center;
+      padding:10px 20px;
+      font-size:14px;
+      font-weight:800;
     }
-    .topbarInner{
-      height: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 18px;
+
+    /* ====== HEADER (CAREERS) ====== */
+    header{
+      position:sticky;
+      top:0;
+      z-index:1000;
+      background:#fff;
+      border-bottom:1px solid #ddd;
+    }
+    .top-nav{
+      max-width:1200px;
+      margin:0 auto;
+      padding:15px 20px;
+      height:var(--headerH);
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:16px;
     }
-    .brandRow{ display:flex; align-items:center; gap:12px; }
-    .brandLogo{ height: 240px; width:auto; display:block; }
-
-    .topnav{
+    .logo{ display:flex; align-items:center; min-width:0; }
+    .logo img{
+      width:240px;
+      height:auto;
+      max-height:100%;
+      object-fit:contain;
+    }
+    .sr-only{
+      position:absolute;
+      width:1px;height:1px;
+      padding:0;margin:-1px;
+      overflow:hidden;
+      clip:rect(0,0,0,0);
+      white-space:nowrap;
+      border:0;
+    }
+    .header-tools{
       display:flex;
-      gap:18px;
+      gap:16px;
       align-items:center;
-      flex-wrap:wrap;
+      font-size:14px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .header-tools a{ color:var(--text); }
+    .btn-cta{
+      background:var(--primary);
+      color:#fff !important;
+      padding:10px 16px;
+      border-radius:6px;
+      font-weight:800;
+    }
+
+    .main-nav{
+      background:#fff;
+      border-top:1px solid #eee;
+    }
+    .nav-links{
+      max-width:1200px;
+      margin:0 auto;
+      list-style:none;
+      display:flex;
+      gap:2px;
+      padding:0 10px;
+    }
+    .nav-links a{
+      display:block;
+      padding:12px 14px;
+      border-radius:10px;
       font-weight:800;
       color:#20446e;
     }
-    .topnav a{
-      padding:10px 10px;
-      border-radius:12px;
-      text-decoration:none;
-      opacity:.92;
-    }
-    .topnav a.active{
+    .nav-links a:hover{ background:#f2f6ff; }
+    .nav-links a.active{
       background:#eaf2ff;
       color:#1f5aa6;
       box-shadow: inset 0 0 0 1px #d7e6ff;
-      opacity:1;
     }
 
-    /* Layout */
+    /* ===== Apply layout (kept) ===== */
     .wrap{ max-width: 1140px; margin:0 auto; padding:18px 16px; }
     main .grid{
       display:grid; grid-template-columns: 1.25fr .75fr; gap: 18px;
@@ -110,7 +159,7 @@
     input[type="text"], input[type="email"], input[type="tel"],
     input[type="number"], input[type="date"], input[type="url"],
     select, textarea{
-      width:100%; box-sizing:border-box;
+      width:100%;
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 12px;
@@ -244,74 +293,78 @@
     }
     .error.show{ display:block; }
 
-    .ref-card{
+    .ref-card, .exp-card{
       border: 1px solid rgba(209,213,219,.7);
       border-radius: 14px;
       padding: 14px;
       margin-top: 12px;
       background:#fff;
     }
-    .ref-head{
+    .ref-head, .exp-head{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
       margin-bottom: 8px;
     }
-    .ref-head strong{ font-size: 13px; }
-    .ref-head button{ padding: 8px 12px; font-size: 13px; border-radius: 10px; }
-
-    .exp-card{
-      border: 1px solid rgba(209,213,219,.7);
-      border-radius: 14px;
-      padding: 14px;
-      margin-top: 12px;
-      background:#fff;
-    }
-    .exp-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom: 8px;
-    }
-    .exp-head strong{ font-size: 13px; }
-    .exp-head button{ padding: 8px 12px; font-size: 13px; border-radius: 10px; }
+    .ref-head strong, .exp-head strong{ font-size: 13px; }
+    .ref-head button, .exp-head button{ padding: 8px 12px; font-size: 13px; border-radius: 10px; }
 
     .small{ font-size: 13px; color: var(--text); }
     .muted{ color: var(--muted); }
 
-    .sr-only{
-      position:absolute; width:1px; height:1px;
-      padding:0; margin:-1px; overflow:hidden;
-      clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    /* ===== Responsive header behavior (match Careers) ===== */
+    @media (max-width: 800px){
+      :root{ --headerH:72px; }
+
+      .alert-bar{ font-size:13px; padding:10px 12px; }
+      .top-nav{ padding:12px 14px; gap:12px; }
+      .logo img{ width:200px; }
+
+      .header-tools{ gap:10px; }
+      .header-tools a:not(.btn-cta){ display:none; }
+
+      .nav-links{
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        scrollbar-width:none;
+      }
+      .nav-links::-webkit-scrollbar{ display:none; }
+      .nav-links a{ padding:14px 14px; }
     }
   </style>
 </head>
 
 <body>
+  <!-- CAREERS alert bar -->
+  <div class="alert-bar">
+    Sulandra Health is changing the way the world ages. Call us today for a free consultation.
+  </div>
 
-  <!-- Topbar -->
-  <header class="topbar" role="banner">
-    <div class="topbarInner">
-      <div class="brandRow" aria-label="Sulandra Community Living Services">
-        <img
-          src="assets/logo.png"
-          alt="Sulandra Community Living Services"
-          class="brandLogo"
-        >
+  <!-- CAREERS header -->
+  <header>
+    <div class="top-nav">
+      <a href="/index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="/assets/mainlogo.png" alt="Sulandra Health Logo" />
+        <span class="sr-only">Sulandra Health</span>
+      </a>
+
+      <div class="header-tools">
+        <a href="#">Reviews</a>
+        <a href="#">Resources</a>
+        <a href="#" class="btn-cta">Free Consultation</a>
       </div>
-
-      <nav class="topnav" aria-label="Primary">
-        <a href="index.html">Home</a>
-        <a href="about.html">About Us</a>
-        <a href="services.html">Services</a>
-        <a href="quality.html">Quality</a>
-        <a href="stories.html">Stories</a>
-        <a class="active" href="careers.html">Careers</a>
-        <a href="contact.html">Contact</a>
-      </nav>
     </div>
+
+    <nav class="main-nav" aria-label="Primary">
+      <ul class="nav-links">
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/services.html">Services</a></li>
+        <li><a class="active" href="/Careers.html">Careers</a></li>
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </nav>
   </header>
 
   <main class="wrap" role="main">
@@ -319,12 +372,6 @@
       <section class="card" aria-label="LPN application form">
         <h2>Application for: Licensed Practical Nurse (LPN)</h2>
         <p class="sub">Complete the form below. Required fields are marked with an asterisk.</p>
-
-        <!-- BACKEND NOTE (for live submission):
-             - Create POST /api/applications to accept multipart/form-data (resume + docs + JSON fields)
-             - Store files + application record
-             - Set USE_SIMULATION=false and SUBMIT_URL below
-        -->
 
         <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
           <input type="hidden" name="jobTitle" value="Licensed Practical Nurse (LPN)" />
@@ -823,10 +870,6 @@
     function show(el){ el.classList.add("show"); }
     function hide(el){ el.classList.remove("show"); }
 
-    function setPill(pillEl, text){
-      pillEl.textContent = text;
-    }
-
     function fileOk(file){
       if (!file) return true;
       return file.size <= MAX_FILE_BYTES;
@@ -862,6 +905,15 @@
       a.click();
       URL.revokeObjectURL(a.href);
     });
+
+    function escapeHtml(str){
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
     /* ==========
        Dynamic Work Experience
@@ -937,7 +989,6 @@
         autosave(true);
       });
 
-      // Track changes for autosave/progress
       wrap.addEventListener("input", () => { autosave(); updateProgress(); });
       wrap.addEventListener("change", () => { autosave(); updateProgress(); });
 
@@ -1015,7 +1066,7 @@
     });
 
     /* ==========
-       File UI (Indeed-like chooser)
+       File UI
        ========== */
     function wireFile(inputId, chosenId, pillId){
       const input = $(inputId);
@@ -1025,14 +1076,14 @@
       input.addEventListener("change", () => {
         const files = input.files;
         if (!files || files.length === 0){
-          chosen.textContent = "Click to choose…";
-          setPill(pill, input.multiple ? "0 files" : "No file");
+          chosen.textContent = inputId === "resume" ? "Click to choose resume…" : "Click to choose…";
+          pill.textContent = input.multiple ? "0 files" : (inputId === "resume" ? "No file" : "Optional");
         } else if (files.length === 1){
           chosen.textContent = files[0].name;
-          setPill(pill, "Selected");
+          pill.textContent = Math.round(files[0].size / 1024) + " KB";
         } else {
           chosen.textContent = `${files.length} files selected`;
-          setPill(pill, `${files.length} files`);
+          pill.textContent = `${files.length} files`;
         }
         autosave(true);
         updateProgress();
@@ -1111,7 +1162,6 @@
       setErr("err-lpnLicenseState", !st); ok = ok && !!st;
       setErr("err-lpnLicenseExp", !exp); ok = ok && !!exp;
 
-      // certifications: at least one cert OR "none"
       const anyCert = hasAnyChecked("certs");
       const none = $("cert_none").checked;
       setErr("err-certs", !(anyCert || none));
@@ -1129,7 +1179,6 @@
       setErr("err-employmentType", !emp); ok = ok && !!emp;
       setErr("err-shiftPref", !shift); ok = ok && !!shift;
 
-      // days: at least one
       const anyDay = hasAnyChecked("days");
       setErr("err-days", !anyDay);
       ok = ok && anyDay;
@@ -1165,11 +1214,7 @@
         const end = $(`exp_end_${idx}`)?.value;
         const reason = $(`exp_reason_${idx}`)?.value.trim();
         const contactOk = $(`exp_contactOk_${idx}`)?.value;
-
-        const isComplete = !!(employer && title && start && end && reason && contactOk);
-
-        // Only show inline errors on submit; progress UI still counts
-        if (isComplete) completeCount++;
+        if (employer && title && start && end && reason && contactOk) completeCount++;
       }
 
       const ok = completeCount >= 1;
@@ -1243,7 +1288,7 @@
     }
 
     function validateAll(){
-      const ok =
+      return (
         validateBasics() &&
         validateLicense() &&
         validateAvailability() &&
@@ -1252,25 +1297,14 @@
         validateResume() &&
         validateScreening() &&
         validateRefs() &&
-        validateSignature();
-
-      return ok;
+        validateSignature()
+      );
     }
 
     /* ==========
-       Draft save/restore (Indeed-like “save progress”)
+       Draft save/restore
        ========== */
-    function escapeHtml(str){
-      return String(str || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
     function collectDraft(){
-      // Basic fields
       const draft = {
         ts: new Date().toISOString(),
         fields: {},
@@ -1282,20 +1316,16 @@
         references: []
       };
 
-      // Copy simple inputs/selects/textareas
       const els = document.querySelectorAll("#appForm input, #appForm select, #appForm textarea");
       els.forEach(el => {
         const t = el.type;
-        if (!el.name && !el.id) return;
         const key = el.name || el.id;
-
+        if (!key) return;
         if (t === "file") return;
-        if (t === "checkbox" || t === "radio") return; // handled separately above
-
+        if (t === "checkbox" || t === "radio") return;
         draft.fields[key] = el.value;
       });
 
-      // Experiences
       document.querySelectorAll("#expContainer .exp-card").forEach(c => {
         const idx = c.dataset.exp;
         draft.experiences.push({
@@ -1309,7 +1339,6 @@
         });
       });
 
-      // Refs
       document.querySelectorAll("#refsContainer .ref-card").forEach(c => {
         const idx = c.dataset.ref;
         draft.references.push({
@@ -1320,7 +1349,6 @@
         });
       });
 
-      // Checkboxes: consent items
       draft.fields["consentContactRefs"] = $("consentContactRefs").checked ? "yes" : "";
       draft.fields["consentTruth"] = $("consentTruth").checked ? "yes" : "";
       draft.fields["consentESign"] = $("consentESign").checked ? "yes" : "";
@@ -1331,7 +1359,6 @@
     function applyDraft(draft){
       if (!draft) return;
 
-      // Simple fields
       const fields = draft.fields || {};
       Object.keys(fields).forEach(k => {
         const el = document.querySelector(`[name="${k}"], #${CSS.escape(k)}`);
@@ -1340,7 +1367,6 @@
         }
       });
 
-      // Certs/days
       $("cert_none").checked = !!draft.cert_none;
       document.querySelectorAll('input[name="certs"]').forEach(cb => {
         cb.checked = (draft.certs || []).includes(cb.value);
@@ -1349,30 +1375,22 @@
         cb.checked = (draft.days || []).includes(cb.value);
       });
 
-      // Screening radio
       if (draft.screening){
         const r = document.querySelector(`input[name="screening"][value="${CSS.escape(draft.screening)}"]`);
         if (r) r.checked = true;
       }
 
-      // Consents
       $("consentContactRefs").checked = fields["consentContactRefs"] === "yes";
       $("consentTruth").checked = fields["consentTruth"] === "yes";
       $("consentESign").checked = fields["consentESign"] === "yes";
 
-      // Experiences
       $("expContainer").innerHTML = "";
       expCount = 0;
-      (draft.experiences || []).forEach(e => {
-        $("expContainer").appendChild(makeExpCard(e));
-      });
+      (draft.experiences || []).forEach(e => $("expContainer").appendChild(makeExpCard(e)));
 
-      // References
       $("refsContainer").innerHTML = "";
       refCount = 0;
-      (draft.references || []).forEach(r => {
-        $("refsContainer").appendChild(makeRefCard(r));
-      });
+      (draft.references || []).forEach(r => $("refsContainer").appendChild(makeRefCard(r)));
     }
 
     let autosaveTimer = null;
@@ -1407,7 +1425,6 @@
         "Experience entries": draft.experiences.length,
         "References entries": draft.references.length
       };
-
       alert("Preview (high level):\n\n" + Object.entries(preview).map(([k,v]) => `${k}: ${v}`).join("\n"));
     });
 
@@ -1423,7 +1440,6 @@
       $("autosavePill").textContent = "Autosave: off";
       $("draftStatus").textContent = "No";
 
-      // file pills reset
       $("resume-chosen").textContent = "Click to choose resume…";
       $("resume-pill").textContent = "No file";
       $("cover-chosen").textContent = "Click to choose cover letter…";
@@ -1456,17 +1472,15 @@
         if (val) complete++;
       }
 
-      // additional required groups:
       const anyCert = hasAnyChecked("certs") || $("cert_none").checked;
       const anyDay = hasAnyChecked("days");
       const screening = !!document.querySelector('input[name="screening"]:checked');
 
-      // consents:
       const consentTruth = $("consentTruth").checked;
       const consentESign = $("consentESign").checked;
       const consentRefs = $("consentContactRefs").checked;
 
-      const groupCount = 6; // certs, days, screening, truth, esign, refs consent
+      const groupTotal = 6;
       let groupComplete = 0;
       if (anyCert) groupComplete++;
       if (anyDay) groupComplete++;
@@ -1475,31 +1489,21 @@
       if (consentESign) groupComplete++;
       if (consentRefs) groupComplete++;
 
-      return {
-        complete,
-        total: requiredIds.length,
-        groupComplete,
-        groupTotal: groupCount
-      };
+      return { complete, total: requiredIds.length, groupComplete, groupTotal };
     }
 
     function updateProgress(){
-      // Required completion %
       const r = countCompleteRequired();
       const total = r.total + r.groupTotal;
       const done = r.complete + r.groupComplete;
       const pct = Math.round((done / total) * 100);
-
       $("reqCount").textContent = `${pct}%`;
 
-      // Resume status
       const f = $("resume").files && $("resume").files[0] ? $("resume").files[0] : null;
       $("resumeStatus").textContent = f ? "Yes" : "No";
 
-      // Draft status
       $("draftStatus").textContent = localStorage.getItem(DRAFT_KEY) ? "Yes" : "No";
 
-      // Refs status
       const cards = Array.from(document.querySelectorAll("#refsContainer .ref-card"));
       let completeRefs = 0;
       for (const c of cards){
@@ -1512,7 +1516,6 @@
       }
       $("refsStatus").textContent = `${Math.min(completeRefs, 99)}/2`;
 
-      // Experience count
       $("expStatus").textContent = String(document.querySelectorAll("#expContainer .exp-card").length);
     }
 
@@ -1547,6 +1550,7 @@
       toast("Submitted", "Your application has been submitted.");
       localStorage.removeItem(DRAFT_KEY);
       $("draftStatus").textContent = "No";
+      window.location.href = "/Careers.html";
     }
 
     async function realSubmit(){
@@ -1555,7 +1559,6 @@
       const form = $("appForm");
       const fd = new FormData(form);
 
-      // Add arrays in a consistent way:
       const certs = Array.from(document.querySelectorAll('input[name="certs"]:checked')).map(i => i.value);
       const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(i => i.value);
       const screening = (document.querySelector('input[name="screening"]:checked') || {}).value || "";
@@ -1564,7 +1567,6 @@
       fd.append("days_json", JSON.stringify(days));
       fd.append("screening", screening);
 
-      // Experiences/references as JSON:
       const draft = collectDraft();
       fd.append("experiences_json", JSON.stringify(draft.experiences || []));
       fd.append("references_json", JSON.stringify(draft.references || []));
@@ -1587,22 +1589,20 @@
       toast("Submitted", "Your application has been submitted.");
       localStorage.removeItem(DRAFT_KEY);
       $("draftStatus").textContent = "No";
+      window.location.href = "/Careers.html";
     }
 
     $("appForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      // Validate
       const ok = validateAll();
       if (!ok){
         toast("Please fix errors", "Some required fields are missing or invalid.");
-        // scroll to first visible error
         const first = document.querySelector(".error.show");
         if (first) first.scrollIntoView({behavior:"smooth", block:"center"});
         return;
       }
 
-      // File size validation
       const resumeFile = $("resume").files && $("resume").files[0] ? $("resume").files[0] : null;
       if (!fileOk(resumeFile)){
         setErr("err-resume", true);
@@ -1610,7 +1610,6 @@
         return;
       }
 
-      // Submit
       try{
         if (USE_SIMULATION) await simulateSubmit();
         else await realSubmit();
@@ -1622,7 +1621,7 @@
     });
 
     /* ==========
-       Restore draft on load + ensure 2 refs default + 1 experience default
+       Restore draft on load + ensure defaults
        ========== */
     (function init(){
       const saved = localStorage.getItem(DRAFT_KEY);
@@ -1634,12 +1633,9 @@
         }catch(_){}
       }
 
-      // Ensure at least 1 experience card exists (Indeed-like)
       if (document.querySelectorAll("#expContainer .exp-card").length === 0){
         $("expContainer").appendChild(makeExpCard());
       }
-
-      // Ensure 2 reference cards exist
       if (document.querySelectorAll("#refsContainer .ref-card").length === 0){
         $("refsContainer").appendChild(makeRefCard());
         $("refsContainer").appendChild(makeRefCard());
