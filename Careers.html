@@ -54,19 +54,18 @@
       max-width:1200px;
       margin:0 auto;
       padding:15px 20px;
-      height:var(--headerH);           /* locked */
+      height:var(--headerH);
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:16px;
     }
 
-    /* Logo (240px wide, constrained so it never increases bar height) */
     .logo{ display:flex; align-items:center; min-width:0; }
     .logo img{
-      width:240px;        /* requested logo size */
+      width:240px;
       height:auto;
-      max-height:100%;    /* prevents header growth */
+      max-height:100%;
       object-fit:contain;
     }
     .sr-only{
@@ -96,7 +95,6 @@
       font-weight:800;
     }
 
-    /* Main nav */
     .main-nav{ background:#fff; border-top:1px solid #eee; }
     .nav-links{
       max-width:1200px;
@@ -115,6 +113,7 @@
       border-radius:10px;
     }
     .nav-links a:hover{ color:var(--primary); background:#f0f4f8; }
+    .nav-links a.active{ color:var(--primary); }
 
     /* ====== PAGE HERO ====== */
     .page-hero{
@@ -157,7 +156,6 @@
       margin-top:18px;
     }
 
-    /* Sidebar */
     .sidebar{
       position:sticky;
       top:calc(var(--headerH) + 14px);
@@ -203,7 +201,6 @@
       font-weight:950;
     }
 
-    /* Content sections */
     .content{
       background:var(--soft);
       border:1px solid var(--line);
@@ -236,11 +233,7 @@
       align-items:center;
       margin-top:14px;
     }
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-    }
+    .field{ display:flex; flex-direction:column; gap:6px; }
     .label{
       font-size:12px;
       font-weight:900;
@@ -280,13 +273,9 @@
       color:#1f5aa6;
     }
     .btn-ghost:hover{ background:#f2f6ff; }
-    .helper{
-      margin-top:10px;
-      font-size:13.5px;
-      color:var(--muted);
-    }
+    .helper{ margin-top:10px; font-size:13.5px; color:var(--muted); }
 
-    /* ====== Job cards (list) ====== */
+    /* ====== Job cards ====== */
     .job-grid{
       display:grid;
       grid-template-columns: 1fr;
@@ -330,7 +319,7 @@
       cursor:not-allowed;
     }
 
-    /* ====== Job detail blocks ====== */
+    /* ====== Job post ====== */
     .job-post{
       background:#fff;
       border:1px solid var(--line);
@@ -357,12 +346,7 @@
       margin-top:16px;
       margin-bottom:8px;
     }
-    .kv-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
+    .kv-row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .tag{
       display:inline-flex;
       align-items:center;
@@ -377,19 +361,10 @@
     }
     .tag.req{ background:#eafaf1; border-color:#ccebd8; color:#11643a; }
     .divider{ height:1px; background:var(--line); margin:14px 0; }
-    .job-body{
-      color:#344054;
-      font-size:14.5px;
-      white-space:pre-wrap;
-    }
-    .apply-actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      margin-top:14px;
-    }
+    .job-body{ color:#344054; font-size:14.5px; white-space:pre-wrap; }
+    .apply-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
 
-    /* Contact block */
+    /* Contact */
     .contact-card{
       background:#ffffff;
       border:1px solid var(--line);
@@ -412,7 +387,7 @@
       font-size:14px;
     }
 
-    /* Scam alert */
+    /* Scam */
     .scam{
       background:#fff5f5;
       border:1px solid #feb2b2;
@@ -428,7 +403,7 @@
     }
     .scam p{ margin:0; color:#742a2a; font-size:13.5px; }
 
-    /* ====== FOOTER (LOCKED LOGO AREA) ====== */
+    /* ====== FOOTER ====== */
     footer{
       background:#f8f9fa;
       border-top:1px solid #eee;
@@ -475,11 +450,9 @@
       .top-nav{ padding:12px 14px; gap:12px; }
       .logo img{ width:200px; }
 
-      /* keep header clean on mobile: show CTA only */
       .header-tools{ gap:10px; }
       .header-tools a:not(.btn-cta){ display:none; }
 
-      /* nav: horizontal scroll */
       .nav-links{
         overflow-x:auto;
         -webkit-overflow-scrolling:touch;
@@ -502,8 +475,8 @@
 
   <header>
     <div class="top-nav">
-      <a href="index.html" class="logo" aria-label="Sulandra Health Home">
-        <img src="assets/mainlogo.png" alt="Sulandra Health Logo" />
+      <a href="/index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="/assets/mainlogo.png" alt="Sulandra Health Logo" />
         <span class="sr-only">Sulandra Health</span>
       </a>
 
@@ -516,9 +489,9 @@
 
     <nav class="main-nav">
       <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="services.html">Services</a></li>
-        <li><a href="#" style="color: var(--primary);">Careers</a></li>
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/services.html">Services</a></li>
+        <li><a class="active" href="/Careers.html">Careers</a></li>
         <li><a href="#">About Us</a></li>
         <li><a href="#">Contact</a></li>
       </ul>
@@ -551,7 +524,7 @@
 
       <section class="content">
 
-        <!-- ===================== FIND A JOB ===================== -->
+        <!-- FIND A JOB -->
         <section id="find-jobs" class="section anchor">
           <h2>Find a Job</h2>
           <p>Search openings and filter by service area.</p>
@@ -584,7 +557,7 @@
           <div class="helper" id="resultsSummary" aria-live="polite"></div>
         </section>
 
-        <!-- ===================== OPENINGS (LIST) ===================== -->
+        <!-- OPENINGS -->
         <section id="openings" class="section anchor">
           <h2>Open Positions</h2>
           <p>Current openings with Sulandra Community Living Services LLC.</p>
@@ -609,7 +582,7 @@
               <a class="btn btn-primary" href="#post-dsp">View</a>
             </article>
 
-            <!-- LPN/LVN -->
+            <!-- LPN -->
             <article class="job-card job-item"
               data-service="community-living"
               data-status="hiring"
@@ -628,7 +601,7 @@
               <a class="btn btn-primary" href="#post-lpn">View</a>
             </article>
 
-            <!-- Pipelines (not hiring) -->
+            <!-- Pipelines -->
             <article class="job-card job-item"
               data-service="transportation"
               data-status="not-hiring"
@@ -692,7 +665,7 @@
           </div>
         </section>
 
-        <!-- ===================== JOB DESCRIPTIONS ===================== -->
+        <!-- JOB DESCRIPTIONS -->
         <section id="postings" class="section anchor">
           <h2>Job Descriptions</h2>
           <p>Select a position above to jump to the posting.</p>
@@ -746,7 +719,8 @@ Requirements and qualifications (may vary by assignment):
             </div>
 
             <div class="apply-actions">
-              <a class="btn btn-primary" href="apply.html?role=DSP" target="_blank" rel="noopener noreferrer">Apply</a>
+              <!-- FIXED: points to real file -->
+              <a class="btn btn-primary" href="/applydsp.html" target="_blank" rel="noopener noreferrer">Apply (DSP)</a>
             </div>
           </div>
 
@@ -799,7 +773,8 @@ Preferred qualifications:
             </div>
 
             <div class="apply-actions">
-              <a class="btn btn-primary" href="apply.html?role=LPN" target="_blank" rel="noopener noreferrer">Apply</a>
+              <!-- FIXED: points to real file -->
+              <a class="btn btn-primary" href="/applylpn.html" target="_blank" rel="noopener noreferrer">Apply (LPN)</a>
             </div>
           </div>
 
@@ -808,7 +783,7 @@ Preferred qualifications:
           </div>
         </section>
 
-        <!-- ===================== QUESTIONS (NO EMAIL/PHONE DISPLAYED) ===================== -->
+        <!-- QUESTIONS -->
         <section id="questions" class="section anchor">
           <h2>Questions</h2>
           <p>If you have questions about an opening, contact our team.</p>
@@ -818,12 +793,11 @@ Preferred qualifications:
               <h3>Contact Careers</h3>
               <p>Send a message and our team will respond as soon as possible.</p>
             </div>
-            <!-- email is coded, but not displayed -->
             <a class="btn btn-primary" href="mailto:admin@sulandrahealth.com?subject=Careers%20Question%20-%20Sulandra%20Community%20Living%20Services%20LLC">Email Us</a>
           </div>
         </section>
 
-        <!-- ===================== SCAM ALERT ===================== -->
+        <!-- SCAM ALERT -->
         <section id="scam-alert" class="section anchor">
           <div class="scam">
             <h3>Scam Alert</h3>
@@ -841,8 +815,8 @@ Preferred qualifications:
   <footer>
     <div class="footer-grid">
       <div class="footer-col">
-        <a href="index.html" class="logo" aria-label="Sulandra Health Home">
-          <img src="assets/mainlogo.png" alt="Sulandra Health Logo" />
+        <a href="/index.html" class="logo" aria-label="Sulandra Health Home">
+          <img src="/assets/mainlogo.png" alt="Sulandra Health Logo" />
           <span class="sr-only">Sulandra Health</span>
         </a>
         <p style="color:#667085; font-size:14px;">
@@ -913,7 +887,6 @@ Preferred qualifications:
           ? 'No results found. Try a different search or select another service.'
           : `Showing ${visibleCount} position${visibleCount === 1 ? '' : 's'}.`;
 
-        // If exactly one hiring result matches, jump to its posting
         if (visibleCount === 1) {
           const only = jobItems.find(i => i.style.display !== 'none');
           const viewLink = only ? only.querySelector('a[href^="#post-"]') : null;
@@ -931,7 +904,6 @@ Preferred qualifications:
         applyFilters();
       }
 
-      // Wire events
       searchBtn.addEventListener('click', applyFilters);
       resetBtn.addEventListener('click', resetFilters);
       searchInput.addEventListener('keydown', (e) => {
@@ -939,7 +911,6 @@ Preferred qualifications:
       });
       serviceSelect.addEventListener('change', applyFilters);
 
-      // Initial state
       applyFilters();
     })();
   </script>
