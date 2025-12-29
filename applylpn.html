@@ -4,11 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LPN Application | Sulandra Community Living Services</title>
-  <meta name="description" content="Licensed Practical Nurse (LPN) application with resume upload, license details, work history, and references." />
+  <meta name="description" content="Licensed Practical Nurse (LPN) application with resume upload, license details, work history, references, and file uploads saved to Firebase." />
 
   <style>
     :root{
-      /* ===== Form theme (kept) ===== */
       --bg:#f6f7f8;
       --card:#ffffff;
       --text:#0f172a;
@@ -21,14 +20,12 @@
       --shadow: 0 6px 18px rgba(0,0,0,.08);
       --radius: 14px;
 
-      /* ===== Careers header tokens (match Careers header) ===== */
       --primary:#004b8d;
       --secondary:#0077c8;
       --accent:#d14124;
       --line:#e7eef8;
 
-      --headerH:80px; /* careers header height */
-
+      --headerH:80px;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
@@ -37,7 +34,6 @@
     a{ color:inherit; text-decoration:none; }
     img{ max-width:100%; display:block; }
 
-    /* ====== ALERT BAR (CAREERS) ====== */
     .alert-bar{
       background:var(--accent);
       color:#fff;
@@ -47,7 +43,6 @@
       font-weight:800;
     }
 
-    /* ====== HEADER (CAREERS) ====== */
     header{
       position:sticky;
       top:0;
@@ -124,7 +119,6 @@
       box-shadow: inset 0 0 0 1px #d7e6ff;
     }
 
-    /* ===== Apply layout (kept) ===== */
     .wrap{ max-width: 1140px; margin:0 auto; padding:18px 16px; }
     main .grid{
       display:grid; grid-template-columns: 1.25fr .75fr; gap: 18px;
@@ -246,6 +240,25 @@
       white-space:nowrap;
     }
 
+    .filelist{
+      margin-top:10px;
+      border:1px solid rgba(209,213,219,.7);
+      border-radius:12px;
+      padding:10px;
+      background:#fff;
+    }
+    .fileitem{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px 0;
+      border-bottom:1px solid rgba(209,213,219,.55);
+      font-size:13px;
+    }
+    .fileitem:last-child{ border-bottom:0; }
+    .fileitem .meta{ color:var(--muted); font-weight:650; }
+    .fileitem a{ color: var(--brand); text-decoration: underline; }
+
     .statusbar{
       display:none;
       margin-top: 14px;
@@ -313,17 +326,13 @@
     .small{ font-size: 13px; color: var(--text); }
     .muted{ color: var(--muted); }
 
-    /* ===== Responsive header behavior (match Careers) ===== */
     @media (max-width: 800px){
       :root{ --headerH:72px; }
-
       .alert-bar{ font-size:13px; padding:10px 12px; }
       .top-nav{ padding:12px 14px; gap:12px; }
       .logo img{ width:200px; }
-
       .header-tools{ gap:10px; }
       .header-tools a:not(.btn-cta){ display:none; }
-
       .nav-links{
         overflow-x:auto;
         -webkit-overflow-scrolling:touch;
@@ -336,12 +345,10 @@
 </head>
 
 <body>
-  <!-- CAREERS alert bar -->
   <div class="alert-bar">
     Sulandra Health is changing the way the world ages. Call us today for a free consultation.
   </div>
 
-  <!-- CAREERS header -->
   <header>
     <div class="top-nav">
       <a href="/index.html" class="logo" aria-label="Sulandra Health Home">
@@ -376,9 +383,8 @@
         <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
           <input type="hidden" name="jobTitle" value="Licensed Practical Nurse (LPN)" />
           <input type="hidden" name="company" value="Sulandra Community Living Services" />
-          <input type="hidden" name="version" value="1.0" />
+          <input type="hidden" name="version" value="2.0" />
 
-          <!-- STEP 1 -->
           <div class="section" style="border-top:none; padding-top:0; margin-top:0;">
             <div class="minihead">
               <h2>Basic Information</h2>
@@ -461,7 +467,6 @@
             </div>
           </div>
 
-          <!-- STEP 2 -->
           <div class="section">
             <div class="minihead">
               <h2>License & Credentials</h2>
@@ -522,7 +527,6 @@
             </div>
           </div>
 
-          <!-- STEP 3 -->
           <div class="section">
             <div class="minihead">
               <h2>Availability & Preferences</h2>
@@ -588,7 +592,6 @@
             </div>
           </div>
 
-          <!-- STEP 4 -->
           <div class="section">
             <div class="minihead">
               <h2>Education</h2>
@@ -620,7 +623,6 @@
             </div>
           </div>
 
-          <!-- STEP 5 -->
           <div class="section">
             <div class="minihead">
               <h2>Work Experience</h2>
@@ -636,7 +638,6 @@
             </div>
           </div>
 
-          <!-- STEP 6 -->
           <div class="section">
             <div class="minihead">
               <h2>Resume & Documents</h2>
@@ -654,6 +655,7 @@
               </div>
               <div class="file-meta" id="resume-meta">Max 10MB. Required.</div>
               <div class="error" id="err-resume">Please upload your resume (10MB or less).</div>
+              <div class="filelist" id="resume-list" style="display:none;"></div>
             </div>
 
             <div style="margin-top:16px;">
@@ -666,10 +668,11 @@
                 <input type="file" id="coverLetter" name="coverLetter" accept=".pdf,.doc,.docx" />
               </div>
               <div class="file-meta">Max 10MB.</div>
+              <div class="filelist" id="cover-list" style="display:none;"></div>
             </div>
 
             <div style="margin-top:16px;">
-              <label for="licenseDoc">License / certification documents (optional)</label>
+              <label for="licenseDoc">License / certification documents (optional, multiple)</label>
               <div class="file-input-wrapper" style="min-height:54px;">
                 <div class="file-custom-btn">
                   <span id="license-chosen">Click to choose documents…</span>
@@ -678,10 +681,20 @@
                 <input type="file" id="licenseDoc" name="licenseDoc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple />
               </div>
               <div class="file-meta">Max 10MB per file.</div>
+              <div class="filelist" id="license-list" style="display:none;"></div>
+            </div>
+
+            <div class="helpbox" style="margin-top:12px;">
+              <strong class="small">Uploads:</strong>
+              <span class="muted">On submit, all selected files are uploaded to Firebase Storage and saved with your application. The uploaded file links will appear below after submit.</span>
+            </div>
+
+            <div class="filelist" id="uploaded-files" style="display:none; margin-top:14px;">
+              <div style="font-weight:850; margin-bottom:8px;">Uploaded files (this submission)</div>
+              <div id="uploaded-files-items"></div>
             </div>
           </div>
 
-          <!-- STEP 7 -->
           <div class="section">
             <div class="minihead">
               <h2>Screening Questions</h2>
@@ -731,7 +744,6 @@
             </div>
           </div>
 
-          <!-- STEP 8 -->
           <div class="section">
             <div class="minihead">
               <h2>Professional References</h2>
@@ -756,7 +768,6 @@
             </div>
           </div>
 
-          <!-- STEP 9 -->
           <div class="section">
             <div class="minihead">
               <h2>Agreement & Signature</h2>
@@ -835,11 +846,12 @@
         <div class="card" style="margin-top:18px;">
           <h3>Progress</h3>
           <div class="kv"><span>Required fields complete:</span><span id="reqCount">0%</span></div>
-          <div class="kv"><span>Resume uploaded:</span><span id="resumeStatus">No</span></div>
+          <div class="kv"><span>Resume selected:</span><span id="resumeStatus">No</span></div>
           <div class="kv"><span>Draft saved:</span><span id="draftStatus">No</span></div>
           <div class="kv"><span>References:</span><span id="refsStatus">0/2</span></div>
           <div class="kv"><span>Work experience:</span><span id="expStatus">0</span></div>
-          <div class="hint">Draft saves to your browser (localStorage).</div>
+          <div class="kv"><span>Files selected:</span><span id="filesStatus">0</span></div>
+          <div class="hint">Draft saves to your browser (localStorage). Files must be re-attached after reload.</div>
         </div>
       </aside>
     </div>
@@ -854,57 +866,48 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    /* ==========================================================
+       Firebase (Firestore + Storage) + Fully functional submission
+       ========================================================== */
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+    // Your Firebase config (same project you used on DSP)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
+      authDomain: "sulandra-health-portal.firebaseapp.com",
+      projectId: "sulandra-health-portal",
+      storageBucket: "sulandra-health-portal.firebasestorage.app",
+      messagingSenderId: "547316167712",
+      appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845",
+      measurementId: "G-N2M4L7YMNB"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
     /* ==========
        Utilities
        ========== */
     const $ = (id) => document.getElementById(id);
 
-    const DRAFT_KEY = "scls_apply_lpn_v1_draft";
-    const USE_SIMULATION = true;     // set false when you wire a real endpoint
-    const SUBMIT_URL = "/api/applications";
-
+    const DRAFT_KEY = "scls_apply_lpn_v2_draft";
     const MAX_FILE_MB = 10;
     const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
 
-    function show(el){ el.classList.add("show"); }
-    function hide(el){ el.classList.remove("show"); }
-
-    function fileOk(file){
-      if (!file) return true;
-      return file.size <= MAX_FILE_BYTES;
-    }
-
-    function isEmail(v){
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
-    }
-
-    function isPhone(v){
-      const s = String(v || "").replace(/[^\d]/g, "");
-      return s.length >= 10;
-    }
-
-    function hasAnyChecked(name){
-      return Array.from(document.querySelectorAll(`input[name="${name}"]`)).some(i => i.checked);
-    }
+    function show(el, on=true){ el.classList.toggle("show", !!on); }
+    function setText(el, t){ el.textContent = t; }
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
     function toast(title, body){
-      $("toastTitle").textContent = title;
-      $("toastBody").textContent = body || "";
-      show($("toast"));
+      setText($("toastTitle"), title);
+      setText($("toastBody"), body || "");
+      show($("toast"), true);
     }
-
-    $("toastCloseBtn").addEventListener("click", () => hide($("toast")));
-
-    $("toastDownloadBtn").addEventListener("click", () => {
-      const draft = collectDraft();
-      const blob = new Blob([JSON.stringify(draft, null, 2)], {type:"application/json"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "lpn-application-draft.json";
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
+    $("toastCloseBtn").addEventListener("click", () => show($("toast"), false));
 
     function escapeHtml(str){
       return String(str || "")
@@ -913,6 +916,50 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function bytesToHuman(bytes){
+      const u = ["B","KB","MB","GB"];
+      let i = 0, n = Number(bytes||0);
+      while(n >= 1024 && i < u.length-1){ n/=1024; i++; }
+      return `${n.toFixed(n<10 && i>0 ? 1 : 0)} ${u[i]}`;
+    }
+
+    function isEmail(v){
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || "").trim());
+    }
+    function isPhone(v){
+      const s = String(v || "").replace(/[^\d]/g, "");
+      return s.length >= 10;
+    }
+    function isZip(v){
+      return /^\d{5}(-\d{4})?$/.test(String(v||"").trim());
+    }
+    function fileOk(file){
+      if (!file) return true;
+      return file.size <= MAX_FILE_BYTES;
+    }
+    function hasAnyChecked(name){
+      return Array.from(document.querySelectorAll(`input[name="${CSS.escape(name)}"]`)).some(i => i.checked);
+    }
+    function getChecked(name){
+      return Array.from(document.querySelectorAll(`input[name="${CSS.escape(name)}"]:checked`)).map(i => i.value);
+    }
+
+    /* ==========
+       Status bar
+       ========== */
+    function setSubmitting(on){
+      $("submitBtn").disabled = on;
+      $("saveBtn").disabled = on;
+      $("previewBtn").disabled = on;
+      $("resetBtn").disabled = on;
+      show($("statusbar"), on);
+    }
+    function setProgress(pct, title, hint){
+      $("progressFill").style.width = `${clamp(pct,0,100)}%`;
+      if(title) setText($("statusTitle"), title);
+      if(hint) setText($("statusHint"), hint);
     }
 
     /* ==========
@@ -986,11 +1033,11 @@
       wrap.querySelector("button.danger").addEventListener("click", () => {
         wrap.remove();
         updateProgress();
-        autosave(true);
+        scheduleAutosave(true);
       });
 
-      wrap.addEventListener("input", () => { autosave(); updateProgress(); });
-      wrap.addEventListener("change", () => { autosave(); updateProgress(); });
+      wrap.addEventListener("input", () => { scheduleAutosave(); updateProgress(); });
+      wrap.addEventListener("change", () => { scheduleAutosave(); updateProgress(); });
 
       return wrap;
     }
@@ -998,7 +1045,7 @@
     $("addExpBtn").addEventListener("click", () => {
       $("expContainer").appendChild(makeExpCard());
       updateProgress();
-      autosave(true);
+      scheduleAutosave(true);
     });
 
     /* ==========
@@ -1050,11 +1097,11 @@
       wrap.querySelector("button.danger").addEventListener("click", () => {
         wrap.remove();
         updateProgress();
-        autosave(true);
+        scheduleAutosave(true);
       });
 
-      wrap.addEventListener("input", () => { autosave(); updateProgress(); });
-      wrap.addEventListener("change", () => { autosave(); updateProgress(); });
+      wrap.addEventListener("input", () => { scheduleAutosave(); updateProgress(); });
+      wrap.addEventListener("change", () => { scheduleAutosave(); updateProgress(); });
 
       return wrap;
     }
@@ -1062,37 +1109,64 @@
     $("addRefBtn").addEventListener("click", () => {
       $("refsContainer").appendChild(makeRefCard());
       updateProgress();
-      autosave(true);
+      scheduleAutosave(true);
     });
 
     /* ==========
-       File UI
+       File UI (show ALL selected files + sizes)
        ========== */
-    function wireFile(inputId, chosenId, pillId){
-      const input = $(inputId);
-      const chosen = $(chosenId);
-      const pill = $(pillId);
-
-      input.addEventListener("change", () => {
-        const files = input.files;
-        if (!files || files.length === 0){
-          chosen.textContent = inputId === "resume" ? "Click to choose resume…" : "Click to choose…";
-          pill.textContent = input.multiple ? "0 files" : (inputId === "resume" ? "No file" : "Optional");
-        } else if (files.length === 1){
-          chosen.textContent = files[0].name;
-          pill.textContent = Math.round(files[0].size / 1024) + " KB";
-        } else {
-          chosen.textContent = `${files.length} files selected`;
-          pill.textContent = `${files.length} files`;
-        }
-        autosave(true);
-        updateProgress();
+    function renderSelectedFileList(listEl, files){
+      if(!files || files.length === 0){
+        listEl.style.display = "none";
+        listEl.innerHTML = "";
+        return;
+      }
+      listEl.style.display = "block";
+      listEl.innerHTML = "";
+      Array.from(files).forEach(f => {
+        const row = document.createElement("div");
+        row.className = "fileitem";
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:800;">${escapeHtml(f.name)}</div>
+            <div class="meta">${escapeHtml(f.type || "unknown")} • ${bytesToHuman(f.size)}</div>
+          </div>
+          <div class="meta">Selected</div>
+        `;
+        listEl.appendChild(row);
       });
     }
 
-    wireFile("resume", "resume-chosen", "resume-pill");
-    wireFile("coverLetter", "cover-chosen", "cover-pill");
-    wireFile("licenseDoc", "license-chosen", "license-pill");
+    function updateFileWidget(inputId, chosenId, pillId, listId, emptyLabel, emptyPill){
+      const input = $(inputId);
+      const files = input.files ? Array.from(input.files) : [];
+
+      if(files.length === 0){
+        setText($(chosenId), emptyLabel);
+        setText($(pillId), emptyPill);
+      }else if(files.length === 1){
+        setText($(chosenId), files[0].name);
+        setText($(pillId), bytesToHuman(files[0].size));
+      }else{
+        setText($(chosenId), `${files.length} files selected`);
+        setText($(pillId), `${files.length} files`);
+      }
+
+      renderSelectedFileList($(listId), files);
+      updateProgress();
+      scheduleAutosave(true);
+    }
+
+    $("resume").addEventListener("change", () => updateFileWidget("resume","resume-chosen","resume-pill","resume-list","Click to choose resume…","No file"));
+    $("coverLetter").addEventListener("change", () => updateFileWidget("coverLetter","cover-chosen","cover-pill","cover-list","Click to choose cover letter…","Optional"));
+    $("licenseDoc").addEventListener("change", () => updateFileWidget("licenseDoc","license-chosen","license-pill","license-list","Click to choose documents…","Optional"));
+
+    function countSelectedFiles(){
+      const a = $("resume").files?.length || 0;
+      const b = $("coverLetter").files?.length || 0;
+      const c = $("licenseDoc").files?.length || 0;
+      return a + b + c;
+    }
 
     /* ==========
        Cert none logic
@@ -1101,25 +1175,25 @@
       if (e.target.checked){
         document.querySelectorAll('input[name="certs"]').forEach(cb => cb.checked = false);
       }
-      autosave(true);
+      scheduleAutosave(true);
       updateProgress();
     });
 
     document.querySelectorAll('input[name="certs"]').forEach(cb => {
       cb.addEventListener("change", () => {
         if (cb.checked) $("cert_none").checked = false;
-        autosave();
+        scheduleAutosave();
         updateProgress();
       });
     });
 
     /* ==========
-       Validation
+       Validation helpers
        ========== */
     function setErr(id, on){
       const el = $(id);
       if (!el) return;
-      if (on) show(el); else hide(el);
+      el.classList.toggle("show", !!on);
     }
 
     function validateBasics(){
@@ -1144,7 +1218,7 @@
       setErr("err-address1", !a1); ok = ok && !!a1;
       setErr("err-city", !city); ok = ok && !!city;
       setErr("err-state", !st); ok = ok && !!st;
-      setErr("err-zip", zip.length < 5); ok = ok && (zip.length >= 5);
+      setErr("err-zip", !isZip(zip)); ok = ok && isZip(zip);
 
       setErr("err-startDate", !start); ok = ok && !!start;
 
@@ -1260,7 +1334,6 @@
         const rel = $(`ref_relation_${idx}`)?.value.trim();
         const ph = $(`ref_phone_${idx}`)?.value.trim();
         const em = $(`ref_email_${idx}`)?.value.trim();
-
         if (name && rel && isPhone(ph) && isEmail(em)) complete++;
       }
 
@@ -1288,6 +1361,11 @@
     }
 
     function validateAll(){
+      // Clear grouped errors that are not handled in each validate function
+      setErr("err-days", false);
+      setErr("err-certs", false);
+      setErr("err-screening", false);
+
       return (
         validateBasics() &&
         validateLicense() &&
@@ -1302,18 +1380,23 @@
     }
 
     /* ==========
-       Draft save/restore
+       Draft save/restore (stores FILE METADATA only)
        ========== */
-    function collectDraft(){
+    function collectDraft(includeFileMeta=true){
       const draft = {
         ts: new Date().toISOString(),
         fields: {},
         cert_none: $("cert_none").checked,
-        certs: Array.from(document.querySelectorAll('input[name="certs"]:checked')).map(i => i.value),
-        days: Array.from(document.querySelectorAll('input[name="days"]:checked')).map(i => i.value),
+        certs: getChecked("certs"),
+        days: getChecked("days"),
         screening: (document.querySelector('input[name="screening"]:checked') || {}).value || "",
         experiences: [],
-        references: []
+        references: [],
+        files: includeFileMeta ? {
+          resume: ($("resume").files?.[0]) ? { name:$("resume").files[0].name, type:$("resume").files[0].type||"unknown", size:$("resume").files[0].size } : null,
+          coverLetter: ($("coverLetter").files?.[0]) ? { name:$("coverLetter").files[0].name, type:$("coverLetter").files[0].type||"unknown", size:$("coverLetter").files[0].size } : null,
+          licenseDoc: ($("licenseDoc").files?.length ? Array.from($("licenseDoc").files).map(f => ({ name:f.name, type:f.type||"unknown", size:f.size })) : [])
+        } : undefined
       };
 
       const els = document.querySelectorAll("#appForm input, #appForm select, #appForm textarea");
@@ -1361,13 +1444,14 @@
 
       const fields = draft.fields || {};
       Object.keys(fields).forEach(k => {
-        const el = document.querySelector(`[name="${k}"], #${CSS.escape(k)}`);
+        const el = document.querySelector(`[name="${CSS.escape(k)}"], #${CSS.escape(k)}`);
         if (el && el.type !== "file" && el.type !== "checkbox" && el.type !== "radio"){
           el.value = fields[k];
         }
       });
 
       $("cert_none").checked = !!draft.cert_none;
+
       document.querySelectorAll('input[name="certs"]').forEach(cb => {
         cb.checked = (draft.certs || []).includes(cb.value);
       });
@@ -1391,61 +1475,121 @@
       $("refsContainer").innerHTML = "";
       refCount = 0;
       (draft.references || []).forEach(r => $("refsContainer").appendChild(makeRefCard(r)));
+
+      // Files cannot be restored (browser security), but we can remind user what was selected.
+      if(draft.files){
+        // Just show the metadata in the UI lists so user can see everything that was previously selected
+        if(draft.files.resume){
+          $("resume-list").style.display = "block";
+          $("resume-list").innerHTML = `
+            <div class="fileitem">
+              <div>
+                <div style="font-weight:800;">${escapeHtml(draft.files.resume.name)}</div>
+                <div class="meta">${escapeHtml(draft.files.resume.type)} • ${bytesToHuman(draft.files.resume.size)}</div>
+              </div>
+              <div class="meta">Previously selected (re-attach)</div>
+            </div>
+          `;
+        }
+        if(draft.files.coverLetter){
+          $("cover-list").style.display = "block";
+          $("cover-list").innerHTML = `
+            <div class="fileitem">
+              <div>
+                <div style="font-weight:800;">${escapeHtml(draft.files.coverLetter.name)}</div>
+                <div class="meta">${escapeHtml(draft.files.coverLetter.type)} • ${bytesToHuman(draft.files.coverLetter.size)}</div>
+              </div>
+              <div class="meta">Previously selected (re-attach)</div>
+            </div>
+          `;
+        }
+        if(Array.isArray(draft.files.licenseDoc) && draft.files.licenseDoc.length){
+          $("license-list").style.display = "block";
+          $("license-list").innerHTML = draft.files.licenseDoc.map(f => `
+            <div class="fileitem">
+              <div>
+                <div style="font-weight:800;">${escapeHtml(f.name)}</div>
+                <div class="meta">${escapeHtml(f.type)} • ${bytesToHuman(f.size)}</div>
+              </div>
+              <div class="meta">Previously selected (re-attach)</div>
+            </div>
+          `).join("");
+        }
+      }
     }
 
     let autosaveTimer = null;
-    function autosave(immediate = false){
-      $("autosavePill").textContent = "Autosave: on";
+    function scheduleAutosave(immediate=false){
+      // only autosave once they started
+      const any = ["firstName","lastName","email","phone"].some(id => String($(id).value||"").trim().length > 0);
+      if(!any) return;
+
+      setText($("autosavePill"), immediate ? "Autosave: saving…" : "Autosave: pending…");
+
       if (autosaveTimer) clearTimeout(autosaveTimer);
-
-      const doSave = () => {
-        const draft = collectDraft();
+      autosaveTimer = setTimeout(() => {
+        const draft = collectDraft(true);
         localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-        $("draftStatus").textContent = "Yes";
+        setText($("draftStatus"), "Yes");
+        setText($("autosavePill"), "Autosave: saved");
         toast("Saved", "Your draft has been saved on this device.");
-      };
-
-      autosaveTimer = setTimeout(doSave, immediate ? 50 : 700);
+      }, immediate ? 60 : 850);
     }
 
-    $("saveBtn").addEventListener("click", () => autosave(true));
+    $("saveBtn").addEventListener("click", () => scheduleAutosave(true));
+
+    $("toastDownloadBtn").addEventListener("click", () => {
+      const draft = collectDraft(true);
+      const blob = new Blob([JSON.stringify(draft, null, 2)], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `lpn-application-draft-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
 
     $("previewBtn").addEventListener("click", () => {
-      const draft = collectDraft();
-      const preview = {
-        "Job Title": "Licensed Practical Nurse (LPN)",
-        "Name": `${$("firstName").value} ${$("lastName").value}`.trim(),
-        "Email": $("email").value,
-        "Phone": $("phone").value,
-        "License": `${$("lpnLicenseNumber").value} (${ $("lpnLicenseState").value }) exp ${$("lpnLicenseExp").value}`,
-        "Certs": (draft.cert_none ? ["No current certifications"] : draft.certs).join(", "),
-        "Days": draft.days.join(", "),
-        "Shift": $("shiftPref").value,
-        "Employment": $("employmentType").value,
-        "Experience entries": draft.experiences.length,
-        "References entries": draft.references.length
-      };
-      alert("Preview (high level):\n\n" + Object.entries(preview).map(([k,v]) => `${k}: ${v}`).join("\n"));
+      const draft = collectDraft(true);
+      const w = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
+      if(!w) return alert("Pop-up blocked. Please allow pop-ups to preview.");
+      w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(draft, null, 2))}</pre>`);
+      w.document.close();
     });
 
     $("resetBtn").addEventListener("click", () => {
       if (!confirm("Clear the form and remove the saved draft on this device?")) return;
+
       localStorage.removeItem(DRAFT_KEY);
-      document.getElementById("appForm").reset();
+      $("appForm").reset();
+
       $("expContainer").innerHTML = "";
       $("refsContainer").innerHTML = "";
       expCount = 0;
       refCount = 0;
 
-      $("autosavePill").textContent = "Autosave: off";
-      $("draftStatus").textContent = "No";
+      // reset file widgets
+      setText($("resume-chosen"), "Click to choose resume…");
+      setText($("resume-pill"), "No file");
+      $("resume-list").style.display = "none"; $("resume-list").innerHTML = "";
 
-      $("resume-chosen").textContent = "Click to choose resume…";
-      $("resume-pill").textContent = "No file";
-      $("cover-chosen").textContent = "Click to choose cover letter…";
-      $("cover-pill").textContent = "Optional";
-      $("license-chosen").textContent = "Click to choose documents…";
-      $("license-pill").textContent = "Optional";
+      setText($("cover-chosen"), "Click to choose cover letter…");
+      setText($("cover-pill"), "Optional");
+      $("cover-list").style.display = "none"; $("cover-list").innerHTML = "";
+
+      setText($("license-chosen"), "Click to choose documents…");
+      setText($("license-pill"), "Optional");
+      $("license-list").style.display = "none"; $("license-list").innerHTML = "";
+
+      $("uploaded-files").style.display = "none";
+      $("uploaded-files-items").innerHTML = "";
+
+      setText($("autosavePill"), "Autosave: off");
+      setText($("draftStatus"), "No");
+
+      // default cards
+      $("expContainer").appendChild(makeExpCard());
+      $("refsContainer").appendChild(makeRefCard());
+      $("refsContainer").appendChild(makeRefCard());
 
       updateProgress();
       toast("Cleared", "The form has been cleared.");
@@ -1475,7 +1619,6 @@
       const anyCert = hasAnyChecked("certs") || $("cert_none").checked;
       const anyDay = hasAnyChecked("days");
       const screening = !!document.querySelector('input[name="screening"]:checked');
-
       const consentTruth = $("consentTruth").checked;
       const consentESign = $("consentESign").checked;
       const consentRefs = $("consentContactRefs").checked;
@@ -1492,108 +1635,206 @@
       return { complete, total: requiredIds.length, groupComplete, groupTotal };
     }
 
-    function updateProgress(){
-      const r = countCompleteRequired();
-      const total = r.total + r.groupTotal;
-      const done = r.complete + r.groupComplete;
-      const pct = Math.round((done / total) * 100);
-      $("reqCount").textContent = `${pct}%`;
-
-      const f = $("resume").files && $("resume").files[0] ? $("resume").files[0] : null;
-      $("resumeStatus").textContent = f ? "Yes" : "No";
-
-      $("draftStatus").textContent = localStorage.getItem(DRAFT_KEY) ? "Yes" : "No";
-
+    function countCompleteRefs(){
       const cards = Array.from(document.querySelectorAll("#refsContainer .ref-card"));
-      let completeRefs = 0;
+      let complete = 0;
       for (const c of cards){
         const idx = c.dataset.ref;
         const name = $(`ref_name_${idx}`)?.value.trim();
         const rel = $(`ref_relation_${idx}`)?.value.trim();
         const ph = $(`ref_phone_${idx}`)?.value.trim();
         const em = $(`ref_email_${idx}`)?.value.trim();
-        if (name && rel && isPhone(ph) && isEmail(em)) completeRefs++;
+        if (name && rel && isPhone(ph) && isEmail(em)) complete++;
       }
-      $("refsStatus").textContent = `${Math.min(completeRefs, 99)}/2`;
-
-      $("expStatus").textContent = String(document.querySelectorAll("#expContainer .exp-card").length);
+      return complete;
     }
 
-    document.addEventListener("input", () => updateProgress());
-    document.addEventListener("change", () => updateProgress());
+    function countCompleteExps(){
+      const cards = Array.from(document.querySelectorAll("#expContainer .exp-card"));
+      let complete = 0;
+      for (const c of cards){
+        const idx = c.dataset.exp;
+        const employer = $(`exp_employer_${idx}`)?.value.trim();
+        const title = $(`exp_title_${idx}`)?.value.trim();
+        const start = $(`exp_start_${idx}`)?.value;
+        const end = $(`exp_end_${idx}`)?.value;
+        const reason = $(`exp_reason_${idx}`)?.value.trim();
+        const contactOk = $(`exp_contactOk_${idx}`)?.value;
+        if (employer && title && start && end && reason && contactOk) complete++;
+      }
+      return { total: cards.length, complete };
+    }
+
+    function updateProgress(){
+      const r = countCompleteRequired();
+      const total = r.total + r.groupTotal;
+      const done = r.complete + r.groupComplete;
+      const pct = Math.round((done / total) * 100);
+      setText($("reqCount"), `${pct}%`);
+
+      const resumeFile = $("resume").files?.[0] || null;
+      setText($("resumeStatus"), resumeFile ? "Yes" : "No");
+
+      setText($("draftStatus"), localStorage.getItem(DRAFT_KEY) ? "Yes" : "No");
+
+      const refsComplete = countCompleteRefs();
+      setText($("refsStatus"), `${Math.min(refsComplete, 99)}/2`);
+
+      const exps = countCompleteExps();
+      setText($("expStatus"), String(exps.total));
+
+      setText($("filesStatus"), String(countSelectedFiles()));
+    }
+
+    document.addEventListener("input", () => { updateProgress(); scheduleAutosave(); });
+    document.addEventListener("change", () => { updateProgress(); scheduleAutosave(); });
 
     /* ==========
-       Submission
+       Upload helpers (Storage) + show all uploaded files
        ========== */
-    function showSubmitting(){
-      show($("statusbar"));
-      $("statusTitle").textContent = "Submitting…";
-      $("statusHint").textContent = "Please don’t close this tab.";
-      $("progressFill").style.width = "15%";
+    function safeName(name){
+      return String(name || "file").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 140);
     }
 
-    function setProgress(p){
-      $("progressFill").style.width = `${Math.max(0, Math.min(100, p))}%`;
+    async function uploadOneFile(file, path, onProgress){
+      return await new Promise((resolve, reject) => {
+        const storageRef = sRef(storage, path);
+        const task = uploadBytesResumable(storageRef, file, { contentType: file.type || "application/octet-stream" });
+
+        task.on("state_changed", (snap) => {
+          const pct = snap.totalBytes ? (snap.bytesTransferred / snap.totalBytes) * 100 : 0;
+          onProgress?.(pct);
+        }, reject, async () => {
+          try{
+            const url = await getDownloadURL(task.snapshot.ref);
+            resolve({
+              name: file.name,
+              type: file.type || "unknown",
+              size: file.size,
+              path,
+              url
+            });
+          }catch(err){ reject(err); }
+        });
+      });
     }
 
-    async function simulateSubmit(){
-      showSubmitting();
-      setProgress(30);
-      await new Promise(r => setTimeout(r, 450));
-      setProgress(55);
-      await new Promise(r => setTimeout(r, 450));
-      setProgress(80);
-      await new Promise(r => setTimeout(r, 450));
-      setProgress(100);
-      $("statusTitle").textContent = "Submitted!";
-      $("statusHint").textContent = "Thank you — we received your application.";
-      toast("Submitted", "Your application has been submitted.");
-      localStorage.removeItem(DRAFT_KEY);
-      $("draftStatus").textContent = "No";
-      window.location.href = "/Careers.html";
+    function renderUploadedFiles(list){
+      if(!Array.isArray(list) || list.length === 0) return;
+      $("uploaded-files").style.display = "block";
+      const host = $("uploaded-files-items");
+      host.innerHTML = "";
+      list.forEach(f => {
+        const row = document.createElement("div");
+        row.className = "fileitem";
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:800;">${escapeHtml(f.name)}</div>
+            <div class="meta">${escapeHtml(f.type || "unknown")} • ${bytesToHuman(f.size)}</div>
+          </div>
+          <div class="meta"><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener noreferrer">Open</a></div>
+        `;
+        host.appendChild(row);
+      });
     }
 
-    async function realSubmit(){
-      showSubmitting();
+    /* ==========
+       Submission (Firestore + Storage)
+       ========== */
+    async function submitToFirebase(){
+      setSubmitting(true);
+      setProgress(5, "Submitting…", "Validating files…");
 
-      const form = $("appForm");
-      const fd = new FormData(form);
+      // File validation (all selected must be <= 10MB; resume required)
+      const resume = $("resume").files?.[0] || null;
+      const cover = $("coverLetter").files?.[0] || null;
+      const licenseFiles = $("licenseDoc").files ? Array.from($("licenseDoc").files) : [];
 
-      const certs = Array.from(document.querySelectorAll('input[name="certs"]:checked')).map(i => i.value);
-      const days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(i => i.value);
-      const screening = (document.querySelector('input[name="screening"]:checked') || {}).value || "";
-
-      fd.append("certs_json", JSON.stringify(certs));
-      fd.append("days_json", JSON.stringify(days));
-      fd.append("screening", screening);
-
-      const draft = collectDraft();
-      fd.append("experiences_json", JSON.stringify(draft.experiences || []));
-      fd.append("references_json", JSON.stringify(draft.references || []));
-
-      setProgress(35);
-      const res = await fetch(SUBMIT_URL, { method:"POST", body: fd });
-      setProgress(80);
-
-      if (!res.ok){
-        setProgress(100);
-        $("statusTitle").textContent = "Submission failed";
-        $("statusHint").textContent = "Please try again or contact us.";
-        toast("Submission failed", "Please try again.");
-        return;
+      if(!resume){
+        setErr("err-resume", true);
+        throw new Error("Resume is required.");
+      }
+      if(!fileOk(resume) || (cover && !fileOk(cover)) || licenseFiles.some(f => !fileOk(f))){
+        throw new Error(`One or more files exceed ${MAX_FILE_MB}MB.`);
       }
 
-      setProgress(100);
-      $("statusTitle").textContent = "Submitted!";
-      $("statusHint").textContent = "Thank you — we received your application.";
-      toast("Submitted", "Your application has been submitted.");
-      localStorage.removeItem(DRAFT_KEY);
-      $("draftStatus").textContent = "No";
-      window.location.href = "/Careers.html";
+      // Build application payload (no File objects here)
+      const draft = collectDraft(true);
+
+      // Create a Firestore doc first, so we can use its id in storage paths
+      setProgress(10, "Submitting…", "Creating application record…");
+      const baseDoc = {
+        jobTitle: "Licensed Practical Nurse (LPN)",
+        company: "Sulandra Community Living Services",
+        version: "2.0",
+        status: "Pending Review",
+        createdAt: serverTimestamp(),
+        submittedAtISO: new Date().toISOString(),
+        fields: draft.fields,
+        cert_none: draft.cert_none,
+        certs: draft.certs,
+        days: draft.days,
+        screening: draft.screening,
+        experiences: draft.experiences,
+        references: draft.references,
+        files: [] // filled after uploads
+      };
+
+      const docRef = await addDoc(collection(db, "applications_lpn"), baseDoc);
+      const appId = docRef.id;
+
+      // Upload files
+      const uploaded = [];
+      const all = [
+        { key:"resume", file: resume, bucket:"resume" },
+        { key:"coverLetter", file: cover, bucket:"cover-letter" },
+        ...licenseFiles.map((f, i) => ({ key:`licenseDoc_${i+1}`, file:f, bucket:"license-docs" }))
+      ].filter(x => !!x.file);
+
+      // Spread progress between 15% and 90%
+      let fileIndex = 0;
+      const startPct = 15;
+      const endPct = 90;
+
+      for(const item of all){
+        fileIndex++;
+        const pctBase = startPct + ((fileIndex - 1) / all.length) * (endPct - startPct);
+        const pctSpan = (endPct - startPct) / all.length;
+
+        const path = `applications_lpn/${appId}/${item.bucket}/${Date.now()}_${safeName(item.file.name)}`;
+
+        setProgress(pctBase, "Uploading files…", `${fileIndex}/${all.length}: ${item.file.name}`);
+
+        const meta = await uploadOneFile(item.file, path, (p) => {
+          setProgress(pctBase + (p/100)*pctSpan, "Uploading files…", `${fileIndex}/${all.length}: ${item.file.name}`);
+        });
+
+        uploaded.push({ ...meta, field: item.key });
+      }
+
+      // Save final submission with uploaded file links (write a second doc in same collection as a new record is not ideal,
+      // but we avoid needing updateDoc permissions. If you want single doc updates, change rules + use updateDoc here.)
+      // ✅ Better: write a second document to an "applications_lpn_submissions" collection that references appId.
+      setProgress(92, "Finalizing…", "Saving uploaded file links…");
+      await addDoc(collection(db, "applications_lpn_submissions"), {
+        applicationId: appId,
+        createdAt: serverTimestamp(),
+        submittedAtISO: new Date().toISOString(),
+        uploadedFiles: uploaded
+      });
+
+      setProgress(100, "Submitted!", "Thank you — we received your application.");
+      return { appId, uploaded };
     }
 
+    /* ==========
+       Form submit
+       ========== */
     $("appForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      // reset any visible error blocks that are purely grouped
+      setErr("err-resume", false);
 
       const ok = validateAll();
       if (!ok){
@@ -1603,36 +1844,55 @@
         return;
       }
 
-      const resumeFile = $("resume").files && $("resume").files[0] ? $("resume").files[0] : null;
-      if (!fileOk(resumeFile)){
-        setErr("err-resume", true);
-        toast("File too large", `Resume must be ${MAX_FILE_MB}MB or less.`);
-        return;
-      }
-
       try{
-        if (USE_SIMULATION) await simulateSubmit();
-        else await realSubmit();
-      }catch(err){
-        $("statusTitle").textContent = "Submission error";
-        $("statusHint").textContent = "Please try again.";
-        toast("Submission error", "Please try again.");
+        const { appId, uploaded } = await submitToFirebase();
+
+        // Show uploaded files on page (so applicant can see everything that was submitted)
+        renderUploadedFiles(uploaded);
+
+        // Clear draft + reset autosave
+        localStorage.removeItem(DRAFT_KEY);
+        setText($("draftStatus"), "No");
+        setText($("autosavePill"), "Autosave: off");
+
+        toast("Submitted", `Application received. Confirmation ID: ${appId}`);
+
+        // OPTIONAL: redirect after a moment (comment out if you want to keep them on page)
+        // window.location.href = "/Careers.html";
+
+      } catch(err){
+        console.error(err);
+        setSubmitting(false);
+        setProgress(0, "Submission error", "Please try again.");
+        toast("Submission error", err?.message || "Please check your internet and try again.");
+      } finally {
+        setSubmitting(false);
       }
     });
 
     /* ==========
-       Restore draft on load + ensure defaults
+       Init
        ========== */
     (function init(){
+      // default signature date = today
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth()+1).padStart(2,'0');
+      const dd = String(today.getDate()).padStart(2,'0');
+      if(!$("signatureDate").value) $("signatureDate").value = `${yyyy}-${mm}-${dd}`;
+
+      // restore draft
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved){
         try{
           applyDraft(JSON.parse(saved));
-          $("autosavePill").textContent = "Autosave: on";
-          $("draftStatus").textContent = "Yes";
+          setText($("autosavePill"), "Autosave: loaded");
+          setText($("draftStatus"), "Yes");
+          toast("Draft loaded", "We restored a saved draft from this device. You may need to re-attach files.");
         }catch(_){}
       }
 
+      // ensure at least one exp and two refs
       if (document.querySelectorAll("#expContainer .exp-card").length === 0){
         $("expContainer").appendChild(makeExpCard());
       }
