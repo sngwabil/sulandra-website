@@ -7,13 +7,11 @@
   <title>Sulandra Health | Empowering Independence at Home</title>
 
   <!-- FAVICONS -->
-<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
-
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="shortcut icon" href="/favicon.ico">
-
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="shortcut icon" href="/favicon.ico">
 
   <!-- SEO -->
   <meta name="description" content="Sulandra Health provides personalized in-home care services that empower independence, dignity, and quality of life.">
@@ -66,13 +64,8 @@
       min-width: 0;
     }
 
-    /*
-      LOGO SIZE:
-      You asked for 240px. To keep the top bar locked, we set WIDTH to 240px,
-      but constrain the image to the bar height so it never grows the header.
-    */
     .logo img{
-      width: 240px;       /* <-- your requested logo size */
+      width: 240px;       /* requested logo size */
       height: auto;
       max-height: 100%;   /* prevents increasing the locked bar height */
       object-fit: contain;
@@ -258,27 +251,23 @@
 
     /* LOCK footer logo area similar to top-nav lock */
     .footer-col .logo{
-      height: 80px;          /* locked logo area */
+      height: 80px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
     .footer-col .logo img{
-      max-height: 100%;      /* prevents the logo from stretching footer */
-      width: 240px;          /* same 240px logo width */
+      max-height: 100%;
+      width: 240px;
       height: auto;
       object-fit: contain;
     }
 
-    /* --- MOBILE: make it feel natural --- */
+    /* --- MOBILE --- */
     @media (max-width: 800px) {
       .alert-bar { font-size: 13px; padding: 10px 12px; }
 
-      .top-nav {
-        padding: 12px 14px;
-        height: 72px; /* locked on mobile */
-      }
-
+      .top-nav { padding: 12px 14px; height: 72px; }
       .logo img { width: 200px; max-height: 100%; }
 
       .header-tools { gap: 10px; }
@@ -327,9 +316,14 @@
         <span class="sr-only">Sulandra Health</span>
       </a>
 
+      <!-- UPDATED: Added Employee Portal link on far-right top -->
       <div class="header-tools">
         <a href="#">Reviews</a>
         <a href="#">Resources</a>
+
+        <!-- Employee Portal (far right top) -->
+        <a href="employee-portal.html">Employee Portal</a>
+
         <a href="#" class="btn-cta">Free Consultation</a>
       </div>
     </div>
@@ -339,10 +333,7 @@
         <li><a href="index.html">Home</a></li>
         <li><a href="services.html">Services</a></li> 
         <li><a href="#">About Us</a></li>
-
-        <!-- UPDATED: Careers now points to your Careers.html -->
         <li><a href="Careers.html">Careers</a></li>
-
         <li><a href="#">Contact</a></li>
       </ul>
     </nav>
@@ -452,11 +443,11 @@
         <ul>
           <li><a href="#">How to Start Home Care</a></li>
           <li><a href="#">Care Questionnaire</a></li>
-
-          <!-- UPDATED: Careers now points to your Careers.html -->
           <li><a href="Careers.html">Careers</a></li>
-
           <li><a href="#">Contact Us</a></li>
+
+          <!-- Optional: add Employee Portal in footer resources too -->
+          <li><a href="employee-portal.html">Employee Portal</a></li>
         </ul>
       </div>
     </div>
@@ -482,6 +473,23 @@
       }
     })();
   </script>
+
+  <!--
+    FUTURE EMPLOYEE LOGIN (planned):
+    - Admin creates employee profile (name, employee number, role/position, status).
+    - Employee logs into employee-portal.html using employee number (and a password or OTP).
+    - Portal content becomes personalized:
+        • Education assignments + completion
+        • Timesheets/clock in/out
+        • Role-based access (caregiver vs admin vs nurse, etc.)
+        • Document requests + upload status
+        • Incident reports
+    - When you're ready, I can create:
+        1) employee-login.html (employee number + password/OTP)
+        2) onboarding.html
+        3) handbook.html
+        4) training library pages, etc.
+  -->
 
 </body>
 </html>
