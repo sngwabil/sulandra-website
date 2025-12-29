@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sulandra Admin | Application Manager</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f4f7f9; padding: 20px; color: #1a202c; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h1 { color: #004b8d; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th { text-align: left; padding: 12px; background: #edf2f7; color: #4a5568; font-size: 13px; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #edf2f7; font-size: 14px; }
+        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
+        .btn-view { background: #0077c8; color: white; }
+        .btn-hire { background: #166534; color: white; margin-left: 5px; }
+        .status-pill { padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+        .Pending { background: #fef3c7; color: #92400e; }
+        .Hired { background: #dcfce7; color: #166534; }
+        
+        /* Modal for viewing details */
+        #detailsModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal-content { background: white; width: 80%; max-width: 800px; margin: 50px auto; padding: 30px; border-radius: 12px; max-height: 80vh; overflow-y: auto; }
+        .close-modal { float: right; font-size: 24px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>Applicant Management</h1>
+        <p>Review new applications and hire candidates to generate employee profiles.</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="applicantTable">
+                <tr><td colspan="6">Loading applications...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="detailsModal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
+        authDomain: "sulandra-health-portal.firebaseapp.com",
+        projectId: "sulandra-health-portal",
+        storageBucket: "sulandra-health-portal.firebasestorage.app",
+        messagingSenderId: "547316167712",
+        appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 1. Fetch applications live
+    onSnapshot(collection(db, "applications"), (snapshot) => {
+        const tbody = document.getElementById('applicantTable');
+        tbody.innerHTML = '';
+        
+        snapshot.forEach((snap) => {
+            const appData = snap.data();
+            const date = appData.submittedAtISO ? appData.submittedAtISO.split('T')[0] : 'N/A';
+            const score = appData.assessment ? appData.assessment.score : '0';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${date}</td>
+                <td><strong>${appData.firstName} ${appData.lastName}</strong></td>
+                <td>${appData.email}</td>
+                <td>${score}/10</td>
+                <td><span class="status-pill ${appData.status}">${appData.status}</span></td>
+                <td>
+                    <button class="btn btn-view" onclick="viewApp('${snap.id}')">View Details</button>
+                    ${appData.status !== 'Hired' ? `<button class="btn btn-hire" onclick="hireEmployee('${snap.id}')">HIRE</button>` : ''}
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    });
+
+    // 2. View Application Details (including file links)
+    window.viewApp = async (id) => {
+        const docRef = doc(db, "applications", id);
+        const docSnap = await getDoc(docRef);
+        const data = docSnap.data();
+        
+        let filesHtml = '<h4>Uploaded Documents:</h4><ul>';
+        if (data.uploadedFiles && data.uploadedFiles.length > 0) {
+            data.uploadedFiles.forEach(f => {
+                filesHtml += `<li><a href="${f.downloadURL}" target="_blank">${f.label}: ${f.name}</a></li>`;
+            });
+        } else {
+            filesHtml += '<li>No files uploaded.</li>';
+        }
+        filesHtml += '</ul>';
+
+        document.getElementById('modalBody').innerHTML = `
+            <h2>${data.firstName} ${data.lastName}</h2>
+            <p><strong>Phone:</strong> ${data.phone} | <strong>Address:</strong> ${data.address1}, ${data.city}</p>
+            <hr>
+            <h4>Experience:</h4>
+            <p>${data.why || 'No statement provided.'}</p>
+            ${filesHtml}
+        `;
+        document.getElementById('detailsModal').style.display = 'block';
+    };
+
+    // 3. Hire Function (Creates the profile automatically)
+    window.hireEmployee = async (id) => {
+        const empId = prompt("Enter the new Employee ID (e.g., SCLS-101):");
+        if (!empId) return;
+
+        const docRef = doc(db, "applications", id);
+        const docSnap = await getDoc(docRef);
+        const appData = docSnap.data();
+
+        // Create the employee record
+        await setDoc(doc(db, "employees", empId), {
+            employeeId: empId,
+            firstName: appData.firstName,
+            lastName: appData.lastName,
+            email: appData.email,
+            phone: appData.phone,
+            hiredDate: new Date().toISOString(),
+            status: "Active",
+            assignedEducation: [], // Empty to start
+            role: appData.jobTitle || "DSP"
+        });
+
+        // Update application status to Hired
+        await updateDoc(docRef, { status: "Hired" });
+
+        alert(`Success! Profile created for ${appData.firstName} with ID: ${empId}`);
+    };
+
+    window.closeModal = () => { document.getElementById('detailsModal').style.display = 'none'; };
+</script>
+</body>
+</html>
