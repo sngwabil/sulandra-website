@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Sulandra Health | Empowering Independence at Home</title>
+
+  <!-- FAVICONS -->
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="shortcut icon" href="/favicon.ico">
+
+
+  <!-- SEO -->
+  <meta name="description" content="Sulandra Health provides personalized in-home care services that empower independence, dignity, and quality of life.">
+  <meta name="robots" content="index, follow">
+
+  <style>
+    :root {
+      --primary: #004b8d; 
+      --secondary: #0077c8;
+      --accent: #d14124; 
+      --text: #333333;
+      --bg-light: #f7f9fc;
+      --white: #ffffff;
+      --dark-green: #0b3c5d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text); background-color: var(--white); line-height: 1.6; }
+
+    /* --- ALERT BAR --- */
+    .alert-bar {
+      background-color: var(--accent);
+      color: white;
+      text-align: center;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    /* --- HEADER --- */
+    header { border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 1000; }
+    .top-nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      height: 80px; /* LOCKED height */
+    }
+
+    /* Logo container (used in header + footer) */
+    .logo { 
+      text-decoration: none; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      color: var(--primary);
+      font-weight: 800;
+      min-width: 0;
+    }
+
+    /*
+      LOGO SIZE:
+      You asked for 240px. To keep the top bar locked, we set WIDTH to 240px,
+      but constrain the image to the bar height so it never grows the header.
+    */
+    .logo img{
+      width: 240px;       /* <-- your requested logo size */
+      height: auto;
+      max-height: 100%;   /* prevents increasing the locked bar height */
+      object-fit: contain;
+      display: block;
+    }
+
+    /* accessible hidden text */
+    .sr-only{
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .header-tools { display: flex; gap: 20px; align-items: center; font-size: 14px; font-weight: 600; }
+    .header-tools a { text-decoration: none; color: var(--text); white-space: nowrap; }
+    .btn-cta { background: var(--primary); color: white !important; padding: 10px 18px; border-radius: 4px; text-decoration: none; }
+
+    /* --- MAIN NAVIGATION --- */
+    .main-nav { background: #fff; border-top: 1px solid #eee; }
+    .nav-links {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      list-style: none;
+      padding: 0 20px;
+    }
+    .nav-links a {
+      display: block;
+      padding: 15px 20px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 15px;
+      white-space: nowrap;
+    }
+    .nav-links a:hover { color: var(--primary); background: #f0f4f8; }
+
+    /* --- HERO & SLIDESHOW STYLES --- */
+    .hero {
+      position: relative;
+      height: 550px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: white;
+      background-image: url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .hero-slideshow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .hero-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transition: opacity 1.5s ease-in-out;
+    }
+
+    .hero-slide.active {
+      opacity: 1;
+      z-index: 2;
+    }
+
+    .hero-overlay{
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      background: rgba(0,0,0,0.35);
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 0 40px;
+      text-align: center;
+    }
+
+    .hero-content h1 {
+      font-size: 48px;
+      font-weight: 900;
+      margin-bottom: 15px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+    }
+
+    .hero-content p {
+      font-size: 20px;
+      max-width: 800px;
+      margin: 0 auto 30px;
+      text-shadow: 0 1px 5px rgba(0,0,0,0.6);
+    }
+
+    /* --- ACTION BAR --- */
+    .action-bar {
+      background: var(--secondary);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      max-width: 1000px;
+      margin: -40px auto 0;
+      position: relative;
+      z-index: 20;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .action-item {
+      color: white;
+      text-decoration: none;
+      padding: 25px 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+      border-right: 1px solid rgba(255,255,255,0.2);
+    }
+    .action-item:last-child { border-right: none; }
+    .action-item:hover { background: var(--primary); }
+
+    /* --- PROCESS SECTION --- */
+    .process-section { background: #fff; padding: 80px 20px; text-align: center; }
+    .process-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      max-width: 1200px;
+      margin: 40px auto 0;
+      gap: 30px;
+    }
+    .process-step h4 { color: var(--accent); margin: 15px 0 10px; font-size: 18px; text-transform: uppercase; }
+    .process-step p { font-size: 14px; color: #666; padding: 0 10px; }
+
+    /* --- QUESTIONNAIRE STRIP --- */
+    .quiz-strip { background: var(--dark-green); color: white; padding: 40px 20px; text-align: center; }
+    .btn-outline { 
+      border: 2px solid white; color: white; padding: 10px 25px; 
+      text-decoration: none; font-weight: bold; border-radius: 4px; display: inline-block; margin-top: 15px;
+    }
+
+    /* --- SERVICES GRID --- */
+    .section { max-width: 1200px; margin: 60px auto; padding: 0 20px; }
+    .section-title { font-size: 32px; font-weight: 800; color: var(--primary); margin-bottom: 10px; text-align: center; }
+    .section-subtitle { text-align: center; margin-bottom: 40px; color: #666; }
+    
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 30px;
+    }
+    .service-card { background: var(--white); text-decoration: none; color: var(--text); display: block; }
+    .service-img { width: 100%; height: 230px; object-fit: cover; border-radius: 4px; }
+    .service-card h3 { margin: 15px 0 5px; font-size: 20px; color: var(--primary); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .service-card h3::after { content: '⊕'; font-size: 24px; color: #999; }
+    .service-card p { color: #666; font-size: 15px; margin-top: 8px; }
+
+    /* --- FOOTER --- */
+    footer { background: #f8f9fa; padding: 60px 20px; border-top: 1px solid #eee; }
+    .footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
+    .footer-col h4 { margin-bottom: 20px; font-size: 16px; color: var(--primary); }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 10px; font-size: 14px; }
+    .footer-col a { text-decoration: none; color: #555; }
+
+    /* LOCK footer logo area similar to top-nav lock */
+    .footer-col .logo{
+      height: 80px;          /* locked logo area */
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .footer-col .logo img{
+      max-height: 100%;      /* prevents the logo from stretching footer */
+      width: 240px;          /* same 240px logo width */
+      height: auto;
+      object-fit: contain;
+    }
+
+    /* --- MOBILE: make it feel natural --- */
+    @media (max-width: 800px) {
+      .alert-bar { font-size: 13px; padding: 10px 12px; }
+
+      .top-nav {
+        padding: 12px 14px;
+        height: 72px; /* locked on mobile */
+      }
+
+      .logo img { width: 200px; max-height: 100%; }
+
+      .header-tools { gap: 10px; }
+      .header-tools a:not(.btn-cta) { display: none; }
+      .btn-cta { padding: 10px 14px; }
+
+      .nav-links {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .nav-links::-webkit-scrollbar { display: none; }
+      .nav-links a { padding: 14px 14px; }
+
+      .hero { height: 450px; }
+      .hero-content { padding: 0 18px; }
+      .hero-content h1 { font-size: 32px; }
+      .hero-content p { font-size: 16px; }
+
+      .action-bar { grid-template-columns: repeat(2, 1fr); margin-top: 0; }
+      .action-item { padding: 18px 10px; }
+
+      .services-grid { grid-template-columns: 1fr; }
+      .service-img { height: 210px; }
+
+      .process-section { padding: 60px 16px; }
+      .section { margin: 40px auto; }
+
+      footer { padding: 40px 16px; }
+      .footer-grid { grid-template-columns: 1fr; gap: 26px; }
+      .footer-col .logo { height: 72px; }
+      .footer-col .logo img { width: 200px; max-height: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="alert-bar">
+    Sulandra Health is changing the way the world ages. Call us today for a free consultation.
+  </div>
+
+  <header>
+    <div class="top-nav">
+      <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
+        <span class="sr-only">Sulandra Health</span>
+      </a>
+
+      <div class="header-tools">
+        <a href="#">Reviews</a>
+        <a href="#">Resources</a>
+        <a href="#" class="btn-cta">Free Consultation</a>
+      </div>
+    </div>
+
+    <nav class="main-nav">
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="services.html">Services</a></li> 
+        <li><a href="#">About Us</a></li>
+
+        <!-- UPDATED: Careers now points to your Careers.html -->
+        <li><a href="Careers.html">Careers</a></li>
+
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-slideshow">
+      <div class="hero-slide active" style="background-image: url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80');"></div>
+      <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=1500&q=80');"></div>
+      <div class="hero-slide" style="background-image: url('https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1500&q=80');"></div>
+    </div>
+
+    <div class="hero-overlay"></div>
+
+    <div class="hero-content">
+      <h1>Changing The Way The World Ages</h1>
+      <p>At Sulandra Health, we believe that with the proper in-home care, we can empower you or your loved one to enjoy a happier, healthier, and more fulfilling lifestyle at home.</p>
+      <a href="#" class="btn-cta" style="font-size: 18px; padding: 15px 30px;">Schedule a Consultation Today</a>
+    </div>
+  </section>
+
+  <div class="action-bar">
+    <a href="services.html" class="action-item">Personalized Care</a>
+    <a href="services.html" class="action-item">Transportation</a>
+    <a href="services.html" class="action-item">Community Living</a>
+    <a href="services.html" class="action-item">Caregiver Support</a>
+  </div>
+
+  <section class="process-section">
+    <p style="text-transform: uppercase; letter-spacing: 2px; color: var(--accent); font-weight: bold;">Simple Process</p>
+    <h2 style="font-size: 32px; margin-bottom: 10px;">How To Start Home Care</h2>
+    <p style="max-width: 800px; margin: 0 auto; color: #666;">We make it easy to get extra care whenever you call "home."</p>
+
+    <div class="process-grid">
+      <div class="process-step">
+        <h4>1. Call Us</h4>
+        <p>Speak with one of our experienced Care Advisors to see if our services match your needs.</p>
+      </div>
+      <div class="process-step">
+        <h4>2. Home Consultation</h4>
+        <p>Our care team conducts an in-home evaluation to match you with the right care and caregiver.</p>
+      </div>
+      <div class="process-step">
+        <h4>3. Create Care Plan</h4>
+        <p>No two seniors are alike. Our customized care plans provide just the right home care services.</p>
+      </div>
+      <div class="process-step">
+        <h4>4. Begin Care</h4>
+        <p>No contracts required. You can start home care services, usually in as little as a few days.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="quiz-strip">
+    <h2>Is Home Care Right For Me?</h2>
+    <p>Take our 4-minute questionnaire to learn more about your care needs.</p>
+    <a href="#" class="btn-outline">START NOW</a>
+  </section>
+
+  <section class="section">
+    <div class="section-title">Personalized Home Care Services</div>
+    <div class="section-subtitle">We offer customized care plans to meet the specific physical, cognitive, and personal needs of your loved one.</div>
+    
+    <div class="services-grid">
+      <a href="services.html" class="service-card">
+        <img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img">
+        <h3>Community Living Support</h3>
+        <p>Residential and community-based support services focused on independence and safety.</p>
+      </a>
+
+      <a href="services.html" class="service-card">
+        <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=600&q=80" alt="Transportation" class="service-img">
+        <h3>Transportation Services</h3>
+        <p>Safe and reliable transportation for medical appointments, grocery shopping, and social outings.</p>
+      </a>
+
+      <a href="services.html" class="service-card">
+        <img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=600&q=80" alt="Respite Care" class="service-img">
+        <h3>Respite Services</h3>
+        <p>Giving family caregivers a much-needed break while ensuring their loved ones receive high-quality care.</p>
+      </a>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-col">
+        <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+          <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
+          <span class="sr-only">Sulandra Health</span>
+        </a>
+        <p>© 2025 Sulandra Health. <br>Changing the Way the World Ages.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Our Services</h4>
+        <ul>
+          <li><a href="services.html">Community Living</a></li>
+          <li><a href="services.html">Transportation</a></li>
+          <li><a href="services.html">Respite Care</a></li>
+          <li><a href="services.html">Companion Care</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="#">How to Start Home Care</a></li>
+          <li><a href="#">Care Questionnaire</a></li>
+
+          <!-- UPDATED: Careers now points to your Careers.html -->
+          <li><a href="Careers.html">Careers</a></li>
+
+          <li><a href="#">Contact Us</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      const slides = document.querySelectorAll('.hero-slide');
+      if (slides.length === 0) return;
+
+      let currentSlide = 0;
+
+      function nextSlide() {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add('active');
+      }
+
+      slides[0].classList.add('active');
+
+      if (slides.length > 1) {
+        setInterval(nextSlide, 5000);
+      }
+    })();
+  </script>
+
+</body>
+</html>
