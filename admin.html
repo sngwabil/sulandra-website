@@ -1,160 +1,1018 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sulandra Admin | Application Manager</title>
-    <style>
-        body { font-family: system-ui, sans-serif; background: #f4f7f9; padding: 20px; color: #1a202c; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h1 { color: #004b8d; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
-        th { text-align: left; padding: 12px; background: #edf2f7; color: #4a5568; font-size: 13px; text-transform: uppercase; }
-        td { padding: 12px; border-bottom: 1px solid #edf2f7; font-size: 14px; }
-        .btn { padding: 8px 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.2s; }
-        .btn-view { background: #0077c8; color: white; }
-        .btn-hire { background: #166534; color: white; margin-left: 5px; }
-        .status-pill { padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; }
-        .Pending { background: #fef3c7; color: #92400e; }
-        .Hired { background: #dcfce7; color: #166534; }
-        
-        /* Modal for viewing details */
-        #detailsModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { background: white; width: 80%; max-width: 800px; margin: 50px auto; padding: 30px; border-radius: 12px; max-height: 80vh; overflow-y: auto; }
-        .close-modal { float: right; font-size: 24px; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sulandra Admin | Application Manager</title>
+  <meta name="description" content="Admin dashboard to review applications, view details + uploaded file links, and hire applicants into employee profiles." />
+
+  <style>
+    :root{
+      --bg:#f6f7f8;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#475569;
+      --border:#d1d5db;
+
+      --primary:#004b8d;
+      --secondary:#0077c8;
+      --accent:#d14124;
+
+      --shadow: 0 6px 18px rgba(0,0,0,.08);
+      --radius: 14px;
+
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    *{ box-sizing:border-box; }
+    body{ margin:0; background:var(--bg); color:var(--text); }
+    a{ color:inherit; }
+    .wrap{ max-width: 1200px; margin: 0 auto; padding: 18px 16px; }
+
+    .alert-bar{
+      background: var(--accent);
+      color:#fff;
+      text-align:center;
+      padding:10px 20px;
+      font-size:14px;
+      font-weight:800;
+    }
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:1000;
+      background:#fff;
+      border-bottom:1px solid #ddd;
+    }
+    .top-nav{
+      max-width:1200px;
+      margin:0 auto;
+      padding:15px 20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .logo{ display:flex; align-items:center; gap:12px; min-width:0; }
+    .logo img{ width:240px; height:auto; object-fit:contain; }
+    .hdr-right{
+      display:flex; gap:12px; align-items:center;
+      font-weight:800; font-size:13px; color:var(--muted);
+      white-space:nowrap;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:12px; font-weight:750; color:var(--muted);
+      white-space:nowrap;
+    }
+    .btn{
+      border:0; cursor:pointer;
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:900;
+      font-size:13px;
+      transition: filter .2s ease, transform .05s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn-primary{ background:var(--primary); color:#fff; }
+    .btn-primary:hover{ filter:brightness(.95); }
+    .btn-ghost{
+      background:transparent;
+      border:1px solid var(--border);
+      color:var(--text);
+    }
+    .btn-ghost:hover{ background:#f9fafb; }
+    .btn-danger{
+      background:#fee2e2;
+      color:#7f1d1d;
+      border:1px solid #fecaca;
+    }
+    .btn-sm{ padding:8px 10px; border-radius:10px; font-size:12px; }
+    .btn-view{ background:var(--secondary); color:#fff; }
+    .btn-hire{ background:#166534; color:#fff; }
+    .btn-disabled{ opacity:.55; cursor:not-allowed; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:16px;
+      margin-top:16px;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+    }
+    h1{ margin:0 0 6px; color:var(--primary); font-size:20px; }
+    .sub{ margin:0; color:var(--muted); font-size:13px; }
+
+    .toolbar{
+      margin-top:14px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .filters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+    .field{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:8px 10px;
+      background:#fff;
+    }
+    .field label{
+      font-size:12px;
+      font-weight:850;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    input[type="search"], select{
+      border:0;
+      outline:none;
+      background:transparent;
+      font-size:13px;
+      min-width: 180px;
+    }
+    select{ min-width: 160px; }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:14px;
+      background:#fff;
+      border:1px solid rgba(209,213,219,.7);
+      border-radius:12px;
+      overflow:hidden;
+    }
+    thead th{
+      text-align:left;
+      padding:12px;
+      background:#edf2f7;
+      color:#4a5568;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    tbody td{
+      padding:12px;
+      border-bottom:1px solid #edf2f7;
+      font-size:13px;
+      vertical-align:top;
+    }
+    tbody tr:hover{ background:#fbfdff; }
+    .muted{ color:var(--muted); }
+
+    .status-pill{
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      display:inline-block;
+      border:1px solid rgba(209,213,219,.7);
+    }
+    .Pending { background:#fef3c7; color:#92400e; border-color:#f59e0b33; }
+    .Reviewed { background:#e0f2fe; color:#075985; border-color:#0284c733; }
+    .Hired { background:#dcfce7; color:#166534; border-color:#22c55e33; }
+    .Rejected { background:#fee2e2; color:#7f1d1d; border-color:#ef444433; }
+
+    .score{
+      font-weight:900;
+      padding:4px 8px;
+      border-radius:10px;
+      border:1px solid rgba(209,213,219,.7);
+      display:inline-block;
+      min-width: 62px;
+      text-align:center;
+      background:#fff;
+    }
+
+    /* Modal */
+    #detailsModal{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:1000;
+      padding:16px;
+    }
+    .modal{
+      background:#fff;
+      max-width: 920px;
+      margin: 24px auto;
+      border-radius: 16px;
+      border:1px solid rgba(209,213,219,.7);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      max-height: calc(100vh - 48px);
+      display:flex;
+      flex-direction:column;
+    }
+    .modal-head{
+      padding:14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border-bottom:1px solid rgba(209,213,219,.7);
+      background:#fcfcfd;
+    }
+    .modal-title{
+      font-weight:950;
+      font-size:14px;
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .modal-body{
+      padding:16px;
+      overflow:auto;
+    }
+    .close-x{
+      font-size:22px;
+      line-height:1;
+      cursor:pointer;
+      padding:6px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#fff;
+    }
+    .close-x:hover{ background:#f9fafb; }
+
+    .kvgrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      margin-top:10px;
+    }
+    @media (max-width: 820px){ .kvgrid{ grid-template-columns: 1fr; } }
+
+    .kv{
+      border:1px solid rgba(209,213,219,.7);
+      border-radius:14px;
+      padding:12px;
+      background:#fff;
+    }
+    .kv .k{
+      font-size:11px;
+      font-weight:900;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      margin-bottom:6px;
+    }
+    .kv .v{
+      font-size:13px;
+      font-weight:800;
+      word-break:break-word;
+    }
+
+    .section{
+      margin-top:14px;
+      border-top:1px dashed rgba(209,213,219,.9);
+      padding-top:14px;
+    }
+    .section h3{
+      margin:0 0 8px;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      color:var(--primary);
+    }
+    .list{
+      border:1px solid rgba(209,213,219,.7);
+      border-radius:14px;
+      overflow:hidden;
+    }
+    .list .rowi{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border-bottom:1px solid rgba(209,213,219,.55);
+      font-size:13px;
+      background:#fff;
+    }
+    .list .rowi:last-child{ border-bottom:0; }
+    .list .rowi .meta{ color:var(--muted); font-weight:700; }
+    .list a{ color:var(--secondary); font-weight:900; }
+
+    .toast{
+      position: fixed;
+      right: 16px; bottom: 16px;
+      width: min(420px, calc(100vw - 32px));
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      display:none;
+      z-index: 1500;
+    }
+    .toast.show{ display:block; }
+    .toast strong{ display:block; margin-bottom:4px; }
+    .toast small{ color: var(--muted); }
+
+    .tiny{ font-size:12px; color:var(--muted); }
+  </style>
 </head>
+
 <body>
+  <div class="alert-bar">Admin Console — confidential. Authorized staff only.</div>
 
-<div class="container">
-    <div class="card">
+  <header>
+    <div class="top-nav">
+      <a href="/index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="/assets/mainlogo.png" alt="Sulandra Health Logo" />
+      </a>
+
+      <div class="hdr-right">
+        <span class="pill" id="livePill">Live: connecting…</span>
+        <button class="btn btn-ghost btn-sm" id="refreshBtn" type="button">Refresh</button>
+        <button class="btn btn-primary btn-sm" id="exportBtn" type="button">Export CSV</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="grid">
+      <section class="card">
         <h1>Applicant Management</h1>
-        <p>Review new applications and hire candidates to generate employee profiles.</p>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Score</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="applicantTable">
-                <tr><td colspan="6">Loading applications...</td></tr>
-            </tbody>
+        <p class="sub">Review applications, view uploaded documents, update status, and hire candidates to generate employee profiles.</p>
+
+        <div class="toolbar">
+          <div class="filters">
+            <div class="field">
+              <label for="search">Search</label>
+              <input id="search" type="search" placeholder="Name, email, phone…" />
+            </div>
+
+            <div class="field">
+              <label for="statusFilter">Status</label>
+              <select id="statusFilter">
+                <option value="all">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Reviewed">Reviewed</option>
+                <option value="Hired">Hired</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="jobFilter">Job</label>
+              <select id="jobFilter">
+                <option value="all">All</option>
+                <option value="LPN">LPN</option>
+                <option value="DSP">DSP</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tiny" id="countLabel">0 applications</div>
+        </div>
+
+        <table aria-label="Applications table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Applicant</th>
+              <th>Job</th>
+              <th>Score</th>
+              <th>Status</th>
+              <th style="width:260px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="applicantTable">
+            <tr><td colspan="6" class="muted">Loading applications…</td></tr>
+          </tbody>
         </table>
+      </section>
     </div>
-</div>
+  </main>
 
-<div id="detailsModal">
-    <div class="modal-content">
-        <span class="close-modal" onclick="closeModal()">&times;</span>
-        <div id="modalBody"></div>
+  <!-- Details Modal -->
+  <div id="detailsModal" role="dialog" aria-modal="true" aria-label="Application details">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle">Application</div>
+        <button class="close-x" id="closeModalBtn" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
     </div>
-</div>
+  </div>
 
-<script type="module">
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <strong id="toastTitle">Done</strong>
+    <small id="toastBody">OK</small>
+  </div>
+
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import {
+      getFirestore,
+      collection,
+      onSnapshot,
+      doc,
+      updateDoc,
+      setDoc,
+      getDoc,
+      query,
+      orderBy,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
-        authDomain: "sulandra-health-portal.firebaseapp.com",
-        projectId: "sulandra-health-portal",
-        storageBucket: "sulandra-health-portal.firebasestorage.app",
-        messagingSenderId: "547316167712",
-        appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845"
+      apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
+      authDomain: "sulandra-health-portal.firebaseapp.com",
+      projectId: "sulandra-health-portal",
+      storageBucket: "sulandra-health-portal.firebasestorage.app",
+      messagingSenderId: "547316167712",
+      appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 1. Fetch applications live
-    onSnapshot(collection(db, "applications"), (snapshot) => {
-        const tbody = document.getElementById('applicantTable');
-        tbody.innerHTML = '';
-        
-        snapshot.forEach((snap) => {
-            const appData = snap.data();
-            const date = appData.submittedAtISO ? appData.submittedAtISO.split('T')[0] : 'N/A';
-            const score = appData.assessment ? appData.assessment.score : '0';
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${date}</td>
-                <td><strong>${appData.firstName} ${appData.lastName}</strong></td>
-                <td>${appData.email}</td>
-                <td>${score}/10</td>
-                <td><span class="status-pill ${appData.status}">${appData.status}</span></td>
-                <td>
-                    <button class="btn btn-view" onclick="viewApp('${snap.id}')">View Details</button>
-                    ${appData.status !== 'Hired' ? `<button class="btn btn-hire" onclick="hireEmployee('${snap.id}')">HIRE</button>` : ''}
-                </td>
-            `;
-            tbody.appendChild(row);
+    /* ==========
+       Helpers
+       ========== */
+    const $ = (id) => document.getElementById(id);
+
+    function toast(title, body){
+      $("toastTitle").textContent = title;
+      $("toastBody").textContent = body || "";
+      $("toast").classList.add("show");
+      setTimeout(() => $("toast").classList.remove("show"), 2600);
+    }
+
+    function escapeHtml(str){
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function fmtDate(iso){
+      if(!iso) return "N/A";
+      try{
+        const d = new Date(iso);
+        if(Number.isNaN(d.getTime())) return String(iso).split("T")[0] || "N/A";
+        return d.toISOString().split("T")[0];
+      }catch(_){
+        return String(iso).split("T")[0] || "N/A";
+      }
+    }
+
+    function guessJobLabel(app){
+      const jt = (app.jobTitle || app.fields?.jobTitle || "").toString().toLowerCase();
+      if(jt.includes("practical") || jt.includes("lpn")) return "LPN";
+      if(jt.includes("dsp") || jt.includes("direct support")) return "DSP";
+      return jt ? "Other" : "—";
+    }
+
+    function getApplicantName(app){
+      const fn = app.firstName || app.fields?.firstName || "";
+      const ln = app.lastName || app.fields?.lastName || "";
+      const combined = `${fn} ${ln}`.trim();
+      return combined || "Unknown";
+    }
+
+    function getApplicantEmail(app){
+      return app.email || app.fields?.email || "—";
+    }
+
+    function getApplicantPhone(app){
+      return app.phone || app.fields?.phone || "—";
+    }
+
+    function getStatus(app){
+      return (app.status || "Pending").toString();
+    }
+
+    function getScore(app){
+      // Supports either: app.assessment.score (from your example) OR app.fields.assessmentScore
+      const a = app.assessment?.score;
+      if(typeof a === "number") return a;
+      const b = app.fields?.assessmentScore;
+      const n = Number(b);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function normalizeAppRecord(docId, data, source){
+      return {
+        id: docId,
+        source, // which collection
+        ...data
+      };
+    }
+
+    function downloadText(filename, text){
+      const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function toCSV(rows){
+      const esc = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+      const header = ["date","name","email","phone","job","status","score","collection","id"];
+      const lines = [header.join(",")];
+      for(const r of rows){
+        lines.push([
+          esc(r.date),
+          esc(r.name),
+          esc(r.email),
+          esc(r.phone),
+          esc(r.job),
+          esc(r.status),
+          esc(r.score),
+          esc(r.collection),
+          esc(r.id)
+        ].join(","));
+      }
+      return lines.join("\n");
+    }
+
+    /* ==========
+       Data loading (supports your LPN v2 collections + legacy)
+       ==========
+       - LPN v2 page writes:
+         1) applications_lpn  (base record)
+         2) applications_lpn_submissions (uploaded file links)
+       - Your sample admin used "applications" with uploadedFiles
+       This admin reads from all of them and merges if possible.
+       ========== */
+
+    const collectionsToWatch = [
+      { key:"applications_lpn", label:"applications_lpn" },
+      { key:"applications", label:"applications" } // legacy
+    ];
+
+    const submissionsCollection = { key:"applications_lpn_submissions", label:"applications_lpn_submissions" };
+
+    // cache
+    let apps = [];          // merged view rows
+    let rawApps = [];       // base app docs across collections
+    let submissions = [];   // lpn submission docs
+
+    let unsubscribers = [];
+
+    function setLiveState(text){
+      $("livePill").textContent = text;
+    }
+
+    function stopSnapshots(){
+      unsubscribers.forEach(fn => { try{ fn(); }catch(_){} });
+      unsubscribers = [];
+    }
+
+    function startSnapshots(){
+      stopSnapshots();
+      setLiveState("Live: connected");
+
+      // base applications
+      for(const c of collectionsToWatch){
+        const qy = query(collection(db, c.key), orderBy("submittedAtISO", "desc"));
+        const unsub = onSnapshot(qy, (snap) => {
+          const next = [];
+          snap.forEach(d => next.push(normalizeAppRecord(d.id, d.data(), c.key)));
+
+          // replace only that source in rawApps
+          rawApps = rawApps.filter(x => x.source !== c.key).concat(next);
+          rebuildMerged();
+          render();
+        }, (err) => {
+          console.error(err);
+          setLiveState("Live: error");
+          toast("Live error", "Could not load applications.");
         });
-    });
+        unsubscribers.push(unsub);
+      }
 
-    // 2. View Application Details (including file links)
-    window.viewApp = async (id) => {
-        const docRef = doc(db, "applications", id);
-        const docSnap = await getDoc(docRef);
-        const data = docSnap.data();
-        
-        let filesHtml = '<h4>Uploaded Documents:</h4><ul>';
-        if (data.uploadedFiles && data.uploadedFiles.length > 0) {
-            data.uploadedFiles.forEach(f => {
-                filesHtml += `<li><a href="${f.downloadURL}" target="_blank">${f.label}: ${f.name}</a></li>`;
-            });
-        } else {
-            filesHtml += '<li>No files uploaded.</li>';
-        }
-        filesHtml += '</ul>';
+      // submissions (uploaded file links for LPN v2)
+      const qsub = query(collection(db, submissionsCollection.key), orderBy("submittedAtISO", "desc"));
+      const unsubSub = onSnapshot(qsub, (snap) => {
+        const next = [];
+        snap.forEach(d => next.push(normalizeAppRecord(d.id, d.data(), submissionsCollection.key)));
+        submissions = next;
+        rebuildMerged();
+        render();
+      }, (err) => {
+        console.error(err);
+        // don't break the whole UI if submissions fail
+      });
+      unsubscribers.push(unsubSub);
+    }
 
-        document.getElementById('modalBody').innerHTML = `
-            <h2>${data.firstName} ${data.lastName}</h2>
-            <p><strong>Phone:</strong> ${data.phone} | <strong>Address:</strong> ${data.address1}, ${data.city}</p>
-            <hr>
-            <h4>Experience:</h4>
-            <p>${data.why || 'No statement provided.'}</p>
-            ${filesHtml}
+    function findUploadedFilesFor(appId){
+      // LPN v2: stored in applications_lpn_submissions (uploadedFiles[])
+      const s = submissions.find(x => x.applicationId === appId);
+      if(s && Array.isArray(s.uploadedFiles)) return s.uploadedFiles;
+
+      // legacy: stored on the application doc itself (uploadedFiles[])
+      const base = rawApps.find(x => x.id === appId && (x.source === "applications"));
+      if(base && Array.isArray(base.uploadedFiles)) return base.uploadedFiles;
+
+      // LPN v2 base doc might eventually store files; support it too
+      const base2 = rawApps.find(x => x.id === appId);
+      if(base2 && Array.isArray(base2.files)) return base2.files;
+
+      return [];
+    }
+
+    function rebuildMerged(){
+      // We want a unified list where each base application is one row.
+      // For LPN v2, base is in applications_lpn; submissions doc references applicationId.
+      // For legacy, base in applications.
+
+      // IMPORTANT: If you have duplicate people across collections, they will appear separately (by id).
+      apps = rawApps
+        .filter(x => x.source !== submissionsCollection.key)
+        .map(x => {
+          const dateISO = x.submittedAtISO || x.fields?.submittedAtISO || "";
+          const status = getStatus(x);
+          const name = getApplicantName(x);
+          const email = getApplicantEmail(x);
+          const phone = getApplicantPhone(x);
+          const job = guessJobLabel(x);
+          const score = getScore(x);
+          const uploadedFiles = findUploadedFilesFor(x.id);
+
+          return {
+            id: x.id,
+            collection: x.source,
+            dateISO,
+            date: fmtDate(dateISO),
+            name,
+            email,
+            phone,
+            job,
+            status,
+            score,
+            uploadedFiles,
+            raw: x
+          };
+        })
+        .sort((a,b) => (b.dateISO || "").localeCompare(a.dateISO || ""));
+    }
+
+    /* ==========
+       Rendering + filters
+       ========== */
+    function getFiltered(){
+      const q = ($("search").value || "").trim().toLowerCase();
+      const status = $("statusFilter").value;
+      const job = $("jobFilter").value;
+
+      return apps.filter(a => {
+        const matchesQ = !q || (
+          a.name.toLowerCase().includes(q) ||
+          String(a.email).toLowerCase().includes(q) ||
+          String(a.phone).toLowerCase().includes(q)
+        );
+
+        const matchesStatus = (status === "all") || (a.status === status);
+        const matchesJob = (job === "all") || (a.job === job);
+
+        return matchesQ && matchesStatus && matchesJob;
+      });
+    }
+
+    function render(){
+      const tbody = $("applicantTable");
+      const rows = getFiltered();
+
+      $("countLabel").textContent = `${rows.length} application${rows.length === 1 ? "" : "s"}`;
+
+      if(rows.length === 0){
+        tbody.innerHTML = `<tr><td colspan="6" class="muted">No applications match your filters.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = "";
+      for(const a of rows){
+        const tr = document.createElement("tr");
+
+        const hireBtn = (a.status !== "Hired")
+          ? `<button class="btn btn-sm btn-hire" data-action="hire" data-id="${escapeHtml(a.id)}" data-col="${escapeHtml(a.collection)}">HIRE</button>`
+          : `<button class="btn btn-sm btn-ghost btn-disabled" type="button" disabled>HIRED</button>`;
+
+        tr.innerHTML = `
+          <td>${escapeHtml(a.date)}</td>
+          <td>
+            <div style="font-weight:950;">${escapeHtml(a.name)}</div>
+            <div class="muted" style="font-size:12px;">${escapeHtml(a.email)}</div>
+          </td>
+          <td>
+            <div style="font-weight:900;">${escapeHtml(a.job)}</div>
+            <div class="muted" style="font-size:12px;">${escapeHtml(a.collection)}</div>
+          </td>
+          <td><span class="score">${escapeHtml(String(a.score))}/10</span></td>
+          <td><span class="status-pill ${escapeHtml(a.status)}">${escapeHtml(a.status)}</span></td>
+          <td>
+            <button class="btn btn-sm btn-view" data-action="view" data-id="${escapeHtml(a.id)}" data-col="${escapeHtml(a.collection)}">View Details</button>
+            <button class="btn btn-sm btn-ghost" data-action="status" data-id="${escapeHtml(a.id)}" data-col="${escapeHtml(a.collection)}">Update Status</button>
+            ${hireBtn}
+          </td>
         `;
-        document.getElementById('detailsModal').style.display = 'block';
-    };
+        tbody.appendChild(tr);
+      }
+    }
 
-    // 3. Hire Function (Creates the profile automatically)
-    window.hireEmployee = async (id) => {
+    /* ==========
+       Modal
+       ========== */
+    function openModal(){ $("detailsModal").style.display = "block"; }
+    function closeModal(){ $("detailsModal").style.display = "none"; }
+
+    $("closeModalBtn").addEventListener("click", closeModal);
+    $("detailsModal").addEventListener("click", (e) => { if(e.target === $("detailsModal")) closeModal(); });
+    document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
+
+    async function viewApplication(appId, sourceCollection){
+      const baseRef = doc(db, sourceCollection, appId);
+      const snap = await getDoc(baseRef);
+      if(!snap.exists()){
+        toast("Not found", "Application could not be loaded.");
+        return;
+      }
+      const data = snap.data();
+      const row = apps.find(x => x.id === appId && x.collection === sourceCollection) || null;
+
+      const name = getApplicantName(data);
+      const email = getApplicantEmail(data);
+      const phone = getApplicantPhone(data);
+      const status = getStatus(data);
+      const job = data.jobTitle || data.fields?.jobTitle || "—";
+
+      const fields = data.fields || {};
+      const address = [
+        fields.address1 || data.address1 || "",
+        fields.address2 || data.address2 || "",
+        fields.city || data.city || "",
+        fields.state || data.state || "",
+        fields.zip || data.zip || ""
+      ].filter(Boolean).join(", ") || "—";
+
+      const experiences = data.experiences || data.fields?.experiences || row?.raw?.experiences || [];
+      const references = data.references || data.fields?.references || row?.raw?.references || [];
+
+      const uploadedFiles = row ? row.uploadedFiles : findUploadedFilesFor(appId);
+
+      // Build files UI (supports both: {url,name,type,size} OR legacy {downloadURL,label,name})
+      let filesHtml = "";
+      if(uploadedFiles && uploadedFiles.length){
+        const items = uploadedFiles.map(f => {
+          const url = f.url || f.downloadURL || "";
+          const label = f.field || f.label || "File";
+          const nm = f.name || "document";
+          const meta = [f.type, (typeof f.size === "number" ? `${Math.round(f.size/1024)} KB` : "")].filter(Boolean).join(" • ");
+          return `
+            <div class="rowi">
+              <div>
+                <div style="font-weight:900;">${escapeHtml(label)}: ${escapeHtml(nm)}</div>
+                <div class="meta">${escapeHtml(meta || "Uploaded")}</div>
+              </div>
+              <div class="meta">
+                ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Open</a>` : "—"}
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        filesHtml = `
+          <div class="section">
+            <h3>Uploaded Documents</h3>
+            <div class="list">${items}</div>
+          </div>
+        `;
+      }else{
+        filesHtml = `
+          <div class="section">
+            <h3>Uploaded Documents</h3>
+            <div class="list"><div class="rowi"><div class="meta">No uploaded files found.</div><div class="meta">—</div></div></div>
+          </div>
+        `;
+      }
+
+      const expHtml = Array.isArray(experiences) && experiences.length ? experiences.map((e,i) => `
+        <div class="rowi">
+          <div>
+            <div style="font-weight:900;">#${i+1} ${escapeHtml(e.title || "")} ${e.employer ? "— " + escapeHtml(e.employer) : ""}</div>
+            <div class="meta">${escapeHtml((e.start || "—") + " → " + (e.end || "—"))}</div>
+          </div>
+          <div class="meta">${escapeHtml(e.contactOk ? "Contact: " + e.contactOk : "")}</div>
+        </div>
+      `).join("") : `<div class="rowi"><div class="meta">No experience entries.</div><div class="meta">—</div></div>`;
+
+      const refHtml = Array.isArray(references) && references.length ? references.map((r,i) => `
+        <div class="rowi">
+          <div>
+            <div style="font-weight:900;">#${i+1} ${escapeHtml(r.name || "")} ${r.relation ? "— " + escapeHtml(r.relation) : ""}</div>
+            <div class="meta">${escapeHtml((r.email || "—") + " • " + (r.phone || "—"))}</div>
+          </div>
+          <div class="meta">—</div>
+        </div>
+      `).join("") : `<div class="rowi"><div class="meta">No references.</div><div class="meta">—</div></div>`;
+
+      const certs = data.certs || fields.certs || [];
+      const days = data.days || fields.days || [];
+      const statement = fields.why || data.why || "—";
+
+      $("modalTitle").innerHTML = `
+        ${escapeHtml(name)}
+        <span class="status-pill ${escapeHtml(status)}">${escapeHtml(status)}</span>
+        <span class="pill">ID: ${escapeHtml(appId)}</span>
+      `;
+
+      $("modalBody").innerHTML = `
+        <div class="kvgrid">
+          <div class="kv"><div class="k">Email</div><div class="v">${escapeHtml(email)}</div></div>
+          <div class="kv"><div class="k">Phone</div><div class="v">${escapeHtml(phone)}</div></div>
+          <div class="kv"><div class="k">Job Title</div><div class="v">${escapeHtml(job)}</div></div>
+          <div class="kv"><div class="k">Address</div><div class="v">${escapeHtml(address)}</div></div>
+          <div class="kv"><div class="k">Certs</div><div class="v">${escapeHtml(Array.isArray(certs) ? certs.join(", ") : String(certs || "—"))}</div></div>
+          <div class="kv"><div class="k">Days Available</div><div class="v">${escapeHtml(Array.isArray(days) ? days.join(", ") : String(days || "—"))}</div></div>
+        </div>
+
+        <div class="section">
+          <h3>Applicant Statement</h3>
+          <div class="kv"><div class="v" style="font-weight:650;">${escapeHtml(statement)}</div></div>
+        </div>
+
+        <div class="section">
+          <h3>Work Experience</h3>
+          <div class="list">${expHtml}</div>
+        </div>
+
+        <div class="section">
+          <h3>References</h3>
+          <div class="list">${refHtml}</div>
+        </div>
+
+        ${filesHtml}
+
+        <div class="section">
+          <h3>Quick Actions</h3>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-view btn-sm" id="modalMarkReviewed">Mark Reviewed</button>
+            <button class="btn btn-danger btn-sm" id="modalMarkRejected">Reject</button>
+            <button class="btn btn-hire btn-sm" id="modalHire">Hire</button>
+          </div>
+          <div class="tiny" style="margin-top:8px;">Hiring creates a record in <code>employees</code> and sets application status to <strong>Hired</strong>.</div>
+        </div>
+      `;
+
+      $("modalMarkReviewed").addEventListener("click", () => updateStatus(appId, sourceCollection, "Reviewed", true));
+      $("modalMarkRejected").addEventListener("click", () => updateStatus(appId, sourceCollection, "Rejected", true));
+      $("modalHire").addEventListener("click", () => hireEmployee(appId, sourceCollection, true));
+
+      openModal();
+    }
+
+    /* ==========
+       Status update + Hire
+       ========== */
+    async function updateStatus(appId, sourceCollection, status, keepOpen=false){
+      try{
+        await updateDoc(doc(db, sourceCollection, appId), {
+          status,
+          statusUpdatedAt: serverTimestamp()
+        });
+        toast("Updated", `Status set to ${status}.`);
+        if(!keepOpen) closeModal();
+      }catch(err){
+        console.error(err);
+        toast("Update failed", "Check permissions / Firestore rules.");
+      }
+    }
+
+    async function hireEmployee(appId, sourceCollection, keepOpen=false){
+      try{
         const empId = prompt("Enter the new Employee ID (e.g., SCLS-101):");
         if (!empId) return;
 
-        const docRef = doc(db, "applications", id);
-        const docSnap = await getDoc(docRef);
-        const appData = docSnap.data();
+        const baseRef = doc(db, sourceCollection, appId);
+        const snap = await getDoc(baseRef);
+        if(!snap.exists()){
+          toast("Not found", "Application could not be loaded.");
+          return;
+        }
+        const appData = snap.data();
+        const fields = appData.fields || {};
 
-        // Create the employee record
         await setDoc(doc(db, "employees", empId), {
-            employeeId: empId,
-            firstName: appData.firstName,
-            lastName: appData.lastName,
-            email: appData.email,
-            phone: appData.phone,
-            hiredDate: new Date().toISOString(),
-            status: "Active",
-            assignedEducation: [], // Empty to start
-            role: appData.jobTitle || "DSP"
-        });
+          employeeId: empId,
+          firstName: appData.firstName || fields.firstName || "",
+          lastName: appData.lastName || fields.lastName || "",
+          email: appData.email || fields.email || "",
+          phone: appData.phone || fields.phone || "",
+          hiredDate: new Date().toISOString(),
+          status: "Active",
+          assignedEducation: [],
+          role: appData.jobTitle || fields.jobTitle || guessJobLabel(appData) || "Employee",
+          sourceApplicationId: appId,
+          sourceCollection
+        }, { merge: true });
 
-        // Update application status to Hired
-        await updateDoc(docRef, { status: "Hired" });
+        await updateDoc(baseRef, { status: "Hired", hiredEmployeeId: empId, hiredAt: serverTimestamp() });
 
-        alert(`Success! Profile created for ${appData.firstName} with ID: ${empId}`);
-    };
+        toast("Hired", `Employee profile created: ${empId}`);
+        if(!keepOpen) closeModal();
+      }catch(err){
+        console.error(err);
+        toast("Hire failed", "Check permissions / Firestore rules.");
+      }
+    }
 
-    window.closeModal = () => { document.getElementById('detailsModal').style.display = 'none'; };
-</script>
+    /* ==========
+       Table actions via event delegation
+       ========== */
+    $("applicantTable").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if(!btn) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      const col = btn.dataset.col;
+
+      if(action === "view") viewApplication(id, col);
+      if(action === "status"){
+        const current = apps.find(x => x.id === id && x.collection === col)?.status || "Pending";
+        const next = prompt("Set status to: Pending, Reviewed, Hired, Rejected", current);
+        if(!next) return;
+        const allowed = ["Pending","Reviewed","Hired","Rejected"];
+        if(!allowed.includes(next)){
+          toast("Invalid status", "Use: Pending, Reviewed, Hired, Rejected");
+          return;
+        }
+        updateStatus(id, col, next);
+      }
+      if(action === "hire") hireEmployee(id, col);
+    });
+
+    /* ==========
+       Filters
+       ========== */
+    ["search","statusFilter","jobFilter"].forEach(id => {
+      $(id).addEventListener("input", render);
+      $(id).addEventListener("change", render);
+    });
+
+    /* ==========
+       Buttons
+       ========== */
+    $("refreshBtn").addEventListener("click", () => {
+      toast("Refreshing", "Reconnecting to live updates…");
+      startSnapshots();
+    });
+
+    $("exportBtn").addEventListener("click", () => {
+      const rows = getFiltered().map(a => ({
+        date: a.date,
+        name: a.name,
+        email: a.email,
+        phone: a.phone,
+        job: a.job,
+        status: a.status,
+        score: a.score,
+        collection: a.collection,
+        id: a.id
+      }));
+      downloadText(`applications-export-${new Date().toISOString().slice(0,10)}.csv`, toCSV(rows));
+      toast("Exported", "CSV downloaded.");
+    });
+
+    /* ==========
+       Init
+       ========== */
+    startSnapshots();
+  </script>
 </body>
 </html>
