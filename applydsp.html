@@ -1315,7 +1315,31 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+  // 1. Import the Firebase functions
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // 2. Your unique Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
+    authDomain: "sulandra-health-portal.firebaseapp.com",
+    projectId: "sulandra-health-portal",
+    storageBucket: "sulandra-health-portal.firebasestorage.app",
+    messagingSenderId: "547316167712",
+    appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845",
+    measurementId: "G-N2M4L7YMNB"
+  };
+
+  // 3. Initialize Firebase and the Database
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  /* ==========
+     Utilities
+     ========== */
+  const $ = (id) => document.getElementById(id);
+  
   /* ==========
      Utilities
      ========== */
@@ -1880,66 +1904,34 @@
 
   function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-  async function simulateSubmit(){
-    setSubmitting(true);
-    setProgress(10, 'Submitting…', 'Uploading files…');
-    await sleep(450);
-    setProgress(40, 'Submitting…', 'Saving your application…');
-    await sleep(450);
-    setProgress(70, 'Submitting…', 'Final checks…');
-    await sleep(450);
+  async function realSubmit() {
+  showSubmitting(); // Shows the progress bar
+
+  try {
+    // Collect all form data into one object
+    const formData = collectFormDataAsObject();
+    
+    // Add a timestamp and a default status
+    formData.submittedAt = new Date().toISOString();
+    formData.status = "Pending Review";
+
+    // SAVE TO FIREBASE: This puts the data in your "applications" folder
+    const docRef = await addDoc(collection(db, "applications"), formData);
+    
+    console.log("Application submitted with ID: ", docRef.id);
+    
     setProgress(100, 'Submitted!', 'Success.');
-    await sleep(200);
+    alert('Thank you! Your application has been received.');
+    clearDraft(); // Clears the local saved draft
+    window.location.href = 'Careers.html'; // Redirects back to careers
+
+  } catch (error) {
+    console.error("Error adding document: ", error);
     setSubmitting(false);
-
-    alert('Thank you! Your application has been submitted.');
-    clearDraft();
-    window.location.href = 'careers.html';
+    setProgress(0);
+    alert('Submission failed. Please check your internet and try again.');
   }
-
-  async function submitToBackend(){
-    const form = $('appForm');
-    const fd = new FormData(form);
-
-    fd.set('referencesJson', JSON.stringify(getReferencesAsArray()));
-
-    const fileKeys = ['resume','coverLetter','cnaDoc','stnaDoc'];
-    for(const k of fileKeys){
-      const f = fd.get(k);
-      if(f instanceof File && f.name && !fileOk(f, 10)){
-        throw new Error(`File too large: ${f.name} (max 10MB).`);
-      }
-    }
-    const other = fd.getAll('otherDocs') || [];
-    for(const f of other){
-      if(f instanceof File && f.name && !fileOk(f, 10)){
-        throw new Error(`File too large: ${f.name} (max 10MB).`);
-      }
-    }
-
-    setSubmitting(true);
-    setProgress(15, 'Submitting…', 'Uploading files…');
-
-    const res = await fetch(SUBMIT_URL, { method:'POST', body: fd });
-
-    setProgress(75, 'Submitting…', 'Saving…');
-
-    let out = null;
-    const ct = res.headers.get('content-type') || '';
-    if(ct.includes('application/json')) out = await res.json();
-    else out = { ok: res.ok, message: await res.text() };
-
-    if(!res.ok || out.ok === false){
-      throw new Error(out?.message || 'Submission failed. Please try again.');
-    }
-
-    setProgress(100, 'Submitted!', 'Success.');
-    await sleep(200);
-    setSubmitting(false);
-
-    clearDraft();
-    window.location.href = 'careers.html';
-  }
+}
 
   /* =========================
      Main validation + submit
@@ -2057,10 +2049,9 @@
     $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
 
     try{
-      if(USE_SIMULATION){
-        await simulateSubmit();
+      await realSubmit();
       } else {
-        await submitToBackend();
+        // Function replaced by realSubmit
       }
     } catch(err){
       setSubmitting(false);
