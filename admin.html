@@ -146,7 +146,7 @@
       text-transform:uppercase;
       letter-spacing:.4px;
     }
-    input[type="search"], select{
+    input[type="search"], input[type="text"], select{
       border:0;
       outline:none;
       background:transparent;
@@ -357,6 +357,7 @@
 
   <main class="wrap">
     <div class="grid">
+      <!-- Applicant Management -->
       <section class="card">
         <h1>Applicant Management</h1>
         <p class="sub">Review applications, view uploaded documents, update status, and hire candidates to generate employee profiles.</p>
@@ -409,6 +410,49 @@
           </tbody>
         </table>
       </section>
+
+      <!-- Education Assignment -->
+      <section class="card" style="margin-top:20px;">
+        <h1>Education Assignment</h1>
+        <p class="sub">Select a hired employee and assign training modules to their portal.</p>
+
+        <div class="toolbar">
+          <div class="filters">
+            <div class="field">
+              <label for="employeeSelect">Employee</label>
+              <select id="employeeSelect"><option>Loading employees...</option></select>
+            </div>
+            <div class="field">
+              <label for="trainingInput">Training Name</label>
+              <input id="trainingInput" type="text" placeholder="e.g., HIPAA 2025">
+            </div>
+            <button class="btn btn-primary" id="assignBtn" type="button">Assign Education</button>
+            <span class="tiny" id="assignHint"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Timesheet Review & Payroll -->
+      <section class="card" style="margin-top:20px;">
+        <h1>Timesheet Review & Payroll</h1>
+        <p class="sub">Approve weekly hours. Approved entries will be marked for payroll processing.</p>
+
+        <table aria-label="Timesheets table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Week Ending</th>
+              <th>Hours</th>
+              <th>Pay Code</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="timesheetTable">
+            <tr><td colspan="6" class="muted">Loading timesheets…</td></tr>
+          </tbody>
+        </table>
+      </section>
     </div>
   </main>
 
@@ -437,6 +481,7 @@
       doc,
       updateDoc,
       setDoc,
+      addDoc,
       getDoc,
       query,
       orderBy,
@@ -514,7 +559,6 @@
     }
 
     function getScore(app){
-      // Supports either: app.assessment.score (from your example) OR app.fields.assessmentScore
       const a = app.assessment?.score;
       if(typeof a === "number") return a;
       const b = app.fields?.assessmentScore;
@@ -525,7 +569,7 @@
     function normalizeAppRecord(docId, data, source){
       return {
         id: docId,
-        source, // which collection
+        source,
         ...data
       };
     }
@@ -560,27 +604,17 @@
     }
 
     /* ==========
-       Data loading (supports your LPN v2 collections + legacy)
-       ==========
-       - LPN v2 page writes:
-         1) applications_lpn  (base record)
-         2) applications_lpn_submissions (uploaded file links)
-       - Your sample admin used "applications" with uploadedFiles
-       This admin reads from all of them and merges if possible.
+       Applications (existing)
        ========== */
-
     const collectionsToWatch = [
       { key:"applications_lpn", label:"applications_lpn" },
       { key:"applications", label:"applications" } // legacy
     ];
-
     const submissionsCollection = { key:"applications_lpn_submissions", label:"applications_lpn_submissions" };
 
-    // cache
-    let apps = [];          // merged view rows
-    let rawApps = [];       // base app docs across collections
-    let submissions = [];   // lpn submission docs
-
+    let apps = [];
+    let rawApps = [];
+    let submissions = [];
     let unsubscribers = [];
 
     function setLiveState(text){
@@ -596,14 +630,11 @@
       stopSnapshots();
       setLiveState("Live: connected");
 
-      // base applications
       for(const c of collectionsToWatch){
         const qy = query(collection(db, c.key), orderBy("submittedAtISO", "desc"));
         const unsub = onSnapshot(qy, (snap) => {
           const next = [];
           snap.forEach(d => next.push(normalizeAppRecord(d.id, d.data(), c.key)));
-
-          // replace only that source in rawApps
           rawApps = rawApps.filter(x => x.source !== c.key).concat(next);
           rebuildMerged();
           render();
@@ -615,7 +646,6 @@
         unsubscribers.push(unsub);
       }
 
-      // submissions (uploaded file links for LPN v2)
       const qsub = query(collection(db, submissionsCollection.key), orderBy("submittedAtISO", "desc"));
       const unsubSub = onSnapshot(qsub, (snap) => {
         const next = [];
@@ -625,21 +655,17 @@
         render();
       }, (err) => {
         console.error(err);
-        // don't break the whole UI if submissions fail
       });
       unsubscribers.push(unsubSub);
     }
 
     function findUploadedFilesFor(appId){
-      // LPN v2: stored in applications_lpn_submissions (uploadedFiles[])
       const s = submissions.find(x => x.applicationId === appId);
       if(s && Array.isArray(s.uploadedFiles)) return s.uploadedFiles;
 
-      // legacy: stored on the application doc itself (uploadedFiles[])
       const base = rawApps.find(x => x.id === appId && (x.source === "applications"));
       if(base && Array.isArray(base.uploadedFiles)) return base.uploadedFiles;
 
-      // LPN v2 base doc might eventually store files; support it too
       const base2 = rawApps.find(x => x.id === appId);
       if(base2 && Array.isArray(base2.files)) return base2.files;
 
@@ -647,11 +673,6 @@
     }
 
     function rebuildMerged(){
-      // We want a unified list where each base application is one row.
-      // For LPN v2, base is in applications_lpn; submissions doc references applicationId.
-      // For legacy, base in applications.
-
-      // IMPORTANT: If you have duplicate people across collections, they will appear separately (by id).
       apps = rawApps
         .filter(x => x.source !== submissionsCollection.key)
         .map(x => {
@@ -682,9 +703,6 @@
         .sort((a,b) => (b.dateISO || "").localeCompare(a.dateISO || ""));
     }
 
-    /* ==========
-       Rendering + filters
-       ========== */
     function getFiltered(){
       const q = ($("search").value || "").trim().toLowerCase();
       const status = $("statusFilter").value;
@@ -785,7 +803,6 @@
 
       const uploadedFiles = row ? row.uploadedFiles : findUploadedFilesFor(appId);
 
-      // Build files UI (supports both: {url,name,type,size} OR legacy {downloadURL,label,name})
       let filesHtml = "";
       if(uploadedFiles && uploadedFiles.length){
         const items = uploadedFiles.map(f => {
@@ -952,7 +969,7 @@
     }
 
     /* ==========
-       Table actions via event delegation
+       Applicant table actions
        ========== */
     $("applicantTable").addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
@@ -991,6 +1008,8 @@
     $("refreshBtn").addEventListener("click", () => {
       toast("Refreshing", "Reconnecting to live updates…");
       startSnapshots();
+      startEmployeesSnapshot();
+      startTimesheetsSnapshot();
     });
 
     $("exportBtn").addEventListener("click", () => {
@@ -1010,9 +1029,236 @@
     });
 
     /* ==========
+       Education Assignment
+       ==========
+       - Reads employees collection
+       - Assigns training by appending to assignedEducation array AND
+         optionally writing an educationAssignments collection (audit log)
+       ========== */
+    let employees = [];
+
+    function renderEmployeeSelect(){
+      const sel = $("employeeSelect");
+      if(!sel) return;
+
+      // only show Active employees by default, but keep everything if you want
+      const opts = employees.slice().sort((a,b) => (a.lastName||"").localeCompare(b.lastName||""));
+
+      if(opts.length === 0){
+        sel.innerHTML = `<option value="">No employees found</option>`;
+        return;
+      }
+
+      sel.innerHTML = `<option value="">Select…</option>` + opts.map(e => {
+        const id = e.employeeId || e.id;
+        const name = `${e.firstName || ""} ${e.lastName || ""}`.trim() || "Employee";
+        const role = e.role || "";
+        return `<option value="${escapeHtml(String(id))}">${escapeHtml(`${name} (${id})${role ? " — " + role : ""}`)}</option>`;
+      }).join("");
+    }
+
+    function startEmployeesSnapshot(){
+      const qemp = query(collection(db, "employees"), orderBy("lastName", "asc"));
+      const unsub = onSnapshot(qemp, (snap) => {
+        const next = [];
+        snap.forEach(d => next.push({ id: d.id, ...d.data() }));
+        employees = next;
+        renderEmployeeSelect();
+      }, (err) => {
+        console.error(err);
+        $("employeeSelect").innerHTML = `<option value="">Employees load error</option>`;
+      });
+      unsubscribers.push(unsub);
+    }
+
+    async function assignEducation(){
+      const empId = $("employeeSelect").value;
+      const training = ($("trainingInput").value || "").trim();
+      const hint = $("assignHint");
+
+      if(hint) hint.textContent = "";
+
+      if(!empId){
+        toast("Select employee", "Choose an employee first.");
+        return;
+      }
+      if(!training){
+        toast("Training required", "Enter a training name.");
+        return;
+      }
+
+      try{
+        // Update employee document (assignedEducation = [{name,assignedAtISO,status}])
+        const empRef = doc(db, "employees", empId);
+        const empSnap = await getDoc(empRef);
+        if(!empSnap.exists()){
+          toast("Not found", "Employee record not found.");
+          return;
+        }
+        const empData = empSnap.data() || {};
+        const current = Array.isArray(empData.assignedEducation) ? empData.assignedEducation : [];
+
+        // Prevent duplicates by name (case-insensitive)
+        const exists = current.some(x => (x?.name || "").toLowerCase() === training.toLowerCase());
+        if(exists){
+          toast("Already assigned", "That training is already assigned to this employee.");
+          return;
+        }
+
+        const entry = {
+          name: training,
+          status: "Assigned",
+          assignedAtISO: new Date().toISOString()
+        };
+
+        await updateDoc(empRef, {
+          assignedEducation: [...current, entry],
+          educationUpdatedAt: serverTimestamp()
+        });
+
+        // Optional audit log (nice for admin history)
+        await addDoc(collection(db, "educationAssignments"), {
+          employeeId: empId,
+          trainingName: training,
+          createdAt: serverTimestamp(),
+          createdAtISO: new Date().toISOString(),
+          status: "Assigned"
+        });
+
+        $("trainingInput").value = "";
+        if(hint) hint.textContent = "Assigned!";
+        toast("Assigned", `Education assigned to ${empId}.`);
+      }catch(err){
+        console.error(err);
+        toast("Assign failed", "Check Firestore rules / permissions.");
+      }
+    }
+
+    $("assignBtn").addEventListener("click", assignEducation);
+
+    /* ==========
+       Timesheet Review & Payroll
+       ==========
+       Assumes a collection: "timesheets"
+       Expected fields (flexible):
+         - employeeId, employeeName (optional), weekEndingISO, hours, payCode
+         - status: Pending | Approved | Rejected
+       Approve marks status=Approved and payrollReady=true
+       ========== */
+    let timesheets = [];
+
+    function getTimesheetStatus(t){
+      return (t.status || "Pending").toString();
+    }
+
+    function renderTimesheets(){
+      const tbody = $("timesheetTable");
+      if(!tbody) return;
+
+      const pending = timesheets
+        .filter(t => getTimesheetStatus(t) !== "Approved") // show pending/rejected; adjust if you want ONLY pending
+        .sort((a,b) => (b.weekEndingISO || "").localeCompare(a.weekEndingISO || ""));
+
+      if(pending.length === 0){
+        tbody.innerHTML = `<tr><td colspan="6" class="muted">No pending timesheets.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = "";
+      for(const t of pending){
+        const tr = document.createElement("tr");
+        const employeeLabel =
+          t.employeeName ||
+          (employees.find(e => (e.employeeId || e.id) === t.employeeId)?.firstName
+            ? `${employees.find(e => (e.employeeId || e.id) === t.employeeId).firstName} ${employees.find(e => (e.employeeId || e.id) === t.employeeId).lastName}`
+            : t.employeeId || "—");
+
+        const status = getTimesheetStatus(t);
+
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(employeeLabel)}</strong><div class="muted" style="font-size:12px;">${escapeHtml(t.employeeId || "")}</div></td>
+          <td>${escapeHtml(fmtDate(t.weekEndingISO || t.weekEnding || t.weekEndingDate))}</td>
+          <td>${escapeHtml(String(t.hours ?? t.totalHours ?? "—"))}</td>
+          <td>${escapeHtml(String(t.payCode ?? "REG"))}</td>
+          <td><span class="status-pill ${escapeHtml(status)}">${escapeHtml(status)}</span></td>
+          <td>
+            <button class="btn btn-sm btn-primary" data-ts-action="approve" data-id="${escapeHtml(t.id)}">Approve</button>
+            <button class="btn btn-sm btn-danger" data-ts-action="reject" data-id="${escapeHtml(t.id)}">Reject</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function startTimesheetsSnapshot(){
+      // If your schema uses createdAt, you can orderBy("createdAt","desc").
+      // We try weekEndingISO first, and if it fails due to missing index, switch to no-order by.
+      try{
+        const qts = query(collection(db, "timesheets"), orderBy("weekEndingISO", "desc"));
+        const unsub = onSnapshot(qts, (snap) => {
+          const next = [];
+          snap.forEach(d => next.push({ id: d.id, ...d.data() }));
+          timesheets = next;
+          renderTimesheets();
+        }, (err) => {
+          console.error(err);
+          toast("Timesheets error", "Could not load timesheets (check index / rules).");
+        });
+        unsubscribers.push(unsub);
+      }catch(err){
+        console.error(err);
+        const unsub = onSnapshot(collection(db, "timesheets"), (snap) => {
+          const next = [];
+          snap.forEach(d => next.push({ id: d.id, ...d.data() }));
+          timesheets = next;
+          renderTimesheets();
+        });
+        unsubscribers.push(unsub);
+      }
+    }
+
+    async function updateTimesheetStatus(id, status){
+      try{
+        const ref = doc(db, "timesheets", id);
+        const patch = {
+          status,
+          statusUpdatedAt: serverTimestamp(),
+          statusUpdatedAtISO: new Date().toISOString()
+        };
+        if(status === "Approved"){
+          patch.payrollReady = true;
+          patch.payrollReadyAt = serverTimestamp();
+          patch.payrollReadyAtISO = new Date().toISOString();
+        }else{
+          patch.payrollReady = false;
+        }
+        await updateDoc(ref, patch);
+        toast("Updated", `Timesheet ${status}.`);
+      }catch(err){
+        console.error(err);
+        toast("Update failed", "Check Firestore rules / permissions.");
+      }
+    }
+
+    $("timesheetTable").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-ts-action]");
+      if(!btn) return;
+      const action = btn.dataset.tsAction;
+      const id = btn.dataset.id;
+
+      if(action === "approve") updateTimesheetStatus(id, "Approved");
+      if(action === "reject"){
+        if(!confirm("Reject this timesheet?")) return;
+        updateTimesheetStatus(id, "Rejected");
+      }
+    });
+
+    /* ==========
        Init
        ========== */
     startSnapshots();
+    startEmployeesSnapshot();
+    startTimesheetsSnapshot();
   </script>
 </body>
 </html>
