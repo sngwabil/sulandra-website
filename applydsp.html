@@ -1334,11 +1334,6 @@
   // 3. Initialize Firebase and the Database
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-
-  /* ==========
-     Utilities
-     ========== */
-  const $ = (id) => document.getElementById(id);
   
   /* ==========
      Utilities
@@ -1885,7 +1880,7 @@
   /* ===============================
      Submit: REAL upload via fetch()
      =============================== */
-  const USE_SIMULATION = true; // set false for production
+  const USE_SIMULATION = false; // set false for production
   const SUBMIT_URL = '/api/applications';
 
   function setSubmitting(on){
@@ -2048,12 +2043,10 @@
     $('assessmentMax').value = String(scored.max);
     $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
 
-    try{
+    try {
+      // This calls your new Firebase function directly
       await realSubmit();
-      } else {
-        // Function replaced by realSubmit
-      }
-    } catch(err){
+    } catch(err) {
       setSubmitting(false);
       setProgress(0);
       toast('Submission error', err?.message || 'Something went wrong.');
