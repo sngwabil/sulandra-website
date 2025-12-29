@@ -338,9 +338,9 @@
       <p>Your hub for scheduling & time tracking, required education, document submission, incident reporting, and important updates.</p>
 
       <div class="hero-row">
-        <span class="pill"><strong>Employee:</strong> <span id="empName">Employee Name</span></span>
-        <span class="pill"><strong>Role:</strong> <span id="empRole">Caregiver</span></span>
-        <span class="pill"><strong>Status:</strong> <span class="badge green" id="empStatus">Active</span></span>
+        <span class="pill"><strong>Employee:</strong> <span id="empName">Loading...</span></span>
+        <span class="pill"><strong>Role:</strong> <span id="empRole">Loading...</span></span>
+        <span class="pill"><strong>Status:</strong> <span class="badge green" id="empStatus">Loading...</span></span>
       </div>
 
       <div class="quick-actions">
@@ -658,8 +658,101 @@
     </div>
   </footer>
 
+  <!-- ✅ AUTH GUARD + SIGN OUT (Firebase) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // Same Firebase config you used in admin.html + employee-login.html
+    const firebaseConfig = {
+      apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
+      authDomain: "sulandra-health-portal.firebaseapp.com",
+      projectId: "sulandra-health-portal",
+      storageBucket: "sulandra-health-portal.firebasestorage.app",
+      messagingSenderId: "547316167712",
+      appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845"
+    };
+
+    const ADMIN_EMAIL = "admin@sulandrahealth.com";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatusBadge(text) {
+      const el = $("empStatus");
+      el.textContent = text || "Unknown";
+      el.classList.remove("green", "orange", "blue");
+      const t = String(text || "").toLowerCase();
+      if (t === "active") el.classList.add("green");
+      else if (t === "pending" || t === "inactive") el.classList.add("orange");
+      else el.classList.add("blue");
+    }
+
+    async function loadEmployeeByEmail(email) {
+      // Finds employee record where employees.email == logged-in user email
+      // (Your admin hiring flow stores employee email in employees collection)
+      const employeesRef = collection(db, "employees");
+      const q = query(employeesRef, where("email", "==", email));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        $("empName").textContent = email;
+        $("empRole").textContent = "Employee";
+        setStatusBadge("Active");
+        return;
+      }
+
+      // Use first match
+      const docSnap = snap.docs[0];
+      const data = docSnap.data() || {};
+
+      $("empName").textContent = data.name || data.fullName || email;
+      $("empRole").textContent = data.role || data.position || "Employee";
+      setStatusBadge(data.status || "Active");
+    }
+
+    // 🔒 Guard this page
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.replace("employee-login.html");
+        return;
+      }
+
+      const email = (user.email || "").toLowerCase();
+      if (email === ADMIN_EMAIL) {
+        window.location.replace("admin.html");
+        return;
+      }
+
+      // Employee allowed → load profile display
+      try {
+        await loadEmployeeByEmail(email);
+      } catch (e) {
+        console.error("Failed to load employee profile:", e);
+        $("empName").textContent = email;
+        $("empRole").textContent = "Employee";
+        setStatusBadge("Active");
+      }
+    });
+
+    // ✅ Real sign out
+    $("btnSignOut").addEventListener("click", async (e) => {
+      e.preventDefault();
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Sign out error:", err);
+      }
+      window.location.replace("employee-login.html");
+    });
+  </script>
+
+  <!-- Demo-only behaviors (no backend): -->
   <script>
-    // Demo-only behaviors (no backend):
     (function () {
       const $ = (id) => document.getElementById(id);
 
@@ -672,7 +765,6 @@
       let onBreak = false;
 
       function addLog(message, badgeText) {
-        // remove placeholder if present
         const first = clockLog.querySelector("li");
         if (first && first.textContent.includes("Clock activity will show here")) {
           clockLog.innerHTML = "";
@@ -756,21 +848,14 @@
       });
 
       $("btnOpenHandbook").addEventListener("click", () => {
-        // When you create handbook.html later, point here
-        // window.location.href = "handbook.html";
         alert("Handbook page coming next. When ready, I’ll link it here.");
       });
 
       $("btnOpenOnboarding").addEventListener("click", () => {
-        // When you create onboarding.html later, point here
-        // window.location.href = "onboarding.html";
         alert("Onboarding page coming next. When ready, I’ll link it here.");
       });
 
-      $("btnSignOut").addEventListener("click", (e) => {
-        e.preventDefault();
-        alert("Signed out (demo). Next step: clear session + redirect to login.");
-      });
+      // NOTE: Sign out is handled in the Firebase module script above.
     })();
   </script>
 
