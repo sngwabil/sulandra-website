@@ -1886,3 +1886,23 @@
       if (saved){
         try{
           applyDraft(JSON.parse(saved));
+          setText($("autosavePill"), "Autosave: loaded");
+          setText($("draftStatus"), "Yes");
+          toast("Draft loaded", "We restored a saved draft from this device. You may need to re-attach files.");
+        }catch(_){}
+      }
+
+      // ensure at least one exp and two refs
+      if (document.querySelectorAll("#expContainer .exp-card").length === 0){
+        $("expContainer").appendChild(makeExpCard());
+      }
+      if (document.querySelectorAll("#refsContainer .ref-card").length === 0){
+        $("refsContainer").appendChild(makeRefCard());
+        $("refsContainer").appendChild(makeRefCard());
+      }
+
+      updateProgress();
+    })();
+  </script>
+</body>
+</html>
