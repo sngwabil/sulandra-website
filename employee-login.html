@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sulandra Health | Employee Login</title>
+
+  <style>
+    :root{
+      --primary:#004b8d;
+      --bg:#f7f9fc;
+      --text:#222;
+      --border:#e6e6e6;
+      --muted:#666;
+      --white:#fff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      background:var(--white);
+      border-bottom:1px solid var(--border);
+    }
+    .top-nav{
+      max-width:1100px;
+      margin:0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 18px;
+      height:78px;
+    }
+    .logo img{ width:240px; height:auto; }
+    .wrap{
+      max-width:520px;
+      margin:28px auto;
+      padding:0 16px;
+    }
+    .card{
+      background:var(--white);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:18px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.06);
+    }
+    h1{ font-size:22px; margin:0 0 6px 0; }
+    .sub{ color:var(--muted); margin:0 0 14px 0; font-size:14px; }
+    label{ display:block; font-weight:650; margin:10px 0 6px; }
+    input{
+      width:100%;
+      padding:12px 12px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      font-size:15px;
+      outline:none;
+      background:#fff;
+    }
+    input:focus{ border-color:#b8cbe3; }
+    .row{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+      flex-wrap:wrap;
+    }
+    button{
+      border:0;
+      border-radius:10px;
+      padding:12px 14px;
+      font-weight:700;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .primary{ background:var(--primary); color:#fff; flex:1; }
+    .ghost{ background:transparent; border:1px solid var(--border); color:var(--text); }
+    .links{
+      margin-top:10px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:14px;
+    }
+    .links a{ color:var(--primary); text-decoration:none; font-weight:650; }
+    .msg{
+      margin-top:12px;
+      font-size:14px;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#fff;
+      color:var(--text);
+      display:none;
+    }
+    .msg.show{ display:block; }
+    .msg.good{ border-color:#bfe7c6; background:#f1fff4; }
+    .msg.bad{ border-color:#f2b6b6; background:#fff1f1; }
+    .tiny{ font-size:12px; color:var(--muted); margin-top:10px; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="top-nav">
+      <a class="logo" href="index.html" aria-label="Sulandra Health Home">
+        <img src="assets/mainlogo.png" alt="Sulandra Health Logo" />
+      </a>
+      <a href="index.html" style="text-decoration:none;color:var(--primary);font-weight:750;">Back to Site</a>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Employee Portal Login</h1>
+      <p class="sub">
+        Employees: enter your <strong>Employee ID</strong> (example: SCLS-101).<br>
+        Admin: enter <strong>admin@sulandrahealth.com</strong>.
+      </p>
+
+      <label for="username">Username (Employee ID) or Email</label>
+      <input id="username" type="text" placeholder="SCLS-101 or admin@sulandrahealth.com" autocomplete="username" />
+
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="Your password" autocomplete="current-password" />
+
+      <div class="row">
+        <button class="primary" id="btnLogin" type="button">Log In</button>
+        <button class="ghost" id="btnClear" type="button">Clear</button>
+      </div>
+
+      <div class="links">
+        <a href="#" id="lnkForgot">Forgot password / username?</a>
+        <a href="#" id="lnkGoPortal">Go to portal</a>
+      </div>
+
+      <div class="msg" id="msgBox"></div>
+      <div class="tiny">
+        Note: Employees must already exist in Firestore collection <code>employees</code> with their doc ID = Employee ID
+        and must have an <code>email</code> field (your admin “Hire” already writes that). 
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // Same Firebase config used in your admin.html (same project)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
+      authDomain: "sulandra-health-portal.firebaseapp.com",
+      projectId: "sulandra-health-portal",
+      storageBucket: "sulandra-health-portal.firebasestorage.app",
+      messagingSenderId: "547316167712",
+      appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const ADMIN_EMAIL = "admin@sulandrahealth.com";
+
+    const $ = (id) => document.getElementById(id);
+
+    function showMsg(text, good=false){
+      const box = $("msgBox");
+      box.textContent = text;
+      box.classList.add("show");
+      box.classList.toggle("good", !!good);
+      box.classList.toggle("bad", !good);
+    }
+    function clearMsg(){
+      const box = $("msgBox");
+      box.textContent = "";
+      box.classList.remove("show","good","bad");
+    }
+    function looksLikeEmail(v){
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||"").trim());
+    }
+
+    async function usernameToEmail(username){
+      // employees/{employeeId} where doc id = employeeId (your admin hire uses this)
+      const ref = doc(db, "employees", username);
+      const snap = await getDoc(ref);
+      if(!snap.exists()) return null;
+      const data = snap.data() || {};
+      const email = String(data.email || "").trim();
+      if(!email) return null;
+      return email;
+    }
+
+    async function doLogin(){
+      clearMsg();
+      const u = String($("username").value || "").trim();
+      const p = String($("password").value || "");
+
+      if(!u){ showMsg("Enter your Employee ID or email."); return; }
+      if(!p){ showMsg("Enter your password."); return; }
+
+      try{
+        // Admin enters email directly
+        if(looksLikeEmail(u)){
+          const cred = await signInWithEmailAndPassword(auth, u, p);
+          const email = (cred.user.email || "").toLowerCase();
+          if(email === ADMIN_EMAIL) window.location.href = "admin.html";
+          else window.location.href = "employee-portal.html";
+          return;
+        }
+
+        // Employee enters Employee ID -> lookup email -> sign in by email/password
+        const email = await usernameToEmail(u);
+        if(!email){
+          showMsg("Employee ID not found. Check the ID and try again.");
+          return;
+        }
+
+        const cred = await signInWithEmailAndPassword(auth, email, p);
+        const signedEmail = (cred.user.email || "").toLowerCase();
+
+        if(signedEmail === ADMIN_EMAIL) window.location.href = "admin.html";
+        else window.location.href = "employee-portal.html";
+      }catch(err){
+        console.error(err);
+        showMsg(err?.message || "Login failed. Try again.");
+      }
+    }
+
+    async function doForgot(){
+      clearMsg();
+      const u = String($("username").value || "").trim();
+
+      if(!u){
+        showMsg("Type your Employee ID (or your email) in the username box first.");
+        return;
+      }
+
+      try{
+        let email = "";
+        if(looksLikeEmail(u)){
+          email = u.trim();
+        }else{
+          const found = await usernameToEmail(u);
+          if(!found){
+            showMsg("Employee ID not found. Check the ID and try again.");
+            return;
+          }
+          email = found;
+        }
+
+        await sendPasswordResetEmail(auth, email);
+        showMsg("Password reset email sent. Check your inbox (and spam/junk).", true);
+      }catch(err){
+        console.error(err);
+        showMsg(err?.message || "Could not send reset email.");
+      }
+    }
+
+    $("btnLogin").addEventListener("click", doLogin);
+    $("btnClear").addEventListener("click", () => {
+      $("username").value = "";
+      $("password").value = "";
+      clearMsg();
+    });
+
+    $("lnkForgot").addEventListener("click", (e) => { e.preventDefault(); doForgot(); });
+    $("lnkGoPortal").addEventListener("click", (e) => { e.preventDefault(); window.location.href = "employee-portal.html"; });
+
+    // Enter key submits login
+    ["username","password"].forEach(id => {
+      $(id).addEventListener("keydown", (e) => {
+        if(e.key === "Enter") doLogin();
+      });
+    });
+  </script>
+</body>
+</html>
