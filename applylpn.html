@@ -152,7 +152,6 @@
 
     input[type="text"], input[type="email"], input[type="tel"],
     input[type="number"], input[type="date"], input[type="url"],
-    input[type="password"],
     select, textarea{
       width:100%;
       border: 1px solid var(--border);
@@ -327,13 +326,6 @@
     .small{ font-size: 13px; color: var(--text); }
     .muted{ color: var(--muted); }
 
-    /* Auth banner */
-    #authCard{
-      border:1px solid #e5e7eb;
-      background:#fff;
-      margin: 16px 0 0;
-    }
-
     @media (max-width: 800px){
       :root{ --headerH:72px; }
       .alert-bar{ font-size:13px; padding:10px 12px; }
@@ -386,40 +378,7 @@
     <div class="grid">
       <section class="card" aria-label="LPN application form">
         <h2>Application for: Licensed Practical Nurse (LPN)</h2>
-        <p class="sub">You must sign in with your email address before you can fill out and submit this application.</p>
-
-        <!-- =========================
-             SIGN IN / CREATE ACCOUNT
-             ========================= -->
-        <div class="card" id="authCard">
-          <h2 style="margin:0 0 6px;">Sign in to apply</h2>
-          <p class="sub" style="margin:0 0 14px;">Use your email address to sign in. If you don’t have an account, create one.</p>
-
-          <div class="row">
-            <div>
-              <label class="required" for="loginEmail">Email</label>
-              <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com" />
-              <div class="error" id="err-loginEmail">Enter a valid email.</div>
-            </div>
-            <div>
-              <label class="required" for="loginPassword">Password</label>
-              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password (6+ characters)" />
-              <div class="error" id="err-loginPassword">Password is required (6+ characters).</div>
-            </div>
-          </div>
-
-          <div class="btnrow" style="margin-top:14px;">
-            <button type="button" class="primary" id="loginBtn">Sign In</button>
-            <button type="button" class="ghost" id="signupBtn">Create Account</button>
-            <button type="button" class="ghost" id="resetPwBtn">Forgot Password</button>
-            <button type="button" class="ghost" id="logoutBtn" style="display:none;">Sign Out</button>
-            <span class="pill" id="authStatusPill">Checking sign-in…</span>
-          </div>
-
-          <p class="hint" style="margin-top:10px;">
-            Tip: Creating an account lets you return later and continue your draft.
-          </p>
-        </div>
+        <p class="sub">Complete the form below. Required fields are marked with an asterisk.</p>
 
         <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
           <input type="hidden" name="jobTitle" value="Licensed Practical Nurse (LPN)" />
@@ -447,8 +406,8 @@
 
             <div class="row" style="margin-top:16px;">
               <div>
-                <label class="required" for="email">Email (locked to signed-in email)</label>
-                <input id="email" name="email" type="email" autocomplete="email" required disabled />
+                <label class="required" for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" required />
                 <div class="error" id="err-email">Please enter a valid email.</div>
               </div>
               <div>
@@ -507,8 +466,6 @@
               </div>
             </div>
           </div>
-
-          <!-- ======= the rest of your form remains unchanged below ======= -->
 
           <div class="section">
             <div class="minihead">
@@ -570,8 +527,246 @@
             </div>
           </div>
 
-          <!-- (Everything else below is your original form unchanged) -->
-          <!-- ... keep all remaining sections as-is ... -->
+          <div class="section">
+            <div class="minihead">
+              <h2>Availability & Preferences</h2>
+              <small>Step 3</small>
+            </div>
+
+            <div class="row">
+              <div>
+                <label class="required" for="employmentType">Employment type</label>
+                <select id="employmentType" name="employmentType" required>
+                  <option value="">Select…</option>
+                  <option value="full-time">Full-time</option>
+                  <option value="part-time">Part-time</option>
+                  <option value="prn">PRN / As-needed</option>
+                  <option value="seasonal">Seasonal</option>
+                </select>
+                <div class="error" id="err-employmentType">Please select an employment type.</div>
+              </div>
+              <div>
+                <label class="required" for="shiftPref">Preferred shift</label>
+                <select id="shiftPref" name="shiftPref" required>
+                  <option value="">Select…</option>
+                  <option value="1st">1st Shift (Morning/Day)</option>
+                  <option value="2nd">2nd Shift (Afternoon/Evening)</option>
+                  <option value="3rd">3rd Shift (Overnight)</option>
+                  <option value="weekend">Weekends Only</option>
+                  <option value="flexible">Flexible</option>
+                </select>
+                <div class="error" id="err-shiftPref">Please select a shift preference.</div>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:16px;">
+              <div>
+                <label for="hoursPerWeek">Desired hours per week</label>
+                <input id="hoursPerWeek" name="hoursPerWeek" type="number" min="0" max="80" step="1" placeholder="e.g., 36" />
+              </div>
+              <div>
+                <label for="reliableTransport">Reliable transportation?</label>
+                <select id="reliableTransport" name="reliableTransport">
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label class="required">Days available</label>
+              <div class="row">
+                <div>
+                  <div class="checkboxline"><input type="checkbox" name="days" value="Mon" /> <span>Monday</span></div>
+                  <div class="checkboxline"><input type="checkbox" name="days" value="Tue" /> <span>Tuesday</span></div>
+                  <div class="checkboxline"><input type="checkbox" name="days" value="Wed" /> <span>Wednesday</span></div>
+                  <div class="checkboxline"><input type="checkbox" name="days" value="Thu" /> <span>Thursday</span></div>
+                </div>
+                <div>
+                  <div class="checkboxline"><input type="checkbox" name="days" value="Fri" /> <span>Friday</span></div>
+                  <div class="checkboxline"><input type="checkbox" name="days" value="Sat" /> <span>Saturday</span></div>
+                  <div class="checkboxline"><input type="checkbox" name="days" value="Sun" /> <span>Sunday</span></div>
+                </div>
+              </div>
+              <div class="error" id="err-days">Please select at least one day.</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="minihead">
+              <h2>Education</h2>
+              <small>Step 4</small>
+            </div>
+
+            <div class="row">
+              <div>
+                <label class="required" for="school">School / Program</label>
+                <input id="school" name="school" type="text" required />
+                <div class="error" id="err-school">School/program is required.</div>
+              </div>
+              <div>
+                <label class="required" for="gradYear">Graduation year</label>
+                <input id="gradYear" name="gradYear" type="number" min="1950" max="2100" placeholder="e.g., 2023" required />
+                <div class="error" id="err-gradYear">Graduation year is required.</div>
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:16px;">
+              <div>
+                <label for="educationNotes">Additional education notes (optional)</label>
+                <input id="educationNotes" name="educationNotes" type="text" placeholder="e.g., honors, clinical focus, etc." />
+              </div>
+              <div>
+                <label for="ehr">EHR experience (optional)</label>
+                <input id="ehr" name="ehr" type="text" placeholder="e.g., Epic, Cerner, PointClickCare" />
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="minihead">
+              <h2>Work Experience</h2>
+              <small>Step 5</small>
+            </div>
+            <p class="sub">Add at least one recent job.</p>
+
+            <div class="error" id="err-exp">Please add at least one complete work experience.</div>
+            <div id="expContainer"></div>
+
+            <div class="btnrow">
+              <button type="button" class="ghost" id="addExpBtn">+ Add Work Experience</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="minihead">
+              <h2>Resume & Documents</h2>
+              <small>Step 6</small>
+            </div>
+
+            <div>
+              <label class="required" for="resume">Resume (PDF, DOC, DOCX)</label>
+              <div class="file-input-wrapper" style="min-height:54px;">
+                <div class="file-custom-btn">
+                  <span id="resume-chosen">Click to choose resume…</span>
+                  <span class="pill" id="resume-pill">No file</span>
+                </div>
+                <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" required />
+              </div>
+              <div class="file-meta" id="resume-meta">Max 10MB. Required.</div>
+              <div class="error" id="err-resume">Please upload your resume (10MB or less).</div>
+              <div class="filelist" id="resume-list" style="display:none;"></div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label for="coverLetter">Cover letter (optional)</label>
+              <div class="file-input-wrapper" style="min-height:54px;">
+                <div class="file-custom-btn">
+                  <span id="cover-chosen">Click to choose cover letter…</span>
+                  <span class="pill" id="cover-pill">Optional</span>
+                </div>
+                <input type="file" id="coverLetter" name="coverLetter" accept=".pdf,.doc,.docx" />
+              </div>
+              <div class="file-meta">Max 10MB.</div>
+              <div class="filelist" id="cover-list" style="display:none;"></div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label for="licenseDoc">License / certification documents (optional, multiple)</label>
+              <div class="file-input-wrapper" style="min-height:54px;">
+                <div class="file-custom-btn">
+                  <span id="license-chosen">Click to choose documents…</span>
+                  <span class="pill" id="license-pill">Optional</span>
+                </div>
+                <input type="file" id="licenseDoc" name="licenseDoc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple />
+              </div>
+              <div class="file-meta">Max 10MB per file.</div>
+              <div class="filelist" id="license-list" style="display:none;"></div>
+            </div>
+
+            <div class="helpbox" style="margin-top:12px;">
+              <strong class="small">Uploads:</strong>
+              <span class="muted">On submit, all selected files are uploaded to Firebase Storage and saved with your application. The uploaded file links will appear below after submit.</span>
+            </div>
+
+            <div class="filelist" id="uploaded-files" style="display:none; margin-top:14px;">
+              <div style="font-weight:850; margin-bottom:8px;">Uploaded files (this submission)</div>
+              <div id="uploaded-files-items"></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="minihead">
+              <h2>Screening Questions</h2>
+              <small>Step 7</small>
+            </div>
+
+            <div class="row">
+              <div>
+                <label class="required" for="yearsLpn">Years of LPN experience</label>
+                <select id="yearsLpn" name="yearsLpn" required>
+                  <option value="">Select…</option>
+                  <option value="0">New Grad / 0 years</option>
+                  <option value="lt1">Less than 1 year</option>
+                  <option value="1-2">1–2 years</option>
+                  <option value="3-5">3–5 years</option>
+                  <option value="5plus">5+ years</option>
+                </select>
+                <div class="error" id="err-yearsLpn">Please select your experience level.</div>
+              </div>
+              <div>
+                <label class="required" for="workAuth">Work authorization (U.S.)</label>
+                <select id="workAuth" name="workAuth" required>
+                  <option value="">Select…</option>
+                  <option value="yes">I am authorized to work in the U.S.</option>
+                  <option value="needSponsor">I will need sponsorship now or in the future</option>
+                </select>
+                <div class="error" id="err-workAuth">Please select an option.</div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label class="required">Can you pass a background check and drug screening?</label>
+              <div class="radioline">
+                <input type="radio" name="screening" value="yes" required />
+                <span>Yes, I consent to screening.</span>
+              </div>
+              <div class="radioline">
+                <input type="radio" name="screening" value="no" />
+                <span>No.</span>
+              </div>
+              <div class="error" id="err-screening">Please select an option.</div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <label for="why">Why are you interested in this LPN role? (optional)</label>
+              <textarea id="why" name="why" placeholder="Tell us briefly what interests you about this position."></textarea>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="minihead">
+              <h2>Professional References</h2>
+              <small>Step 8</small>
+            </div>
+            <p class="sub">Provide at least two professional references. You may add more.</p>
+
+            <div class="error" id="err-refs">Please provide at least 2 complete references.</div>
+
+            <div class="checkboxline" style="margin-top:0;">
+              <input id="consentContactRefs" name="consentContactRefs" type="checkbox" required />
+              <label for="consentContactRefs" style="display:inline; color:var(--text); font-weight:550; text-transform:none; letter-spacing:0;">
+                I consent to contact my references.
+              </label>
+            </div>
+            <div class="error" id="err-consentContactRefs">Consent to contact references is required.</div>
+
+            <div id="refsContainer"></div>
+
+            <div class="btnrow">
+              <button type="button" class="ghost" id="addRefBtn">+ Add Reference</button>
+            </div>
+          </div>
 
           <div class="section">
             <div class="minihead">
@@ -673,20 +868,13 @@
 
   <script type="module">
     /* ==========================================================
-       Firebase (Firestore + Storage + Auth) + Login-gated submission
+       Firebase (Firestore + Storage) + Fully functional submission
        ========================================================== */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      sendPasswordResetEmail,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+    // Your Firebase config (same project you used on DSP)
     const firebaseConfig = {
       apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
       authDomain: "sulandra-health-portal.firebaseapp.com",
@@ -700,7 +888,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
-    const auth = getAuth(app);
 
     /* ==========
        Utilities
@@ -759,113 +946,10 @@
       return Array.from(document.querySelectorAll(`input[name="${CSS.escape(name)}"]:checked`)).map(i => i.value);
     }
 
-    /* ==========================
-       AUTH: lock the form until signed in
-       ========================== */
-    function setFormEnabled(enabled){
-      const form = $("appForm");
-      const elements = form.querySelectorAll("input, select, textarea, button");
-      elements.forEach(el => {
-        // keep hidden inputs always enabled
-        if (el.type === "hidden") return;
-        el.disabled = !enabled;
-      });
-
-      // email stays locked when enabled too (must match auth email)
-      if (enabled) $("email").disabled = true;
-    }
-
-    function setAuthUI(user){
-      if (!user){
-        $("authStatusPill").textContent = "Not signed in";
-        $("logoutBtn").style.display = "none";
-        setFormEnabled(false);
-
-        // keep the email field blank when signed out
-        $("email").value = "";
-        return;
-      }
-
-      $("authStatusPill").textContent = `Signed in: ${user.email || user.uid}`;
-      $("logoutBtn").style.display = "inline-flex";
-
-      setFormEnabled(true);
-      $("email").value = user.email || "";
-      $("email").disabled = true;
-    }
-
-    function validLoginEmail(){
-      const em = $("loginEmail").value.trim();
-      const ok = isEmail(em);
-      $("err-loginEmail").classList.toggle("show", !ok);
-      return ok ? em : null;
-    }
-    function validLoginPassword(){
-      const pw = $("loginPassword").value || "";
-      const ok = pw.length >= 6;
-      $("err-loginPassword").classList.toggle("show", !ok);
-      return ok ? pw : null;
-    }
-
-    $("loginBtn").addEventListener("click", async () => {
-      const em = validLoginEmail();
-      const pw = validLoginPassword();
-      if (!em || !pw) return;
-
-      try{
-        await signInWithEmailAndPassword(auth, em, pw);
-        toast("Signed in", "You can now complete and submit the application.");
-      }catch(err){
-        console.error(err);
-        toast("Sign-in failed", err?.message || "Please try again.");
-      }
-    });
-
-    $("signupBtn").addEventListener("click", async () => {
-      const em = validLoginEmail();
-      const pw = validLoginPassword();
-      if (!em || !pw){
-        toast("Create account", "Enter email + password (6+ chars), then click Create Account.");
-        return;
-      }
-
-      try{
-        await createUserWithEmailAndPassword(auth, em, pw);
-        toast("Account created", "You're signed in. You can now apply.");
-      }catch(err){
-        console.error(err);
-        toast("Sign-up failed", err?.message || "Please try again.");
-      }
-    });
-
-    $("resetPwBtn").addEventListener("click", async () => {
-      const em = validLoginEmail();
-      if (!em) return;
-
-      try{
-        await sendPasswordResetEmail(auth, em);
-        toast("Password reset sent", "Check your email for a reset link.");
-      }catch(err){
-        console.error(err);
-        toast("Reset failed", err?.message || "Please try again.");
-      }
-    });
-
-    $("logoutBtn").addEventListener("click", async () => {
-      try{
-        await signOut(auth);
-        toast("Signed out", "Please sign in again to apply.");
-      }catch(err){
-        console.error(err);
-        toast("Sign-out failed", err?.message || "Please try again.");
-      }
-    });
-
     /* ==========
        Status bar
        ========== */
     function setSubmitting(on){
-      // Only disable form buttons (auth buttons remain usable)
       $("submitBtn").disabled = on;
       $("saveBtn").disabled = on;
       $("previewBtn").disabled = on;
@@ -958,16 +1042,11 @@
       return wrap;
     }
 
-    // If your page includes addExpBtn (it does in your original),
-    // keep these handlers even if the section is below in your file.
-    const addExpBtn = $("addExpBtn");
-    if (addExpBtn){
-      addExpBtn.addEventListener("click", () => {
-        $("expContainer").appendChild(makeExpCard());
-        updateProgress();
-        scheduleAutosave(true);
-      });
-    }
+    $("addExpBtn").addEventListener("click", () => {
+      $("expContainer").appendChild(makeExpCard());
+      updateProgress();
+      scheduleAutosave(true);
+    });
 
     /* ==========
        Dynamic References
@@ -1027,20 +1106,16 @@
       return wrap;
     }
 
-    const addRefBtn = $("addRefBtn");
-    if (addRefBtn){
-      addRefBtn.addEventListener("click", () => {
-        $("refsContainer").appendChild(makeRefCard());
-        updateProgress();
-        scheduleAutosave(true);
-      });
-    }
+    $("addRefBtn").addEventListener("click", () => {
+      $("refsContainer").appendChild(makeRefCard());
+      updateProgress();
+      scheduleAutosave(true);
+    });
 
     /* ==========
-       File UI
+       File UI (show ALL selected files + sizes)
        ========== */
     function renderSelectedFileList(listEl, files){
-      if(!listEl) return;
       if(!files || files.length === 0){
         listEl.style.display = "none";
         listEl.innerHTML = "";
@@ -1064,18 +1139,17 @@
 
     function updateFileWidget(inputId, chosenId, pillId, listId, emptyLabel, emptyPill){
       const input = $(inputId);
-      if(!input) return;
       const files = input.files ? Array.from(input.files) : [];
 
       if(files.length === 0){
-        if($(chosenId)) setText($(chosenId), emptyLabel);
-        if($(pillId)) setText($(pillId), emptyPill);
+        setText($(chosenId), emptyLabel);
+        setText($(pillId), emptyPill);
       }else if(files.length === 1){
-        if($(chosenId)) setText($(chosenId), files[0].name);
-        if($(pillId)) setText($(pillId), bytesToHuman(files[0].size));
+        setText($(chosenId), files[0].name);
+        setText($(pillId), bytesToHuman(files[0].size));
       }else{
-        if($(chosenId)) setText($(chosenId), `${files.length} files selected`);
-        if($(pillId)) setText($(pillId), `${files.length} files`);
+        setText($(chosenId), `${files.length} files selected`);
+        setText($(pillId), `${files.length} files`);
       }
 
       renderSelectedFileList($(listId), files);
@@ -1083,40 +1157,38 @@
       scheduleAutosave(true);
     }
 
-    if ($("resume")) $("resume").addEventListener("change", () => updateFileWidget("resume","resume-chosen","resume-pill","resume-list","Click to choose resume…","No file"));
-    if ($("coverLetter")) $("coverLetter").addEventListener("change", () => updateFileWidget("coverLetter","cover-chosen","cover-pill","cover-list","Click to choose cover letter…","Optional"));
-    if ($("licenseDoc")) $("licenseDoc").addEventListener("change", () => updateFileWidget("licenseDoc","license-chosen","license-pill","license-list","Click to choose documents…","Optional"));
+    $("resume").addEventListener("change", () => updateFileWidget("resume","resume-chosen","resume-pill","resume-list","Click to choose resume…","No file"));
+    $("coverLetter").addEventListener("change", () => updateFileWidget("coverLetter","cover-chosen","cover-pill","cover-list","Click to choose cover letter…","Optional"));
+    $("licenseDoc").addEventListener("change", () => updateFileWidget("licenseDoc","license-chosen","license-pill","license-list","Click to choose documents…","Optional"));
 
     function countSelectedFiles(){
-      const a = $("resume")?.files?.length || 0;
-      const b = $("coverLetter")?.files?.length || 0;
-      const c = $("licenseDoc")?.files?.length || 0;
+      const a = $("resume").files?.length || 0;
+      const b = $("coverLetter").files?.length || 0;
+      const c = $("licenseDoc").files?.length || 0;
       return a + b + c;
     }
 
     /* ==========
        Cert none logic
        ========== */
-    if ($("cert_none")){
-      $("cert_none").addEventListener("change", (e) => {
-        if (e.target.checked){
-          document.querySelectorAll('input[name="certs"]').forEach(cb => cb.checked = false);
-        }
-        scheduleAutosave(true);
-        updateProgress();
-      });
-    }
+    $("cert_none").addEventListener("change", (e) => {
+      if (e.target.checked){
+        document.querySelectorAll('input[name="certs"]').forEach(cb => cb.checked = false);
+      }
+      scheduleAutosave(true);
+      updateProgress();
+    });
 
     document.querySelectorAll('input[name="certs"]').forEach(cb => {
       cb.addEventListener("change", () => {
-        if (cb.checked && $("cert_none")) $("cert_none").checked = false;
+        if (cb.checked) $("cert_none").checked = false;
         scheduleAutosave();
         updateProgress();
       });
     });
 
     /* ==========
-       Validation helpers (unchanged, expects your full form ids)
+       Validation helpers
        ========== */
     function setErr(id, on){
       const el = $(id);
@@ -1153,22 +1225,472 @@
       return ok;
     }
 
-    // NOTE: keep all your other validate* functions exactly as you had them.
-    // To keep this rewrite focused on login-gating, I’m not duplicating every single one again.
-    // If you paste your full original form sections below (steps 3-8), those functions will work as before.
-    //
-    // If you want, reply "paste the rest too" and I’ll output a single uninterrupted HTML with EVERYTHING included.
+    function validateLicense(){
+      let ok = true;
+
+      const num = $("lpnLicenseNumber").value.trim();
+      const st = $("lpnLicenseState").value;
+      const exp = $("lpnLicenseExp").value;
+
+      setErr("err-lpnLicenseNumber", !num); ok = ok && !!num;
+      setErr("err-lpnLicenseState", !st); ok = ok && !!st;
+      setErr("err-lpnLicenseExp", !exp); ok = ok && !!exp;
+
+      const anyCert = hasAnyChecked("certs");
+      const none = $("cert_none").checked;
+      setErr("err-certs", !(anyCert || none));
+      ok = ok && (anyCert || none);
+
+      return ok;
+    }
+
+    function validateAvailability(){
+      let ok = true;
+
+      const emp = $("employmentType").value;
+      const shift = $("shiftPref").value;
+
+      setErr("err-employmentType", !emp); ok = ok && !!emp;
+      setErr("err-shiftPref", !shift); ok = ok && !!shift;
+
+      const anyDay = hasAnyChecked("days");
+      setErr("err-days", !anyDay);
+      ok = ok && anyDay;
+
+      return ok;
+    }
+
+    function validateEducation(){
+      let ok = true;
+      const school = $("school").value.trim();
+      const gy = $("gradYear").value.trim();
+
+      setErr("err-school", !school); ok = ok && !!school;
+      setErr("err-gradYear", !gy); ok = ok && !!gy;
+
+      return ok;
+    }
+
+    function validateExperience(){
+      const cards = Array.from(document.querySelectorAll("#expContainer .exp-card"));
+      if (cards.length === 0){
+        setErr("err-exp", true);
+        return false;
+      }
+
+      let completeCount = 0;
+
+      for (const c of cards){
+        const idx = c.dataset.exp;
+        const employer = $(`exp_employer_${idx}`)?.value.trim();
+        const title = $(`exp_title_${idx}`)?.value.trim();
+        const start = $(`exp_start_${idx}`)?.value;
+        const end = $(`exp_end_${idx}`)?.value;
+        const reason = $(`exp_reason_${idx}`)?.value.trim();
+        const contactOk = $(`exp_contactOk_${idx}`)?.value;
+        if (employer && title && start && end && reason && contactOk) completeCount++;
+      }
+
+      const ok = completeCount >= 1;
+      setErr("err-exp", !ok);
+      return ok;
+    }
+
+    function validateResume(){
+      const f = $("resume").files && $("resume").files[0] ? $("resume").files[0] : null;
+      const ok = !!f && fileOk(f);
+      setErr("err-resume", !ok);
+      return ok;
+    }
+
+    function validateScreening(){
+      let ok = true;
+
+      const years = $("yearsLpn").value;
+      const auth = $("workAuth").value;
+      const screening = document.querySelector('input[name="screening"]:checked');
+
+      setErr("err-yearsLpn", !years); ok = ok && !!years;
+      setErr("err-workAuth", !auth); ok = ok && !!auth;
+
+      setErr("err-screening", !screening); ok = ok && !!screening;
+
+      return ok;
+    }
+
+    function validateRefs(){
+      let ok = true;
+
+      const consent = $("consentContactRefs").checked;
+      setErr("err-consentContactRefs", !consent);
+      ok = ok && consent;
+
+      const cards = Array.from(document.querySelectorAll("#refsContainer .ref-card"));
+      let complete = 0;
+
+      for (const c of cards){
+        const idx = c.dataset.ref;
+        const name = $(`ref_name_${idx}`)?.value.trim();
+        const rel = $(`ref_relation_${idx}`)?.value.trim();
+        const ph = $(`ref_phone_${idx}`)?.value.trim();
+        const em = $(`ref_email_${idx}`)?.value.trim();
+        if (name && rel && isPhone(ph) && isEmail(em)) complete++;
+      }
+
+      setErr("err-refs", complete < 2);
+      ok = ok && (complete >= 2);
+
+      return ok;
+    }
+
+    function validateSignature(){
+      let ok = true;
+
+      const truth = $("consentTruth").checked;
+      const esign = $("consentESign").checked;
+      const sig = $("signature").value.trim();
+      const date = $("signatureDate").value;
+
+      setErr("err-consentTruth", !truth); ok = ok && truth;
+      setErr("err-consentESign", !esign); ok = ok && esign;
+
+      setErr("err-signature", !sig); ok = ok && !!sig;
+      setErr("err-signatureDate", !date); ok = ok && !!date;
+
+      return ok;
+    }
+
+    function validateAll(){
+      // Clear grouped errors that are not handled in each validate function
+      setErr("err-days", false);
+      setErr("err-certs", false);
+      setErr("err-screening", false);
+
+      return (
+        validateBasics() &&
+        validateLicense() &&
+        validateAvailability() &&
+        validateEducation() &&
+        validateExperience() &&
+        validateResume() &&
+        validateScreening() &&
+        validateRefs() &&
+        validateSignature()
+      );
+    }
 
     /* ==========
-       Draft save/restore + Progress sidebar
-       (keep your existing code here unchanged)
+       Draft save/restore (stores FILE METADATA only)
        ========== */
-    // --- For brevity, this rewrite assumes you keep your existing:
-    // collectDraft(), applyDraft(), scheduleAutosave(), updateProgress(), etc.
-    // If you want a single-file copy with *all* of it included, say “include all functions”.
+    function collectDraft(includeFileMeta=true){
+      const draft = {
+        ts: new Date().toISOString(),
+        fields: {},
+        cert_none: $("cert_none").checked,
+        certs: getChecked("certs"),
+        days: getChecked("days"),
+        screening: (document.querySelector('input[name="screening"]:checked') || {}).value || "",
+        experiences: [],
+        references: [],
+        files: includeFileMeta ? {
+          resume: ($("resume").files?.[0]) ? { name:$("resume").files[0].name, type:$("resume").files[0].type||"unknown", size:$("resume").files[0].size } : null,
+          coverLetter: ($("coverLetter").files?.[0]) ? { name:$("coverLetter").files[0].name, type:$("coverLetter").files[0].type||"unknown", size:$("coverLetter").files[0].size } : null,
+          licenseDoc: ($("licenseDoc").files?.length ? Array.from($("licenseDoc").files).map(f => ({ name:f.name, type:f.type||"unknown", size:f.size })) : [])
+        } : undefined
+      };
+
+      const els = document.querySelectorAll("#appForm input, #appForm select, #appForm textarea");
+      els.forEach(el => {
+        const t = el.type;
+        const key = el.name || el.id;
+        if (!key) return;
+        if (t === "file") return;
+        if (t === "checkbox" || t === "radio") return;
+        draft.fields[key] = el.value;
+      });
+
+      document.querySelectorAll("#expContainer .exp-card").forEach(c => {
+        const idx = c.dataset.exp;
+        draft.experiences.push({
+          employer: $(`exp_employer_${idx}`)?.value || "",
+          title: $(`exp_title_${idx}`)?.value || "",
+          start: $(`exp_start_${idx}`)?.value || "",
+          end: $(`exp_end_${idx}`)?.value || "",
+          reason: $(`exp_reason_${idx}`)?.value || "",
+          supervisorPhone: $(`exp_supervisorPhone_${idx}`)?.value || "",
+          contactOk: $(`exp_contactOk_${idx}`)?.value || ""
+        });
+      });
+
+      document.querySelectorAll("#refsContainer .ref-card").forEach(c => {
+        const idx = c.dataset.ref;
+        draft.references.push({
+          name: $(`ref_name_${idx}`)?.value || "",
+          relation: $(`ref_relation_${idx}`)?.value || "",
+          phone: $(`ref_phone_${idx}`)?.value || "",
+          email: $(`ref_email_${idx}`)?.value || ""
+        });
+      });
+
+      draft.fields["consentContactRefs"] = $("consentContactRefs").checked ? "yes" : "";
+      draft.fields["consentTruth"] = $("consentTruth").checked ? "yes" : "";
+      draft.fields["consentESign"] = $("consentESign").checked ? "yes" : "";
+
+      return draft;
+    }
+
+    function applyDraft(draft){
+      if (!draft) return;
+
+      const fields = draft.fields || {};
+      Object.keys(fields).forEach(k => {
+        const el = document.querySelector(`[name="${CSS.escape(k)}"], #${CSS.escape(k)}`);
+        if (el && el.type !== "file" && el.type !== "checkbox" && el.type !== "radio"){
+          el.value = fields[k];
+        }
+      });
+
+      $("cert_none").checked = !!draft.cert_none;
+
+      document.querySelectorAll('input[name="certs"]').forEach(cb => {
+        cb.checked = (draft.certs || []).includes(cb.value);
+      });
+      document.querySelectorAll('input[name="days"]').forEach(cb => {
+        cb.checked = (draft.days || []).includes(cb.value);
+      });
+
+      if (draft.screening){
+        const r = document.querySelector(`input[name="screening"][value="${CSS.escape(draft.screening)}"]`);
+        if (r) r.checked = true;
+      }
+
+      $("consentContactRefs").checked = fields["consentContactRefs"] === "yes";
+      $("consentTruth").checked = fields["consentTruth"] === "yes";
+      $("consentESign").checked = fields["consentESign"] === "yes";
+
+      $("expContainer").innerHTML = "";
+      expCount = 0;
+      (draft.experiences || []).forEach(e => $("expContainer").appendChild(makeExpCard(e)));
+
+      $("refsContainer").innerHTML = "";
+      refCount = 0;
+      (draft.references || []).forEach(r => $("refsContainer").appendChild(makeRefCard(r)));
+
+      // Files cannot be restored (browser security), but we can remind user what was selected.
+      if(draft.files){
+        // Just show the metadata in the UI lists so user can see everything that was previously selected
+        if(draft.files.resume){
+          $("resume-list").style.display = "block";
+          $("resume-list").innerHTML = `
+            <div class="fileitem">
+              <div>
+                <div style="font-weight:800;">${escapeHtml(draft.files.resume.name)}</div>
+                <div class="meta">${escapeHtml(draft.files.resume.type)} • ${bytesToHuman(draft.files.resume.size)}</div>
+              </div>
+              <div class="meta">Previously selected (re-attach)</div>
+            </div>
+          `;
+        }
+        if(draft.files.coverLetter){
+          $("cover-list").style.display = "block";
+          $("cover-list").innerHTML = `
+            <div class="fileitem">
+              <div>
+                <div style="font-weight:800;">${escapeHtml(draft.files.coverLetter.name)}</div>
+                <div class="meta">${escapeHtml(draft.files.coverLetter.type)} • ${bytesToHuman(draft.files.coverLetter.size)}</div>
+              </div>
+              <div class="meta">Previously selected (re-attach)</div>
+            </div>
+          `;
+        }
+        if(Array.isArray(draft.files.licenseDoc) && draft.files.licenseDoc.length){
+          $("license-list").style.display = "block";
+          $("license-list").innerHTML = draft.files.licenseDoc.map(f => `
+            <div class="fileitem">
+              <div>
+                <div style="font-weight:800;">${escapeHtml(f.name)}</div>
+                <div class="meta">${escapeHtml(f.type)} • ${bytesToHuman(f.size)}</div>
+              </div>
+              <div class="meta">Previously selected (re-attach)</div>
+            </div>
+          `).join("");
+        }
+      }
+    }
+
+    let autosaveTimer = null;
+    function scheduleAutosave(immediate=false){
+      // only autosave once they started
+      const any = ["firstName","lastName","email","phone"].some(id => String($(id).value||"").trim().length > 0);
+      if(!any) return;
+
+      setText($("autosavePill"), immediate ? "Autosave: saving…" : "Autosave: pending…");
+
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => {
+        const draft = collectDraft(true);
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        setText($("draftStatus"), "Yes");
+        setText($("autosavePill"), "Autosave: saved");
+        toast("Saved", "Your draft has been saved on this device.");
+      }, immediate ? 60 : 850);
+    }
+
+    $("saveBtn").addEventListener("click", () => scheduleAutosave(true));
+
+    $("toastDownloadBtn").addEventListener("click", () => {
+      const draft = collectDraft(true);
+      const blob = new Blob([JSON.stringify(draft, null, 2)], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `lpn-application-draft-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    $("previewBtn").addEventListener("click", () => {
+      const draft = collectDraft(true);
+      const w = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
+      if(!w) return alert("Pop-up blocked. Please allow pop-ups to preview.");
+      w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(draft, null, 2))}</pre>`);
+      w.document.close();
+    });
+
+    $("resetBtn").addEventListener("click", () => {
+      if (!confirm("Clear the form and remove the saved draft on this device?")) return;
+
+      localStorage.removeItem(DRAFT_KEY);
+      $("appForm").reset();
+
+      $("expContainer").innerHTML = "";
+      $("refsContainer").innerHTML = "";
+      expCount = 0;
+      refCount = 0;
+
+      // reset file widgets
+      setText($("resume-chosen"), "Click to choose resume…");
+      setText($("resume-pill"), "No file");
+      $("resume-list").style.display = "none"; $("resume-list").innerHTML = "";
+
+      setText($("cover-chosen"), "Click to choose cover letter…");
+      setText($("cover-pill"), "Optional");
+      $("cover-list").style.display = "none"; $("cover-list").innerHTML = "";
+
+      setText($("license-chosen"), "Click to choose documents…");
+      setText($("license-pill"), "Optional");
+      $("license-list").style.display = "none"; $("license-list").innerHTML = "";
+
+      $("uploaded-files").style.display = "none";
+      $("uploaded-files-items").innerHTML = "";
+
+      setText($("autosavePill"), "Autosave: off");
+      setText($("draftStatus"), "No");
+
+      // default cards
+      $("expContainer").appendChild(makeExpCard());
+      $("refsContainer").appendChild(makeRefCard());
+      $("refsContainer").appendChild(makeRefCard());
+
+      updateProgress();
+      toast("Cleared", "The form has been cleared.");
+    });
 
     /* ==========
-       Upload helpers
+       Progress sidebar
+       ========== */
+    const requiredIds = [
+      "firstName","lastName","email","phone","address1","city","state","zip","startDate",
+      "lpnLicenseNumber","lpnLicenseState","lpnLicenseExp",
+      "employmentType","shiftPref",
+      "school","gradYear",
+      "yearsLpn","workAuth",
+      "signature","signatureDate"
+    ];
+
+    function countCompleteRequired(){
+      let complete = 0;
+      for (const id of requiredIds){
+        const el = $(id);
+        if (!el) continue;
+        const val = (el.value || "").trim();
+        if (val) complete++;
+      }
+
+      const anyCert = hasAnyChecked("certs") || $("cert_none").checked;
+      const anyDay = hasAnyChecked("days");
+      const screening = !!document.querySelector('input[name="screening"]:checked');
+      const consentTruth = $("consentTruth").checked;
+      const consentESign = $("consentESign").checked;
+      const consentRefs = $("consentContactRefs").checked;
+
+      const groupTotal = 6;
+      let groupComplete = 0;
+      if (anyCert) groupComplete++;
+      if (anyDay) groupComplete++;
+      if (screening) groupComplete++;
+      if (consentTruth) groupComplete++;
+      if (consentESign) groupComplete++;
+      if (consentRefs) groupComplete++;
+
+      return { complete, total: requiredIds.length, groupComplete, groupTotal };
+    }
+
+    function countCompleteRefs(){
+      const cards = Array.from(document.querySelectorAll("#refsContainer .ref-card"));
+      let complete = 0;
+      for (const c of cards){
+        const idx = c.dataset.ref;
+        const name = $(`ref_name_${idx}`)?.value.trim();
+        const rel = $(`ref_relation_${idx}`)?.value.trim();
+        const ph = $(`ref_phone_${idx}`)?.value.trim();
+        const em = $(`ref_email_${idx}`)?.value.trim();
+        if (name && rel && isPhone(ph) && isEmail(em)) complete++;
+      }
+      return complete;
+    }
+
+    function countCompleteExps(){
+      const cards = Array.from(document.querySelectorAll("#expContainer .exp-card"));
+      let complete = 0;
+      for (const c of cards){
+        const idx = c.dataset.exp;
+        const employer = $(`exp_employer_${idx}`)?.value.trim();
+        const title = $(`exp_title_${idx}`)?.value.trim();
+        const start = $(`exp_start_${idx}`)?.value;
+        const end = $(`exp_end_${idx}`)?.value;
+        const reason = $(`exp_reason_${idx}`)?.value.trim();
+        const contactOk = $(`exp_contactOk_${idx}`)?.value;
+        if (employer && title && start && end && reason && contactOk) complete++;
+      }
+      return { total: cards.length, complete };
+    }
+
+    function updateProgress(){
+      const r = countCompleteRequired();
+      const total = r.total + r.groupTotal;
+      const done = r.complete + r.groupComplete;
+      const pct = Math.round((done / total) * 100);
+      setText($("reqCount"), `${pct}%`);
+
+      const resumeFile = $("resume").files?.[0] || null;
+      setText($("resumeStatus"), resumeFile ? "Yes" : "No");
+
+      setText($("draftStatus"), localStorage.getItem(DRAFT_KEY) ? "Yes" : "No");
+
+      const refsComplete = countCompleteRefs();
+      setText($("refsStatus"), `${Math.min(refsComplete, 99)}/2`);
+
+      const exps = countCompleteExps();
+      setText($("expStatus"), String(exps.total));
+
+      setText($("filesStatus"), String(countSelectedFiles()));
+    }
+
+    document.addEventListener("input", () => { updateProgress(); scheduleAutosave(); });
+    document.addEventListener("change", () => { updateProgress(); scheduleAutosave(); });
+
+    /* ==========
+       Upload helpers (Storage) + show all uploaded files
        ========== */
     function safeName(name){
       return String(name || "file").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 140);
@@ -1185,25 +1707,48 @@
         }, reject, async () => {
           try{
             const url = await getDownloadURL(task.snapshot.ref);
-            resolve({ name: file.name, type: file.type || "unknown", size: file.size, path, url });
+            resolve({
+              name: file.name,
+              type: file.type || "unknown",
+              size: file.size,
+              path,
+              url
+            });
           }catch(err){ reject(err); }
         });
       });
     }
 
+    function renderUploadedFiles(list){
+      if(!Array.isArray(list) || list.length === 0) return;
+      $("uploaded-files").style.display = "block";
+      const host = $("uploaded-files-items");
+      host.innerHTML = "";
+      list.forEach(f => {
+        const row = document.createElement("div");
+        row.className = "fileitem";
+        row.innerHTML = `
+          <div>
+            <div style="font-weight:800;">${escapeHtml(f.name)}</div>
+            <div class="meta">${escapeHtml(f.type || "unknown")} • ${bytesToHuman(f.size)}</div>
+          </div>
+          <div class="meta"><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener noreferrer">Open</a></div>
+        `;
+        host.appendChild(row);
+      });
+    }
+
     /* ==========
-       Submission (Firestore + Storage) with Auth required
+       Submission (Firestore + Storage)
        ========== */
     async function submitToFirebase(){
-      const user = auth.currentUser;
-      if (!user) throw new Error("You must sign in before submitting your application.");
-
       setSubmitting(true);
       setProgress(5, "Submitting…", "Validating files…");
 
-      const resume = $("resume")?.files?.[0] || null;
-      const cover = $("coverLetter")?.files?.[0] || null;
-      const licenseFiles = $("licenseDoc")?.files ? Array.from($("licenseDoc").files) : [];
+      // File validation (all selected must be <= 10MB; resume required)
+      const resume = $("resume").files?.[0] || null;
+      const cover = $("coverLetter").files?.[0] || null;
+      const licenseFiles = $("licenseDoc").files ? Array.from($("licenseDoc").files) : [];
 
       if(!resume){
         setErr("err-resume", true);
@@ -1213,21 +1758,18 @@
         throw new Error(`One or more files exceed ${MAX_FILE_MB}MB.`);
       }
 
-      // You already have collectDraft() in your original file.
+      // Build application payload (no File objects here)
       const draft = collectDraft(true);
 
+      // Create a Firestore doc first, so we can use its id in storage paths
       setProgress(10, "Submitting…", "Creating application record…");
       const baseDoc = {
         jobTitle: "Licensed Practical Nurse (LPN)",
         company: "Sulandra Community Living Services",
         version: "2.0",
-        status: "Pending",                 // ✅ matches admin.html statuses
+        status: "Pending Review",
         createdAt: serverTimestamp(),
         submittedAtISO: new Date().toISOString(),
-
-        applicantUid: user.uid,
-        applicantEmail: user.email || "",
-
         fields: draft.fields,
         cert_none: draft.cert_none,
         certs: draft.certs,
@@ -1235,12 +1777,13 @@
         screening: draft.screening,
         experiences: draft.experiences,
         references: draft.references,
-        files: []
+        files: [] // filled after uploads
       };
 
       const docRef = await addDoc(collection(db, "applications_lpn"), baseDoc);
       const appId = docRef.id;
 
+      // Upload files
       const uploaded = [];
       const all = [
         { key:"resume", file: resume, bucket:"resume" },
@@ -1248,6 +1791,7 @@
         ...licenseFiles.map((f, i) => ({ key:`licenseDoc_${i+1}`, file:f, bucket:"license-docs" }))
       ].filter(x => !!x.file);
 
+      // Spread progress between 15% and 90%
       let fileIndex = 0;
       const startPct = 15;
       const endPct = 90;
@@ -1268,11 +1812,12 @@
         uploaded.push({ ...meta, field: item.key });
       }
 
+      // Save final submission with uploaded file links (write a second doc in same collection as a new record is not ideal,
+      // but we avoid needing updateDoc permissions. If you want single doc updates, change rules + use updateDoc here.)
+      // ✅ Better: write a second document to an "applications_lpn_submissions" collection that references appId.
       setProgress(92, "Finalizing…", "Saving uploaded file links…");
       await addDoc(collection(db, "applications_lpn_submissions"), {
         applicationId: appId,
-        applicantUid: user.uid,
-        applicantEmail: user.email || "",
         createdAt: serverTimestamp(),
         submittedAtISO: new Date().toISOString(),
         uploadedFiles: uploaded
@@ -1283,16 +1828,13 @@
     }
 
     /* ==========
-       Form submit (unchanged idea, but auth enforced by submitToFirebase)
+       Form submit
        ========== */
     $("appForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      setErr("err-resume", false);
 
-      if (!auth.currentUser){
-        toast("Sign in required", "Please sign in before submitting.");
-        return;
-      }
+      // reset any visible error blocks that are purely grouped
+      setErr("err-resume", false);
 
       const ok = validateAll();
       if (!ok){
@@ -1304,13 +1846,20 @@
 
       try{
         const { appId, uploaded } = await submitToFirebase();
+
+        // Show uploaded files on page (so applicant can see everything that was submitted)
         renderUploadedFiles(uploaded);
 
+        // Clear draft + reset autosave
         localStorage.removeItem(DRAFT_KEY);
-        if ($("draftStatus")) setText($("draftStatus"), "No");
+        setText($("draftStatus"), "No");
         setText($("autosavePill"), "Autosave: off");
 
         toast("Submitted", `Application received. Confirmation ID: ${appId}`);
+
+        // OPTIONAL: redirect after a moment (comment out if you want to keep them on page)
+        // window.location.href = "/Careers.html";
+
       } catch(err){
         console.error(err);
         setSubmitting(false);
@@ -1325,46 +1874,15 @@
        Init
        ========== */
     (function init(){
-      // lock form until auth state known
-      setFormEnabled(false);
-
-      onAuthStateChanged(auth, (user) => {
-        setAuthUI(user);
-        // your updateProgress() exists in original
-        try{ updateProgress(); }catch(_){}
-      });
-
       // default signature date = today
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth()+1).padStart(2,'0');
       const dd = String(today.getDate()).padStart(2,'0');
-      if($("signatureDate") && !$("signatureDate").value) $("signatureDate").value = `${yyyy}-${mm}-${dd}`;
+      if(!$("signatureDate").value) $("signatureDate").value = `${yyyy}-${mm}-${dd}`;
 
-      // restore draft (your original applyDraft/collectDraft)
+      // restore draft
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved){
         try{
           applyDraft(JSON.parse(saved));
-          setText($("autosavePill"), "Autosave: loaded");
-          if ($("draftStatus")) setText($("draftStatus"), "Yes");
-          toast("Draft loaded", "We restored a saved draft from this device. You may need to re-attach files.");
-        }catch(_){}
-      }
-
-      // ensure at least one exp and two refs (original)
-      try{
-        if (document.querySelectorAll("#expContainer .exp-card").length === 0 && $("expContainer")){
-          $("expContainer").appendChild(makeExpCard());
-        }
-        if (document.querySelectorAll("#refsContainer .ref-card").length === 0 && $("refsContainer")){
-          $("refsContainer").appendChild(makeRefCard());
-          $("refsContainer").appendChild(makeRefCard());
-        }
-      }catch(_){}
-
-      try{ updateProgress(); }catch(_){}
-    })();
-  </script>
-</body>
-</html>
