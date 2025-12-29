@@ -114,17 +114,14 @@
 
   <div class="wrap">
     <div class="card">
-      <h1>Employee Portal Login</h1>
-      <p class="sub">
-        Employees: enter your <strong>Employee ID</strong> (example: SCLS-101).<br>
-        Admin: enter <strong>admin@sulandrahealth.com</strong>.
-      </p>
+      <h1>Portal Login</h1>
+      <p class="sub">Sign in to access your portal.</p>
 
-      <label for="username">Username (Employee ID) or Email</label>
-      <input id="username" type="text" placeholder="SCLS-101 or admin@sulandrahealth.com" autocomplete="username" />
+      <label for="username">Username or Email</label>
+      <input id="username" type="text" placeholder="Enter your username" autocomplete="username" />
 
       <label for="password">Password</label>
-      <input id="password" type="password" placeholder="Your password" autocomplete="current-password" />
+      <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password" />
 
       <div class="row">
         <button class="primary" id="btnLogin" type="button">Log In</button>
@@ -137,10 +134,6 @@
       </div>
 
       <div class="msg" id="msgBox"></div>
-      <div class="tiny">
-        Note: Employees must already exist in Firestore collection <code>employees</code> with their doc ID = Employee ID
-        and must have an <code>email</code> field (your admin “Hire” already writes that). 
-      </div>
     </div>
   </div>
 
@@ -149,7 +142,6 @@
     import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // Same Firebase config used in your admin.html (same project)
     const firebaseConfig = {
       apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
       authDomain: "sulandra-health-portal.firebaseapp.com",
@@ -159,11 +151,11 @@
       appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845"
     };
 
+    const ADMIN_EMAIL = "admin@sulandrahealth.com";
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-
-    const ADMIN_EMAIL = "admin@sulandrahealth.com";
 
     const $ = (id) => document.getElementById(id);
 
@@ -184,7 +176,6 @@
     }
 
     async function usernameToEmail(username){
-      // employees/{employeeId} where doc id = employeeId (your admin hire uses this)
       const ref = doc(db, "employees", username);
       const snap = await getDoc(ref);
       if(!snap.exists()) return null;
@@ -199,34 +190,31 @@
       const u = String($("username").value || "").trim();
       const p = String($("password").value || "");
 
-      if(!u){ showMsg("Enter your Employee ID or email."); return; }
+      if(!u){ showMsg("Enter your username or email."); return; }
       if(!p){ showMsg("Enter your password."); return; }
 
       try{
-        // Admin enters email directly
+        // If user typed an email, sign in directly
         if(looksLikeEmail(u)){
           const cred = await signInWithEmailAndPassword(auth, u, p);
           const email = (cred.user.email || "").toLowerCase();
-          if(email === ADMIN_EMAIL) window.location.href = "admin.html";
-          else window.location.href = "employee-portal.html";
+          window.location.href = (email === ADMIN_EMAIL) ? "admin.html" : "employee-portal.html";
           return;
         }
 
-        // Employee enters Employee ID -> lookup email -> sign in by email/password
+        // Otherwise treat it as Employee ID (username) and resolve to email
         const email = await usernameToEmail(u);
         if(!email){
-          showMsg("Employee ID not found. Check the ID and try again.");
+          showMsg("Username not found. Check it and try again.");
           return;
         }
 
         const cred = await signInWithEmailAndPassword(auth, email, p);
         const signedEmail = (cred.user.email || "").toLowerCase();
-
-        if(signedEmail === ADMIN_EMAIL) window.location.href = "admin.html";
-        else window.location.href = "employee-portal.html";
+        window.location.href = (signedEmail === ADMIN_EMAIL) ? "admin.html" : "employee-portal.html";
       }catch(err){
         console.error(err);
-        showMsg(err?.message || "Login failed. Try again.");
+        showMsg("Login failed. Check your credentials and try again.");
       }
     }
 
@@ -235,7 +223,7 @@
       const u = String($("username").value || "").trim();
 
       if(!u){
-        showMsg("Type your Employee ID (or your email) in the username box first.");
+        showMsg("Type your username first, then click Forgot password / username.");
         return;
       }
 
@@ -246,7 +234,7 @@
         }else{
           const found = await usernameToEmail(u);
           if(!found){
-            showMsg("Employee ID not found. Check the ID and try again.");
+            showMsg("Username not found. Check it and try again.");
             return;
           }
           email = found;
@@ -256,7 +244,7 @@
         showMsg("Password reset email sent. Check your inbox (and spam/junk).", true);
       }catch(err){
         console.error(err);
-        showMsg(err?.message || "Could not send reset email.");
+        showMsg("Could not send reset email. Try again.");
       }
     }
 
@@ -270,7 +258,6 @@
     $("lnkForgot").addEventListener("click", (e) => { e.preventDefault(); doForgot(); });
     $("lnkGoPortal").addEventListener("click", (e) => { e.preventDefault(); window.location.href = "employee-portal.html"; });
 
-    // Enter key submits login
     ["username","password"].forEach(id => {
       $(id).addEventListener("keydown", (e) => {
         if(e.key === "Enter") doLogin();
