@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Sulandra Health | Employee Portal</title>
+
+  <!-- FAVICONS -->
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="shortcut icon" href="/favicon.ico">
+
+  <!-- SEO -->
+  <meta name="description" content="Sulandra Health Employee Portal - training, timesheets, documents, and reporting." />
+  <meta name="robots" content="index, follow" />
+
+  <style>
+    :root {
+      --primary: #004b8d; 
+      --secondary: #0077c8;
+      --accent: #d14124; 
+      --text: #333333;
+      --bg-light: #f7f9fc;
+      --white: #ffffff;
+      --dark-green: #0b3c5d;
+      --border: #e6e6e6;
+      --muted: #666;
+      --card-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg-light);
+      line-height: 1.6;
+    }
+
+    /* --- HEADER (matches your index styles) --- */
+    header { border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 1000; }
+    .top-nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      height: 80px;
+    }
+
+    .logo {
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--primary);
+      font-weight: 800;
+      min-width: 0;
+    }
+    .logo img{
+      width: 240px;
+      height: auto;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .sr-only{
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .header-tools { display: flex; gap: 14px; align-items: center; font-size: 14px; font-weight: 600; }
+    .header-tools a { text-decoration: none; color: var(--text); white-space: nowrap; }
+    .btn-cta { background: var(--primary); color: white !important; padding: 10px 18px; border-radius: 4px; text-decoration: none; }
+
+    .main-nav { background: #fff; border-top: 1px solid #eee; }
+    .nav-links {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      list-style: none;
+      padding: 0 20px;
+      gap: 2px;
+    }
+    .nav-links a {
+      display: block;
+      padding: 15px 18px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 15px;
+      white-space: nowrap;
+      border-radius: 4px;
+      margin: 6px 0;
+    }
+    .nav-links a:hover { color: var(--primary); background: #f0f4f8; }
+
+    /* --- PAGE LAYOUT --- */
+    .container {
+      max-width: 1200px;
+      margin: 24px auto 70px;
+      padding: 0 20px;
+    }
+
+    .page-hero {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border-radius: 10px;
+      padding: 28px 24px;
+      box-shadow: var(--card-shadow);
+    }
+    .page-hero h1 { font-size: 34px; line-height: 1.2; margin-bottom: 6px; }
+    .page-hero p { opacity: 0.95; max-width: 900px; }
+
+    .hero-row {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .pill {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.22);
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .grid {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--card-shadow);
+      padding: 18px;
+    }
+    .card h2 {
+      color: var(--primary);
+      font-size: 18px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .hint { color: var(--muted); font-size: 13px; }
+
+    .cards-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .qa {
+      text-decoration: none;
+      color: var(--text);
+      background: #fbfdff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 10px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .qa:hover { border-color: #cbdff2; background: #f3f8ff; color: var(--primary); }
+
+    /* --- FORMS --- */
+    label { display: block; font-size: 13px; font-weight: 700; color: #444; margin-top: 10px; }
+    input, select, textarea {
+      width: 100%;
+      margin-top: 6px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 10px;
+      font-size: 14px;
+      background: #fff;
+      outline: none;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { border-color: #9cc3ea; box-shadow: 0 0 0 3px rgba(0,119,200,0.12); }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .btn {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #eef6ff; color: var(--primary); border: 1px solid #cfe4fb; }
+    .btn-danger { background: var(--accent); color: white; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* --- LISTS / TABLES --- */
+    .list {
+      list-style: none;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .list li {
+      padding: 12px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      background: #fff;
+    }
+    .list li:last-child { border-bottom: none; }
+    .badge {
+      font-size: 12px;
+      font-weight: 900;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #f7f9fc;
+      white-space: nowrap;
+    }
+    .badge.green { background: #eefbf3; border-color: #c9efd7; color: #0a6b33; }
+    .badge.orange { background: #fff5ec; border-color: #ffd7b3; color: #8a3b00; }
+    .badge.blue { background: #eef6ff; border-color: #cfe4fb; color: #0a4f88; }
+
+    /* --- FOOTER --- */
+    footer { background: #f8f9fa; padding: 50px 20px; border-top: 1px solid #eee; }
+    .footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
+    .footer-col h4 { margin-bottom: 20px; font-size: 16px; color: var(--primary); }
+    .footer-col ul { list-style: none; }
+    .footer-col li { margin-bottom: 10px; font-size: 14px; }
+    .footer-col a { text-decoration: none; color: #555; }
+
+    .footer-col .logo{
+      height: 80px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .footer-col .logo img{
+      max-height: 100%;
+      width: 240px;
+      height: auto;
+      object-fit: contain;
+    }
+
+    /* --- MOBILE --- */
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .quick-actions { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 800px) {
+      .top-nav { padding: 12px 14px; height: 72px; }
+      .logo img { width: 200px; max-height: 100%; }
+      .header-tools a:not(.btn-cta) { display: none; }
+      .btn-cta { padding: 10px 14px; }
+
+      .nav-links { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .nav-links::-webkit-scrollbar { display: none; }
+
+      .page-hero h1 { font-size: 28px; }
+      .row { grid-template-columns: 1fr; }
+      .cards-2 { grid-template-columns: 1fr; }
+
+      .footer-grid { grid-template-columns: 1fr; gap: 26px; }
+      .footer-col .logo { height: 72px; }
+      .footer-col .logo img { width: 200px; max-height: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="top-nav">
+      <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
+        <span class="sr-only">Sulandra Health</span>
+      </a>
+
+      <div class="header-tools">
+        <a href="index.html">Back to Site</a>
+        <a href="#" class="btn-cta" id="btnSignOut">Sign Out</a>
+      </div>
+    </div>
+
+    <nav class="main-nav">
+      <ul class="nav-links">
+        <li><a href="employee-portal.html">Dashboard</a></li>
+        <li><a href="#timesheet">Timesheet</a></li>
+        <li><a href="#education">Education</a></li>
+        <li><a href="#documents">Documents</a></li>
+        <li><a href="#incident">Incident Report</a></li>
+        <li><a href="#help">Help</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+
+    <section class="page-hero">
+      <h1>Employee Portal</h1>
+      <p>Your hub for scheduling & time tracking, required education, document submission, incident reporting, and important updates.</p>
+
+      <div class="hero-row">
+        <span class="pill"><strong>Employee:</strong> <span id="empName">Employee Name</span></span>
+        <span class="pill"><strong>Role:</strong> <span id="empRole">Caregiver</span></span>
+        <span class="pill"><strong>Status:</strong> <span class="badge green" id="empStatus">Active</span></span>
+      </div>
+
+      <div class="quick-actions">
+        <a class="qa" href="#clock">Clock In/Out</a>
+        <a class="qa" href="#timesheet">Submit Timesheet</a>
+        <a class="qa" href="#education">Assigned Training</a>
+        <a class="qa" href="#documents">Upload Documents</a>
+      </div>
+    </section>
+
+    <section class="grid">
+
+      <!-- LEFT COLUMN -->
+      <div style="display:flex; flex-direction:column; gap:18px;">
+
+        <!-- CLOCK IN/OUT -->
+        <section class="card" id="clock">
+          <h2>
+            Clock In / Clock Out
+            <span class="hint">Quick punch (demo)</span>
+          </h2>
+
+          <div class="row">
+            <div>
+              <label for="clockLocation">Work Location</label>
+              <select id="clockLocation" name="clockLocation">
+                <option value="client-home">Client Home</option>
+                <option value="community">Community Visit</option>
+                <option value="office">Office / Training</option>
+                <option value="remote">Remote Admin</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="clockClient">Client / Assignment (optional)</label>
+              <input id="clockClient" name="clockClient" type="text" placeholder="e.g., J. Smith / Case #1042">
+            </div>
+          </div>
+
+          <label for="clockNote">Note (optional)</label>
+          <input id="clockNote" name="clockNote" type="text" placeholder="e.g., Arrived early for handoff">
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btnClockIn" type="button">Clock In</button>
+            <button class="btn btn-danger" id="btnClockOut" type="button" disabled>Clock Out</button>
+            <button class="btn btn-secondary" id="btnBreak" type="button" disabled>Start Break</button>
+          </div>
+
+          <ul class="list" id="clockLog" style="margin-top:14px;">
+            <li>
+              <span>Clock activity will show here.</span>
+              <span class="badge blue">Log</span>
+            </li>
+          </ul>
+        </section>
+
+        <!-- TIMESHEET -->
+        <section class="card" id="timesheet">
+          <h2>
+            Timesheet Submission
+            <span class="hint">Weekly entry (demo)</span>
+          </h2>
+
+          <div class="row">
+            <div>
+              <label for="weekEnding">Week Ending</label>
+              <input id="weekEnding" name="weekEnding" type="date">
+            </div>
+            <div>
+              <label for="payCode">Pay Code</label>
+              <select id="payCode" name="payCode">
+                <option value="regular">Regular</option>
+                <option value="training">Training</option>
+                <option value="orientation">Orientation</option>
+                <option value="mileage">Mileage (if applicable)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="hoursWorked">Total Hours</label>
+              <input id="hoursWorked" name="hoursWorked" type="number" min="0" step="0.25" placeholder="e.g., 36.5">
+            </div>
+            <div>
+              <label for="miles">Mileage (optional)</label>
+              <input id="miles" name="miles" type="number" min="0" step="0.1" placeholder="e.g., 12.4">
+            </div>
+          </div>
+
+          <label for="timesheetNotes">Notes (optional)</label>
+          <textarea id="timesheetNotes" name="timesheetNotes" placeholder="Add any important notes for payroll..."></textarea>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btnSubmitTimesheet" type="button">Submit Timesheet</button>
+            <button class="btn btn-secondary" id="btnSaveDraftTimesheet" type="button">Save Draft</button>
+          </div>
+
+          <p class="hint" style="margin-top:10px;">
+            Tip: When you connect your backend, submit these values to your payroll/timekeeping system.
+          </p>
+        </section>
+
+        <!-- INCIDENT REPORT -->
+        <section class="card" id="incident">
+          <h2>
+            Incident Report
+            <span class="hint">Safety + compliance</span>
+          </h2>
+
+          <div class="row">
+            <div>
+              <label for="incidentType">Incident Type</label>
+              <select id="incidentType" name="incidentType">
+                <option value="injury">Injury</option>
+                <option value="fall">Fall</option>
+                <option value="medication">Medication Issue</option>
+                <option value="behavioral">Behavioral / Safety Concern</option>
+                <option value="property">Property Damage</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="incidentDate">Date & Time</label>
+              <input id="incidentDate" name="incidentDate" type="datetime-local">
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="incidentClient">Client / Location</label>
+              <input id="incidentClient" name="incidentClient" type="text" placeholder="Client name/address or location">
+            </div>
+            <div>
+              <label for="incidentWitness">Witness (optional)</label>
+              <input id="incidentWitness" name="incidentWitness" type="text" placeholder="Witness name(s)">
+            </div>
+          </div>
+
+          <label for="incidentDetails">What happened?</label>
+          <textarea id="incidentDetails" name="incidentDetails" placeholder="Provide a clear, factual description..."></textarea>
+
+          <label for="incidentActions">Actions taken</label>
+          <textarea id="incidentActions" name="incidentActions" placeholder="Care provided, notifications made, next steps..."></textarea>
+
+          <label for="incidentUpload">Attach photos/documents (optional)</label>
+          <input id="incidentUpload" name="incidentUpload" type="file" multiple>
+
+          <div class="btn-row">
+            <button class="btn btn-danger" id="btnSubmitIncident" type="button">Submit Incident Report</button>
+            <button class="btn btn-secondary" id="btnSaveDraftIncident" type="button">Save Draft</button>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <aside style="display:flex; flex-direction:column; gap:18px;">
+
+        <!-- ANNOUNCEMENTS -->
+        <section class="card" id="announcements">
+          <h2>
+            Announcements
+            <span class="hint">Updates from admin</span>
+          </h2>
+          <ul class="list">
+            <li>
+              <span><strong>Reminder:</strong> Complete annual compliance training.</span>
+              <span class="badge orange">Due Soon</span>
+            </li>
+            <li>
+              <span><strong>Update:</strong> New incident policy form available.</span>
+              <span class="badge blue">New</span>
+            </li>
+            <li>
+              <span><strong>Holiday:</strong> Office hours posted in Resources.</span>
+              <span class="badge">Info</span>
+            </li>
+          </ul>
+        </section>
+
+        <!-- EDUCATION -->
+        <section class="card" id="education">
+          <h2>
+            Education & Training
+            <span class="hint">Assigned + optional</span>
+          </h2>
+
+          <div class="cards-2">
+            <div class="card" style="box-shadow:none; border:1px solid var(--border);">
+              <h2 style="font-size:16px; margin-bottom:6px;">Assigned Training</h2>
+              <ul class="list" style="margin-top:8px;">
+                <li>
+                  <span>Orientation (Module 1)</span>
+                  <span class="badge orange">In Progress</span>
+                </li>
+                <li>
+                  <span>HIPAA + Privacy</span>
+                  <span class="badge orange">Due</span>
+                </li>
+                <li>
+                  <span>Infection Control</span>
+                  <span class="badge green">Complete</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="card" style="box-shadow:none; border:1px solid var(--border);">
+              <h2 style="font-size:16px; margin-bottom:6px;">Learning Library</h2>
+              <ul class="list" style="margin-top:8px;">
+                <li><span>Safe Transfers</span><span class="badge">Video</span></li>
+                <li><span>De-escalation Basics</span><span class="badge">Course</span></li>
+                <li><span>Documentation Tips</span><span class="badge">Guide</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-primary" type="button" id="btnLaunchTraining">Launch Training</button>
+            <button class="btn btn-secondary" type="button" id="btnViewCertificates">View Certificates</button>
+          </div>
+
+          <p class="hint" style="margin-top:10px;">
+            Later: connect this to your LMS (training system) and show real due dates, scores, and completion status.
+          </p>
+        </section>
+
+        <!-- DOCUMENTS -->
+        <section class="card" id="documents">
+          <h2>
+            Submit Requested Documents
+            <span class="hint">Secure uploads (demo)</span>
+          </h2>
+
+          <label for="docType">Document Type</label>
+          <select id="docType" name="docType">
+            <option value="id">Government ID</option>
+            <option value="certification">Certification / License</option>
+            <option value="background">Background Check / Clearance</option>
+            <option value="vaccination">Vaccination / Medical</option>
+            <option value="handbook">Signed Handbook Acknowledgement</option>
+            <option value="other">Other</option>
+          </select>
+
+          <label for="docNotes">Notes (optional)</label>
+          <input id="docNotes" name="docNotes" type="text" placeholder="e.g., Renewed CNA license">
+
+          <label for="docUpload">Upload file(s)</label>
+          <input id="docUpload" name="docUpload" type="file" multiple>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btnSubmitDocs" type="button">Submit Documents</button>
+            <button class="btn btn-secondary" id="btnViewDocStatus" type="button">View Status</button>
+          </div>
+
+          <p class="hint" style="margin-top:10px;">
+            Later: add encryption, storage (S3/Drive), and an admin review workflow.
+          </p>
+        </section>
+
+        <!-- PROFILE / HELP -->
+        <section class="card" id="help">
+          <h2>
+            Profile & Help
+            <span class="hint">Quick links</span>
+          </h2>
+
+          <ul class="list">
+            <li><span>My Profile</span><span class="badge blue">Edit</span></li>
+            <li><span>Schedule (Coming Soon)</span><span class="badge">Planned</span></li>
+            <li><span>Policies & Handbook</span><span class="badge">Link</span></li>
+            <li><span>Contact HR</span><span class="badge">Support</span></li>
+          </ul>
+
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-secondary" type="button" id="btnOpenHandbook">Open Handbook</button>
+            <button class="btn btn-secondary" type="button" id="btnOpenOnboarding">Onboarding</button>
+          </div>
+        </section>
+
+      </aside>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-col">
+        <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+          <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
+          <span class="sr-only">Sulandra Health</span>
+        </a>
+        <p>© 2025 Sulandra Health. <br>Employee Portal.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Portal</h4>
+        <ul>
+          <li><a href="#clock">Clock In/Out</a></li>
+          <li><a href="#timesheet">Timesheet</a></li>
+          <li><a href="#education">Education</a></li>
+          <li><a href="#documents">Documents</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Support</h4>
+        <ul>
+          <li><a href="#incident">Incident Report</a></li>
+          <li><a href="#help">Help Center</a></li>
+          <li><a href="#">Contact HR</a></li>
+          <li><a href="index.html">Main Website</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Demo-only behaviors (no backend):
+    (function () {
+      const $ = (id) => document.getElementById(id);
+
+      const clockLog = $("clockLog");
+      const btnIn = $("btnClockIn");
+      const btnOut = $("btnClockOut");
+      const btnBreak = $("btnBreak");
+
+      let isClockedIn = false;
+      let onBreak = false;
+
+      function addLog(message, badgeText) {
+        // remove placeholder if present
+        const first = clockLog.querySelector("li");
+        if (first && first.textContent.includes("Clock activity will show here")) {
+          clockLog.innerHTML = "";
+        }
+
+        const li = document.createElement("li");
+        const left = document.createElement("span");
+        const right = document.createElement("span");
+
+        left.textContent = message;
+        right.className = "badge blue";
+        right.textContent = badgeText || "Log";
+
+        li.appendChild(left);
+        li.appendChild(right);
+        clockLog.prepend(li);
+      }
+
+      function nowString() {
+        const d = new Date();
+        return d.toLocaleString();
+      }
+
+      btnIn.addEventListener("click", () => {
+        if (isClockedIn) return;
+        isClockedIn = true;
+        onBreak = false;
+
+        btnIn.disabled = true;
+        btnOut.disabled = false;
+        btnBreak.disabled = false;
+        btnBreak.textContent = "Start Break";
+
+        addLog(`Clocked IN — ${nowString()}`, "IN");
+      });
+
+      btnOut.addEventListener("click", () => {
+        if (!isClockedIn) return;
+        isClockedIn = false;
+        onBreak = false;
+
+        btnIn.disabled = false;
+        btnOut.disabled = true;
+        btnBreak.disabled = true;
+
+        addLog(`Clocked OUT — ${nowString()}`, "OUT");
+      });
+
+      btnBreak.addEventListener("click", () => {
+        if (!isClockedIn) return;
+
+        onBreak = !onBreak;
+        btnBreak.textContent = onBreak ? "End Break" : "Start Break";
+        addLog(`${onBreak ? "Break STARTED" : "Break ENDED"} — ${nowString()}`, "BREAK");
+      });
+
+      $("btnSubmitTimesheet").addEventListener("click", () => {
+        alert("Timesheet submitted (demo). Connect this to your backend to store & approve timesheets.");
+      });
+      $("btnSaveDraftTimesheet").addEventListener("click", () => {
+        alert("Timesheet saved as draft (demo).");
+      });
+
+      $("btnSubmitIncident").addEventListener("click", () => {
+        alert("Incident report submitted (demo). Connect to your admin workflow + notifications.");
+      });
+      $("btnSaveDraftIncident").addEventListener("click", () => {
+        alert("Incident report saved as draft (demo).");
+      });
+
+      $("btnSubmitDocs").addEventListener("click", () => {
+        alert("Documents submitted (demo). Connect to secure upload + review queue.");
+      });
+
+      $("btnLaunchTraining").addEventListener("click", () => {
+        alert("Launch training (demo). Next step: link to your LMS/training provider.");
+      });
+
+      $("btnViewCertificates").addEventListener("click", () => {
+        alert("Certificates (demo). Next step: generate certificate list and downloads.");
+      });
+
+      $("btnOpenHandbook").addEventListener("click", () => {
+        // When you create handbook.html later, point here
+        // window.location.href = "handbook.html";
+        alert("Handbook page coming next. When ready, I’ll link it here.");
+      });
+
+      $("btnOpenOnboarding").addEventListener("click", () => {
+        // When you create onboarding.html later, point here
+        // window.location.href = "onboarding.html";
+        alert("Onboarding page coming next. When ready, I’ll link it here.");
+      });
+
+      $("btnSignOut").addEventListener("click", (e) => {
+        e.preventDefault();
+        alert("Signed out (demo). Next step: clear session + redirect to login.");
+      });
+    })();
+  </script>
+
+</body>
+</html>
