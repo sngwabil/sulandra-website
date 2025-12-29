@@ -360,6 +360,25 @@
     .small{ font-size: 13px; color: var(--text); }
     .muted{ color: var(--muted); }
 
+    /* uploaded files list */
+    .uploads-list{
+      margin-top: 12px;
+      border: 1px solid rgba(209,213,219,.7);
+      border-radius: 12px;
+      padding: 12px;
+      background:#fff;
+    }
+    .uploads-list h4{
+      margin:0 0 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing:.6px;
+      color: var(--brand);
+    }
+    .uploads-list ul{ margin:0; padding-left:18px; }
+    .uploads-list li{ font-size: 13px; color: var(--muted); margin:6px 0; }
+    .uploads-list a{ color: var(--brand); text-decoration: underline; }
+
     /* ====== RESPONSIVE (CAREERS header behavior) ====== */
     @media (max-width: 800px){
       :root{ --headerH:72px; }
@@ -421,16 +440,21 @@
         <h2>Application for: Direct Support Professional (DSP)</h2>
         <p class="sub">Complete the form below. Required fields are marked with an asterisk.</p>
 
-        <!-- BACKEND NOTE (for live submission):
-             - Create POST /api/applications to accept multipart/form-data (resume + docs + JSON fields)
-             - Store files + application record + test responses + computed score (if you choose to keep it)
-             - Set USE_SIMULATION=false and SUBMIT_URL below
+        <!--
+          ✅ FIXED:
+          - Uploads now actually upload to Firebase Storage.
+          - Firestore application document now stores EVERY uploaded file:
+            name, size, contentType, storagePath, downloadURL.
+          - UI now shows:
+            1) Selected files (before submit)
+            2) Uploaded files + clickable download links (after submit)
+          - Removed undefined showSubmitting() and made progress/status consistent.
         -->
 
         <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
           <input type="hidden" name="jobTitle" value="Direct Support Professional (DSP)" />
           <input type="hidden" name="company" value="Sulandra Community Living Services" />
-          <input type="hidden" name="version" value="1.1" />
+          <input type="hidden" name="version" value="1.2" />
           <input type="hidden" name="assessmentScore" id="assessmentScore" value="" />
           <input type="hidden" name="assessmentMax" id="assessmentMax" value="" />
           <input type="hidden" name="assessmentBreakdown" id="assessmentBreakdown" value="" />
@@ -951,6 +975,7 @@
                 <input type="file" id="coverLetter" name="coverLetter" accept=".pdf,.doc,.docx" />
               </div>
               <div class="file-meta">Max 10MB.</div>
+              <div class="error" id="err-coverLetter">Cover letter must be 10MB or less.</div>
             </div>
 
             <div style="margin-top:16px;">
@@ -963,6 +988,7 @@
                 <input type="file" id="cnaDoc" name="cnaDoc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
               </div>
               <div class="file-meta">Max 10MB.</div>
+              <div class="error" id="err-cnaDoc">CNA document must be 10MB or less.</div>
             </div>
 
             <div style="margin-top:16px;">
@@ -975,6 +1001,7 @@
                 <input type="file" id="stnaDoc" name="stnaDoc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
               </div>
               <div class="file-meta">Max 10MB.</div>
+              <div class="error" id="err-stnaDoc">STNA document must be 10MB or less.</div>
             </div>
 
             <div style="margin-top:16px;">
@@ -987,6 +1014,16 @@
                 <input type="file" id="otherDocs" name="otherDocs" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple />
               </div>
               <div class="file-meta">Max 10MB per file.</div>
+              <div class="error" id="err-otherDocs">Each “Other document” must be 10MB or less.</div>
+            </div>
+
+            <!-- ✅ Selected files (before submit) + Uploaded links (after submit) -->
+            <div class="uploads-list" aria-live="polite">
+              <h4>Files (selected / submitted)</h4>
+              <ul id="uploadsList">
+                <li class="muted">No files selected yet.</li>
+              </ul>
+              <div class="hint">After submit, this list will show the actual uploaded files with clickable links.</div>
             </div>
           </div>
 
@@ -1316,784 +1353,921 @@
   </div>
 
   <script type="module">
-  // 1. Import the Firebase functions
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    // ===== Firebase (App + Firestore + Storage) =====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import {
+      getFirestore, doc, setDoc, updateDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import {
+      getStorage, ref as sRef, uploadBytesResumable, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-  // 2. Your unique Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
-    authDomain: "sulandra-health-portal.firebaseapp.com",
-    projectId: "sulandra-health-portal",
-    storageBucket: "sulandra-health-portal.firebasestorage.app",
-    messagingSenderId: "547316167712",
-    appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845",
-    measurementId: "G-N2M4L7YMNB"
-  };
+    // ✅ Your Firebase config (kept)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
+      authDomain: "sulandra-health-portal.firebaseapp.com",
+      projectId: "sulandra-health-portal",
+      storageBucket: "sulandra-health-portal.firebasestorage.app",
+      messagingSenderId: "547316167712",
+      appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845",
+      measurementId: "G-N2M4L7YMNB"
+    };
 
-  // 3. Initialize Firebase and the Database
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  
-  /* ==========
-     Utilities
-     ========== */
-  const $ = (id) => document.getElementById(id);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-  function show(el, on=true){ el.classList.toggle('show', !!on); }
-  function setText(el, t){ el.textContent = t; }
-  function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+    /* ==========
+       Utilities
+       ========== */
+    const $ = (id) => document.getElementById(id);
 
-  function toast(title, body){
-    setText($('toastTitle'), title);
-    setText($('toastBody'), body);
-    show($('toast'), true);
-  }
+    function show(el, on=true){ el.classList.toggle('show', !!on); }
+    function setText(el, t){ el.textContent = t; }
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
-  $('toastCloseBtn').addEventListener('click', () => show($('toast'), false));
+    function toast(title, body){
+      setText($('toastTitle'), title);
+      setText($('toastBody'), body);
+      show($('toast'), true);
+    }
+    $('toastCloseBtn').addEventListener('click', () => show($('toast'), false));
 
-  function escapeHtml(str){
-    return String(str).replace(/[&<>"']/g, s => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    }[s]));
-  }
-
-  function validEmail(v){
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
-  }
-  function validPhone(v){
-    const digits = String(v||'').replace(/\D/g,'');
-    return digits.length >= 10;
-  }
-  function validZip(v){
-    return /^\d{5}(-\d{4})?$/.test(String(v||'').trim());
-  }
-  function bytesToHuman(bytes){
-    const u = ['B','KB','MB','GB'];
-    let i = 0, n = bytes;
-    while(n >= 1024 && i < u.length-1){ n/=1024; i++; }
-    return `${n.toFixed(n<10 && i>0 ? 1 : 0)} ${u[i]}`;
-  }
-  function fileOk(file, maxMB=10){
-    if(!file) return true;
-    const max = maxMB * 1024 * 1024;
-    return file.size <= max;
-  }
-
-  /* ==================================
-     Draft save/restore (localStorage)
-     ================================== */
-  const DRAFT_KEY = 'scls_dsp_application_draft_v11';
-
-  function collectFormDataAsObject(includeFilesMeta=false){
-    const form = $('appForm');
-    const obj = {};
-    const fd = new FormData(form);
-    const multiKeys = new Set(['days', 'certs', 'sa1','sa2','sa3','sa4','sa5']);
-
-    for(const [k, v] of fd.entries()){
-      if(v instanceof File){
-        if(includeFilesMeta){
-          if(v && v.name){
-            obj[k] = { name: v.name, type: v.type || 'unknown', size: v.size };
-          } else {
-            obj[k] = null;
-          }
-        }
-        continue;
-      }
-      if(multiKeys.has(k)){
-        obj[k] = obj[k] || [];
-        obj[k].push(v);
-      } else {
-        if(obj[k] !== undefined){
-          if(!Array.isArray(obj[k])) obj[k] = [obj[k]];
-          obj[k].push(v);
-        } else obj[k] = v;
-      }
+    function escapeHtml(str){
+      return String(str).replace(/[&<>"']/g, s => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[s]));
     }
 
-    // references are dynamic; capture them explicitly
-    obj.references = getReferencesAsArray();
+    function validEmail(v){
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v || '').trim());
+    }
+    function validPhone(v){
+      const digits = String(v||'').replace(/\D/g,'');
+      return digits.length >= 10;
+    }
+    function validZip(v){
+      return /^\d{5}(-\d{4})?$/.test(String(v||'').trim());
+    }
+    function bytesToHuman(bytes){
+      const u = ['B','KB','MB','GB'];
+      let i = 0, n = bytes;
+      while(n >= 1024 && i < u.length-1){ n/=1024; i++; }
+      return `${n.toFixed(n<10 && i>0 ? 1 : 0)} ${u[i]}`;
+    }
+    function fileOk(file, maxMB=10){
+      if(!file) return true;
+      const max = maxMB * 1024 * 1024;
+      return file.size <= max;
+    }
 
-    obj._savedAt = new Date().toISOString();
-    return obj;
-  }
+    /* =========================
+       Status / Progress UI
+       ========================= */
+    function setSubmitting(on){
+      $('submitBtn').disabled = on;
+      $('saveBtn').disabled = on;
+      $('previewBtn').disabled = on;
+      $('resetBtn').disabled = on;
+      show($('statusbar'), on);
+      if(!on) $('progressFill').style.width = '0%';
+    }
 
-  function saveDraft(){
-    const data = collectFormDataAsObject(true);
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
-    setText($('draftStatus'), 'Yes');
-    setText($('autosavePill'), 'Autosave: saved');
-    toast('Draft saved', 'Your draft has been saved on this device.');
-  }
+    function setProgress(pct, title, hint){
+      $('progressFill').style.width = `${clamp(pct,0,100)}%`;
+      if(title) setText($('statusTitle'), title);
+      if(hint) setText($('statusHint'), hint);
+    }
 
-  function loadDraft(){
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if(!raw) return false;
+    /* ==================================
+       Draft save/restore (localStorage)
+       ================================== */
+    const DRAFT_KEY = 'scls_dsp_application_draft_v12';
 
-    let data;
-    try { data = JSON.parse(raw); } catch { return false; }
+    function getReferencesAsArray(){
+      const cards = Array.from(document.querySelectorAll('.ref-card'));
+      return cards.map(card => {
+        const id = card.dataset.refId;
+        const name = document.querySelector(`#ref_name_${id}`)?.value?.trim() || '';
+        const relationship = document.querySelector(`#ref_relationship_${id}`)?.value?.trim() || '';
+        const phone = document.querySelector(`#ref_phone_${id}`)?.value?.trim() || '';
+        const email = document.querySelector(`#ref_email_${id}`)?.value?.trim() || '';
+        const company = document.querySelector(`#ref_company_${id}`)?.value?.trim() || '';
+        return { name, relationship, phone, email, company };
+      });
+    }
 
-    // restore standard inputs
-    const form = $('appForm');
-    for(const [k, v] of Object.entries(data)){
-      if(k.startsWith('_') || k === 'references') continue;
+    function collectFormDataAsObject(includeFilesMeta=false){
+      const form = $('appForm');
+      const obj = {};
+      const fd = new FormData(form);
 
-      if(Array.isArray(v)){
-        const nodes = form.querySelectorAll(`[name="${CSS.escape(k)}"]`);
-        if(nodes && nodes.length){
-          nodes.forEach(n => {
-            if(n.type === 'checkbox'){
-              n.checked = v.includes(n.value);
-            } else if(n.type === 'radio'){
-              n.checked = v.includes(n.value);
+      const multiKeys = new Set(['days', 'certs', 'sa1','sa2','sa3','sa4','sa5']);
+
+      for(const [k, v] of fd.entries()){
+        if(v instanceof File){
+          if(includeFilesMeta){
+            if(v && v.name){
+              if(k === 'otherDocs'){
+                obj.files = obj.files || {};
+                obj.files.otherDocs = obj.files.otherDocs || [];
+                obj.files.otherDocs.push({ name: v.name, type: v.type || 'unknown', size: v.size });
+              } else {
+                obj.files = obj.files || {};
+                obj.files[k] = { name: v.name, type: v.type || 'unknown', size: v.size };
+              }
             }
-          });
+          }
+          continue;
         }
-      } else {
-        const el = form.querySelector(`[name="${CSS.escape(k)}"]`);
-        if(!el) continue;
-        if(el.type === 'checkbox'){
-          el.checked = !!v;
-        } else if(el.type === 'radio'){
-          const radio = form.querySelector(`[name="${CSS.escape(k)}"][value="${CSS.escape(v)}"]`);
-          if(radio) radio.checked = true;
+
+        if(multiKeys.has(k)){
+          obj[k] = obj[k] || [];
+          obj[k].push(v);
         } else {
-          el.value = v ?? '';
+          if(obj[k] !== undefined){
+            if(!Array.isArray(obj[k])) obj[k] = [obj[k]];
+            obj[k].push(v);
+          } else obj[k] = v;
         }
       }
+
+      obj.references = getReferencesAsArray();
+      obj._savedAt = new Date().toISOString();
+      return obj;
     }
 
-    // restore references
-    if(Array.isArray(data.references) && data.references.length){
-      $('refsContainer').innerHTML = '';
-      data.references.forEach((r, idx) => addReferenceCard(r, idx >= 2));
-    } else {
-      // default refs if not stored
-      ensureMinReferences();
+    function saveDraft(){
+      const data = collectFormDataAsObject(true);
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+      setText($('draftStatus'), 'Yes');
+      setText($('autosavePill'), 'Autosave: saved');
+      toast('Draft saved', 'Your draft has been saved on this device.');
     }
 
-    setText($('draftStatus'), 'Yes');
-    setText($('autosavePill'), 'Autosave: loaded');
-    toast('Draft loaded', 'We restored a saved draft from this device. You may need to re-attach files.');
-    return true;
-  }
+    function loadDraft(){
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if(!raw) return false;
 
-  function clearDraft(){
-    localStorage.removeItem(DRAFT_KEY);
-    setText($('draftStatus'), 'No');
-    setText($('autosavePill'), 'Autosave: off');
-  }
+      let data;
+      try { data = JSON.parse(raw); } catch { return false; }
 
-  /* =========================
-     Errors / Validation
-     ========================= */
-  function setError(id, on){
-    const el = $(id);
-    if(!el) return;
-    el.classList.toggle('show', !!on);
-  }
+      const form = $('appForm');
+      for(const [k, v] of Object.entries(data)){
+        if(k.startsWith('_') || k === 'references' || k === 'files') continue;
 
-  function getCheckedValues(name){
-    const nodes = document.querySelectorAll(`input[name="${CSS.escape(name)}"]:checked`);
-    return Array.from(nodes).map(n => n.value);
-  }
-
-  function validateCerts(){
-    // must select at least one: either "none" or one/more certs
-    const none = $('cert_none').checked;
-    const selected = getCheckedValues('certs');
-    if(!none && selected.length === 0) return { ok:false, missing: true };
-
-    // if none is selected, no cert details required
-    if(none) return { ok:true };
-
-    // validate details for each selected cert
-    let ok = true;
-    function reqDates(prefix){
-      const issue = $(prefix + '_issue');
-      const exp = $(prefix + '_exp');
-      const errIssue = $('err-' + prefix + '_issue');
-      const errExp = $('err-' + prefix + '_exp');
-      const hasIssue = !!(issue && issue.value);
-      const hasExp = !!(exp && exp.value);
-      if(errIssue) errIssue.classList.toggle('show', !hasIssue);
-      if(errExp) errExp.classList.toggle('show', !hasExp);
-      if(!hasIssue || !hasExp) ok = false;
-    }
-
-    selected.forEach(v => {
-      if(v === 'CPR') reqDates('cert_cpr');
-      if(v === 'First Aid') reqDates('cert_firstaid');
-      if(v === 'Medication Administration') reqDates('cert_medadmin');
-      if(v === 'CPI/De-escalation') reqDates('cert_cpi');
-      if(v === 'Other'){
-        const name = $('cert_other_name');
-        const hasName = !!(name && name.value.trim());
-        setError('err-cert_other_name', !hasName);
-        if(!hasName) ok = false;
-        reqDates('cert_other');
+        if(Array.isArray(v)){
+          const nodes = form.querySelectorAll(`[name="${CSS.escape(k)}"]`);
+          if(nodes && nodes.length){
+            nodes.forEach(n => {
+              if(n.type === 'checkbox') n.checked = v.includes(n.value);
+              else if(n.type === 'radio') n.checked = v.includes(n.value);
+            });
+          }
+        } else {
+          const el = form.querySelector(`[name="${CSS.escape(k)}"]`);
+          if(!el) continue;
+          if(el.type === 'checkbox') el.checked = !!v;
+          else if(el.type === 'radio'){
+            const radio = form.querySelector(`[name="${CSS.escape(k)}"][value="${CSS.escape(v)}"]`);
+            if(radio) radio.checked = true;
+          } else el.value = v ?? '';
+        }
       }
-    });
 
-    return { ok };
-  }
+      if(Array.isArray(data.references) && data.references.length){
+        $('refsContainer').innerHTML = '';
+        data.references.forEach((r, idx) => addReferenceCard(r, idx >= 2));
+      } else {
+        ensureMinReferences();
+      }
 
-  function validateReferences(){
-    const refs = getReferencesAsArray();
-    // need at least 2 complete refs
-    const complete = refs.filter(r => r.name && r.phone && r.relationship).length;
-    return { ok: complete >= 2, completeCount: complete, total: refs.length };
-  }
-
-  function quizAnsweredCount(){
-    let count = 0;
-
-    // MC: 5
-    for(let i=1;i<=5;i++){
-      if(document.querySelector(`input[name="mc${i}"]:checked`)) count++;
+      setText($('draftStatus'), 'Yes');
+      setText($('autosavePill'), 'Autosave: loaded');
+      toast('Draft loaded', 'We restored a saved draft from this device. You may need to re-attach files.');
+      return true;
     }
 
-    // SA: 5 (must select at least one option to count as answered)
-    for(let i=1;i<=5;i++){
-      if(getCheckedValues(`sa${i}`).length > 0) count++;
+    function clearDraft(){
+      localStorage.removeItem(DRAFT_KEY);
+      setText($('draftStatus'), 'No');
+      setText($('autosavePill'), 'Autosave: off');
     }
 
-    // Scenario responses: 5
-    for(let i=1;i<=5;i++){
-      const v = document.querySelector(`[name="fb${i}"]`)?.value || '';
-      if(v.trim().length > 0) count++;
+    /* =========================
+       Errors / Validation
+       ========================= */
+    function setError(id, on){
+      const el = $(id);
+      if(!el) return;
+      el.classList.toggle('show', !!on);
     }
 
-    return count;
-  }
-
-  function validateQuizComplete(){
-    return quizAnsweredCount() === 15;
-  }
-
-  /* =========================
-     Assessment scoring
-     ========================= */
-  const QUIZ_KEY = {
-    mc: { mc1:'b', mc2:'b', mc3:'b', mc4:'b', mc5:'b' },
-    sa: {
-      sa1: new Set(['bathing','dressing','toileting','eating']),
-      sa2: new Set(['handwashing','gloves','cleaning','covercough']),
-      sa3: new Set(['askpref','plainlang','privacy']),
-      sa4: new Set(['injury','mederror','abuse','missing']),
-      sa5: new Set(['times','quotes','observed'])
-    }
-  };
-
-  function scoreQuiz(){
-    const breakdown = { mc:{}, sa:{}, fb:{} };
-    let score = 0;
-    let max = 10; // only objective questions are auto-scored (1-10)
-
-    // MC (1-5)
-    for(let i=1;i<=5;i++){
-      const q = `mc${i}`;
-      const ans = document.querySelector(`input[name="${q}"]:checked`)?.value || '';
-      const correct = QUIZ_KEY.mc[q];
-      const ok = ans === correct;
-      breakdown.mc[q] = { answer: ans || null, correct, ok };
-      if(ok) score++;
+    function getCheckedValues(name){
+      const nodes = document.querySelectorAll(`input[name="${CSS.escape(name)}"]:checked`);
+      return Array.from(nodes).map(n => n.value);
     }
 
-    // SA exact match (6-10)
-    for(let i=1;i<=5;i++){
-      const q = `sa${i}`;
-      const selected = new Set(getCheckedValues(q));
-      const correct = QUIZ_KEY.sa[q];
+    function validateCerts(){
+      const none = $('cert_none').checked;
+      const selected = getCheckedValues('certs');
+      if(!none && selected.length === 0) return { ok:false, missing: true };
+      if(none) return { ok:true };
 
       let ok = true;
-      for(const c of correct){ if(!selected.has(c)) ok = false; }
-      for(const s of selected){ if(!correct.has(s)) ok = false; }
+      function reqDates(prefix){
+        const issue = $(prefix + '_issue');
+        const exp = $(prefix + '_exp');
+        const errIssue = $('err-' + prefix + '_issue');
+        const errExp = $('err-' + prefix + '_exp');
+        const hasIssue = !!(issue && issue.value);
+        const hasExp = !!(exp && exp.value);
+        if(errIssue) errIssue.classList.toggle('show', !hasIssue);
+        if(errExp) errExp.classList.toggle('show', !hasExp);
+        if(!hasIssue || !hasExp) ok = false;
+      }
 
-      breakdown.sa[q] = {
-        answer: Array.from(selected),
-        correct: Array.from(correct),
-        ok
-      };
-      if(ok) score++;
+      selected.forEach(v => {
+        if(v === 'CPR') reqDates('cert_cpr');
+        if(v === 'First Aid') reqDates('cert_firstaid');
+        if(v === 'Medication Administration') reqDates('cert_medadmin');
+        if(v === 'CPI/De-escalation') reqDates('cert_cpi');
+        if(v === 'Other'){
+          const name = $('cert_other_name');
+          const hasName = !!(name && name.value.trim());
+          setError('err-cert_other_name', !hasName);
+          if(!hasName) ok = false;
+          reqDates('cert_other');
+        }
+      });
+
+      return { ok };
     }
 
-    // Scenario responses stored (not auto-scored)
-    for(let i=1;i<=5;i++){
-      const q = `fb${i}`;
-      const ansRaw = document.querySelector(`[name="${q}"]`)?.value || '';
-      breakdown.fb[q] = { answer: ansRaw || null };
+    function validateReferences(){
+      const refs = getReferencesAsArray();
+      const complete = refs.filter(r => r.name && r.phone && r.relationship).length;
+      return { ok: complete >= 2, completeCount: complete, total: refs.length };
     }
 
-    return { score, max, breakdown };
-  }
+    function quizAnsweredCount(){
+      let count = 0;
+      for(let i=1;i<=5;i++){
+        if(document.querySelector(`input[name="mc${i}"]:checked`)) count++;
+      }
+      for(let i=1;i<=5;i++){
+        if(getCheckedValues(`sa${i}`).length > 0) count++;
+      }
+      for(let i=1;i<=5;i++){
+        const v = document.querySelector(`[name="fb${i}"]`)?.value || '';
+        if(v.trim().length > 0) count++;
+      }
+      return count;
+    }
 
-  /* =========================
-     Dynamic Certifications UI
-     ========================= */
-  function toggleCertDetails(){
-    const none = $('cert_none').checked;
-    const certBoxes = document.querySelectorAll('input[name="certs"]');
-    certBoxes.forEach(cb => { cb.disabled = none; if(none) cb.checked = false; });
+    function validateQuizComplete(){
+      return quizAnsweredCount() === 15;
+    }
 
-    ['cert_cpr','cert_firstaid','cert_medadmin','cert_cpi','cert_other'].forEach(prefix => {
-      $(prefix + '_details').classList.remove('show');
+    /* =========================
+       Assessment scoring
+       ========================= */
+    const QUIZ_KEY = {
+      mc: { mc1:'b', mc2:'b', mc3:'b', mc4:'b', mc5:'b' },
+      sa: {
+        sa1: new Set(['bathing','dressing','toileting','eating']),
+        sa2: new Set(['handwashing','gloves','cleaning','covercough']),
+        sa3: new Set(['askpref','plainlang','privacy']),
+        sa4: new Set(['injury','mederror','abuse','missing']),
+        sa5: new Set(['times','quotes','observed'])
+      }
+    };
+
+    function scoreQuiz(){
+      const breakdown = { mc:{}, sa:{}, fb:{} };
+      let score = 0;
+      let max = 10;
+
+      for(let i=1;i<=5;i++){
+        const q = `mc${i}`;
+        const ans = document.querySelector(`input[name="${q}"]:checked`)?.value || '';
+        const correct = QUIZ_KEY.mc[q];
+        const ok = ans === correct;
+        breakdown.mc[q] = { answer: ans || null, correct, ok };
+        if(ok) score++;
+      }
+
+      for(let i=1;i<=5;i++){
+        const q = `sa${i}`;
+        const selected = new Set(getCheckedValues(q));
+        const correct = QUIZ_KEY.sa[q];
+
+        let ok = true;
+        for(const c of correct){ if(!selected.has(c)) ok = false; }
+        for(const s of selected){ if(!correct.has(s)) ok = false; }
+
+        breakdown.sa[q] = {
+          answer: Array.from(selected),
+          correct: Array.from(correct),
+          ok
+        };
+        if(ok) score++;
+      }
+
+      for(let i=1;i<=5;i++){
+        const q = `fb${i}`;
+        const ansRaw = document.querySelector(`[name="${q}"]`)?.value || '';
+        breakdown.fb[q] = { answer: ansRaw || null };
+      }
+
+      return { score, max, breakdown };
+    }
+
+    /* =========================
+       Dynamic Certifications UI
+       ========================= */
+    function toggleCertDetails(){
+      const none = $('cert_none').checked;
+      const certBoxes = document.querySelectorAll('input[name="certs"]');
+      certBoxes.forEach(cb => { cb.disabled = none; if(none) cb.checked = false; });
+
+      ['cert_cpr','cert_firstaid','cert_medadmin','cert_cpi','cert_other'].forEach(prefix => {
+        $(prefix + '_details').classList.remove('show');
+      });
+
+      if(none) return;
+
+      const selected = getCheckedValues('certs');
+      if(selected.includes('CPR')) $('cert_cpr_details').classList.add('show');
+      if(selected.includes('First Aid')) $('cert_firstaid_details').classList.add('show');
+      if(selected.includes('Medication Administration')) $('cert_medadmin_details').classList.add('show');
+      if(selected.includes('CPI/De-escalation')) $('cert_cpi_details').classList.add('show');
+      if(selected.includes('Other')) $('cert_other_details').classList.add('show');
+    }
+    $('cert_none').addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
+    document.querySelectorAll('input[name="certs"]').forEach(cb => cb.addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); }));
+
+    /* =========================
+       References (2 required + add more)
+       ========================= */
+    let refCounter = 0;
+
+    function addReferenceCard(prefill=null, allowRemove=true){
+      refCounter++;
+      const idx = refCounter;
+      const box = document.createElement('div');
+      box.className = 'ref-card';
+      box.dataset.refId = String(idx);
+
+      box.innerHTML = `
+        <div class="ref-head">
+          <strong>Reference</strong>
+          ${allowRemove ? `<button type="button" class="ghost" data-remove="1">Remove</button>` : `<span class="pill">Required</span>`}
+        </div>
+
+        <div class="row">
+          <div>
+            <label class="required" for="ref_name_${idx}">Name</label>
+            <input id="ref_name_${idx}" name="ref_name_${idx}" type="text" value="${prefill?.name ? escapeHtml(prefill.name) : ''}" required />
+          </div>
+          <div>
+            <label class="required" for="ref_relationship_${idx}">Relationship</label>
+            <input id="ref_relationship_${idx}" name="ref_relationship_${idx}" type="text" value="${prefill?.relationship ? escapeHtml(prefill.relationship) : ''}" required />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <div>
+            <label class="required" for="ref_phone_${idx}">Phone</label>
+            <input id="ref_phone_${idx}" name="ref_phone_${idx}" type="tel" placeholder="(555) 555-5555" value="${prefill?.phone ? escapeHtml(prefill.phone) : ''}" required />
+          </div>
+          <div>
+            <label for="ref_email_${idx}">Email (optional)</label>
+            <input id="ref_email_${idx}" name="ref_email_${idx}" type="email" value="${prefill?.email ? escapeHtml(prefill.email) : ''}" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label for="ref_company_${idx}">Company / Organization (optional)</label>
+          <input id="ref_company_${idx}" name="ref_company_${idx}" type="text" value="${prefill?.company ? escapeHtml(prefill.company) : ''}" />
+        </div>
+      `;
+
+      box.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-remove="1"]');
+        if(btn){
+          box.remove();
+          updateProgress();
+          scheduleAutosave();
+        }
+      });
+
+      box.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
+
+      $('refsContainer').appendChild(box);
+    }
+
+    function ensureMinReferences(){
+      $('refsContainer').innerHTML = '';
+      refCounter = 0;
+      addReferenceCard(null, false);
+      addReferenceCard(null, false);
+    }
+
+    $('addRefBtn').addEventListener('click', () => addReferenceCard(null, true));
+
+    /* =========================
+       File UI + “SEE ALL FILES”
+       ========================= */
+    function updateFileUI(inputId, chosenId, pillId, emptyLabel, optionalPillText='Optional'){
+      const input = $(inputId);
+      const f = input.files[0];
+      if(!f){
+        setText($(chosenId), emptyLabel);
+        setText($(pillId), optionalPillText);
+        return;
+      }
+      setText($(chosenId), f.name);
+      setText($(pillId), bytesToHuman(f.size));
+    }
+
+    function updateResumeUI(){
+      const f = $('resume').files[0];
+      if(!f){
+        setText($('resume-chosen'), 'Click to choose resume…');
+        setText($('resume-pill'), 'No file');
+        setText($('resumeStatus'), 'No');
+        return;
+      }
+      setText($('resume-chosen'), f.name);
+      setText($('resume-pill'), bytesToHuman(f.size));
+      setText($('resumeStatus'), 'Yes');
+    }
+
+    function listItem(text, href=null){
+      const li = document.createElement('li');
+      if(href){
+        li.innerHTML = `<a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`;
+      } else {
+        li.textContent = text;
+      }
+      return li;
+    }
+
+    function getSelectedFiles(){
+      const resume = $('resume').files?.[0] || null;
+      const cover = $('coverLetter').files?.[0] || null;
+      const cna = $('cnaDoc').files?.[0] || null;
+      const stna = $('stnaDoc').files?.[0] || null;
+      const other = Array.from($('otherDocs').files || []);
+      return { resume, cover, cna, stna, other };
+    }
+
+    function updateUploadsListSelected(){
+      const ul = $('uploadsList');
+      ul.innerHTML = '';
+      const { resume, cover, cna, stna, other } = getSelectedFiles();
+
+      const rows = [];
+      if(resume) rows.push(`Resume: ${resume.name} (${bytesToHuman(resume.size)})`);
+      if(cover) rows.push(`Cover letter: ${cover.name} (${bytesToHuman(cover.size)})`);
+      if(cna) rows.push(`CNA document: ${cna.name} (${bytesToHuman(cna.size)})`);
+      if(stna) rows.push(`STNA document: ${stna.name} (${bytesToHuman(stna.size)})`);
+      if(other.length) other.forEach((f,i)=> rows.push(`Other #${i+1}: ${f.name} (${bytesToHuman(f.size)})`));
+
+      if(rows.length === 0){
+        ul.appendChild(listItem('No files selected yet.'));
+        return;
+      }
+      rows.forEach(r => ul.appendChild(listItem(r)));
+    }
+
+    function updateUploadsListUploaded(uploadedFiles){
+      // uploadedFiles: Array<{label,name,size,downloadURL}>
+      const ul = $('uploadsList');
+      ul.innerHTML = '';
+      if(!uploadedFiles?.length){
+        ul.appendChild(listItem('No uploaded files recorded.'));
+        return;
+      }
+      uploadedFiles.forEach(f => {
+        const label = f.label ? `${f.label}: ` : '';
+        const text = `${label}${f.name} (${bytesToHuman(f.size)})`;
+        ul.appendChild(listItem(text, f.downloadURL));
+      });
+    }
+
+    $('resume').addEventListener('change', () => { updateResumeUI(); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
+    $('coverLetter').addEventListener('change', () => { updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
+    $('cnaDoc').addEventListener('change', () => { updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
+    $('stnaDoc').addEventListener('change', () => { updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
+    $('otherDocs').addEventListener('change', () => {
+      const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
+      setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
+      setText($('otherdocs-pill'), `${n} files`);
+      updateProgress(); scheduleAutosave(); updateUploadsListSelected();
     });
 
-    if(none) return;
+    /* =========
+       Autosave
+       ========= */
+    let autosaveTimer = null;
+    function scheduleAutosave(){
+      const any = ['firstName','lastName','email','phone'].some(id => String($(id).value||'').trim().length > 0);
+      if(!any) return;
 
-    const selected = getCheckedValues('certs');
-    if(selected.includes('CPR')) $('cert_cpr_details').classList.add('show');
-    if(selected.includes('First Aid')) $('cert_firstaid_details').classList.add('show');
-    if(selected.includes('Medication Administration')) $('cert_medadmin_details').classList.add('show');
-    if(selected.includes('CPI/De-escalation')) $('cert_cpi_details').classList.add('show');
-    if(selected.includes('Other')) $('cert_other_details').classList.add('show');
-  }
-  $('cert_none').addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); });
-  document.querySelectorAll('input[name="certs"]').forEach(cb => cb.addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); }));
+      setText($('autosavePill'), 'Autosave: pending…');
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => saveDraft(), 1100);
+    }
 
-  /* =========================
-     References (2 required + add more)
-     ========================= */
-  let refCounter = 0;
+    $('saveBtn').addEventListener('click', () => saveDraft());
 
-  function addReferenceCard(prefill=null, allowRemove=true){
-    refCounter++;
-    const idx = refCounter;
-    const box = document.createElement('div');
-    box.className = 'ref-card';
-    box.dataset.refId = String(idx);
-
-    box.innerHTML = `
-      <div class="ref-head">
-        <strong>Reference</strong>
-        ${allowRemove ? `<button type="button" class="ghost" data-remove="1">Remove</button>` : `<span class="pill">Required</span>`}
-      </div>
-
-      <div class="row">
-        <div>
-          <label class="required" for="ref_name_${idx}">Name</label>
-          <input id="ref_name_${idx}" name="ref_name_${idx}" type="text" value="${prefill?.name ? escapeHtml(prefill.name) : ''}" required />
-        </div>
-        <div>
-          <label class="required" for="ref_relationship_${idx}">Relationship</label>
-          <input id="ref_relationship_${idx}" name="ref_relationship_${idx}" type="text" value="${prefill?.relationship ? escapeHtml(prefill.relationship) : ''}" required />
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:12px;">
-        <div>
-          <label class="required" for="ref_phone_${idx}">Phone</label>
-          <input id="ref_phone_${idx}" name="ref_phone_${idx}" type="tel" placeholder="(555) 555-5555" value="${prefill?.phone ? escapeHtml(prefill.phone) : ''}" required />
-        </div>
-        <div>
-          <label for="ref_email_${idx}">Email (optional)</label>
-          <input id="ref_email_${idx}" name="ref_email_${idx}" type="email" value="${prefill?.email ? escapeHtml(prefill.email) : ''}" />
-        </div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <label for="ref_company_${idx}">Company / Organization (optional)</label>
-        <input id="ref_company_${idx}" name="ref_company_${idx}" type="text" value="${prefill?.company ? escapeHtml(prefill.company) : ''}" />
-      </div>
-    `;
-
-    box.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-remove="1"]');
-      if(btn){
-        box.remove();
+    $('resetBtn').addEventListener('click', () => {
+      if(confirm('Clear the entire form and remove the saved draft from this device?')){
+        $('appForm').reset();
+        clearDraft();
+        ensureMinReferences();
+        updateResumeUI();
+        updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
+        updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
+        updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
+        setText($('otherdocs-chosen'), 'Click to choose documents…');
+        setText($('otherdocs-pill'), '0 files');
+        toggleCertDetails();
         updateProgress();
-        scheduleAutosave();
+        updateQuizStatus();
+        updateUploadsListSelected();
+        toast('Cleared', 'Form and saved draft were cleared.');
       }
     });
 
-    box.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
-
-    $('refsContainer').appendChild(box);
-  }
-
-  function ensureMinReferences(){
-    $('refsContainer').innerHTML = '';
-    refCounter = 0;
-    addReferenceCard(null, false);
-    addReferenceCard(null, false);
-  }
-
-  function getReferencesAsArray(){
-    const cards = Array.from(document.querySelectorAll('.ref-card'));
-    return cards.map(card => {
-      const id = card.dataset.refId;
-      const name = document.querySelector(`#ref_name_${id}`)?.value?.trim() || '';
-      const relationship = document.querySelector(`#ref_relationship_${id}`)?.value?.trim() || '';
-      const phone = document.querySelector(`#ref_phone_${id}`)?.value?.trim() || '';
-      const email = document.querySelector(`#ref_email_${id}`)?.value?.trim() || '';
-      const company = document.querySelector(`#ref_company_${id}`)?.value?.trim() || '';
-      return { name, relationship, phone, email, company };
-    });
-  }
-
-  $('addRefBtn').addEventListener('click', () => addReferenceCard(null, true));
-
-  /* =========================
-     File UI
-     ========================= */
-  function updateFileUI(inputId, chosenId, pillId, emptyLabel, optionalPillText='Optional'){
-    const input = $(inputId);
-    const f = input.files[0];
-    if(!f){
-      setText($(chosenId), emptyLabel);
-      setText($(pillId), optionalPillText);
-      return;
-    }
-    setText($(chosenId), f.name);
-    setText($(pillId), bytesToHuman(f.size));
-  }
-
-  function updateResumeUI(){
-    const f = $('resume').files[0];
-    if(!f){
-      setText($('resume-chosen'), 'Click to choose resume…');
-      setText($('resume-pill'), 'No file');
-      setText($('resumeStatus'), 'No');
-      return;
-    }
-    setText($('resume-chosen'), f.name);
-    setText($('resume-pill'), bytesToHuman(f.size));
-    setText($('resumeStatus'), 'Yes');
-  }
-
-  $('resume').addEventListener('change', () => { updateResumeUI(); updateProgress(); scheduleAutosave(); });
-  $('coverLetter').addEventListener('change', () => { updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…'); updateProgress(); scheduleAutosave(); });
-  $('cnaDoc').addEventListener('change', () => { updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…'); updateProgress(); scheduleAutosave(); });
-  $('stnaDoc').addEventListener('change', () => { updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…'); updateProgress(); scheduleAutosave(); });
-  $('otherDocs').addEventListener('change', () => {
-    const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
-    setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
-    setText($('otherdocs-pill'), `${n} files`);
-    updateProgress(); scheduleAutosave();
-  });
-
-  /* =========
-     Autosave
-     ========= */
-  let autosaveTimer = null;
-  function scheduleAutosave(){
-    const any = ['firstName','lastName','email','phone'].some(id => String($(id).value||'').trim().length > 0);
-    if(!any) return;
-
-    setText($('autosavePill'), 'Autosave: pending…');
-    clearTimeout(autosaveTimer);
-    autosaveTimer = setTimeout(() => saveDraft(), 1100);
-  }
-
-  $('saveBtn').addEventListener('click', () => saveDraft());
-
-  $('resetBtn').addEventListener('click', () => {
-    if(confirm('Clear the entire form and remove the saved draft from this device?')){
-      $('appForm').reset();
-      clearDraft();
-      ensureMinReferences();
-      updateResumeUI();
-      updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
-      updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
-      updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
-      setText($('otherdocs-chosen'), 'Click to choose documents…');
-      setText($('otherdocs-pill'), '0 files');
-      toggleCertDetails();
-      updateProgress();
-      updateQuizStatus();
-      toast('Cleared', 'Form and saved draft were cleared.');
-    }
-  });
-
-  $('previewBtn').addEventListener('click', () => {
-    const draft = collectFormDataAsObject(true);
-    const scored = scoreQuiz();
-    draft.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
-
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
-    if(!w) return alert('Pop-up blocked. Please allow pop-ups to preview.');
-    w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(draft, null, 2))}</pre>`);
-    w.document.close();
-  });
-
-  /* =========================
-     Required-fields progress
-     ========================= */
-  const requiredSelectors = [
-    '#firstName','#lastName','#dob','#maritalStatus',
-    '#email','#phone','#address1','#city','#state','#zip',
-    '#emgName','#emgRelation','#emgPhone',
-    '#startDate','#employmentType','#shiftPref',
-    '#exp','#education',
-    '#licenseNumber','#licenseExp','#dlState','#hasValidDL',
-    '#age18','#workAuth',
-    'input[name="screening"]',
-    '#resume',
-    '#lastEmployer','#lastJobTitle','#lastStartDate','#lastEndDate','#leaveReason','#contactPrevEmployer',
-    '#consentContactRefs',
-    '#consentTruth','#consentContact','#consentPunctual','#consentESign','#signature','#signatureDate'
-  ];
-
-  function isFieldComplete(sel){
-    if(sel === 'input[name="screening"]'){
-      return !!document.querySelector('input[name="screening"]:checked');
-    }
-    const el = document.querySelector(sel);
-    if(!el) return true;
-    if(el.type === 'checkbox') return el.checked;
-    if(el.type === 'file') return el.files && el.files.length > 0;
-    return String(el.value || '').trim().length > 0;
-  }
-
-  function updateQuizStatus(){
-    const answered = quizAnsweredCount();
-    setText($('quizStatus'), `${answered}/15`);
-  }
-
-  function updateProgress(){
-    const base = requiredSelectors.length + 4;
-    let done = 0;
-
-    requiredSelectors.forEach(s => { if(isFieldComplete(s)) done++; });
-
-    if(getCheckedValues('days').length > 0) done++;
-
-    const certCheck = validateCerts();
-    if(certCheck.ok) done++;
-
-    const refsCheck = validateReferences();
-    if(refsCheck.ok) done++;
-
-    updateQuizStatus();
-    if(validateQuizComplete()) done++;
-
-    const pct = Math.round((done / base) * 100);
-    setText($('reqCount'), `${pct}%`);
-  }
-
-  document.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
-  document.addEventListener('change', () => { updateProgress(); scheduleAutosave(); });
-
-  /* ===============================
-     Submit: REAL upload via fetch()
-     =============================== */
-  const USE_SIMULATION = false; // set false for production
-  const SUBMIT_URL = '/api/applications';
-
-  function setSubmitting(on){
-    $('submitBtn').disabled = on;
-    $('saveBtn').disabled = on;
-    $('previewBtn').disabled = on;
-    $('resetBtn').disabled = on;
-    show($('statusbar'), on);
-  }
-
-  function setProgress(pct, title, hint){
-    $('progressFill').style.width = `${clamp(pct,0,100)}%`;
-    if(title) setText($('statusTitle'), title);
-    if(hint) setText($('statusHint'), hint);
-  }
-
-  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
-  async function realSubmit() {
-  showSubmitting(); // Shows the progress bar
-
-  try {
-    // Collect all form data into one object
-    const formData = collectFormDataAsObject();
-    
-    // Add a timestamp and a default status
-    formData.submittedAt = new Date().toISOString();
-    formData.status = "Pending Review";
-
-    // SAVE TO FIREBASE: This puts the data in your "applications" folder
-    const docRef = await addDoc(collection(db, "applications"), formData);
-    
-    console.log("Application submitted with ID: ", docRef.id);
-    
-    setProgress(100, 'Submitted!', 'Success.');
-    alert('Thank you! Your application has been received.');
-    clearDraft(); // Clears the local saved draft
-    window.location.href = 'Careers.html'; // Redirects back to careers
-
-  } catch (error) {
-    console.error("Error adding document: ", error);
-    setSubmitting(false);
-    setProgress(0);
-    alert('Submission failed. Please check your internet and try again.');
-  }
-}
-
-  /* =========================
-     Main validation + submit
-     ========================= */
-  function validateForm(){
-    let ok = true;
-
-    [
-      'err-firstName','err-lastName','err-dob','err-maritalStatus','err-email','err-phone','err-address1','err-city','err-state','err-zip',
-      'err-emgName','err-emgRelation','err-emgPhone',
-      'err-startDate','err-employmentType','err-shiftPref','err-days',
-      'err-exp','err-education',
-      'err-licenseNumber','err-licenseExp','err-dlState','err-hasValidDL',
-      'err-age18','err-workAuth','err-screening',
-      'err-certs',
-      'err-resume',
-      'err-lastEmployer','err-lastJobTitle','err-lastStartDate','err-lastEndDate','err-leaveReason','err-contactPrevEmployer',
-      'err-refs','err-consentContactRefs',
-      'err-quiz',
-      'err-consentTruth','err-consentContact','err-consentPunctual','err-consentESign','err-signature','err-signatureDate'
-    ].forEach(eid => setError(eid,false));
-
-    if(!$('firstName').value.trim()){ setError('err-firstName', true); ok=false; }
-    if(!$('lastName').value.trim()){ setError('err-lastName', true); ok=false; }
-    if(!$('dob').value){ setError('err-dob', true); ok=false; }
-    if(!$('maritalStatus').value){ setError('err-maritalStatus', true); ok=false; }
-
-    if(!validEmail($('email').value)){ setError('err-email', true); ok=false; }
-    if(!validPhone($('phone').value)){ setError('err-phone', true); ok=false; }
-    if(!$('address1').value.trim()){ setError('err-address1', true); ok=false; }
-    if(!$('city').value.trim()){ setError('err-city', true); ok=false; }
-    if(!$('state').value){ setError('err-state', true); ok=false; }
-    if(!validZip($('zip').value)){ setError('err-zip', true); ok=false; }
-
-    if(!$('emgName').value.trim()){ setError('err-emgName', true); ok=false; }
-    if(!$('emgRelation').value.trim()){ setError('err-emgRelation', true); ok=false; }
-    if(!validPhone($('emgPhone').value)){ setError('err-emgPhone', true); ok=false; }
-
-    if(!$('startDate').value){ setError('err-startDate', true); ok=false; }
-    if(!$('employmentType').value){ setError('err-employmentType', true); ok=false; }
-    if(!$('shiftPref').value){ setError('err-shiftPref', true); ok=false; }
-    if(getCheckedValues('days').length === 0){ setError('err-days', true); ok=false; }
-
-    if(!$('exp').value){ setError('err-exp', true); ok=false; }
-    if(!$('education').value){ setError('err-education', true); ok=false; }
-
-    if(!$('licenseNumber').value.trim()){ setError('err-licenseNumber', true); ok=false; }
-    if(!$('licenseExp').value){ setError('err-licenseExp', true); ok=false; }
-    if(!$('dlState').value){ setError('err-dlState', true); ok=false; }
-    if(!$('hasValidDL').value){ setError('err-hasValidDL', true); ok=false; }
-
-    if(!$('age18').value){ setError('err-age18', true); ok=false; }
-    if(!$('workAuth').value){ setError('err-workAuth', true); ok=false; }
-    if(!document.querySelector('input[name="screening"]:checked')){ setError('err-screening', true); ok=false; }
-
-    const certCheck = validateCerts();
-    if(!certCheck.ok){
-      setError('err-certs', true);
-      ok = false;
-    }
-    if(certCheck.missing){
-      setError('err-certs', true);
-      ok = false;
-    }
-
-    const resume = $('resume').files[0];
-    if(!resume || !fileOk(resume, 10)){ setError('err-resume', true); ok=false; }
-
-    if(!$('lastEmployer').value.trim()){ setError('err-lastEmployer', true); ok=false; }
-    if(!$('lastJobTitle').value.trim()){ setError('err-lastJobTitle', true); ok=false; }
-    if(!$('lastStartDate').value){ setError('err-lastStartDate', true); ok=false; }
-    if(!$('lastEndDate').value){ setError('err-lastEndDate', true); ok=false; }
-    if(!$('leaveReason').value.trim()){ setError('err-leaveReason', true); ok=false; }
-    if(!$('contactPrevEmployer').value){ setError('err-contactPrevEmployer', true); ok=false; }
-
-    const refCheck = validateReferences();
-    if(!refCheck.ok){
-      setError('err-refs', true);
-      ok = false;
-    }
-    if(!$('consentContactRefs').checked){ setError('err-consentContactRefs', true); ok=false; }
-
-    if(!validateQuizComplete()){
-      setError('err-quiz', true);
-      ok = false;
-    }
-
-    if(!$('consentTruth').checked){ setError('err-consentTruth', true); ok=false; }
-    if(!$('consentContact').checked){ setError('err-consentContact', true); ok=false; }
-    if(!$('consentPunctual').checked){ setError('err-consentPunctual', true); ok=false; }
-    if(!$('consentESign').checked){ setError('err-consentESign', true); ok=false; }
-    if(!$('signature').value.trim()){ setError('err-signature', true); ok=false; }
-    if(!$('signatureDate').value){ setError('err-signatureDate', true); ok=false; }
-
-    return ok;
-  }
-
-  $('appForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    updateResumeUI();
-    updateProgress();
-
-    const ok = validateForm();
-    if(!ok){
-      toast('Fix required fields', 'Please review the highlighted items and try again.');
-      const firstErr = document.querySelector('.error.show');
-      if(firstErr) firstErr.scrollIntoView({behavior:'smooth', block:'center'});
-      return;
-    }
-
-    const scored = scoreQuiz();
-    $('assessmentScore').value = String(scored.score);
-    $('assessmentMax').value = String(scored.max);
-    $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
-
-    try {
-      // This calls your new Firebase function directly
-      await realSubmit();
-    } catch(err) {
-      setSubmitting(false);
-      setProgress(0);
-      toast('Submission error', err?.message || 'Something went wrong.');
-    }
-  });
-
-  /* ===========
-     Init
-     =========== */
-  (function init(){
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth()+1).padStart(2,'0');
-    const dd = String(today.getDate()).padStart(2,'0');
-    if(!$('signatureDate').value) $('signatureDate').value = `${yyyy}-${mm}-${dd}`;
-
-    const loaded = loadDraft();
-    if(!loaded) ensureMinReferences();
-
-    $('toastDownloadBtn').addEventListener('click', () => {
+    $('previewBtn').addEventListener('click', () => {
       const draft = collectFormDataAsObject(true);
       const scored = scoreQuiz();
       draft.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
 
-      const blob = new Blob([JSON.stringify(draft, null, 2)], {type:'application/json'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `dsp-application-draft-${new Date().toISOString().slice(0,10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
+      const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
+      if(!w) return alert('Pop-up blocked. Please allow pop-ups to preview.');
+      w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(draft, null, 2))}</pre>`);
+      w.document.close();
     });
 
-    toggleCertDetails();
+    /* =========================
+       Required-fields progress
+       ========================= */
+    const requiredSelectors = [
+      '#firstName','#lastName','#dob','#maritalStatus',
+      '#email','#phone','#address1','#city','#state','#zip',
+      '#emgName','#emgRelation','#emgPhone',
+      '#startDate','#employmentType','#shiftPref',
+      '#exp','#education',
+      '#licenseNumber','#licenseExp','#dlState','#hasValidDL',
+      '#age18','#workAuth',
+      'input[name="screening"]',
+      '#resume',
+      '#lastEmployer','#lastJobTitle','#lastStartDate','#lastEndDate','#leaveReason','#contactPrevEmployer',
+      '#consentContactRefs',
+      '#consentTruth','#consentContact','#consentPunctual','#consentESign','#signature','#signatureDate'
+    ];
 
-    updateResumeUI();
-    updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
-    updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
-    updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
-    const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
-    setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
-    setText($('otherdocs-pill'), `${n} files`);
+    function isFieldComplete(sel){
+      if(sel === 'input[name="screening"]'){
+        return !!document.querySelector('input[name="screening"]:checked');
+      }
+      const el = document.querySelector(sel);
+      if(!el) return true;
+      if(el.type === 'checkbox') return el.checked;
+      if(el.type === 'file') return el.files && el.files.length > 0;
+      return String(el.value || '').trim().length > 0;
+    }
 
-    updateQuizStatus();
-    updateProgress();
-  })();
+    function updateQuizStatus(){
+      const answered = quizAnsweredCount();
+      setText($('quizStatus'), `${answered}/15`);
+    }
+
+    function updateProgress(){
+      const base = requiredSelectors.length + 4;
+      let done = 0;
+
+      requiredSelectors.forEach(s => { if(isFieldComplete(s)) done++; });
+      if(getCheckedValues('days').length > 0) done++;
+
+      const certCheck = validateCerts();
+      if(certCheck.ok) done++;
+
+      const refsCheck = validateReferences();
+      if(refsCheck.ok) done++;
+
+      updateQuizStatus();
+      if(validateQuizComplete()) done++;
+
+      const pct = Math.round((done / base) * 100);
+      setText($('reqCount'), `${pct}%`);
+    }
+
+    document.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
+    document.addEventListener('change', () => { updateProgress(); scheduleAutosave(); });
+
+    /* ===============================
+       Firebase Storage upload helpers
+       =============================== */
+    function safeFileName(name){
+      return String(name || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 140);
+    }
+
+    function uploadOneFile({ applicationId, label, file }){
+      return new Promise((resolve, reject) => {
+        const path = `applications/${applicationId}/${Date.now()}_${safeFileName(file.name)}`;
+        const storageRef = sRef(storage, path);
+
+        const task = uploadBytesResumable(storageRef, file, {
+          contentType: file.type || undefined
+        });
+
+        task.on('state_changed',
+          (snap) => {
+            const pct = snap.totalBytes ? Math.round((snap.bytesTransferred / snap.totalBytes) * 100) : 0;
+            // Upload stage lives roughly in 20-90% range (we’ll map outside)
+            setProgress(clamp(20 + (pct * 0.7), 20, 90), `Uploading files…`, `${label}: ${pct}%`);
+          },
+          (err) => reject(err),
+          async () => {
+            try{
+              const downloadURL = await getDownloadURL(task.snapshot.ref);
+              resolve({
+                label,
+                name: file.name,
+                size: file.size,
+                contentType: file.type || 'application/octet-stream',
+                storagePath: path,
+                downloadURL
+              });
+            } catch(e){
+              reject(e);
+            }
+          }
+        );
+      });
+    }
+
+    /* =========================
+       Main validation + submit
+       ========================= */
+    function validateForm(){
+      let ok = true;
+
+      [
+        'err-firstName','err-lastName','err-dob','err-maritalStatus','err-email','err-phone','err-address1','err-city','err-state','err-zip',
+        'err-emgName','err-emgRelation','err-emgPhone',
+        'err-startDate','err-employmentType','err-shiftPref','err-days',
+        'err-exp','err-education',
+        'err-licenseNumber','err-licenseExp','err-dlState','err-hasValidDL',
+        'err-age18','err-workAuth','err-screening',
+        'err-certs',
+        'err-resume','err-coverLetter','err-cnaDoc','err-stnaDoc','err-otherDocs',
+        'err-lastEmployer','err-lastJobTitle','err-lastStartDate','err-lastEndDate','err-leaveReason','err-contactPrevEmployer',
+        'err-refs','err-consentContactRefs',
+        'err-quiz',
+        'err-consentTruth','err-consentContact','err-consentPunctual','err-consentESign','err-signature','err-signatureDate'
+      ].forEach(eid => setError(eid,false));
+
+      if(!$('firstName').value.trim()){ setError('err-firstName', true); ok=false; }
+      if(!$('lastName').value.trim()){ setError('err-lastName', true); ok=false; }
+      if(!$('dob').value){ setError('err-dob', true); ok=false; }
+      if(!$('maritalStatus').value){ setError('err-maritalStatus', true); ok=false; }
+
+      if(!validEmail($('email').value)){ setError('err-email', true); ok=false; }
+      if(!validPhone($('phone').value)){ setError('err-phone', true); ok=false; }
+      if(!$('address1').value.trim()){ setError('err-address1', true); ok=false; }
+      if(!$('city').value.trim()){ setError('err-city', true); ok=false; }
+      if(!$('state').value){ setError('err-state', true); ok=false; }
+      if(!validZip($('zip').value)){ setError('err-zip', true); ok=false; }
+
+      if(!$('emgName').value.trim()){ setError('err-emgName', true); ok=false; }
+      if(!$('emgRelation').value.trim()){ setError('err-emgRelation', true); ok=false; }
+      if(!validPhone($('emgPhone').value)){ setError('err-emgPhone', true); ok=false; }
+
+      if(!$('startDate').value){ setError('err-startDate', true); ok=false; }
+      if(!$('employmentType').value){ setError('err-employmentType', true); ok=false; }
+      if(!$('shiftPref').value){ setError('err-shiftPref', true); ok=false; }
+      if(getCheckedValues('days').length === 0){ setError('err-days', true); ok=false; }
+
+      if(!$('exp').value){ setError('err-exp', true); ok=false; }
+      if(!$('education').value){ setError('err-education', true); ok=false; }
+
+      if(!$('licenseNumber').value.trim()){ setError('err-licenseNumber', true); ok=false; }
+      if(!$('licenseExp').value){ setError('err-licenseExp', true); ok=false; }
+      if(!$('dlState').value){ setError('err-dlState', true); ok=false; }
+      if(!$('hasValidDL').value){ setError('err-hasValidDL', true); ok=false; }
+
+      if(!$('age18').value){ setError('err-age18', true); ok=false; }
+      if(!$('workAuth').value){ setError('err-workAuth', true); ok=false; }
+      if(!document.querySelector('input[name="screening"]:checked')){ setError('err-screening', true); ok=false; }
+
+      const certCheck = validateCerts();
+      if(!certCheck.ok){ setError('err-certs', true); ok = false; }
+
+      // Required resume
+      const resume = $('resume').files[0];
+      if(!resume || !fileOk(resume, 10)){ setError('err-resume', true); ok=false; }
+
+      // Optional files size checks
+      const cover = $('coverLetter').files[0];
+      if(cover && !fileOk(cover, 10)){ setError('err-coverLetter', true); ok=false; }
+
+      const cna = $('cnaDoc').files[0];
+      if(cna && !fileOk(cna, 10)){ setError('err-cnaDoc', true); ok=false; }
+
+      const stna = $('stnaDoc').files[0];
+      if(stna && !fileOk(stna, 10)){ setError('err-stnaDoc', true); ok=false; }
+
+      const other = Array.from($('otherDocs').files || []);
+      if(other.some(f => !fileOk(f, 10))){ setError('err-otherDocs', true); ok=false; }
+
+      if(!$('lastEmployer').value.trim()){ setError('err-lastEmployer', true); ok=false; }
+      if(!$('lastJobTitle').value.trim()){ setError('err-lastJobTitle', true); ok=false; }
+      if(!$('lastStartDate').value){ setError('err-lastStartDate', true); ok=false; }
+      if(!$('lastEndDate').value){ setError('err-lastEndDate', true); ok=false; }
+      if(!$('leaveReason').value.trim()){ setError('err-leaveReason', true); ok=false; }
+      if(!$('contactPrevEmployer').value){ setError('err-contactPrevEmployer', true); ok=false; }
+
+      const refCheck = validateReferences();
+      if(!refCheck.ok){ setError('err-refs', true); ok = false; }
+      if(!$('consentContactRefs').checked){ setError('err-consentContactRefs', true); ok=false; }
+
+      if(!validateQuizComplete()){ setError('err-quiz', true); ok = false; }
+
+      if(!$('consentTruth').checked){ setError('err-consentTruth', true); ok=false; }
+      if(!$('consentContact').checked){ setError('err-consentContact', true); ok=false; }
+      if(!$('consentPunctual').checked){ setError('err-consentPunctual', true); ok=false; }
+      if(!$('consentESign').checked){ setError('err-consentESign', true); ok=false; }
+      if(!$('signature').value.trim()){ setError('err-signature', true); ok=false; }
+      if(!$('signatureDate').value){ setError('err-signatureDate', true); ok=false; }
+
+      return ok;
+    }
+
+    async function realSubmitToFirebase(){
+      setSubmitting(true);
+      setProgress(5, 'Submitting…', 'Preparing your application');
+
+      // Build base application payload (no File objects)
+      const base = collectFormDataAsObject(false);
+
+      // Score quiz
+      const scored = scoreQuiz();
+      $('assessmentScore').value = String(scored.score);
+      $('assessmentMax').value = String(scored.max);
+      $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
+
+      // Attach assessment to payload too
+      base.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
+
+      // Use a stable id
+      const applicationId = (crypto?.randomUUID?.() || `app_${Date.now()}_${Math.random().toString(16).slice(2)}`);
+      const appRef = doc(db, "applications", applicationId);
+
+      // Create doc first (so you ALWAYS have a record)
+      await setDoc(appRef, {
+        ...base,
+        applicationId,
+        status: "Pending Review",
+        submittedAtISO: new Date().toISOString(),
+        submittedAt: serverTimestamp(),
+        uploadedFiles: [], // filled after uploads
+        uploadedFilesCount: 0
+      });
+
+      setProgress(15, 'Submitting…', 'Uploading files');
+
+      // Upload files to Storage, gather metadata + URLs
+      const { resume, cover, cna, stna, other } = getSelectedFiles();
+      const uploads = [];
+
+      // Required
+      uploads.push(uploadOneFile({ applicationId, label: 'Resume', file: resume }));
+
+      // Optional singles
+      if(cover) uploads.push(uploadOneFile({ applicationId, label: 'Cover letter', file: cover }));
+      if(cna) uploads.push(uploadOneFile({ applicationId, label: 'CNA document', file: cna }));
+      if(stna) uploads.push(uploadOneFile({ applicationId, label: 'STNA document', file: stna }));
+
+      // Optional multiple
+      other.forEach((f, i) => uploads.push(uploadOneFile({ applicationId, label: `Other document #${i+1}`, file: f })));
+
+      // Run uploads (in parallel)
+      const uploadedFiles = await Promise.all(uploads);
+
+      setProgress(92, 'Submitting…', 'Saving file links');
+
+      // Save uploaded file URLs + metadata into Firestore doc
+      await updateDoc(appRef, {
+        uploadedFiles,
+        uploadedFilesCount: uploadedFiles.length,
+        storageFolder: `applications/${applicationId}`
+      });
+
+      // Update UI “see everything”
+      updateUploadsListUploaded(uploadedFiles);
+
+      setProgress(100, 'Submitted!', 'Your application and files were successfully submitted.');
+      toast('Submitted', 'Your application was submitted successfully. Uploaded file links are listed in the Files section.');
+
+      // Optional: Open a receipt window with the applicationId + file links
+      const receipt = {
+        applicationId,
+        submittedAt: new Date().toISOString(),
+        uploadedFiles
+      };
+      const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
+      if(w){
+        w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(receipt, null, 2))}</pre>`);
+        w.document.close();
+      }
+
+      // Clear draft but do NOT auto-reset form unless you want it
+      clearDraft();
+      setText($('draftStatus'), 'No');
+
+      // (Optional) redirect:
+      // window.location.href = 'Careers.html';
+      setSubmitting(false);
+
+      alert('Thank you! Your application has been received.\n\nYou can copy your Application ID from the receipt window.');
+    }
+
+    $('appForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      updateResumeUI();
+      updateProgress();
+      updateUploadsListSelected();
+
+      const ok = validateForm();
+      if(!ok){
+        toast('Fix required fields', 'Please review the highlighted items and try again.');
+        const firstErr = document.querySelector('.error.show');
+        if(firstErr) firstErr.scrollIntoView({behavior:'smooth', block:'center'});
+        return;
+      }
+
+      try{
+        await realSubmitToFirebase();
+      } catch(err){
+        console.error(err);
+        setSubmitting(false);
+        setProgress(0, 'Submission failed', 'Please try again.');
+        toast('Submission error', err?.message || 'Something went wrong.');
+        alert('Submission failed. Please check your internet and try again.');
+      }
+    });
+
+    /* ===========
+       Init
+       =========== */
+    function updateFileUIAllInit(){
+      updateResumeUI();
+      updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
+      updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
+      updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
+      const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
+      setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
+      setText($('otherdocs-pill'), `${n} files`);
+      updateUploadsListSelected();
+    }
+
+    (function init(){
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth()+1).padStart(2,'0');
+      const dd = String(today.getDate()).padStart(2,'0');
+      if(!$('signatureDate').value) $('signatureDate').value = `${yyyy}-${mm}-${dd}`;
+
+      const loaded = loadDraft();
+      if(!loaded) ensureMinReferences();
+
+      $('toastDownloadBtn').addEventListener('click', () => {
+        const draft = collectFormDataAsObject(true);
+        const scored = scoreQuiz();
+        draft.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
+
+        const blob = new Blob([JSON.stringify(draft, null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `dsp-application-draft-${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(a.href);
+      });
+
+      toggleCertDetails();
+      updateFileUIAllInit();
+      updateQuizStatus();
+      updateProgress();
+    })();
   </script>
 </body>
 </html>
