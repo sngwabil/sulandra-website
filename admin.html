@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sulandra Admin | Application Manager</title>
-  <meta name="description" content="Admin dashboard to review applications, view details + uploaded file links, and hire applicants into employee profiles." />
+  <title>Sulandra Admin | Operations Portal</title>
+  <meta name="description" content="Admin dashboard to manage applicants, employees, scheduling, time tracking, documents, and operations." />
 
   <style>
     :root{
@@ -26,8 +26,6 @@
 
     *{ box-sizing:border-box; }
     body{ margin:0; background:var(--bg); color:var(--text); }
-    a{ color:inherit; }
-    .wrap{ max-width: 1200px; margin: 0 auto; padding: 18px 16px; }
 
     .alert-bar{
       background: var(--accent);
@@ -46,20 +44,22 @@
       border-bottom:1px solid #ddd;
     }
     .top-nav{
-      max-width:1200px;
+      max-width:1400px;
       margin:0 auto;
-      padding:15px 20px;
+      padding:12px 16px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:16px;
     }
-    .logo{ display:flex; align-items:center; gap:12px; min-width:0; }
-    .logo img{ width:240px; height:auto; object-fit:contain; }
+    .logo{ display:flex; align-items:center; gap:12px; min-width:0; text-decoration:none; color:inherit; }
+    .logo img{ width:220px; height:auto; object-fit:contain; }
     .hdr-right{
-      display:flex; gap:12px; align-items:center;
+      display:flex; gap:10px; align-items:center;
       font-weight:800; font-size:13px; color:var(--muted);
       white-space:nowrap;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
     .pill{
       display:inline-flex; align-items:center; gap:8px;
@@ -99,11 +99,79 @@
     .btn-hire{ background:#166534; color:#fff; }
     .btn-disabled{ opacity:.55; cursor:not-allowed; }
 
-    .grid{
+    /* ======= NEW LAYOUT ======= */
+    .app-shell{
+      max-width:1400px;
+      margin:0 auto;
+      padding:16px;
       display:grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: 260px 1fr;
       gap:16px;
-      margin-top:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .app-shell{ grid-template-columns: 1fr; }
+    }
+
+    .sidebar{
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:16px;
+      box-shadow: var(--shadow);
+      padding:12px;
+      position:sticky;
+      top:86px;
+    }
+    @media (max-width: 980px){
+      .sidebar{ position:relative; top:auto; }
+    }
+    .nav-title{
+      font-size:12px;
+      font-weight:950;
+      color:var(--muted);
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      padding:10px 10px 6px;
+    }
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .nav button{
+      width:100%;
+      text-align:left;
+      border:1px solid transparent;
+      background:#fff;
+      padding:10px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:900;
+      color:var(--text);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .nav button:hover{
+      background:#f7fbff;
+      border-color:#cfe4fb;
+      color:var(--primary);
+    }
+    .nav button.active{
+      background:#eef6ff;
+      border-color:#cfe4fb;
+      color:var(--primary);
+    }
+    .nav small{
+      font-weight:800;
+      color:var(--muted);
+    }
+
+    .content{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
     }
 
     .card{
@@ -194,6 +262,7 @@
     .Reviewed { background:#e0f2fe; color:#075985; border-color:#0284c733; }
     .Hired { background:#dcfce7; color:#166534; border-color:#22c55e33; }
     .Rejected { background:#fee2e2; color:#7f1d1d; border-color:#ef444433; }
+    .Approved { background:#dcfce7; color:#166534; border-color:#22c55e33; }
 
     .score{
       font-weight:900;
@@ -212,7 +281,7 @@
       position:fixed;
       inset:0;
       background:rgba(0,0,0,.55);
-      z-index:1000;
+      z-index:2000;
       padding:16px;
     }
     .modal{
@@ -328,13 +397,17 @@
       box-shadow: var(--shadow);
       padding: 14px;
       display:none;
-      z-index: 1500;
+      z-index: 2500;
     }
     .toast.show{ display:block; }
     .toast strong{ display:block; margin-bottom:4px; }
     .toast small{ color: var(--muted); }
 
     .tiny{ font-size:12px; color:var(--muted); }
+
+    /* Module visibility */
+    .module{ display:none; }
+    .module.active{ display:block; }
   </style>
 </head>
 
@@ -348,112 +421,189 @@
       </a>
 
       <div class="hdr-right">
+        <span class="pill" id="adminEmailPill">Admin</span>
         <span class="pill" id="livePill">Live: connecting…</span>
         <button class="btn btn-ghost btn-sm" id="refreshBtn" type="button">Refresh</button>
         <button class="btn btn-primary btn-sm" id="exportBtn" type="button">Export CSV</button>
+        <button class="btn btn-danger btn-sm" id="btnAdminSignOut" type="button">Sign Out</button>
       </div>
     </div>
   </header>
 
-  <main class="wrap">
-    <div class="grid">
-      <!-- Applicant Management -->
-      <section class="card">
-        <h1>Applicant Management</h1>
-        <p class="sub">Review applications, view uploaded documents, update status, and hire candidates to generate employee profiles.</p>
+  <main class="app-shell">
+    <!-- Sidebar menu -->
+    <aside class="sidebar">
+      <div class="nav-title">Operations</div>
+      <div class="nav">
+        <button type="button" class="active" data-module="dashboard">Dashboard <small>Overview</small></button>
+        <button type="button" data-module="applicants">Applicants <small>Hiring</small></button>
+        <button type="button" data-module="employees">Employees <small>Profiles</small></button>
+        <button type="button" data-module="scheduling">Scheduling <small>Shifts</small></button>
+        <button type="button" data-module="time">Time & Attendance <small>Clock-ins</small></button>
+        <button type="button" data-module="documents">Documents <small>Compliance</small></button>
+        <button type="button" data-module="reports">Reports <small>Audit</small></button>
+        <button type="button" data-module="settings">Settings <small>Roles</small></button>
+      </div>
 
-        <div class="toolbar">
+      <div class="nav-title">Quick Notes</div>
+      <div class="tiny" style="padding:0 10px 10px;">
+        This is the admin workspace. Applicants are one module; the rest of operations will live here as you expand:
+        schedules, timesheets, clock-ins, documentation, training, and audits.
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <section class="content">
+
+      <!-- Dashboard module -->
+      <section class="card module active" id="module-dashboard">
+        <h1>Dashboard</h1>
+        <p class="sub">Quick overview. (Next: show counts for Applicants, Active Employees, Pending Timesheets, Late Clock-ins.)</p>
+
+        <div class="toolbar" style="margin-top:12px;">
           <div class="filters">
-            <div class="field">
-              <label for="search">Search</label>
-              <input id="search" type="search" placeholder="Name, email, phone…" />
-            </div>
-
-            <div class="field">
-              <label for="statusFilter">Status</label>
-              <select id="statusFilter">
-                <option value="all">All</option>
-                <option value="Pending">Pending</option>
-                <option value="Reviewed">Reviewed</option>
-                <option value="Hired">Hired</option>
-                <option value="Rejected">Rejected</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="jobFilter">Job</label>
-              <select id="jobFilter">
-                <option value="all">All</option>
-                <option value="LPN">LPN</option>
-                <option value="DSP">DSP</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
+            <div class="pill">Applicants: <span id="kpiApplicants">—</span></div>
+            <div class="pill">Employees: <span id="kpiEmployees">—</span></div>
+            <div class="pill">Pending Timesheets: <span id="kpiTimesheets">—</span></div>
           </div>
-
-          <div class="tiny" id="countLabel">0 applications</div>
-        </div>
-
-        <table aria-label="Applications table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Applicant</th>
-              <th>Job</th>
-              <th>Score</th>
-              <th>Status</th>
-              <th style="width:260px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="applicantTable">
-            <tr><td colspan="6" class="muted">Loading applications…</td></tr>
-          </tbody>
-        </table>
-      </section>
-
-      <!-- Education Assignment -->
-      <section class="card" style="margin-top:20px;">
-        <h1>Education Assignment</h1>
-        <p class="sub">Select a hired employee and assign training modules to their portal.</p>
-
-        <div class="toolbar">
-          <div class="filters">
-            <div class="field">
-              <label for="employeeSelect">Employee</label>
-              <select id="employeeSelect"><option>Loading employees...</option></select>
-            </div>
-            <div class="field">
-              <label for="trainingInput">Training Name</label>
-              <input id="trainingInput" type="text" placeholder="e.g., HIPAA 2025">
-            </div>
-            <button class="btn btn-primary" id="assignBtn" type="button">Assign Education</button>
-            <span class="tiny" id="assignHint"></span>
-          </div>
+          <div class="tiny">Tip: Use the left menu to switch modules.</div>
         </div>
       </section>
 
-      <!-- Timesheet Review & Payroll -->
-      <section class="card" style="margin-top:20px;">
-        <h1>Timesheet Review & Payroll</h1>
-        <p class="sub">Approve weekly hours. Approved entries will be marked for payroll processing.</p>
+      <!-- Applicants module (your existing content moved here) -->
+      <section class="module" id="module-applicants">
+        <section class="card">
+          <h1>Applicants</h1>
+          <p class="sub">Review applications, view uploaded documents, update status, and hire candidates to generate employee profiles.</p>
 
-        <table aria-label="Timesheets table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Week Ending</th>
-              <th>Hours</th>
-              <th>Pay Code</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="timesheetTable">
-            <tr><td colspan="6" class="muted">Loading timesheets…</td></tr>
-          </tbody>
-        </table>
+          <div class="toolbar">
+            <div class="filters">
+              <div class="field">
+                <label for="search">Search</label>
+                <input id="search" type="search" placeholder="Name, email, phone…" />
+              </div>
+
+              <div class="field">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter">
+                  <option value="all">All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Reviewed">Reviewed</option>
+                  <option value="Hired">Hired</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="jobFilter">Job</label>
+                <select id="jobFilter">
+                  <option value="all">All</option>
+                  <option value="LPN">LPN</option>
+                  <option value="DSP">DSP</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="tiny" id="countLabel">0 applications</div>
+          </div>
+
+          <table aria-label="Applications table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Applicant</th>
+                <th>Job</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th style="width:260px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="applicantTable">
+              <tr><td colspan="6" class="muted">Loading applications…</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="card" style="margin-top:16px;">
+          <h1>Education Assignment</h1>
+          <p class="sub">Select a hired employee and assign training modules to their portal.</p>
+
+          <div class="toolbar">
+            <div class="filters">
+              <div class="field">
+                <label for="employeeSelect">Employee</label>
+                <select id="employeeSelect"><option>Loading employees...</option></select>
+              </div>
+              <div class="field">
+                <label for="trainingInput">Training Name</label>
+                <input id="trainingInput" type="text" placeholder="e.g., HIPAA 2025">
+              </div>
+              <button class="btn btn-primary" id="assignBtn" type="button">Assign Education</button>
+              <span class="tiny" id="assignHint"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" style="margin-top:16px;">
+          <h1>Timesheet Review & Payroll</h1>
+          <p class="sub">Approve weekly hours. Approved entries will be marked for payroll processing.</p>
+
+          <table aria-label="Timesheets table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Week Ending</th>
+                <th>Hours</th>
+                <th>Pay Code</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="timesheetTable">
+              <tr><td colspan="6" class="muted">Loading timesheets…</td></tr>
+            </tbody>
+          </table>
+        </section>
       </section>
-    </div>
+
+      <!-- Placeholder modules for your future build-out -->
+      <section class="card module" id="module-employees">
+        <h1>Employees</h1>
+        <p class="sub">This will become your central employee directory (profiles, roles, home assignment, credentials, status).</p>
+        <div class="tiny">Next: list employees with filters, click to open profile, assign role + home manager, manage documents required.</div>
+      </section>
+
+      <section class="card module" id="module-scheduling">
+        <h1>Scheduling</h1>
+        <p class="sub">Create schedules and assign shifts to employees/homes.</p>
+        <div class="tiny">Next: schedule calendar + shift templates, and compare schedule vs clock-ins.</div>
+      </section>
+
+      <section class="card module" id="module-time">
+        <h1>Time & Attendance</h1>
+        <p class="sub">Review clock-ins, breaks, late/early punches, missed shifts.</p>
+        <div class="tiny">Next: show clock-in logs, anomalies, approvals, and reconciliation with schedules.</div>
+      </section>
+
+      <section class="card module" id="module-documents">
+        <h1>Documents</h1>
+        <p class="sub">Track required documentation (IDs, licenses, training certs, handbook acknowledgements).</p>
+        <div class="tiny">Next: secure upload review queue + expiration reminders.</div>
+      </section>
+
+      <section class="card module" id="module-reports">
+        <h1>Reports</h1>
+        <p class="sub">Audit logs, payroll export, compliance, and operational performance metrics.</p>
+      </section>
+
+      <section class="card module" id="module-settings">
+        <h1>Settings</h1>
+        <p class="sub">Roles & permissions (Admin, House Manager, Employee). Configure which tools appear for each role.</p>
+        <div class="tiny">Next: write roles to employee docs and use them to control UI + access.</div>
+      </section>
+
+    </section>
   </main>
 
   <!-- Details Modal -->
@@ -474,6 +624,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import {
       getFirestore,
       collection,
@@ -484,6 +635,7 @@
       addDoc,
       getDoc,
       query,
+      where,
       orderBy,
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -497,8 +649,47 @@
       appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845"
     };
 
+    const ADMIN_EMAIL = "admin@sulandrahealth.com";
+
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
+
+    /* ==========================
+       AUTH GUARD (ADMIN ONLY)
+       ========================== */
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.replace("employee-login.html");
+        return;
+      }
+      const email = (user.email || "").toLowerCase();
+      if (email !== ADMIN_EMAIL) {
+        window.location.replace("employee-portal.html");
+        return;
+      }
+      // show who is signed in (admin only)
+      document.getElementById("adminEmailPill").textContent = email;
+    });
+
+    document.getElementById("btnAdminSignOut").addEventListener("click", async () => {
+      try { await signOut(auth); } catch(e){ console.error(e); }
+      window.location.replace("employee-login.html");
+    });
+
+    /* ==========================
+       MODULE SWITCHING
+       ========================== */
+    const navButtons = Array.from(document.querySelectorAll('.nav button[data-module]'));
+    function activateModule(key){
+      navButtons.forEach(b => b.classList.toggle('active', b.dataset.module === key));
+      document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+      const el = document.getElementById(`module-${key}`);
+      if(el) el.classList.add('active');
+    }
+    navButtons.forEach(btn => {
+      btn.addEventListener('click', () => activateModule(btn.dataset.module));
+    });
 
     /* ==========
        Helpers
@@ -567,11 +758,7 @@
     }
 
     function normalizeAppRecord(docId, data, source){
-      return {
-        id: docId,
-        source,
-        ...data
-      };
+      return { id: docId, source, ...data };
     }
 
     function downloadText(filename, text){
@@ -604,11 +791,11 @@
     }
 
     /* ==========
-       Applications (existing)
+       Applications
        ========== */
     const collectionsToWatch = [
       { key:"applications_lpn", label:"applications_lpn" },
-      { key:"applications", label:"applications" } // legacy
+      { key:"applications", label:"applications" }
     ];
     const submissionsCollection = { key:"applications_lpn_submissions", label:"applications_lpn_submissions" };
 
@@ -638,6 +825,7 @@
           rawApps = rawApps.filter(x => x.source !== c.key).concat(next);
           rebuildMerged();
           render();
+          updateKPIs();
         }, (err) => {
           console.error(err);
           setLiveState("Live: error");
@@ -653,6 +841,7 @@
         submissions = next;
         rebuildMerged();
         render();
+        updateKPIs();
       }, (err) => {
         console.error(err);
       });
@@ -662,13 +851,10 @@
     function findUploadedFilesFor(appId){
       const s = submissions.find(x => x.applicationId === appId);
       if(s && Array.isArray(s.uploadedFiles)) return s.uploadedFiles;
-
       const base = rawApps.find(x => x.id === appId && (x.source === "applications"));
       if(base && Array.isArray(base.uploadedFiles)) return base.uploadedFiles;
-
       const base2 = rawApps.find(x => x.id === appId);
       if(base2 && Array.isArray(base2.files)) return base2.files;
-
       return [];
     }
 
@@ -913,9 +1099,6 @@
       openModal();
     }
 
-    /* ==========
-       Status update + Hire
-       ========== */
     async function updateStatus(appId, sourceCollection, status, keepOpen=false){
       try{
         await updateDoc(doc(db, sourceCollection, appId), {
@@ -968,9 +1151,6 @@
       }
     }
 
-    /* ==========
-       Applicant table actions
-       ========== */
     $("applicantTable").addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-action]");
       if(!btn) return;
@@ -994,17 +1174,11 @@
       if(action === "hire") hireEmployee(id, col);
     });
 
-    /* ==========
-       Filters
-       ========== */
     ["search","statusFilter","jobFilter"].forEach(id => {
       $(id).addEventListener("input", render);
       $(id).addEventListener("change", render);
     });
 
-    /* ==========
-       Buttons
-       ========== */
     $("refreshBtn").addEventListener("click", () => {
       toast("Refreshing", "Reconnecting to live updates…");
       startSnapshots();
@@ -1026,14 +1200,11 @@
       }));
       downloadText(`applications-export-${new Date().toISOString().slice(0,10)}.csv`, toCSV(rows));
       toast("Exported", "CSV downloaded.");
+      activateModule("applicants");
     });
 
     /* ==========
        Education Assignment
-       ==========
-       - Reads employees collection
-       - Assigns training by appending to assignedEducation array AND
-         optionally writing an educationAssignments collection (audit log)
        ========== */
     let employees = [];
 
@@ -1041,9 +1212,7 @@
       const sel = $("employeeSelect");
       if(!sel) return;
 
-      // only show Active employees by default, but keep everything if you want
       const opts = employees.slice().sort((a,b) => (a.lastName||"").localeCompare(b.lastName||""));
-
       if(opts.length === 0){
         sel.innerHTML = `<option value="">No employees found</option>`;
         return;
@@ -1064,6 +1233,7 @@
         snap.forEach(d => next.push({ id: d.id, ...d.data() }));
         employees = next;
         renderEmployeeSelect();
+        updateKPIs();
       }, (err) => {
         console.error(err);
         $("employeeSelect").innerHTML = `<option value="">Employees load error</option>`;
@@ -1075,20 +1245,12 @@
       const empId = $("employeeSelect").value;
       const training = ($("trainingInput").value || "").trim();
       const hint = $("assignHint");
-
       if(hint) hint.textContent = "";
 
-      if(!empId){
-        toast("Select employee", "Choose an employee first.");
-        return;
-      }
-      if(!training){
-        toast("Training required", "Enter a training name.");
-        return;
-      }
+      if(!empId){ toast("Select employee", "Choose an employee first."); return; }
+      if(!training){ toast("Training required", "Enter a training name."); return; }
 
       try{
-        // Update employee document (assignedEducation = [{name,assignedAtISO,status}])
         const empRef = doc(db, "employees", empId);
         const empSnap = await getDoc(empRef);
         if(!empSnap.exists()){
@@ -1097,26 +1259,16 @@
         }
         const empData = empSnap.data() || {};
         const current = Array.isArray(empData.assignedEducation) ? empData.assignedEducation : [];
-
-        // Prevent duplicates by name (case-insensitive)
         const exists = current.some(x => (x?.name || "").toLowerCase() === training.toLowerCase());
-        if(exists){
-          toast("Already assigned", "That training is already assigned to this employee.");
-          return;
-        }
+        if(exists){ toast("Already assigned", "That training is already assigned to this employee."); return; }
 
-        const entry = {
-          name: training,
-          status: "Assigned",
-          assignedAtISO: new Date().toISOString()
-        };
+        const entry = { name: training, status: "Assigned", assignedAtISO: new Date().toISOString() };
 
         await updateDoc(empRef, {
           assignedEducation: [...current, entry],
           educationUpdatedAt: serverTimestamp()
         });
 
-        // Optional audit log (nice for admin history)
         await addDoc(collection(db, "educationAssignments"), {
           employeeId: empId,
           trainingName: training,
@@ -1138,12 +1290,6 @@
 
     /* ==========
        Timesheet Review & Payroll
-       ==========
-       Assumes a collection: "timesheets"
-       Expected fields (flexible):
-         - employeeId, employeeName (optional), weekEndingISO, hours, payCode
-         - status: Pending | Approved | Rejected
-       Approve marks status=Approved and payrollReady=true
        ========== */
     let timesheets = [];
 
@@ -1156,7 +1302,7 @@
       if(!tbody) return;
 
       const pending = timesheets
-        .filter(t => getTimesheetStatus(t) !== "Approved") // show pending/rejected; adjust if you want ONLY pending
+        .filter(t => getTimesheetStatus(t) !== "Approved")
         .sort((a,b) => (b.weekEndingISO || "").localeCompare(a.weekEndingISO || ""));
 
       if(pending.length === 0){
@@ -1167,13 +1313,9 @@
       tbody.innerHTML = "";
       for(const t of pending){
         const tr = document.createElement("tr");
-        const employeeLabel =
-          t.employeeName ||
-          (employees.find(e => (e.employeeId || e.id) === t.employeeId)?.firstName
-            ? `${employees.find(e => (e.employeeId || e.id) === t.employeeId).firstName} ${employees.find(e => (e.employeeId || e.id) === t.employeeId).lastName}`
-            : t.employeeId || "—");
 
         const status = getTimesheetStatus(t);
+        const employeeLabel = t.employeeName || t.employeeId || "—";
 
         tr.innerHTML = `
           <td><strong>${escapeHtml(employeeLabel)}</strong><div class="muted" style="font-size:12px;">${escapeHtml(t.employeeId || "")}</div></td>
@@ -1191,30 +1333,18 @@
     }
 
     function startTimesheetsSnapshot(){
-      // If your schema uses createdAt, you can orderBy("createdAt","desc").
-      // We try weekEndingISO first, and if it fails due to missing index, switch to no-order by.
-      try{
-        const qts = query(collection(db, "timesheets"), orderBy("weekEndingISO", "desc"));
-        const unsub = onSnapshot(qts, (snap) => {
-          const next = [];
-          snap.forEach(d => next.push({ id: d.id, ...d.data() }));
-          timesheets = next;
-          renderTimesheets();
-        }, (err) => {
-          console.error(err);
-          toast("Timesheets error", "Could not load timesheets (check index / rules).");
-        });
-        unsubscribers.push(unsub);
-      }catch(err){
+      const qts = query(collection(db, "timesheets"), orderBy("weekEndingISO", "desc"));
+      const unsub = onSnapshot(qts, (snap) => {
+        const next = [];
+        snap.forEach(d => next.push({ id: d.id, ...d.data() }));
+        timesheets = next;
+        renderTimesheets();
+        updateKPIs();
+      }, (err) => {
         console.error(err);
-        const unsub = onSnapshot(collection(db, "timesheets"), (snap) => {
-          const next = [];
-          snap.forEach(d => next.push({ id: d.id, ...d.data() }));
-          timesheets = next;
-          renderTimesheets();
-        });
-        unsubscribers.push(unsub);
-      }
+        toast("Timesheets error", "Could not load timesheets (check index / rules).");
+      });
+      unsubscribers.push(unsub);
     }
 
     async function updateTimesheetStatus(id, status){
@@ -1252,6 +1382,24 @@
         updateTimesheetStatus(id, "Rejected");
       }
     });
+
+    /* ==========
+       KPIs (simple counts)
+       ========== */
+    function updateKPIs(){
+      // Applicants KPI
+      const applicantsCount = apps.length || 0;
+      const employeesCount = employees.length || 0;
+      const pendingTimesheets = timesheets.filter(t => getTimesheetStatus(t) !== "Approved").length || 0;
+
+      const a = document.getElementById("kpiApplicants");
+      const e = document.getElementById("kpiEmployees");
+      const t = document.getElementById("kpiTimesheets");
+
+      if(a) a.textContent = applicantsCount;
+      if(e) e.textContent = employeesCount;
+      if(t) t.textContent = pendingTimesheets;
+    }
 
     /* ==========
        Init
