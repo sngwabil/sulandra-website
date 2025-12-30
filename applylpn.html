@@ -1832,6 +1832,7 @@
        ========== */
     $("appForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      e.stopImmediatePropagation();
 
       // reset any visible error blocks that are purely grouped
       setErr("err-resume", false);
