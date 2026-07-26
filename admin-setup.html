@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Create Administrator Password | S.P.I.R.E.</title>
+<style>
+:root{--navy:#123a63;--blue:#076ea8;--bg:#f3f7fb;--text:#17243a;--muted:#66778a;--border:#d9e4ed;--danger:#a12f2f;--success:#247542}*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Segoe UI,Arial,sans-serif;background:linear-gradient(145deg,#edf4f9,#f9fbfd);color:var(--text);display:grid;place-items:center;padding:22px}.card{width:min(520px,100%);background:#fff;border:1px solid var(--border);border-radius:20px;padding:30px;box-shadow:0 18px 55px rgba(20,55,88,.15)}.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.mark{width:48px;height:48px;border-radius:14px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:900;font-size:23px}.brand strong{display:block;font-size:20px}.brand span{color:var(--muted);font-size:13px}h1{font-size:28px;margin:0 0 8px}.lead{color:var(--muted);line-height:1.55;margin:0 0 22px}.email{padding:12px 14px;background:#eef6fb;border:1px solid #cbe0ef;border-radius:10px;font-weight:800;color:var(--navy);margin-bottom:18px}form{display:grid;gap:15px}label{display:grid;gap:7px;font-weight:750;font-size:14px}input{width:100%;padding:13px;border:1px solid var(--border);border-radius:10px;font-size:16px}input:focus{outline:0;border-color:#7aaccc;box-shadow:0 0 0 3px rgba(7,110,168,.12)}button{border:0;border-radius:10px;padding:13px 16px;background:var(--navy);color:#fff;font-weight:850;font-size:15px;cursor:pointer}.rules{font-size:12px;color:var(--muted);line-height:1.55}.msg{display:none;padding:11px 12px;border-radius:10px;font-size:14px}.msg.show{display:block}.msg.bad{background:#fff1f1;color:var(--danger);border:1px solid #efbcbc}.msg.good{background:#f0fff4;color:var(--success);border:1px solid #bce5c7}.warning{margin-top:18px;padding:12px;border-radius:10px;background:#fff8e8;border:1px solid #efd69a;color:#745817;font-size:12px;line-height:1.5}
+</style>
+</head>
+<body>
+<main class="card">
+<div class="brand"><div class="mark">S</div><div><strong>S.P.I.R.E.</strong><span>Sulandra Health Administration</span></div></div>
+<h1>Create your administrator password</h1>
+<p class="lead">This is the first-time setup for the primary S.P.I.R.E. administrator account.</p>
+<div class="email">admin@sulandrahealth.com</div>
+<form id="setupForm">
+<label>New password<input id="password" type="password" autocomplete="new-password" required /></label>
+<label>Confirm password<input id="confirm" type="password" autocomplete="new-password" required /></label>
+<div class="rules">Use at least 12 characters with an uppercase letter, lowercase letter, number, and special character.</div>
+<button type="submit">Create Password and Open Administration</button>
+<div id="msg" class="msg" role="alert"></div>
+</form>
+<div class="warning"><strong>Development limitation:</strong> this initial version stores a salted password verifier and user records in this browser only. It is suitable for interface testing, not real employee accounts or protected health information. The production backend and database remain the next security milestone.</div>
+</main>
+<script>
+const ADMIN_EMAIL='admin@sulandrahealth.com';const ADMIN_KEY='spire-admin-credential-v1';const SESSION_KEY='spire-admin-session';const USERS_KEY='spire-managed-users-v1';
+const enc=new TextEncoder();
+function bytesToB64(bytes){let s='';bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s)}
+async function derive(password,salt){const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},key,256);return bytesToB64(new Uint8Array(bits))}
+function validPassword(p){return p.length>=12&&/[A-Z]/.test(p)&&/[a-z]/.test(p)&&/[0-9]/.test(p)&&/[^A-Za-z0-9]/.test(p)}
+const msg=document.getElementById('msg');
+if(localStorage.getItem(ADMIN_KEY)){msg.textContent='An administrator password already exists on this browser. Return to the Employee Portal to sign in.';msg.className='msg show good'}
+document.getElementById('setupForm').addEventListener('submit',async e=>{e.preventDefault();msg.className='msg';const password=document.getElementById('password').value,confirm=document.getElementById('confirm').value;if(!validPassword(password)){msg.textContent='Password does not meet all requirements.';msg.className='msg show bad';return}if(password!==confirm){msg.textContent='The passwords do not match.';msg.className='msg show bad';return}const salt=crypto.getRandomValues(new Uint8Array(16));const verifier=await derive(password,salt);localStorage.setItem(ADMIN_KEY,JSON.stringify({email:ADMIN_EMAIL,salt:bytesToB64(salt),verifier,createdAt:new Date().toISOString()}));if(!localStorage.getItem(USERS_KEY)){localStorage.setItem(USERS_KEY,JSON.stringify([{id:'admin-primary',email:ADMIN_EMAIL,firstName:'Sulpitius',lastName:'Gwabil',role:'Administrator',active:true,createdAt:new Date().toISOString(),mustChangePassword:false}]))}localStorage.setItem(SESSION_KEY,JSON.stringify({email:ADMIN_EMAIL,role:'Administrator',signedInAt:new Date().toISOString()}));msg.textContent='Password created. Opening the Administration Center…';msg.className='msg show good';setTimeout(()=>location.assign('admin-users.html'),500)});
+</script>
+</body>
+</html>
