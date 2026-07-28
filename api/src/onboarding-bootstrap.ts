@@ -542,7 +542,7 @@ app.use(cors({
     callback(error);
   },
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '45mb' }));
 
 app.use('/api/auth/login', rateLimit({
   windowMs: 15 * 60 * 1_000,
@@ -550,6 +550,14 @@ app.use('/api/auth/login', rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { error: 'Too many sign-in attempts. Please try again later.' },
+}));
+
+app.use('/public/careers/applicant/login', rateLimit({
+  windowMs: 15 * 60 * 1_000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many applicant sign-in attempts. Please try again later.' },
 }));
 
 app.use('/public/careers/applications', rateLimit({
