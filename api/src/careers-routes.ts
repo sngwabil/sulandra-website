@@ -248,7 +248,7 @@ export function registerCareersRoutes(
       const [identity] = await prisma.$queryRawUnsafe<Array<{
         organizationExists: boolean;
         userExists: boolean;
-      }>[number]>(
+      }>>(
         `SELECT
            EXISTS(SELECT 1 FROM "Organization" WHERE "id"=$1) AS "organizationExists",
            EXISTS(SELECT 1 FROM "User" WHERE "id"=$2) AS "userExists"`,
