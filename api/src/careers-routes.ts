@@ -327,6 +327,56 @@ export function registerCareersRoutes(
     }
   });
 
+  app.get('/api/admin/applications', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+    try {
+      const auth = authOf(res);
+      const query = z.object({
+        q: z.string().trim().max(160).optional(),
+        status: z.string().trim().max(60).optional(),
+        jobOpeningId: z.string().trim().max(200).optional(),
+        limit: z.coerce.number().int().min(1).max(200).default(100),
+      }).parse(req.query);
+
+      const rows = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT
+           a.*,
+           j."title" AS "jobTitle",
+           (SELECT COUNT(*)::int
+              FROM "ApplicantDocument" d
+             WHERE d."applicationId"=a."id") AS "documentCount",
+           (SELECT COUNT(*)::int
+              FROM "ApplicantDocument" d
+             WHERE d."applicationId"=a."id"
+               AND d."status" IN ('RECEIVED','APPROVED')) AS "receivedDocumentCount",
+           (SELECT COUNT(*)::int
+              FROM "ApplicantDocument" d
+             WHERE d."applicationId"=a."id"
+               AND d."status" IN ('MISSING','REQUESTED','REJECTED','EXPIRED','RENEWAL_REQUESTED')) AS "outstandingDocumentCount"
+         FROM "EmployeeApplication" a
+         LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
+         WHERE a."organizationId"=$1
+           AND (
+             $2::text IS NULL
+             OR CONCAT_WS(' ',a."firstName",a."middleName",a."lastName",a."email",a."phone",a."referenceNumber")
+                ILIKE '%' || $2::text || '%'
+           )
+           AND ($3::text IS NULL OR a."status"::text=$3::text)
+           AND ($4::text IS NULL OR a."jobOpeningId"=$4::text)
+         ORDER BY a."submittedAt" DESC NULLS LAST, a."createdAt" DESC
+         LIMIT $5`,
+        auth.organizationId,
+        query.q || null,
+        query.status || null,
+        query.jobOpeningId || null,
+        query.limit,
+      );
+
+      res.json({ data: rows });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get('/api/admin/applications/:id/folder', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
     try {
       const auth = authOf(res);
