@@ -263,19 +263,60 @@ app.post('/api/auth/login', async (req, res, next) => {
       },
     );
     const expiresIn = 8 * 60 * 60;
+    const expiresAt = new Date(Date.now() + expiresIn * 1_000).toISOString();
+    const firstName = process.env.ADMIN_FIRST_NAME?.trim() || 'Sulpitius';
+    const lastName = process.env.ADMIN_LAST_NAME?.trim() || 'Gwabil';
+    const fullName = `${firstName} ${lastName}`;
+    const organizationName = process.env.ORGANIZATION_NAME?.trim() || 'Sulandra Health';
+    const organization = {
+      id: administrator.organizationId,
+      organizationId: administrator.organizationId,
+      name: organizationName,
+      displayName: organizationName,
+    };
     const user = {
       id: administrator.userId,
       userId: administrator.userId,
       organizationId: administrator.organizationId,
+      organizationName,
       email: administrator.email,
       username: 'admin',
       role: administrator.role,
+      firstName,
+      lastName,
+      name: fullName,
+      fullName,
+      displayName: fullName,
+      title: 'Administrator',
+      status: 'ACTIVE',
+      active: true,
+      isActive: true,
       mustChangePassword: false,
+      organization,
     };
     const session = {
       token,
       accessToken: token,
+      refreshToken: token,
+      bearerToken: token,
+      tokenType: 'Bearer',
       expiresIn,
+      expiresAt,
+      id: administrator.userId,
+      userId: administrator.userId,
+      organizationId: administrator.organizationId,
+      organizationName,
+      email: administrator.email,
+      username: 'admin',
+      role: administrator.role,
+      firstName,
+      lastName,
+      name: fullName,
+      fullName,
+      displayName: fullName,
+      mustChangePassword: false,
+      organization,
+      profile: user,
       user,
     };
 
