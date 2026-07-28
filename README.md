@@ -1,6 +1,17 @@
-# Sulandra Website and SPIRE API
+# Sulandra Website and S.P.I.R.E. API
 
-This repository contains the Sulandra website and the production SPIRE careers API.
+This repository contains the public Sulandra website and the production API used by
+the unified Sulandra Employee Portal.
+
+The product flow is:
+
+1. Employee Portal
+2. Employee or administrator signs in with their own account
+3. Sulandra Desktop opens
+4. S.P.I.R.E. appears only when the authenticated role has access to individual charts
+
+S.P.I.R.E. is the clinical charting application inside the Sulandra desktop. It is
+not a separate employee portal.
 
 ## Local API validation
 
@@ -25,15 +36,16 @@ Required variables:
 - `JWT_SECRET`
 - `CAREERS_ORGANIZATION_ID`
 - `PRIMARY_ADMIN_USER_ID`
+- `ADMIN_INITIAL_PASSWORD`
 
 `SULANDRA_INTERNAL_API_KEY` is required only for trusted service-to-service calls.
 Use a different secret from `JWT_SECRET`.
 
 The pre-deploy command first verifies the base schema and then runs
-`prisma migrate deploy`. The target database must already contain the base SPIRE
+`prisma migrate deploy`. The target database must already contain the base S.P.I.R.E.
 `Organization`, `User`, `EmployeeApplication`, and `AuditEvent` tables before the
-careers pipeline migration is applied. Deployment stops with a clear error if any
-of these prerequisites are missing.
+careers and employee-credential migrations are applied. Deployment stops with a
+clear error if any prerequisite is missing.
 
 ## Vercel deployment
 
@@ -41,23 +53,52 @@ of these prerequisites are missing.
 build copies the public website files and excludes API source, Prisma files,
 deployment configuration, and environment files.
 
-## Authentication
+The public Employee Portal link goes to the unified Railway portal while the custom
+`portal.sulandrahealth.com` certificate is repaired.
 
-Employee requests use `Authorization: Bearer <token>`. Tokens must be signed with
-HS256 using `JWT_SECRET` and contain:
+## Employee authentication and routing
 
-```json
+`POST /api/auth/login` accepts `email`, `username`, or `identifier` plus
+`password`. The API resolves the matching `User`, verifies the employee's scrypt
+credential, and issues an eight-hour HS256 bearer token containing the employee's
+own user ID, organization ID, and role.
+
+Every successful login returns `landingRoute: "/desktop"`. It also returns an
+`access` object, `permissions`, and the enabled `apps` for the employee.
+
+| Employee role | Sulandra Desktop | S.P.I.R.E. charts |
+| --- | --- | --- |
+| Administrator, CEO, Program Manager | Yes | Read/write |
+| DSP, House Manager | Yes | Read/write |
+| Delegating Nurse, RN, LPN | Yes | Read/write |
+| Auditor | Yes | Read-only |
+| HR, Scheduler, Billing, Administrative Assistant | Yes | No chart access |
+
+The API enforces this mapping through `GET /api/spire/access`; the frontend should
+hide the S.P.I.R.E. app when `access.spire.enabled` is false.
+
+Administrators provision or reset an existing employee's portal credential with:
+
+```http
+POST /api/admin/portal-credentials
+Authorization: Bearer <administrator-token>
+Content-Type: application/json
+
 {
-  "sub": "existing-user-id",
-  "organizationId": "existing-organization-id",
-  "role": "ADMINISTRATOR",
-  "exp": 1785272400
+  "userId": "existing-user-id",
+  "username": "employee.username",
+  "temporaryPassword": "at-least-12-characters",
+  "displayName": "Employee Name"
 }
 ```
 
-Roles and organization IDs are taken only from verified token claims. Trusted
-internal callers can instead use `x-sulandra-api-key` and the internal identity
-headers.
+The endpoint can receive `email` instead of `userId`. The equivalent
+`PUT /api/admin/users/:userId/credentials` route is also supported. Passwords are
+salted and hashed; plaintext passwords are never stored or returned. Five failed
+attempts lock the account for fifteen minutes.
+
+Employee requests use `Authorization: Bearer <token>`. Trusted internal callers can
+instead use `x-sulandra-api-key` and the internal identity headers.
 
 ## Health endpoints
 
