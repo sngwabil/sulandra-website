@@ -80,7 +80,9 @@ function referenceNumber() {
 }
 
 function requiredCategories(role: ApplicantRole): DocumentCategory[] {
-  if (role === UserRole.DELEGATING_NURSE) return ['RESUME', 'CPR', 'RN_LICENSE'];
+  if (role === UserRole.RN || role === UserRole.DELEGATING_NURSE) {
+    return ['RESUME', 'CPR', 'RN_LICENSE'];
+  }
   if (role === UserRole.DSP) return ['RESUME', 'CPR', 'DRIVER_LICENSE'];
   return ['RESUME', 'CPR', 'LPN_LICENSE'];
 }
@@ -199,38 +201,39 @@ export function registerCareersRoutes(
       const ref = referenceNumber();
       const email = input.email.toLowerCase();
 
-      await prisma.$transaction(async (tx) => {
-        await tx.$executeRawUnsafe(
-          `INSERT INTO "EmployeeApplication"
-           ("id","organizationId","jobOpeningId","firstName","middleName","lastName","email","phone","appliedRole","status","notes","source","sourceExternalId","referenceNumber","folderCreatedAt","submittedAt","createdAt","updatedAt")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::"UserRole",'RECEIVED',$10,$11,$12,$13,NOW(),NOW(),NOW(),NOW())`,
-          id,
-          organizationId,
-          opening?.id ?? null,
-          input.firstName,
-          input.middleName ?? null,
-          input.lastName,
-          email,
-          input.phone,
-          input.appliedRole,
-          input.notes ?? null,
-          'CAREERS',
-          input.sourceExternalId ?? null,
-          ref,
-        );
+      const [createdApplication] = await prisma.$queryRawUnsafe<Array<{ status: string }>>(
+        `INSERT INTO "EmployeeApplication"
+         ("id","organizationId","jobOpeningId","firstName","middleName","lastName","email","phone","appliedRole","notes","source","sourceExternalId","referenceNumber","folderCreatedAt","submittedAt","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::"UserRole",$10,$11,$12,$13,NOW(),NOW(),NOW(),NOW())
+         RETURNING "status"::text AS "status"`,
+        id,
+        organizationId,
+        opening?.id ?? null,
+        input.firstName,
+        input.middleName ?? null,
+        input.lastName,
+        email,
+        input.phone,
+        input.appliedRole,
+        input.notes ?? null,
+        'CAREERS',
+        input.sourceExternalId ?? null,
+        ref,
+      );
 
-        const provided = new Map<DocumentCategory, ApplicantDocument>(
-          input.documents.map((document) => [document.category, document]),
-        );
-        const categories = new Set<DocumentCategory>([
-          ...requiredCategories(input.appliedRole),
-          'APPLICATION',
-          ...input.documents.map((document) => document.category),
-        ]);
+      const provided = new Map<DocumentCategory, ApplicantDocument>(
+        input.documents.map((document) => [document.category, document]),
+      );
+      const categories = new Set<DocumentCategory>([
+        ...requiredCategories(input.appliedRole),
+        'APPLICATION',
+        ...input.documents.map((document) => document.category),
+      ]);
 
-        for (const category of categories) {
-          const document = provided.get(category);
-          await tx.$executeRawUnsafe(
+      for (const category of categories) {
+        const document = provided.get(category);
+        try {
+          await prisma.$executeRawUnsafe(
             `INSERT INTO "ApplicantDocument"
              ("id","applicationId","category","label","status","fileName","storagePath","downloadUrl","mimeType","sizeBytes","uploadedByType","createdAt","updatedAt")
              VALUES ($1,$2,$3::"ApplicantDocumentCategory",$4,$5::"ApplicantDocumentStatus",$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
@@ -246,10 +249,22 @@ export function registerCareersRoutes(
             document?.sizeBytes ?? null,
             document?.downloadUrl ? 'APPLICANT' : null,
           );
+        } catch (documentError) {
+          console.warn('[spire-api] applicant document setup failed', {
+            applicationId: id,
+            category,
+            error: documentError,
+          });
         }
-      });
+      }
 
-      res.status(201).json({ data: { id, referenceNumber: ref, status: 'RECEIVED' } });
+      res.status(201).json({
+        data: {
+          id,
+          referenceNumber: ref,
+          status: createdApplication?.status ?? 'RECEIVED',
+        },
+      });
     } catch (error) {
       next(error);
     }
