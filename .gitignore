@@ -1,0 +1,16 @@
+node_modules/
+api/node_modules/
+api/dist/
+dist/
+
+.env
+.env.*
+!.env.example
+
+*.log
+.npm/
+.DS_Store
+
+coverage/
+tmp/
+temp/

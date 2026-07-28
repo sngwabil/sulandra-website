@@ -2,21 +2,22 @@ FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --include=dev
-
+COPY package.json package-lock.json ./
 COPY api/package.json ./api/package.json
-RUN npm install --prefix api --include=dev
+RUN npm ci --include=dev
 
 COPY prisma ./prisma
+COPY scripts ./scripts
 RUN npm run db:generate
 
 COPY api ./api
-COPY spire ./spire
+RUN npm run build
 
 ENV NODE_ENV=production
 ENV PORT=4000
 
 EXPOSE 4000
 
-CMD ["npm", "run", "start", "--prefix", "api"]
+USER node
+
+CMD ["npm", "run", "start"]

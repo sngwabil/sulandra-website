@@ -22,6 +22,13 @@ type Helpers = {
 };
 
 const openingStatus = z.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']);
+const applicantRole = z.enum(['DSP', 'LPN', 'RN', 'DELEGATING_NURSE']);
+const documentCategory = z.enum([
+  'APPLICATION', 'RESUME', 'COVER_LETTER', 'CPR', 'FIRST_AID',
+  'LPN_LICENSE', 'RN_LICENSE', 'DRIVER_LICENSE', 'AUTO_INSURANCE',
+  'TB_TEST', 'PHYSICAL', 'BACKGROUND_CHECK', 'SOCIAL_SECURITY_CARD',
+  'REFERENCES', 'OTHER',
+]);
 
 const openingSchema = z.object({
   title: z.string().trim().min(2).max(160),
@@ -41,12 +48,7 @@ const openingSchema = z.object({
 });
 
 const documentSchema = z.object({
-  category: z.enum([
-    'APPLICATION', 'RESUME', 'COVER_LETTER', 'CPR', 'FIRST_AID',
-    'LPN_LICENSE', 'RN_LICENSE', 'DRIVER_LICENSE', 'AUTO_INSURANCE',
-    'TB_TEST', 'PHYSICAL', 'BACKGROUND_CHECK', 'SOCIAL_SECURITY_CARD',
-    'REFERENCES', 'OTHER',
-  ]),
+  category: documentCategory,
   label: z.string().trim().min(1).max(120),
   fileName: z.string().max(255).optional(),
   downloadUrl: z.string().url().optional(),
@@ -64,17 +66,20 @@ const publicApplicationSchema = z.object({
   lastName: z.string().trim().min(1).max(80),
   email: z.string().email(),
   phone: z.string().trim().min(7).max(30),
-  appliedRole: z.nativeEnum(UserRole).default(UserRole.DSP),
+  appliedRole: applicantRole.default(UserRole.DSP),
   notes: z.string().max(12000).optional(),
-  source: z.string().trim().max(60).default('CAREERS'),
   documents: z.array(documentSchema).max(30).default([]),
 });
+
+type ApplicantRole = z.infer<typeof applicantRole>;
+type ApplicantDocument = z.infer<typeof documentSchema>;
+type DocumentCategory = z.infer<typeof documentCategory>;
 
 function referenceNumber() {
   return `SCLS-APP-${new Date().getFullYear()}-${randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
-function requiredCategories(role: UserRole): string[] {
+function requiredCategories(role: ApplicantRole): DocumentCategory[] {
   if (role === UserRole.DELEGATING_NURSE) return ['RESUME', 'CPR', 'RN_LICENSE'];
   if (role === UserRole.DSP) return ['RESUME', 'CPR', 'DRIVER_LICENSE'];
   return ['RESUME', 'CPR', 'LPN_LICENSE'];
@@ -89,13 +94,21 @@ export function registerCareersRoutes(
 
   app.get('/public/careers/openings', async (_req, res, next) => {
     try {
+      const organizationId = process.env.CAREERS_ORGANIZATION_ID?.trim();
+      if (!organizationId) {
+        res.status(503).json({ error: 'Careers intake is not configured.' });
+        return;
+      }
+
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT "id","title","slug","department","employmentType","locationText","payRange","summary","description","requirements","benefits","applicationPath","opensAt","closesAt"
          FROM "JobOpening"
-         WHERE "status"='PUBLISHED'
+         WHERE "organizationId"=$1
+           AND "status"='PUBLISHED'
            AND ("opensAt" IS NULL OR "opensAt"<=NOW())
            AND ("closesAt" IS NULL OR "closesAt">NOW())
          ORDER BY "publishedAt" DESC NULLS LAST, "createdAt" DESC`,
+        organizationId,
       );
       res.json({ data: rows });
     } catch (error) {
@@ -106,31 +119,47 @@ export function registerCareersRoutes(
   app.post('/public/careers/applications', async (req, res, next) => {
     try {
       const input = publicApplicationSchema.parse(req.body);
-      let opening: any = null;
+      const organizationId = process.env.CAREERS_ORGANIZATION_ID?.trim();
+      if (!organizationId) {
+        res.status(503).json({ error: 'Careers intake is not configured.' });
+        return;
+      }
+
+      let opening: { id: string } | null = null;
 
       if (input.jobOpeningId) {
         [opening] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "JobOpening" WHERE "id"=$1 AND "status"='PUBLISHED'`,
+          `SELECT "id" FROM "JobOpening"
+           WHERE "id"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'`,
           input.jobOpeningId,
+          organizationId,
         );
       } else if (input.jobSlug) {
         [opening] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "JobOpening" WHERE "slug"=$1 AND "status"='PUBLISHED' ORDER BY "publishedAt" DESC LIMIT 1`,
+          `SELECT "id" FROM "JobOpening"
+           WHERE "slug"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'
+           ORDER BY "publishedAt" DESC LIMIT 1`,
           input.jobSlug,
+          organizationId,
         );
       }
 
-      const organizationId = opening?.organizationId || process.env.CAREERS_ORGANIZATION_ID;
-      if (!organizationId) {
-        return res.status(503).json({ error: 'Careers intake is not configured.' });
+      if ((input.jobOpeningId || input.jobSlug) && !opening) {
+        res.status(404).json({ error: 'Published job opening not found.' });
+        return;
       }
 
       if (input.sourceExternalId) {
         const existing = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id","referenceNumber" FROM "EmployeeApplication" WHERE "sourceExternalId"=$1 LIMIT 1`,
+          `SELECT "id","referenceNumber" FROM "EmployeeApplication"
+           WHERE "sourceExternalId"=$1 AND "organizationId"=$2 LIMIT 1`,
           input.sourceExternalId,
+          organizationId,
         );
-        if (existing[0]) return res.json({ data: existing[0], duplicate: true });
+        if (existing[0]) {
+          res.json({ data: existing[0], duplicate: true });
+          return;
+        }
       }
 
       const id = randomUUID();
@@ -152,20 +181,22 @@ export function registerCareersRoutes(
           input.phone,
           input.appliedRole,
           input.notes ?? null,
-          input.source,
+          'CAREERS',
           input.sourceExternalId ?? null,
           ref,
         );
 
-        const provided = new Map(input.documents.map((document) => [document.category, document]));
-        const categories = new Set<string>([
+        const provided = new Map<DocumentCategory, ApplicantDocument>(
+          input.documents.map((document) => [document.category, document]),
+        );
+        const categories = new Set<DocumentCategory>([
           ...requiredCategories(input.appliedRole),
           'APPLICATION',
           ...input.documents.map((document) => document.category),
         ]);
 
         for (const category of categories) {
-          const document = provided.get(category as any);
+          const document = provided.get(category);
           await tx.$executeRawUnsafe(
             `INSERT INTO "ApplicantDocument"
              ("id","applicationId","category","label","status","fileName","storagePath","downloadUrl","mimeType","sizeBytes","uploadedByType","createdAt","updatedAt")
@@ -328,7 +359,7 @@ export function registerCareersRoutes(
       const auth = authOf(res);
       const id = String(req.params.id);
       const input = z.object({
-        category: z.string().min(2),
+        category: documentCategory,
         label: z.string().min(2).max(120),
         message: z.string().max(4000).optional(),
       }).parse(req.body);
