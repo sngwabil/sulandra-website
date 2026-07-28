@@ -35,6 +35,12 @@ The pre-deploy command first verifies the base schema and then runs
 careers pipeline migration is applied. Deployment stops with a clear error if any
 of these prerequisites are missing.
 
+## Vercel deployment
+
+`vercel.json` runs `npm run build:web` and publishes only `dist-web/`. The static
+build copies the public website files and excludes API source, Prisma files,
+deployment configuration, and environment files.
+
 ## Authentication
 
 Employee requests use `Authorization: Bearer <token>`. Tokens must be signed with
