@@ -2,6 +2,10 @@ import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import {
+  provisionApplicantWorkflow,
+  registerApplicantWorkflowRoutes,
+} from './applicant-workflow.js';
 
 type AuthContext = {
   userId: string;
@@ -22,7 +26,8 @@ type Helpers = {
 };
 
 const openingStatus = z.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']);
-const applicantRole = z.enum(['DSP', 'LPN', 'RN', 'DELEGATING_NURSE']);
+const applicantRole = z.enum(['DSP', 'LPN', 'RN', 'DELEGATING_NURSE', 'GENERAL']);
+const communicationChannel = z.enum(['EMAIL', 'SMS']);
 const documentCategory = z.enum([
   'APPLICATION', 'RESUME', 'COVER_LETTER', 'CPR', 'FIRST_AID',
   'LPN_LICENSE', 'RN_LICENSE', 'DRIVER_LICENSE', 'AUTO_INSURANCE',
@@ -54,7 +59,8 @@ const documentSchema = z.object({
   downloadUrl: z.string().url().optional(),
   storagePath: z.string().max(1000).optional(),
   mimeType: z.string().max(160).optional(),
-  sizeBytes: z.number().int().nonnegative().max(50_000_000).optional(),
+  sizeBytes: z.number().int().nonnegative().max(20_000_000).optional(),
+  fileDataBase64: z.string().optional(),
 });
 
 const publicApplicationSchema = z.object({
@@ -64,11 +70,23 @@ const publicApplicationSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
   middleName: z.string().trim().max(80).optional(),
   lastName: z.string().trim().min(1).max(80),
-  email: z.string().email(),
-  phone: z.string().trim().min(7).max(30),
-  appliedRole: applicantRole.default(UserRole.DSP),
+  email: z.union([z.string().trim().email(), z.literal('')]).optional(),
+  phone: z.string().trim().max(30).optional(),
+  preferredCommunication: communicationChannel.default('EMAIL'),
+  appliedRole: applicantRole.default('DSP'),
   notes: z.string().max(12000).optional(),
+  applicationData: z.record(z.string(), z.unknown()).default({}),
+  assessmentAnswers: z.record(z.string(), z.unknown()).optional(),
   documents: z.array(documentSchema).max(30).default([]),
+}).refine((value) => Boolean(value.email || (value.phone && value.phone.length >= 7)), {
+  message: 'An email address or phone number is required.',
+  path: ['email'],
+}).refine((value) => value.preferredCommunication !== 'EMAIL' || Boolean(value.email), {
+  message: 'Email is required when email is the preferred communication method.',
+  path: ['preferredCommunication'],
+}).refine((value) => value.preferredCommunication !== 'SMS' || Boolean(value.phone), {
+  message: 'Phone is required when SMS is the preferred communication method.',
+  path: ['preferredCommunication'],
 });
 
 type ApplicantRole = z.infer<typeof applicantRole>;
@@ -80,11 +98,31 @@ function referenceNumber() {
 }
 
 function requiredCategories(role: ApplicantRole): DocumentCategory[] {
-  if (role === UserRole.RN || role === UserRole.DELEGATING_NURSE) {
+  if (role === 'RN' || role === 'DELEGATING_NURSE') {
     return ['RESUME', 'CPR', 'RN_LICENSE'];
   }
-  if (role === UserRole.DSP) return ['RESUME', 'CPR', 'DRIVER_LICENSE'];
-  return ['RESUME', 'CPR', 'LPN_LICENSE'];
+  if (role === 'LPN') return ['RESUME', 'CPR', 'LPN_LICENSE'];
+  if (role === 'DSP') return ['RESUME', 'CPR', 'DRIVER_LICENSE'];
+  return ['RESUME', 'COVER_LETTER', 'REFERENCES'];
+}
+
+function roleForOpening(title: string, department?: string | null): ApplicantRole {
+  const value = `${title} ${department ?? ''}`.toLowerCase();
+  if (/delegating nurse/.test(value)) return 'DELEGATING_NURSE';
+  if (/\brn\b|registered nurse|nursing/.test(value)) return 'RN';
+  if (/\blpn\b|licensed practical nurse/.test(value)) return 'LPN';
+  if (/\bdsp\b|direct support|aide|caregiver/.test(value)) return 'DSP';
+  return 'GENERAL';
+}
+
+function applicationPathForOpening(row: any) {
+  if (row.applicationPath) return row.applicationPath;
+  const role = roleForOpening(row.title, row.department);
+  if (role === 'DSP') return `/applydsp.html?opening=${encodeURIComponent(row.slug)}`;
+  if (role === 'LPN' || role === 'RN' || role === 'DELEGATING_NURSE') {
+    return `/applylpn.html?opening=${encodeURIComponent(row.slug)}&role=${role}`;
+  }
+  return `/applygeneral.html?opening=${encodeURIComponent(row.slug)}`;
 }
 
 export function registerCareersRoutes(
@@ -106,7 +144,6 @@ export function registerCareersRoutes(
       const administratorEmail = (
         process.env.ADMIN_EMAIL ?? 'admin@sulandrahealth.com'
       ).trim().toLowerCase();
-
       careersOrganizationLookup = prisma.$queryRawUnsafe<Array<{ organizationId: string }>>(
         `SELECT "organizationId"
            FROM "User"
@@ -123,7 +160,6 @@ export function registerCareersRoutes(
         careersOrganizationLookup = null;
       });
     }
-
     return careersOrganizationLookup;
   }
 
@@ -134,18 +170,24 @@ export function registerCareersRoutes(
         res.status(503).json({ error: 'Careers intake is not configured.' });
         return;
       }
-
       const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT "id","title","slug","department","employmentType","locationText","payRange","summary","description","requirements","benefits","applicationPath","opensAt","closesAt"
-         FROM "JobOpening"
-         WHERE "organizationId"=$1
-           AND "status"='PUBLISHED'
-           AND ("opensAt" IS NULL OR "opensAt"<=NOW())
-           AND ("closesAt" IS NULL OR "closesAt">NOW())
-         ORDER BY "publishedAt" DESC NULLS LAST, "createdAt" DESC`,
+        `SELECT "id","title","slug","department","employmentType","locationText","payRange",
+                "summary","description","requirements","benefits","applicationPath","opensAt","closesAt"
+           FROM "JobOpening"
+          WHERE "organizationId"=$1
+            AND "status"='PUBLISHED'
+            AND ("opensAt" IS NULL OR "opensAt"<=NOW())
+            AND ("closesAt" IS NULL OR "closesAt">NOW())
+          ORDER BY "publishedAt" DESC NULLS LAST, "createdAt" DESC`,
         organizationId,
       );
-      res.json({ data: rows });
+      res.json({
+        data: rows.map((row) => ({
+          ...row,
+          appliedRole: roleForOpening(row.title, row.department),
+          applicationPath: applicationPathForOpening(row),
+        })),
+      });
     } catch (error) {
       next(error);
     }
@@ -160,25 +202,23 @@ export function registerCareersRoutes(
         return;
       }
 
-      let opening: { id: string } | null = null;
-
+      let opening: { id: string; title: string; department?: string | null } | null = null;
       if (input.jobOpeningId) {
         [opening] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id" FROM "JobOpening"
-           WHERE "id"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'`,
+          `SELECT "id","title","department" FROM "JobOpening"
+            WHERE "id"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'`,
           input.jobOpeningId,
           organizationId,
         );
       } else if (input.jobSlug) {
         [opening] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id" FROM "JobOpening"
-           WHERE "slug"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'
-           ORDER BY "publishedAt" DESC LIMIT 1`,
+          `SELECT "id","title","department" FROM "JobOpening"
+            WHERE "slug"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'
+            ORDER BY "publishedAt" DESC LIMIT 1`,
           input.jobSlug,
           organizationId,
         );
       }
-
       if ((input.jobOpeningId || input.jobSlug) && !opening) {
         res.status(404).json({ error: 'Published job opening not found.' });
         return;
@@ -186,8 +226,9 @@ export function registerCareersRoutes(
 
       if (input.sourceExternalId) {
         const existing = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id","referenceNumber" FROM "EmployeeApplication"
-           WHERE "sourceExternalId"=$1 AND "organizationId"=$2 LIMIT 1`,
+          `SELECT "id","referenceNumber","workflowStatus" AS "status"
+             FROM "EmployeeApplication"
+            WHERE "sourceExternalId"=$1 AND "organizationId"=$2 LIMIT 1`,
           input.sourceExternalId,
           organizationId,
         );
@@ -199,13 +240,21 @@ export function registerCareersRoutes(
 
       const id = randomUUID();
       const ref = referenceNumber();
-      const email = input.email.toLowerCase();
+      const email = input.email?.trim().toLowerCase() || null;
+      const phone = input.phone?.trim() || null;
+      const derivedRole = opening
+        ? roleForOpening(opening.title, opening.department)
+        : input.appliedRole;
+      const appliedRole = input.appliedRole === 'GENERAL' ? derivedRole : input.appliedRole;
+      const jobTitle = opening?.title || String(input.applicationData.position || appliedRole);
 
-      const [createdApplication] = await prisma.$queryRawUnsafe<Array<{ status: string }>>(
+      await prisma.$executeRawUnsafe(
         `INSERT INTO "EmployeeApplication"
-         ("id","organizationId","jobOpeningId","firstName","middleName","lastName","email","phone","appliedRole","notes","source","sourceExternalId","referenceNumber","folderCreatedAt","submittedAt","createdAt","updatedAt")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::"UserRole",$10,$11,$12,$13,NOW(),NOW(),NOW(),NOW())
-         RETURNING "status"::text AS "status"`,
+          ("id","organizationId","jobOpeningId","firstName","middleName","lastName","email","phone",
+           "appliedRole","notes","source","sourceExternalId","referenceNumber","folderCreatedAt",
+           "workflowStatus","preferredCommunication","applicationData","submittedAt","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::"UserRole",$10,'CAREERS',$11,$12,NOW(),
+                 'RECEIVED',$13,$14::jsonb,NOW(),NOW(),NOW())`,
         id,
         organizationId,
         opening?.id ?? null,
@@ -213,56 +262,87 @@ export function registerCareersRoutes(
         input.middleName ?? null,
         input.lastName,
         email,
-        input.phone,
-        input.appliedRole,
+        phone,
+        appliedRole,
         input.notes ?? null,
-        'CAREERS',
         input.sourceExternalId ?? null,
         ref,
+        input.preferredCommunication,
+        JSON.stringify(input.applicationData),
       );
 
       const provided = new Map<DocumentCategory, ApplicantDocument>(
         input.documents.map((document) => [document.category, document]),
       );
       const categories = new Set<DocumentCategory>([
-        ...requiredCategories(input.appliedRole),
+        ...requiredCategories(appliedRole),
         'APPLICATION',
         ...input.documents.map((document) => document.category),
       ]);
 
       for (const category of categories) {
         const document = provided.get(category);
-        try {
-          await prisma.$executeRawUnsafe(
-            `INSERT INTO "ApplicantDocument"
-             ("id","applicationId","category","label","status","fileName","storagePath","downloadUrl","mimeType","sizeBytes","uploadedByType","createdAt","updatedAt")
-             VALUES ($1,$2,$3::"ApplicantDocumentCategory",$4,$5::"ApplicantDocumentStatus",$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
-            randomUUID(),
-            id,
-            category,
-            document?.label ?? category.replaceAll('_', ' '),
-            document?.downloadUrl ? 'RECEIVED' : 'MISSING',
-            document?.fileName ?? null,
-            document?.storagePath ?? null,
-            document?.downloadUrl ?? null,
-            document?.mimeType ?? null,
-            document?.sizeBytes ?? null,
-            document?.downloadUrl ? 'APPLICANT' : null,
-          );
-        } catch (documentError) {
-          console.warn('[spire-api] applicant document setup failed', {
-            applicationId: id,
-            category,
-            error: documentError,
-          });
+        const fileData = document?.fileDataBase64
+          ? Buffer.from(document.fileDataBase64, 'base64')
+          : null;
+        if (fileData && fileData.length > 20_000_000) {
+          res.status(400).json({ error: `${document?.label ?? category} exceeds the 20 MB limit.` });
+          return;
         }
+        const hasFile = Boolean(fileData?.length || document?.downloadUrl);
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "ApplicantDocument"
+            ("id","applicationId","category","label","status","fileName","storagePath","downloadUrl",
+             "mimeType","sizeBytes","fileData","contentSha256","uploadedByType","uploadedAt","createdAt","updatedAt")
+           VALUES ($1,$2,$3::"ApplicantDocumentCategory",$4,$5::"ApplicantDocumentStatus",
+                   $6,$7,$8,$9,$10,$11,$12,$13,CASE WHEN $13 IS NOT NULL THEN NOW() ELSE NULL END,NOW(),NOW())`,
+          randomUUID(),
+          id,
+          category,
+          document?.label ?? category.replaceAll('_', ' '),
+          hasFile ? 'RECEIVED' : 'MISSING',
+          document?.fileName ?? null,
+          document?.storagePath ?? null,
+          document?.downloadUrl ?? null,
+          document?.mimeType ?? null,
+          fileData?.length ?? document?.sizeBytes ?? null,
+          fileData,
+          fileData ? createHash('sha256').update(fileData).digest('hex') : null,
+          hasFile ? 'APPLICANT' : null,
+        );
       }
+
+      const workflow = await provisionApplicantWorkflow(prisma, {
+        applicationId: id,
+        referenceNumber: ref,
+        organizationId,
+        jobTitle,
+        appliedRole,
+        firstName: input.firstName,
+        middleName: input.middleName,
+        lastName: input.lastName,
+        email,
+        phone,
+        preferredCommunication: input.preferredCommunication,
+        notes: input.notes,
+        applicationData: {
+          ...input.applicationData,
+          jobTitle,
+          appliedRole,
+        },
+        assessmentAnswers: input.assessmentAnswers,
+      });
 
       res.status(201).json({
         data: {
           id,
           referenceNumber: ref,
-          status: createdApplication?.status ?? 'RECEIVED',
+          status: 'RECEIVED',
+          applicantUsername: workflow.username,
+          notificationStatus: workflow.deliveryStatus,
+          assessment: workflow.assessment,
+          applicantPortalUrl: process.env.CAREERS_PORTAL_URL
+            ?? 'https://www.sulandrahealth.com/applicant-portal.html',
         },
       });
     } catch (error) {
@@ -275,11 +355,11 @@ export function registerCareersRoutes(
       const auth = authOf(res);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT j.*, COUNT(a."id")::int AS "applicantCount"
-         FROM "JobOpening" j
-         LEFT JOIN "EmployeeApplication" a ON a."jobOpeningId"=j."id"
-         WHERE j."organizationId"=$1
-         GROUP BY j."id"
-         ORDER BY j."createdAt" DESC`,
+           FROM "JobOpening" j
+           LEFT JOIN "EmployeeApplication" a ON a."jobOpeningId"=j."id"
+          WHERE j."organizationId"=$1
+          GROUP BY j."id"
+          ORDER BY j."createdAt" DESC`,
         auth.organizationId,
       );
       res.json({ data: rows });
@@ -303,20 +383,20 @@ export function registerCareersRoutes(
         auth.organizationId,
         auth.userId,
       );
-
       if (!identity?.organizationExists) {
         res.status(409).json({
           error: 'The configured careers organization does not exist in the SPIRE database.',
         });
         return;
       }
-
       const createdById = identity.userExists ? auth.userId : null;
-
       await prisma.$executeRawUnsafe(
         `INSERT INTO "JobOpening"
-         ("id","organizationId","title","slug","department","employmentType","locationText","payRange","summary","description","requirements","benefits","applicationPath","status","opensAt","closesAt","publishedAt","createdById","createdAt","updatedAt")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::"JobOpeningStatus",$15,$16,CASE WHEN $14='PUBLISHED' THEN NOW() ELSE NULL END,$17,NOW(),NOW())`,
+          ("id","organizationId","title","slug","department","employmentType","locationText","payRange",
+           "summary","description","requirements","benefits","applicationPath","status","opensAt","closesAt",
+           "publishedAt","createdById","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::"JobOpeningStatus",$15,$16,
+                 CASE WHEN $14='PUBLISHED' THEN NOW() ELSE NULL END,$17,NOW(),NOW())`,
         id,
         auth.organizationId,
         input.title,
@@ -335,18 +415,13 @@ export function registerCareersRoutes(
         input.closesAt ?? null,
         createdById,
       );
-
       await audit(
         { ...auth, userId: createdById ?? undefined },
         'CREATE_JOB_OPENING',
         'JobOpening',
         id,
-        {
-          status: input.status,
-          title: input.title,
-        },
+        { status: input.status, title: input.title },
       );
-
       res.status(201).json({ data: { id, ...input } });
     } catch (error) {
       next(error);
@@ -363,17 +438,15 @@ export function registerCareersRoutes(
         id,
         auth.organizationId,
       );
-
       if (!current) return res.status(404).json({ error: 'Opening not found' });
       const merged = { ...current, ...input };
-
       await prisma.$executeRawUnsafe(
         `UPDATE "JobOpening" SET
-         "title"=$1,"slug"=$2,"department"=$3,"employmentType"=$4,"locationText"=$5,"payRange"=$6,
-         "summary"=$7,"description"=$8,"requirements"=$9,"benefits"=$10,"applicationPath"=$11,
-         "status"=$12::"JobOpeningStatus","opensAt"=$13,"closesAt"=$14,
-         "publishedAt"=CASE WHEN $12='PUBLISHED' AND "publishedAt" IS NULL THEN NOW() ELSE "publishedAt" END,
-         "updatedAt"=NOW()
+           "title"=$1,"slug"=$2,"department"=$3,"employmentType"=$4,"locationText"=$5,"payRange"=$6,
+           "summary"=$7,"description"=$8,"requirements"=$9,"benefits"=$10,"applicationPath"=$11,
+           "status"=$12::"JobOpeningStatus","opensAt"=$13,"closesAt"=$14,
+           "publishedAt"=CASE WHEN $12='PUBLISHED' AND "publishedAt" IS NULL THEN NOW() ELSE "publishedAt" END,
+           "updatedAt"=NOW()
          WHERE "id"=$15 AND "organizationId"=$16`,
         merged.title,
         merged.slug,
@@ -392,7 +465,6 @@ export function registerCareersRoutes(
         id,
         auth.organizationId,
       );
-
       await audit(auth, 'UPDATE_JOB_OPENING', 'JobOpening', id, { status: merged.status });
       res.json({ data: { id, ...merged } });
     } catch (error) {
@@ -409,31 +481,26 @@ export function registerCareersRoutes(
         jobOpeningId: z.string().trim().max(200).optional(),
         limit: z.coerce.number().int().min(1).max(200).default(100),
       }).parse(req.query);
-
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT
            a.*,
+           a."workflowStatus" AS "status",
            j."title" AS "jobTitle",
-           (SELECT COUNT(*)::int
-              FROM "ApplicantDocument" d
+           (SELECT COUNT(*)::int FROM "ApplicantDocument" d
              WHERE d."applicationId"=a."id") AS "documentCount",
-           (SELECT COUNT(*)::int
-              FROM "ApplicantDocument" d
+           (SELECT COUNT(*)::int FROM "ApplicantDocument" d
+             WHERE d."applicationId"=a."id" AND d."status" IN ('RECEIVED','APPROVED'))
+             AS "receivedDocumentCount",
+           (SELECT COUNT(*)::int FROM "ApplicantDocument" d
              WHERE d."applicationId"=a."id"
-               AND d."status" IN ('RECEIVED','APPROVED')) AS "receivedDocumentCount",
-           (SELECT COUNT(*)::int
-              FROM "ApplicantDocument" d
-             WHERE d."applicationId"=a."id"
-               AND d."status" IN ('MISSING','REQUESTED','REJECTED','EXPIRED','RENEWAL_REQUESTED')) AS "outstandingDocumentCount"
+               AND d."status" IN ('MISSING','REQUESTED','REJECTED','EXPIRED','RENEWAL_REQUESTED'))
+             AS "outstandingDocumentCount"
          FROM "EmployeeApplication" a
          LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
          WHERE a."organizationId"=$1
-           AND (
-             $2::text IS NULL
-             OR CONCAT_WS(' ',a."firstName",a."middleName",a."lastName",a."email",a."phone",a."referenceNumber")
-                ILIKE '%' || $2::text || '%'
-           )
-           AND ($3::text IS NULL OR a."status"::text=$3::text)
+           AND ($2::text IS NULL OR CONCAT_WS(' ',a."firstName",a."middleName",a."lastName",
+                a."email",a."phone",a."referenceNumber") ILIKE '%' || $2::text || '%')
+           AND ($3::text IS NULL OR a."workflowStatus"=$3::text)
            AND ($4::text IS NULL OR a."jobOpeningId"=$4::text)
          ORDER BY a."submittedAt" DESC NULLS LAST, a."createdAt" DESC
          LIMIT $5`,
@@ -443,8 +510,10 @@ export function registerCareersRoutes(
         query.jobOpeningId || null,
         query.limit,
       );
-
-      res.json({ data: rows });
+      res.json({ data: rows, statuses: [
+        'RECEIVED', 'REVIEWING', 'DOCUMENTS_NEEDED', 'INTERVIEW', 'OFFER_PENDING',
+        'HIRED', 'NOT_SELECTED', 'WITHDRAWN', 'TERMINATED', 'POSITION_FILLED',
+      ] });
     } catch (error) {
       next(error);
     }
@@ -455,23 +524,36 @@ export function registerCareersRoutes(
       const auth = authOf(res);
       const id = String(req.params.id);
       const applications = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT a.*, j."title" AS "jobTitle"
-         FROM "EmployeeApplication" a
-         LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-         WHERE a."id"=$1 AND a."organizationId"=$2`,
+        `SELECT a.*,a."workflowStatus" AS "status",j."title" AS "jobTitle"
+           FROM "EmployeeApplication" a
+           LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
+          WHERE a."id"=$1 AND a."organizationId"=$2`,
         id,
         auth.organizationId,
       );
-
       if (!applications[0]) return res.status(404).json({ error: 'Application not found' });
-
-      const [documents, messages, interviews] = await Promise.all([
-        prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "ApplicantDocument" WHERE "applicationId"=$1 ORDER BY "category","version" DESC`, id),
-        prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "ApplicantMessage" WHERE "applicationId"=$1 ORDER BY "createdAt" DESC`, id),
-        prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "InterviewOption" WHERE "applicationId"=$1 ORDER BY "startsAt"`, id),
+      const [documents, messages, interviews, history] = await Promise.all([
+        prisma.$queryRawUnsafe<any[]>(
+          `SELECT "id","applicationId","category","label","status","version","fileName","mimeType",
+                  "sizeBytes","uploadedByType","requestedAt","uploadedAt","reviewNotes","reviewedAt",
+                  "createdAt","updatedAt"
+             FROM "ApplicantDocument" WHERE "applicationId"=$1 ORDER BY "category","version" DESC`,
+          id,
+        ),
+        prisma.$queryRawUnsafe<any[]>(
+          `SELECT * FROM "ApplicantMessage" WHERE "applicationId"=$1 ORDER BY "createdAt" DESC`,
+          id,
+        ),
+        prisma.$queryRawUnsafe<any[]>(
+          `SELECT * FROM "InterviewOption" WHERE "applicationId"=$1 ORDER BY "startsAt"`,
+          id,
+        ),
+        prisma.$queryRawUnsafe<any[]>(
+          `SELECT * FROM "ApplicantStatusHistory" WHERE "applicationId"=$1 ORDER BY "createdAt" DESC`,
+          id,
+        ),
       ]);
-
-      res.json({ data: { application: applications[0], documents, messages, interviews } });
+      res.json({ data: { application: applications[0], documents, messages, interviews, history } });
     } catch (error) {
       next(error);
     }
@@ -486,52 +568,69 @@ export function registerCareersRoutes(
         label: z.string().min(2).max(120),
         message: z.string().max(4000).optional(),
       }).parse(req.body);
-
       const [application] = await prisma.$queryRawUnsafe<any[]>(
         `SELECT * FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`,
         id,
         auth.organizationId,
       );
       if (!application) return res.status(404).json({ error: 'Application not found' });
-
       const rawToken = randomBytes(32).toString('base64url');
       const tokenHash = createHash('sha256').update(rawToken).digest('hex');
       const messageId = randomUUID();
-
       await prisma.$transaction(async (tx) => {
-        await tx.$executeRawUnsafe(
-          `UPDATE "ApplicantDocument" SET "status"='REQUESTED',"updatedAt"=NOW() WHERE "applicationId"=$1 AND "category"=$2::"ApplicantDocumentCategory"`,
+        const changed = await tx.$executeRawUnsafe(
+          `UPDATE "ApplicantDocument"
+              SET "status"='REQUESTED',"requestedAt"=NOW(),"updatedAt"=NOW()
+            WHERE "applicationId"=$1 AND "category"=$2::"ApplicantDocumentCategory"`,
           id,
           input.category,
         );
+        if (!changed) {
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "ApplicantDocument"
+              ("id","applicationId","category","label","status","requestedAt","createdAt","updatedAt")
+             VALUES ($1,$2,$3::"ApplicantDocumentCategory",$4,'REQUESTED',NOW(),NOW(),NOW())`,
+            randomUUID(),
+            id,
+            input.category,
+            input.label,
+          );
+        }
         await tx.$executeRawUnsafe(
           `INSERT INTO "ApplicantMessage"
-           ("id","applicationId","type","subject","body","recipientEmail","deliveryStatus","secureTokenHash","tokenExpiresAt","createdById","createdAt")
-           VALUES ($1,$2,'DOCUMENT_REQUEST',$3,$4,$5,'QUEUED',$6,NOW()+INTERVAL '14 days',$7,NOW())`,
+            ("id","applicationId","type","subject","body","recipientEmail","recipientPhone","channel",
+             "replyToEmail","deliveryStatus","secureTokenHash","tokenExpiresAt","createdById","createdAt","updatedAt")
+           VALUES ($1,$2,'DOCUMENT_REQUEST',$3,$4,$5,$6,$7,$8,'QUEUED',$9,
+                   NOW()+INTERVAL '14 days',$10,NOW(),NOW())`,
           messageId,
           id,
           `Document requested: ${input.label}`,
-          input.message ?? `Please upload your ${input.label}.`,
-          application.email,
+          input.message ?? `Please upload your ${input.label} through the applicant portal.`,
+          application.email ?? null,
+          application.phone ?? null,
+          application.preferredCommunication ?? 'EMAIL',
+          process.env.CAREERS_EMAIL_FROM ?? process.env.ADMIN_EMAIL ?? 'admin@sulandrahealth.com',
           tokenHash,
           auth.userId,
         );
       });
-
       await audit(auth, 'REQUEST_APPLICANT_DOCUMENT', 'EmployeeApplication', id, {
         category: input.category,
         messageId,
       });
-
       res.status(201).json({
         data: {
           messageId,
           deliveryStatus: 'QUEUED',
-          uploadPath: `/applicant-upload.html?token=${rawToken}`,
+          applicantPortalUrl: process.env.CAREERS_PORTAL_URL
+            ?? 'https://www.sulandrahealth.com/applicant-portal.html',
+          uploadPath: `/applicant-portal.html?token=${rawToken}`,
         },
       });
     } catch (error) {
       next(error);
     }
   });
+
+  registerApplicantWorkflowRoutes(app, prisma, helpers);
 }
