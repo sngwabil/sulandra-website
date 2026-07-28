@@ -1,24 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Sulandra Health | S.P.I.R.E. Employee Login</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="2;url=https://sulandra-website-production-5fc4.up.railway.app/spire/">
+<title>Sulandra Health | Employee Portal</title>
 <style>
-:root{--primary:#004b8d;--secondary:#0077c8;--bg:#f4f7fb;--text:#17243a;--border:#dce5ee;--muted:#66778a;--white:#fff;--danger:#a12f2f}*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Segoe UI,Arial,sans-serif;background:linear-gradient(145deg,#eef4f8,#f8fafc);color:var(--text)}header{background:#fff;border-bottom:1px solid var(--border)}.top{max-width:1100px;height:78px;margin:auto;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}.top img{width:240px;display:block}.top a{text-decoration:none;color:var(--primary);font-weight:750}.layout{max-width:1040px;margin:42px auto;padding:0 18px;display:grid;grid-template-columns:1.05fr .95fr;gap:28px}.intro{border-radius:18px;padding:42px;background:linear-gradient(145deg,#073a67,#0b6192);color:#fff;display:flex;flex-direction:column;justify-content:center;box-shadow:0 18px 50px rgba(25,63,97,.16)}.intro h1{font-size:clamp(2.4rem,5vw,4.5rem);margin:8px 0}.intro h2{font-size:1.05rem;margin:0 0 18px}.intro p{line-height:1.65;color:#d3e3ee}.assurance{margin-top:24px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.1);font-size:13px}.card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:30px;box-shadow:0 18px 50px rgba(25,63,97,.12);align-self:center}.card h3{font-size:28px;margin:0 0 7px}.sub{color:var(--muted);font-size:14px}.demo{margin:18px 0;padding:14px;border:1px solid #b9d7ee;border-radius:12px;background:#eef7fd}.demo span{display:block;margin-top:5px;color:#49657d;font-size:13px;line-height:1.45}button{border:0;border-radius:10px;padding:12px 15px;font-weight:800;cursor:pointer;font-size:14px}.demo button{width:100%;margin-top:11px;background:var(--secondary);color:#fff}form{display:grid;gap:15px}label{display:grid;gap:7px;font-weight:700;font-size:14px}input{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:15px}.row{display:flex;gap:10px}.primary{background:var(--primary);color:#fff;flex:1}.ghost{background:transparent;border:1px solid var(--border)}.msg{display:none;padding:10px;border-radius:8px;background:#fff1f1;color:var(--danger);font-size:13px}.msg.show{display:block}.note{color:var(--muted);font-size:12px;line-height:1.5}@media(max-width:780px){.layout{grid-template-columns:1fr;margin:24px auto}.intro{padding:30px}.card{padding:24px}.top img{width:195px}}
+:root{--navy:#123b5d;--blue:#1f7bb4;--gold:#ddb45a;--ink:#0e2340;--muted:#63758a;--paper:#fff;--bg:#eaf2f7}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink);display:grid;place-items:center}
+.shell{width:min(1040px,calc(100% - 32px));display:grid;grid-template-columns:1.05fr .95fr;border-radius:24px;overflow:hidden;box-shadow:0 24px 70px rgba(18,59,93,.2);background:var(--paper)}
+.brand{padding:64px 54px;background:linear-gradient(145deg,var(--navy),#185d88);color:#fff;display:flex;flex-direction:column;justify-content:center}
+.mark{width:72px;height:72px;border-radius:22px;background:var(--gold);color:var(--navy);display:grid;place-items:center;font-size:42px;font-weight:900}
+.brand small{margin-top:18px;font-weight:800;letter-spacing:2px}
+.brand h1{font-size:clamp(3.2rem,8vw,6rem);letter-spacing:.08em;margin:30px 0 12px}
+.brand p{font-size:1.15rem;line-height:1.7;color:#d8e6ef}
+.assurance{margin-top:28px;padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.1);font-size:14px}
+.card{padding:54px 44px;align-self:center}
+.card small{font-weight:800;letter-spacing:1.8px;color:var(--muted)}
+.card h2{font-size:2.65rem;margin:12px 0}
+.card p{font-size:1.08rem;line-height:1.65;color:var(--muted)}
+.button{display:block;margin-top:28px;padding:16px 18px;border-radius:12px;background:var(--gold);color:var(--navy);text-align:center;text-decoration:none;font-weight:900;font-size:1.05rem}
+.note{margin-top:18px;font-size:.88rem!important}
+@media(max-width:760px){.shell{grid-template-columns:1fr}.brand{padding:38px 30px}.brand h1{font-size:3.4rem}.card{padding:38px 30px}}
 </style>
 </head>
 <body>
-<header><div class="top"><a href="index.html"><img src="assets/mainlogo.png" alt="Sulandra Health" /></a><a href="index.html">Back to Site</a></div></header>
-<main class="layout"><section class="intro"><small>SULANDRA HEALTH SECURE EMPLOYEE PORTAL</small><h1>S.P.I.R.E.</h1><h2>Sulandra Person-Centered Integrated Record Environment</h2><p>Enter your role-based clinical and shift workspace from one secure portal.</p><div class="assurance">Role-based access · Audited clinical activity · Person-centered documentation</div></section><section class="card"><h3>Employee sign in</h3><p class="sub">Use your assigned account, or open the standalone demonstration workspace.</p><div class="demo"><strong>Development preview access</strong><span>This static preview requires no database or backend connection.</span><button id="demo" type="button">Open S.P.I.R.E. Demo</button></div><form id="form"><label>Employee email<input id="email" type="email" value="admin@sulandrahealth.com" /></label><label>Password<input id="password" type="password" placeholder="Enter your password" /></label><div class="row"><button class="ghost" id="clear" type="button">Clear</button><button class="primary" type="submit">Enter S.P.I.R.E.</button></div><div id="msg" class="msg"></div></form><p class="note">Administrator access is currently a browser-local development preview. Change your temporary password from Profile after signing in.</p></section></main>
-<script>
-const ADMIN_EMAIL='admin@sulandrahealth.com',ADMIN_KEY='spire-admin-credential-v1',SESSION_KEY='spire-admin-session',USERS_KEY='spire-managed-users-v1';
-const DEFAULT_SALT='ensw3lfM2iNIaCGU89yZGw==',DEFAULT_VERIFIER='jUTGx63Tr2E+5tL5iyfKQ7gTvTZdOMBB+/Afv93NODU=';
-const enc=new TextEncoder(),msg=document.getElementById('msg');
-function b64ToBytes(v){const s=atob(v),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
-function bytesToB64(bytes){let s='';bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s)}
-async function derive(password,salt){const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},key,256);return bytesToB64(new Uint8Array(bits))}
-function ensureAdminUser(){let list=[];try{list=JSON.parse(localStorage.getItem(USERS_KEY)||'[]')}catch{}if(!list.some(u=>u.email===ADMIN_EMAIL)){list.unshift({id:'admin-primary',email:ADMIN_EMAIL,firstName:'Sulpitius',lastName:'Gwabil',role:'Administrator',active:true,createdAt:new Date().toISOString(),mustChangePassword:false});localStorage.setItem(USERS_KEY,JSON.stringify(list))}}
-document.getElementById('demo').onclick=()=>location.assign('spire-demo.html');document.getElementById('clear').onclick=()=>{document.getElementById('email').value='';document.getElementById('password').value='';msg.className='msg'};
-document.getElementById('form').onsubmit=async e=>{e.preventDefault();const email=document.getElementById('email').value.trim().toLowerCase(),password=document.getElementById('password').value;if(!email||!password){msg.textContent='Enter your employee email and password.';msg.className='msg show';return}if(email!==ADMIN_EMAIL){msg.textContent='Employee accounts will be enabled after the production authentication backend is connected.';msg.className='msg show';return}try{let credential=null;try{credential=JSON.parse(localStorage.getItem(ADMIN_KEY)||'null')}catch{}const salt=credential?b64ToBytes(credential.salt):b64ToBytes(DEFAULT_SALT);const expected=credential?credential.verifier:DEFAULT_VERIFIER;const verifier=await derive(password,salt);if(verifier!==expected)throw new Error('Incorrect administrator password.');if(!credential)localStorage.setItem(ADMIN_KEY,JSON.stringify({email:ADMIN_EMAIL,salt:DEFAULT_SALT,verifier:DEFAULT_VERIFIER,createdAt:new Date().toISOString(),temporary:true}));ensureAdminUser();localStorage.setItem(SESSION_KEY,JSON.stringify({email:ADMIN_EMAIL,role:'Administrator',signedInAt:new Date().toISOString()}));location.assign('spire-demo.html')}catch(err){msg.textContent=err.message||'Unable to sign in.';msg.className='msg show'}};
-</script>
-</body></html>
+<main class="shell">
+  <section class="brand" aria-label="Sulandra Health">
+    <div class="mark">S</div>
+    <small>SULANDRA HEALTH</small>
+    <h1>S.P.I.R.E.</h1>
+    <p>Sulandra Person-Centered Integrated Record Environment</p>
+    <div class="assurance">Role-based access · audited activity · eight-hour session</div>
+  </section>
+  <section class="card">
+    <small>SECURE EMPLOYEE WORKSPACE</small>
+    <h2>Continue to sign in</h2>
+    <p>Employees and administrators use one Sulandra account. After authentication, your role opens the Sulandra desktop and only the applications you are authorized to use.</p>
+    <a class="button" href="https://sulandra-website-production-5fc4.up.railway.app/spire/">Open Employee Portal</a>
+    <p class="note">Redirecting securely… If nothing happens, select the button above.</p>
+  </section>
+</main>
+<script>window.setTimeout(()=>window.location.replace("https://sulandra-website-production-5fc4.up.railway.app/spire/"),700);</script>
+</body>
+</html>
