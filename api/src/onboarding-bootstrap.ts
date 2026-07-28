@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { PrismaClient, UserRole } from '@prisma/client';
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 import { registerCareersRoutes } from './careers-routes.js';
 
 type AuthContext = {
@@ -24,11 +24,20 @@ type HttpError = Error & {
   statusCode?: number;
 };
 
+type AdministratorRow = {
+  id: string;
+  organizationId: string;
+  role: unknown;
+  email: string | null;
+};
+
 const app = express();
 const prisma = new PrismaClient();
 const port = Number(process.env.PORT || 4000);
 const isProduction = process.env.NODE_ENV === 'production';
 const jwtSecret = process.env.JWT_SECRET?.trim();
+const administratorEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase()
+  || 'admin@sulandrahealth.com';
 const clientOrigins = new Set([
   'https://sulandrahealth.com',
   'https://www.sulandrahealth.com',
@@ -109,6 +118,61 @@ const tokenAuth = (req: express.Request): AuthContext | null => {
   }
 };
 
+const loginSchema = z.object({
+  email: z.string().trim().optional(),
+  username: z.string().trim().optional(),
+  identifier: z.string().trim().optional(),
+  password: z.string().min(1).max(1_024),
+}).refine(
+  (value) => Boolean(value.email || value.username || value.identifier),
+  { message: 'Username or email is required' },
+);
+
+const resolveAdministrator = async (): Promise<AuthContext & { email: string }> => {
+  let administrator: AdministratorRow | undefined;
+
+  try {
+    const rows = await prisma.$queryRawUnsafe<AdministratorRow[]>(
+      `SELECT "id", "organizationId", "role", "email"
+       FROM "User"
+       WHERE LOWER("email") = LOWER($1)
+       LIMIT 1`,
+      administratorEmail,
+    );
+    administrator = rows[0];
+  } catch (error) {
+    console.warn('[auth] administrator lookup failed; checking configured identifiers', error);
+  }
+
+  if (administrator) {
+    const role = isUserRole(administrator.role)
+      ? administrator.role
+      : UserRole.ADMINISTRATOR;
+    if (role !== UserRole.ADMINISTRATOR) {
+      throw Object.assign(new Error('Administrator account is not authorized'), { status: 403 });
+    }
+    return {
+      userId: administrator.id,
+      organizationId: administrator.organizationId,
+      role,
+      email: administrator.email || administratorEmail,
+    };
+  }
+
+  const userId = process.env.PRIMARY_ADMIN_USER_ID?.trim();
+  const organizationId = process.env.CAREERS_ORGANIZATION_ID?.trim();
+  if (!userId || !organizationId) {
+    throw Object.assign(new Error('Administrator account is not configured'), { status: 503 });
+  }
+
+  return {
+    userId,
+    organizationId,
+    role: UserRole.ADMINISTRATOR,
+    email: administratorEmail,
+  };
+};
+
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(helmet());
@@ -126,6 +190,14 @@ app.use(cors({
   },
 }));
 app.use(express.json({ limit: '1mb' }));
+
+app.use('/api/auth/login', rateLimit({
+  windowMs: 15 * 60 * 1_000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many sign-in attempts. Please try again later.' },
+}));
 
 app.use('/public/careers/applications', rateLimit({
   windowMs: 15 * 60 * 1_000,
@@ -155,6 +227,65 @@ app.get('/health', async (_req, res) => {
       service: 'spire-api',
       database: 'unavailable',
     });
+  }
+});
+
+app.post('/api/auth/login', async (req, res, next) => {
+  try {
+    const credentials = loginSchema.parse(req.body);
+    const identifier = (credentials.email || credentials.username || credentials.identifier || '')
+      .trim()
+      .toLowerCase();
+    const allowedIdentifier = identifier === administratorEmail || identifier === 'admin';
+    const configuredPassword = process.env.ADMIN_INITIAL_PASSWORD;
+
+    if (!configuredPassword || !jwtSecret) {
+      res.status(503).json({ error: 'Administrator sign-in is not configured' });
+      return;
+    }
+
+    if (!allowedIdentifier || !secureEquals(credentials.password, configuredPassword)) {
+      res.status(401).json({ error: 'Invalid username or password' });
+      return;
+    }
+
+    const administrator = await resolveAdministrator();
+    const token = jwt.sign(
+      {
+        organizationId: administrator.organizationId,
+        role: administrator.role,
+      },
+      jwtSecret,
+      {
+        algorithm: 'HS256',
+        subject: administrator.userId,
+        expiresIn: '8h',
+      },
+    );
+    const expiresIn = 8 * 60 * 60;
+    const user = {
+      id: administrator.userId,
+      userId: administrator.userId,
+      organizationId: administrator.organizationId,
+      email: administrator.email,
+      username: 'admin',
+      role: administrator.role,
+      mustChangePassword: false,
+    };
+    const session = {
+      token,
+      accessToken: token,
+      expiresIn,
+      user,
+    };
+
+    res.json({
+      ...session,
+      session,
+      data: session,
+    });
+  } catch (error) {
+    next(error);
   }
 });
 
