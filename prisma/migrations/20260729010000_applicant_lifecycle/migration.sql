@@ -49,6 +49,7 @@ ALTER TABLE "ApplicantDocument"
   ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMP(3);
 
 ALTER TABLE "ApplicantMessage"
+  ALTER COLUMN "recipientEmail" DROP NOT NULL,
   ADD COLUMN IF NOT EXISTS "channel" TEXT NOT NULL DEFAULT 'EMAIL',
   ADD COLUMN IF NOT EXISTS "recipientPhone" TEXT,
   ADD COLUMN IF NOT EXISTS "replyToEmail" TEXT,
