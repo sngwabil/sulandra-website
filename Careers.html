@@ -364,6 +364,69 @@
     .job-body{ color:#344054; font-size:14.5px; white-space:pre-wrap; }
     .apply-actions{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
 
+    /* Live application form */
+    .application-panel{
+      margin-top:16px;
+      background:#f7fbff;
+      border:1px solid #cfe2ff;
+      border-radius:18px;
+      padding:18px;
+    }
+    .application-panel[hidden]{ display:none; }
+    .application-panel h3{
+      color:var(--primary);
+      font-size:22px;
+      line-height:1.2;
+      margin-bottom:6px;
+    }
+    .application-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+      margin-top:16px;
+    }
+    .application-grid .full{ grid-column:1 / -1; }
+    .application-grid textarea.input{ min-height:110px; resize:vertical; }
+    .form-note{ color:var(--muted); font-size:13px; margin-top:8px; }
+    .consent-line{
+      display:flex;
+      gap:9px;
+      align-items:flex-start;
+      color:#344054;
+      font-size:13px;
+    }
+    .form-message{
+      margin-top:12px;
+      padding:11px 12px;
+      border-radius:12px;
+      font-weight:800;
+      display:none;
+    }
+    .form-message.success{
+      display:block;
+      background:#eafaf1;
+      border:1px solid #b9e2c8;
+      color:#11643a;
+    }
+    .form-message.error{
+      display:block;
+      background:#fff5f5;
+      border:1px solid #feb2b2;
+      color:#9b2c2c;
+    }
+    .loading-card{
+      padding:18px;
+      border:1px dashed #b7d4ff;
+      border-radius:16px;
+      color:var(--muted);
+      background:#f7fbff;
+    }
+
+    @media (max-width: 700px){
+      .application-grid{ grid-template-columns:1fr; }
+      .application-grid .full{ grid-column:auto; }
+    }
+
     /* Contact */
     .contact-card{
       background:#ffffff;
@@ -850,68 +913,325 @@ Preferred qualifications:
 
   <script>
     (function(){
-      const searchInput = document.getElementById('searchInput');
-      const serviceSelect = document.getElementById('serviceSelect');
-      const searchBtn = document.getElementById('searchBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      const jobList = document.getElementById('jobList');
-      const resultsSummary = document.getElementById('resultsSummary');
+      var API_BASE = "https://sulandra-website-production.up.railway.app";
+      var searchInput = document.getElementById("searchInput");
+      var serviceSelect = document.getElementById("serviceSelect");
+      var searchBtn = document.getElementById("searchBtn");
+      var resetBtn = document.getElementById("resetBtn");
+      var jobList = document.getElementById("jobList");
+      var postingsSection = document.getElementById("postings");
+      var resultsSummary = document.getElementById("resultsSummary");
+      var jobItems = [];
+      var openingsById = new Map();
 
-      const jobItems = Array.from(jobList.querySelectorAll('.job-item'));
+      function normalize(value){
+        return (value || "").toString().toLowerCase().trim();
+      }
 
-      function normalize(s){
-        return (s || '').toString().toLowerCase().trim();
+      function escapeHtml(value){
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function(character){
+          return {
+            "&":"&amp;",
+            "<":"&lt;",
+            ">":"&gt;",
+            '"':"&quot;",
+            "'":"&#039;"
+          }[character];
+        });
+      }
+
+      function slugify(value){
+        return normalize(value)
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 80) || "opening";
+      }
+
+      function applicantRole(title){
+        var normalizedTitle = normalize(title);
+        if (normalizedTitle.indexOf("delegating nurse") >= 0) return "DELEGATING_NURSE";
+        if (/(^|[^a-z])rn([^a-z]|$)|registered nurse/.test(normalizedTitle)) return "RN";
+        if (/(^|[^a-z])lpn([^a-z]|$)|licensed practical nurse|lvn/.test(normalizedTitle)) return "LPN";
+        return "DSP";
+      }
+
+      function serviceLabel(job){
+        return job.department || "Sulandra Health";
+      }
+
+      function chip(value, required){
+        if (!value) return "";
+        return "<span class='chip" + (required ? " req" : "") + "'>" + escapeHtml(value) + "</span>";
+      }
+
+      function tag(value, required){
+        if (!value) return "";
+        return "<span class='tag" + (required ? " req" : "") + "'>" + escapeHtml(value) + "</span>";
+      }
+
+      function refreshJobItems(){
+        jobItems = Array.from(jobList.querySelectorAll(".job-item"));
       }
 
       function applyFilters(){
-        const q = normalize(searchInput.value);
-        const svc = serviceSelect.value;
+        var q = normalize(searchInput.value);
+        var service = serviceSelect.value;
+        var visibleCount = 0;
 
-        let visibleCount = 0;
-
-        jobItems.forEach(item => {
-          const title = normalize(item.getAttribute('data-title'));
-          const keywords = normalize(item.getAttribute('data-keywords'));
-          const service = item.getAttribute('data-service');
-
-          const matchesService = (svc === 'all') ? true : (service === svc);
-          const matchesQuery = !q ? true : (title.includes(q) || keywords.includes(q));
-
-          const show = matchesService && matchesQuery;
-
-          item.style.display = show ? '' : 'none';
-          if (show) visibleCount++;
+        jobItems.forEach(function(item){
+          var title = normalize(item.getAttribute("data-title"));
+          var keywords = normalize(item.getAttribute("data-keywords"));
+          var itemService = item.getAttribute("data-service");
+          var matchesService = service === "all" || itemService === service;
+          var matchesQuery = !q || title.indexOf(q) >= 0 || keywords.indexOf(q) >= 0;
+          var show = matchesService && matchesQuery;
+          item.style.display = show ? "" : "none";
+          if (show) visibleCount += 1;
         });
 
         resultsSummary.textContent = visibleCount === 0
-          ? 'No results found. Try a different search or select another service.'
-          : `Showing ${visibleCount} position${visibleCount === 1 ? '' : 's'}.`;
-
-        if (visibleCount === 1) {
-          const only = jobItems.find(i => i.style.display !== 'none');
-          const viewLink = only ? only.querySelector('a[href^="#post-"]') : null;
-          if (viewLink) {
-            const targetId = viewLink.getAttribute('href');
-            const target = document.querySelector(targetId);
-            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }
+          ? "No published openings match this search."
+          : "Showing " + visibleCount + " published opening" + (visibleCount === 1 ? "." : "s.");
       }
 
       function resetFilters(){
-        searchInput.value = '';
-        serviceSelect.value = 'all';
+        searchInput.value = "";
+        serviceSelect.value = "all";
         applyFilters();
       }
 
-      searchBtn.addEventListener('click', applyFilters);
-      resetBtn.addEventListener('click', resetFilters);
-      searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') applyFilters();
-      });
-      serviceSelect.addEventListener('change', applyFilters);
+      function buildServiceOptions(openings){
+        var labels = new Map();
+        openings.forEach(function(job){
+          var label = serviceLabel(job);
+          labels.set(slugify(label), label);
+        });
 
-      applyFilters();
+        serviceSelect.innerHTML = "<option value='all'>All services</option>" +
+          Array.from(labels.entries()).map(function(entry){
+            return "<option value='" + escapeHtml(entry[0]) + "'>" + escapeHtml(entry[1]) + "</option>";
+          }).join("");
+      }
+
+      function renderOpenings(openings){
+        openingsById = new Map();
+        openings.forEach(function(job){ openingsById.set(String(job.id), job); });
+        buildServiceOptions(openings);
+
+        if (openings.length === 0) {
+          jobList.innerHTML = "<div class='loading-card'>There are no published openings at this time. Please check back soon.</div>";
+          postingsSection.innerHTML =
+            "<h2>Job Descriptions</h2>" +
+            "<p>Published job descriptions will appear here automatically.</p>";
+          refreshJobItems();
+          resultsSummary.textContent = "No published openings at this time.";
+          return;
+        }
+
+        jobList.innerHTML = openings.map(function(job, index){
+          var anchor = "live-opening-" + slugify(job.slug || job.id || String(index));
+          var department = serviceLabel(job);
+          var serviceKey = slugify(department);
+          var keywords = [
+            job.title,
+            job.department,
+            job.summary,
+            job.description,
+            job.requirements,
+            job.locationText,
+            job.employmentType
+          ].filter(Boolean).join(" ");
+
+          return "<article class='job-card job-item'" +
+            " data-service='" + escapeHtml(serviceKey) + "'" +
+            " data-title='" + escapeHtml(job.title) + "'" +
+            " data-keywords='" + escapeHtml(keywords) + "'>" +
+              "<div>" +
+                "<div class='job-title'>" + escapeHtml(job.title) + "</div>" +
+                "<div class='job-meta'>" + escapeHtml(department) +
+                  (job.locationText ? " • " + escapeHtml(job.locationText) : "") +
+                "</div>" +
+                "<div class='chip-row'>" +
+                  chip(job.payRange, false) +
+                  chip(job.employmentType, false) +
+                  chip("Hiring", true) +
+                "</div>" +
+              "</div>" +
+              "<a class='btn btn-primary' href='#" + anchor + "'>View</a>" +
+            "</article>";
+        }).join("");
+
+        postingsSection.innerHTML =
+          "<h2>Job Descriptions</h2>" +
+          "<p>Select a published position to review it and apply.</p>" +
+          openings.map(function(job, index){
+            var anchor = "live-opening-" + slugify(job.slug || job.id || String(index));
+            var department = serviceLabel(job);
+            var details = [
+              tag(job.payRange, false),
+              tag(job.employmentType, false),
+              tag(job.locationText, false)
+            ].join("");
+
+            return "<article class='job-post anchor' id='" + anchor + "'" +
+              (index > 0 ? " style='margin-top:14px;'" : "") + ">" +
+                "<h3>" + escapeHtml(job.title) + "</h3>" +
+                "<div class='company-line'>" + escapeHtml(department) + "</div>" +
+                (job.summary ? "<div class='job-body'>" + escapeHtml(job.summary) + "</div>" : "") +
+                (details ? "<div class='subhead'>Job details</div><div class='kv-row'>" + details + "</div>" : "") +
+                (job.description ? "<div class='divider'></div><div class='subhead'>Full job description</div><div class='job-body'>" + escapeHtml(job.description) + "</div>" : "") +
+                (job.requirements ? "<div class='subhead'>Requirements</div><div class='job-body'>" + escapeHtml(job.requirements) + "</div>" : "") +
+                (job.benefits ? "<div class='subhead'>Benefits</div><div class='job-body'>" + escapeHtml(job.benefits) + "</div>" : "") +
+                "<div class='apply-actions'>" +
+                  "<button class='btn btn-primary apply-live' type='button' data-opening-id='" + escapeHtml(job.id) + "'>Apply now</button>" +
+                "</div>" +
+              "</article>";
+          }).join("") +
+          "<section class='application-panel anchor' id='application-panel' hidden>" +
+            "<h3 id='applicationTitle'>Apply for this position</h3>" +
+            "<p>Submit your information securely. The hiring team can request any additional documents from your applicant folder.</p>" +
+            "<form id='liveApplicationForm'>" +
+              "<input type='hidden' name='jobOpeningId' />" +
+              "<input type='hidden' name='jobSlug' />" +
+              "<input type='hidden' name='appliedRole' />" +
+              "<div class='application-grid'>" +
+                "<label class='field'><span class='label'>First name *</span><input class='input' name='firstName' required maxlength='80' autocomplete='given-name' /></label>" +
+                "<label class='field'><span class='label'>Middle name</span><input class='input' name='middleName' maxlength='80' autocomplete='additional-name' /></label>" +
+                "<label class='field'><span class='label'>Last name *</span><input class='input' name='lastName' required maxlength='80' autocomplete='family-name' /></label>" +
+                "<label class='field'><span class='label'>Phone *</span><input class='input' name='phone' type='tel' required minlength='7' maxlength='30' autocomplete='tel' /></label>" +
+                "<label class='field full'><span class='label'>Email *</span><input class='input' name='email' type='email' required autocomplete='email' /></label>" +
+                "<label class='field full'><span class='label'>Resume link (optional)</span><input class='input' name='resumeUrl' type='url' placeholder='https://…' /></label>" +
+                "<p class='form-note full'>A resume link is optional. If you do not include one, the hiring team can request your resume and credentials after submission.</p>" +
+                "<label class='field full'><span class='label'>Message or relevant experience</span><textarea class='input' name='notes' maxlength='12000'></textarea></label>" +
+                "<label class='consent-line full'><input type='checkbox' required /> <span>I certify that the information provided is accurate and consent to being contacted about this application.</span></label>" +
+                "<div class='full'><button class='btn btn-primary' id='applicationSubmit' type='submit'>Submit application</button></div>" +
+              "</div>" +
+              "<div class='form-message' id='applicationMessage' role='status' aria-live='polite'></div>" +
+            "</form>" +
+          "</section>";
+
+        refreshJobItems();
+        applyFilters();
+
+        Array.from(document.querySelectorAll(".apply-live")).forEach(function(button){
+          button.addEventListener("click", function(){
+            openApplication(button.getAttribute("data-opening-id"));
+          });
+        });
+
+        document.getElementById("liveApplicationForm").addEventListener("submit", submitApplication);
+      }
+
+      function openApplication(openingId){
+        var job = openingsById.get(String(openingId));
+        var panel = document.getElementById("application-panel");
+        var form = document.getElementById("liveApplicationForm");
+        var message = document.getElementById("applicationMessage");
+        if (!job || !panel || !form) return;
+
+        form.reset();
+        form.elements.jobOpeningId.value = job.id;
+        form.elements.jobSlug.value = job.slug || "";
+        form.elements.appliedRole.value = applicantRole(job.title);
+        document.getElementById("applicationTitle").textContent = "Apply for " + job.title;
+        message.className = "form-message";
+        message.textContent = "";
+        panel.hidden = false;
+        panel.scrollIntoView({ behavior:"smooth", block:"start" });
+        window.setTimeout(function(){ form.elements.firstName.focus(); }, 450);
+      }
+
+      async function submitApplication(event){
+        event.preventDefault();
+        var form = event.currentTarget;
+        var submitButton = document.getElementById("applicationSubmit");
+        var message = document.getElementById("applicationMessage");
+        var formData = new FormData(form);
+        var resumeUrl = String(formData.get("resumeUrl") || "").trim();
+
+        var payload = {
+          jobOpeningId: String(formData.get("jobOpeningId") || ""),
+          jobSlug: String(formData.get("jobSlug") || ""),
+          firstName: String(formData.get("firstName") || "").trim(),
+          lastName: String(formData.get("lastName") || "").trim(),
+          email: String(formData.get("email") || "").trim(),
+          phone: String(formData.get("phone") || "").trim(),
+          appliedRole: String(formData.get("appliedRole") || "DSP"),
+          notes: String(formData.get("notes") || "").trim(),
+          documents: resumeUrl ? [{
+            category:"RESUME",
+            label:"Resume",
+            downloadUrl:resumeUrl
+          }] : []
+        };
+        var middleName = String(formData.get("middleName") || "").trim();
+        if (middleName) payload.middleName = middleName;
+
+        submitButton.disabled = true;
+        submitButton.textContent = "Submitting…";
+        message.className = "form-message";
+        message.textContent = "";
+
+        try {
+          var response = await fetch(API_BASE + "/public/careers/applications", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify(payload)
+          });
+          var result = await response.json().catch(function(){ return {}; });
+          if (!response.ok) throw new Error(result.error || "Application could not be submitted.");
+
+          var reference = result.data && result.data.referenceNumber ? result.data.referenceNumber : "";
+          message.className = "form-message success";
+          message.textContent = "Application submitted successfully." +
+            (reference ? " Your reference number is " + reference + "." : "");
+          form.reset();
+        } catch (error) {
+          message.className = "form-message error";
+          message.textContent = error && error.message
+            ? error.message
+            : "Application could not be submitted. Please try again.";
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = "Submit application";
+        }
+      }
+
+      async function loadPublishedOpenings(){
+        jobList.innerHTML = "<div class='loading-card'>Loading current published openings…</div>";
+        postingsSection.innerHTML =
+          "<h2>Job Descriptions</h2>" +
+          "<p>Loading published job descriptions…</p>";
+        resultsSummary.textContent = "Loading published openings…";
+
+        try {
+          var response = await fetch(API_BASE + "/public/careers/openings", {
+            headers:{ "Accept":"application/json" }
+          });
+          var result = await response.json().catch(function(){ return {}; });
+          if (!response.ok) throw new Error(result.error || "Published openings could not be loaded.");
+          renderOpenings(Array.isArray(result.data) ? result.data : []);
+        } catch (error) {
+          jobList.innerHTML =
+            "<div class='loading-card'>Current openings are temporarily unavailable. Please refresh this page or email admin@sulandrahealth.com.</div>";
+          postingsSection.innerHTML =
+            "<h2>Job Descriptions</h2>" +
+            "<p>Live job descriptions are temporarily unavailable.</p>";
+          refreshJobItems();
+          resultsSummary.textContent = error && error.message
+            ? error.message
+            : "Published openings could not be loaded.";
+        }
+      }
+
+      searchBtn.addEventListener("click", applyFilters);
+      resetBtn.addEventListener("click", resetFilters);
+      searchInput.addEventListener("keydown", function(event){
+        if (event.key === "Enter") applyFilters();
+      });
+      serviceSelect.addEventListener("change", applyFilters);
+
+      loadPublishedOpenings();
     })();
   </script>
 </body>
