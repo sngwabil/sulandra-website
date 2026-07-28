@@ -92,9 +92,42 @@ export function registerCareersRoutes(
 ) {
   const { authOf, requireRoles, audit } = helpers;
 
+  let cachedCareersOrganizationId: string | null = null;
+  let careersOrganizationLookup: Promise<string | null> | null = null;
+
+  async function resolveCareersOrganizationId(): Promise<string | null> {
+    const configuredOrganizationId = process.env.CAREERS_ORGANIZATION_ID?.trim();
+    if (configuredOrganizationId) return configuredOrganizationId;
+    if (cachedCareersOrganizationId) return cachedCareersOrganizationId;
+
+    if (!careersOrganizationLookup) {
+      const administratorEmail = (
+        process.env.ADMIN_EMAIL ?? 'admin@sulandrahealth.com'
+      ).trim().toLowerCase();
+
+      careersOrganizationLookup = prisma.$queryRawUnsafe<Array<{ organizationId: string }>>(
+        `SELECT "organizationId"
+           FROM "User"
+          WHERE LOWER("email")=LOWER($1)
+            AND "role"::text='ADMINISTRATOR'
+          ORDER BY "createdAt" ASC
+          LIMIT 1`,
+        administratorEmail,
+      ).then((rows) => {
+        const organizationId = rows[0]?.organizationId?.trim() || null;
+        if (organizationId) cachedCareersOrganizationId = organizationId;
+        return organizationId;
+      }).finally(() => {
+        careersOrganizationLookup = null;
+      });
+    }
+
+    return careersOrganizationLookup;
+  }
+
   app.get('/public/careers/openings', async (_req, res, next) => {
     try {
-      const organizationId = process.env.CAREERS_ORGANIZATION_ID?.trim();
+      const organizationId = await resolveCareersOrganizationId();
       if (!organizationId) {
         res.status(503).json({ error: 'Careers intake is not configured.' });
         return;
@@ -119,7 +152,7 @@ export function registerCareersRoutes(
   app.post('/public/careers/applications', async (req, res, next) => {
     try {
       const input = publicApplicationSchema.parse(req.body);
-      const organizationId = process.env.CAREERS_ORGANIZATION_ID?.trim();
+      const organizationId = await resolveCareersOrganizationId();
       if (!organizationId) {
         res.status(503).json({ error: 'Careers intake is not configured.' });
         return;
