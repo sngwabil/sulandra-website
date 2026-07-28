@@ -29,10 +29,14 @@ const prisma = new PrismaClient();
 const port = Number(process.env.PORT || 4000);
 const isProduction = process.env.NODE_ENV === 'production';
 const jwtSecret = process.env.JWT_SECRET?.trim();
-const clientOrigins = (process.env.CLIENT_ORIGIN ?? '')
-  .split(',')
-  .map((value) => value.trim())
-  .filter(Boolean);
+const clientOrigins = new Set([
+  'https://sulandrahealth.com',
+  'https://www.sulandrahealth.com',
+  ...(process.env.CLIENT_ORIGIN ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+]);
 
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error('PORT must be a valid TCP port');
@@ -42,7 +46,7 @@ if (isProduction && !jwtSecret) {
   throw new Error('JWT_SECRET is required in production');
 }
 
-if (isProduction && clientOrigins.length === 0) {
+if (isProduction && clientOrigins.size === 0) {
   throw new Error('CLIENT_ORIGIN is required in production');
 }
 
@@ -111,7 +115,7 @@ app.use(helmet());
 app.use(cors({
   credentials: false,
   origin(origin, callback) {
-    if (!origin || clientOrigins.includes(origin)) {
+    if (!origin || clientOrigins.has(origin)) {
       callback(null, true);
       return;
     }
