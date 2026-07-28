@@ -245,6 +245,25 @@ export function registerCareersRoutes(
       const auth = authOf(res);
       const input = openingSchema.parse(req.body);
       const id = randomUUID();
+      const [identity] = await prisma.$queryRawUnsafe<Array<{
+        organizationExists: boolean;
+        userExists: boolean;
+      }>[number]>(
+        `SELECT
+           EXISTS(SELECT 1 FROM "Organization" WHERE "id"=$1) AS "organizationExists",
+           EXISTS(SELECT 1 FROM "User" WHERE "id"=$2) AS "userExists"`,
+        auth.organizationId,
+        auth.userId,
+      );
+
+      if (!identity?.organizationExists) {
+        res.status(409).json({
+          error: 'The configured careers organization does not exist in the SPIRE database.',
+        });
+        return;
+      }
+
+      const createdById = identity.userExists ? auth.userId : null;
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO "JobOpening"
@@ -266,13 +285,19 @@ export function registerCareersRoutes(
         input.status,
         input.opensAt ?? null,
         input.closesAt ?? null,
-        auth.userId,
+        createdById,
       );
 
-      await audit(auth, 'CREATE_JOB_OPENING', 'JobOpening', id, {
-        status: input.status,
-        title: input.title,
-      });
+      await audit(
+        { ...auth, userId: createdById ?? undefined },
+        'CREATE_JOB_OPENING',
+        'JobOpening',
+        id,
+        {
+          status: input.status,
+          title: input.title,
+        },
+      );
 
       res.status(201).json({ data: { id, ...input } });
     } catch (error) {
