@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/spire-ehr-platform
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate API and website
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://user:password@127.0.0.1:5432/spire
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Validate Prisma and API
+        run: npm run check
+
+      - name: Build static website
+        run: npm run build:web
+
+      - name: Verify public output
+        run: |
+          test -f dist-web/index.html
+          test -f dist-web/services/community-living/index.html
+          test ! -e dist-web/package.json
+          test ! -e dist-web/api
+          test ! -e dist-web/prisma
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
