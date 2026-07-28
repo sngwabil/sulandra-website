@@ -170,7 +170,7 @@ export function registerCareersRoutes(
         await tx.$executeRawUnsafe(
           `INSERT INTO "EmployeeApplication"
            ("id","organizationId","jobOpeningId","firstName","middleName","lastName","email","phone","appliedRole","status","notes","source","sourceExternalId","referenceNumber","folderCreatedAt","submittedAt","createdAt","updatedAt")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RECEIVED',$10,$11,$12,$13,NOW(),NOW(),NOW(),NOW())`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::"UserRole",'RECEIVED',$10,$11,$12,$13,NOW(),NOW(),NOW(),NOW())`,
           id,
           organizationId,
           opening?.id ?? null,
@@ -200,7 +200,7 @@ export function registerCareersRoutes(
           await tx.$executeRawUnsafe(
             `INSERT INTO "ApplicantDocument"
              ("id","applicationId","category","label","status","fileName","storagePath","downloadUrl","mimeType","sizeBytes","uploadedByType","createdAt","updatedAt")
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
+             VALUES ($1,$2,$3::"ApplicantDocumentCategory",$4,$5::"ApplicantDocumentStatus",$6,$7,$8,$9,$10,$11,NOW(),NOW())`,
             randomUUID(),
             id,
             category,
@@ -268,7 +268,7 @@ export function registerCareersRoutes(
       await prisma.$executeRawUnsafe(
         `INSERT INTO "JobOpening"
          ("id","organizationId","title","slug","department","employmentType","locationText","payRange","summary","description","requirements","benefits","applicationPath","status","opensAt","closesAt","publishedAt","createdById","createdAt","updatedAt")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,CASE WHEN $14='PUBLISHED' THEN NOW() ELSE NULL END,$17,NOW(),NOW())`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::"JobOpeningStatus",$15,$16,CASE WHEN $14='PUBLISHED' THEN NOW() ELSE NULL END,$17,NOW(),NOW())`,
         id,
         auth.organizationId,
         input.title,
@@ -323,7 +323,7 @@ export function registerCareersRoutes(
         `UPDATE "JobOpening" SET
          "title"=$1,"slug"=$2,"department"=$3,"employmentType"=$4,"locationText"=$5,"payRange"=$6,
          "summary"=$7,"description"=$8,"requirements"=$9,"benefits"=$10,"applicationPath"=$11,
-         "status"=$12,"opensAt"=$13,"closesAt"=$14,
+         "status"=$12::"JobOpeningStatus","opensAt"=$13,"closesAt"=$14,
          "publishedAt"=CASE WHEN $12='PUBLISHED' AND "publishedAt" IS NULL THEN NOW() ELSE "publishedAt" END,
          "updatedAt"=NOW()
          WHERE "id"=$15 AND "organizationId"=$16`,
@@ -452,7 +452,7 @@ export function registerCareersRoutes(
 
       await prisma.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(
-          `UPDATE "ApplicantDocument" SET "status"='REQUESTED',"updatedAt"=NOW() WHERE "applicationId"=$1 AND "category"=$2`,
+          `UPDATE "ApplicantDocument" SET "status"='REQUESTED',"updatedAt"=NOW() WHERE "applicationId"=$1 AND "category"=$2::"ApplicantDocumentCategory"`,
           id,
           input.category,
         );
