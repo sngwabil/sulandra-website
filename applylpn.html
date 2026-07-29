@@ -867,27 +867,7 @@
   </div>
 
   <script type="module">
-    /* ==========================================================
-       Firebase (Firestore + Storage) + Fully functional submission
-       ========================================================== */
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-    // Your Firebase config (same project you used on DSP)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
-      authDomain: "sulandra-health-portal.firebaseapp.com",
-      projectId: "sulandra-health-portal",
-      storageBucket: "sulandra-health-portal.firebasestorage.app",
-      messagingSenderId: "547316167712",
-      appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845",
-      measurementId: "G-N2M4L7YMNB"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
+    const API_BASE = "https://sulandra-website-production.up.railway.app";
 
     /* ==========
        Utilities
@@ -1690,33 +1670,32 @@
     document.addEventListener("change", () => { updateProgress(); scheduleAutosave(); });
 
     /* ==========
-       Upload helpers (Storage) + show all uploaded files
+       Careers API document helpers
        ========== */
-    function safeName(name){
-      return String(name || "file").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 140);
+    async function fileToDocument(file, category, label){
+      if(!file) return null;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      const chunkSize = 0x8000;
+      for(let offset = 0; offset < bytes.length; offset += chunkSize){
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+      }
+      return {
+        category,
+        label,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        fileDataBase64: btoa(binary)
+      };
     }
 
-    async function uploadOneFile(file, path, onProgress){
-      return await new Promise((resolve, reject) => {
-        const storageRef = sRef(storage, path);
-        const task = uploadBytesResumable(storageRef, file, { contentType: file.type || "application/octet-stream" });
-
-        task.on("state_changed", (snap) => {
-          const pct = snap.totalBytes ? (snap.bytesTransferred / snap.totalBytes) * 100 : 0;
-          onProgress?.(pct);
-        }, reject, async () => {
-          try{
-            const url = await getDownloadURL(task.snapshot.ref);
-            resolve({
-              name: file.name,
-              type: file.type || "unknown",
-              size: file.size,
-              path,
-              url
-            });
-          }catch(err){ reject(err); }
-        });
-      });
+    async function readApiResponse(response){
+      const payload = await response.json().catch(() => ({}));
+      if(!response.ok){
+        throw new Error(payload.error || payload.message || "The application could not be submitted.");
+      }
+      return payload;
     }
 
     function renderUploadedFiles(list){
@@ -1729,10 +1708,10 @@
         row.className = "fileitem";
         row.innerHTML = `
           <div>
-            <div style="font-weight:800;">${escapeHtml(f.name)}</div>
-            <div class="meta">${escapeHtml(f.type || "unknown")} • ${bytesToHuman(f.size)}</div>
+            <div style="font-weight:800;">${escapeHtml(f.fileName || f.name)}</div>
+            <div class="meta">${escapeHtml(f.mimeType || f.type || "unknown")} • ${bytesToHuman(f.sizeBytes || f.size)}</div>
           </div>
-          <div class="meta"><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener noreferrer">Open</a></div>
+          <div class="meta">Submitted</div>
         `;
         host.appendChild(row);
       });
@@ -1745,7 +1724,6 @@
       setSubmitting(true);
       setProgress(5, "Submitting…", "Validating files…");
 
-      // File validation (all selected must be <= 10MB; resume required)
       const resume = $("resume").files?.[0] || null;
       const cover = $("coverLetter").files?.[0] || null;
       const licenseFiles = $("licenseDoc").files ? Array.from($("licenseDoc").files) : [];
@@ -1758,73 +1736,53 @@
         throw new Error(`One or more files exceed ${MAX_FILE_MB}MB.`);
       }
 
-      // Build application payload (no File objects here)
+      const params = new URLSearchParams(window.location.search);
+      const requestedRole = String(params.get("role") || "LPN").toUpperCase();
+      const appliedRole = ["LPN", "RN", "DELEGATING_NURSE"].includes(requestedRole) ? requestedRole : "LPN";
+      const licenseCategory = appliedRole === "LPN" ? "LPN_LICENSE" : "RN_LICENSE";
       const draft = collectDraft(true);
 
-      // Create a Firestore doc first, so we can use its id in storage paths
-      setProgress(10, "Submitting…", "Creating application record…");
-      const baseDoc = {
-        jobTitle: "Licensed Practical Nurse (LPN)",
-        company: "Sulandra Community Living Services",
-        version: "2.0",
-        status: "Pending Review",
-        createdAt: serverTimestamp(),
-        submittedAtISO: new Date().toISOString(),
-        fields: draft.fields,
-        cert_none: draft.cert_none,
-        certs: draft.certs,
-        days: draft.days,
-        screening: draft.screening,
-        experiences: draft.experiences,
-        references: draft.references,
-        files: [] // filled after uploads
-      };
+      setProgress(22, "Submitting…", "Preparing your documents…");
+      const documentTasks = [
+        fileToDocument(resume, "RESUME", "Resume"),
+        cover ? fileToDocument(cover, "COVER_LETTER", "Cover letter") : null,
+        ...licenseFiles.map((file, index) =>
+          fileToDocument(file, licenseCategory, `${appliedRole.replaceAll("_", " ")} license document #${index + 1}`)
+        )
+      ].filter(Boolean);
+      const documents = await Promise.all(documentTasks);
 
-      const docRef = await addDoc(collection(db, "applications_lpn"), baseDoc);
-      const appId = docRef.id;
-
-      // Upload files
-      const uploaded = [];
-      const all = [
-        { key:"resume", file: resume, bucket:"resume" },
-        { key:"coverLetter", file: cover, bucket:"cover-letter" },
-        ...licenseFiles.map((f, i) => ({ key:`licenseDoc_${i+1}`, file:f, bucket:"license-docs" }))
-      ].filter(x => !!x.file);
-
-      // Spread progress between 15% and 90%
-      let fileIndex = 0;
-      const startPct = 15;
-      const endPct = 90;
-
-      for(const item of all){
-        fileIndex++;
-        const pctBase = startPct + ((fileIndex - 1) / all.length) * (endPct - startPct);
-        const pctSpan = (endPct - startPct) / all.length;
-
-        const path = `applications_lpn/${appId}/${item.bucket}/${Date.now()}_${safeName(item.file.name)}`;
-
-        setProgress(pctBase, "Uploading files…", `${fileIndex}/${all.length}: ${item.file.name}`);
-
-        const meta = await uploadOneFile(item.file, path, (p) => {
-          setProgress(pctBase + (p/100)*pctSpan, "Uploading files…", `${fileIndex}/${all.length}: ${item.file.name}`);
-        });
-
-        uploaded.push({ ...meta, field: item.key });
-      }
-
-      // Save final submission with uploaded file links (write a second doc in same collection as a new record is not ideal,
-      // but we avoid needing updateDoc permissions. If you want single doc updates, change rules + use updateDoc here.)
-      // ✅ Better: write a second document to an "applications_lpn_submissions" collection that references appId.
-      setProgress(92, "Finalizing…", "Saving uploaded file links…");
-      await addDoc(collection(db, "applications_lpn_submissions"), {
-        applicationId: appId,
-        createdAt: serverTimestamp(),
-        submittedAtISO: new Date().toISOString(),
-        uploadedFiles: uploaded
+      setProgress(55, "Submitting…", "Creating your secure applicant profile…");
+      const response = await fetch(`${API_BASE}/public/careers/applications`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jobSlug: params.get("opening") || (appliedRole === "LPN" ? "licensed-practical-nurse-lpn" : "registered-nurse-rn"),
+          firstName: $("firstName").value.trim(),
+          middleName: $("middleName")?.value.trim() || undefined,
+          lastName: $("lastName").value.trim(),
+          email: $("email").value.trim(),
+          phone: $("phone").value.trim(),
+          appliedRole,
+          preferredCommunication: "EMAIL",
+          notes: draft.fields?.why || null,
+          applicationData: {
+            ...draft,
+            appliedRole
+          },
+          documents
+        })
       });
+      const result = await readApiResponse(response);
+      const receipt = result.data || {};
 
-      setProgress(100, "Submitted!", "Thank you — we received your application.");
-      return { appId, uploaded };
+      setProgress(100, "Submitted!", "Thank you — your nursing application and documents were received.");
+      return {
+        appId: receipt.referenceNumber || receipt.id,
+        uploaded: documents,
+        applicantUsername: receipt.applicantUsername,
+        applicantPortalUrl: receipt.applicantPortalUrl
+      };
     }
 
     /* ==========
