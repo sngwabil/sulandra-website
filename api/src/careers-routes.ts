@@ -335,36 +335,51 @@ export function registerCareersRoutes(
         );
       }
 
-      const workflow = await provisionApplicantWorkflow(prisma, {
-        applicationId: id,
-        referenceNumber: ref,
-        organizationId,
-        jobTitle,
-        appliedRole,
-        firstName: input.firstName,
-        middleName: input.middleName,
-        lastName: input.lastName,
-        email,
-        phone,
-        preferredCommunication: input.preferredCommunication,
-        notes: input.notes,
-        applicationData: {
-          ...input.applicationData,
+      let workflow: Awaited<ReturnType<typeof provisionApplicantWorkflow>> | null = null;
+      let workflowSetupPending = false;
+      try {
+        workflow = await provisionApplicantWorkflow(prisma, {
+          applicationId: id,
+          referenceNumber: ref,
+          organizationId,
           jobTitle,
           appliedRole,
-        },
-        assessmentAnswers: input.assessmentAnswers,
-      });
+          firstName: input.firstName,
+          middleName: input.middleName,
+          lastName: input.lastName,
+          email,
+          phone,
+          preferredCommunication: input.preferredCommunication,
+          notes: input.notes,
+          applicationData: {
+            ...input.applicationData,
+            jobTitle,
+            appliedRole,
+          },
+          assessmentAnswers: input.assessmentAnswers,
+        });
+      } catch (workflowError) {
+        workflowSetupPending = true;
+        console.error('[careers] applicant lifecycle setup failed', {
+          applicationId: id,
+          referenceNumber: ref,
+          error: workflowError instanceof Error ? workflowError.message : String(workflowError),
+        });
+      }
 
+      // The application and its submitted documents are authoritative at this point.
+      // A profile, PDF, or notification failure must not tell the applicant that the
+      // submission failed or delete an application that HR can already process.
       createdApplicationId = null;
       res.status(201).json({
         data: {
           id,
           referenceNumber: ref,
           status: 'RECEIVED',
-          applicantUsername: workflow.username,
-          notificationStatus: workflow.deliveryStatus,
-          assessment: workflow.assessment,
+          applicantUsername: workflow?.username ?? email ?? phone,
+          notificationStatus: workflow?.deliveryStatus ?? 'FAILED',
+          assessment: workflow?.assessment ?? null,
+          workflowSetupPending,
           applicantPortalUrl: process.env.CAREERS_PORTAL_URL
             ?? 'https://www.sulandrahealth.com/applicant-portal.html',
         },
