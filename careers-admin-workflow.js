@@ -54,7 +54,14 @@
         ? await response.json()
         : await response.text();
       if (!response.ok) {
-        throw new Error((payload && payload.error) || "The request could not be completed.");
+        const issues = payload && Array.isArray(payload.issues)
+          ? payload.issues.map((issue) => {
+            const path = issue && issue.path ? String(issue.path) + ": " : "";
+            return path + String((issue && issue.message) || "Invalid value");
+          }).join("; ")
+          : "";
+        const message = (payload && payload.error) || "The request could not be completed.";
+        throw new Error(issues ? message + " — " + issues : message);
       }
       return payload && typeof payload === "object" && Object.prototype.hasOwnProperty.call(payload, "data")
         ? payload.data
