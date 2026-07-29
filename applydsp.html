@@ -1353,29 +1353,7 @@
   </div>
 
   <script type="module">
-    // ===== Firebase (App + Firestore + Storage) =====
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import {
-      getFirestore, doc, setDoc, updateDoc, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import {
-      getStorage, ref as sRef, uploadBytesResumable, getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-    // ✅ Your Firebase config (kept)
-    const firebaseConfig = {
-      apiKey: "AIzaSyCi3Qtyka_PJsHT9Ln7LJZp2BCqOxW3lM8",
-      authDomain: "sulandra-health-portal.firebaseapp.com",
-      projectId: "sulandra-health-portal",
-      storageBucket: "sulandra-health-portal.firebasestorage.app",
-      messagingSenderId: "547316167712",
-      appId: "1:547316167712:web:24dfc2c5bd9d0296b4f845",
-      measurementId: "G-N2M4L7YMNB"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
+    const API_BASE = "https://sulandra-website-production.up.railway.app";
 
     /* ==========
        Utilities
@@ -1971,45 +1949,32 @@
     document.addEventListener('change', () => { updateProgress(); scheduleAutosave(); });
 
     /* ===============================
-       Firebase Storage upload helpers
+       Careers API document helpers
        =============================== */
-    function safeFileName(name){
-      return String(name || 'file').replace(/[^\w.\-]+/g, '_').slice(0, 140);
+    async function fileToDocument(file, category, label){
+      if(!file) return null;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      const chunkSize = 0x8000;
+      for(let offset = 0; offset < bytes.length; offset += chunkSize){
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+      }
+      return {
+        category,
+        label,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        fileDataBase64: btoa(binary)
+      };
     }
 
-    function uploadOneFile({ applicationId, label, file }){
-      return new Promise((resolve, reject) => {
-        const path = `applications/${applicationId}/${Date.now()}_${safeFileName(file.name)}`;
-        const storageRef = sRef(storage, path);
-
-        const task = uploadBytesResumable(storageRef, file, {
-          contentType: file.type || undefined
-        });
-
-        task.on('state_changed',
-          (snap) => {
-            const pct = snap.totalBytes ? Math.round((snap.bytesTransferred / snap.totalBytes) * 100) : 0;
-            // Upload stage lives roughly in 20-90% range (we’ll map outside)
-            setProgress(clamp(20 + (pct * 0.7), 20, 90), `Uploading files…`, `${label}: ${pct}%`);
-          },
-          (err) => reject(err),
-          async () => {
-            try{
-              const downloadURL = await getDownloadURL(task.snapshot.ref);
-              resolve({
-                label,
-                name: file.name,
-                size: file.size,
-                contentType: file.type || 'application/octet-stream',
-                storagePath: path,
-                downloadURL
-              });
-            } catch(e){
-              reject(e);
-            }
-          }
-        );
-      });
+    async function readApiResponse(response){
+      const payload = await response.json().catch(() => ({}));
+      if(!response.ok){
+        throw new Error(payload.error || payload.message || "The application could not be submitted.");
+      }
+      return payload;
     }
 
     /* =========================
@@ -2113,89 +2078,60 @@
       setSubmitting(true);
       setProgress(5, 'Submitting…', 'Preparing your application');
 
-      // Build base application payload (no File objects)
       const base = collectFormDataAsObject(false);
-
-      // Score quiz
       const scored = scoreQuiz();
       $('assessmentScore').value = String(scored.score);
       $('assessmentMax').value = String(scored.max);
       $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
-
-      // Attach assessment to payload too
       base.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
 
-      // Use a stable id
-      const applicationId = (crypto?.randomUUID?.() || `app_${Date.now()}_${Math.random().toString(16).slice(2)}`);
-      const appRef = doc(db, "applications", applicationId);
-
-      // Create doc first (so you ALWAYS have a record)
-      await setDoc(appRef, {
-        ...base,
-        applicationId,
-        status: "Pending Review",
-        submittedAtISO: new Date().toISOString(),
-        submittedAt: serverTimestamp(),
-        uploadedFiles: [], // filled after uploads
-        uploadedFilesCount: 0
-      });
-
-      setProgress(15, 'Submitting…', 'Uploading files');
-
-      // Upload files to Storage, gather metadata + URLs
+      setProgress(18, 'Submitting…', 'Preparing your documents');
       const { resume, cover, cna, stna, other } = getSelectedFiles();
-      const uploads = [];
+      const documentTasks = [
+        fileToDocument(resume, 'RESUME', 'Resume'),
+        cover ? fileToDocument(cover, 'COVER_LETTER', 'Cover letter') : null,
+        cna ? fileToDocument(cna, 'OTHER', 'CNA certificate') : null,
+        stna ? fileToDocument(stna, 'OTHER', 'STNA certificate') : null,
+        ...other.map((file, index) => fileToDocument(file, 'OTHER', `Supporting document #${index + 1}`))
+      ].filter(Boolean);
+      const documents = await Promise.all(documentTasks);
 
-      // Required
-      uploads.push(uploadOneFile({ applicationId, label: 'Resume', file: resume }));
-
-      // Optional singles
-      if(cover) uploads.push(uploadOneFile({ applicationId, label: 'Cover letter', file: cover }));
-      if(cna) uploads.push(uploadOneFile({ applicationId, label: 'CNA document', file: cna }));
-      if(stna) uploads.push(uploadOneFile({ applicationId, label: 'STNA document', file: stna }));
-
-      // Optional multiple
-      other.forEach((f, i) => uploads.push(uploadOneFile({ applicationId, label: `Other document #${i+1}`, file: f })));
-
-      // Run uploads (in parallel)
-      const uploadedFiles = await Promise.all(uploads);
-
-      setProgress(92, 'Submitting…', 'Saving file links');
-
-      // Save uploaded file URLs + metadata into Firestore doc
-      await updateDoc(appRef, {
-        uploadedFiles,
-        uploadedFilesCount: uploadedFiles.length,
-        storageFolder: `applications/${applicationId}`
+      setProgress(55, 'Submitting…', 'Creating your secure applicant profile');
+      const params = new URLSearchParams(window.location.search);
+      const response = await fetch(`${API_BASE}/public/careers/applications`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jobSlug: params.get('opening') || 'direct-support-professional',
+          firstName: $('firstName').value.trim(),
+          middleName: $('middleName')?.value.trim() || undefined,
+          lastName: $('lastName').value.trim(),
+          email: $('email').value.trim(),
+          phone: $('phone').value.trim(),
+          appliedRole: 'DSP',
+          preferredCommunication: 'EMAIL',
+          notes: base.why || base.exp || null,
+          applicationData: base,
+          assessmentAnswers: base,
+          documents
+        })
       });
+      const result = await readApiResponse(response);
+      const receipt = result.data || {};
 
-      // Update UI “see everything”
-      updateUploadsListUploaded(uploadedFiles);
+      setProgress(100, 'Submitted!', 'Your application, documents, and DSP assessment were received.');
+      toast(
+        'Application received',
+        `Reference ${receipt.referenceNumber || 'created'} • DSP score: ${receipt.assessment?.score ?? scored.score}/${receipt.assessment?.maxScore ?? scored.max}`
+      );
 
-      setProgress(100, 'Submitted!', 'Your application and files were successfully submitted.');
-      toast('Submitted', 'Your application was submitted successfully. Uploaded file links are listed in the Files section.');
-
-      // Optional: Open a receipt window with the applicationId + file links
-      const receipt = {
-        applicationId,
-        submittedAt: new Date().toISOString(),
-        uploadedFiles
-      };
-      const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
-      if(w){
-        w.document.write(`<pre style="white-space:pre-wrap; font:14px/1.4 system-ui, sans-serif; padding:16px;">${escapeHtml(JSON.stringify(receipt, null, 2))}</pre>`);
-        w.document.close();
-      }
-
-      // Clear draft but do NOT auto-reset form unless you want it
       clearDraft();
       setText($('draftStatus'), 'No');
-
-      // (Optional) redirect:
-      // window.location.href = 'Careers.html';
       setSubmitting(false);
 
-      alert('Thank you! Your application has been received.\n\nYou can copy your Application ID from the receipt window.');
+      alert(
+        `Thank you! Your application has been received.\n\nReference: ${receipt.referenceNumber || 'See your confirmation email'}\nApplicant username: ${receipt.applicantUsername || $('email').value.trim()}\n\nYour temporary password and applicant-portal link are being sent to your email.`
+      );
     }
 
     $('appForm').addEventListener('submit', async (e) => {
