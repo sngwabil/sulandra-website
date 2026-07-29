@@ -92,6 +92,27 @@ function normalizePhone(value?: string | null) {
   return (value ?? '').replace(/[^\d+]/g, '');
 }
 
+async function resolveApplicantUsername(
+  prisma: PrismaClient,
+  preferredUsername: string,
+  applicationId: string,
+  referenceNumber: string,
+) {
+  const accounts = await prisma.$queryRawUnsafe<Array<{ applicationId: string }>>(
+    `SELECT "applicationId"
+       FROM "ApplicantPortalAccount"
+      WHERE LOWER("username")=LOWER($1)
+      LIMIT 1`,
+    preferredUsername,
+  );
+  if (!accounts[0] || accounts[0].applicationId === applicationId) {
+    return preferredUsername;
+  }
+
+  const suffix = referenceNumber.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toLowerCase();
+  return `${preferredUsername}-${suffix || applicationId.slice(0, 8)}`;
+}
+
 function generateTemporaryPassword() {
   return `Su!${randomBytes(9).toString('base64url')}9a`;
 }
@@ -362,21 +383,26 @@ async function recordAndDeliver(
   const requested = application.preferredCommunication === 'SMS' ? 'SMS' : 'EMAIL';
   const channel: CommunicationChannel = requested === 'SMS' && phone ? 'SMS' : 'EMAIL';
   const messageId = randomUUID();
-  await prisma.$executeRawUnsafe(
-    `INSERT INTO "ApplicantMessage"
-      ("id","applicationId","type","subject","body","recipientEmail","recipientPhone","channel","replyToEmail","deliveryStatus","createdById","createdAt","updatedAt")
-     VALUES ($1,$2,$3::"ApplicantMessageType",$4,$5,$6,$7,$8,$9,'QUEUED',$10,NOW(),NOW())`,
-    messageId,
-    application.id,
-    type,
-    subject,
-    body,
-    email,
-    phone || null,
-    channel,
-    careersFromEmail,
-    createdById ?? null,
-  );
+  try {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "ApplicantMessage"
+        ("id","applicationId","type","subject","body","recipientEmail","recipientPhone","channel","replyToEmail","deliveryStatus","createdById","createdAt","updatedAt")
+       VALUES ($1,$2,$3::"ApplicantMessageType",$4,$5,$6,$7,$8,$9,'QUEUED',$10,NOW(),NOW())`,
+      messageId,
+      application.id,
+      type,
+      subject,
+      body,
+      email,
+      phone || null,
+      channel,
+      careersFromEmail,
+      createdById ?? null,
+    );
+  } catch {
+    // Notification persistence must never turn a completed application into a 500 response.
+    return 'FAILED';
+  }
 
   try {
     const delivery = channel === 'SMS'
@@ -427,8 +453,14 @@ export async function provisionApplicantWorkflow(
   prisma: PrismaClient,
   input: ProvisionApplicantInput,
 ) {
-  const username = (input.email?.trim().toLowerCase() || normalizePhone(input.phone)).toLowerCase();
-  if (!username) throw new Error('An email address or phone number is required for applicant access.');
+  const preferredUsername = (input.email?.trim().toLowerCase() || normalizePhone(input.phone)).toLowerCase();
+  if (!preferredUsername) throw new Error('An email address or phone number is required for applicant access.');
+  const username = await resolveApplicantUsername(
+    prisma,
+    preferredUsername,
+    input.applicationId,
+    input.referenceNumber,
+  );
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = hashPassword(temporaryPassword);
   const pdf = buildApplicationPdf(input);
