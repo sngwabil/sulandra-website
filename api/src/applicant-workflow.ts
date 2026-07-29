@@ -468,6 +468,9 @@ export async function provisionApplicantWorkflow(
     ? scoreDspAssessment(input.assessmentAnswers)
     : null;
 
+  // Profile credentials and the core application update are the only atomic
+  // lifecycle operation. History/PDF generation are recoverable enhancements and
+  // must not roll back a valid account or a submitted application.
   await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(
       `UPDATE "EmployeeApplication"
@@ -506,14 +509,25 @@ export async function provisionApplicantWorkflow(
       username,
       passwordHash,
     );
-    await tx.$executeRawUnsafe(
+  });
+
+  try {
+    await prisma.$executeRawUnsafe(
       `INSERT INTO "ApplicantStatusHistory"
         ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","createdAt")
        VALUES ($1,$2,NULL,'RECEIVED','Application received by Sulandra Health.',TRUE,NOW())`,
       randomUUID(),
       input.applicationId,
     );
-    await tx.$executeRawUnsafe(
+  } catch (historyError) {
+    console.error('[careers] initial status history could not be recorded', {
+      applicationId: input.applicationId,
+      error: historyError instanceof Error ? historyError.message : String(historyError),
+    });
+  }
+
+  try {
+    await prisma.$executeRawUnsafe(
       `UPDATE "ApplicantDocument"
           SET "label"='Application PDF',
               "status"='RECEIVED',
@@ -532,7 +546,12 @@ export async function provisionApplicantWorkflow(
       createHash('sha256').update(pdf).digest('hex'),
       input.applicationId,
     );
-  });
+  } catch (pdfError) {
+    console.error('[careers] application PDF could not be generated', {
+      applicationId: input.applicationId,
+      error: pdfError instanceof Error ? pdfError.message : String(pdfError),
+    });
+  }
 
   const deliveryStatus = await recordAndDeliver(
     prisma,
