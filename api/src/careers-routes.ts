@@ -194,6 +194,7 @@ export function registerCareersRoutes(
   });
 
   app.post('/public/careers/applications', async (req, res, next) => {
+    let createdApplicationId: string | null = null;
     try {
       const input = publicApplicationSchema.parse(req.body);
       const organizationId = await resolveCareersOrganizationId();
@@ -270,6 +271,7 @@ export function registerCareersRoutes(
         input.preferredCommunication,
         JSON.stringify(input.applicationData),
       );
+      createdApplicationId = id;
 
       const documentsToCreate: ApplicantDocument[] = [];
       const consumedDocumentIndexes = new Set<number>();
@@ -302,6 +304,11 @@ export function registerCareersRoutes(
           ? Buffer.from(document.fileDataBase64, 'base64')
           : null;
         if (fileData && fileData.length > 20_000_000) {
+          await prisma.$executeRawUnsafe(
+            `DELETE FROM "EmployeeApplication" WHERE "id"=$1`,
+            id,
+          );
+          createdApplicationId = null;
           res.status(400).json({ error: `${document.label} exceeds the 20 MB limit.` });
           return;
         }
@@ -349,6 +356,7 @@ export function registerCareersRoutes(
         assessmentAnswers: input.assessmentAnswers,
       });
 
+      createdApplicationId = null;
       res.status(201).json({
         data: {
           id,
@@ -362,6 +370,16 @@ export function registerCareersRoutes(
         },
       });
     } catch (error) {
+      if (createdApplicationId) {
+        try {
+          await prisma.$executeRawUnsafe(
+            `DELETE FROM "EmployeeApplication" WHERE "id"=$1`,
+            createdApplicationId,
+          );
+        } catch {
+          // Preserve the original error; cleanup is limited to the row created by this request.
+        }
+      }
       next(error);
     }
   });
