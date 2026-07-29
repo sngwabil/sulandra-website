@@ -56,7 +56,9 @@
       if (!response.ok) {
         throw new Error((payload && payload.error) || "The request could not be completed.");
       }
-      return payload;
+      return payload && typeof payload === "object" && Object.prototype.hasOwnProperty.call(payload, "data")
+        ? payload.data
+        : payload;
     }
 
     async function download(path, fileName) {
@@ -124,8 +126,8 @@
       const application = folder.application || folder;
       const documents = folder.documents || application.documents || [];
       const history = folder.history || application.statusHistory || [];
-      const score = application.scoreTotal == null ? null : application.scoreTotal;
-      const scoreMax = application.scoreMaximum == null ? null : application.scoreMaximum;
+      const score = application.assessmentScore ?? application.scoreTotal ?? null;
+      const scoreMax = application.assessmentMaxScore ?? application.scoreMaximum ?? null;
       const statusOptions = STATUSES.map(([value, label]) =>
         `<option value="${value}" ${application.workflowStatus === value ? "selected" : ""}>${label}</option>`
       ).join("");
@@ -211,7 +213,11 @@
         setBusy(true);
         await client.request(`/api/admin/applications/${encodeURIComponent(options.applicationId)}/documents/${encodeURIComponent(documentId)}`, {
           method: "PATCH",
-          body: JSON.stringify({ action: action === "approve" ? "APPROVE" : "REJECT", reviewNotes, notifyApplicant: true })
+          body: JSON.stringify({
+            status: action === "approve" ? "APPROVED" : "REJECTED",
+            reviewNotes,
+            notifyApplicant: true
+          })
         });
         await load();
         showMessage(`Document ${action === "approve" ? "approved" : "rejected"}.`, "success");
