@@ -8,10 +8,10 @@
     ["INTERVIEW", "Interview"],
     ["OFFER_PENDING", "Offer pending"],
     ["HIRED", "Hired"],
-    ["NOT_SELECTED", "Not selected"],
+    ["NOT_SELECTED", "Reject and permanently delete"],
     ["WITHDRAWN", "Withdrawn"],
     ["TERMINATED", "Terminated"],
-    ["POSITION_FILLED", "Position filled"]
+    ["POSITION_FILLED", "Archive — position filled"]
   ];
 
   const DOCUMENT_TYPES = [
@@ -192,6 +192,46 @@
       const visibleToApplicant = root.querySelector("[data-scw-visible]").checked;
       const notifyApplicant = root.querySelector("[data-scw-notify]").checked;
       try {
+        if (status === "NOT_SELECTED") {
+          const confirmed = global.confirm(
+            "Reject this applicant permanently?\n\nA professional regret email will be sent first. After successful delivery, the application, portal account, documents, and history will be deleted and cannot be recovered."
+          );
+          if (!confirmed) return;
+          setBusy(true);
+          await client.request(`/api/admin/applications/${encodeURIComponent(options.applicationId)}/reject`, {
+            method: "DELETE",
+            body: "{}"
+          });
+          showMessage("The regret email was sent and the applicant was permanently removed.", "success");
+          if (typeof options.onUpdated === "function") {
+            options.onUpdated({ type: "deleted", status });
+          }
+          global.setTimeout(() => options.onDeleted?.(), 700);
+          return;
+        }
+        if (status === "POSITION_FILLED") {
+          const confirmed = global.confirm(
+            "Archive this applicant?\n\nThey will be removed from the active list, kept in the Archived folder, and emailed that the position is full. You can revisit the application later."
+          );
+          if (!confirmed) return;
+          setBusy(true);
+          const result = await client.request(`/api/admin/applications/${encodeURIComponent(options.applicationId)}/archive`, {
+            method: "POST",
+            body: "{}"
+          });
+          const delivery = String(result.deliveryStatus || "").toUpperCase();
+          showMessage(
+            delivery === "SENT"
+              ? "Applicant archived and the position-filled email was sent."
+              : "Applicant archived, but the email could not be confirmed. Use the applicant folder to retry contact.",
+            delivery === "SENT" ? "success" : "error"
+          );
+          if (typeof options.onUpdated === "function") {
+            options.onUpdated({ type: "archived", status });
+          }
+          global.setTimeout(() => options.onArchived?.(), 700);
+          return;
+        }
         setBusy(true);
         await client.request(`/api/admin/applications/${encodeURIComponent(options.applicationId)}/status`, {
           method: "PATCH",
