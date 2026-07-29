@@ -316,7 +316,10 @@ async function graphAccessToken() {
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body,
   });
-  if (!response.ok) throw new Error(`Microsoft authentication returned ${response.status}`);
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500);
+    throw new Error(`Microsoft authentication returned ${response.status}: ${detail}`);
+  }
   const payload = await response.json() as { access_token?: string };
   return payload.access_token ?? null;
 }
@@ -340,7 +343,10 @@ async function sendEmail(to: string, subject: string, body: string) {
         }),
       },
     );
-    if (!response.ok) throw new Error(`Microsoft Graph returned ${response.status}`);
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 500);
+      throw new Error(`Microsoft Graph returned ${response.status}: ${detail}`);
+    }
     return { status: 'SENT', providerMessageId: response.headers.get('request-id') };
   }
 
@@ -367,6 +373,44 @@ async function sendEmail(to: string, subject: string, body: string) {
     html: body.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>'),
   });
   return { status: 'SENT', providerMessageId: result.messageId || null };
+}
+
+function notificationProvider(channel: CommunicationChannel) {
+  if (channel === 'SMS') return 'TWILIO';
+  if (
+    process.env.MICROSOFT_TENANT_ID?.trim()
+    && process.env.MICROSOFT_CLIENT_ID?.trim()
+    && process.env.MICROSOFT_CLIENT_SECRET?.trim()
+  ) {
+    return 'MICROSOFT_GRAPH';
+  }
+  if (
+    process.env.SMTP_HOST?.trim()
+    && process.env.SMTP_USER?.trim()
+    && process.env.SMTP_PASS?.trim()
+  ) {
+    return 'SMTP';
+  }
+  return 'NOT_CONFIGURED';
+}
+
+function safeDeliveryError(error: unknown) {
+  const value = error as {
+    name?: unknown;
+    message?: unknown;
+    code?: unknown;
+    responseCode?: unknown;
+    command?: unknown;
+    response?: unknown;
+  };
+  return {
+    name: String(value?.name || 'Error'),
+    message: String(value?.message || 'Delivery failed').slice(0, 1000),
+    code: value?.code == null ? undefined : String(value.code),
+    responseCode: value?.responseCode == null ? undefined : String(value.responseCode),
+    command: value?.command == null ? undefined : String(value.command),
+    response: value?.response == null ? undefined : String(value.response).slice(0, 1000),
+  };
 }
 
 async function sendSms(to: string, body: string) {
@@ -446,9 +490,17 @@ export async function recordAndDeliver(
     );
     return delivery.status;
   } catch (error) {
+    const safeError = safeDeliveryError(error);
+    console.error('[careers] notification delivery failed', {
+      applicationId: application.id,
+      messageId,
+      channel,
+      provider: notificationProvider(channel),
+      error: safeError,
+    });
     await prisma.$executeRawUnsafe(
       `UPDATE "ApplicantMessage" SET "deliveryStatus"='FAILED',"errorMessage"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
-      error instanceof Error ? error.message.slice(0, 1000) : 'Delivery failed',
+      safeError.message,
       messageId,
     );
     return 'FAILED';
