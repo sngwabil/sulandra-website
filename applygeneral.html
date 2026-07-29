@@ -41,7 +41,17 @@
     const API_BASE='https://sulandra-website-production.up.railway.app';
     const params=new URLSearchParams(location.search);
     const openingSlug=params.get('opening')||'';
+    const SUBMISSION_ID_KEY='sulandra:general:submission-id';
     let opening=null;
+    function getSubmissionId(){
+      let id=sessionStorage.getItem(SUBMISSION_ID_KEY);
+      if(!id){
+        id=globalThis.crypto?.randomUUID?.()||`general-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        sessionStorage.setItem(SUBMISSION_ID_KEY,id);
+      }
+      return id;
+    }
+    function clearSubmissionId(){sessionStorage.removeItem(SUBMISSION_ID_KEY)}
     const $=id=>document.getElementById(id);
     async function loadOpening(){
       const response=await fetch(`${API_BASE}/public/careers/openings`);
@@ -67,12 +77,12 @@
           fileDocument($('references'),'REFERENCES','References')
         ])).filter(Boolean);
         const response=await fetch(`${API_BASE}/public/careers/applications`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
-          jobOpeningId:opening?.id,jobSlug:openingSlug||undefined,firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),email,phone,
+          sourceExternalId:getSubmissionId(),jobOpeningId:opening?.id,jobSlug:openingSlug||undefined,firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),email,phone,
           preferredCommunication:preferred,appliedRole:'GENERAL',notes:$('experience').value.trim(),
           applicationData:{position:opening?.title||'General application',availability:$('availability').value,experience:$('experience').value.trim()},documents:docs
         })});
         const body=await response.json();if(!response.ok)throw new Error(body.error||'Unable to submit application.');
-        $('applicationForm').reset();$('success').innerHTML=`Application received. Your reference number is <strong>${body.data.referenceNumber}</strong>. Sign-in instructions have been sent by your selected communication method.`;$('success').classList.add('show')
+        clearSubmissionId();$('applicationForm').reset();$('success').innerHTML=`Application received. Your reference number is <strong>${body.data.referenceNumber}</strong>. Sign-in instructions have been sent by your selected communication method.`;$('success').classList.add('show')
       }catch(error){$('error').textContent=error.message;$('error').classList.add('show')}
     });
     loadOpening().catch(()=>{});
