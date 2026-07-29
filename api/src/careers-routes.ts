@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   provisionApplicantWorkflow,
+  recordAndDeliver,
   registerApplicantWorkflowRoutes,
 } from './applicant-workflow.js';
 
@@ -635,9 +636,6 @@ export function registerCareersRoutes(
         auth.organizationId,
       );
       if (!application) return res.status(404).json({ error: 'Application not found' });
-      const rawToken = randomBytes(32).toString('base64url');
-      const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-      const messageId = randomUUID();
       await prisma.$transaction(async (tx) => {
         const changed = await tx.$executeRawUnsafe(
           `UPDATE "ApplicantDocument"
@@ -657,35 +655,34 @@ export function registerCareersRoutes(
             input.label,
           );
         }
-        await tx.$executeRawUnsafe(
-          `INSERT INTO "ApplicantMessage"
-            ("id","applicationId","type","subject","body","recipientEmail","recipientPhone","channel",
-             "replyToEmail","deliveryStatus","secureTokenHash","tokenExpiresAt","createdById","createdAt","updatedAt")
-           VALUES ($1,$2,'DOCUMENT_REQUEST',$3,$4,$5,$6,$7,$8,'QUEUED',$9,
-                   NOW()+INTERVAL '14 days',$10,NOW(),NOW())`,
-          messageId,
-          id,
-          `Document requested: ${input.label}`,
-          input.message ?? `Please upload your ${input.label} through the applicant portal.`,
-          application.email ?? null,
-          application.phone ?? null,
-          application.preferredCommunication ?? 'EMAIL',
-          process.env.CAREERS_EMAIL_FROM ?? process.env.ADMIN_EMAIL ?? 'admin@sulandrahealth.com',
-          tokenHash,
-          auth.userId,
-        );
       });
+      const portal = process.env.CAREERS_PORTAL_URL
+        ?? 'https://www.sulandrahealth.com/applicant-portal.html';
+      const deliveryStatus = await recordAndDeliver(
+        prisma,
+        application,
+        'DOCUMENT_REQUEST',
+        `Document requested: ${input.label}`,
+        [
+          `Dear ${application.firstName || 'Applicant'},`,
+          '',
+          input.message ?? `Please upload your ${input.label} through the applicant portal.`,
+          `Portal: ${portal}`,
+          `Application reference: ${application.referenceNumber}`,
+          '',
+          'Regards,',
+          'Sulandra Health',
+        ].join('\n'),
+        auth.userId,
+      );
       await audit(auth, 'REQUEST_APPLICANT_DOCUMENT', 'EmployeeApplication', id, {
         category: input.category,
-        messageId,
+        deliveryStatus,
       });
       res.status(201).json({
         data: {
-          messageId,
-          deliveryStatus: 'QUEUED',
-          applicantPortalUrl: process.env.CAREERS_PORTAL_URL
-            ?? 'https://www.sulandrahealth.com/applicant-portal.html',
-          uploadPath: `/applicant-portal.html?token=${rawToken}`,
+          deliveryStatus,
+          applicantPortalUrl: portal,
         },
       });
     } catch (error) {
