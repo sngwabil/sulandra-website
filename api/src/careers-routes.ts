@@ -318,7 +318,8 @@ export function registerCareersRoutes(
             ("id","applicationId","category","label","status","fileName","storagePath","downloadUrl",
              "mimeType","sizeBytes","fileData","contentSha256","uploadedByType","uploadedAt","createdAt","updatedAt")
            VALUES ($1,$2,$3::"ApplicantDocumentCategory",$4,$5::"ApplicantDocumentStatus",
-                   $6,$7,$8,$9,$10,$11,$12,$13,CASE WHEN $13 IS NOT NULL THEN NOW() ELSE NULL END,NOW(),NOW())`,
+                   $6,$7,$8,$9,$10,$11,$12,$13::text,
+                   CASE WHEN $13::text IS NOT NULL THEN NOW() ELSE NULL END,NOW(),NOW())`,
           randomUUID(),
           id,
           document.category,
