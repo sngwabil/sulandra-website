@@ -742,7 +742,8 @@
         if (normalizedTitle.indexOf("delegating nurse") >= 0) return "DELEGATING_NURSE";
         if (/(^|[^a-z])rn([^a-z]|$)|registered nurse/.test(normalizedTitle)) return "RN";
         if (/(^|[^a-z])lpn([^a-z]|$)|licensed practical nurse|lvn/.test(normalizedTitle)) return "LPN";
-        return "DSP";
+        if (/direct support|(^|[^a-z])dsp([^a-z]|$)|aide|caregiver/.test(normalizedTitle)) return "DSP";
+        return "GENERAL";
       }
 
       function serviceLabel(job){
@@ -862,6 +863,13 @@
               tag(job.employmentType, false),
               tag(job.locationText, false)
             ].join("");
+            var applicationPath = job.applicationPath || (
+              applicantRole(job.title) === "DSP"
+                ? "/applydsp.html?opening=" + encodeURIComponent(job.slug || job.id)
+                : (applicantRole(job.title) === "GENERAL"
+                  ? "/applygeneral.html?opening=" + encodeURIComponent(job.slug || job.id)
+                  : "/applylpn.html?opening=" + encodeURIComponent(job.slug || job.id) + "&role=" + encodeURIComponent(applicantRole(job.title)))
+            );
 
             return "<article class='job-post anchor' id='" + anchor + "'" +
               (index > 0 ? " style='margin-top:14px;'" : "") + ">" +
@@ -873,7 +881,7 @@
                 (job.requirements ? "<div class='subhead'>Requirements</div><div class='job-body'>" + escapeHtml(job.requirements) + "</div>" : "") +
                 (job.benefits ? "<div class='subhead'>Benefits</div><div class='job-body'>" + escapeHtml(job.benefits) + "</div>" : "") +
                 "<div class='apply-actions'>" +
-                  "<button class='btn btn-primary apply-live' type='button' data-opening-id='" + escapeHtml(job.id) + "'>Apply now</button>" +
+                  "<a class='btn btn-primary' href='" + escapeHtml(applicationPath) + "'>Apply now</a>" +
                 "</div>" +
               "</article>";
           }).join("") +
