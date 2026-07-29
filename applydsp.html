@@ -2185,8 +2185,14 @@
       setText($('draftStatus'), 'No');
       setSubmitting(false);
 
+      const notificationStatus = String(receipt.notificationStatus || '').toUpperCase();
+      const notificationMessage = notificationStatus === 'SENT'
+        ? 'Your temporary password and applicant-portal link were sent to your email.'
+        : notificationStatus === 'FAILED'
+          ? 'Your application was saved, but the confirmation email could not be sent. Please contact HR for portal access.'
+          : 'Your application was saved. The confirmation email is waiting to be sent.';
       alert(
-        `Thank you! Your application has been received.\n\nReference: ${receipt.referenceNumber || 'See your confirmation email'}\nApplicant username: ${receipt.applicantUsername || $('email').value.trim()}\n\nYour temporary password and applicant-portal link are being sent to your email.`
+        `Thank you! Your application has been received.\n\nReference: ${receipt.referenceNumber || 'Created'}\nApplicant username: ${receipt.applicantUsername || $('email').value.trim()}\n\n${notificationMessage}`
       );
     }
 
