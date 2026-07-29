@@ -684,6 +684,8 @@ const requireRoles = (...roles: UserRole[]): express.RequestHandler => (_req, re
   next();
 };
 
+let auditColumnNames: Set<string> | null = null;
+
 const audit = async (
   auth: Partial<AuthContext>,
   action: string,
@@ -692,16 +694,35 @@ const audit = async (
   metadata?: object,
 ) => {
   try {
+    if (!auditColumnNames) {
+      const columns = await prisma.$queryRawUnsafe<Array<{ columnName: string }>>(
+        `SELECT "column_name" AS "columnName"
+           FROM "information_schema"."columns"
+          WHERE "table_schema"=current_schema() AND "table_name"='AuditEvent'`,
+      );
+      auditColumnNames = new Set(columns.map((column) => column.columnName));
+    }
+
+    const candidates = [
+      { name: 'id', value: randomUUID() },
+      { name: 'organizationId', value: auth.organizationId ?? null },
+      { name: 'userId', value: auth.userId ?? null },
+      { name: 'action', value: action },
+      { name: 'resourceType', value: resourceType },
+      { name: 'resourceId', value: resourceId ?? null },
+      { name: 'metadata', value: JSON.stringify(metadata ?? {}), cast: '::jsonb' },
+    ].filter((candidate) => auditColumnNames?.has(candidate.name));
+    const columnSql = candidates.map((candidate) => `"${candidate.name}"`);
+    const valueSql = candidates.map((candidate, index) => `$${index + 1}${candidate.cast || ''}`);
+    if (auditColumnNames.has('createdAt')) {
+      columnSql.push('"createdAt"');
+      valueSql.push('NOW()');
+    }
+    if (!candidates.length) throw new Error('AuditEvent has no compatible columns.');
+
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "AuditEvent" ("id","organizationId","userId","action","resourceType","resourceId","metadata","createdAt")
-       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,NOW())`,
-      randomUUID(),
-      auth.organizationId ?? null,
-      auth.userId ?? null,
-      action,
-      resourceType,
-      resourceId ?? null,
-      JSON.stringify(metadata ?? {}),
+      `INSERT INTO "AuditEvent" (${columnSql.join(',')}) VALUES (${valueSql.join(',')})`,
+      ...candidates.map((candidate) => candidate.value),
     );
   } catch (error) {
     console.warn('[audit] event could not be persisted', { action, resourceType, error });
