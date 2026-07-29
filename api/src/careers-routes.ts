@@ -371,31 +371,20 @@ export function registerCareersRoutes(
       });
     } catch (error) {
       if (createdApplicationId) {
-        try {
-          await prisma.$transaction(async (tx) => {
-            await tx.$executeRawUnsafe(
-              `DELETE FROM "ApplicantMessage" WHERE "applicationId"=$1`,
-              createdApplicationId,
-            );
-            await tx.$executeRawUnsafe(
-              `DELETE FROM "ApplicantStatusHistory" WHERE "applicationId"=$1`,
-              createdApplicationId,
-            );
-            await tx.$executeRawUnsafe(
-              `DELETE FROM "ApplicantPortalAccount" WHERE "applicationId"=$1`,
-              createdApplicationId,
-            );
-            await tx.$executeRawUnsafe(
-              `DELETE FROM "ApplicantDocument" WHERE "applicationId"=$1`,
-              createdApplicationId,
-            );
-            await tx.$executeRawUnsafe(
-              `DELETE FROM "EmployeeApplication" WHERE "id"=$1`,
-              createdApplicationId,
-            );
-          });
-        } catch {
-          // Preserve the original submission error after best-effort request-scoped cleanup.
+        const cleanupStatements = [
+          `DELETE FROM "ApplicantMessage" WHERE "applicationId"=$1`,
+          `DELETE FROM "ApplicantStatusHistory" WHERE "applicationId"=$1`,
+          `DELETE FROM "ApplicantPortalAccount" WHERE "applicationId"=$1`,
+          `DELETE FROM "ApplicantDocument" WHERE "applicationId"=$1`,
+          `DELETE FROM "EmployeeApplication" WHERE "id"=$1`,
+        ];
+
+        for (const statement of cleanupStatements) {
+          try {
+            await prisma.$executeRawUnsafe(statement, createdApplicationId);
+          } catch {
+            // Continue so one absent lifecycle table cannot roll back all cleanup.
+          }
         }
       }
       next(error);
