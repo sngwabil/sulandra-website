@@ -2098,11 +2098,39 @@
 
       setProgress(55, 'Submitting…', 'Creating your secure applicant profile');
       const params = new URLSearchParams(window.location.search);
+      const requestedOpening = (params.get('opening') || '').trim();
+      const openingsResponse = await fetch(`${API_BASE}/public/careers/openings`, {
+        headers: { accept: 'application/json' }
+      });
+      const openingsResult = await readApiResponse(openingsResponse);
+      const openings = Array.isArray(openingsResult.data) ? openingsResult.data : [];
+      const isDspOpening = (job) => (
+        String(job?.appliedRole || '').toUpperCase() === 'DSP'
+        || /\bdsp\b|direct support|caregiver|aide/i.test(
+          `${job?.title || ''} ${job?.department || ''}`
+        )
+      );
+      const opening = requestedOpening
+        ? openings.find((job) => (
+          String(job?.slug || '') === requestedOpening
+          || String(job?.id || '') === requestedOpening
+        ))
+        : openings.find(isDspOpening);
+
+      if(!opening){
+        throw new Error(
+          requestedOpening
+            ? 'This DSP opening is no longer published. Please return to Careers and select an active opening.'
+            : 'There are no published DSP openings available right now.'
+        );
+      }
+
       const response = await fetch(`${API_BASE}/public/careers/applications`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          jobSlug: params.get('opening') || 'direct-support-professional',
+          jobOpeningId: opening.id,
+          jobSlug: opening.slug,
           firstName: $('firstName').value.trim(),
           middleName: $('middleName')?.value.trim() || undefined,
           lastName: $('lastName').value.trim(),
@@ -2156,7 +2184,7 @@
         setSubmitting(false);
         setProgress(0, 'Submission failed', 'Please try again.');
         toast('Submission error', err?.message || 'Something went wrong.');
-        alert('Submission failed. Please check your internet and try again.');
+        alert(err?.message || 'Submission failed. Please try again.');
       }
     });
 
