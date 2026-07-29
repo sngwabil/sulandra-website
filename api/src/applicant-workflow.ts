@@ -324,7 +324,19 @@ async function graphAccessToken() {
   return payload.access_token ?? null;
 }
 
-async function sendEmail(to: string, subject: string, body: string) {
+type EmailContent = string | { text: string; html: string };
+
+function emailText(content: EmailContent) {
+  return typeof content === 'string' ? content : content.text;
+}
+
+function emailHtml(content: EmailContent) {
+  return typeof content === 'string'
+    ? content.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')
+    : content.html;
+}
+
+async function sendEmail(to: string, subject: string, content: EmailContent) {
   const token = await graphAccessToken();
   if (token) {
     const response = await fetch(
@@ -335,7 +347,7 @@ async function sendEmail(to: string, subject: string, body: string) {
         body: JSON.stringify({
           message: {
             subject,
-            body: { contentType: 'HTML', content: body.replaceAll('\n', '<br>') },
+            body: { contentType: 'HTML', content: emailHtml(content) },
             toRecipients: [{ emailAddress: { address: to } }],
             replyTo: [{ emailAddress: { address: careersFromEmail } }],
           },
@@ -369,8 +381,8 @@ async function sendEmail(to: string, subject: string, body: string) {
     to,
     replyTo: careersFromEmail,
     subject,
-    text: body,
-    html: body.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>'),
+    text: emailText(content),
+    html: emailHtml(content),
   });
   return { status: 'SENT', providerMessageId: result.messageId || null };
 }
@@ -445,7 +457,7 @@ export async function recordAndDeliver(
   },
   type: string,
   subject: string,
-  body: string,
+  body: EmailContent,
   createdById?: string | null,
 ) {
   const email = application.email?.trim().toLowerCase() || null;
@@ -462,7 +474,7 @@ export async function recordAndDeliver(
       application.id,
       type,
       subject,
-      body,
+      emailText(body),
       email,
       phone || null,
       channel,
@@ -476,7 +488,7 @@ export async function recordAndDeliver(
 
   try {
     const delivery = channel === 'SMS'
-      ? await sendSms(phone, body.replace(/\s+/g, ' ').slice(0, 1500))
+      ? await sendSms(phone, emailText(body).replace(/\s+/g, ' ').slice(0, 1500))
       : email
         ? await sendEmail(email, subject, body)
         : { status: 'FAILED', providerMessageId: null };
@@ -677,6 +689,74 @@ function statusMessage(application: any, status: ApplicationStatus, note?: strin
     'Regards,',
     'Sulandra Health',
   ].filter(Boolean).join('\n');
+}
+
+function careersDecisionEmail(
+  application: any,
+  kind: 'ARCHIVED' | 'REJECTED' | 'RESTORED',
+): EmailContent {
+  const name = application.firstName || 'Applicant';
+  const position = application.jobTitle || application.positionTitle || application.appliedRole || 'position';
+  const reference = application.referenceNumber || application.id;
+  const isArchived = kind === 'ARCHIVED';
+  const isRestored = kind === 'RESTORED';
+  const headline = isRestored
+    ? 'A new opportunity is available'
+    : isArchived
+      ? 'Application retained for future opportunities'
+      : 'Update regarding your application';
+  const decision = isRestored
+    ? `A new opening is available for the ${position} position. We would be pleased to revisit your application.`
+    : isArchived
+      ? `We regret to inform you that the ${position} position you applied for is now full.`
+      : `After careful consideration, we will not be moving forward with your application for the ${position} position.`;
+  const future = isArchived
+    ? 'We appreciate your interest in working with Sulandra Health. We will keep your application on file and may reach out when another opening becomes available for this position.'
+    : isRestored
+      ? `Please sign in to the applicant portal to review your application, or reply to this email if you would like to be considered.`
+      : 'We sincerely appreciate the time and interest you invested in applying to Sulandra Health, and we wish you every success in your career search.';
+  const eeo = 'Sulandra Health is an equal opportunity employer. Employment decisions are based on legitimate, job-related considerations and are made without unlawful discrimination based on race, color, religion, sex (including pregnancy, sexual orientation, and gender identity), national origin, age, disability, genetic information, veteran status, or any other status protected by applicable law.';
+  const safeName = name.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const safeDecision = decision.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const safeFuture = future.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const safeReference = String(reference).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const text = [
+    `Dear ${name},`,
+    '',
+    decision,
+    '',
+    future,
+    isRestored ? `Applicant portal: ${portalUrl}` : '',
+    '',
+    eeo,
+    '',
+    `Application reference: ${reference}`,
+    '',
+    'Best regards,',
+    'Sulandra Health',
+  ].filter(Boolean).join('\n');
+  const html = `<!doctype html><html><body style="margin:0;background:#eef5fb;font-family:Arial,sans-serif;color:#17324d">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef5fb;padding:30px 12px"><tr><td align="center">
+      <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="max-width:620px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 35px rgba(11,75,121,.14)">
+        <tr><td style="background:linear-gradient(135deg,#075c99,#0b78bb);padding:28px 34px;border-bottom:6px solid #e8b94f">
+          <div style="font-size:27px;font-weight:800;color:#fff"><span style="font-style:italic">Sulandra</span> Health</div>
+          <div style="color:#d8efff;margin-top:5px;font-size:14px">Careers &amp; Onboarding</div>
+        </td></tr>
+        <tr><td style="padding:34px">
+          <div style="font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#0b78bb;font-weight:800">Application update</div>
+          <h1 style="font-size:25px;line-height:1.25;color:#12345a;margin:8px 0 24px">${headline}</h1>
+          <p style="font-size:16px;line-height:1.7;margin:0 0 17px">Dear <strong>${safeName}</strong>,</p>
+          <p style="font-size:16px;line-height:1.7;margin:0 0 17px">${safeDecision}</p>
+          <p style="font-size:16px;line-height:1.7;margin:0 0 22px"><strong><em>${safeFuture}</em></strong></p>
+          ${isRestored ? `<p style="margin:0 0 24px"><a href="${portalUrl}" style="display:inline-block;background:#0b6fac;color:#fff;text-decoration:none;font-weight:800;padding:12px 18px;border-radius:10px">Open applicant portal</a></p>` : ''}
+          <div style="background:#f4f8fc;border-left:4px solid #e8b94f;padding:15px 17px;color:#536b80;font-size:13px;line-height:1.55">${eeo}</div>
+          <p style="color:#657c90;font-size:13px;margin:22px 0">Application reference: <strong>${safeReference}</strong></p>
+          <p style="font-size:15px;line-height:1.6;margin:0">Best regards,<br><strong style="color:#075c99"><em>Sulandra Health</em></strong></p>
+        </td></tr>
+      </table>
+    </td></tr></table>
+  </body></html>`;
+  return { text, html };
 }
 
 export function registerApplicantWorkflowRoutes(
@@ -919,6 +999,13 @@ export function registerApplicantWorkflowRoutes(
           visibleToApplicant: z.boolean().default(true),
           notifyApplicant: z.boolean().default(true),
         }).parse(req.body);
+        if (input.status === 'NOT_SELECTED' || input.status === 'POSITION_FILLED') {
+          return res.status(400).json({
+            error: input.status === 'NOT_SELECTED'
+              ? 'Use the reject action so the regret email is sent before permanent deletion.'
+              : 'Use the archive action so the position-filled email and retention workflow are applied.',
+          });
+        }
         const applications = await prisma.$queryRawUnsafe<any[]>(
           `SELECT a.*,j."title" AS "jobTitle"
              FROM "EmployeeApplication" a
@@ -972,6 +1059,159 @@ export function registerApplicantWorkflowRoutes(
           toStatus: input.status,
         });
         res.json({ data: { id: applicationId, workflowStatus: input.status } });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/applications/:id/archive',
+    requireRoles(UserRole.ADMINISTRATOR),
+    async (req, res, next) => {
+      try {
+        const auth = authOf(res);
+        const applicationId = String(req.params.id);
+        const [application] = await prisma.$queryRawUnsafe<any[]>(
+          `SELECT a.*,j."title" AS "jobTitle"
+             FROM "EmployeeApplication" a
+             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
+            WHERE a."id"=$1 AND a."organizationId"=$2`,
+          applicationId,
+          auth.organizationId,
+        );
+        if (!application) return res.status(404).json({ error: 'Application not found.' });
+        const previousStatus = application.workflowStatus || application.status || 'RECEIVED';
+        await prisma.$transaction(async (tx) => {
+          await tx.$executeRawUnsafe(
+            `UPDATE "EmployeeApplication" SET "workflowStatus"='POSITION_FILLED',"updatedAt"=NOW() WHERE "id"=$1`,
+            applicationId,
+          );
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "ApplicantStatusHistory"
+              ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt")
+             VALUES ($1,$2,$3,'POSITION_FILLED',$4,TRUE,$5,NOW())`,
+            randomUUID(),
+            applicationId,
+            previousStatus,
+            'The position has been filled. Your application will be retained for future openings.',
+            auth.userId,
+          );
+        });
+        const deliveryStatus = await recordAndDeliver(
+          prisma,
+          application,
+          'STATUS_UPDATE',
+          `Sulandra Health application update — ${application.referenceNumber}`,
+          careersDecisionEmail(application, 'ARCHIVED'),
+          auth.userId,
+        );
+        await audit(auth, 'ARCHIVE_APPLICATION', 'EmployeeApplication', applicationId, {
+          fromStatus: previousStatus,
+          deliveryStatus,
+        });
+        res.json({ data: { id: applicationId, workflowStatus: 'POSITION_FILLED', deliveryStatus } });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.post(
+    '/api/admin/applications/:id/restore',
+    requireRoles(UserRole.ADMINISTRATOR),
+    async (req, res, next) => {
+      try {
+        const auth = authOf(res);
+        const applicationId = String(req.params.id);
+        const input = z.object({ notifyApplicant: z.boolean().default(true) }).parse(req.body ?? {});
+        const [application] = await prisma.$queryRawUnsafe<any[]>(
+          `SELECT a.*,j."title" AS "jobTitle"
+             FROM "EmployeeApplication" a
+             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
+            WHERE a."id"=$1 AND a."organizationId"=$2`,
+          applicationId,
+          auth.organizationId,
+        );
+        if (!application) return res.status(404).json({ error: 'Application not found.' });
+        if (String(application.workflowStatus) !== 'POSITION_FILLED') {
+          return res.status(409).json({ error: 'Only archived applications can be revisited.' });
+        }
+        await prisma.$transaction(async (tx) => {
+          await tx.$executeRawUnsafe(
+            `UPDATE "EmployeeApplication" SET "workflowStatus"='REVIEWING',"updatedAt"=NOW() WHERE "id"=$1`,
+            applicationId,
+          );
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "ApplicantStatusHistory"
+              ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt")
+             VALUES ($1,$2,'POSITION_FILLED','REVIEWING',$3,$4,$5,NOW())`,
+            randomUUID(),
+            applicationId,
+            'Sulandra Health is revisiting this application for a new opening.',
+            input.notifyApplicant,
+            auth.userId,
+          );
+        });
+        const deliveryStatus = input.notifyApplicant
+          ? await recordAndDeliver(
+            prisma,
+            application,
+            'STATUS_UPDATE',
+            `A new Sulandra Health opportunity — ${application.referenceNumber}`,
+            careersDecisionEmail(application, 'RESTORED'),
+            auth.userId,
+          )
+          : 'NOT_REQUESTED';
+        await audit(auth, 'RESTORE_ARCHIVED_APPLICATION', 'EmployeeApplication', applicationId, {
+          deliveryStatus,
+        });
+        res.json({ data: { id: applicationId, workflowStatus: 'REVIEWING', deliveryStatus } });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
+  app.delete(
+    '/api/admin/applications/:id/reject',
+    requireRoles(UserRole.ADMINISTRATOR),
+    async (req, res, next) => {
+      try {
+        const auth = authOf(res);
+        const applicationId = String(req.params.id);
+        const [application] = await prisma.$queryRawUnsafe<any[]>(
+          `SELECT a.*,j."title" AS "jobTitle"
+             FROM "EmployeeApplication" a
+             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
+            WHERE a."id"=$1 AND a."organizationId"=$2`,
+          applicationId,
+          auth.organizationId,
+        );
+        if (!application) return res.status(404).json({ error: 'Application not found.' });
+        const deliveryStatus = await recordAndDeliver(
+          prisma,
+          application,
+          'STATUS_UPDATE',
+          `Sulandra Health application decision — ${application.referenceNumber}`,
+          careersDecisionEmail(application, 'REJECTED'),
+          auth.userId,
+        );
+        if (deliveryStatus !== 'SENT') {
+          return res.status(502).json({
+            error: 'The rejection email could not be sent, so the applicant was not deleted. Please try again.',
+          });
+        }
+        await prisma.$executeRawUnsafe(
+          `DELETE FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`,
+          applicationId,
+          auth.organizationId,
+        );
+        await audit(auth, 'REJECT_AND_DELETE_APPLICATION', 'EmployeeApplication', applicationId, {
+          referenceNumber: application.referenceNumber,
+          deliveryStatus,
+        });
+        res.json({ data: { id: applicationId, deleted: true, deliveryStatus } });
       } catch (error) {
         next(error);
       }
