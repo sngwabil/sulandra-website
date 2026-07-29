@@ -271,25 +271,41 @@ export function registerCareersRoutes(
         JSON.stringify(input.applicationData),
       );
 
-      const provided = new Map<DocumentCategory, ApplicantDocument>(
-        input.documents.map((document) => [document.category, document]),
-      );
-      const categories = new Set<DocumentCategory>([
+      const documentsToCreate: ApplicantDocument[] = [];
+      const consumedDocumentIndexes = new Set<number>();
+      const placeholderCategories = [
         ...requiredCategories(appliedRole),
-        'APPLICATION',
-        ...input.documents.map((document) => document.category),
-      ]);
+        'APPLICATION' as DocumentCategory,
+      ];
 
-      for (const category of categories) {
-        const document = provided.get(category);
-        const fileData = document?.fileDataBase64
+      for (const category of new Set<DocumentCategory>(placeholderCategories)) {
+        const providedIndex = input.documents.findIndex(
+          (document, index) => document.category === category && !consumedDocumentIndexes.has(index),
+        );
+        if (providedIndex >= 0) {
+          documentsToCreate.push(input.documents[providedIndex]);
+          consumedDocumentIndexes.add(providedIndex);
+        } else {
+          documentsToCreate.push({
+            category,
+            label: category.replaceAll('_', ' '),
+          });
+        }
+      }
+
+      input.documents.forEach((document, index) => {
+        if (!consumedDocumentIndexes.has(index)) documentsToCreate.push(document);
+      });
+
+      for (const document of documentsToCreate) {
+        const fileData = document.fileDataBase64
           ? Buffer.from(document.fileDataBase64, 'base64')
           : null;
         if (fileData && fileData.length > 20_000_000) {
-          res.status(400).json({ error: `${document?.label ?? category} exceeds the 20 MB limit.` });
+          res.status(400).json({ error: `${document.label} exceeds the 20 MB limit.` });
           return;
         }
-        const hasFile = Boolean(fileData?.length || document?.downloadUrl);
+        const hasFile = Boolean(fileData?.length || document.downloadUrl);
         await prisma.$executeRawUnsafe(
           `INSERT INTO "ApplicantDocument"
             ("id","applicationId","category","label","status","fileName","storagePath","downloadUrl",
@@ -298,14 +314,14 @@ export function registerCareersRoutes(
                    $6,$7,$8,$9,$10,$11,$12,$13,CASE WHEN $13 IS NOT NULL THEN NOW() ELSE NULL END,NOW(),NOW())`,
           randomUUID(),
           id,
-          category,
-          document?.label ?? category.replaceAll('_', ' '),
+          document.category,
+          document.label,
           hasFile ? 'RECEIVED' : 'MISSING',
-          document?.fileName ?? null,
-          document?.storagePath ?? null,
-          document?.downloadUrl ?? null,
-          document?.mimeType ?? null,
-          fileData?.length ?? document?.sizeBytes ?? null,
+          document.fileName ?? null,
+          document.storagePath ?? null,
+          document.downloadUrl ?? null,
+          document.mimeType ?? null,
+          fileData?.length ?? document.sizeBytes ?? null,
           fileData,
           fileData ? createHash('sha256').update(fileData).digest('hex') : null,
           hasFile ? 'APPLICANT' : null,
