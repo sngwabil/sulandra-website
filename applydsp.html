@@ -8,7 +8,6 @@
 
   <style>
     :root{
-      /* ===== Form theme (kept from applydsp) ===== */
       --bg: #f6f7f8;
       --card: #ffffff;
       --text: #0f172a;
@@ -21,13 +20,12 @@
       --shadow: 0 6px 18px rgba(0,0,0,.08);
       --radius: 14px;
 
-      /* ===== Careers header tokens (copied behavior/style) ===== */
       --primary:#004b8d;
       --secondary:#0077c8;
       --accent:#d14124;
       --line:#e7eef8;
 
-      --headerH:80px; /* careers header height */
+      --headerH:80px;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
@@ -37,7 +35,7 @@
     a{ color:inherit; text-decoration:none; }
     img{ max-width:100%; display:block; }
 
-    /* ====== ALERT BAR (CAREERS) ====== */
+    /* ====== ALERT BAR ====== */
     .alert-bar{
       background:var(--accent);
       color:#fff;
@@ -47,7 +45,7 @@
       font-weight:800;
     }
 
-    /* ====== HEADER (CAREERS) ====== */
+    /* ====== HEADER ====== */
     header{
       position:sticky;
       top:0;
@@ -128,7 +126,6 @@
       box-shadow: inset 0 0 0 1px #d7e6ff;
     }
 
-    /* ===== ApplyDSP layout (kept) ===== */
     .wrap{ max-width: 1140px; margin:0 auto; padding:18px 16px; }
 
     main .grid{
@@ -309,13 +306,6 @@
       margin-top: 12px;
     }
 
-    .two-col{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 680px){ .two-col{ grid-template-columns: 1fr; } }
-
     .cert-details{
       margin: 10px 0 0 28px;
       padding: 12px;
@@ -360,7 +350,6 @@
     .small{ font-size: 13px; color: var(--text); }
     .muted{ color: var(--muted); }
 
-    /* uploaded files list */
     .uploads-list{
       margin-top: 12px;
       border: 1px solid rgba(209,213,219,.7);
@@ -379,17 +368,13 @@
     .uploads-list li{ font-size: 13px; color: var(--muted); margin:6px 0; }
     .uploads-list a{ color: var(--brand); text-decoration: underline; }
 
-    /* ====== RESPONSIVE (CAREERS header behavior) ====== */
     @media (max-width: 800px){
       :root{ --headerH:72px; }
-
       .alert-bar{ font-size:13px; padding:10px 12px; }
       .top-nav{ padding:12px 14px; gap:12px; }
       .logo img{ width:200px; }
-
       .header-tools{ gap:10px; }
       .header-tools a:not(.btn-cta){ display:none; }
-
       .nav-links{
         overflow-x:auto;
         -webkit-overflow-scrolling:touch;
@@ -402,12 +387,10 @@
 </head>
 
 <body>
-  <!-- CAREERS alert bar -->
   <div class="alert-bar">
     Sulandra Health is changing the way the world ages. Call us today for a free consultation.
   </div>
 
-  <!-- CAREERS header (same structure + behavior) -->
   <header>
     <div class="top-nav">
       <a href="/index.html" class="logo" aria-label="Sulandra Health Home">
@@ -433,23 +416,11 @@
     </nav>
   </header>
 
-  <!-- Your Apply DSP content -->
   <main class="wrap" role="main">
     <div class="grid">
       <section class="card" aria-label="Application form">
         <h2>Application for: Direct Support Professional (DSP)</h2>
         <p class="sub">Complete the form below. Required fields are marked with an asterisk.</p>
-
-        <!--
-          ✅ FIXED:
-          - Uploads now actually upload to Firebase Storage.
-          - Firestore application document now stores EVERY uploaded file:
-            name, size, contentType, storagePath, downloadURL.
-          - UI now shows:
-            1) Selected files (before submit)
-            2) Uploaded files + clickable download links (after submit)
-          - Removed undefined showSubmitting() and made progress/status consistent.
-        -->
 
         <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
           <input type="hidden" name="jobTitle" value="Direct Support Professional (DSP)" />
@@ -1017,13 +988,12 @@
               <div class="error" id="err-otherDocs">Each “Other document” must be 10MB or less.</div>
             </div>
 
-            <!-- ✅ Selected files (before submit) + Uploaded links (after submit) -->
             <div class="uploads-list" aria-live="polite">
-              <h4>Files (selected / submitted)</h4>
+              <h4>Files (selected)</h4>
               <ul id="uploadsList">
                 <li class="muted">No files selected yet.</li>
               </ul>
-              <div class="hint">After submit, this list will show the actual uploaded files with clickable links.</div>
+              <div class="hint">Selected files will be securely submitted directly with your application.</div>
             </div>
           </div>
 
@@ -1352,12 +1322,10 @@
     </div>
   </div>
 
-  <script type="module">
+  <script>
     const API_BASE = "https://sulandra-website-production.up.railway.app";
+    const DRAFT_KEY = 'scls_dsp_application_draft_v12';
 
-    /* ==========
-       Utilities
-       ========== */
     const $ = (id) => document.getElementById(id);
 
     function show(el, on=true){ el.classList.toggle('show', !!on); }
@@ -1372,7 +1340,7 @@
     $('toastCloseBtn').addEventListener('click', () => show($('toast'), false));
 
     function escapeHtml(str){
-      return String(str).replace(/[&<>"']/g, s => ({
+      return String(str || '').replace(/[&<>"']/g, s => ({
         '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
       }[s]));
     }
@@ -1389,19 +1357,16 @@
     }
     function bytesToHuman(bytes){
       const u = ['B','KB','MB','GB'];
-      let i = 0, n = bytes;
+      let i = 0, n = Number(bytes||0);
       while(n >= 1024 && i < u.length-1){ n/=1024; i++; }
       return `${n.toFixed(n<10 && i>0 ? 1 : 0)} ${u[i]}`;
     }
     function fileOk(file, maxMB=10){
       if(!file) return true;
-      const max = maxMB * 1024 * 1024;
-      return file.size <= max;
+      return file.size <= (maxMB * 1024 * 1024);
     }
 
-    /* =========================
-       Status / Progress UI
-       ========================= */
+    /* ========================= Status Bar UI ========================= */
     function setSubmitting(on){
       $('submitBtn').disabled = on;
       $('saveBtn').disabled = on;
@@ -1417,11 +1382,7 @@
       if(hint) setText($('statusHint'), hint);
     }
 
-    /* ==================================
-       Draft save/restore (localStorage)
-       ================================== */
-    const DRAFT_KEY = 'scls_dsp_application_draft_v12';
-
+    /* ========================= Draft Save/Restore ========================= */
     function getReferencesAsArray(){
       const cards = Array.from(document.querySelectorAll('.ref-card'));
       return cards.map(card => {
@@ -1444,16 +1405,14 @@
 
       for(const [k, v] of fd.entries()){
         if(v instanceof File){
-          if(includeFilesMeta){
-            if(v && v.name){
-              if(k === 'otherDocs'){
-                obj.files = obj.files || {};
-                obj.files.otherDocs = obj.files.otherDocs || [];
-                obj.files.otherDocs.push({ name: v.name, type: v.type || 'unknown', size: v.size });
-              } else {
-                obj.files = obj.files || {};
-                obj.files[k] = { name: v.name, type: v.type || 'unknown', size: v.size };
-              }
+          if(includeFilesMeta && v && v.name){
+            if(k === 'otherDocs'){
+              obj.files = obj.files || {};
+              obj.files.otherDocs = obj.files.otherDocs || [];
+              obj.files.otherDocs.push({ name: v.name, type: v.type || 'unknown', size: v.size });
+            } else {
+              obj.files = obj.files || {};
+              obj.files[k] = { name: v.name, type: v.type || 'unknown', size: v.size };
             }
           }
           continue;
@@ -1522,7 +1481,7 @@
 
       setText($('draftStatus'), 'Yes');
       setText($('autosavePill'), 'Autosave: loaded');
-      toast('Draft loaded', 'We restored a saved draft from this device. You may need to re-attach files.');
+      toast('Draft loaded', 'We restored a saved draft from this device.');
       return true;
     }
 
@@ -1532,9 +1491,7 @@
       setText($('autosavePill'), 'Autosave: off');
     }
 
-    /* =========================
-       Errors / Validation
-       ========================= */
+    /* ========================= Validation Helpers ========================= */
     function setError(id, on){
       const el = $(id);
       if(!el) return;
@@ -1607,9 +1564,7 @@
       return quizAnsweredCount() === 15;
     }
 
-    /* =========================
-       Assessment scoring
-       ========================= */
+    /* ========================= Assessment Scoring ========================= */
     const QUIZ_KEY = {
       mc: { mc1:'b', mc2:'b', mc3:'b', mc4:'b', mc5:'b' },
       sa: {
@@ -1661,9 +1616,7 @@
       return { score, max, breakdown };
     }
 
-    /* =========================
-       Dynamic Certifications UI
-       ========================= */
+    /* ========================= Certifications UI Toggle ========================= */
     function toggleCertDetails(){
       const none = $('cert_none').checked;
       const certBoxes = document.querySelectorAll('input[name="certs"]');
@@ -1685,9 +1638,7 @@
     $('cert_none').addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
     document.querySelectorAll('input[name="certs"]').forEach(cb => cb.addEventListener('change', () => { toggleCertDetails(); updateProgress(); scheduleAutosave(); }));
 
-    /* =========================
-       References (2 required + add more)
-       ========================= */
+    /* ========================= Dynamic References ========================= */
     let refCounter = 0;
 
     function addReferenceCard(prefill=null, allowRemove=true){
@@ -1699,7 +1650,7 @@
 
       box.innerHTML = `
         <div class="ref-head">
-          <strong>Reference</strong>
+          <strong>Reference #${idx}</strong>
           ${allowRemove ? `<button type="button" class="ghost" data-remove="1">Remove</button>` : `<span class="pill">Required</span>`}
         </div>
 
@@ -1741,7 +1692,6 @@
       });
 
       box.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
-
       $('refsContainer').appendChild(box);
     }
 
@@ -1754,9 +1704,7 @@
 
     $('addRefBtn').addEventListener('click', () => addReferenceCard(null, true));
 
-    /* =========================
-       File UI + “SEE ALL FILES”
-       ========================= */
+    /* ========================= File Selection UI ========================= */
     function updateFileUI(inputId, chosenId, pillId, emptyLabel, optionalPillText='Optional'){
       const input = $(inputId);
       const f = input.files[0];
@@ -1782,13 +1730,9 @@
       setText($('resumeStatus'), 'Yes');
     }
 
-    function listItem(text, href=null){
+    function listItem(text){
       const li = document.createElement('li');
-      if(href){
-        li.innerHTML = `<a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`;
-      } else {
-        li.textContent = text;
-      }
+      li.textContent = text;
       return li;
     }
 
@@ -1820,21 +1764,6 @@
       rows.forEach(r => ul.appendChild(listItem(r)));
     }
 
-    function updateUploadsListUploaded(uploadedFiles){
-      // uploadedFiles: Array<{label,name,size,downloadURL}>
-      const ul = $('uploadsList');
-      ul.innerHTML = '';
-      if(!uploadedFiles?.length){
-        ul.appendChild(listItem('No uploaded files recorded.'));
-        return;
-      }
-      uploadedFiles.forEach(f => {
-        const label = f.label ? `${f.label}: ` : '';
-        const text = `${label}${f.name} (${bytesToHuman(f.size)})`;
-        ul.appendChild(listItem(text, f.downloadURL));
-      });
-    }
-
     $('resume').addEventListener('change', () => { updateResumeUI(); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
     $('coverLetter').addEventListener('change', () => { updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
     $('cnaDoc').addEventListener('change', () => { updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
@@ -1846,9 +1775,7 @@
       updateProgress(); scheduleAutosave(); updateUploadsListSelected();
     });
 
-    /* =========
-       Autosave
-       ========= */
+    /* ========================= Autosave Actions ========================= */
     let autosaveTimer = null;
     function scheduleAutosave(){
       const any = ['firstName','lastName','email','phone'].some(id => String($(id).value||'').trim().length > 0);
@@ -1891,9 +1818,7 @@
       w.document.close();
     });
 
-    /* =========================
-       Required-fields progress
-       ========================= */
+    /* ========================= Validation & Progress ========================= */
     const requiredSelectors = [
       '#firstName','#lastName','#dob','#maritalStatus',
       '#email','#phone','#address1','#city','#state','#zip',
@@ -1948,38 +1873,6 @@
     document.addEventListener('input', () => { updateProgress(); scheduleAutosave(); });
     document.addEventListener('change', () => { updateProgress(); scheduleAutosave(); });
 
-    /* ===============================
-       Careers API document helpers
-       =============================== */
-    async function fileToDocument(file, category, label){
-      if(!file) return null;
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      let binary = "";
-      const chunkSize = 0x8000;
-      for(let offset = 0; offset < bytes.length; offset += chunkSize){
-        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-      }
-      return {
-        category,
-        label,
-        fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
-        sizeBytes: file.size,
-        fileDataBase64: btoa(binary)
-      };
-    }
-
-    async function readApiResponse(response){
-      const payload = await response.json().catch(() => ({}));
-      if(!response.ok){
-        throw new Error(payload.error || payload.message || "The application could not be submitted.");
-      }
-      return payload;
-    }
-
-    /* =========================
-       Main validation + submit
-       ========================= */
     function validateForm(){
       let ok = true;
 
@@ -2034,11 +1927,9 @@
       const certCheck = validateCerts();
       if(!certCheck.ok){ setError('err-certs', true); ok = false; }
 
-      // Required resume
       const resume = $('resume').files[0];
       if(!resume || !fileOk(resume, 10)){ setError('err-resume', true); ok=false; }
 
-      // Optional files size checks
       const cover = $('coverLetter').files[0];
       if(cover && !fileOk(cover, 10)){ setError('err-coverLetter', true); ok=false; }
 
@@ -2074,95 +1965,51 @@
       return ok;
     }
 
-    async function realSubmitToFirebase(){
+    /* ========================= Standalone Submission (Railway Direct) ========================= */
+    async function submitApplication(){
       setSubmitting(true);
-      setProgress(5, 'Submitting…', 'Preparing your application');
+      setProgress(25, 'Submitting…', 'Sending application directly to Railway server…');
 
-      const base = collectFormDataAsObject(false);
-      const scored = scoreQuiz();
-      $('assessmentScore').value = String(scored.score);
-      $('assessmentMax').value = String(scored.max);
-      $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
-      base.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
+      try {
+        const formEl = $('appForm');
+        const formData = new FormData(formEl);
 
-      setProgress(18, 'Submitting…', 'Preparing your documents');
-      const { resume, cover, cna, stna, other } = getSelectedFiles();
-      const documentTasks = [
-        fileToDocument(resume, 'RESUME', 'Resume'),
-        cover ? fileToDocument(cover, 'COVER_LETTER', 'Cover letter') : null,
-        cna ? fileToDocument(cna, 'OTHER', 'CNA certificate') : null,
-        stna ? fileToDocument(stna, 'OTHER', 'STNA certificate') : null,
-        ...other.map((file, index) => fileToDocument(file, 'OTHER', `Supporting document #${index + 1}`))
-      ].filter(Boolean);
-      const documents = await Promise.all(documentTasks);
+        // Score DSP Quiz & attach to payload
+        const scored = scoreQuiz();
+        formData.append('assessmentScore', String(scored.score));
+        formData.append('assessmentMax', String(scored.max));
+        formData.append('assessmentBreakdown', JSON.stringify(scored.breakdown));
 
-      setProgress(55, 'Submitting…', 'Creating your secure applicant profile');
-      const params = new URLSearchParams(window.location.search);
-      const requestedOpening = (params.get('opening') || '').trim();
-      const openingsResponse = await fetch(`${API_BASE}/public/careers/openings`, {
-        headers: { accept: 'application/json' }
-      });
-      const openingsResult = await readApiResponse(openingsResponse);
-      const openings = Array.isArray(openingsResult.data) ? openingsResult.data : [];
-      const isDspOpening = (job) => (
-        String(job?.appliedRole || '').toUpperCase() === 'DSP'
-        || /\bdsp\b|direct support|caregiver|aide/i.test(
-          `${job?.title || ''} ${job?.department || ''}`
-        )
-      );
-      const opening = requestedOpening
-        ? openings.find((job) => (
-          String(job?.slug || '') === requestedOpening
-          || String(job?.id || '') === requestedOpening
-        ))
-        : openings.find(isDspOpening);
+        const response = await fetch(`${API_BASE}/public/careers/apply`, {
+          method: 'POST',
+          body: formData
+        });
 
-      if(!opening){
-        throw new Error(
-          requestedOpening
-            ? 'This DSP opening is no longer published. Please return to Careers and select an active opening.'
-            : 'There are no published DSP openings available right now.'
-        );
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error (${response.status})`);
+        }
+
+        const result = await response.json();
+
+        setProgress(100, 'Submitted!', 'Your application and DSP assessment were received.');
+        toast('Submitted', `Application submitted successfully! Ref: ${result.referenceNumber || ''}`);
+
+        clearDraft();
+        setSubmitting(false);
+
+        alert(`Thank you! Your application has been received.\n\nReference: ${result.referenceNumber || 'Check your email'}\nUsername: ${$('email').value.trim()}\n\nYour temporary password and login link are being sent to your email.`);
+
+      } catch (err) {
+        console.error('Submission Error:', err);
+        setSubmitting(false);
+        setProgress(0, 'Submission failed', 'Please try again.');
+        toast('Submission error', err.message || 'Failed to submit application.');
       }
-
-      const response = await fetch(`${API_BASE}/public/careers/applications`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          jobOpeningId: opening.id,
-          jobSlug: opening.slug,
-          firstName: $('firstName').value.trim(),
-          middleName: $('middleName')?.value.trim() || undefined,
-          lastName: $('lastName').value.trim(),
-          email: $('email').value.trim(),
-          phone: $('phone').value.trim(),
-          appliedRole: 'DSP',
-          preferredCommunication: 'EMAIL',
-          notes: base.why || base.exp || null,
-          applicationData: base,
-          assessmentAnswers: base,
-          documents
-        })
-      });
-      const result = await readApiResponse(response);
-      const receipt = result.data || {};
-
-      setProgress(100, 'Submitted!', 'Your application, documents, and DSP assessment were received.');
-      toast(
-        'Application received',
-        `Reference ${receipt.referenceNumber || 'created'} • DSP score: ${receipt.assessment?.score ?? scored.score}/${receipt.assessment?.maxScore ?? scored.max}`
-      );
-
-      clearDraft();
-      setText($('draftStatus'), 'No');
-      setSubmitting(false);
-
-      alert(
-        `Thank you! Your application has been received.\n\nReference: ${receipt.referenceNumber || 'See your confirmation email'}\nApplicant username: ${receipt.applicantUsername || $('email').value.trim()}\n\nYour temporary password and applicant-portal link are being sent to your email.`
-      );
     }
 
-    $('appForm').addEventListener('submit', async (e) => {
+    /* ========================= Form Submit Event ========================= */
+    $('appForm').addEventListener('submit', (e) => {
       e.preventDefault();
 
       updateResumeUI();
@@ -2177,31 +2024,10 @@
         return;
       }
 
-      try{
-        await realSubmitToFirebase();
-      } catch(err){
-        console.error(err);
-        setSubmitting(false);
-        setProgress(0, 'Submission failed', 'Please try again.');
-        toast('Submission error', err?.message || 'Something went wrong.');
-        alert(err?.message || 'Submission failed. Please try again.');
-      }
+      submitApplication();
     });
 
-    /* ===========
-       Init
-       =========== */
-    function updateFileUIAllInit(){
-      updateResumeUI();
-      updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
-      updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
-      updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
-      const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
-      setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
-      setText($('otherdocs-pill'), `${n} files`);
-      updateUploadsListSelected();
-    }
-
+    /* ========================= Init ========================= */
     (function init(){
       const today = new Date();
       const yyyy = today.getFullYear();
@@ -2228,7 +2054,15 @@
       });
 
       toggleCertDetails();
-      updateFileUIAllInit();
+      updateResumeUI();
+      updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…');
+      updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…');
+      updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…');
+      const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
+      setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
+      setText($('otherdocs-pill'), `${n} files`);
+      updateUploadsListSelected();
+
       updateQuizStatus();
       updateProgress();
     })();
