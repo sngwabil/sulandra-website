@@ -2074,7 +2074,33 @@
       return ok;
     }
 
-    async function realSubmitToFirebase(){
+    const DSP_SUBMISSION_ID_KEY = 'sulandra:dsp:submission-id';
+
+    function getDspSubmissionId(){
+      try{
+        let value = window.localStorage.getItem(DSP_SUBMISSION_ID_KEY);
+        if(!value){
+          const unique = window.crypto?.randomUUID
+            ? window.crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          value = `DSP-${unique}`;
+          window.localStorage.setItem(DSP_SUBMISSION_ID_KEY, value);
+        }
+        return value;
+      } catch {
+        return `DSP-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+    }
+
+    function clearDspSubmissionId(){
+      try{
+        window.localStorage.removeItem(DSP_SUBMISSION_ID_KEY);
+      } catch {
+        // Submission already succeeded; storage cleanup is non-critical.
+      }
+    }
+
+    async function submitApplicationToCareersApi(){
       setSubmitting(true);
       setProgress(5, 'Submitting…', 'Preparing your application');
 
@@ -2129,6 +2155,7 @@
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          sourceExternalId: getDspSubmissionId(),
           jobOpeningId: opening.id,
           jobSlug: opening.slug,
           firstName: $('firstName').value.trim(),
@@ -2153,6 +2180,7 @@
         `Reference ${receipt.referenceNumber || 'created'} • DSP score: ${receipt.assessment?.score ?? scored.score}/${receipt.assessment?.maxScore ?? scored.max}`
       );
 
+      clearDspSubmissionId();
       clearDraft();
       setText($('draftStatus'), 'No');
       setSubmitting(false);
@@ -2178,7 +2206,7 @@
       }
 
       try{
-        await realSubmitToFirebase();
+        await submitApplicationToCareersApi();
       } catch(err){
         console.error(err);
         setSubmitting(false);
