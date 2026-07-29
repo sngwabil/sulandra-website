@@ -67,23 +67,16 @@
       font-weight: 800;
       min-width: 0;
     }
-    .logo img{
+    .logo img {
       width: 240px;
       height: auto;
       max-height: 100%;
       object-fit: contain;
       display: block;
     }
-    .sr-only{
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
     }
 
     .header-tools {
@@ -347,6 +340,10 @@
       display:inline-block;
       border:1px solid rgba(230,230,230,.9);
     }
+    .Pending { background:#fef3c7; color:#92400e; border-color:#f59e0b33; }
+    .Reviewed { background:#e0f2fe; color:#075985; border-color:#0284c733; }
+    .Hired { background:#dcfce7; color:#166534; border-color:#22c55e33; }
+    .Rejected { background:#fee2e2; color:#7f1d1d; border-color:#ef444433; }
 
     .score{
       font-weight:900;
@@ -364,7 +361,7 @@
     .module.active { display: block; }
 
     /* --- MODALS --- */
-    .modal-overlay {
+    #detailsModal, .modal-overlay {
       display:none;
       position:fixed;
       inset:0;
@@ -435,7 +432,7 @@
 
       <div class="header-tools">
         <span class="pill hide-mobile" id="adminEmailPill">Admin</span>
-        <span class="pill hide-mobile" id="livePill">Live: connected</span>
+        <span class="pill hide-mobile" id="livePill">Live: connecting…</span>
         <button class="btn-cta secondary hide-mobile" id="refreshBtn" type="button">Refresh</button>
         <button class="btn-cta hide-mobile" id="exportBtn" type="button">Export CSV</button>
         <button class="btn-cta danger" id="btnAdminSignOut" type="button">Sign Out</button>
@@ -445,15 +442,15 @@
     <!-- Top navigation bar -->
     <nav class="main-nav">
       <ul class="nav-links" id="topModuleNav">
-        <li><a data-module="dashboard" class="nav-item">Dashboard</a></li>
-        <li><a data-module="service-homes" class="nav-item">Service Homes</a></li>
-        <li><a data-module="employees" class="nav-item">Employees</a></li>
-        <li><a data-module="scheduling" class="nav-item">Scheduling</a></li>
-        <li><a data-module="time" class="nav-item">Time & Attendance</a></li>
-        <li><a data-module="documents" class="nav-item">Documents</a></li>
-        <li><a data-module="reports" class="nav-item">Reports</a></li>
-        <li><a data-module="onboarding" class="nav-item active">Onboarding</a></li>
-        <li><a data-module="settings" class="nav-item">Settings</a></li>
+        <li><a data-module="dashboard">Dashboard</a></li>
+        <li><a data-module="service-homes">Service Homes</a></li>
+        <li><a data-module="employees">Employees</a></li>
+        <li><a data-module="scheduling">Scheduling</a></li>
+        <li><a data-module="time">Time & Attendance</a></li>
+        <li><a data-module="documents">Documents</a></li>
+        <li><a data-module="reports">Reports</a></li>
+        <li><a data-module="onboarding" class="active">Onboarding</a></li>
+        <li><a data-module="settings">Settings</a></li>
       </ul>
     </nav>
   </header>
@@ -490,9 +487,9 @@
           <p class="sub">Quick overview of system metrics and alerts.</p>
           <div class="toolbar">
             <div class="filters">
-              <span class="pill">Applicants: <span id="kpiApplicants">0</span></span>
-              <span class="pill">Employees: <span id="kpiEmployees">0</span></span>
-              <span class="pill">Pending Timesheets: <span id="kpiTimesheets">0</span></span>
+              <span class="pill">Applicants: <span id="kpiApplicants">—</span></span>
+              <span class="pill">Employees: <span id="kpiEmployees">—</span></span>
+              <span class="pill">Pending Timesheets: <span id="kpiTimesheets">—</span></span>
             </div>
           </div>
         </section>
@@ -539,29 +536,32 @@
                   <div class="field">
                     <label for="statusFilter">Status</label>
                     <select id="statusFilter">
-                      <option value="all">All Statuses</option>
+                      <option value="all">All</option>
                       <option value="RECEIVED">Received</option>
                       <option value="REVIEWING">Reviewing</option>
-                      <option value="INTERVIEW">Interview Scheduled</option>
+                      <option value="DOCUMENTS_NEEDED">Documents Needed</option>
+                      <option value="INTERVIEW">Interview</option>
                       <option value="OFFER_PENDING">Offer Pending</option>
                       <option value="HIRED">Hired</option>
+                      <option value="WITHDRAWN">Withdrawn</option>
+                      <option value="TERMINATED">Terminated</option>
                     </select>
                   </div>
 
                   <div class="field">
                     <label for="jobFilter">Job</label>
                     <select id="jobFilter">
-                      <option value="all">All Jobs</option>
-                      <option value="DSP">DSP</option>
-                      <option value="CNA">CNA / HHA</option>
+                      <option value="all">All</option>
                       <option value="LPN">LPN</option>
                       <option value="RN">RN</option>
-                      <option value="DRIVER">Driver</option>
+                      <option value="DELEGATING_NURSE">Delegating Nurse</option>
+                      <option value="DSP">DSP</option>
+                      <option value="GENERAL">General</option>
                     </select>
                   </div>
                 </div>
 
-                <div class="sub" id="countLabel">Loading applicants…</div>
+                <div class="sub" id="countLabel">0 applications</div>
               </div>
 
               <table aria-label="Applications table">
@@ -572,11 +572,52 @@
                     <th>Job</th>
                     <th>Score</th>
                     <th>Status</th>
-                    <th style="width:280px;">Actions</th>
+                    <th style="width:260px;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="applicantTable">
                   <tr><td colspan="6" class="muted">Loading applications…</td></tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section class="card" style="margin-top:16px;">
+              <h1>Education Assignment</h1>
+              <p class="sub">Assign training modules to a hired employee.</p>
+
+              <div class="toolbar">
+                <div class="filters">
+                  <div class="field">
+                    <label for="employeeSelect">Employee</label>
+                    <select id="employeeSelect"><option>Loading employees...</option></select>
+                  </div>
+                  <div class="field">
+                    <label for="trainingInput">Training</label>
+                    <input id="trainingInput" type="text" placeholder="e.g., HIPAA 2025">
+                  </div>
+                  <button class="btn btn-primary" id="assignBtn" type="button">Assign</button>
+                  <span class="sub" id="assignHint"></span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card" style="margin-top:16px;">
+              <h1>Timesheet Review</h1>
+              <p class="sub">Approve weekly hours. Approved entries can be marked payroll-ready.</p>
+
+              <table aria-label="Timesheets table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Week Ending</th>
+                    <th>Hours</th>
+                    <th>Pay Code</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="timesheetTable">
+                  <tr><td colspan="6" class="muted">Loading timesheets…</td></tr>
                 </tbody>
               </table>
             </section>
@@ -589,7 +630,7 @@
                 <h1 id="openingFormTitle">Create Job Opening</h1>
                 <p class="sub">Select a Home Health/Waiver preset to auto-fill, then edit details as needed.</p>
 
-                <form class="opening-form" id="jobOpeningForm" onsubmit="return false;">
+                <form class="opening-form" id="jobOpeningForm">
                   <input type="hidden" id="openingId">
 
                   <div>
@@ -611,7 +652,7 @@
 
                   <div>
                     <label for="openingTitle">Job title</label>
-                    <input id="openingTitle" required maxlength="160" placeholder="e.g. Direct Support Professional">
+                    <input id="openingTitle" required maxlength="160" placeholder="Direct Support Professional">
                   </div>
 
                   <div>
@@ -621,23 +662,12 @@
 
                   <div>
                     <label for="openingDepartment">Department</label>
-                    <select id="openingDepartment">
-                      <option value="Community Living">Community Living Services</option>
-                      <option value="Nursing & Clinical">Nursing & Clinical</option>
-                      <option value="Transportation">Transportation & NEMT</option>
-                      <option value="Corporate & Admin">Corporate & Administration</option>
-                    </select>
+                    <input id="openingDepartment" maxlength="120" placeholder="Community Living">
                   </div>
 
                   <div>
                     <label for="openingType">Employment type</label>
-                    <select id="openingType">
-                      <option value="Full-time">Full-time</option>
-                      <option value="Part-time">Part-time</option>
-                      <option value="Full-time / Part-time">Full-time / Part-time</option>
-                      <option value="PRN / As-needed">PRN / As-needed</option>
-                      <option value="Contract">Contract</option>
-                    </select>
+                    <input id="openingType" maxlength="120" placeholder="Full-time / Part-time">
                   </div>
 
                   <div>
@@ -681,24 +711,29 @@
                   </div>
 
                   <div>
+                    <label for="openingBenefits">Benefits</label>
+                    <textarea id="openingBenefits" maxlength="10000"></textarea>
+                  </div>
+
+                  <div>
                     <label for="openingStatus">Visibility</label>
                     <select id="openingStatus">
-                      <option value="PUBLISHED">Published (Live on Careers Page)</option>
                       <option value="DRAFT">Draft</option>
+                      <option value="PUBLISHED">Published</option>
                       <option value="CLOSED">Closed</option>
                       <option value="ARCHIVED">Archived</option>
                     </select>
                   </div>
 
                   <div class="opening-actions">
-                    <button class="btn btn-primary" type="button" onclick="saveJobOpening()">Save Job Opening</button>
-                    <button class="btn" id="cancelOpeningEdit" type="button" onclick="resetJobForm()" hidden>Cancel</button>
+                    <button class="btn btn-primary" type="submit">Save Opening</button>
+                    <button class="btn" id="cancelOpeningEdit" type="button" hidden>Cancel Edit</button>
                   </div>
                 </form>
               </section>
 
               <section class="card">
-                <h1>Manage Active Openings</h1>
+                <h1>Manage Job Openings</h1>
                 <p class="sub">Published jobs appear on the careers site. Close or archive an opening to move it into the Archive Hub.</p>
                 <div class="opening-cards" id="jobOpeningList"><p class="muted">Loading openings…</p></div>
               </section>
@@ -712,8 +747,8 @@
               <p class="sub">Manage retained candidate profiles and stored job listings.</p>
 
               <div class="archive-subtabs">
-                <button class="archive-subtab active" onclick="switchArchiveFolder('applicants')">Applicants Archive</button>
-                <button class="archive-subtab" onclick="switchArchiveFolder('jobs')">Jobs Archive</button>
+                <button class="archive-subtab active" type="button" onclick="switchArchiveFolder('applicants')">Applicants Archive</button>
+                <button class="archive-subtab" type="button" onclick="switchArchiveFolder('jobs')">Jobs Archive</button>
               </div>
 
               <!-- Folder 1: Applicants Archive -->
@@ -726,11 +761,11 @@
                       <th>Applicant</th>
                       <th>Position</th>
                       <th>Score</th>
-                      <th>Actions</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody id="archivedApplicantTable">
-                    <tr><td colspan="5" class="muted">No archived applicants found.</td></tr>
+                    <tr><td colspan="5" class="muted">Loading archived applicants…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -739,7 +774,7 @@
               <div id="archiveFolderJobs" style="display:none;">
                 <p class="sub" style="margin-bottom:12px;">Inoperative or closed job listings stored in history. Restore any position back to Live with 1-click.</p>
                 <div class="opening-cards" id="archivedJobsList">
-                  <p class="muted">No archived job openings found.</p>
+                  <p class="muted">Loading archived jobs…</p>
                 </div>
               </div>
             </section>
@@ -840,7 +875,7 @@
               </div>
             </div>
 
-            <button class="btn btn-primary" style="padding:12px;" onclick="saveCompanySettings()">Save Settings</button>
+            <button class="btn btn-primary" type="button" style="padding:12px;" onclick="saveCompanySettings()">Save Settings</button>
           </form>
         </section>
 
@@ -848,12 +883,23 @@
     </div>
   </main>
 
+  <!-- Application Details Modal (Used by admin scripts) -->
+  <div id="detailsModal" role="dialog" aria-modal="true" aria-label="Application details">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle">Application Details</div>
+        <button class="close-x" id="closeModalBtn" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
   <!-- Interactive Interview Scheduling Modal -->
   <div class="modal-overlay" id="interviewModal">
     <div class="modal" style="max-width:540px;">
       <div class="modal-head">
         <div class="modal-title">📅 Schedule Candidate Interview</div>
-        <button class="close-x" onclick="closeInterviewModal()">×</button>
+        <button class="close-x" type="button" onclick="closeInterviewModal()">×</button>
       </div>
       <div class="modal-body">
         <p class="sub" style="margin-bottom:14px;">Select available dates and 30-minute time slots to send to <strong id="interviewApplicantName">Candidate</strong>.</p>
@@ -881,14 +927,14 @@
             <em>The candidate will receive a link to select their slot in the portal. Locked slots will automatically gray out for other applicants.</em>
           </div>
 
-          <button class="btn btn-primary" onclick="confirmInterviewInvite()" style="padding:12px; width:100%; justify-content:center; margin-top:8px;">Send Interview Invites</button>
+          <button class="btn btn-primary" type="button" onclick="confirmInterviewInvite()" style="padding:12px; width:100%; justify-content:center; margin-top:8px;">Send Interview Invites</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Toast Notification -->
-  <div class="toast" id="toast">
+  <div class="toast" id="toast" role="status" aria-live="polite">
     <strong id="toastTitle">Success</strong>
     <small id="toastBody">Settings updated cleanly.</small>
   </div>
@@ -899,14 +945,18 @@
       btn.addEventListener('click', () => {
         const target = btn.getAttribute('data-module');
 
-        // Toggle active states in top nav & sidebar
         document.querySelectorAll('[data-module]').forEach(b => b.classList.remove('active'));
         document.querySelectorAll(`[data-module="${target}"]`).forEach(b => b.classList.add('active'));
 
-        // Toggle module sections
         document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
         const activeModule = document.getElementById(`module-${target}`);
         if(activeModule) activeModule.classList.add('active');
+
+        // Re-trigger live fetch when switching back to Onboarding or Dashboard
+        if ((target === 'onboarding' || target === 'dashboard')) {
+          const refreshBtn = document.getElementById('refreshBtn');
+          if (refreshBtn) refreshBtn.click();
+        }
       });
     });
 
@@ -926,7 +976,7 @@
     // --- ARCHIVE SUB-FOLDER SWITCHER ---
     function switchArchiveFolder(folder) {
       document.querySelectorAll('.archive-subtab').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
+      if (window.event && window.event.target) window.event.target.classList.add('active');
 
       if (folder === 'applicants') {
         document.getElementById('archiveFolderApplicants').style.display = 'block';
@@ -937,7 +987,7 @@
       }
     }
 
-    // --- HOME HEALTH & WAIVER JOB PRESETS DATA ---
+    // --- HOME HEALTH & WAIVER JOB PRESETS ---
     const jobPresets = {
       dsp: {
         title: "Direct Support Professional (DSP)",
@@ -948,7 +998,7 @@
         path: "/applydsp.html",
         summary: "Sulandra Health is seeking dedicated Direct Support Professionals to provide person-centered support, independence, and meaningful community participation for individuals in residential care.",
         description: "As a Direct Support Professional (DSP), you will empower individuals with developmental disabilities in community living homes. Responsibilities include assisting with daily living activities, medication administration, goal tracking, and promoting independence.",
-        reqs: "High School Diploma/GED; Valid Driver's License & Auto Insurance; CPR/First Aid Certification (or willingness to obtain); Clean Background Check."
+        reqs: "High School Diploma/GED; Valid Driver's License & Auto Insurance; CPR/First Aid Certification; Clean Background Check."
       },
       cna: {
         title: "Certified Nursing Assistant (CNA) / Home Health Aide",
@@ -958,7 +1008,7 @@
         pay: "$19–$23 per hour",
         path: "/applydsp.html",
         summary: "Providing hands-on personal care, mobility assistance, and health monitoring for individuals receiving home health and waiver services.",
-        description: "Assists clients with bathing, grooming, mobility, vital sign monitoring, and light housekeeping. Works directly under the supervision of an RN/LPN.",
+        description: "Assists clients with bathing, grooming, mobility, vital sign monitoring, and light housekeeping under RN/LPN supervision.",
         reqs: "Active Ohio CNA/STNA Certification or Home Health Aide Training Certificate; CPR/BLS Certification."
       },
       lpn: {
@@ -969,7 +1019,7 @@
         pay: "$28–$34 per hour",
         path: "/applylpn.html",
         summary: "Delivering direct skilled nursing care, medication management, and health assessments for home health and community living clients.",
-        description: "Administers medications, performs wound care, updates care plans, coordinates with physicians, and monitors client health status in home and residential settings.",
+        description: "Administers medications, performs wound care, updates care plans, coordinates with physicians, and monitors client health status in home settings.",
         reqs: "Active Ohio LPN License; Current CPR/BLS Certification; Minimum 1 year nursing experience preferred."
       },
       rn: {
@@ -1018,7 +1068,6 @@
       }
     };
 
-    // --- APPLY PRESET TO FORM ---
     function applyJobPreset(key) {
       if(!key || !jobPresets[key]) return;
       const data = jobPresets[key];
@@ -1036,7 +1085,6 @@
       showToast("Preset Applied", `${data.title} details loaded into form.`);
     }
 
-    // --- STATUS ACTION HANDLERS ---
     function openInterviewModal(candidateName) {
       document.getElementById('interviewApplicantName').innerText = candidateName || 'Candidate';
       document.getElementById('interviewModal').style.display = 'block';
@@ -1051,20 +1099,6 @@
       showToast("Interview Sent", "Invitation link and time slots sent to candidate portal.");
     }
 
-    function archiveApplicant(id, name) {
-      showToast("Applicant Archived", `${name} moved to Applicants Archive and sent retention email.`);
-    }
-
-    function rejectApplicant(id, name) {
-      if (confirm(`Rejecting will notify ${name} via email and permanently remove them from the system. Proceed?`)) {
-        showToast("Applicant Rejected", `${name} notified and removed.`);
-      }
-    }
-
-    function restoreJob(id, title) {
-      showToast("Job Restored", `"${title}" has been restored to Published status.`);
-    }
-
     function showToast(title, body) {
       const t = document.getElementById('toast');
       document.getElementById('toastTitle').innerText = title;
@@ -1076,6 +1110,14 @@
     function saveCompanySettings() {
       showToast("Settings Saved", "Company details and HR email signatures updated.");
     }
+
+    // --- AUTOMATIC REFRESH ON DOM LOAD ---
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) refreshBtn.click();
+      }, 400);
+    });
   </script>
 
   <!-- External workflow scripts -->
