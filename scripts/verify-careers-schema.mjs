@@ -19,6 +19,8 @@ const requiredColumns = {
     'reviewNotes',
     'reviewedById',
     'reviewedAt',
+    'requestedAt',
+    'uploadedAt',
   ],
   ApplicantMessage: [
     'channel',
