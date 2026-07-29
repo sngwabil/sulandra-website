@@ -42,6 +42,27 @@ const requiredColumns = {
     'toStatus',
     'visibleToApplicant',
   ],
+  CompanySetting: [
+    'organizationId',
+    'companyName',
+    'addressLine1',
+    'city',
+    'state',
+    'postalCode',
+    'emailDisplayName',
+  ],
+  InterviewSlot: [
+    'organizationId',
+    'startsAt',
+    'endsAt',
+    'status',
+    'bookedApplicationId',
+    'reminderSentAt',
+  ],
+  InterviewSlotInvitation: [
+    'slotId',
+    'applicationId',
+  ],
 };
 
 try {
@@ -73,6 +94,9 @@ try {
 
   if (!enumRows.some(({ label }) => label === 'GENERAL')) {
     missing.push('UserRole.GENERAL');
+  }
+  if (!enumRows.some(({ label }) => label === 'DRIVER')) {
+    missing.push('UserRole.DRIVER');
   }
 
   if (missing.length > 0) {

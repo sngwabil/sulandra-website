@@ -27,7 +27,7 @@ type Helpers = {
 };
 
 const openingStatus = z.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']);
-const applicantRole = z.enum(['DSP', 'LPN', 'RN', 'DELEGATING_NURSE', 'GENERAL']);
+const applicantRole = z.enum(['DSP', 'LPN', 'RN', 'DELEGATING_NURSE', 'DRIVER', 'GENERAL']);
 const communicationChannel = z.enum(['EMAIL', 'SMS']);
 const documentCategory = z.enum([
   'APPLICATION', 'RESUME', 'COVER_LETTER', 'CPR', 'FIRST_AID',
@@ -103,6 +103,7 @@ function requiredCategories(role: ApplicantRole): DocumentCategory[] {
     return ['RESUME', 'CPR', 'RN_LICENSE'];
   }
   if (role === 'LPN') return ['RESUME', 'CPR', 'LPN_LICENSE'];
+  if (role === 'DRIVER') return ['RESUME', 'DRIVER_LICENSE', 'AUTO_INSURANCE', 'BACKGROUND_CHECK'];
   if (role === 'DSP') return ['RESUME', 'CPR', 'DRIVER_LICENSE'];
   return ['RESUME', 'COVER_LETTER', 'REFERENCES'];
 }
@@ -112,17 +113,23 @@ function roleForOpening(title: string, department?: string | null): ApplicantRol
   if (/delegating nurse/.test(value)) return 'DELEGATING_NURSE';
   if (/\brn\b|registered nurse|nursing/.test(value)) return 'RN';
   if (/\blpn\b|licensed practical nurse/.test(value)) return 'LPN';
+  if (/nemt|transportation specialist|van driver|\bdriver\b/.test(value)) return 'DRIVER';
   if (/\bdsp\b|direct support|aide|caregiver/.test(value)) return 'DSP';
   return 'GENERAL';
 }
 
 function applicationPathForOpening(row: any) {
-  if (row.applicationPath) return row.applicationPath;
+  if (row.applicationPath) {
+    const path = String(row.applicationPath).trim();
+    if (/[?&]opening=/.test(path)) return path;
+    return `${path}${path.includes('?') ? '&' : '?'}opening=${encodeURIComponent(row.slug)}`;
+  }
   const role = roleForOpening(row.title, row.department);
   if (role === 'DSP') return `/applydsp.html?opening=${encodeURIComponent(row.slug)}`;
   if (role === 'LPN' || role === 'RN' || role === 'DELEGATING_NURSE') {
     return `/applylpn.html?opening=${encodeURIComponent(row.slug)}&role=${role}`;
   }
+  if (role === 'DRIVER') return `/applydriver.html?opening=${encodeURIComponent(row.slug)}`;
   return `/applygeneral.html?opening=${encodeURIComponent(row.slug)}`;
 }
 

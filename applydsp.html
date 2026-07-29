@@ -437,7 +437,7 @@
   <main class="wrap" role="main">
     <div class="grid">
       <section class="card" aria-label="Application form">
-        <h2>Application for: Direct Support Professional (DSP)</h2>
+        <h2 id="applicationHeading">Application for: Direct Support Professional (DSP)</h2>
         <p class="sub">Complete the form below. Required fields are marked with an asterisk.</p>
 
         <!--
@@ -595,6 +595,37 @@
               <div>
                 <label for="emgAltPhone">Alternate phone (optional)</label>
                 <input id="emgAltPhone" name="emgAltPhone" type="tel" placeholder="(555) 555-5555" />
+              </div>
+            </div>
+          </div>
+
+          <div class="section" id="driverRequirementsSection" hidden>
+            <div class="minihead">
+              <h2>Three-Year Driving History &amp; Required Records</h2>
+              <small>Driver requirements</small>
+            </div>
+            <p class="sub">Review each statement and provide the records required for a transportation position.</p>
+            <div class="checkgrid">
+              <label class="check"><input type="checkbox" id="drivingHistoryReviewed" name="drivingHistoryReviewed" value="yes"><span>I have reviewed my complete driving history for the previous three years.</span></label>
+              <label class="check"><input type="checkbox" id="drivingHistoryAccurate" name="drivingHistoryAccurate" value="yes"><span>I certify that all crashes, moving violations, suspensions, and license restrictions disclosed in this application are complete and accurate.</span></label>
+            </div>
+            <div class="error" id="err-drivingHistory">Both three-year driving-history certifications are required.</div>
+            <div style="margin-top:16px;">
+              <label for="drivingHistoryDetails">Crashes, violations, suspensions, or restrictions during the last three years</label>
+              <textarea id="drivingHistoryDetails" name="drivingHistoryDetails" placeholder="Enter None if there are no incidents to disclose."></textarea>
+            </div>
+            <div class="row" style="margin-top:16px;">
+              <div>
+                <label class="required" for="mvrDoc">Driving Record / MVR</label>
+                <input type="file" id="mvrDoc" name="mvrDoc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                <div class="file-meta">Max 10MB. Required for driver applications.</div>
+                <div class="error" id="err-mvrDoc">Please upload your Motor Vehicle Record.</div>
+              </div>
+              <div>
+                <label class="required" for="insuranceDoc">Proof of Valid Auto Insurance</label>
+                <input type="file" id="insuranceDoc" name="insuranceDoc" accept=".pdf,.jpg,.jpeg,.png">
+                <div class="file-meta">Max 10MB. Required for driver applications.</div>
+                <div class="error" id="err-insuranceDoc">Please upload proof of valid auto insurance.</div>
               </div>
             </div>
           </div>
@@ -1109,10 +1140,10 @@
 
           <div class="section">
             <div class="minihead">
-              <h2>DSP Knowledge Assessment</h2>
+              <h2 id="knowledgeAssessmentTitle">DSP Knowledge Assessment</h2>
               <small>Step 11</small>
             </div>
-            <p class="sub">Answer all 15 questions. Your answers will be submitted with your application.</p>
+            <p class="sub" id="knowledgeAssessmentLead">Answer all 15 questions. Your answers will be submitted with your application.</p>
 
             <div class="error" id="err-quiz">Please answer all assessment questions.</div>
 
@@ -1315,7 +1346,7 @@
       <aside class="side" aria-label="Job overview">
         <div class="card">
           <h3>Position Summary</h3>
-          <div class="kv"><span>Role:</span><span>Direct Support Professional</span></div>
+          <div class="kv"><span>Role:</span><span id="previewRole">Direct Support Professional</span></div>
           <div class="kv"><span>Location:</span><span>Home & Community Based</span></div>
           <div class="kv"><span>Department:</span><span>Community Living Services</span></div>
           <div class="kv"><span>Type:</span><span>Full-Time / Part-Time</span></div>
@@ -1354,11 +1385,77 @@
 
   <script type="module">
     const API_BASE = "https://sulandra-website-production.up.railway.app";
+    const IS_DRIVER_APPLICATION = new URLSearchParams(window.location.search).get("role") === "DRIVER";
 
     /* ==========
        Utilities
        ========== */
     const $ = (id) => document.getElementById(id);
+    if(IS_DRIVER_APPLICATION){
+      document.title = "Driver Application | Sulandra Health";
+      $("applicationHeading").textContent = "Application for: NEMT Driver / Transportation Specialist";
+      $("previewRole").textContent = "NEMT Driver / Transportation Specialist";
+      $("driverRequirementsSection").hidden = false;
+      document.querySelector('input[name="jobTitle"]').value = "NEMT Driver / Transportation Specialist";
+      $("why").previousElementSibling.textContent = "Why do you want to work in non-emergency transportation?";
+      $("why").placeholder = "Tell us briefly about your interest in safe, dependable client transportation.";
+      document.querySelectorAll("header a, nav a").forEach((link) => {
+        link.target = "_top";
+      });
+      $("knowledgeAssessmentTitle").textContent = "Driver Safety & Passenger Service Assessment";
+      $("knowledgeAssessmentLead").textContent =
+        "Complete every question. The assessment covers safety, confidentiality, respectful passenger support, reporting, and professional transportation service.";
+      const driverScenarios = {
+        fb1: [
+          "11) Scenario: A passenger refuses to wear a required seat belt and becomes upset. What do you do?",
+          "Describe how you would de-escalate the situation and maintain transportation safety."
+        ],
+        fb2: [
+          "12) Scenario: During pickup, you notice an unexplained injury and the passenger appears fearful. What do you do?",
+          "Describe immediate safety, reporting, and documentation steps."
+        ],
+        fb3: [
+          "13) Scenario: A passenger requests an unplanned stop that conflicts with the approved route. What do you do?",
+          "Explain how you would respond respectfully while following the transportation plan."
+        ],
+        fb4: [
+          "14) Scenario: Traffic has made you late for a passenger's medical appointment. What do you do?",
+          "Describe communication, safe driving, documentation, and follow-up."
+        ],
+        fb5: [
+          "15) Scenario: Another driver speaks disrespectfully to a passenger in front of others. What do you do?",
+          "Include dignity, immediate passenger support, reporting, and professionalism."
+        ]
+      };
+      Object.entries(driverScenarios).forEach(([name, [question, placeholder]]) => {
+        const field = document.querySelector(`[name="${name}"]`);
+        const prompt = field?.closest(".quiz-q")?.querySelector("h4");
+        if (prompt) prompt.textContent = question;
+        if (field) field.placeholder = placeholder;
+      });
+    }
+
+    async function applySelectedOpeningBranding(){
+      const openingSlug = new URLSearchParams(window.location.search).get("opening");
+      if(!openingSlug) return;
+      try{
+        const response = await fetch(`${API_BASE}/public/careers/openings`, {
+          headers: { accept: "application/json" }
+        });
+        if(!response.ok) return;
+        const payload = await response.json();
+        const opening = (Array.isArray(payload.data) ? payload.data : [])
+          .find((item) => item.slug === openingSlug || item.id === openingSlug);
+        if(!opening?.title) return;
+        $("applicationHeading").textContent = `Application for: ${opening.title}`;
+        $("previewRole").textContent = opening.title;
+        document.querySelector('input[name="jobTitle"]').value = opening.title;
+        document.title = `${opening.title} Application | Sulandra Health`;
+      } catch {
+        // The submission step performs the authoritative opening check.
+      }
+    }
+    void applySelectedOpeningBranding();
 
     function show(el, on=true){ el.classList.toggle('show', !!on); }
     function setText(el, t){ el.textContent = t; }
@@ -1798,19 +1895,23 @@
       const cna = $('cnaDoc').files?.[0] || null;
       const stna = $('stnaDoc').files?.[0] || null;
       const other = Array.from($('otherDocs').files || []);
-      return { resume, cover, cna, stna, other };
+      const mvr = $('mvrDoc').files?.[0] || null;
+      const insurance = $('insuranceDoc').files?.[0] || null;
+      return { resume, cover, cna, stna, other, mvr, insurance };
     }
 
     function updateUploadsListSelected(){
       const ul = $('uploadsList');
       ul.innerHTML = '';
-      const { resume, cover, cna, stna, other } = getSelectedFiles();
+      const { resume, cover, cna, stna, other, mvr, insurance } = getSelectedFiles();
 
       const rows = [];
       if(resume) rows.push(`Resume: ${resume.name} (${bytesToHuman(resume.size)})`);
       if(cover) rows.push(`Cover letter: ${cover.name} (${bytesToHuman(cover.size)})`);
       if(cna) rows.push(`CNA document: ${cna.name} (${bytesToHuman(cna.size)})`);
       if(stna) rows.push(`STNA document: ${stna.name} (${bytesToHuman(stna.size)})`);
+      if(mvr) rows.push(`Driving Record / MVR: ${mvr.name} (${bytesToHuman(mvr.size)})`);
+      if(insurance) rows.push(`Proof of Auto Insurance: ${insurance.name} (${bytesToHuman(insurance.size)})`);
       if(other.length) other.forEach((f,i)=> rows.push(`Other #${i+1}: ${f.name} (${bytesToHuman(f.size)})`));
 
       if(rows.length === 0){
@@ -1839,6 +1940,8 @@
     $('coverLetter').addEventListener('change', () => { updateFileUI('coverLetter','cover-chosen','cover-pill','Click to choose cover letter…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
     $('cnaDoc').addEventListener('change', () => { updateFileUI('cnaDoc','cna-chosen','cna-pill','Click to choose CNA document…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
     $('stnaDoc').addEventListener('change', () => { updateFileUI('stnaDoc','stna-chosen','stna-pill','Click to choose STNA document…'); updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
+    $('mvrDoc').addEventListener('change', () => { updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
+    $('insuranceDoc').addEventListener('change', () => { updateProgress(); scheduleAutosave(); updateUploadsListSelected(); });
     $('otherDocs').addEventListener('change', () => {
       const n = $('otherDocs').files ? $('otherDocs').files.length : 0;
       setText($('otherdocs-chosen'), n ? `${n} file(s) selected` : 'Click to choose documents…');
@@ -1908,6 +2011,9 @@
       '#consentContactRefs',
       '#consentTruth','#consentContact','#consentPunctual','#consentESign','#signature','#signatureDate'
     ];
+    if(IS_DRIVER_APPLICATION){
+      requiredSelectors.push('#drivingHistoryReviewed','#drivingHistoryAccurate','#mvrDoc','#insuranceDoc');
+    }
 
     function isFieldComplete(sel){
       if(sel === 'input[name="screening"]'){
@@ -1989,6 +2095,7 @@
         'err-startDate','err-employmentType','err-shiftPref','err-days',
         'err-exp','err-education',
         'err-licenseNumber','err-licenseExp','err-dlState','err-hasValidDL',
+        'err-drivingHistory','err-mvrDoc','err-insuranceDoc',
         'err-age18','err-workAuth','err-screening',
         'err-certs',
         'err-resume','err-coverLetter','err-cnaDoc','err-stnaDoc','err-otherDocs',
@@ -2026,6 +2133,15 @@
       if(!$('licenseExp').value){ setError('err-licenseExp', true); ok=false; }
       if(!$('dlState').value){ setError('err-dlState', true); ok=false; }
       if(!$('hasValidDL').value){ setError('err-hasValidDL', true); ok=false; }
+      if(IS_DRIVER_APPLICATION){
+        if(!$('drivingHistoryReviewed').checked || !$('drivingHistoryAccurate').checked){
+          setError('err-drivingHistory', true); ok=false;
+        }
+        const mvr = $('mvrDoc').files[0];
+        if(!mvr || !fileOk(mvr, 10)){ setError('err-mvrDoc', true); ok=false; }
+        const insurance = $('insuranceDoc').files[0];
+        if(!insurance || !fileOk(insurance, 10)){ setError('err-insuranceDoc', true); ok=false; }
+      }
 
       if(!$('age18').value){ setError('err-age18', true); ok=false; }
       if(!$('workAuth').value){ setError('err-workAuth', true); ok=false; }
@@ -2074,7 +2190,9 @@
       return ok;
     }
 
-    const DSP_SUBMISSION_ID_KEY = 'sulandra:dsp:submission-id';
+    const DSP_SUBMISSION_ID_KEY = IS_DRIVER_APPLICATION
+      ? 'sulandra:driver:submission-id'
+      : 'sulandra:dsp:submission-id';
 
     function getDspSubmissionId(){
       try{
@@ -2083,12 +2201,12 @@
           const unique = window.crypto?.randomUUID
             ? window.crypto.randomUUID()
             : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-          value = `DSP-${unique}`;
+          value = `${IS_DRIVER_APPLICATION ? 'DRIVER' : 'DSP'}-${unique}`;
           window.sessionStorage.setItem(DSP_SUBMISSION_ID_KEY, value);
         }
         return value;
       } catch {
-        return `DSP-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        return `${IS_DRIVER_APPLICATION ? 'DRIVER' : 'DSP'}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       }
     }
 
@@ -2112,12 +2230,14 @@
       base.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
 
       setProgress(18, 'Submitting…', 'Preparing your documents');
-      const { resume, cover, cna, stna, other } = getSelectedFiles();
+      const { resume, cover, cna, stna, other, mvr, insurance } = getSelectedFiles();
       const documentTasks = [
         fileToDocument(resume, 'RESUME', 'Resume'),
         cover ? fileToDocument(cover, 'COVER_LETTER', 'Cover letter') : null,
         cna ? fileToDocument(cna, 'OTHER', 'CNA certificate') : null,
         stna ? fileToDocument(stna, 'OTHER', 'STNA certificate') : null,
+        mvr ? fileToDocument(mvr, 'BACKGROUND_CHECK', 'Three-year Driving Record / MVR') : null,
+        insurance ? fileToDocument(insurance, 'AUTO_INSURANCE', 'Proof of Valid Auto Insurance') : null,
         ...other.map((file, index) => fileToDocument(file, 'OTHER', `Supporting document #${index + 1}`))
       ].filter(Boolean);
       const documents = await Promise.all(documentTasks);
@@ -2130,9 +2250,9 @@
       });
       const openingsResult = await readApiResponse(openingsResponse);
       const openings = Array.isArray(openingsResult.data) ? openingsResult.data : [];
-      const isDspOpening = (job) => (
-        String(job?.appliedRole || '').toUpperCase() === 'DSP'
-        || /\bdsp\b|direct support|caregiver|aide/i.test(
+      const isMatchingOpening = (job) => (
+        String(job?.appliedRole || '').toUpperCase() === (IS_DRIVER_APPLICATION ? 'DRIVER' : 'DSP')
+        || (IS_DRIVER_APPLICATION ? /\bdriver\b|transportation|nemt|van driver/i : /\bdsp\b|direct support|caregiver|aide/i).test(
           `${job?.title || ''} ${job?.department || ''}`
         )
       );
@@ -2141,13 +2261,13 @@
           String(job?.slug || '') === requestedOpening
           || String(job?.id || '') === requestedOpening
         ))
-        : openings.find(isDspOpening);
+        : openings.find(isMatchingOpening);
 
       if(!opening){
         throw new Error(
           requestedOpening
-            ? 'This DSP opening is no longer published. Please return to Careers and select an active opening.'
-            : 'There are no published DSP openings available right now.'
+            ? `This ${IS_DRIVER_APPLICATION ? 'driver' : 'DSP'} opening is no longer published. Please return to Careers and select an active opening.`
+            : `There are no published ${IS_DRIVER_APPLICATION ? 'driver' : 'DSP'} openings available right now.`
         );
       }
 
@@ -2163,7 +2283,7 @@
           lastName: $('lastName').value.trim(),
           email: $('email').value.trim(),
           phone: $('phone').value.trim(),
-          appliedRole: 'DSP',
+          appliedRole: IS_DRIVER_APPLICATION ? 'DRIVER' : 'DSP',
           preferredCommunication: 'EMAIL',
           notes: base.why || null,
           applicationData: base,
@@ -2174,10 +2294,10 @@
       const result = await readApiResponse(response);
       const receipt = result.data || {};
 
-      setProgress(100, 'Submitted!', 'Your application, documents, and DSP assessment were received.');
+      setProgress(100, 'Submitted!', `Your application, documents, and ${IS_DRIVER_APPLICATION ? 'driver' : 'DSP'} assessment were received.`);
       toast(
         'Application received',
-        `Reference ${receipt.referenceNumber || 'created'} • DSP score: ${receipt.assessment?.score ?? scored.score}/${receipt.assessment?.maxScore ?? scored.max}`
+        `Reference ${receipt.referenceNumber || 'created'} • ${IS_DRIVER_APPLICATION ? 'Driver' : 'DSP'} score: ${receipt.assessment?.score ?? scored.score}/${receipt.assessment?.maxScore ?? scored.max}`
       );
 
       clearDspSubmissionId();

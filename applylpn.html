@@ -377,7 +377,7 @@
   <main class="wrap" role="main">
     <div class="grid">
       <section class="card" aria-label="LPN application form">
-        <h2>Application for: Licensed Practical Nurse (LPN)</h2>
+        <h2 id="applicationHeading">Application for: Licensed Practical Nurse (LPN)</h2>
         <p class="sub">Complete the form below. Required fields are marked with an asterisk.</p>
 
         <form id="appForm" method="post" action="#" enctype="multipart/form-data" novalidate>
@@ -873,6 +873,38 @@
        Utilities
        ========== */
     const $ = (id) => document.getElementById(id);
+    const requestedNursingRole = String(
+      new URLSearchParams(window.location.search).get("role") || "LPN"
+    ).toUpperCase();
+    if (requestedNursingRole === "RN" || requestedNursingRole === "DELEGATING_NURSE") {
+      const roleLabel = requestedNursingRole === "RN"
+        ? "Registered Nurse (RN)"
+        : "Delegating Nurse (RN)";
+      $("applicationHeading").textContent = `Application for: ${roleLabel}`;
+      document.querySelector('input[name="jobTitle"]').value = roleLabel;
+      document.title = `${roleLabel} Application | Sulandra Health`;
+    }
+
+    async function applySelectedNursingOpeningBranding(){
+      const openingSlug = new URLSearchParams(window.location.search).get("opening");
+      if(!openingSlug) return;
+      try{
+        const response = await fetch(`${API_BASE}/public/careers/openings`, {
+          headers: { accept: "application/json" }
+        });
+        if(!response.ok) return;
+        const payload = await response.json();
+        const opening = (Array.isArray(payload.data) ? payload.data : [])
+          .find((item) => item.slug === openingSlug || item.id === openingSlug);
+        if(!opening?.title) return;
+        $("applicationHeading").textContent = `Application for: ${opening.title}`;
+        document.querySelector('input[name="jobTitle"]').value = opening.title;
+        document.title = `${opening.title} Application | Sulandra Health`;
+      } catch {
+        // Submission performs the authoritative opening check.
+      }
+    }
+    void applySelectedNursingOpeningBranding();
 
     const DRAFT_KEY = "scls_apply_lpn_v2_draft";
     const MAX_FILE_MB = 10;
@@ -1738,21 +1770,10 @@
 
       const params = new URLSearchParams(window.location.search);
       const requestedRole = String(params.get("role") || "LPN").toUpperCase();
-      const appliedRole = ["LPN", "RN", "DELEGATING_NURSE"].includes(requestedRole) ? requestedRole : "LPN";
-      const licenseCategory = appliedRole === "LPN" ? "LPN_LICENSE" : "RN_LICENSE";
+      let appliedRole = ["LPN", "RN", "DELEGATING_NURSE"].includes(requestedRole) ? requestedRole : "LPN";
       const draft = collectDraft(true);
 
-      setProgress(22, "Submitting…", "Preparing your documents…");
-      const documentTasks = [
-        fileToDocument(resume, "RESUME", "Resume"),
-        cover ? fileToDocument(cover, "COVER_LETTER", "Cover letter") : null,
-        ...licenseFiles.map((file, index) =>
-          fileToDocument(file, licenseCategory, `${appliedRole.replaceAll("_", " ")} license document #${index + 1}`)
-        )
-      ].filter(Boolean);
-      const documents = await Promise.all(documentTasks);
-
-      setProgress(55, "Submitting…", "Creating your secure applicant profile…");
+      setProgress(22, "Submitting…", "Confirming the selected nursing opening…");
       const requestedOpening = (params.get("opening") || "").trim();
       const openingsResponse = await fetch(`${API_BASE}/public/careers/openings`, {
         headers: { accept: "application/json" }
@@ -1773,6 +1794,21 @@
             : `There are no published ${appliedRole.replaceAll("_", " ")} openings available right now.`
         );
       }
+      const openingText = `${opening.title || ""} ${opening.department || ""}`.toLowerCase();
+      if (/delegating nurse/.test(openingText)) appliedRole = "DELEGATING_NURSE";
+      else if (/\brn\b|registered nurse/.test(openingText)) appliedRole = "RN";
+      else if (/\blpn\b|licensed practical nurse/.test(openingText)) appliedRole = "LPN";
+
+      setProgress(55, "Submitting…", "Preparing your documents…");
+      const licenseCategory = appliedRole === "LPN" ? "LPN_LICENSE" : "RN_LICENSE";
+      const documentTasks = [
+        fileToDocument(resume, "RESUME", "Resume"),
+        cover ? fileToDocument(cover, "COVER_LETTER", "Cover letter") : null,
+        ...licenseFiles.map((file, index) =>
+          fileToDocument(file, licenseCategory, `${appliedRole.replaceAll("_", " ")} license document #${index + 1}`)
+        )
+      ].filter(Boolean);
+      const documents = await Promise.all(documentTasks);
 
       const response = await fetch(`${API_BASE}/public/careers/applications`, {
         method: "POST",

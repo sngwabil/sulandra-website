@@ -16,7 +16,7 @@
 
   const DOCUMENT_TYPES = [
     "APPLICATION", "RESUME", "COVER_LETTER", "REFERENCES", "CPR",
-    "DRIVER_LICENSE", "RN_LICENSE", "LPN_LICENSE", "BACKGROUND_CHECK",
+    "DRIVER_LICENSE", "AUTO_INSURANCE", "RN_LICENSE", "LPN_LICENSE", "BACKGROUND_CHECK",
     "I9", "W4", "OTHER"
   ];
 
@@ -192,6 +192,18 @@
       const visibleToApplicant = root.querySelector("[data-scw-visible]").checked;
       const notifyApplicant = root.querySelector("[data-scw-notify]").checked;
       try {
+        if (status === "INTERVIEW") {
+          if (typeof options.onInterviewRequested !== "function") {
+            throw new Error("The interview scheduler is unavailable. Refresh the admin console and try again.");
+          }
+          options.onInterviewRequested({
+            applicationId: options.applicationId,
+            note,
+            visibleToApplicant,
+            notifyApplicant
+          });
+          return;
+        }
         if (status === "NOT_SELECTED") {
           const confirmed = global.confirm(
             "Reject this applicant permanently?\n\nA professional regret email will be sent first. After successful delivery, the application, portal account, documents, and history will be deleted and cannot be recovered."

@@ -166,7 +166,7 @@
     }
     @media (max-width: 980px){
       .grid { grid-template-columns: 1fr; }
-      .opening-grid { grid-template-columns: 1fr; }
+      .opening-grid, .archive-folders, .settings-grid { grid-template-columns: 1fr; }
     }
 
     .card {
@@ -231,6 +231,20 @@
     .opening-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
     .future-card { text-align:center; padding:46px 25px; border:2px dashed #bfd5e6; border-radius:18px; background:linear-gradient(145deg,#f7fbff,#eef8f6); }
     .future-icon { width:58px; height:58px; display:grid; place-items:center; margin:0 auto 14px; border-radius:18px; background:#0b78bb; color:#fff; font-size:27px; }
+    .archive-folders { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .archive-folder { border:1px solid #c9dfee; border-top:7px solid #0b78bb; background:#fff; border-radius:18px; padding:20px; box-shadow:0 10px 25px rgba(23,70,109,.08); overflow:auto; }
+    .archive-folder.jobs { border-top-color:#e9b94f; }
+    .settings-grid { display:grid; grid-template-columns:minmax(0,720px) minmax(260px,1fr); gap:18px; }
+    .company-preview { background:linear-gradient(145deg,#083e6c,#159dc8); color:#fff; border-radius:18px; padding:25px; }
+    .company-preview h1,.company-preview h2 { color:#fff; }
+    .company-preview p { color:#dcf4ff; line-height:1.65; }
+    .hr-signature-preview { display:grid; gap:5px; margin:24px 0; padding:18px; border-radius:14px; background:rgba(255,255,255,.13); }
+    .hr-signature-preview strong { color:#6dd5ff; font-size:20px; }
+    .hr-signature-preview small { color:#e7f8ff; }
+    .interview-slot-list { display:grid; gap:10px; margin:14px 0; max-height:330px; overflow:auto; }
+    .slot-row { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:center; padding:12px; border:1px solid #cfe0ed; border-radius:12px; background:#f7fbfe; }
+    .slot-row input { min-width:0; width:100%; border:1px solid #bed1df; border-radius:9px; padding:10px; font:inherit; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
 
     h1 { color: var(--primary); font-size: 22px; margin-bottom: 6px; }
     .sub { color: var(--muted); font-size: 13px; }
@@ -349,7 +363,7 @@
     .module.active { display: block; }
 
     /* --- MODAL --- */
-    #detailsModal{
+    #detailsModal,#interviewModal{
       display:none;
       position:fixed;
       inset:0;
@@ -357,6 +371,8 @@
       z-index:2000;
       padding:16px;
     }
+    #interviewModal{ z-index:2100; }
+    .interview-modal{ max-width:680px; }
     .modal{
       background:#fff;
       max-width: 920px;
@@ -615,6 +631,7 @@
                     <option value="RN">RN</option>
                     <option value="DELEGATING_NURSE">Delegating Nurse</option>
                     <option value="DSP">DSP</option>
+                    <option value="DRIVER">Driver / Transportation</option>
                     <option value="GENERAL">General</option>
                   </select>
                 </div>
@@ -689,13 +706,72 @@
                 <p class="sub">Publish openings directly to the Sulandra Health careers page.</p>
                 <form class="opening-form" id="jobOpeningForm">
                   <input type="hidden" id="openingId">
-                  <div><label for="openingTitle">Job title</label><input id="openingTitle" required maxlength="160" placeholder="Direct Support Professional"></div>
+                  <div><label for="openingPreset">Job title preset</label><select id="openingPreset">
+                    <option value="">Custom position</option>
+                    <option value="DSP">DSP / Direct Support Professional</option>
+                    <option value="CNA">CNA / Certified Nursing Assistant</option>
+                    <option value="HHA_PCA">Home Health Aide (HHA) / Personal Care Aide (PCA) / Caregiver</option>
+                    <option value="LPN">LPN / Licensed Practical Nurse</option>
+                    <option value="RN">RN / Registered Nurse</option>
+                    <option value="DELEGATING_NURSE">Delegating Nurse</option>
+                    <option value="DRIVER">NEMT Driver / Transportation Specialist / Van Driver</option>
+                    <option value="SUPERVISOR">Site Supervisor / House Manager</option>
+                    <option value="PROGRAM_MANAGER">Program Manager</option>
+                    <option value="SCHEDULER">Scheduler / Staffing Coordinator</option>
+                    <option value="HR_MANAGER">Human Resources Manager</option>
+                    <option value="COMPLIANCE">Compliance &amp; Quality Manager</option>
+                    <option value="BILLING">Billing / Revenue Cycle Specialist</option>
+                    <option value="ADMIN_ASSISTANT">Administrative Assistant</option>
+                    <option value="COO">Chief Operating Officer</option>
+                    <option value="CEO">Chief Executive Officer</option>
+                  </select></div>
+                  <div><label for="openingTitle">Displayed job title (editable)</label><input id="openingTitle" required maxlength="160" placeholder="Direct Support Professional"></div>
                   <div><label for="openingSlug">URL slug</label><input id="openingSlug" required maxlength="120" placeholder="direct-support-professional"></div>
-                  <div><label for="openingDepartment">Department</label><input id="openingDepartment" maxlength="120" placeholder="Community Living"></div>
-                  <div><label for="openingType">Employment type</label><input id="openingType" maxlength="120" placeholder="Full-time / Part-time"></div>
-                  <div><label for="openingLocation">Location</label><input id="openingLocation" maxlength="180" placeholder="Maryland"></div>
+                  <div><label for="openingDepartmentPreset">Department dropdown</label><select id="openingDepartmentPreset">
+                    <option value="">Custom department</option>
+                    <option value="Waiver Services">Waiver Services</option>
+                    <option value="Home Health">Home Health</option>
+                    <option value="Clinical Services">Clinical Services</option>
+                    <option value="Community Living">Community Living</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Human Resources">Human Resources</option>
+                    <option value="Quality &amp; Compliance">Quality &amp; Compliance</option>
+                    <option value="Revenue Cycle">Revenue Cycle</option>
+                    <option value="Administration">Administration</option>
+                    <option value="Executive Leadership">Executive Leadership</option>
+                  </select></div>
+                  <div><label for="openingDepartment">Department name (editable)</label><input id="openingDepartment" maxlength="120" placeholder="Community Living"></div>
+                  <div><label for="openingType">Employment type</label><select id="openingType"><option value="Full-Time">Full-Time</option><option value="Part-Time">Part-Time</option><option value="Contract">Contract</option><option value="PRN">PRN</option></select></div>
+                  <div><label for="openingLocationSearch">Search Ohio cities</label><input id="openingLocationSearch" type="search" placeholder="Type a city name"></div>
+                  <div><label for="openingLocation">Ohio location dropdown</label><select id="openingLocation">
+                    <option value="Dayton, OH" selected>Dayton, OH</option><option value="Columbus, OH">Columbus, OH</option>
+                    <option value="Cleveland, OH">Cleveland, OH</option><option value="Cincinnati, OH">Cincinnati, OH</option>
+                    <option value="Toledo, OH">Toledo, OH</option><option value="Akron, OH">Akron, OH</option>
+                    <option value="Kettering, OH">Kettering, OH</option><option value="Beavercreek, OH">Beavercreek, OH</option>
+                    <option value="Huber Heights, OH">Huber Heights, OH</option><option value="Fairborn, OH">Fairborn, OH</option>
+                    <option value="Springfield, OH">Springfield, OH</option><option value="Middletown, OH">Middletown, OH</option>
+                    <option value="Hamilton, OH">Hamilton, OH</option><option value="Centerville, OH">Centerville, OH</option>
+                    <option value="Trotwood, OH">Trotwood, OH</option><option value="Vandalia, OH">Vandalia, OH</option>
+                    <option value="Englewood, OH">Englewood, OH</option><option value="Miamisburg, OH">Miamisburg, OH</option>
+                    <option value="West Carrollton, OH">West Carrollton, OH</option><option value="Xenia, OH">Xenia, OH</option>
+                    <option value="Troy, OH">Troy, OH</option><option value="Piqua, OH">Piqua, OH</option>
+                    <option value="Lebanon, OH">Lebanon, OH</option><option value="Mason, OH">Mason, OH</option>
+                    <option value="Dublin, OH">Dublin, OH</option><option value="Gahanna, OH">Gahanna, OH</option>
+                    <option value="Westerville, OH">Westerville, OH</option><option value="Reynoldsburg, OH">Reynoldsburg, OH</option>
+                    <option value="Other Ohio location">Other Ohio location</option>
+                  </select></div>
+                  <div id="openingLocationCustomWrap" hidden><label for="openingLocationCustom">Other Ohio location</label><input id="openingLocationCustom" maxlength="180" placeholder="City, OH"></div>
                   <div><label for="openingPay">Pay range</label><input id="openingPay" maxlength="120" placeholder="$18–$22 per hour"></div>
-                  <div><label for="openingPath">Application page</label><input id="openingPath" maxlength="300" placeholder="/applydsp.html"></div>
+                  <div><label for="openingPathPreset">Application page dropdown</label><select id="openingPathPreset">
+                    <option value="/applydsp.html">DSP / CNA / HHA / Caregiver application</option>
+                    <option value="/applylpn.html">LPN nursing application</option>
+                    <option value="/applylpn.html?role=RN">RN nursing application</option>
+                    <option value="/applydriver.html">Driver / transportation application</option>
+                    <option value="/applygeneral.html">General / leadership application</option>
+                    <option value="">Custom application page</option>
+                  </select></div>
+                  <div><label for="openingPath">Application page URL (editable)</label><input id="openingPath" maxlength="300" placeholder="/applydsp.html"></div>
                   <div><label for="openingSummary">Summary</label><textarea id="openingSummary" required minlength="10" maxlength="1000"></textarea></div>
                   <div><label for="openingDescription">Description</label><textarea id="openingDescription" required minlength="20" maxlength="20000"></textarea></div>
                   <div><label for="openingRequirements">Requirements</label><textarea id="openingRequirements" maxlength="10000"></textarea></div>
@@ -713,14 +789,23 @@
           </div>
 
           <div class="onboarding-panel" id="onboarding-archived">
-            <section class="card">
-              <h1>Archived Applicants</h1>
-              <p class="sub">Applications retained because a position was filled. Revisit a candidate when a matching role opens.</p>
-              <table aria-label="Archived applicants table">
-                <thead><tr><th>Date</th><th>Applicant</th><th>Position</th><th>Score</th><th>Action</th></tr></thead>
-                <tbody id="archivedApplicantTable"><tr><td colspan="5" class="muted">Loading archived applicants…</td></tr></tbody>
-              </table>
-            </section>
+            <div class="archive-folders">
+              <section class="card archive-folder">
+                <div class="archive-folder-icon">👥</div>
+                <h1>Applicants Archive</h1>
+                <p class="sub">Candidates retained because a position was filled. Revisit and reactivate them when a matching role opens.</p>
+                <table aria-label="Archived applicants table">
+                  <thead><tr><th>Date</th><th>Applicant</th><th>Position</th><th>Score</th><th>Action</th></tr></thead>
+                  <tbody id="archivedApplicantTable"><tr><td colspan="5" class="muted">Loading archived applicants…</td></tr></tbody>
+                </table>
+              </section>
+              <section class="card archive-folder jobs">
+                <div class="archive-folder-icon">💼</div>
+                <h1>Jobs Archive</h1>
+                <p class="sub">Closed job listings remain available here and can be restored to Published / Live status in one click.</p>
+                <div class="opening-cards" id="archivedJobOpeningList"><p class="muted">Loading archived jobs…</p></div>
+              </section>
+            </div>
           </div>
 
           <div class="onboarding-panel" id="onboarding-service-requests">
@@ -764,9 +849,30 @@
           <p class="sub">Audit logs, payroll export, compliance, operational metrics.</p>
         </section>
 
-        <section class="card module" id="module-settings">
-          <h1>Settings</h1>
-          <p class="sub">Roles & permissions (Admin, House Manager, Employee). Control which tools appear per role.</p>
+        <section class="module" id="module-settings">
+          <div class="settings-grid">
+            <section class="card">
+              <h1>Address &amp; Company Details</h1>
+              <p class="sub">This is the single source used by interview emails, reminders, and applicant portal views.</p>
+              <form class="opening-form" id="companySettingsForm">
+                <div><label for="companyName">Company name</label><input id="companyName" required maxlength="160"></div>
+                <div><label for="companyAddress1">Address line 1</label><input id="companyAddress1" required maxlength="180"></div>
+                <div><label for="companyAddress2">Address line 2</label><input id="companyAddress2" maxlength="180"></div>
+                <div><label for="companyCity">City</label><input id="companyCity" required maxlength="120"></div>
+                <div><label for="companyState">State</label><input id="companyState" required maxlength="120"></div>
+                <div><label for="companyPostalCode">ZIP code</label><input id="companyPostalCode" required maxlength="20"></div>
+                <div><label for="companyEmailDisplayName">Automated email sender name</label><input id="companyEmailDisplayName" required maxlength="120" placeholder="Human Resources"></div>
+                <button class="btn btn-primary" type="submit">Save company details</button>
+              </form>
+            </section>
+            <section class="card company-preview">
+              <span class="pill">Live template preview</span>
+              <h1 id="companyPreviewName">Sulandra Health</h1>
+              <p id="companyPreviewAddress">822 Dalewood Pl, Suite A, Dayton, Ohio 45426</p>
+              <div class="hr-signature-preview"><strong><em>Human Resources</em></strong><small>This inbox is unmonitored and cannot accept replies.</small></div>
+              <p class="sub">This is not an offer of employment.</p>
+            </section>
+          </div>
         </section>
 
       </section>
@@ -784,12 +890,29 @@
     </div>
   </div>
 
+  <div id="interviewModal" role="dialog" aria-modal="true" aria-label="Schedule interview">
+    <div class="modal interview-modal">
+      <div class="modal-head">
+        <div><div class="modal-title">Offer interview times</div><div class="sub" id="interviewApplicantName"></div></div>
+        <button class="close-x" id="closeInterviewModal" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="sub">Add one or more available 30-minute times. A slot is locked for everyone as soon as an applicant selects it.</p>
+        <div class="interview-slot-list" id="interviewSlotList"></div>
+        <div class="modal-actions">
+          <button class="btn" id="addInterviewSlot" type="button">+ Add another time</button>
+          <button class="btn btn-primary" id="saveInterviewSlots" type="button">Send interview invitation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite">
     <strong id="toastTitle">Done</strong>
     <small id="toastBody">OK</small>
   </div>
 
-  <script src="careers-admin-workflow.js?v=20260729-2"></script>
-  <script src="admin-railway.js?v=20260729-2"></script>
+  <script src="careers-admin-workflow.js?v=20260729-3"></script>
+  <script src="admin-railway.js?v=20260729-4"></script>
 </body>
 </html>

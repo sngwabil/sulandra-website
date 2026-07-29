@@ -59,6 +59,7 @@ jobs:
           test -f dist-web/services/community-living/index.html
           test -f dist-web/careers.html
           test -f dist-web/applydsp.html
+          test -f dist-web/applydriver.html
           test -f dist-web/applylpn.html
           test -f dist-web/applygeneral.html
           test -f dist-web/applicant-portal.html
