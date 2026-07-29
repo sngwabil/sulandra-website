@@ -158,7 +158,7 @@
         <div data-scw-message hidden></div>
         <div class="scw-grid">
           <section class="scw-card"><h3>Application status</h3><div class="scw-field"><label>Status</label><select data-scw-status>${statusOptions}</select></div><div class="scw-field"><label>Internal/applicant note</label><textarea data-scw-note placeholder="Add an update or instructions for the applicant"></textarea></div><label class="scw-check"><input type="checkbox" data-scw-visible checked> Show this update in the applicant portal</label><label class="scw-check"><input type="checkbox" data-scw-notify checked> Notify the applicant using their preferred communication method</label><button class="scw-button" data-scw-save-status>Save status update</button></section>
-          <section class="scw-card"><h3>Application summary</h3>${score == null ? "" : `<div class="scw-score"><span>DSP assessment score</span><strong>${esc(score)}${scoreMax == null ? "" : "/" + esc(scoreMax)}</strong></div>`}<p><strong>Submitted:</strong> ${esc(application.submittedAt ? new Date(application.submittedAt).toLocaleString() : "Unknown")}</p><p><strong>Preferred contact:</strong> ${esc(title(application.preferredCommunication || "EMAIL"))}</p><p><strong>Username:</strong> ${esc(application.applicantUsername || application.email || application.phone || "Pending")}</p></section>
+          <section class="scw-card"><h3>Application summary</h3>${score == null ? "" : `<div class="scw-score"><span>DSP assessment score</span><strong>${esc(score)}${scoreMax == null ? "" : "/" + esc(scoreMax)}</strong></div>`}<p><strong>Submitted:</strong> ${esc(application.submittedAt ? new Date(application.submittedAt).toLocaleString() : "Unknown")}</p><p><strong>Preferred contact:</strong> ${esc(title(application.preferredCommunication || "EMAIL"))}</p><p><strong>Username:</strong> ${esc(application.applicantUsername || application.email || application.phone || "Pending")}</p>${application.email ? '<button class="scw-button secondary" data-scw-resend-access>Resend portal access email</button>' : ""}</section>
           <section class="scw-card scw-wide"><h3>Application documents</h3><div class="scw-docs">${documentHtml}</div></section>
           <section class="scw-card"><h3>Request a document</h3><div class="scw-request-row"><div class="scw-field"><label>Type</label><select data-scw-request-category>${DOCUMENT_TYPES.map((value) => `<option value="${value}">${title(value)}</option>`).join("")}</select></div><div class="scw-field"><label>Label</label><input data-scw-request-label placeholder="e.g. Current CPR card"></div></div><div class="scw-field"><label>Instructions</label><textarea data-scw-request-message placeholder="Tell the applicant what is needed"></textarea></div><button class="scw-button secondary" data-scw-request>Send document request</button></section>
           <section class="scw-card"><h3>Status history</h3><div class="scw-history">${historyHtml}</div></section>
@@ -166,6 +166,7 @@
 
       root.querySelector("[data-scw-save-status]").addEventListener("click", saveStatus);
       root.querySelector("[data-scw-request]").addEventListener("click", requestDocument);
+      root.querySelector("[data-scw-resend-access]")?.addEventListener("click", resendAccess);
       root.querySelectorAll("[data-doc-action]").forEach((button) => button.addEventListener("click", documentAction));
     };
 
@@ -240,6 +241,29 @@
         });
         await load();
         showMessage("Document request added and the applicant was notified.", "success");
+      } catch (error) {
+        showMessage(error.message, "error");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function resendAccess() {
+      try {
+        setBusy(true);
+        const result = await client.request(`/api/admin/applications/${encodeURIComponent(options.applicationId)}/resend-access`, {
+          method: "POST",
+          body: "{}"
+        });
+        const delivery = String(result.deliveryStatus || "").toUpperCase();
+        showMessage(
+          delivery === "SENT"
+            ? "A new temporary password was sent to the applicant."
+            : delivery === "FAILED"
+              ? "Portal access was reset, but the email could not be sent."
+              : "Portal access was reset. Email delivery is waiting for configuration.",
+          delivery === "SENT" ? "success" : "error"
+        );
       } catch (error) {
         showMessage(error.message, "error");
       } finally {
