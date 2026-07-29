@@ -53,8 +53,9 @@ clear error if any prerequisite is missing.
 build copies the public website files and excludes API source, Prisma files,
 deployment configuration, and environment files.
 
-The public Employee Portal link goes to the unified Railway portal while the custom
-`portal.sulandrahealth.com` certificate is repaired.
+The public Employee Portal link opens the static `employee-login.html` page. That
+page authenticates against the Railway API and stores the returned Bearer token
+only for the current browser tab session.
 
 ## Employee authentication and routing
 

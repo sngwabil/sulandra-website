@@ -48,6 +48,7 @@ jobs:
           node --check careers-admin-workflow.js
           node --check admin-railway.js
           node --check employee-login-railway.js
+          node --check employee-portal-railway.js
 
       - name: Build static website
         run: npm run build:web
@@ -64,6 +65,7 @@ jobs:
           test -f dist-web/careers-admin-workflow.js
           test -f dist-web/admin-railway.js
           test -f dist-web/employee-login-railway.js
+          test -f dist-web/employee-portal-railway.js
           test ! -e dist-web/package.json
           test ! -e dist-web/api
           test ! -e dist-web/prisma
