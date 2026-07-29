@@ -1965,51 +1965,150 @@
       return ok;
     }
 
-    /* ========================= Standalone Submission (Railway Direct) ========================= */
-    async function submitApplication(){
-      setSubmitting(true);
-      setProgress(25, 'Submitting…', 'Sending application directly to Railway server…');
+    /* ========================= Railway Careers API Submission ========================= */
+    async function fileToDocument(file, category, label){
+      if(!file) return null;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      const chunkSize = 0x8000;
+      for(let offset = 0; offset < bytes.length; offset += chunkSize){
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+      }
+      return {
+        category,
+        label,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        fileDataBase64: btoa(binary)
+      };
+    }
 
-      try {
-        const formEl = $('appForm');
-        const formData = new FormData(formEl);
+    async function readApiResponse(response){
+      const payload = await response.json().catch(() => ({}));
+      if(!response.ok){
+        throw new Error(payload.error || payload.message || "The application could not be submitted.");
+      }
+      return payload;
+    }
 
-        // Score DSP Quiz & attach to payload
-        const scored = scoreQuiz();
-        formData.append('assessmentScore', String(scored.score));
-        formData.append('assessmentMax', String(scored.max));
-        formData.append('assessmentBreakdown', JSON.stringify(scored.breakdown));
+    const DSP_SUBMISSION_ID_KEY = 'sulandra:dsp:submission-id';
 
-        const response = await fetch(`${API_BASE}/public/careers/apply`, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `Server error (${response.status})`);
+    function getDspSubmissionId(){
+      try{
+        let value = window.localStorage.getItem(DSP_SUBMISSION_ID_KEY);
+        if(!value){
+          const unique = window.crypto?.randomUUID
+            ? window.crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          value = `DSP-${unique}`;
+          window.localStorage.setItem(DSP_SUBMISSION_ID_KEY, value);
         }
-
-        const result = await response.json();
-
-        setProgress(100, 'Submitted!', 'Your application and DSP assessment were received.');
-        toast('Submitted', `Application submitted successfully! Ref: ${result.referenceNumber || ''}`);
-
-        clearDraft();
-        setSubmitting(false);
-
-        alert(`Thank you! Your application has been received.\n\nReference: ${result.referenceNumber || 'Check your email'}\nUsername: ${$('email').value.trim()}\n\nYour temporary password and login link are being sent to your email.`);
-
-      } catch (err) {
-        console.error('Submission Error:', err);
-        setSubmitting(false);
-        setProgress(0, 'Submission failed', 'Please try again.');
-        toast('Submission error', err.message || 'Failed to submit application.');
+        return value;
+      } catch {
+        return `DSP-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       }
     }
 
-    /* ========================= Form Submit Event ========================= */
-    $('appForm').addEventListener('submit', (e) => {
+    function clearDspSubmissionId(){
+      try{
+        window.localStorage.removeItem(DSP_SUBMISSION_ID_KEY);
+      } catch {
+        // Submission already succeeded; storage cleanup is non-critical.
+      }
+    }
+
+    async function submitApplicationToCareersApi(){
+      setSubmitting(true);
+      setProgress(5, 'Submitting…', 'Preparing your application');
+
+      const base = collectFormDataAsObject(false);
+      const scored = scoreQuiz();
+      $('assessmentScore').value = String(scored.score);
+      $('assessmentMax').value = String(scored.max);
+      $('assessmentBreakdown').value = JSON.stringify(scored.breakdown);
+      base.assessment = { score: scored.score, max: scored.max, breakdown: scored.breakdown };
+
+      setProgress(18, 'Submitting…', 'Preparing your documents');
+      const { resume, cover, cna, stna, other } = getSelectedFiles();
+      const documentTasks = [
+        fileToDocument(resume, 'RESUME', 'Resume'),
+        cover ? fileToDocument(cover, 'COVER_LETTER', 'Cover letter') : null,
+        cna ? fileToDocument(cna, 'OTHER', 'CNA certificate') : null,
+        stna ? fileToDocument(stna, 'OTHER', 'STNA certificate') : null,
+        ...other.map((file, index) => fileToDocument(file, 'OTHER', `Supporting document #${index + 1}`))
+      ].filter(Boolean);
+      const documents = await Promise.all(documentTasks);
+
+      setProgress(55, 'Submitting…', 'Creating your secure applicant profile');
+      const params = new URLSearchParams(window.location.search);
+      const requestedOpening = (params.get('opening') || '').trim();
+      const openingsResponse = await fetch(`${API_BASE}/public/careers/openings`, {
+        headers: { accept: 'application/json' }
+      });
+      const openingsResult = await readApiResponse(openingsResponse);
+      const openings = Array.isArray(openingsResult.data) ? openingsResult.data : [];
+      const isDspOpening = (job) => (
+        String(job?.appliedRole || '').toUpperCase() === 'DSP'
+        || /\bdsp\b|direct support|caregiver|aide/i.test(
+          `${job?.title || ''} ${job?.department || ''}`
+        )
+      );
+      const opening = requestedOpening
+        ? openings.find((job) => (
+          String(job?.slug || '') === requestedOpening
+          || String(job?.id || '') === requestedOpening
+        ))
+        : openings.find(isDspOpening);
+
+      if(!opening){
+        throw new Error(
+          requestedOpening
+            ? 'This DSP opening is no longer published. Please return to Careers and select an active opening.'
+            : 'There are no published DSP openings available right now.'
+        );
+      }
+
+      const response = await fetch(`${API_BASE}/public/careers/applications`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          sourceExternalId: getDspSubmissionId(),
+          jobOpeningId: opening.id,
+          jobSlug: opening.slug,
+          firstName: $('firstName').value.trim(),
+          middleName: $('middleName')?.value.trim() || undefined,
+          lastName: $('lastName').value.trim(),
+          email: $('email').value.trim(),
+          phone: $('phone').value.trim(),
+          appliedRole: 'DSP',
+          preferredCommunication: 'EMAIL',
+          notes: base.why || base.exp || null,
+          applicationData: base,
+          assessmentAnswers: base,
+          documents
+        })
+      });
+      const result = await readApiResponse(response);
+      const receipt = result.data || {};
+
+      setProgress(100, 'Submitted!', 'Your application, documents, and DSP assessment were received.');
+      toast(
+        'Application received',
+        `Reference ${receipt.referenceNumber || 'created'} • DSP score: ${receipt.assessment?.score ?? scored.score}/${receipt.assessment?.maxScore ?? scored.max}`
+      );
+
+      clearDspSubmissionId();
+      clearDraft();
+      setText($('draftStatus'), 'No');
+      setSubmitting(false);
+
+      alert(
+        `Thank you! Your application has been received.\n\nReference: ${receipt.referenceNumber || 'See your confirmation email'}\nApplicant username: ${receipt.applicantUsername || $('email').value.trim()}\n\nYour temporary password and applicant-portal link are being sent to your email.`
+      );
+    }
+
+    $('appForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
       updateResumeUI();
@@ -2024,7 +2123,15 @@
         return;
       }
 
-      submitApplication();
+      try{
+        await submitApplicationToCareersApi();
+      } catch(err){
+        console.error(err);
+        setSubmitting(false);
+        setProgress(0, 'Submission failed', 'Please try again.');
+        toast('Submission error', err?.message || 'Something went wrong.');
+        alert(err?.message || 'Submission failed. Please try again.');
+      }
     });
 
     /* ========================= Init ========================= */
