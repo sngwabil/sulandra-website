@@ -8,6 +8,7 @@ import {
   scryptSync,
   timingSafeEqual,
 } from 'node:crypto';
+import nodemailer from 'nodemailer';
 import { z } from 'zod';
 
 type AuthContext = {
@@ -322,25 +323,50 @@ async function graphAccessToken() {
 
 async function sendEmail(to: string, subject: string, body: string) {
   const token = await graphAccessToken();
-  if (!token) return { status: 'QUEUED', providerMessageId: null };
-  const response = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(careersFromEmail)}/sendMail`,
-    {
-      method: 'POST',
-      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        message: {
-          subject,
-          body: { contentType: 'HTML', content: body.replaceAll('\n', '<br>') },
-          toRecipients: [{ emailAddress: { address: to } }],
-          replyTo: [{ emailAddress: { address: careersFromEmail } }],
-        },
-        saveToSentItems: true,
-      }),
-    },
-  );
-  if (!response.ok) throw new Error(`Microsoft Graph returned ${response.status}`);
-  return { status: 'SENT', providerMessageId: response.headers.get('request-id') };
+  if (token) {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(careersFromEmail)}/sendMail`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          message: {
+            subject,
+            body: { contentType: 'HTML', content: body.replaceAll('\n', '<br>') },
+            toRecipients: [{ emailAddress: { address: to } }],
+            replyTo: [{ emailAddress: { address: careersFromEmail } }],
+          },
+          saveToSentItems: true,
+        }),
+      },
+    );
+    if (!response.ok) throw new Error(`Microsoft Graph returned ${response.status}`);
+    return { status: 'SENT', providerMessageId: response.headers.get('request-id') };
+  }
+
+  const smtpHost = process.env.SMTP_HOST?.trim();
+  const smtpUser = process.env.SMTP_USER?.trim();
+  const smtpPass = process.env.SMTP_PASS?.trim();
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    return { status: 'QUEUED', providerMessageId: null };
+  }
+  const smtpPort = Number(process.env.SMTP_PORT || 587);
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    requireTLS: smtpPort !== 465,
+    auth: { user: smtpUser, pass: smtpPass },
+  });
+  const result = await transporter.sendMail({
+    from: process.env.SMTP_FROM?.trim() || careersFromEmail || smtpUser,
+    to,
+    replyTo: careersFromEmail,
+    subject,
+    text: body,
+    html: body.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>'),
+  });
+  return { status: 'SENT', providerMessageId: result.messageId || null };
 }
 
 async function sendSms(to: string, body: string) {
@@ -365,7 +391,7 @@ async function sendSms(to: string, body: string) {
   return { status: 'SENT', providerMessageId: result.sid ?? null };
 }
 
-async function recordAndDeliver(
+export async function recordAndDeliver(
   prisma: PrismaClient,
   application: {
     id: string;
@@ -760,6 +786,74 @@ export function registerApplicantWorkflowRoutes(
     }
   });
 
+  app.post(
+    '/api/admin/applications/:id/resend-access',
+    requireRoles(UserRole.ADMINISTRATOR),
+    async (req, res, next) => {
+      try {
+        const auth = authOf(res);
+        const applicationId = String(req.params.id);
+        const rows = await prisma.$queryRawUnsafe<any[]>(
+          `SELECT a.*,j."title" AS "jobTitle"
+             FROM "EmployeeApplication" a
+             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
+            WHERE a."id"=$1 AND a."organizationId"=$2`,
+          applicationId,
+          auth.organizationId,
+        );
+        const application = rows[0];
+        if (!application) return res.status(404).json({ error: 'Application not found.' });
+        if (!application.email) {
+          return res.status(400).json({ error: 'This applicant does not have an email address.' });
+        }
+
+        const username = application.applicantUsername || application.email.trim().toLowerCase();
+        const temporaryPassword = generateTemporaryPassword();
+        const changed = await prisma.$executeRawUnsafe(
+          `UPDATE "ApplicantPortalAccount"
+              SET "username"=$1,"passwordHash"=$2,"mustChangePassword"=TRUE,
+                  "failedLoginAttempts"=0,"lockedUntil"=NULL,"updatedAt"=NOW()
+            WHERE "applicationId"=$3`,
+          username,
+          hashPassword(temporaryPassword),
+          applicationId,
+        );
+        if (!changed) {
+          return res.status(409).json({ error: 'Applicant portal access has not been created yet.' });
+        }
+
+        const body = [
+          `Dear ${application.firstName},`,
+          '',
+          'Your Sulandra Health applicant-portal access has been reset.',
+          `Portal: ${portalUrl}`,
+          `Username: ${username}`,
+          `Temporary password: ${temporaryPassword}`,
+          '',
+          'You will be asked to create a permanent password after signing in.',
+          `Application reference: ${application.referenceNumber}`,
+          '',
+          'Regards,',
+          'Sulandra Health',
+        ].join('\n');
+        const deliveryStatus = await recordAndDeliver(
+          prisma,
+          application,
+          'GENERAL',
+          `Sulandra Health applicant portal access — ${application.referenceNumber}`,
+          body,
+          auth.userId,
+        );
+        await audit(auth, 'RESEND_APPLICANT_ACCESS', 'EmployeeApplication', applicationId, {
+          deliveryStatus,
+        });
+        res.json({ data: { deliveryStatus } });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+
   app.patch(
     '/api/admin/applications/:id/status',
     requireRoles(UserRole.ADMINISTRATOR),
@@ -908,9 +1002,13 @@ export function registerApplicantWorkflowRoutes(
         const document = rows[0];
         if (!document?.fileData) return res.status(404).json({ error: 'Document file is not available.' });
         const safeName = String(document.fileName || 'document').replace(/[^a-zA-Z0-9._ -]/g, '_');
+        const file = Buffer.isBuffer(document.fileData)
+          ? document.fileData
+          : Buffer.from(document.fileData);
         res.setHeader('content-type', document.mimeType || 'application/octet-stream');
         res.setHeader('content-disposition', `attachment; filename="${safeName}"`);
-        res.send(document.fileData);
+        res.setHeader('content-length', String(file.length));
+        res.send(file);
       } catch (error) {
         next(error);
       }
