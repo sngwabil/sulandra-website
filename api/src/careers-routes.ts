@@ -372,12 +372,30 @@ export function registerCareersRoutes(
     } catch (error) {
       if (createdApplicationId) {
         try {
-          await prisma.$executeRawUnsafe(
-            `DELETE FROM "EmployeeApplication" WHERE "id"=$1`,
-            createdApplicationId,
-          );
+          await prisma.$transaction(async (tx) => {
+            await tx.$executeRawUnsafe(
+              `DELETE FROM "ApplicantMessage" WHERE "applicationId"=$1`,
+              createdApplicationId,
+            );
+            await tx.$executeRawUnsafe(
+              `DELETE FROM "ApplicantStatusHistory" WHERE "applicationId"=$1`,
+              createdApplicationId,
+            );
+            await tx.$executeRawUnsafe(
+              `DELETE FROM "ApplicantPortalAccount" WHERE "applicationId"=$1`,
+              createdApplicationId,
+            );
+            await tx.$executeRawUnsafe(
+              `DELETE FROM "ApplicantDocument" WHERE "applicationId"=$1`,
+              createdApplicationId,
+            );
+            await tx.$executeRawUnsafe(
+              `DELETE FROM "EmployeeApplication" WHERE "id"=$1`,
+              createdApplicationId,
+            );
+          });
         } catch {
-          // Preserve the original error; cleanup is limited to the row created by this request.
+          // Preserve the original submission error after best-effort request-scoped cleanup.
         }
       }
       next(error);
@@ -566,7 +584,7 @@ export function registerCareersRoutes(
         auth.organizationId,
       );
       if (!applications[0]) return res.status(404).json({ error: 'Application not found' });
-      const [documents, messages, interviews, history] = await Promise.all([
+      const [documents, messages, history] = await Promise.all([
         prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","applicationId","category","label","status","version","fileName","mimeType",
                   "sizeBytes","uploadedByType","requestedAt","uploadedAt","reviewNotes","reviewedAt",
@@ -579,15 +597,19 @@ export function registerCareersRoutes(
           id,
         ),
         prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "InterviewOption" WHERE "applicationId"=$1 ORDER BY "startsAt"`,
-          id,
-        ),
-        prisma.$queryRawUnsafe<any[]>(
           `SELECT * FROM "ApplicantStatusHistory" WHERE "applicationId"=$1 ORDER BY "createdAt" DESC`,
           id,
         ),
       ]);
-      res.json({ data: { application: applications[0], documents, messages, interviews, history } });
+      res.json({
+        data: {
+          application: applications[0],
+          documents,
+          messages,
+          interviews: [],
+          history,
+        },
+      });
     } catch (error) {
       next(error);
     }
