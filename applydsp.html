@@ -426,7 +426,7 @@
       <ul class="nav-links">
         <li><a href="/index.html">Home</a></li>
         <li><a href="/services.html">Services</a></li>
-        <li><a class="active" href="/Careers.html">Careers</a></li>
+        <li><a class="active" href="/careers.html">Careers</a></li>
         <li><a href="#">About Us</a></li>
         <li><a href="#">Contact</a></li>
       </ul>
@@ -2078,13 +2078,13 @@
 
     function getDspSubmissionId(){
       try{
-        let value = window.localStorage.getItem(DSP_SUBMISSION_ID_KEY);
+        let value = window.sessionStorage.getItem(DSP_SUBMISSION_ID_KEY);
         if(!value){
           const unique = window.crypto?.randomUUID
             ? window.crypto.randomUUID()
             : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
           value = `DSP-${unique}`;
-          window.localStorage.setItem(DSP_SUBMISSION_ID_KEY, value);
+          window.sessionStorage.setItem(DSP_SUBMISSION_ID_KEY, value);
         }
         return value;
       } catch {
@@ -2094,7 +2094,7 @@
 
     function clearDspSubmissionId(){
       try{
-        window.localStorage.removeItem(DSP_SUBMISSION_ID_KEY);
+        window.sessionStorage.removeItem(DSP_SUBMISSION_ID_KEY);
       } catch {
         // Submission already succeeded; storage cleanup is non-critical.
       }
@@ -2165,7 +2165,7 @@
           phone: $('phone').value.trim(),
           appliedRole: 'DSP',
           preferredCommunication: 'EMAIL',
-          notes: base.why || base.exp || null,
+          notes: base.why || null,
           applicationData: base,
           assessmentAnswers: base,
           documents
