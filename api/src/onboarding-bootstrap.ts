@@ -12,6 +12,9 @@ type AuthContext = {
   userId: string;
   organizationId: string;
   role: UserRole;
+  email?: string;
+  ipAddress?: string;
+  userAgent?: string;
 };
 
 type AuthTokenClaims = JwtPayload & {
@@ -72,12 +75,14 @@ const chartWriteRoles = new Set<UserRole>([
 const chartReadRoles = new Set<UserRole>([
   ...chartWriteRoles,
   UserRole.AUDITOR,
+  UserRole.COO,
 ]);
 const administrationRoles = new Set<UserRole>([
   UserRole.ADMINISTRATOR,
   UserRole.PROGRAM_MANAGER,
   UserRole.HR_MANAGER,
   UserRole.CEO,
+  UserRole.COO,
 ]);
 const clientOrigins = new Set([
   'https://sulandrahealth.com',
@@ -175,10 +180,14 @@ const verifyPortalPassword = (password: string, encodedHash: string | null) => {
   }
 };
 
-const roleTitle = (role: UserRole) => role
-  .toLowerCase()
-  .replace(/_/g, ' ')
-  .replace(/\b\w/g, (character) => character.toUpperCase());
+const roleTitle = (role: UserRole) => {
+  if (role === UserRole.COO) return 'Chief Operating Officer';
+  if (role === UserRole.CEO) return 'Chief Executive Officer';
+  return role
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+};
 
 const stringField = (record: Record<string, unknown> | null, ...keys: string[]) => {
   for (const key of keys) {
@@ -248,7 +257,12 @@ const internalAuth = (req: express.Request): AuthContext | null => {
   const roleValue = req.header('x-user-role') ?? UserRole.ADMINISTRATOR;
 
   if (!organizationId || !userId || !isUserRole(roleValue)) return null;
-  return { organizationId, userId, role: roleValue };
+  return {
+    organizationId,
+    userId,
+    role: roleValue,
+    email: req.header('x-user-email')?.trim().toLowerCase() || administratorEmail,
+  };
 };
 
 const tokenAuth = (req: express.Request): AuthContext | null => {
@@ -273,6 +287,9 @@ const tokenAuth = (req: express.Request): AuthContext | null => {
       userId: claims.sub,
       organizationId: claims.organizationId,
       role: claims.role,
+      email: typeof claims.email === 'string'
+        ? claims.email.trim().toLowerCase()
+        : administratorEmail,
     };
   } catch {
     return null;
@@ -655,7 +672,11 @@ app.use((req, res, next) => {
     return;
   }
 
-  res.locals.auth = auth;
+  res.locals.auth = {
+    ...auth,
+    ipAddress: req.ip || req.socket.remoteAddress || '0.0.0.0',
+    userAgent: req.get('user-agent')?.trim() || 'Sulandra Health API',
+  };
   next();
 });
 
@@ -694,6 +715,31 @@ const audit = async (
   metadata?: object,
 ) => {
   try {
+    const organizationId = auth.organizationId
+      ?? process.env.CAREERS_ORGANIZATION_ID?.trim()
+      ?? null;
+    const userId = auth.userId
+      ?? process.env.PRIMARY_ADMIN_USER_ID?.trim()
+      ?? null;
+    let actorEmail = auth.email?.trim().toLowerCase() || null;
+    if (!actorEmail && userId) {
+      try {
+        const users = await prisma.$queryRawUnsafe<Array<{ email: string | null }>>(
+          `SELECT "email" FROM "User" WHERE "id"=$1 LIMIT 1`,
+          userId,
+        );
+        actorEmail = users[0]?.email?.trim().toLowerCase() || null;
+      } catch (error) {
+        console.warn('[audit] actor email lookup failed; using the configured HR identity', {
+          userId,
+          error,
+        });
+      }
+    }
+    actorEmail ||= administratorEmail;
+    const ipAddress = auth.ipAddress?.trim() || '0.0.0.0';
+    const userAgent = auth.userAgent?.trim() || 'Sulandra Health API';
+
     if (!auditColumnNames) {
       const columns = await prisma.$queryRawUnsafe<Array<{ columnName: string }>>(
         `SELECT "column_name" AS "columnName"
@@ -705,12 +751,11 @@ const audit = async (
 
     const candidates = [
       { name: 'id', value: randomUUID() },
-      { name: 'organizationId', value: auth.organizationId ?? null },
-      { name: 'userId', value: auth.userId ?? null },
-      { name: 'actorId', value: auth.userId ?? null },
-      { name: 'actorUserId', value: auth.userId ?? null },
-      { name: 'performedById', value: auth.userId ?? null },
-      { name: 'actorRole', value: auth.role ?? null },
+      { name: 'organizationId', value: organizationId },
+      { name: 'userId', value: userId },
+      { name: 'actorEmail', value: actorEmail },
+      { name: 'ipAddress', value: ipAddress },
+      { name: 'userAgent', value: userAgent },
       { name: 'action', value: action },
       { name: 'resourceType', value: resourceType },
       { name: 'resourceId', value: resourceId ?? null },
@@ -815,12 +860,12 @@ const provisionPortalCredential: express.RequestHandler = async (req, res, next)
 
 app.post(
   '/api/admin/portal-credentials',
-  requireRoles(UserRole.ADMINISTRATOR),
+  requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
   provisionPortalCredential,
 );
 app.put(
   '/api/admin/users/:userId/credentials',
-  requireRoles(UserRole.ADMINISTRATOR),
+  requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
   provisionPortalCredential,
 );
 
