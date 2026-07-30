@@ -89,141 +89,6 @@ const careersFromEmail = (
   ?? 'admin@sulandrahealth.com'
 ).trim().toLowerCase();
 
-type CompanyDetails = {
-  companyName: string;
-  addressLine1: string;
-  addressLine2: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  emailDisplayName: string;
-};
-
-const defaultCompanyDetails: CompanyDetails = {
-  companyName: 'Sulandra Health',
-  addressLine1: '822 Dalewood Pl',
-  addressLine2: 'Suite A',
-  city: 'Dayton',
-  state: 'Ohio',
-  postalCode: '45426',
-  emailDisplayName: 'Human Resources',
-};
-
-function companyAddress(details: CompanyDetails) {
-  return [
-    details.addressLine1,
-    details.addressLine2,
-    details.city,
-    details.state,
-    details.postalCode,
-  ].filter(Boolean).join(', ');
-}
-
-function escapeHtml(value: unknown) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-async function companyDetailsForApplication(
-  prisma: PrismaClient,
-  applicationId: string,
-): Promise<CompanyDetails> {
-  try {
-    const [row] = await prisma.$queryRawUnsafe<Partial<CompanyDetails>[]>(
-      `SELECT s."companyName",s."addressLine1",s."addressLine2",s."city",
-              s."state",s."postalCode",s."emailDisplayName"
-         FROM "EmployeeApplication" a
-         LEFT JOIN "CompanySetting" s ON s."organizationId"=a."organizationId"
-        WHERE a."id"=$1`,
-      applicationId,
-    );
-    return { ...defaultCompanyDetails, ...(row ?? {}) };
-  } catch {
-    return defaultCompanyDetails;
-  }
-}
-
-async function companyDetailsForOrganization(
-  prisma: PrismaClient,
-  organizationId: string,
-): Promise<CompanyDetails> {
-  try {
-    const [row] = await prisma.$queryRawUnsafe<Partial<CompanyDetails>[]>(
-      `SELECT "companyName","addressLine1","addressLine2","city","state","postalCode","emailDisplayName"
-         FROM "CompanySetting" WHERE "organizationId"=$1`,
-      organizationId,
-    );
-    return { ...defaultCompanyDetails, ...(row ?? {}) };
-  } catch {
-    return defaultCompanyDetails;
-  }
-}
-
-function formatInterviewDate(value: Date | string) {
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZoneName: 'short',
-  }).format(new Date(value));
-}
-
-function interviewEmail(
-  application: any,
-  details: CompanyDetails,
-  kind: 'INVITATION' | 'CONFIRMATION' | 'RESCHEDULED' | 'REMINDER',
-  startsAt?: Date | string,
-): EmailContent {
-  const name = application.firstName || 'Applicant';
-  const reference = application.referenceNumber || application.id;
-  const scheduled = startsAt ? formatInterviewDate(startsAt) : '';
-  const address = companyAddress(details);
-  const headline = kind === 'INVITATION'
-    ? 'Choose your interview time'
-    : kind === 'REMINDER'
-      ? 'Your interview begins in approximately one hour'
-      : kind === 'RESCHEDULED'
-        ? 'Your interview has been rescheduled'
-        : 'Your interview is confirmed';
-  const body = kind === 'INVITATION'
-    ? `We would like to invite you to interview for the ${application.jobTitle || 'open'} position. Sign in to your applicant portal to choose one of the available 30-minute time slots.`
-    : `${headline} for ${scheduled} at ${address}.`;
-  const rescheduling = kind === 'CONFIRMATION' || kind === 'RESCHEDULED'
-    ? 'Changing your interview date does not guarantee position availability, as roles may be filled prior to your new date.'
-    : '';
-  const text = [
-    `Dear ${name},`,
-    '',
-    body,
-    kind === 'INVITATION' ? `Applicant portal: ${portalUrl}` : '',
-    rescheduling,
-    '',
-    `Application reference: ${reference}`,
-  ].filter(Boolean).join('\n');
-  const html = `<!doctype html><html><body style="margin:0;background:#eef5fb;font-family:Arial,sans-serif;color:#17324d">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef5fb;padding:30px 12px"><tr><td align="center">
-      <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="max-width:620px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 35px rgba(11,75,121,.14)">
-        <tr><td style="background:linear-gradient(135deg,#075c99,#19a9d5);padding:28px 34px;border-bottom:6px solid #e8b94f"><div style="font-size:27px;font-weight:800;color:#fff"><em>Sulandra</em> Health</div><div style="color:#d8efff;margin-top:5px">Interview Scheduling</div></td></tr>
-        <tr><td style="padding:34px"><h1 style="color:#12345a;font-size:25px">${escapeHtml(headline)}</h1><p style="font-size:16px;line-height:1.7">Dear <strong>${escapeHtml(name)}</strong>,</p><p style="font-size:16px;line-height:1.7">${escapeHtml(body)}</p>
-          ${kind === 'INVITATION' ? `<p><a href="${portalUrl}" style="display:inline-block;background:#0877b9;color:#fff;text-decoration:none;font-weight:800;padding:13px 19px;border-radius:10px">Choose an interview time</a></p>` : ''}
-          ${scheduled ? `<div style="background:#eef8fd;border-left:5px solid #e8b94f;padding:16px;margin:20px 0"><strong>${escapeHtml(scheduled)}</strong><br>${escapeHtml(address)}</div>` : ''}
-          ${rescheduling ? `<p style="color:#6b4e13;background:#fff8e6;padding:13px;border-radius:9px"><strong>${escapeHtml(rescheduling)}</strong></p>` : ''}
-          <p style="color:#657c90;font-size:13px">Application reference: <strong>${escapeHtml(reference)}</strong></p>
-        </td></tr>
-      </table>
-    </td></tr></table>
-  </body></html>`;
-  return { text, html };
-}
-
 function normalizePhone(value?: string | null) {
   return (value ?? '').replace(/[^\d+]/g, '');
 }
@@ -459,51 +324,7 @@ async function graphAccessToken() {
   return payload.access_token ?? null;
 }
 
-type EmailContent = string | { text: string; html: string };
-
-function emailText(content: EmailContent) {
-  return typeof content === 'string' ? content : content.text;
-}
-
-function emailHtml(content: EmailContent) {
-  return typeof content === 'string'
-    ? content.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>')
-    : content.html;
-}
-
-function withAutomatedEmailFooter(
-  content: EmailContent,
-  details: CompanyDetails,
-  includeEmploymentDisclaimer: boolean,
-): EmailContent {
-  const notice = `This inbox is unmonitored and cannot accept replies.`;
-  const employment = includeEmploymentDisclaimer ? 'This is not an offer of employment.' : '';
-  const address = companyAddress(details);
-  const text = [
-    emailText(content),
-    '',
-    details.emailDisplayName,
-    notice,
-    address,
-    employment,
-  ].filter(Boolean).join('\n');
-  const footer = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:28px;border-top:1px solid #d9e7f2"><tr><td style="padding-top:20px">
-    <div style="color:#38a9e0;font-weight:800;font-style:italic;font-size:16px">${escapeHtml(details.emailDisplayName)}</div>
-    <div style="color:#6a7f91;font-size:12px;line-height:1.55;margin-top:5px"><strong>${escapeHtml(notice)}</strong><br>${escapeHtml(address)}${employment ? `<br><em>${escapeHtml(employment)}</em>` : ''}</div>
-  </td></tr></table>`;
-  const baseHtml = emailHtml(content);
-  const html = /<\/body>/i.test(baseHtml)
-    ? baseHtml.replace(/<\/body>/i, `${footer}</body>`)
-    : `${baseHtml}${footer}`;
-  return { text, html };
-}
-
-async function sendEmail(
-  to: string,
-  subject: string,
-  content: EmailContent,
-  details: CompanyDetails,
-) {
+async function sendEmail(to: string, subject: string, body: string) {
   const token = await graphAccessToken();
   if (token) {
     const response = await fetch(
@@ -514,14 +335,9 @@ async function sendEmail(
         body: JSON.stringify({
           message: {
             subject,
-            from: {
-              emailAddress: {
-                address: careersFromEmail,
-                name: details.emailDisplayName,
-              },
-            },
-            body: { contentType: 'HTML', content: emailHtml(content) },
+            body: { contentType: 'HTML', content: body.replaceAll('\n', '<br>') },
             toRecipients: [{ emailAddress: { address: to } }],
+            replyTo: [{ emailAddress: { address: careersFromEmail } }],
           },
           saveToSentItems: true,
         }),
@@ -549,14 +365,12 @@ async function sendEmail(
     auth: { user: smtpUser, pass: smtpPass },
   });
   const result = await transporter.sendMail({
-    from: {
-      name: details.emailDisplayName,
-      address: careersFromEmail || smtpUser,
-    },
+    from: process.env.SMTP_FROM?.trim() || careersFromEmail || smtpUser,
     to,
+    replyTo: careersFromEmail,
     subject,
-    text: emailText(content),
-    html: emailHtml(content),
+    text: body,
+    html: body.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>'),
   });
   return { status: 'SENT', providerMessageId: result.messageId || null };
 }
@@ -631,15 +445,9 @@ export async function recordAndDeliver(
   },
   type: string,
   subject: string,
-  body: EmailContent,
+  body: string,
   createdById?: string | null,
 ) {
-  const companyDetails = await companyDetailsForApplication(prisma, application.id);
-  const deliveredBody = withAutomatedEmailFooter(
-    body,
-    companyDetails,
-    !/official\s+offer\s+letter/i.test(subject),
-  );
   const email = application.email?.trim().toLowerCase() || null;
   const phone = normalizePhone(application.phone);
   const requested = application.preferredCommunication === 'SMS' ? 'SMS' : 'EMAIL';
@@ -654,7 +462,7 @@ export async function recordAndDeliver(
       application.id,
       type,
       subject,
-      emailText(deliveredBody),
+      body,
       email,
       phone || null,
       channel,
@@ -668,9 +476,9 @@ export async function recordAndDeliver(
 
   try {
     const delivery = channel === 'SMS'
-      ? await sendSms(phone, emailText(deliveredBody).replace(/\s+/g, ' ').slice(0, 1500))
+      ? await sendSms(phone, body.replace(/\s+/g, ' ').slice(0, 1500))
       : email
-        ? await sendEmail(email, subject, deliveredBody, companyDetails)
+        ? await sendEmail(email, subject, body)
         : { status: 'FAILED', providerMessageId: null };
     await prisma.$executeRawUnsafe(
       `UPDATE "ApplicantMessage"
@@ -712,7 +520,10 @@ function welcomeMessage(input: ProvisionApplicantInput, username: string, tempor
     `Temporary password: ${temporaryPassword}`,
     '',
     'You will be asked to create a permanent password after your first sign-in. Please monitor your application periodically for updates.',
-    'Please use the applicant portal for application updates and requested documents.',
+    `If you have questions, email ${careersFromEmail} and include application reference ${input.referenceNumber}. A member of HR Services will reach out to guide you.`,
+    '',
+    'Regards,',
+    'Sulandra Health',
   ].join('\n');
 }
 
@@ -861,76 +672,11 @@ function statusMessage(application: any, status: ApplicationStatus, note?: strin
     note ? `Update from HR Services: ${note}` : '',
     '',
     `View your application: ${portalUrl}`,
-    'Please use the applicant portal for application updates and requested documents.',
-  ].filter(Boolean).join('\n');
-}
-
-function careersDecisionEmail(
-  application: any,
-  kind: 'ARCHIVED' | 'REJECTED' | 'RESTORED',
-): EmailContent {
-  const name = application.firstName || 'Applicant';
-  const position = application.jobTitle || application.positionTitle || application.appliedRole || 'position';
-  const reference = application.referenceNumber || application.id;
-  const isArchived = kind === 'ARCHIVED';
-  const isRestored = kind === 'RESTORED';
-  const headline = isRestored
-    ? 'A new opportunity is available'
-    : isArchived
-      ? 'Application retained for future opportunities'
-      : 'Update regarding your application';
-  const decision = isRestored
-    ? `A new opening is available for the ${position} position. We would be pleased to revisit your application.`
-    : isArchived
-      ? `We regret to inform you that the ${position} position you applied for is now full.`
-      : `After careful consideration, we will not be moving forward with your application for the ${position} position.`;
-  const future = isArchived
-    ? 'We appreciate your interest in working with Sulandra Health. We will keep your application on file and may reach out when another opening becomes available for this position.'
-    : isRestored
-      ? `Please sign in to the applicant portal to review your application, or reply to this email if you would like to be considered.`
-      : 'We sincerely appreciate the time and interest you invested in applying to Sulandra Health, and we wish you every success in your career search.';
-  const eeo = 'Sulandra Health is an equal opportunity employer. Employment decisions are based on legitimate, job-related considerations and are made without unlawful discrimination based on race, color, religion, sex (including pregnancy, sexual orientation, and gender identity), national origin, age, disability, genetic information, veteran status, or any other status protected by applicable law.';
-  const safeName = name.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-  const safeDecision = decision.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-  const safeFuture = future.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-  const safeReference = String(reference).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-  const text = [
-    `Dear ${name},`,
+    `Questions may be sent to ${careersFromEmail}. Please include your application reference number.`,
     '',
-    decision,
-    '',
-    future,
-    isRestored ? `Applicant portal: ${portalUrl}` : '',
-    '',
-    eeo,
-    '',
-    `Application reference: ${reference}`,
-    '',
-    'Best regards,',
+    'Regards,',
     'Sulandra Health',
   ].filter(Boolean).join('\n');
-  const html = `<!doctype html><html><body style="margin:0;background:#eef5fb;font-family:Arial,sans-serif;color:#17324d">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef5fb;padding:30px 12px"><tr><td align="center">
-      <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="max-width:620px;width:100%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 35px rgba(11,75,121,.14)">
-        <tr><td style="background:linear-gradient(135deg,#075c99,#0b78bb);padding:28px 34px;border-bottom:6px solid #e8b94f">
-          <div style="font-size:27px;font-weight:800;color:#fff"><span style="font-style:italic">Sulandra</span> Health</div>
-          <div style="color:#d8efff;margin-top:5px;font-size:14px">Careers &amp; Onboarding</div>
-        </td></tr>
-        <tr><td style="padding:34px">
-          <div style="font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#0b78bb;font-weight:800">Application update</div>
-          <h1 style="font-size:25px;line-height:1.25;color:#12345a;margin:8px 0 24px">${headline}</h1>
-          <p style="font-size:16px;line-height:1.7;margin:0 0 17px">Dear <strong>${safeName}</strong>,</p>
-          <p style="font-size:16px;line-height:1.7;margin:0 0 17px">${safeDecision}</p>
-          <p style="font-size:16px;line-height:1.7;margin:0 0 22px"><strong><em>${safeFuture}</em></strong></p>
-          ${isRestored ? `<p style="margin:0 0 24px"><a href="${portalUrl}" style="display:inline-block;background:#0b6fac;color:#fff;text-decoration:none;font-weight:800;padding:12px 18px;border-radius:10px">Open applicant portal</a></p>` : ''}
-          <div style="background:#f4f8fc;border-left:4px solid #e8b94f;padding:15px 17px;color:#536b80;font-size:13px;line-height:1.55">${eeo}</div>
-          <p style="color:#657c90;font-size:13px;margin:22px 0">Application reference: <strong>${safeReference}</strong></p>
-          <p style="font-size:15px;line-height:1.6;margin:0">Best regards,<br><strong style="color:#075c99"><em>Sulandra Health</em></strong></p>
-        </td></tr>
-      </table>
-    </td></tr></table>
-  </body></html>`;
-  return { text, html };
 }
 
 export function registerApplicantWorkflowRoutes(
@@ -1013,7 +759,7 @@ export function registerApplicantWorkflowRoutes(
         auth.applicationId,
       );
       if (!applications[0]) return res.status(404).json({ error: 'Application not found.' });
-      const [documents, history, messages, interviewSlots, companyDetails] = await Promise.all([
+      const [documents, history, messages] = await Promise.all([
         prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","category","label","status","fileName","mimeType","sizeBytes","requestedAt","uploadedAt","reviewNotes","updatedAt"
              FROM "ApplicantDocument" WHERE "applicationId"=$1 ORDER BY "category","version" DESC`,
@@ -1030,34 +776,8 @@ export function registerApplicantWorkflowRoutes(
              FROM "ApplicantMessage" WHERE "applicationId"=$1 ORDER BY "createdAt" DESC LIMIT 50`,
           auth.applicationId,
         ),
-        prisma.$queryRawUnsafe<any[]>(
-          `SELECT s."id",s."startsAt",s."endsAt",s."mode",s."locationOrLink",s."status",
-                  s."bookedApplicationId"=$1 AS "selectedByApplicant",
-                  s."bookedApplicationId" IS NOT NULL AND s."bookedApplicationId"<>$1 AS "unavailable"
-             FROM "InterviewSlotInvitation" i
-             JOIN "InterviewSlot" s ON s."id"=i."slotId"
-            WHERE i."applicationId"=$1 AND s."status"<>'CANCELLED' AND s."startsAt">NOW()
-            ORDER BY s."startsAt"`,
-          auth.applicationId,
-        ),
-        companyDetailsForApplication(prisma, auth.applicationId),
       ]);
-      res.json({
-        data: {
-          application: applications[0],
-          documents,
-          history,
-          messages,
-          interview: {
-            slots: interviewSlots,
-            selectedSlot: interviewSlots.find((slot) => slot.selectedByApplicant) ?? null,
-          },
-          companyDetails: {
-            ...companyDetails,
-            formattedAddress: companyAddress(companyDetails),
-          },
-        },
-      });
+      res.json({ data: { application: applications[0], documents, history, messages } });
     } catch (error) {
       next(error);
     }
@@ -1077,88 +797,6 @@ export function registerApplicantWorkflowRoutes(
         auth.applicationId,
       );
       res.json({ data: { changed: true } });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.post('/public/careers/applicant/interview/select', async (req, res, next) => {
-    try {
-      const auth = applicantAuth(req);
-      if (!auth) return res.status(401).json({ error: 'Applicant authentication required.' });
-      const input = z.object({ slotId: z.string().uuid() }).parse(req.body);
-      const result = await prisma.$transaction(async (tx) => {
-        const [slot] = await tx.$queryRawUnsafe<any[]>(
-          `SELECT s.*
-             FROM "InterviewSlot" s
-             JOIN "InterviewSlotInvitation" i ON i."slotId"=s."id"
-            WHERE s."id"=$1 AND i."applicationId"=$2
-            FOR UPDATE`,
-          input.slotId,
-          auth.applicationId,
-        );
-        if (!slot || slot.status === 'CANCELLED' || new Date(slot.startsAt).getTime() <= Date.now()) {
-          return { error: 'This interview time is no longer available.', status: 409 };
-        }
-        if (slot.bookedApplicationId && slot.bookedApplicationId !== auth.applicationId) {
-          return { error: 'Another applicant selected this time. Please choose another slot.', status: 409 };
-        }
-        const [previous] = await tx.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "InterviewSlot"
-            WHERE "bookedApplicationId"=$1 AND "id"<>$2
-            FOR UPDATE`,
-          auth.applicationId,
-          input.slotId,
-        );
-        if (previous) {
-          await tx.$executeRawUnsafe(
-            `UPDATE "InterviewSlot"
-                SET "status"='AVAILABLE',"bookedApplicationId"=NULL,"bookedAt"=NULL,
-                    "reminderSentAt"=NULL,"updatedAt"=NOW()
-              WHERE "id"=$1`,
-            previous.id,
-          );
-        }
-        await tx.$executeRawUnsafe(
-          `UPDATE "InterviewSlot"
-              SET "status"='BOOKED',"bookedApplicationId"=$1,"bookedAt"=NOW(),
-                  "reminderSentAt"=NULL,"updatedAt"=NOW()
-            WHERE "id"=$2`,
-          auth.applicationId,
-          slot.id,
-        );
-        return { slot, rescheduled: Boolean(previous) };
-      });
-      if ('error' in result) return res.status(result.status ?? 409).json({ error: result.error });
-      const [application] = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT a.*,j."title" AS "jobTitle"
-           FROM "EmployeeApplication" a
-           LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-          WHERE a."id"=$1`,
-        auth.applicationId,
-      );
-      const details = await companyDetailsForApplication(prisma, auth.applicationId);
-      const deliveryStatus = await recordAndDeliver(
-        prisma,
-        application,
-        'INTERVIEW_INVITATION',
-        `Interview ${result.rescheduled ? 'rescheduled' : 'confirmed'} — ${application.referenceNumber}`,
-        interviewEmail(
-          application,
-          details,
-          result.rescheduled ? 'RESCHEDULED' : 'CONFIRMATION',
-          result.slot.startsAt,
-        ),
-      );
-      res.json({
-        data: {
-          selected: true,
-          rescheduled: result.rescheduled,
-          startsAt: result.slot.startsAt,
-          endsAt: result.slot.endsAt,
-          deliveryStatus,
-        },
-      });
     } catch (error) {
       next(error);
     }
@@ -1200,165 +838,9 @@ export function registerApplicantWorkflowRoutes(
     }
   });
 
-  app.get(
-    '/api/admin/company-settings',
-    requireRoles(UserRole.ADMINISTRATOR),
-    async (_req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const details = await companyDetailsForOrganization(prisma, auth.organizationId);
-        res.json({ data: details });
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
-  app.patch(
-    '/api/admin/company-settings',
-    requireRoles(UserRole.ADMINISTRATOR),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const input = z.object({
-          companyName: z.string().trim().min(2).max(160),
-          addressLine1: z.string().trim().min(2).max(200),
-          addressLine2: z.string().trim().max(120).default(''),
-          city: z.string().trim().min(2).max(120),
-          state: z.string().trim().min(2).max(80),
-          postalCode: z.string().trim().min(3).max(20),
-          emailDisplayName: z.string().trim().min(2).max(120),
-        }).parse(req.body);
-        await prisma.$executeRawUnsafe(
-          `INSERT INTO "CompanySetting"
-            ("organizationId","companyName","addressLine1","addressLine2","city","state","postalCode",
-             "emailDisplayName","updatedById","createdAt","updatedAt")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())
-           ON CONFLICT ("organizationId") DO UPDATE SET
-             "companyName"=EXCLUDED."companyName","addressLine1"=EXCLUDED."addressLine1",
-             "addressLine2"=EXCLUDED."addressLine2","city"=EXCLUDED."city","state"=EXCLUDED."state",
-             "postalCode"=EXCLUDED."postalCode","emailDisplayName"=EXCLUDED."emailDisplayName",
-             "updatedById"=EXCLUDED."updatedById","updatedAt"=NOW()`,
-          auth.organizationId,
-          input.companyName,
-          input.addressLine1,
-          input.addressLine2,
-          input.city,
-          input.state,
-          input.postalCode,
-          input.emailDisplayName,
-          auth.userId,
-        );
-        await prisma.$executeRawUnsafe(
-          `UPDATE "InterviewSlot"
-              SET "locationOrLink"=$1,"updatedAt"=NOW()
-            WHERE "organizationId"=$2 AND "mode"='IN_PERSON' AND "startsAt">NOW()`,
-          companyAddress(input),
-          auth.organizationId,
-        );
-        await audit(auth, 'UPDATE_COMPANY_SETTINGS', 'CompanySetting', auth.organizationId);
-        res.json({ data: input });
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
-  app.post(
-    '/api/admin/applications/:id/interview-slots',
-    requireRoles(UserRole.ADMINISTRATOR),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const applicationId = String(req.params.id);
-        const input = z.object({
-          startsAt: z.array(z.coerce.date()).min(1).max(30),
-          note: z.string().trim().max(4000).optional(),
-        }).parse(req.body);
-        const uniqueTimes = [...new Set(input.startsAt.map((value) => value.toISOString()))]
-          .map((value) => new Date(value));
-        if (uniqueTimes.some((value) => value.getTime() <= Date.now())) {
-          return res.status(400).json({ error: 'Interview slots must be in the future.' });
-        }
-        const [application] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT a.*,j."title" AS "jobTitle"
-             FROM "EmployeeApplication" a
-             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1 AND a."organizationId"=$2`,
-          applicationId,
-          auth.organizationId,
-        );
-        if (!application) return res.status(404).json({ error: 'Application not found.' });
-        const details = await companyDetailsForOrganization(prisma, auth.organizationId);
-        const slotIds: string[] = [];
-        await prisma.$transaction(async (tx) => {
-          for (const startsAt of uniqueTimes) {
-            const id = randomUUID();
-            const endsAt = new Date(startsAt.getTime() + 30 * 60 * 1000);
-            const [slot] = await tx.$queryRawUnsafe<Array<{ id: string }>>(
-              `INSERT INTO "InterviewSlot"
-                ("id","organizationId","startsAt","endsAt","mode","locationOrLink","status",
-                 "createdById","createdAt","updatedAt")
-               VALUES ($1,$2,$3,$4,'IN_PERSON',$5,'AVAILABLE',$6,NOW(),NOW())
-               ON CONFLICT ("organizationId","startsAt") DO UPDATE SET
-                 "endsAt"=EXCLUDED."endsAt","locationOrLink"=EXCLUDED."locationOrLink",
-                 "status"=CASE WHEN "InterviewSlot"."bookedApplicationId" IS NULL THEN 'AVAILABLE'
-                               ELSE "InterviewSlot"."status" END,
-                 "updatedAt"=NOW()
-               RETURNING "id"`,
-              id,
-              auth.organizationId,
-              startsAt,
-              endsAt,
-              companyAddress(details),
-              auth.userId,
-            );
-            slotIds.push(slot.id);
-            await tx.$executeRawUnsafe(
-              `INSERT INTO "InterviewSlotInvitation" ("slotId","applicationId","createdAt")
-               VALUES ($1,$2,NOW()) ON CONFLICT DO NOTHING`,
-              slot.id,
-              applicationId,
-            );
-          }
-          const previousStatus = application.workflowStatus || application.status || 'RECEIVED';
-          await tx.$executeRawUnsafe(
-            `UPDATE "EmployeeApplication" SET "workflowStatus"='INTERVIEW',"updatedAt"=NOW() WHERE "id"=$1`,
-            applicationId,
-          );
-          await tx.$executeRawUnsafe(
-            `INSERT INTO "ApplicantStatusHistory"
-              ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt")
-             VALUES ($1,$2,$3,'INTERVIEW',$4,TRUE,$5,NOW())`,
-            randomUUID(),
-            applicationId,
-            previousStatus,
-            input.note || 'Interview requested. Please choose an available time in the applicant portal.',
-            auth.userId,
-          );
-        });
-        const deliveryStatus = await recordAndDeliver(
-          prisma,
-          application,
-          'INTERVIEW_INVITATION',
-          `Choose your Sulandra Health interview time — ${application.referenceNumber}`,
-          interviewEmail(application, details, 'INVITATION'),
-          auth.userId,
-        );
-        await audit(auth, 'CREATE_INTERVIEW_SLOTS', 'EmployeeApplication', applicationId, {
-          slotCount: slotIds.length,
-          deliveryStatus,
-        });
-        res.status(201).json({ data: { workflowStatus: 'INTERVIEW', slotIds, deliveryStatus } });
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
   app.post(
     '/api/admin/applications/:id/resend-access',
-    requireRoles(UserRole.ADMINISTRATOR),
+    requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
     async (req, res, next) => {
       try {
         const auth = authOf(res);
@@ -1402,6 +884,9 @@ export function registerApplicantWorkflowRoutes(
           '',
           'You will be asked to create a permanent password after signing in.',
           `Application reference: ${application.referenceNumber}`,
+          '',
+          'Regards,',
+          'Sulandra Health',
         ].join('\n');
         const deliveryStatus = await recordAndDeliver(
           prisma,
@@ -1423,7 +908,7 @@ export function registerApplicantWorkflowRoutes(
 
   app.patch(
     '/api/admin/applications/:id/status',
-    requireRoles(UserRole.ADMINISTRATOR),
+    requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
     async (req, res, next) => {
       try {
         const auth = authOf(res);
@@ -1434,19 +919,6 @@ export function registerApplicantWorkflowRoutes(
           visibleToApplicant: z.boolean().default(true),
           notifyApplicant: z.boolean().default(true),
         }).parse(req.body);
-        if (
-          input.status === 'NOT_SELECTED'
-          || input.status === 'POSITION_FILLED'
-          || input.status === 'INTERVIEW'
-        ) {
-          return res.status(400).json({
-            error: input.status === 'NOT_SELECTED'
-              ? 'Use the reject action so the regret email is sent before permanent deletion.'
-              : input.status === 'POSITION_FILLED'
-                ? 'Use the archive action so the position-filled email and retention workflow are applied.'
-                : 'Use the interview scheduler so available 30-minute slots are created and emailed.',
-          });
-        }
         const applications = await prisma.$queryRawUnsafe<any[]>(
           `SELECT a.*,j."title" AS "jobTitle"
              FROM "EmployeeApplication" a
@@ -1506,162 +978,9 @@ export function registerApplicantWorkflowRoutes(
     },
   );
 
-  app.post(
-    '/api/admin/applications/:id/archive',
-    requireRoles(UserRole.ADMINISTRATOR),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const applicationId = String(req.params.id);
-        const [application] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT a.*,j."title" AS "jobTitle"
-             FROM "EmployeeApplication" a
-             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1 AND a."organizationId"=$2`,
-          applicationId,
-          auth.organizationId,
-        );
-        if (!application) return res.status(404).json({ error: 'Application not found.' });
-        const previousStatus = application.workflowStatus || application.status || 'RECEIVED';
-        await prisma.$transaction(async (tx) => {
-          await tx.$executeRawUnsafe(
-            `UPDATE "EmployeeApplication" SET "workflowStatus"='POSITION_FILLED',"updatedAt"=NOW() WHERE "id"=$1`,
-            applicationId,
-          );
-          await tx.$executeRawUnsafe(
-            `INSERT INTO "ApplicantStatusHistory"
-              ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt")
-             VALUES ($1,$2,$3,'POSITION_FILLED',$4,TRUE,$5,NOW())`,
-            randomUUID(),
-            applicationId,
-            previousStatus,
-            'The position has been filled. Your application will be retained for future openings.',
-            auth.userId,
-          );
-        });
-        const deliveryStatus = await recordAndDeliver(
-          prisma,
-          application,
-          'STATUS_UPDATE',
-          `Sulandra Health application update — ${application.referenceNumber}`,
-          careersDecisionEmail(application, 'ARCHIVED'),
-          auth.userId,
-        );
-        await audit(auth, 'ARCHIVE_APPLICATION', 'EmployeeApplication', applicationId, {
-          fromStatus: previousStatus,
-          deliveryStatus,
-        });
-        res.json({ data: { id: applicationId, workflowStatus: 'POSITION_FILLED', deliveryStatus } });
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
-  app.post(
-    '/api/admin/applications/:id/restore',
-    requireRoles(UserRole.ADMINISTRATOR),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const applicationId = String(req.params.id);
-        const input = z.object({ notifyApplicant: z.boolean().default(true) }).parse(req.body ?? {});
-        const [application] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT a.*,j."title" AS "jobTitle"
-             FROM "EmployeeApplication" a
-             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1 AND a."organizationId"=$2`,
-          applicationId,
-          auth.organizationId,
-        );
-        if (!application) return res.status(404).json({ error: 'Application not found.' });
-        if (String(application.workflowStatus) !== 'POSITION_FILLED') {
-          return res.status(409).json({ error: 'Only archived applications can be revisited.' });
-        }
-        await prisma.$transaction(async (tx) => {
-          await tx.$executeRawUnsafe(
-            `UPDATE "EmployeeApplication" SET "workflowStatus"='REVIEWING',"updatedAt"=NOW() WHERE "id"=$1`,
-            applicationId,
-          );
-          await tx.$executeRawUnsafe(
-            `INSERT INTO "ApplicantStatusHistory"
-              ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt")
-             VALUES ($1,$2,'POSITION_FILLED','REVIEWING',$3,$4,$5,NOW())`,
-            randomUUID(),
-            applicationId,
-            'Sulandra Health is revisiting this application for a new opening.',
-            input.notifyApplicant,
-            auth.userId,
-          );
-        });
-        const deliveryStatus = input.notifyApplicant
-          ? await recordAndDeliver(
-            prisma,
-            application,
-            'STATUS_UPDATE',
-            `A new Sulandra Health opportunity — ${application.referenceNumber}`,
-            careersDecisionEmail(application, 'RESTORED'),
-            auth.userId,
-          )
-          : 'NOT_REQUESTED';
-        await audit(auth, 'RESTORE_ARCHIVED_APPLICATION', 'EmployeeApplication', applicationId, {
-          deliveryStatus,
-        });
-        res.json({ data: { id: applicationId, workflowStatus: 'REVIEWING', deliveryStatus } });
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
-  app.delete(
-    '/api/admin/applications/:id/reject',
-    requireRoles(UserRole.ADMINISTRATOR),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const applicationId = String(req.params.id);
-        const [application] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT a.*,j."title" AS "jobTitle"
-             FROM "EmployeeApplication" a
-             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1 AND a."organizationId"=$2`,
-          applicationId,
-          auth.organizationId,
-        );
-        if (!application) return res.status(404).json({ error: 'Application not found.' });
-        const deliveryStatus = await recordAndDeliver(
-          prisma,
-          application,
-          'STATUS_UPDATE',
-          `Sulandra Health application decision — ${application.referenceNumber}`,
-          careersDecisionEmail(application, 'REJECTED'),
-          auth.userId,
-        );
-        if (deliveryStatus !== 'SENT') {
-          return res.status(502).json({
-            error: 'The rejection email could not be sent, so the applicant was not deleted. Please try again.',
-          });
-        }
-        await prisma.$executeRawUnsafe(
-          `DELETE FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`,
-          applicationId,
-          auth.organizationId,
-        );
-        await audit(auth, 'REJECT_AND_DELETE_APPLICATION', 'EmployeeApplication', applicationId, {
-          referenceNumber: application.referenceNumber,
-          deliveryStatus,
-        });
-        res.json({ data: { id: applicationId, deleted: true, deliveryStatus } });
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
-
   app.patch(
     '/api/admin/applications/:id/documents/:documentId',
-    requireRoles(UserRole.ADMINISTRATOR),
+    requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
     async (req, res, next) => {
       try {
         const auth = authOf(res);
@@ -1719,7 +1038,7 @@ export function registerApplicantWorkflowRoutes(
 
   app.get(
     '/api/admin/applications/:id/documents/:documentId/download',
-    requireRoles(UserRole.ADMINISTRATOR),
+    requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
     async (req, res, next) => {
       try {
         const auth = authOf(res);
@@ -1747,54 +1066,4 @@ export function registerApplicantWorkflowRoutes(
       }
     },
   );
-
-  const sendInterviewReminders = async () => {
-    try {
-      const slots = await prisma.$queryRawUnsafe<any[]>(
-        `UPDATE "InterviewSlot"
-            SET "reminderSentAt"=NOW(),"updatedAt"=NOW()
-          WHERE "id" IN (
-            SELECT "id" FROM "InterviewSlot"
-             WHERE "status"='BOOKED'
-               AND "bookedApplicationId" IS NOT NULL
-               AND "reminderSentAt" IS NULL
-               AND "startsAt">NOW()+INTERVAL '50 minutes'
-               AND "startsAt"<=NOW()+INTERVAL '70 minutes'
-             FOR UPDATE SKIP LOCKED
-          )
-          RETURNING *`,
-      );
-      for (const slot of slots) {
-        const [application] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT a.*,j."title" AS "jobTitle"
-             FROM "EmployeeApplication" a
-             LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1`,
-          slot.bookedApplicationId,
-        );
-        if (!application) continue;
-        const details = await companyDetailsForApplication(prisma, application.id);
-        const deliveryStatus = await recordAndDeliver(
-          prisma,
-          application,
-          'INTERVIEW_INVITATION',
-          `Interview reminder — ${application.referenceNumber}`,
-          interviewEmail(application, details, 'REMINDER', slot.startsAt),
-        );
-        if (deliveryStatus !== 'SENT') {
-          await prisma.$executeRawUnsafe(
-            `UPDATE "InterviewSlot" SET "reminderSentAt"=NULL,"updatedAt"=NOW() WHERE "id"=$1`,
-            slot.id,
-          );
-        }
-      }
-    } catch (error) {
-      console.error('[careers] interview reminder worker failed', safeDeliveryError(error));
-    }
-  };
-  const interviewReminderTimer = setInterval(() => {
-    void sendInterviewReminders();
-  }, 5 * 60 * 1000);
-  interviewReminderTimer.unref();
-  void sendInterviewReminders();
 }
