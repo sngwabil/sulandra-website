@@ -340,6 +340,10 @@
       display:inline-block;
       border:1px solid rgba(230,230,230,.9);
     }
+    .Pending { background:#fef3c7; color:#92400e; border-color:#f59e0b33; }
+    .Reviewed { background:#e0f2fe; color:#075985; border-color:#0284c733; }
+    .Hired { background:#dcfce7; color:#166534; border-color:#22c55e33; }
+    .Rejected { background:#fee2e2; color:#7f1d1d; border-color:#ef444433; }
 
     .score{
       font-weight:900;
@@ -428,7 +432,7 @@
 
       <div class="header-tools">
         <span class="pill hide-mobile" id="adminEmailPill">Admin</span>
-        <span class="pill hide-mobile" id="livePill">Live: connected</span>
+        <span class="pill hide-mobile" id="livePill">Live: connecting…</span>
         <button class="btn-cta secondary hide-mobile" id="refreshBtn" type="button">Refresh</button>
         <button class="btn-cta hide-mobile" id="exportBtn" type="button">Export CSV</button>
         <button class="btn-cta danger" id="btnAdminSignOut" type="button">Sign Out</button>
@@ -532,7 +536,7 @@
                   <div class="field">
                     <label for="statusFilter">Status</label>
                     <select id="statusFilter" onchange="handleStatusChange(this.value)">
-                      <option value="all">All Statuses</option>
+                      <option value="all">All</option>
                       <option value="RECEIVED">Received</option>
                       <option value="REVIEWING">Reviewing</option>
                       <option value="DOCUMENTS_NEEDED">Documents Needed</option>
@@ -547,12 +551,12 @@
                   <div class="field">
                     <label for="jobFilter">Job</label>
                     <select id="jobFilter">
-                      <option value="all">All Jobs</option>
-                      <option value="DSP">DSP</option>
-                      <option value="CNA">CNA / HHA</option>
+                      <option value="all">All</option>
                       <option value="LPN">LPN</option>
                       <option value="RN">RN</option>
-                      <option value="DRIVER">Driver</option>
+                      <option value="DELEGATING_NURSE">Delegating Nurse</option>
+                      <option value="DSP">DSP</option>
+                      <option value="GENERAL">General</option>
                       <option value="COO">COO - Chief Operating Officer</option>
                     </select>
                   </div>
@@ -577,6 +581,47 @@
                 </tbody>
               </table>
             </section>
+
+            <section class="card" style="margin-top:16px;">
+              <h1>Education Assignment</h1>
+              <p class="sub">Assign training modules to a hired employee.</p>
+
+              <div class="toolbar">
+                <div class="filters">
+                  <div class="field">
+                    <label for="employeeSelect">Employee</label>
+                    <select id="employeeSelect"><option>Loading employees...</option></select>
+                  </div>
+                  <div class="field">
+                    <label for="trainingInput">Training</label>
+                    <input id="trainingInput" type="text" placeholder="e.g., HIPAA 2025">
+                  </div>
+                  <button class="btn btn-primary" id="assignBtn" type="button">Assign</button>
+                  <span class="sub" id="assignHint"></span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card" style="margin-top:16px;">
+              <h1>Timesheet Review</h1>
+              <p class="sub">Approve weekly hours. Approved entries can be marked payroll-ready.</p>
+
+              <table aria-label="Timesheets table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Week Ending</th>
+                    <th>Hours</th>
+                    <th>Pay Code</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="timesheetTable">
+                  <tr><td colspan="6" class="muted">Loading timesheets…</td></tr>
+                </tbody>
+              </table>
+            </section>
           </div>
 
           <!-- 2. Job Openings Panel (Smart Presets & Ohio Search) -->
@@ -586,7 +631,8 @@
                 <h1 id="openingFormTitle">Create Job Opening</h1>
                 <p class="sub">Select a Home Health/Waiver preset to auto-fill all pertinent fields.</p>
 
-                <form class="opening-form" id="jobOpeningForm" onsubmit="return false;">
+                <!-- FIXED FORM TAG: Standard submission handling without 'onsubmit="return false;"' -->
+                <form class="opening-form" id="jobOpeningForm">
                   <input type="hidden" id="openingId">
 
                   <div>
@@ -682,8 +728,9 @@
                   </div>
 
                   <div class="opening-actions">
-                    <button class="btn btn-primary" type="button" onclick="saveJobOpening()">Save Job Opening</button>
-                    <button class="btn" id="cancelOpeningEdit" type="button" onclick="resetJobForm()" hidden>Cancel</button>
+                    <!-- FIXED BUTTON: TYPE SUBMIT TO INTERCEPT IN SCRIPT -->
+                    <button class="btn btn-primary" type="submit">Save Job Opening</button>
+                    <button class="btn" id="cancelOpeningEdit" type="button" hidden>Cancel Edit</button>
                   </div>
                 </form>
               </section>
@@ -721,7 +768,7 @@
                     </tr>
                   </thead>
                   <tbody id="archivedApplicantTable">
-                    <tr><td colspan="5" class="muted">No archived applicants found.</td></tr>
+                    <tr><td colspan="5" class="muted">Loading archived applicants…</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -1093,7 +1140,7 @@
   </script>
 
   <!-- External workflow scripts -->
-  <script src="careers-admin-workflow.js?v=20260729-4"></script>
-  <script src="admin-railway.js?v=20260729-4"></script>
+  <script src="careers-admin-workflow.js?v=20260729-5"></script>
+  <script src="admin-railway.js?v=20260729-5"></script>
 </body>
 </html>
