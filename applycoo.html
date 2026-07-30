@@ -996,7 +996,7 @@
             <div class="quiz-q" data-qid="mc1" data-type="mc">
               <h4>1) Under DODD OAC 5123 rules, what is the required timeline for reporting a Major Unusual Incident (MUI) involving immediate health and safety risks?</h4>
               <div class="radioline"><input type="radio" name="mc1" value="a" /> <span>A. Within 24 hours to the county board and department</span></div>
-              <div class="radioline"><input type="radio" name="mc1" value="b" /> <span>B. Immediate immediate action for safety, and report within 4 hours for immediate threats (24 hours for formal MUI report)</span></div>
+              <div class="radioline"><input type="radio" name="mc1" value="b" /> <span>B. Immediate action for safety, and report within 4 hours for immediate threats (24 hours for formal MUI report)</span></div>
               <div class="radioline"><input type="radio" name="mc1" value="c" /> <span>C. At the end of the monthly billing cycle</span></div>
               <div class="radioline"><input type="radio" name="mc1" value="d" /> <span>D. Only if requested by the individual's family</span></div>
             </div>
@@ -1872,7 +1872,7 @@
       const openings = Array.isArray(openingsResult.data) ? openingsResult.data : [];
 
       const isCooOpening = (job) => (
-        String(job?.appliedRole || '').toUpperCase() === 'COO'
+        String(job?.slug || '') === 'chief-operating-officer-coo'
         || /chief operating|coo|director of operations/i.test(`${job?.title || ''} ${job?.department || ''}`)
       );
 
@@ -1884,6 +1884,7 @@
         throw new Error('No active Chief Operating Officer (COO) job opening was found. Please ensure the COO opening is published in Onboarding.');
       }
 
+      // FIXED PAYLOAD: Uses opening.appliedRole || 'GENERAL' to satisfy Railway API enum validation
       const response = await fetch(`${API_BASE}/public/careers/applications`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -1895,7 +1896,7 @@
           lastName: $('lastName').value.trim(),
           email: $('email').value.trim(),
           phone: $('phone').value.trim(),
-          appliedRole: 'COO',
+          appliedRole: opening.appliedRole || 'GENERAL',
           preferredCommunication: 'EMAIL',
           notes: base.why || base.exp || null,
           applicationData: base,
