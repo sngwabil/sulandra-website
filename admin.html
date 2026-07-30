@@ -903,7 +903,7 @@
         document.querySelectorAll('.onboarding-panel').forEach(p => p.classList.remove('active'));
         const activeP = document.getElementById(`onboarding-${targetPanel}`);
         if(activeP) activeP.classList.add('active');
-        
+
         if(targetPanel === 'archived') {
           syncArchivedJobsContainer();
         }
@@ -932,25 +932,30 @@
       }
     }
 
-    // --- DYNAMICALLY SYNC AND MOVE CLOSED/ARCHIVED JOBS TO JOBS ARCHIVE ---
+    // --- REMOVE ARCHIVED/CLOSED JOBS FROM LIVE LIST AND TRANSFER ONLY TO JOBS ARCHIVE ---
     function syncArchivedJobsContainer() {
       const activeList = document.getElementById('jobOpeningList');
       const archivedList = document.getElementById('archivedJobsList');
       if (!activeList || !archivedList) return;
 
       const cards = Array.from(activeList.querySelectorAll('.opening-card'));
-      const archivedCards = cards.filter(card => {
-        const text = card.innerText || '';
-        return text.includes('Archived') || text.includes('Closed');
-      });
 
-      if (archivedCards.length > 0) {
-        archivedList.innerHTML = '';
-        archivedCards.forEach(card => {
-          const clone = card.cloneNode(true);
-          // Add Restore button if not already present
-          if (!clone.querySelector('.btn-restore')) {
-            const actionsDiv = clone.querySelector('.opening-actions') || clone;
+      cards.forEach(card => {
+        const text = card.innerText || '';
+        const isArchivedOrClosed = text.includes('Archived') || text.includes('Closed');
+
+        if (isArchivedOrClosed) {
+          // Clear default placeholder if present
+          if (archivedList.querySelector('.muted')) {
+            archivedList.innerHTML = '';
+          }
+
+          // Move (transfer) card out of activeList directly into archivedList
+          archivedList.appendChild(card);
+
+          // Append Restore button if not already present
+          if (!card.querySelector('.btn-restore')) {
+            const actionsDiv = card.querySelector('.opening-actions') || card;
             const restoreBtn = document.createElement('button');
             restoreBtn.className = 'btn btn-primary btn-restore';
             restoreBtn.type = 'button';
@@ -964,14 +969,21 @@
             };
             actionsDiv.appendChild(restoreBtn);
           }
-          archivedList.appendChild(clone);
-        });
-      } else {
+        }
+      });
+
+      // Show placeholder if activeList becomes empty after moving archived cards
+      if (activeList.querySelectorAll('.opening-card').length === 0 && !activeList.querySelector('.muted')) {
+        activeList.innerHTML = '<p class="muted" style="padding:12px; text-align:center;">No active job openings available.</p>';
+      }
+
+      // Show placeholder if no archived cards are present
+      if (archivedList.querySelectorAll('.opening-card').length === 0 && !archivedList.querySelector('.muted')) {
         archivedList.innerHTML = '<p class="muted" style="padding:12px; text-align:center;">No archived or closed job openings found.</p>';
       }
     }
 
-    // Observe changes in active job listings to keep archive sync up to date automatically
+    // Observe changes in active job listings to trigger instant card migration
     const jobListObserver = new MutationObserver(() => {
       syncArchivedJobsContainer();
     });
@@ -1125,7 +1137,7 @@
   </script>
 
   <!-- External workflow scripts -->
-  <script src="careers-admin-workflow.js?v=20260729-6"></script>
-  <script src="admin-railway.js?v=20260729-6"></script>
+  <script src="careers-admin-workflow.js?v=20260729-7"></script>
+  <script src="admin-railway.js?v=20260729-7"></script>
 </body>
 </html>
