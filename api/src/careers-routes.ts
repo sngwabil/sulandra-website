@@ -27,7 +27,7 @@ type Helpers = {
 };
 
 const openingStatus = z.enum(['DRAFT', 'PUBLISHED', 'CLOSED', 'ARCHIVED']);
-const applicantRole = z.enum(['DSP', 'LPN', 'RN', 'DELEGATING_NURSE', 'DRIVER', 'GENERAL']);
+const applicantRole = z.enum(['DSP', 'LPN', 'RN', 'DELEGATING_NURSE', 'DRIVER', 'GENERAL', 'COO']);
 const communicationChannel = z.enum(['EMAIL', 'SMS']);
 const documentCategory = z.enum([
   'APPLICATION', 'RESUME', 'COVER_LETTER', 'CPR', 'FIRST_AID',
@@ -110,6 +110,7 @@ function requiredCategories(role: ApplicantRole): DocumentCategory[] {
 
 function roleForOpening(title: string, department?: string | null): ApplicantRole {
   const value = `${title} ${department ?? ''}`.toLowerCase();
+  if (/\bcoo\b|chief operating officer/.test(value)) return 'COO';
   if (/delegating nurse/.test(value)) return 'DELEGATING_NURSE';
   if (/\brn\b|registered nurse|nursing/.test(value)) return 'RN';
   if (/\blpn\b|licensed practical nurse/.test(value)) return 'LPN';
@@ -119,17 +120,14 @@ function roleForOpening(title: string, department?: string | null): ApplicantRol
 }
 
 function applicationPathForOpening(row: any) {
-  if (row.applicationPath) {
-    const path = String(row.applicationPath).trim();
-    if (/[?&]opening=/.test(path)) return path;
-    return `${path}${path.includes('?') ? '&' : '?'}opening=${encodeURIComponent(row.slug)}`;
-  }
+  if (row.applicationPath) return row.applicationPath;
   const role = roleForOpening(row.title, row.department);
   if (role === 'DSP') return `/applydsp.html?opening=${encodeURIComponent(row.slug)}`;
   if (role === 'LPN' || role === 'RN' || role === 'DELEGATING_NURSE') {
     return `/applylpn.html?opening=${encodeURIComponent(row.slug)}&role=${role}`;
   }
   if (role === 'DRIVER') return `/applydriver.html?opening=${encodeURIComponent(row.slug)}`;
+  if (role === 'COO') return `/applycoo.html?opening=${encodeURIComponent(row.slug)}`;
   return `/applygeneral.html?opening=${encodeURIComponent(row.slug)}`;
 }
 
@@ -415,7 +413,7 @@ export function registerCareersRoutes(
     }
   });
 
-  app.get('/api/admin/job-openings', requireRoles(UserRole.ADMINISTRATOR), async (_req, res, next) => {
+  app.get('/api/admin/job-openings', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (_req, res, next) => {
     try {
       const auth = authOf(res);
       const rows = await prisma.$queryRawUnsafe<any[]>(
@@ -433,7 +431,7 @@ export function registerCareersRoutes(
     }
   });
 
-  app.post('/api/admin/job-openings', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+  app.post('/api/admin/job-openings', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
       const input = openingSchema.parse(req.body);
@@ -493,7 +491,7 @@ export function registerCareersRoutes(
     }
   });
 
-  app.patch('/api/admin/job-openings/:id', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+  app.patch('/api/admin/job-openings/:id', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
       const id = String(req.params.id);
@@ -537,7 +535,7 @@ export function registerCareersRoutes(
     }
   });
 
-  app.get('/api/admin/applications', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+  app.get('/api/admin/applications', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
       const query = z.object({
@@ -584,7 +582,7 @@ export function registerCareersRoutes(
     }
   });
 
-  app.get('/api/admin/applications/:id/folder', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+  app.get('/api/admin/applications/:id/folder', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
       const id = String(req.params.id);
@@ -628,7 +626,7 @@ export function registerCareersRoutes(
     }
   });
 
-  app.post('/api/admin/applications/:id/request-document', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+  app.post('/api/admin/applications/:id/request-document', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
       const id = String(req.params.id);
