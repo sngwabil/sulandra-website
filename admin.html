@@ -581,47 +581,6 @@
                 </tbody>
               </table>
             </section>
-
-            <section class="card" style="margin-top:16px;">
-              <h1>Education Assignment</h1>
-              <p class="sub">Assign training modules to a hired employee.</p>
-
-              <div class="toolbar">
-                <div class="filters">
-                  <div class="field">
-                    <label for="employeeSelect">Employee</label>
-                    <select id="employeeSelect"><option>Loading employees...</option></select>
-                  </div>
-                  <div class="field">
-                    <label for="trainingInput">Training</label>
-                    <input id="trainingInput" type="text" placeholder="e.g., HIPAA 2025">
-                  </div>
-                  <button class="btn btn-primary" id="assignBtn" type="button">Assign</button>
-                  <span class="sub" id="assignHint"></span>
-                </div>
-              </div>
-            </section>
-
-            <section class="card" style="margin-top:16px;">
-              <h1>Timesheet Review</h1>
-              <p class="sub">Approve weekly hours. Approved entries can be marked payroll-ready.</p>
-
-              <table aria-label="Timesheets table">
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Week Ending</th>
-                    <th>Hours</th>
-                    <th>Pay Code</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="timesheetTable">
-                  <tr><td colspan="6" class="muted">Loading timesheets…</td></tr>
-                </tbody>
-              </table>
-            </section>
           </div>
 
           <!-- 2. Job Openings Panel (Smart Presets & Ohio Search) -->
@@ -631,7 +590,6 @@
                 <h1 id="openingFormTitle">Create Job Opening</h1>
                 <p class="sub">Select a Home Health/Waiver preset to auto-fill all pertinent fields.</p>
 
-                <!-- FIXED FORM TAG: Standard submission handling without 'onsubmit="return false;"' -->
                 <form class="opening-form" id="jobOpeningForm">
                   <input type="hidden" id="openingId">
 
@@ -728,7 +686,6 @@
                   </div>
 
                   <div class="opening-actions">
-                    <!-- FIXED BUTTON: TYPE SUBMIT TO INTERCEPT IN SCRIPT -->
                     <button class="btn btn-primary" type="submit">Save Job Opening</button>
                     <button class="btn" id="cancelOpeningEdit" type="button" hidden>Cancel Edit</button>
                   </div>
@@ -768,7 +725,7 @@
                     </tr>
                   </thead>
                   <tbody id="archivedApplicantTable">
-                    <tr><td colspan="5" class="muted">Loading archived applicants…</td></tr>
+                    <tr><td colspan="5" class="muted">No archived applicants found.</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -793,32 +750,6 @@
               </div>
             </section>
           </div>
-        </section>
-
-        <!-- Operational Modules -->
-        <section class="card module" id="module-employees">
-          <h1>Employees Directory</h1>
-          <p class="sub">Manage employee records, certifications, and house assignments.</p>
-        </section>
-
-        <section class="card module" id="module-scheduling">
-          <h1>Scheduling & Shifts</h1>
-          <p class="sub">Create schedules, assign shifts to houses, and monitor open coverage.</p>
-        </section>
-
-        <section class="card module" id="module-time">
-          <h1>Time & Attendance</h1>
-          <p class="sub">Review clock-ins, EVV logs, and timesheets for payroll export.</p>
-        </section>
-
-        <section class="card module" id="module-documents">
-          <h1>Compliance Documents</h1>
-          <p class="sub">Track required documentation, background checks, and license renewal alerts.</p>
-        </section>
-
-        <section class="card module" id="module-reports">
-          <h1>Audit & Reports</h1>
-          <p class="sub">View audit logs, compliance exports, and system activity logs.</p>
         </section>
 
         <!-- Settings Module -->
@@ -972,6 +903,10 @@
         document.querySelectorAll('.onboarding-panel').forEach(p => p.classList.remove('active'));
         const activeP = document.getElementById(`onboarding-${targetPanel}`);
         if(activeP) activeP.classList.add('active');
+        
+        if(targetPanel === 'archived') {
+          syncArchivedJobsContainer();
+        }
       });
     });
 
@@ -993,7 +928,56 @@
       } else {
         document.getElementById('archiveFolderApplicants').style.display = 'none';
         document.getElementById('archiveFolderJobs').style.display = 'block';
+        syncArchivedJobsContainer();
       }
+    }
+
+    // --- DYNAMICALLY SYNC AND MOVE CLOSED/ARCHIVED JOBS TO JOBS ARCHIVE ---
+    function syncArchivedJobsContainer() {
+      const activeList = document.getElementById('jobOpeningList');
+      const archivedList = document.getElementById('archivedJobsList');
+      if (!activeList || !archivedList) return;
+
+      const cards = Array.from(activeList.querySelectorAll('.opening-card'));
+      const archivedCards = cards.filter(card => {
+        const text = card.innerText || '';
+        return text.includes('Archived') || text.includes('Closed');
+      });
+
+      if (archivedCards.length > 0) {
+        archivedList.innerHTML = '';
+        archivedCards.forEach(card => {
+          const clone = card.cloneNode(true);
+          // Add Restore button if not already present
+          if (!clone.querySelector('.btn-restore')) {
+            const actionsDiv = clone.querySelector('.opening-actions') || clone;
+            const restoreBtn = document.createElement('button');
+            restoreBtn.className = 'btn btn-primary btn-restore';
+            restoreBtn.type = 'button';
+            restoreBtn.innerText = 'Restore to Live';
+            restoreBtn.style.cssText = 'background:#166534; color:#fff; font-size:11px; margin-left:6px;';
+            restoreBtn.onclick = function() {
+              const publishBtn = card.querySelector('button[data-action="publish"]') || card.querySelector('.btn');
+              if(publishBtn) publishBtn.click();
+              showToast("Job Restored", "Position restored to active listings.");
+              setTimeout(syncArchivedJobsContainer, 500);
+            };
+            actionsDiv.appendChild(restoreBtn);
+          }
+          archivedList.appendChild(clone);
+        });
+      } else {
+        archivedList.innerHTML = '<p class="muted" style="padding:12px; text-align:center;">No archived or closed job openings found.</p>';
+      }
+    }
+
+    // Observe changes in active job listings to keep archive sync up to date automatically
+    const jobListObserver = new MutationObserver(() => {
+      syncArchivedJobsContainer();
+    });
+    const activeJobListElem = document.getElementById('jobOpeningList');
+    if (activeJobListElem) {
+      jobListObserver.observe(activeJobListElem, { childList: true, subtree: true });
     }
 
     // --- ALL JOB ROLE PRESETS (INCLUDING COMPREHENSIVE COO & DODD STANDARDS) ---
@@ -1135,12 +1119,13 @@
       setTimeout(() => {
         const refreshBtn = document.getElementById('refreshBtn');
         if (refreshBtn) refreshBtn.click();
+        syncArchivedJobsContainer();
       }, 400);
     });
   </script>
 
   <!-- External workflow scripts -->
-  <script src="careers-admin-workflow.js?v=20260729-5"></script>
-  <script src="admin-railway.js?v=20260729-5"></script>
+  <script src="careers-admin-workflow.js?v=20260729-6"></script>
+  <script src="admin-railway.js?v=20260729-6"></script>
 </body>
 </html>
