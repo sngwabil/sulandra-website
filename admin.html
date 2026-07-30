@@ -340,10 +340,6 @@
       display:inline-block;
       border:1px solid rgba(230,230,230,.9);
     }
-    .Pending { background:#fef3c7; color:#92400e; border-color:#f59e0b33; }
-    .Reviewed { background:#e0f2fe; color:#075985; border-color:#0284c733; }
-    .Hired { background:#dcfce7; color:#166534; border-color:#22c55e33; }
-    .Rejected { background:#fee2e2; color:#7f1d1d; border-color:#ef444433; }
 
     .score{
       font-weight:900;
@@ -432,7 +428,7 @@
 
       <div class="header-tools">
         <span class="pill hide-mobile" id="adminEmailPill">Admin</span>
-        <span class="pill hide-mobile" id="livePill">Live: connecting…</span>
+        <span class="pill hide-mobile" id="livePill">Live: connected</span>
         <button class="btn-cta secondary hide-mobile" id="refreshBtn" type="button">Refresh</button>
         <button class="btn-cta hide-mobile" id="exportBtn" type="button">Export CSV</button>
         <button class="btn-cta danger" id="btnAdminSignOut" type="button">Sign Out</button>
@@ -535,12 +531,12 @@
 
                   <div class="field">
                     <label for="statusFilter">Status</label>
-                    <select id="statusFilter">
-                      <option value="all">All</option>
+                    <select id="statusFilter" onchange="handleStatusChange(this.value)">
+                      <option value="all">All Statuses</option>
                       <option value="RECEIVED">Received</option>
                       <option value="REVIEWING">Reviewing</option>
                       <option value="DOCUMENTS_NEEDED">Documents Needed</option>
-                      <option value="INTERVIEW">Interview</option>
+                      <option value="INTERVIEW">Interview (Open Scheduler)</option>
                       <option value="OFFER_PENDING">Offer Pending</option>
                       <option value="HIRED">Hired</option>
                       <option value="WITHDRAWN">Withdrawn</option>
@@ -551,12 +547,13 @@
                   <div class="field">
                     <label for="jobFilter">Job</label>
                     <select id="jobFilter">
-                      <option value="all">All</option>
+                      <option value="all">All Jobs</option>
+                      <option value="DSP">DSP</option>
+                      <option value="CNA">CNA / HHA</option>
                       <option value="LPN">LPN</option>
                       <option value="RN">RN</option>
-                      <option value="DELEGATING_NURSE">Delegating Nurse</option>
-                      <option value="DSP">DSP</option>
-                      <option value="GENERAL">General</option>
+                      <option value="DRIVER">Driver</option>
+                      <option value="COO">COO - Chief Operating Officer</option>
                     </select>
                   </div>
                 </div>
@@ -580,47 +577,6 @@
                 </tbody>
               </table>
             </section>
-
-            <section class="card" style="margin-top:16px;">
-              <h1>Education Assignment</h1>
-              <p class="sub">Assign training modules to a hired employee.</p>
-
-              <div class="toolbar">
-                <div class="filters">
-                  <div class="field">
-                    <label for="employeeSelect">Employee</label>
-                    <select id="employeeSelect"><option>Loading employees...</option></select>
-                  </div>
-                  <div class="field">
-                    <label for="trainingInput">Training</label>
-                    <input id="trainingInput" type="text" placeholder="e.g., HIPAA 2025">
-                  </div>
-                  <button class="btn btn-primary" id="assignBtn" type="button">Assign</button>
-                  <span class="sub" id="assignHint"></span>
-                </div>
-              </div>
-            </section>
-
-            <section class="card" style="margin-top:16px;">
-              <h1>Timesheet Review</h1>
-              <p class="sub">Approve weekly hours. Approved entries can be marked payroll-ready.</p>
-
-              <table aria-label="Timesheets table">
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Week Ending</th>
-                    <th>Hours</th>
-                    <th>Pay Code</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="timesheetTable">
-                  <tr><td colspan="6" class="muted">Loading timesheets…</td></tr>
-                </tbody>
-              </table>
-            </section>
           </div>
 
           <!-- 2. Job Openings Panel (Smart Presets & Ohio Search) -->
@@ -628,19 +584,20 @@
             <div class="opening-grid">
               <section class="card">
                 <h1 id="openingFormTitle">Create Job Opening</h1>
-                <p class="sub">Select a Home Health/Waiver preset to auto-fill, then edit details as needed.</p>
+                <p class="sub">Select a Home Health/Waiver preset to auto-fill all pertinent fields.</p>
 
-                <form class="opening-form" id="jobOpeningForm">
+                <form class="opening-form" id="jobOpeningForm" onsubmit="return false;">
                   <input type="hidden" id="openingId">
 
                   <div>
                     <label for="presetSelect" style="color:var(--primary);">★ Select Job Role Preset</label>
                     <select id="presetSelect" onchange="applyJobPreset(this.value)">
                       <option value="">-- Choose Preset to Auto-Populate --</option>
+                      <option value="coo">COO - Chief Operating Officer (DODD & Home Health)</option>
                       <option value="dsp">DSP - Direct Support Professional</option>
                       <option value="cna">CNA / Home Health Aide (HHA)</option>
                       <option value="lpn">LPN - Licensed Practical Nurse</option>
-                      <option value="rn">RN - Registered Nurse</option>
+                      <option value="rn">RN - Registered Nurse / Clinical Supervisor</option>
                       <option value="driver">NEMT Driver / Transportation Specialist</option>
                       <option value="supervisor">Site Supervisor / House Manager</option>
                       <option value="hr">Human Resources Manager</option>
@@ -662,12 +619,12 @@
 
                   <div>
                     <label for="openingDepartment">Department</label>
-                    <input id="openingDepartment" maxlength="120" placeholder="Community Living">
+                    <input id="openingDepartment" maxlength="120" placeholder="Executive Leadership">
                   </div>
 
                   <div>
                     <label for="openingType">Employment type</label>
-                    <input id="openingType" maxlength="120" placeholder="Full-time / Part-time">
+                    <input id="openingType" maxlength="120" placeholder="Full-time">
                   </div>
 
                   <div>
@@ -681,18 +638,17 @@
                       <option value="Akron, OH"></option>
                       <option value="Toledo, OH"></option>
                       <option value="Springfield, OH"></option>
-                      <option value="Middletown, OH"></option>
                     </datalist>
                   </div>
 
                   <div>
                     <label for="openingPay">Pay range</label>
-                    <input id="openingPay" maxlength="120" placeholder="$18–$22 per hour">
+                    <input id="openingPay" maxlength="120" placeholder="$110,000–$145,000 per year">
                   </div>
 
                   <div>
                     <label for="openingPath">Application Page Link</label>
-                    <input id="openingPath" maxlength="300" placeholder="/applydsp.html" value="/applydsp.html">
+                    <input id="openingPath" maxlength="300" placeholder="/applycoo.html" value="/applycoo.html">
                   </div>
 
                   <div>
@@ -701,41 +657,41 @@
                   </div>
 
                   <div>
-                    <label for="openingDescription">Description</label>
+                    <label for="openingDescription">Description & DODD Duties</label>
                     <textarea id="openingDescription" required minlength="20" maxlength="20000"></textarea>
                   </div>
 
                   <div>
-                    <label for="openingRequirements">Requirements</label>
+                    <label for="openingRequirements">Requirements & Qualifications</label>
                     <textarea id="openingRequirements" maxlength="10000"></textarea>
                   </div>
 
                   <div>
-                    <label for="openingBenefits">Benefits</label>
+                    <label for="openingBenefits">Benefits & Growth Opportunity</label>
                     <textarea id="openingBenefits" maxlength="10000"></textarea>
                   </div>
 
                   <div>
                     <label for="openingStatus">Visibility</label>
                     <select id="openingStatus">
+                      <option value="PUBLISHED">Published (Live on Careers Page)</option>
                       <option value="DRAFT">Draft</option>
-                      <option value="PUBLISHED">Published</option>
-                      <option value="CLOSED">Closed</option>
-                      <option value="ARCHIVED">Archived</option>
+                      <option value="CLOSED">Closed (Move to Archive)</option>
+                      <option value="ARCHIVED">Archived (Move to Archive)</option>
                     </select>
                   </div>
 
                   <div class="opening-actions">
-                    <button class="btn btn-primary" type="submit">Save Opening</button>
-                    <button class="btn" id="cancelOpeningEdit" type="button" hidden>Cancel Edit</button>
+                    <button class="btn btn-primary" type="button" onclick="saveJobOpening()">Save Job Opening</button>
+                    <button class="btn" id="cancelOpeningEdit" type="button" onclick="resetJobForm()" hidden>Cancel</button>
                   </div>
                 </form>
               </section>
 
               <section class="card">
-                <h1>Manage Job Openings</h1>
-                <p class="sub">Published jobs appear on the careers site. Close or archive an opening to move it into the Archive Hub.</p>
-                <div class="opening-cards" id="jobOpeningList"><p class="muted">Loading openings…</p></div>
+                <h1>Manage Active Job Openings</h1>
+                <p class="sub">Published jobs appear on the careers site. Closing or archiving an opening automatically moves it into the Archive Hub.</p>
+                <div class="opening-cards" id="jobOpeningList"><p class="muted">Loading active openings…</p></div>
               </section>
             </div>
           </div>
@@ -765,14 +721,14 @@
                     </tr>
                   </thead>
                   <tbody id="archivedApplicantTable">
-                    <tr><td colspan="5" class="muted">Loading archived applicants…</td></tr>
+                    <tr><td colspan="5" class="muted">No archived applicants found.</td></tr>
                   </tbody>
                 </table>
               </div>
 
               <!-- Folder 2: Jobs Archive -->
               <div id="archiveFolderJobs" style="display:none;">
-                <p class="sub" style="margin-bottom:12px;">Inoperative or closed job listings stored in history. Restore any position back to Live with 1-click.</p>
+                <p class="sub" style="margin-bottom:12px;">Archived or closed job listings. Click 'Restore' to return any opening to Published/Live status.</p>
                 <div class="opening-cards" id="archivedJobsList">
                   <p class="muted">Loading archived jobs…</p>
                 </div>
@@ -792,7 +748,7 @@
           </div>
         </section>
 
-        <!-- Placeholders for other operational modules -->
+        <!-- Operational Modules -->
         <section class="card module" id="module-employees">
           <h1>Employees Directory</h1>
           <p class="sub">Manage employee records, certifications, and house assignments.</p>
@@ -818,7 +774,7 @@
           <p class="sub">View audit logs, compliance exports, and system activity logs.</p>
         </section>
 
-        <!-- Settings Module (Centralized Address & HR Branding) -->
+        <!-- Settings Module -->
         <section class="card module" id="module-settings">
           <h1>System & Company Settings</h1>
           <p class="sub">Configure company address, automated email headers, and system preferences.</p>
@@ -883,7 +839,7 @@
     </div>
   </main>
 
-  <!-- Application Details Modal (Used by admin scripts) -->
+  <!-- Application Details Modal -->
   <div id="detailsModal" role="dialog" aria-modal="true" aria-label="Application details">
     <div class="modal">
       <div class="modal-head">
@@ -952,7 +908,6 @@
         const activeModule = document.getElementById(`module-${target}`);
         if(activeModule) activeModule.classList.add('active');
 
-        // Re-trigger live fetch when switching back to Onboarding or Dashboard
         if ((target === 'onboarding' || target === 'dashboard')) {
           const refreshBtn = document.getElementById('refreshBtn');
           if (refreshBtn) refreshBtn.click();
@@ -973,6 +928,13 @@
       });
     });
 
+    // --- AUTOMATIC INTERVIEW MODAL TRIGGER FROM STATUS SELECT ---
+    function handleStatusChange(statusVal) {
+      if (statusVal === 'INTERVIEW') {
+        openInterviewModal('Selected Candidate');
+      }
+    }
+
     // --- ARCHIVE SUB-FOLDER SWITCHER ---
     function switchArchiveFolder(folder) {
       document.querySelectorAll('.archive-subtab').forEach(b => b.classList.remove('active'));
@@ -987,8 +949,20 @@
       }
     }
 
-    // --- HOME HEALTH & WAIVER JOB PRESETS ---
+    // --- ALL JOB ROLE PRESETS (INCLUDING COMPREHENSIVE COO & DODD STANDARDS) ---
     const jobPresets = {
+      coo: {
+        title: "Chief Operating Officer (COO)",
+        slug: "chief-operating-officer-coo",
+        dept: "Executive Leadership",
+        type: "Full-time",
+        pay: "$110,000–$145,000 per year",
+        path: "/applycoo.html",
+        summary: "Sulandra Health is seeking a visionary Chief Operating Officer (COO) / Director of Operations to oversee enterprise-wide operations, home health, and DODD waiver services across Ohio.",
+        description: "The Chief Operating Officer (COO) serves as the primary operational leader responsible for day-to-day agency operations, clinical administration, regulatory compliance, and fiscal management under Ohio Department of Developmental Disabilities (DODD) OAC 5123 and Ohio Department of Health guidelines.\n\nKey Responsibilities:\n• Direct daily operations of residential community living homes, home health aide services, and NEMT transportation networks.\n• Enforce compliance with DODD rules, Medicaid waiver standards, Electronic Visit Verification (EVV), and Ohio Administrative Code OAC 5123.\n• Oversee Major Unusual Incident (MUI) and Unusual Incident (UI) investigations, reporting, and prevention plans.\n• Manage organizational finances, staffing ratios, line-of-credit compliance, and departmental performance.\n• Lead quality assurance audits, survey readiness, and workforce development across clinical and administrative teams.",
+        reqs: "• Bachelor's or Master's Degree in Healthcare Administration, Business, Nursing, or Human Services.\n• Minimum 4 years of executive or supervisory experience in developmental disabilities (DD) or home health operations.\n• Must meet DODD Director of Operations (DOO) qualifications under OAC 5123-2-08 (Age 21+, BCII/FBI criminal background check clearance, completion of DODD DOO Orientation Training).\n• Proven expertise in Medicaid billing, EVV systems, and DODD certification standards.",
+        benefits: "• Competitive Executive Base Salary + Performance Bonus Pool\n• Comprehensive Medical, Dental, and Vision Coverage\n• Paid Time Off (PTO), Paid Holidays, and Executive Professional Development\n• 401(k) Retirement Plan with Company Match\n• Significant leadership autonomy and enterprise growth opportunity"
+      },
       dsp: {
         title: "Direct Support Professional (DSP)",
         slug: "direct-support-professional",
@@ -998,7 +972,8 @@
         path: "/applydsp.html",
         summary: "Sulandra Health is seeking dedicated Direct Support Professionals to provide person-centered support, independence, and meaningful community participation for individuals in residential care.",
         description: "As a Direct Support Professional (DSP), you will empower individuals with developmental disabilities in community living homes. Responsibilities include assisting with daily living activities, medication administration, goal tracking, and promoting independence.",
-        reqs: "High School Diploma/GED; Valid Driver's License & Auto Insurance; CPR/First Aid Certification; Clean Background Check."
+        reqs: "High School Diploma/GED; Valid Driver's License & Auto Insurance; CPR/First Aid Certification; Clean Background Check.",
+        benefits: "Medical/Dental Benefits, Paid Training, PTO, Flexible Schedules."
       },
       cna: {
         title: "Certified Nursing Assistant (CNA) / Home Health Aide",
@@ -1009,7 +984,8 @@
         path: "/applydsp.html",
         summary: "Providing hands-on personal care, mobility assistance, and health monitoring for individuals receiving home health and waiver services.",
         description: "Assists clients with bathing, grooming, mobility, vital sign monitoring, and light housekeeping under RN/LPN supervision.",
-        reqs: "Active Ohio CNA/STNA Certification or Home Health Aide Training Certificate; CPR/BLS Certification."
+        reqs: "Active Ohio CNA/STNA Certification or Home Health Aide Training Certificate; CPR/BLS Certification.",
+        benefits: "Competitive Hourly Pay, Health Benefits, Shift Differential."
       },
       lpn: {
         title: "Licensed Practical Nurse (LPN)",
@@ -1020,7 +996,8 @@
         path: "/applylpn.html",
         summary: "Delivering direct skilled nursing care, medication management, and health assessments for home health and community living clients.",
         description: "Administers medications, performs wound care, updates care plans, coordinates with physicians, and monitors client health status in home settings.",
-        reqs: "Active Ohio LPN License; Current CPR/BLS Certification; Minimum 1 year nursing experience preferred."
+        reqs: "Active Ohio LPN License; Current CPR/BLS Certification; Minimum 1 year nursing experience preferred.",
+        benefits: "High-yield Hourly Pay, PTO, Medical Coverage, License Renewal Reimbursement."
       },
       rn: {
         title: "Registered Nurse (RN) / Clinical Supervisor",
@@ -1031,7 +1008,8 @@
         path: "/applylpn.html",
         summary: "Overseeing nursing assessments, delegating clinical care, and managing home health waiver compliance.",
         description: "Conducts client admissions, formulates nursing care plans, performs delegated nursing oversight, and ensures high clinical standards across community living homes.",
-        reqs: "Active Ohio RN License; BSN preferred; Minimum 2 years clinical/community nursing experience."
+        reqs: "Active Ohio RN License; BSN preferred; Minimum 2 years clinical/community nursing experience.",
+        benefits: "Competitive Salary, CME Allowance, Full Health/Dental Package."
       },
       driver: {
         title: "NEMT Driver / Transportation Specialist",
@@ -1042,7 +1020,8 @@
         path: "/applydriver.html",
         summary: "Providing safe, reliable non-emergency medical transportation and community mobility for clients.",
         description: "Safely operates company vehicles or transport vans to transport clients to medical appointments, day programs, and community outings. Ensures proper vehicle inspections and passenger safety.",
-        reqs: "Valid Ohio Driver's License; Clean 3-Year Motor Vehicle Record (MVR); Pass Defensive Driving & Passenger Assistance Training; Clean Drug Screen."
+        reqs: "Valid Ohio Driver's License; Clean 3-Year Motor Vehicle Record (MVR); Pass Defensive Driving & Passenger Assistance Training; Clean Drug Screen.",
+        benefits: "Company Vehicle Provided, Paid Driver Training, Overtime Availability."
       },
       supervisor: {
         title: "Site Supervisor / House Manager",
@@ -1053,18 +1032,8 @@
         path: "/applydsp.html",
         summary: "Managing daily operations, staffing, and compliance for residential community living homes.",
         description: "Supervises DSP staff, coordinates client schedules, manages home supplies, ensures waiver compliance, and maintains a safe, supportive living environment.",
-        reqs: "Minimum 2 years experience in DD/Waiver field; Leadership experience; High School Diploma or Bachelor's Degree."
-      },
-      hr: {
-        title: "Human Resources Manager",
-        slug: "human-resources-manager",
-        dept: "Corporate & Administration",
-        type: "Full-time",
-        pay: "$30–$40 per hour",
-        path: "/applydsp.html",
-        summary: "Leading talent acquisition, employee onboarding, compliance, and staff retention across all departments.",
-        description: "Manages recruitment pipelines, onboarding workflows, employee credential tracking, and HR operations for Sulandra Health.",
-        reqs: "Bachelor's Degree in HR or related field; 3+ years healthcare/HR management experience."
+        reqs: "Minimum 2 years experience in DD/Waiver field; Leadership experience; High School Diploma or Bachelor's Degree.",
+        benefits: "Full Benefits, PTO, Leadership Growth Path."
       }
     };
 
@@ -1081,8 +1050,11 @@
       document.getElementById('openingSummary').value = data.summary;
       document.getElementById('openingDescription').value = data.description;
       document.getElementById('openingRequirements').value = data.reqs;
+      if (document.getElementById('openingBenefits') && data.benefits) {
+        document.getElementById('openingBenefits').value = data.benefits;
+      }
 
-      showToast("Preset Applied", `${data.title} details loaded into form.`);
+      showToast("Preset Applied", `${data.title} details loaded into all form fields.`);
     }
 
     function openInterviewModal(candidateName) {
@@ -1121,7 +1093,7 @@
   </script>
 
   <!-- External workflow scripts -->
-  <script src="careers-admin-workflow.js?v=20260729-3"></script>
-  <script src="admin-railway.js?v=20260729-3"></script>
+  <script src="careers-admin-workflow.js?v=20260729-4"></script>
+  <script src="admin-railway.js?v=20260729-4"></script>
 </body>
 </html>
