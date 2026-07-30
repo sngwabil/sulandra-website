@@ -42,27 +42,6 @@ const requiredColumns = {
     'toStatus',
     'visibleToApplicant',
   ],
-  CompanySetting: [
-    'organizationId',
-    'companyName',
-    'addressLine1',
-    'city',
-    'state',
-    'postalCode',
-    'emailDisplayName',
-  ],
-  InterviewSlot: [
-    'organizationId',
-    'startsAt',
-    'endsAt',
-    'status',
-    'bookedApplicationId',
-    'reminderSentAt',
-  ],
-  InterviewSlotInvitation: [
-    'slotId',
-    'applicationId',
-  ],
 };
 
 try {
@@ -97,6 +76,20 @@ try {
   }
   if (!enumRows.some(({ label }) => label === 'DRIVER')) {
     missing.push('UserRole.DRIVER');
+  }
+  if (!enumRows.some(({ label }) => label === 'COO')) {
+    missing.push('UserRole.COO');
+  }
+
+  const roleConstraintRows = await prisma.$queryRawUnsafe(
+    `SELECT pg_get_constraintdef(oid) AS "definition"
+       FROM pg_constraint
+      WHERE conname = 'EmployeeApplication_role_check'
+        AND conrelid = '"EmployeeApplication"'::regclass`,
+  );
+  const roleConstraint = String(roleConstraintRows[0]?.definition || '');
+  if (!roleConstraint.includes('COO')) {
+    missing.push('EmployeeApplication_role_check.COO');
   }
 
   if (missing.length > 0) {
