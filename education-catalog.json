@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "organization": "Sulandra Health",
+  "certificateValidityMonths": 12,
+  "assignmentReasons": [
+    {"code":"NEO","name":"New Employee Orientation"},
+    {"code":"ANN","name":"Annual In-Service Renewal"},
+    {"code":"REM","name":"Performance Remediation"},
+    {"code":"CLN","name":"Clinical Competency"},
+    {"code":"LDR","name":"Leadership Development"},
+    {"code":"OPT","name":"Optional Professional Development"}
+  ],
+  "groups": [
+    {"code":"NEO","name":"New Employee Orientation","courseCodes":["SH-PCAC-101","SH-DODD-101","SH-MED-103"]},
+    {"code":"ANN","name":"Annual In-Service Renewal","courseCodes":["SH-PCAC-101","SH-DODD-101","SH-MED-103"]},
+    {"code":"REM","name":"Performance Remediation Library","courseCodes":["SH-REM-DOC-201","SH-REM-ATT-202"]},
+    {"code":"LDR","name":"Management and Educator Development","courseCodes":["SH-LDR-QA-301","SH-PCAC-101"]}
+  ],
+  "courses": [
+    {
+      "code":"SH-PCAC-101",
+      "title":"Professional Person-Centered Care & Client Advocacy Foundations",
+      "category":"Orientation",
+      "estimatedMinutes":90,
+      "passingPercent":80,
+      "maximumAttempts":2,
+      "certificateValidityMonths":12,
+      "active":true,
+      "topicCount":10,
+      "lessonCount":50,
+      "questionCount":15,
+      "topics":[
+        "Foundations of Person-Centered Support and Individual Empowerment",
+        "Protecting Client Rights and Human Dignity",
+        "Mindful Caregiving and Bias Awareness",
+        "Error Prevention and Safety Mindfulness",
+        "Crisis De-escalation and Emotional Regulation Support",
+        "Professional Ethics, Boundaries, and Integrity",
+        "Supporting Optimal Health and Well-being",
+        "Communication Mastery for Non-Verbal and Complex Clients",
+        "Fostering Community Inclusion and Meaningful Engagement",
+        "Compassion Resilience and Preventing Caregiver Burnout"
+      ]
+    },
+    {"code":"SH-MED-103","title":"Health & Medication Administration Protocols","category":"Clinical","estimatedMinutes":30,"passingPercent":80,"maximumAttempts":2,"certificateValidityMonths":12,"active":true},
+    {"code":"SH-DODD-101","title":"Major Unusual Incidents & Rights Safeguards","category":"Compliance","estimatedMinutes":30,"passingPercent":80,"maximumAttempts":2,"certificateValidityMonths":12,"active":true},
+    {"code":"SH-REM-DOC-201","title":"Remediation: Objective Documentation & Progress Notes","category":"Remediation","estimatedMinutes":25,"passingPercent":80,"maximumAttempts":2,"certificateValidityMonths":12,"active":true},
+    {"code":"SH-REM-ATT-202","title":"Remediation: Attendance, Reliability & Shift Handoff","category":"Remediation","estimatedMinutes":20,"passingPercent":80,"maximumAttempts":2,"certificateValidityMonths":12,"active":true},
+    {"code":"SH-LDR-QA-301","title":"Leadership: Coaching, Quality Assurance & Corrective Action","category":"Leadership","estimatedMinutes":40,"passingPercent":80,"maximumAttempts":2,"certificateValidityMonths":12,"active":true}
+  ],
+  "apiContract": {
+    "assignments":"POST /api/education/assignments",
+    "completions":"POST /api/education/completions",
+    "employeeEducation":"GET /api/admin/employees/:employeeId/education",
+    "certificateDocument":"POST /api/admin/employees/:employeeId/documents"
+  }
+}
