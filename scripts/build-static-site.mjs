@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,5 +40,22 @@ for (const directory of publicDirectories) {
     { recursive: true },
   );
 }
+
+const adminPortalPath = path.join(outputDirectory, 'admin.html');
+let adminPortal = await readFile(adminPortalPath, 'utf8');
+
+const topOnboardingLink = '        <li><a data-module="onboarding">Onboarding</a></li>';
+const topSpireLink = '        <li><a href="spire-admin.html">Admin Spire</a></li>\n';
+if (!adminPortal.includes('href="spire-admin.html">Admin Spire</a>')) {
+  adminPortal = adminPortal.replace(topOnboardingLink, `${topSpireLink}${topOnboardingLink}`);
+}
+
+const sideOnboardingButton = '          <button class="side-btn" type="button" data-module="onboarding">Onboarding <small>Hiring</small></button>';
+const sideSpireLink = '          <a class="side-btn" href="spire-admin.html" style="text-decoration:none;">Admin Spire <small>Clinical</small></a>\n';
+if (!adminPortal.includes('Admin Spire <small>Clinical</small>')) {
+  adminPortal = adminPortal.replace(sideOnboardingButton, `${sideSpireLink}${sideOnboardingButton}`);
+}
+
+await writeFile(adminPortalPath, adminPortal, 'utf8');
 
 console.log(`Static website prepared in ${outputDirectory}`);
