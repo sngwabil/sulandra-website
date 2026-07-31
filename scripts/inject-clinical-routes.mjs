@@ -1,7 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const target = resolve('api/dist/onboarding-bootstrap.js');
+const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(scriptDirectory, '..');
+const target = path.join(repositoryRoot, 'api', 'dist', 'onboarding-bootstrap.js');
 let source = await readFile(target, 'utf8');
 
 const importMarker = "import { registerCareersRoutes } from './careers-routes.js';";
@@ -24,4 +27,4 @@ if (!source.includes(clinicalCall)) {
 }
 
 await writeFile(target, source, 'utf8');
-console.log('Registered Spire clinical routes in compiled API.');
+console.log(`Registered Spire clinical routes in ${target}.`);
