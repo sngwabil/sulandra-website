@@ -1,11 +1,12 @@
 {
-  "version": 2,
+  "version": 3,
   "organization": "Sulandra Health",
   "certificateValidityMonths": 12,
   "assignmentReasons": [
     {"code":"NEO","name":"New Employee Orientation"},
     {"code":"ANN","name":"Annual In-Service Renewal"},
     {"code":"REM","name":"Performance Remediation"},
+    {"code":"CLN","name":"Clinical Competency"},
     {"code":"MSE","name":"Management Self-Enrollment"}
   ],
   "groups": [
@@ -13,6 +14,11 @@
       "code":"APPROVED-FOUNDATIONS",
       "name":"Approved Foundations",
       "courseCodes":["SH-PC-101","SH-CAP-101"]
+    },
+    {
+      "code":"APPROVED-MED-SAFETY",
+      "name":"Approved Medication Safety In-Service",
+      "courseCodes":["SH-MED-201"]
     }
   ],
   "courses": [
@@ -42,6 +48,20 @@
       "sectionCount":4,
       "questionCount":15,
       "launchPath":"/sh-cap-101-client-rights-advocacy.html"
+    },
+    {
+      "code":"SH-MED-201",
+      "title":"Safe Medication Administration & Clinical Protocols",
+      "category":"Medication Safety In-Service",
+      "estimatedMinutes":45,
+      "passingPercent":80,
+      "maximumAttempts":2,
+      "certificateValidityMonths":12,
+      "active":true,
+      "sectionCount":4,
+      "questionCount":15,
+      "launchPath":"/sh-med-201-safe-medication-administration.html",
+      "scopeNotice":"Organizational in-service only; does not replace state certification, competency validation, licensed-nurse delegation, or employer authorization."
     }
   ],
   "apiContract": {
