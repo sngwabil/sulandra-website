@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "organization": "Sulandra Health",
   "certificateValidityMonths": 12,
   "assignmentReasons": [
@@ -13,8 +13,8 @@
   "groups": [
     {
       "code":"APPROVED-FOUNDATIONS",
-      "name":"Approved Foundations",
-      "courseCodes":["SH-PC-101","SH-CAP-101"]
+      "name":"Approved Person-Centered Foundations",
+      "courseCodes":["SH-PC-101","SH-CAP-101","SH-CAP-102"]
     },
     {
       "code":"APPROVED-CLINICAL-SAFETY",
@@ -49,6 +49,19 @@
       "sectionCount":4,
       "questionCount":15,
       "launchPath":"/sh-cap-101-client-rights-advocacy.html"
+    },
+    {
+      "code":"SH-CAP-102",
+      "title":"Person-Centered Support & Independence Facilitation",
+      "category":"Person-Centered Support and Orientation",
+      "estimatedMinutes":45,
+      "passingPercent":80,
+      "maximumAttempts":2,
+      "certificateValidityMonths":12,
+      "active":true,
+      "sectionCount":4,
+      "questionCount":15,
+      "launchPath":"/sh-cap-102-person-centered-support.html"
     },
     {
       "code":"SH-MED-201",
