@@ -2,6 +2,7 @@ import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { registerEducationRoutes } from './education-routes.js';
 
 type AuthContext = {
   userId: string;
@@ -86,6 +87,8 @@ export function registerCareersRoutes(
   helpers: Helpers,
 ) {
   const { authOf, requireRoles, audit } = helpers;
+
+  registerEducationRoutes(app, prisma, helpers);
 
   app.get('/public/careers/openings', async (_req, res, next) => {
     try {
