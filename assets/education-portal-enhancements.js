@@ -8,7 +8,7 @@ async function api(path,init={}){const r=await fetch(API+path,{...init,cache:'no
 function notify(message){const box=$('toast');if(!box){alert(message);return}box.textContent=message;box.style.display='block';clearTimeout(window.__eduToast);window.__eduToast=setTimeout(()=>box.style.display='none',3800)}
 async function loadCourses(){const p=await fetch('/education-catalog.json',{cache:'no-store'}).then(r=>r.json());courses=(p.courses||[]).filter(c=>c.active===true)}
 function course(code){return courses.find(c=>c.code===code)||{code,title:code}}
-function openStructuredCourse(code,certificate=false){location.href='/course-player.html?code='+encodeURIComponent(code)+(certificate?'&certificate=1':'')}
+function openStructuredCourse(code,certificate=false){location.href=certificate?'/education-certificate.html?code='+encodeURIComponent(code):'/course-player.html?code='+encodeURIComponent(code)}
 function formatDate(value){if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?String(value):d.toLocaleDateString()}
 function removePageRings(){document.querySelectorAll('.hero .ring,#progressRing').forEach(x=>x.remove());document.querySelectorAll('.heroin').forEach(x=>x.style.paddingRight='22px')}
 function ensureCompletedMetric(){const metrics=document.querySelector('#learning .metrics');if(!metrics||$('kCompleted'))return;metrics.insertAdjacentHTML('beforeend','<div class="metric"><strong id="kCompleted">0</strong><span>Completed</span></div>')}
