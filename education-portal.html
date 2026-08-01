@@ -4,6 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sulandra Health Education Portal</title>
 <link rel="icon" href="/favicon-48x48.png">
+<link rel="stylesheet" href="/assets/education-portal-enhancements.css">
 <style>
 :root{--navy:#0b4265;--navy2:#07334f;--blue:#0796c9;--cyan:#18acd6;--bg:#eef2f4;--line:#d7dde1;--text:#26343d;--muted:#6d7a82;--green:#4f9d3a;--orange:#e68128;--red:#be3e3e;--shadow:0 8px 25px rgba(31,55,72,.12)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Segoe UI",Arial,sans-serif;line-height:1.45}a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit}.hidden{display:none!important}
@@ -66,4 +67,5 @@ $('runAutomationBtn').onclick=async()=>{try{const p=await req('/api/admin/educat
 async function loadTracking(){try{const p=await req('/api/admin/education/compliance?windowDays='+encodeURIComponent($('trackingWindow').value)+'&role='+encodeURIComponent($('trackingRole').value)),d=p.data||{};$('trackCompliant').textContent=d.summary?.compliant||0;$('trackDue').textContent=d.summary?.dueSoon||0;$('trackOverdue').textContent=d.summary?.overdue||0;$('trackNew').textContent=d.summary?.newHires||0;$('trackingTable').innerHTML=`<div class="tablewrap"><table class="table"><tr><th>Employee</th><th>Role</th><th>Status</th><th>Next expiration</th><th>Open courses</th></tr>${(d.employees||[]).map(e=>`<tr><td>${esc(employeeName(e))}</td><td>${esc(e.role||'')}</td><td><span class="badge ${e.complianceStatus==='COMPLIANT'?'green':e.complianceStatus==='DUE_SOON'?'orange':''}">${esc(e.complianceStatus||'')}</span></td><td>${esc(e.nextExpiration||'—')}</td><td>${esc(e.openAssignments||0)}</td></tr>`).join('')}</table></div>`}catch{$('trackingTable').innerHTML='<div class="empty">Compliance tracking endpoint is unavailable.</div>'}}
 $('trackingWindow').onchange=loadTracking;$('trackingRole').onchange=loadTracking;$('logoutBtn').onclick=()=>{sessionStorage.removeItem(TK);sessionStorage.removeItem(SK);location.replace('/employee-login.html')};init();
 </script>
+<script src="/assets/education-portal-enhancements.js"></script>
 </body></html>
