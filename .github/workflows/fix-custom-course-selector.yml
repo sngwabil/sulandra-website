@@ -1,0 +1,83 @@
+name: Fix custom course selector
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-custom-course-selector.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch education portal
+        shell: bash
+        run: |
+          git checkout -b fix/custom-course-selector
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('education-portal.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_css = ".automation h3{margin:0 0 8px;font-size:15px;color:#256f8f}.toast{position:fixed;right:20px;bottom:20px;background:#24343e;color:#fff;padding:12px 16px;border-radius:4px;display:none;z-index:20}"
+          new_css = ".automation h3{margin:0 0 8px;font-size:15px;color:#256f8f}.customcourses{grid-column:1/-1;border:1px solid #c7dbe4;background:#f7fbfd;padding:12px}.customcourses.hidden{display:none}.course-search{width:100%;margin-bottom:8px}.course-picks{max-height:220px;overflow:auto;border:1px solid #d7dfe3;background:#fff}.course-pick{display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:start;padding:9px;border-bottom:1px solid #e6ebee}.course-pick:last-child{border-bottom:0}.course-pick strong{display:block;color:#286f8e}.course-pick small{color:#78858d}.toast{position:fixed;right:20px;bottom:20px;background:#24343e;color:#fff;padding:12px 16px;border-radius:4px;display:none;z-index:20}"
+          if old_css not in s: raise SystemExit('CSS anchor not found')
+          s = s.replace(old_css, new_css, 1)
+
+          old_people = '<div class="field"><label>Education package</label><select id="packageSelect"><option value="INITIAL">Initial certification catalog</option><option value="ANNUAL">Annual renewal catalog</option><option value="CUSTOM">Custom course selection</option></select></div><div class="field"><label>Due date</label>'
+          new_people = '<div class="field"><label>Education package</label><select id="packageSelect"><option value="INITIAL">Initial certification catalog</option><option value="ANNUAL">Annual renewal catalog</option><option value="CUSTOM">Custom course selection</option></select></div><div id="customCourseBox" class="customcourses hidden"><div class="field"><label>Search and select courses</label><input id="customCourseSearch" class="course-search" placeholder="Search by course code, title, or category"></div><div id="customCourseList" class="course-picks"><div class="empty">Choose Custom course selection to select courses.</div></div><div class="summarybox"><strong id="customCourseSummary">0 courses selected</strong></div></div><div class="field"><label>Due date</label>'
+          if old_people not in s: raise SystemExit('People package anchor not found')
+          s = s.replace(old_people, new_people, 1)
+
+          old_group = '<div class="field"><label>Education package</label><select id="groupPackage"><option value="INITIAL">Initial certification catalog</option><option value="ANNUAL">Annual renewal catalog</option><option value="CUSTOM">Custom course selection</option></select></div><div class="field"><label>Renewal window</label>'
+          new_group = '<div class="field"><label>Education package</label><select id="groupPackage"><option value="INITIAL">Initial certification catalog</option><option value="ANNUAL">Annual renewal catalog</option><option value="CUSTOM">Custom course selection</option></select></div><div id="groupCustomCourseBox" class="customcourses hidden"><div class="field"><label>Search and select courses for this group</label><input id="groupCustomCourseSearch" class="course-search" placeholder="Search by course code, title, or category"></div><div id="groupCustomCourseList" class="course-picks"><div class="empty">Choose Custom course selection to select courses.</div></div><div class="summarybox"><strong id="groupCustomCourseSummary">0 courses selected</strong></div></div><div class="field"><label>Renewal window</label>'
+          if old_group not in s: raise SystemExit('Group package anchor not found')
+          s = s.replace(old_group, new_group, 1)
+
+          old_state = "const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token',SK='sulandra:employee:session';let session=null,employees=[],catalog=[],selected=new Set();"
+          new_state = "const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token',SK='sulandra:employee:session';let session=null,employees=[],catalog=[],selected=new Set(),selectedCourses=new Set(),selectedGroupCourses=new Set();"
+          if old_state not in s: raise SystemExit('State anchor not found')
+          s = s.replace(old_state, new_state, 1)
+
+          old_catalog_end = "}catch{$('catalogList').innerHTML='<div class=\"empty\">Catalog unavailable.</div>'}}"
+          new_catalog_end = "renderCoursePicker('custom');renderCoursePicker('group')}catch{$('catalogList').innerHTML='<div class=\"empty\">Catalog unavailable.</div>'}}"
+          if old_catalog_end not in s: raise SystemExit('Catalog anchor not found')
+          s = s.replace(old_catalog_end, new_catalog_end, 1)
+
+          insert_before = "async function init(){await loadCatalog();"
+          picker_js = r'''function renderCoursePicker(kind){const isGroup=kind==='group',searchId=isGroup?'groupCustomCourseSearch':'customCourseSearch',listId=isGroup?'groupCustomCourseList':'customCourseList',summaryId=isGroup?'groupCustomCourseSummary':'customCourseSummary',set=isGroup?selectedGroupCourses:selectedCourses,q=($(searchId)?.value||'').trim().toLowerCase();const rows=catalog.filter(c=>!q||[c.code,c.title,c.category].join(' ').toLowerCase().includes(q));$(listId).innerHTML=rows.map(c=>`<label class="course-pick"><input type="checkbox" value="${esc(c.code)}" ${set.has(String(c.code))?'checked':''}><span><strong>${esc(c.code)} — ${esc(c.title)}</strong><small>${esc(c.category||'Course')} · ${esc(c.estimatedMinutes||0)} minutes</small></span></label>`).join('')||'<div class="empty">No courses match your search.</div>';document.querySelectorAll('#'+listId+' input[type=checkbox]').forEach(cb=>cb.onchange=()=>{cb.checked?set.add(cb.value):set.delete(cb.value);$(summaryId).textContent=set.size+' courses selected'})}
+function toggleCustomCourses(kind){const isGroup=kind==='group',selectId=isGroup?'groupPackage':'packageSelect',boxId=isGroup?'groupCustomCourseBox':'customCourseBox';$(boxId).classList.toggle('hidden',$(selectId).value!=='CUSTOM');if($(selectId).value==='CUSTOM')renderCoursePicker(kind)}
+'''
+          if insert_before not in s: raise SystemExit('Init anchor not found')
+          s = s.replace(insert_before, picker_js + insert_before, 1)
+
+          old_listeners = "$('employeeSearch').oninput=renderEmployees;$('roleFilter').onchange=renderEmployees;"
+          new_listeners = "$('employeeSearch').oninput=renderEmployees;$('roleFilter').onchange=renderEmployees;$('packageSelect').onchange=()=>toggleCustomCourses('custom');$('groupPackage').onchange=()=>toggleCustomCourses('group');$('customCourseSearch').oninput=()=>renderCoursePicker('custom');$('groupCustomCourseSearch').oninput=()=>renderCoursePicker('group');"
+          if old_listeners not in s: raise SystemExit('Listener anchor not found')
+          s = s.replace(old_listeners, new_listeners, 1)
+
+          old_assign = "$('assignSelectedBtn').onclick=async()=>{if(!selected.size)return toast('Select at least one employee.');try{await req('/api/admin/education/bulk-assign',{method:'POST',body:JSON.stringify({employeeIds:[...selected],packageCode:$('packageSelect').value,dueDate:$('bulkDueDate').value||null,reason:$('bulkReason').value})});toast('Education package assigned to '+selected.size+' employees.')}catch{toast('Bulk assignment endpoint is not connected yet.')}}"
+          new_assign = "$('assignSelectedBtn').onclick=async()=>{if(!selected.size)return toast('Select at least one employee.');const packageCode=$('packageSelect').value,courseCodes=packageCode==='CUSTOM'?[...selectedCourses]:[];if(packageCode==='CUSTOM'&&!courseCodes.length)return toast('Select at least one course.');try{await req('/api/admin/education/bulk-assign',{method:'POST',body:JSON.stringify({employeeIds:[...selected],packageCode,courseCodes,dueDate:$('bulkDueDate').value||null,reason:$('bulkReason').value})});toast((packageCode==='CUSTOM'?courseCodes.length+' selected courses':'Education package')+' assigned to '+selected.size+' employees.')}catch{toast('Bulk assignment endpoint is not connected yet.')}}"
+          if old_assign not in s: raise SystemExit('Selected assignment anchor not found')
+          s = s.replace(old_assign, new_assign, 1)
+
+          old_group_assign = "$('assignGroupBtn').onclick=async()=>{try{const p=await req('/api/admin/education/group-assign',{method:'POST',body:JSON.stringify({group:$('groupSelect').value,packageCode:$('groupPackage').value,renewalWindowDays:Number($('renewalWindow').value),dueDate:$('groupDueDate').value||null})});toast('Group assignment created for '+(p.data?.assignedCount||0)+' employees.')}catch{toast('Group assignment endpoint is not connected yet.')}}"
+          new_group_assign = "$('assignGroupBtn').onclick=async()=>{const packageCode=$('groupPackage').value,courseCodes=packageCode==='CUSTOM'?[...selectedGroupCourses]:[];if(packageCode==='CUSTOM'&&!courseCodes.length)return toast('Select at least one course for the group.');try{const p=await req('/api/admin/education/group-assign',{method:'POST',body:JSON.stringify({group:$('groupSelect').value,packageCode,courseCodes,renewalWindowDays:Number($('renewalWindow').value),dueDate:$('groupDueDate').value||null})});toast('Group assignment created for '+(p.data?.assignedCount||0)+' employees.')}catch{toast('Group assignment endpoint is not connected yet.')}}"
+          if old_group_assign not in s: raise SystemExit('Group assignment anchor not found')
+          s = s.replace(old_group_assign, new_group_assign, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+          git config user.name "Sulandra Production Automation"
+          git config user.email "admin@sulandrahealth.com"
+          git add education-portal.html
+          git commit -m "Add searchable custom course selection"
+          git push origin fix/custom-course-selector
