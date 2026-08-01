@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "organization": "Sulandra Health",
   "certificateValidityMonths": 12,
   "assignmentReasons": [
@@ -11,16 +11,8 @@
     {"code":"MSE","name":"Management Self-Enrollment"}
   ],
   "groups": [
-    {
-      "code":"APPROVED-FOUNDATIONS",
-      "name":"Approved Person-Centered Foundations",
-      "courseCodes":["SH-PC-101","SH-CAP-101","SH-CAP-102"]
-    },
-    {
-      "code":"APPROVED-CLINICAL-SAFETY",
-      "name":"Approved Clinical and Workplace Safety In-Service",
-      "courseCodes":["SH-MED-201","SH-SAF-301"]
-    }
+    {"code":"APPROVED-FOUNDATIONS","name":"Approved Person-Centered Foundations","courseCodes":["SH-PC-101","SH-CAP-101","SH-CAP-102"]},
+    {"code":"APPROVED-CLINICAL-SAFETY","name":"Approved Clinical and Workplace Safety In-Service","courseCodes":["SH-MED-201","SH-SAF-301"]}
   ],
   "courses": [
     {
@@ -35,7 +27,7 @@
       "topicCount":10,
       "lessonCount":50,
       "questionCount":15,
-      "launchPath":"/module-1-person-centered-care.html"
+      "launchPath":"/course-player.html?code=SH-PC-101"
     },
     {
       "code":"SH-CAP-101",
@@ -48,7 +40,7 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/sh-cap-101-client-rights-advocacy.html"
+      "launchPath":"/course-player.html?code=SH-CAP-101"
     },
     {
       "code":"SH-CAP-102",
@@ -61,7 +53,7 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/sh-cap-102-person-centered-support.html"
+      "launchPath":"/course-player.html?code=SH-CAP-102"
     },
     {
       "code":"SH-MED-201",
@@ -74,7 +66,7 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/sh-med-201-safe-medication-administration.html",
+      "launchPath":"/course-player.html?code=SH-MED-201",
       "scopeNotice":"Organizational in-service only; does not replace state certification, competency validation, licensed-nurse delegation, or employer authorization."
     },
     {
@@ -88,14 +80,14 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/sh-saf-301-workplace-safety-preparedness.html",
+      "launchPath":"/course-player.html?code=SH-SAF-301",
       "scopeNotice":"Organizational in-service only; does not replace site-specific emergency plans, OSHA-required training, first-aid certification, or supervisor-directed drills."
     }
   ],
   "apiContract": {
     "myAssignments":"GET /api/education/my-assignments",
     "myCompletions":"GET /api/education/my-completions",
-    "assignments":"POST /api/admin/education/assignments",
+    "assignments":"POST /api/admin/education/bulk-assign",
     "completions":"POST /api/education/completions",
     "employeeEducation":"GET /api/admin/education/employees/:employeeId",
     "certificateDocument":"POST /api/admin/employees/:employeeId/documents"
