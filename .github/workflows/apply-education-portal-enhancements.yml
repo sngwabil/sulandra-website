@@ -1,0 +1,45 @@
+name: Apply education portal enhancements
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-education-portal-enhancements.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Attach approved education portal assets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('education-portal.html')
+          text = path.read_text(encoding='utf-8')
+          css = '<link rel="stylesheet" href="/assets/education-portal-enhancements.css">'
+          js = '<script src="/assets/education-portal-enhancements.js"></script>'
+          if css not in text:
+              anchor = '<link rel="icon" href="/favicon-48x48.png">'
+              if anchor not in text:
+                  raise SystemExit('favicon anchor not found; no changes made')
+              text = text.replace(anchor, anchor + '\n' + css, 1)
+          if js not in text:
+              anchor = '</body></html>'
+              if anchor not in text:
+                  raise SystemExit('body anchor not found; no changes made')
+              text = text.replace(anchor, js + '\n' + anchor, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          git config user.name "Sulandra Production Automation"
+          git config user.email "admin@sulandrahealth.com"
+          git add education-portal.html
+          git commit -m "Enhance education portal learning experience"
+          git push origin main
