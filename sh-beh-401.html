@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SH-BEH-401: Positive Behavior Support & Crisis Management | Sulandra Health</title>
+    <style>
+        :root {
+            --primary: #0f766e;
+            --primary-dark: #115e59;
+            --accent: #f59e0b;
+            --bg-slate: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --border: #cbd5e1;
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-slate);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .portal-wrapper {
+            width: 100%;
+            max-width: 1020px;
+            background: var(--card-bg);
+            border-radius: 14px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 20px 35px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+        .course-badge {
+            font-size: 0.8rem;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .progress-track { background: #e2e8f0; height: 6px; width: 100%; }
+        .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.4s ease; }
+        .module-nav {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+        .nav-tab {
+            padding: 12px 5px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            border-right: 1px solid var(--border);
+            cursor: not-allowed;
+            background: #f8fafc;
+        }
+        .nav-tab.unlocked { color: var(--primary); cursor: pointer; background: #ffffff; }
+        .nav-tab.active { background: var(--primary); color: white; }
+        .content-pane { padding: 35px; min-height: 420px; max-height: 520px; overflow-y: auto; }
+        .section-pane { display: none; }
+        .section-pane.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        h2 { color: var(--primary-dark); margin-top: 0; }
+        p { line-height: 1.6; color: #334155; }
+        .nav-guide-box {
+            background: #f0fdfa;
+            border: 1px solid #99f6e4;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .nav-guide-box h4 { margin-top: 0; color: var(--primary-dark); font-size: 0.95rem; }
+        .nav-steps-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+        .nav-step-item {
+            background: white;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #ccfbf1;
+        }
+        .visual-chart {
+            background: #f8fafc;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .chart-bars {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            height: 120px;
+            margin-top: 15px;
+            border-bottom: 2px solid #94a3b8;
+            padding-bottom: 5px;
+        }
+        .chart-bar {
+            width: 50px;
+            background: var(--primary);
+            border-radius: 4px 4px 0 0;
+            color: white;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 5px;
+            font-weight: bold;
+        }
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .demo-card {
+            background: #f0fdfa;
+            border: 1px solid #99f6e4;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .demo-card h4 { margin-top: 0; color: var(--primary-dark); }
+        .scenario-box {
+            background: #fffbeb;
+            border-left: 4px solid var(--accent);
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        .scenario-options button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: white;
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .scenario-options button:hover { background: #f1f5f9; border-color: var(--primary); }
+        .scenario-feedback { margin-top: 12px; font-weight: 600; font-size: 0.9rem; }
+        .timer-box {
+            background: #f1f5f9;
+            border-left: 4px solid var(--primary);
+            padding: 12px 15px;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #334155;
+        }
+        .lms-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border);
+            padding: 18px 35px;
+            background: #f8fafc;
+        }
+        button.btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button.btn-primary:hover { background: var(--primary-dark); }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .quiz-card { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
+        .quiz-options label {
+            display: block;
+            background: white;
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .quiz-options label:hover { background: #f1f5f9; }
+        .quiz-options input { margin-right: 10px; }
+        #certificate-box {
+            border: 8px solid var(--primary);
+            padding: 30px;
+            text-align: center;
+            background: white;
+            font-family: 'Georgia', serif;
+        }
+    </style>
+</head>
+<body>
+<div class="portal-wrapper">
+    <header>
+        <h1>Sulandra Health Training Academy</h1>
+        <span class="course-badge">SH-BEH-401: Behavior Support & Crisis Management</span>
+    </header>
+    <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
+    <div class="module-nav" id="module-nav-bar">
+        <div class="nav-tab active" id="tab-1">Section 1</div><div class="nav-tab" id="tab-2">Section 2</div><div class="nav-tab" id="tab-3">Section 3</div><div class="nav-tab" id="tab-4">Section 4</div><div class="nav-tab" id="tab-5">Section 5</div><div class="nav-tab" id="tab-6">Post-Test</div>
+    </div>
+    <div class="content-pane">
+        <div class="section-pane active" id="sec-1">
+            <h2>Section 1: Course Navigation & Behavioral Escalation Model</h2>
+            <div class="nav-guide-box"><h4>🧭 How to Navigate This Module</h4><div class="nav-steps-grid"><div class="nav-step-item"><strong>1. Progress Bar:</strong> Tracks your completion percentage at the top.</div><div class="nav-step-item"><strong>2. Timed Locks:</strong> Read each section fully; the Next button unlocks automatically.</div><div class="nav-step-item"><strong>3. Section Tabs:</strong> Click unlocked tabs above to jump between completed sections.</div></div></div>
+            <p>At Sulandra Health, crisis management relies on early intervention before agitation reaches peak intensity. Review the behavioral escalation cycle distribution chart below:</p>
+            <div class="visual-chart"><strong style="font-size:0.9rem; color:var(--primary-dark);">Behavioral Escalation & Intervention Success Rate (%)</strong><div class="chart-bars"><div class="chart-bar" style="height: 100%;">100%<br><span style="font-size:0.6rem;">Calm Phase</span></div><div class="chart-bar" style="height: 90%;">90%<br><span style="font-size:0.6rem;">Trigger Phase</span></div><div class="chart-bar" style="height: 75%;">75%<br><span style="font-size:0.6rem;">Agitation</span></div><div class="chart-bar" style="height: 50%;">50%<br><span style="font-size:0.6rem;">Peak Crisis</span></div></div></div>
+            <div class="timer-box" id="timer-box-1">⏱️ <strong>Active Learning Lock:</strong> Review the navigation guide and chart above. Unlocks in <span id="countdown-1">3</span> seconds.</div>
+        </div>
+        <div class="section-pane" id="sec-2"><h2>Section 2: Action Demonstrations in De-escalation</h2><p>Review the side-by-side action demonstrations comparing reactive escalation handling against Sulandra Health de-escalation gold standards:</p><div class="demo-grid"><div class="demo-card" style="background:#fef2f2; border-color:#fecaca;"><h4 style="color:#991b1b;">❌ Reactive / Punitive Response</h4><p style="font-size:0.85rem; margin:0;">Raising voice, arguing over minor rules, pointing fingers, and crowding an agitated resident's personal space.</p></div><div class="demo-card"><h4>✔ Sulandra Gold Standard De-escalation</h4><p style="font-size:0.85rem; margin:0;">Maintaining a calm, low vocal tone, stepping back to provide physical space, validating feelings, and offering simple choices.</p></div></div><div class="timer-box" id="timer-box-2">⏱️ <strong>Active Learning Lock:</strong> Review the action demonstrations above to proceed.</div></div>
+        <div class="section-pane" id="sec-3"><h2>Section 3: Interactive De-escalation Case Scenario</h2><p>Test your crisis response judgment against real-world residential situations:</p><div class="scenario-box"><h4 style="margin-top:0; color:#b45309;">🚨 Crisis Scenario: The Agitated Resident</h4><p style="font-size:0.9rem;">A resident begins pacing rapidly in the hallway, muttering angrily, and slamming doors because their favorite television show was preempted by a weather broadcast. What is the most effective staff de-escalation response?</p><div class="scenario-options"><button onclick="checkScenario(false, 'Incorrect. Arguing or enforcing strict rules during agitation escalates frustration into a crisis.')">A) Demand that the resident stop slamming doors immediately or face disciplinary action.</button><button onclick="checkScenario(true, 'Correct! Give the individual physical space, maintain a calm tone, acknowledge their frustration about the show, and offer a quiet alternative activity.')">B) Provide personal space, keep your voice calm, acknowledge their disappointment, and offer a peaceful alternative activity.</button><button onclick="checkScenario(false, 'Incorrect. Ignoring pacing agitation can allow tension to build unchecked into a peak crisis.')">C) Ignore them entirely and walk away to the office.</button></div><div class="scenario-feedback" id="scenario-feedback"></div></div><div class="timer-box" id="timer-box-3">⏱️ <strong>Active Learning Lock:</strong> Complete the interactive case scenario above to unlock Section 4.</div></div>
+        <div class="section-pane" id="sec-4"><h2>Section 4: Comprehensive Case Study – Post-Crisis Recovery</h2><p><strong>Case Background:</strong> Following an acute behavioral outburst in the dining area, a resident is now quiet and sitting alone in their room, looking exhausted. A staff member approaches wanting to lecture the resident about their inappropriate behavior during dinner.</p><p><strong>Analysis:</strong> Lecturing or rehashing arguments during the post-crisis recovery phase re-triggers agitation. Under Sulandra Health protocols, staff must allow quiet time for emotional recovery, restore normal routines gently, and conduct supportive staff debriefs away from the individual.</p><p style="color:var(--primary); font-weight:600;">Click "Next" to begin your 15-question certification post-test.</p></div>
+        <div class="section-pane" id="sec-5"><h2>SH-BEH-401: Certification Post-Test Assessment</h2><p><strong>Attempt Status:</strong> Attempt <span id="attempt-num">1</span> of 2. Passing requirement: 80% (12/15). Failing twice resets course progress.</p><form id="post-test-form"><div id="quiz-container"></div></form></div>
+        <div class="section-pane" id="sec-6"><div id="certificate-box"><h2 style="color:var(--primary); margin:0; font-size:1.6rem;">CERTIFICATE OF COMPLETION</h2><p style="font-size:0.85rem; color:#64748b;">Sulandra Health Professional In-Service Training</p><h3 id="cert-staff-name" style="font-size:1.5rem; color:var(--primary-dark); margin:15px 0;">[Staff Name]</h3><p>has successfully completed course and post-test evaluation for</p><p style="font-weight:bold; font-size:1.1rem;">SH-BEH-401: Positive Behavior Support & Crisis Management</p><p>Score Achieved: <span id="cert-score-disp"></span> | Date: <span id="cert-date-disp"></span></p><div style="display:flex; justify-content:space-between; margin-top:40px; padding:0 30px; font-family:'Inter',sans-serif; font-size:0.8rem;"><div><div style="border-top:1px solid #334155; width:180px; padding-top:4px; font-weight:bold;">Sulpitius Ndeh Gwabil, RN</div><span style="color:#64748b;">Clinical Trainer / Instructor</span></div><div><div style="border-top:1px solid #334155; width:180px; padding-top:4px; font-weight:bold;">Sulandra Health Administration</div><span style="color:#64748b;">Sulandra Community Living Services</span></div></div></div><div style="text-align: center; margin-top: 25px;"><button class="btn-primary" onclick="window.print()">Print Official Certificate</button></div></div>
+    </div>
+    <div class="lms-footer"><button class="btn-primary" id="prev-btn" onclick="navigateSec(-1)" disabled>Previous</button><span id="nav-status" style="font-size:0.85rem; font-weight:600; color:#64748b;">Section 1 of 6</span><button class="btn-primary" id="next-btn" onclick="navigateSec(1)">Complete Section & Continue</button></div>
+</div>
+<script>
+    let currentSec = 1;
+    let unlockedSecs = [true, false, false, false, false, false];
+    let secTimersDone = [false, false, false, false];
+    let timeLeft = 3;
+    let attemptCount = 1;
+    let scenarioPassed = false;
+    const quizData = [
+        { q: "1. What is the primary goal of Positive Behavior Support (PBS)?", options: ["Punish bad actions", "Prevent crises by understanding behavior as communication and modifying environments", "Restrict personal freedom", "Control schedules"], ans: 1 },
+        { q: "2. How should staff view challenging behavior?", options: ["As personal attacks", "As meaningful communication of unmet needs or distress", "As intentional defiance", "As unimportant"], ans: 1 },
+        { q: "3. What is the first stage of the behavioral escalation cycle where intervention is most successful?", options: ["Peak crisis", "Agitation phase", "Calm / Baseline phase", "Recovery phase"], ans: 2 },
+        { q: "4. Effective verbal de-escalation requires:", options: ["Shouting to gain control", "Maintaining a calm, low, reassuring voice and providing physical space", "Arguing over house rules", "Cornering the individual"], ans: 1 },
+        { q: "5. Trauma-informed care principles emphasize:", options: ["Punitive consequences", "Physical and psychological safety, trustworthiness, and empowerment", "Strict institutional discipline", "Ignoring past trauma"], ans: 1 },
+        { q: "6. When an individual enters an acute emotional outburst, staff must:", options: ["Retaliate verbally", "Stay composed, protect safety, and follow authorized crisis plans", "Leave the home unattended", "Lock the individual in a room"], ans: 1 },
+        { q: "7. What is the correct approach during the post-crisis recovery phase?", options: ["Lecture the resident about their behavior", "Provide quiet time, emotional recovery space, and gentle routine restoration", "Rehash arguments immediately", "Impose immediate fines"], ans: 1 },
+        { q: "8. Identifying behavioral triggers involves:", options: ["Guessing randomly", "Analyzing environmental, sensory, and interpersonal factors leading to distress", "Ignoring patterns", "Blaming the resident"], ans: 1 },
+        { q: "9. Why are visual schedules and predictable routines effective?", options: ["They create rigid control", "They reduce anxiety by providing clarity and predictability", "They confuse residents", "They increase staff paperwork"], ans: 1 },
+        { q: "10. Secondary traumatic stress in caregivers is managed by:", options: ["Suppressing emotions", "Utilizing team support, peer debriefs, and healthy self-care boundaries", "Working double shifts", "Isolating from coworkers"], ans: 1 },
+        { q: "11. What role does sensory overload play in behavioral outbursts?", options: ["No impact", "Loud noises or bright lights can trigger acute distress and agitation", "It cures anxiety", "It improves sleep"], ans: 1 },
+        { q: "12. Offering meaningful daily choices helps prevent:", options: ["Independence", "Frustration and power struggles", "Good health", "Staff communication"], ans: 1 },
+        { q: "13. What is the danger of using coercive or punitive responses?", options: ["They solve all problems", "They escalate trauma, damage trust, and worsen behavioral distress", "They promote safety", "They build rapport"], ans: 1 },
+        { q: "14. Documenting behavioral incidents requires:", options: ["Exaggerating details", "Objective, factual descriptions of antecedents, behaviors, and consequences", "Personal opinions", "No notes"], ans: 1 },
+        { q: "15. The ultimate goal of Sulandra Health behavior support training is to:", options: ["Enforce compliance quotas", "Empower staff to support individuals in living peaceful, fulfilled lives", "Restrict community access", "Make shifts harder"], ans: 1 }
+    ];
+    function buildQuiz() {
+        const container = document.getElementById('quiz-container');
+        let html = '';
+        quizData.forEach((item, idx) => {
+            html += `<div class="quiz-card"><p><strong>${item.q}</strong></p><div class="quiz-options">`;
+            item.options.forEach((opt, oIdx) => { html += `<label><input type="radio" name="q${idx}" value="${oIdx}"> ${opt}</label>`; });
+            html += `</div></div>`;
+        });
+        container.innerHTML = html;
+    }
+    buildQuiz();
+    function checkScenario(isCorrect, message) {
+        const fb = document.getElementById('scenario-feedback');
+        if(isCorrect) {
+            fb.style.color = "var(--success)";
+            fb.innerText = "✔ " + message;
+            scenarioPassed = true;
+            document.getElementById('timer-box-3').innerHTML = "🔓 <strong>Scenario Passed:</strong> You may now proceed to Section 4.";
+            document.getElementById('timer-box-3').style.borderColor = "var(--success)";
+            document.getElementById('next-btn').disabled = false;
+        } else {
+            fb.style.color = "var(--danger)";
+            fb.innerText = "✖ " + message;
+        }
+    }
+    setInterval(() => {
+        if(currentSec >= 1 && currentSec <= 3 && !secTimersDone[currentSec - 1]) {
+            if(timeLeft > 0) {
+                timeLeft--;
+                const counter = document.getElementById(`countdown-${currentSec}`);
+                if(counter) counter.innerText = timeLeft;
+            } else {
+                secTimersDone[currentSec - 1] = true;
+                const tb = document.getElementById(`timer-box-${currentSec}`);
+                if(tb) {
+                    tb.innerHTML = "🔓 <strong>Requirement Met:</strong> Time satisfied. You may proceed.";
+                    tb.style.borderColor = "var(--success)";
+                    tb.style.color = "var(--success)";
+                }
+                if(currentSec !== 3 || scenarioPassed) document.getElementById('next-btn').disabled = false;
+            }
+        }
+    }, 1000);
+    function updateView() {
+        for(let i=1; i<=6; i++) {
+            document.getElementById(`sec-${i}`).classList.remove('active');
+            document.getElementById(`tab-${i}`).classList.remove('active');
+        }
+        document.getElementById(`sec-${currentSec}`).classList.add('active');
+        document.getElementById(`tab-${currentSec}`).classList.add('active');
+        for(let i=1; i<=6; i++) {
+            const tab = document.getElementById(`tab-${i}`);
+            if(unlockedSecs[i-1]) tab.classList.add('unlocked'); else tab.classList.remove('unlocked');
+        }
+        document.getElementById('progress-bar').style.width = `${((currentSec - 1) / 5) * 100}%`;
+        document.getElementById('nav-status').innerText = `Section ${currentSec} of 6`;
+        document.getElementById('prev-btn').disabled = (currentSec === 1 || currentSec === 6);
+        if(currentSec <= 3) {
+            if(!secTimersDone[currentSec - 1]) {
+                document.getElementById('next-btn').disabled = true;
+                document.getElementById('next-btn').innerText = `Complete Section Timer`;
+            } else {
+                document.getElementById('next-btn').disabled = false;
+                document.getElementById('next-btn').innerText = "Complete Section & Continue";
+            }
+        } else if(currentSec === 4) {
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('next-btn').innerText = "Begin Certification Post-Test";
+        } else if(currentSec === 5) {
+            document.getElementById('next-btn').disabled = false;
+            document.getElementById('next-btn').innerText = "Submit Post-Test Assessment";
+        } else if(currentSec === 6) {
+            document.getElementById('prev-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('nav-status').innerText = `Certification Issued`;
+        }
+    }
+    function navigateSec(dir) {
+        if(dir === 1) {
+            if(currentSec === 5) {
+                let score = 0;
+                quizData.forEach((item, idx) => {
+                    const sel = document.querySelector(`input[name="q${idx}"]:checked`);
+                    if(sel && parseInt(sel.value) === item.ans) score++;
+                });
+                let pct = Math.round((score / quizData.length) * 100);
+                if(pct < 80) {
+                    if(attemptCount < 2) {
+                        attemptCount++;
+                        document.getElementById('attempt-num').innerText = attemptCount;
+                        alert(`You scored ${pct}% (${score}/15). An 80% passing grade is required. You have 1 attempt remaining.`);
+                        return;
+                    } else {
+                        alert("Maximum attempts (2) reached without passing. Course has been reset.");
+                        currentSec = 1;
+                        attemptCount = 1;
+                        unlockedSecs = [true, false, false, false, false, false];
+                        secTimersDone = [false, false, false, false];
+                        timeLeft = 3;
+                        updateView();
+                        return;
+                    }
+                }
+                const staffName = prompt("Enter employee full name for certificate generation:", "Sulpitius Ndeh Gwabil");
+                document.getElementById('cert-staff-name').innerText = staffName || "Certified Employee";
+                document.getElementById('cert-score-disp').innerText = `${pct}% (${score}/15 correct)`;
+                document.getElementById('cert-date-disp').innerText = new Date().toLocaleDateString();
+                unlockedSecs[5] = true;
+                currentSec = 6;
+                updateView();
+                return;
+            }
+            if(currentSec < 6) {
+                unlockedSecs[currentSec] = true;
+                currentSec++;
+                timeLeft = 3;
+                updateView();
+            }
+        } else if(currentSec > 1) {
+            currentSec--;
+            updateView();
+        }
+    }
+    updateView();
+</script>
+</body>
+</html>
