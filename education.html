@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Opening Sulandra Health Education Portal</title>
+  <meta name="robots" content="noindex,nofollow">
+  <style>
+    html,body{height:100%;margin:0}body{display:grid;place-items:center;background:#f1f5f9;color:#0f172a;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.status{text-align:center;padding:24px}.spinner{width:38px;height:38px;margin:0 auto 14px;border:4px solid #cbd5e1;border-top-color:#0369a1;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}p{margin:0;color:#475569}
+  </style>
+</head>
+<body>
+  <main class="status" aria-live="polite">
+    <div class="spinner" aria-hidden="true"></div>
+    <p id="message">Verifying your Sulandra employee session…</p>
+  </main>
+  <script>
+    (() => {
+      const API = 'https://sulandra-website-production.up.railway.app';
+      const TOKEN_KEY = 'sulandra:employee:access-token';
+      const SESSION_KEY = 'sulandra:employee:session';
+      const token = sessionStorage.getItem(TOKEN_KEY) || '';
+      const message = document.getElementById('message');
+
+      const sendToLogin = () => {
+        message.textContent = 'A verified employee session is required. Opening sign in…';
+        const returnTo = encodeURIComponent('/education-portal.html');
+        window.location.replace('/employee-login.html?returnTo=' + returnTo);
+      };
+
+      if (!token) {
+        sendToLogin();
+        return;
+      }
+
+      fetch(API + '/api/session', {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer ' + token
+        }
+      })
+        .then(async response => {
+          if (!response.ok) throw new Error('Session verification failed');
+          const payload = await response.json().catch(() => ({}));
+          if (payload && payload.data) {
+            const existing = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') || {};
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...existing, ...payload.data }));
+          }
+          window.location.replace('/education-portal.html');
+        })
+        .catch(() => {
+          sessionStorage.removeItem(TOKEN_KEY);
+          sessionStorage.removeItem(SESSION_KEY);
+          sendToLogin();
+        });
+    })();
+  </script>
+</body>
+</html>
