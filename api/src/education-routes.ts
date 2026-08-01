@@ -38,6 +38,10 @@ export function registerEducationRoutes(
 ) {
   const { authOf, requireRoles, audit } = helpers;
 
+  app.get('/api/education/health', (_req, res) => {
+    res.json({ data: { service: 'education', status: 'ready' } });
+  });
+
   app.get('/api/education/my-assignments', async (_req, res, next) => {
     try {
       const auth = authOf(res);
