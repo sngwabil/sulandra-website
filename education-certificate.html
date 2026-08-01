@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sulandra Health Certificate</title>
+<link rel="icon" href="/favicon-48x48.png">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef2f4;color:#17212b;font-family:Georgia,'Times New Roman',serif}.toolbar{display:flex;gap:12px;justify-content:center;padding:18px;background:#0b4265}.toolbar button,.toolbar a{border:0;border-radius:6px;padding:11px 18px;background:#fff;color:#0b4265;text-decoration:none;font:700 14px Arial;cursor:pointer}.page{width:min(1080px,94vw);min-height:760px;margin:28px auto;background:#fff;border:12px double #b58b24;padding:54px 64px;box-shadow:0 12px 35px rgba(0,0,0,.14);text-align:center}.brand{display:flex;align-items:center;justify-content:center;gap:14px}.brand img{width:82px;height:82px;object-fit:contain}.brand h1{margin:0;font:700 34px Arial;color:#0b4265}.eyebrow{margin-top:28px;text-transform:uppercase;letter-spacing:5px;color:#b58b24;font:700 15px Arial}.title{font-size:48px;margin:12px 0 24px;color:#0b4265}.certifies{font-size:20px}.name{font-size:38px;font-weight:700;margin:20px 0;border-bottom:1px solid #6b7280;display:inline-block;padding:0 34px 8px}.course{font-size:28px;font-weight:700;margin:18px auto;max-width:820px}.details{margin:24px auto 8px;font-size:17px;line-height:1.7}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:70px;margin-top:72px}.sig-name{font-size:18px;font-weight:700;margin-bottom:8px}.sig-line{border-top:1px solid #111;padding-top:8px;font:14px Arial;color:#4b5563}.certno{margin-top:42px;font:12px Arial;color:#6b7280}.error{max-width:720px;margin:80px auto;background:#fff;padding:30px;border:1px solid #d1d5db;font-family:Arial}@media(max-width:700px){.page{padding:32px 22px;border-width:7px}.title{font-size:34px}.name{font-size:28px}.course{font-size:22px}.signatures{grid-template-columns:1fr;gap:42px}}@media print{body{background:#fff}.toolbar{display:none}.page{width:100%;min-height:auto;margin:0;border:10px double #b58b24;box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="toolbar"><a href="/education-portal.html?tab=history">Return to Completed</a><button id="printBtn">Print / Save PDF</button></div>
+<main id="certificate" class="page" hidden>
+<div class="brand"><img src="/favicon-48x48.png" alt="Sulandra Health"><h1>Sulandra Health</h1></div>
+<div class="eyebrow">Certificate of Completion</div>
+<div class="title">Certificate of Completion</div>
+<p class="certifies">This certifies that</p>
+<div class="name" id="employeeName">Verified Employee</div>
+<p class="certifies">has successfully completed</p>
+<div class="course" id="courseTitle">Course</div>
+<div class="details" id="details"></div>
+<div class="signatures"><div><div class="sig-name" id="educatorName">Sulandra Health Education Administrator</div><div class="sig-line">Educator / Authorized Representative</div></div><div><div class="sig-name">Sulandra Health</div><div class="sig-line">Organization</div></div></div>
+<div class="certno" id="certificateNumber"></div>
+</main>
+<div id="error" class="error">Loading verified certificate…</div>
+<script>
+const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token',SK='sulandra:employee:session';
+const code=new URLSearchParams(location.search).get('code');
+function token(){return sessionStorage.getItem(TK)||''}
+async function api(path){const r=await fetch(API+path,{cache:'no-store',headers:{Accept:'application/json',Authorization:'Bearer '+token()}});const p=await r.json().catch(()=>({}));if(!r.ok)throw Error(p.error||`Request failed (${r.status})`);return p}
+function fmt(v){if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}
+async function init(){try{if(!code)throw Error('Certificate course code is missing.');const [done,catalog]=await Promise.all([api('/api/education/my-completions'),fetch('/education-catalog.json',{cache:'no-store'}).then(r=>r.json())]);const row=(done.data||[]).find(x=>x.courseCode===code);if(!row)throw Error('A verified completion record was not found for this course.');const meta=(catalog.courses||[]).find(x=>x.code===code)||{};const session=JSON.parse(sessionStorage.getItem(SK)||'{}');document.getElementById('employeeName').textContent=session.displayName||session.fullName||session.name||session.email||'Verified Employee';document.getElementById('courseTitle').textContent=meta.title||row.title||code;document.getElementById('details').innerHTML=`Course Code: <strong>${code}</strong><br>Completed: <strong>${fmt(row.completedAt)}</strong><br>Valid Through: <strong>${fmt(row.expiresAt)}</strong>`;document.getElementById('certificateNumber').textContent='Certificate ID: '+String(row.id||`${code}-${row.completedAt||''}`).toUpperCase();document.getElementById('error').hidden=true;document.getElementById('certificate').hidden=false}catch(e){document.getElementById('error').textContent=e.message||'Certificate unavailable.'}}
+document.getElementById('printBtn').onclick=()=>window.print();init();
+</script>
+</body></html>
