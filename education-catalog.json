@@ -1,5 +1,5 @@
 {
-  "version": 6,
+  "version": 7,
   "organization": "Sulandra Health",
   "certificateValidityMonths": 12,
   "assignmentReasons": [
@@ -27,7 +27,7 @@
       "topicCount":10,
       "lessonCount":50,
       "questionCount":15,
-      "launchPath":"/course-player.html?code=SH-PC-101"
+      "launchPath":"/module-1-person-centered-care.html"
     },
     {
       "code":"SH-CAP-101",
@@ -40,7 +40,7 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/course-player.html?code=SH-CAP-101"
+      "launchPath":"/sh-cap-101-client-rights-advocacy.html"
     },
     {
       "code":"SH-CAP-102",
@@ -53,7 +53,7 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/course-player.html?code=SH-CAP-102"
+      "launchPath":"/sh-cap-102-person-centered-support.html"
     },
     {
       "code":"SH-MED-201",
@@ -66,7 +66,7 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/course-player.html?code=SH-MED-201",
+      "launchPath":"/sh-med-201-safe-medication-administration.html",
       "scopeNotice":"Organizational in-service only; does not replace state certification, competency validation, licensed-nurse delegation, or employer authorization."
     },
     {
@@ -80,7 +80,7 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
-      "launchPath":"/course-player.html?code=SH-SAF-301",
+      "launchPath":"/sh-saf-301-workplace-safety-preparedness.html",
       "scopeNotice":"Organizational in-service only; does not replace site-specific emergency plans, OSHA-required training, first-aid certification, or supervisor-directed drills."
     }
   ],
