@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sulandra Health Course Player</title>
+<style>
+html,body{height:100%;margin:0;background:#eef4f7;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}#courseFrame{width:100%;height:100%;border:0;display:block}.error{max-width:720px;margin:80px auto;background:#fff;border:1px solid #d8e2e8;border-radius:14px;padding:28px;color:#172033;box-shadow:0 14px 35px rgba(15,23,42,.1)}
+</style>
+</head>
+<body>
+<iframe id="courseFrame" title="Sulandra Health employee education course"></iframe>
+<script>
+const courses={
+  'SH-PC-101':'/module-1-person-centered-care.html',
+  'SH-CAP-101':'/sh-cap-101-client-rights-advocacy.html',
+  'SH-CAP-102':'/sh-cap-102-person-centered-support.html',
+  'SH-MED-201':'/sh-med-201-safe-medication-administration.html',
+  'SH-SAF-301':'/sh-saf-301-workplace-safety-preparedness.html'
+};
+const code=new URLSearchParams(location.search).get('code');
+const frame=document.getElementById('courseFrame');
+if(!code||!courses[code]){
+  document.body.innerHTML='<div class="error"><h1>Course unavailable</h1><p>This course could not be identified. Return to the Education Portal and open it again.</p><a href="/education-portal.html">Return to Education Portal</a></div>';
+}else{
+  frame.src=courses[code];
+  frame.addEventListener('load',()=>enhance(frame.contentDocument));
+}
+function enhance(doc){
+  if(!doc)return;
+  const style=doc.createElement('style');
+  style.textContent=`
+    .sulandra-completion-actions{display:flex!important;justify-content:center;gap:12px;flex-wrap:wrap;margin:22px 0 4px!important}
+    .sulandra-return-btn{display:inline-flex;align-items:center;justify-content:center;background:#063b61!important;color:#fff!important;border:0!important;padding:11px 22px!important;border-radius:7px!important;font-weight:800!important;text-decoration:none!important;cursor:pointer!important}
+    .sulandra-certificate-signature{border-top:0!important;border-bottom:1px solid #334155!important;padding:0 4px 7px!important;margin-bottom:6px!important}
+    @media print{.sulandra-completion-actions{display:none!important}}
+  `;
+  doc.head.appendChild(style);
+  const cleanCertificate=()=>{
+    const certificate=doc.querySelector('#sec-6 .cert,#sec-6 #cert,#sec-6');
+    if(!certificate)return;
+    ['certScore','cert-score'].forEach(id=>{const node=doc.getElementById(id);if(node){const parent=node.parentElement;if(parent){parent.innerHTML=parent.innerHTML.replace(/(?:<strong>)?Score:(?:<\/strong>)?\s*<span[^>]*>.*?<\/span>\s*(?:<br\s*\/?>)?/i,'')}}});
+    certificate.querySelectorAll('p').forEach(p=>{if(/^\s*Score\s*:/i.test(p.textContent||'')){
+      p.innerHTML=p.innerHTML.replace(/Score:\s*<span[^>]*>.*?<\/span>\s*(?:<br\s*\/?>)?/i,'');
+      if(!(p.textContent||'').trim())p.remove();
+    }});
+    certificate.querySelectorAll('[style*="border-top"],.sig').forEach(block=>{
+      block.classList.add('sulandra-certificate-signature');
+      block.style.borderTop='0';block.style.borderBottom='1px solid #334155';block.style.paddingTop='0';block.style.paddingBottom='7px';
+    });
+    let actions=doc.querySelector('.sulandra-completion-actions');
+    if(!actions){
+      actions=doc.createElement('div');actions.className='sulandra-completion-actions';
+      const printButton=[...doc.querySelectorAll('button')].find(button=>/print/i.test(button.textContent||''));
+      if(printButton){const currentContainer=printButton.parentElement;currentContainer?.parentElement?.insertBefore(actions,currentContainer);actions.appendChild(printButton);currentContainer?.remove()}
+      else certificate.parentElement?.appendChild(actions);
+      const back=doc.createElement('a');back.className='sulandra-return-btn';back.href='/education-portal.html?tab=learning&refresh=1';back.textContent='Return to To Do';actions.appendChild(back);
+    }
+  };
+  cleanCertificate();
+  new MutationObserver(cleanCertificate).observe(doc.body,{subtree:true,childList:true,attributes:true});
+}
+</script>
+</body>
+</html>
