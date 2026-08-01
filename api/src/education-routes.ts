@@ -3,22 +3,11 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-type AuthContext = {
-  userId: string;
-  organizationId: string;
-  role: UserRole;
-};
-
+type AuthContext = { userId: string; organizationId: string; role: UserRole };
 type Helpers = {
   authOf: (response: express.Response) => AuthContext;
   requireRoles: (...roles: UserRole[]) => express.RequestHandler;
-  audit: (
-    auth: Partial<AuthContext>,
-    action: string,
-    resourceType: string,
-    resourceId?: string,
-    metadata?: object,
-  ) => Promise<void>;
+  audit: (auth: Partial<AuthContext>, action: string, resourceType: string, resourceId?: string, metadata?: object) => Promise<void>;
 };
 
 const bulkAssignSchema = z.object({
@@ -31,139 +20,107 @@ const bulkAssignSchema = z.object({
   reason: z.string().trim().max(1000).optional(),
 });
 
-export function registerEducationRoutes(
-  app: express.Express,
-  prisma: PrismaClient,
-  helpers: Helpers,
-) {
+const completionSchema = z.object({
+  courseCode: z.string().trim().min(1).max(120),
+  title: z.string().trim().min(1).max(300).optional(),
+  completedAt: z.coerce.date().optional(),
+  expiresAt: z.coerce.date().nullable().optional(),
+  certificateNumber: z.string().trim().max(160).optional(),
+  attemptCount: z.number().int().positive().max(20).optional(),
+});
+
+export function registerEducationRoutes(app: express.Express, prisma: PrismaClient, helpers: Helpers) {
   const { authOf, requireRoles, audit } = helpers;
 
-  app.get('/api/education/health', (_req, res) => {
-    res.json({ data: { service: 'education', status: 'ready' } });
-  });
+  app.get('/api/education/health', (_req, res) => res.json({ data: { service: 'education', status: 'ready' } }));
 
   app.get('/api/education/my-assignments', async (_req, res, next) => {
     try {
       const auth = authOf(res);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT "id","courseCode","title","status","dueDate","reason","assignedAt","startedAt","completedAt","expiresAt"
-         FROM "EducationAssignment"
-         WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status"<>'COMPLETED'
-         ORDER BY "dueDate" ASC NULLS LAST, "assignedAt" DESC`,
-        auth.organizationId,
-        auth.userId,
-      );
+         FROM "EducationAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status"<>'COMPLETED'
+         ORDER BY "dueDate" ASC NULLS LAST, "assignedAt" DESC`, auth.organizationId, auth.userId);
       res.json({ data: rows });
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   });
 
   app.get('/api/education/my-completions', async (_req, res, next) => {
     try {
       const auth = authOf(res);
       const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT "id","courseCode","title","completedAt","scorePercent","expiresAt"
-         FROM "EducationAssignment"
-         WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status"='COMPLETED'
-         ORDER BY "completedAt" DESC`,
-        auth.organizationId,
-        auth.userId,
-      );
+        `SELECT "id","courseCode","title","completedAt","expiresAt"
+         FROM "EducationAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status"='COMPLETED'
+         ORDER BY "completedAt" DESC`, auth.organizationId, auth.userId);
       res.json({ data: rows });
-    } catch (error) {
-      next(error);
-    }
+    } catch (error) { next(error); }
   });
 
-  app.post(
-    '/api/admin/education/bulk-assign',
-    requireRoles(UserRole.ADMINISTRATOR),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const input = bulkAssignSchema.parse(req.body);
-        const requestedCodes = [
-          ...(input.courseCodes ?? []),
-          ...(input.courseCode ? [input.courseCode] : []),
-        ];
-        const courseCodes = [...new Set(requestedCodes.map((code) => code.trim()).filter(Boolean))];
-
-        if (input.packageCode === 'CUSTOM' && courseCodes.length === 0) {
-          res.status(400).json({ error: 'Select at least one course.' });
-          return;
-        }
-        if (courseCodes.length === 0) {
-          res.status(400).json({ error: 'This education package does not contain any courses yet.' });
-          return;
-        }
-
-        const employeeRows = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id" FROM "User"
-           WHERE "organizationId"=$1 AND "id" = ANY($2::text[])`,
-          auth.organizationId,
-          input.employeeIds,
-        );
-        const employeeIds = employeeRows.map((row) => String(row.id));
-        if (employeeIds.length === 0) {
-          res.status(404).json({ error: 'No matching employees were found.' });
-          return;
-        }
-
-        let assignedCount = 0;
-        await prisma.$transaction(async (tx) => {
-          for (const employeeId of employeeIds) {
-            for (const courseCode of courseCodes) {
-              const existing = await tx.$queryRawUnsafe<any[]>(
-                `SELECT "id" FROM "EducationAssignment"
-                 WHERE "organizationId"=$1 AND "employeeId"=$2 AND "courseCode"=$3
-                   AND "status" IN ('ASSIGNED','IN_PROGRESS')
-                 LIMIT 1`,
-                auth.organizationId,
-                employeeId,
-                courseCode,
-              );
-              if (existing[0]) continue;
-
-              const assignmentId = randomUUID();
-              await tx.$executeRawUnsafe(
-                `INSERT INTO "EducationAssignment"
-                 ("id","organizationId","employeeId","courseCode","title","packageCode","status","dueDate","reason","assignedById","assignedAt","createdAt","updatedAt")
-                 VALUES ($1,$2,$3,$4,$5,$6,'ASSIGNED',$7,$8,$9,NOW(),NOW(),NOW())`,
-                assignmentId,
-                auth.organizationId,
-                employeeId,
-                courseCode,
-                input.courseTitle || courseCode,
-                input.packageCode,
-                input.dueDate ?? null,
-                input.reason ?? 'Required employee education',
-                auth.userId,
-              );
-              assignedCount += 1;
-            }
-          }
-        });
-
-        await audit(auth, 'BULK_ASSIGN_EDUCATION', 'EducationAssignment', undefined, {
-          employeeCount: employeeIds.length,
-          courseCodes,
-          assignedCount,
-          packageCode: input.packageCode,
-          dueDate: input.dueDate ?? null,
-        });
-
-        res.status(201).json({
-          data: {
-            assignedCount,
-            employeesAffected: employeeIds.length,
-            skippedCount: employeeIds.length * courseCodes.length - assignedCount,
-            courseCodes,
-          },
-        });
-      } catch (error) {
-        next(error);
+  app.post('/api/education/completions', async (req, res, next) => {
+    try {
+      const auth = authOf(res);
+      const input = completionSchema.parse(req.body);
+      const completedAt = input.completedAt ?? new Date();
+      const rows = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT "id" FROM "EducationAssignment"
+         WHERE "organizationId"=$1 AND "employeeId"=$2 AND "courseCode"=$3 AND "status" IN ('ASSIGNED','IN_PROGRESS')
+         ORDER BY "assignedAt" DESC LIMIT 1`, auth.organizationId, auth.userId, input.courseCode);
+      let id = rows[0]?.id as string | undefined;
+      if (id) {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "EducationAssignment" SET "status"='COMPLETED',"completedAt"=$1,"expiresAt"=$2,"updatedAt"=NOW()
+           WHERE "id"=$3 AND "organizationId"=$4 AND "employeeId"=$5`,
+          completedAt, input.expiresAt ?? null, id, auth.organizationId, auth.userId);
+      } else {
+        id = randomUUID();
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "EducationAssignment"
+           ("id","organizationId","employeeId","courseCode","title","packageCode","status","completedAt","expiresAt","reason","assignedById","assignedAt","createdAt","updatedAt")
+           VALUES ($1,$2,$3,$4,$5,'CUSTOM','COMPLETED',$6,$7,'Employee completed approved education',$3,NOW(),NOW(),NOW())`,
+          id, auth.organizationId, auth.userId, input.courseCode, input.title || input.courseCode, completedAt, input.expiresAt ?? null);
       }
-    },
-  );
+      await audit(auth, 'COMPLETE_EDUCATION', 'EducationAssignment', id, {
+        courseCode: input.courseCode,
+        certificateNumber: input.certificateNumber ?? null,
+        attemptCount: input.attemptCount ?? null,
+      });
+      res.status(201).json({ data: { id, courseCode: input.courseCode, status: 'COMPLETED', completedAt, expiresAt: input.expiresAt ?? null } });
+    } catch (error) { next(error); }
+  });
+
+  app.post('/api/admin/education/bulk-assign', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+    try {
+      const auth = authOf(res);
+      const input = bulkAssignSchema.parse(req.body);
+      const requestedCodes = [...(input.courseCodes ?? []), ...(input.courseCode ? [input.courseCode] : [])];
+      const courseCodes = [...new Set(requestedCodes.map((code) => code.trim()).filter(Boolean))];
+      if (input.packageCode === 'CUSTOM' && courseCodes.length === 0) return void res.status(400).json({ error: 'Select at least one course.' });
+      if (courseCodes.length === 0) return void res.status(400).json({ error: 'This education package does not contain any courses yet.' });
+      const employeeRows = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT "id" FROM "User" WHERE "organizationId"=$1 AND "id" = ANY($2::text[])`, auth.organizationId, input.employeeIds);
+      const employeeIds = employeeRows.map((row) => String(row.id));
+      if (employeeIds.length === 0) return void res.status(404).json({ error: 'No matching employees were found.' });
+      let assignedCount = 0;
+      await prisma.$transaction(async (tx) => {
+        for (const employeeId of employeeIds) for (const courseCode of courseCodes) {
+          const existing = await tx.$queryRawUnsafe<any[]>(
+            `SELECT "id" FROM "EducationAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "courseCode"=$3
+             AND "status" IN ('ASSIGNED','IN_PROGRESS') LIMIT 1`, auth.organizationId, employeeId, courseCode);
+          if (existing[0]) continue;
+          const assignmentId = randomUUID();
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "EducationAssignment"
+             ("id","organizationId","employeeId","courseCode","title","packageCode","status","dueDate","reason","assignedById","assignedAt","createdAt","updatedAt")
+             VALUES ($1,$2,$3,$4,$5,$6,'ASSIGNED',$7,$8,$9,NOW(),NOW(),NOW())`,
+            assignmentId, auth.organizationId, employeeId, courseCode, input.courseTitle || courseCode, input.packageCode,
+            input.dueDate ?? null, input.reason ?? 'Required employee education', auth.userId);
+          assignedCount += 1;
+        }
+      });
+      await audit(auth, 'BULK_ASSIGN_EDUCATION', 'EducationAssignment', undefined, {
+        employeeCount: employeeIds.length, courseCodes, assignedCount, packageCode: input.packageCode, dueDate: input.dueDate ?? null,
+      });
+      res.status(201).json({ data: { assignedCount, employeesAffected: employeeIds.length, skippedCount: employeeIds.length * courseCodes.length - assignedCount, courseCodes } });
+    } catch (error) { next(error); }
+  });
 }
