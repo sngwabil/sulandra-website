@@ -2,6 +2,7 @@ import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { registerEducationRoutes } from './education-routes.js';
 import {
   provisionApplicantWorkflow,
   recordAndDeliver,
@@ -137,6 +138,8 @@ export function registerCareersRoutes(
   helpers: Helpers,
 ) {
   const { authOf, requireRoles, audit } = helpers;
+
+  registerEducationRoutes(app, prisma, helpers);
 
   let cachedCareersOrganizationId: string | null = null;
   let careersOrganizationLookup: Promise<string | null> | null = null;
