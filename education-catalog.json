@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "organization": "Sulandra Health",
   "certificateValidityMonths": 12,
   "assignmentReasons": [
@@ -18,7 +18,9 @@
     {
       "code":"SH-PC-101",
       "title":"Professional Person-Centered Care & Client Advocacy Foundations",
+      "description":"A complete foundations course covering person-centered practice, dignity, choice, communication, advocacy, documentation, and professional responsibility.",
       "category":"Orientation and Annual In-Service",
+      "delivery":"Online self-paced",
       "estimatedMinutes":90,
       "passingPercent":80,
       "maximumAttempts":2,
@@ -27,12 +29,20 @@
       "topicCount":10,
       "lessonCount":50,
       "questionCount":15,
+      "activitySequence":[
+        {"name":"Course overview and learning objectives","type":"OVERVIEW"},
+        {"name":"Person-centered foundations learning modules","type":"ELEARNING"},
+        {"name":"Knowledge validation","type":"POST TEST"},
+        {"name":"Completion certificate","type":"CERTIFICATE"}
+      ],
       "launchPath":"/module-1-person-centered-care.html"
     },
     {
       "code":"SH-CAP-101",
       "title":"Client Rights & Advocacy Essentials",
+      "description":"Required education on dignity and respect, informed consent, confidentiality, identity validation, humane treatment, autonomy, privacy, and advocacy.",
       "category":"Client Rights and Compliance",
+      "delivery":"Online self-paced",
       "estimatedMinutes":45,
       "passingPercent":80,
       "maximumAttempts":2,
@@ -40,12 +50,20 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
+      "activitySequence":[
+        {"name":"Rights and advocacy course overview","type":"OVERVIEW"},
+        {"name":"Required client-rights learning content","type":"ELEARNING"},
+        {"name":"Client-rights knowledge validation","type":"POST TEST"},
+        {"name":"Annual completion certificate","type":"CERTIFICATE"}
+      ],
       "launchPath":"/sh-cap-101-client-rights-advocacy.html"
     },
     {
       "code":"SH-CAP-102",
       "title":"Person-Centered Support & Independence Facilitation",
+      "description":"Practical education for supporting individual choice, daily living skills, community participation, communication, independence, and documented outcomes.",
       "category":"Person-Centered Support and Orientation",
+      "delivery":"Online self-paced",
       "estimatedMinutes":45,
       "passingPercent":80,
       "maximumAttempts":2,
@@ -53,12 +71,20 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
+      "activitySequence":[
+        {"name":"Course overview and support expectations","type":"OVERVIEW"},
+        {"name":"Person-centered support learning content","type":"ELEARNING"},
+        {"name":"Independence-facilitation knowledge validation","type":"POST TEST"},
+        {"name":"Completion certificate","type":"CERTIFICATE"}
+      ],
       "launchPath":"/sh-cap-102-person-centered-support.html"
     },
     {
       "code":"SH-MED-201",
       "title":"Safe Medication Administration & Clinical Protocols",
+      "description":"Organizational medication-safety education covering the rights of administration, documentation, observation, reporting, storage, and emergency response.",
       "category":"Medication Safety In-Service",
+      "delivery":"Online self-paced",
       "estimatedMinutes":45,
       "passingPercent":80,
       "maximumAttempts":2,
@@ -66,13 +92,21 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
+      "activitySequence":[
+        {"name":"Medication-safety overview","type":"OVERVIEW"},
+        {"name":"Required medication and clinical protocol content","type":"ELEARNING"},
+        {"name":"Medication-safety knowledge validation","type":"POST TEST"},
+        {"name":"Organizational in-service certificate","type":"CERTIFICATE"}
+      ],
       "launchPath":"/sh-med-201-safe-medication-administration.html",
       "scopeNotice":"Organizational in-service only; does not replace state certification, competency validation, licensed-nurse delegation, or employer authorization."
     },
     {
       "code":"SH-SAF-301",
       "title":"Workplace Safety, Environmental Health & Emergency Preparedness",
+      "description":"Required workplace education covering hazard awareness, environmental safety, infection prevention, incident response, evacuation, and emergency preparedness.",
       "category":"Workplace Safety and Emergency Preparedness",
+      "delivery":"Online self-paced",
       "estimatedMinutes":45,
       "passingPercent":80,
       "maximumAttempts":2,
@@ -80,6 +114,12 @@
       "active":true,
       "sectionCount":4,
       "questionCount":15,
+      "activitySequence":[
+        {"name":"Safety and preparedness overview","type":"OVERVIEW"},
+        {"name":"Required workplace-safety learning content","type":"ELEARNING"},
+        {"name":"Safety knowledge validation","type":"POST TEST"},
+        {"name":"Annual in-service certificate","type":"CERTIFICATE"}
+      ],
       "launchPath":"/sh-saf-301-workplace-safety-preparedness.html",
       "scopeNotice":"Organizational in-service only; does not replace site-specific emergency plans, OSHA-required training, first-aid certification, or supervisor-directed drills."
     }
