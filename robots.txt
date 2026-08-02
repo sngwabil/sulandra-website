@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /employee-login.html
+Disallow: /employee-portal.html
+Disallow: /spire/
+
+Sitemap: https://sulandrahealth.com/sitemap.xml
