@@ -3,7 +3,7 @@
 const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token';
 const $=id=>document.getElementById(id);let courses=[],lastAssignmentSignature='',refreshing=false,emptyReads=0,hasRenderedRecords=false,lastOpenRows=[],lastDoneRows=[],repairObserver=null;
 function token(){return sessionStorage.getItem(TK)||''}
-function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
+function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function api(path,init={}){const r=await fetch(API+path,{...init,cache:'no-store',headers:{Accept:'application/json','Content-Type':'application/json',Authorization:'Bearer '+token(),...(init.headers||{})}});const p=await r.json().catch(()=>({}));if(!r.ok)throw Error(p.error||`Request failed (${r.status})`);return p}
 async function apiWithRetry(path,init={},attempts=3){let lastError;for(let i=0;i<attempts;i++){try{return await api(path,init)}catch(e){lastError=e;if(i<attempts-1)await new Promise(resolve=>setTimeout(resolve,450*(i+1)))}}throw lastError}
 function notify(message){const box=$('toast');if(!box){alert(message);return}box.textContent=message;box.style.display='block';clearTimeout(window.__eduToast);window.__eduToast=setTimeout(()=>box.style.display='none',3800)}
