@@ -1,5 +1,5 @@
 import type express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
@@ -15,14 +15,35 @@ const forgotUsernameSchema = z.object({
   email: z.string().trim().email().max(254),
 });
 
-const attempts = new Map<string, { count: number; resetAt: number }>();
+type AttemptBucket = { count: number; resetAt: number };
+
+const attempts = new Map<string, AttemptBucket>();
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
+const MAX_BUCKETS = 10_000;
 const GENERIC_MESSAGE = 'If the information matches an active employee account, recovery instructions have been sent.';
 
+function cleanupAttempts(now: number) {
+  for (const [key, bucket] of attempts) {
+    if (bucket.resetAt <= now) attempts.delete(key);
+  }
+  if (attempts.size <= MAX_BUCKETS) return;
+  const oldest = [...attempts.entries()]
+    .sort((left, right) => left[1].resetAt - right[1].resetAt)
+    .slice(0, attempts.size - MAX_BUCKETS);
+  oldest.forEach(([key]) => attempts.delete(key));
+}
+
+function clientKey(request: express.Request) {
+  const forwarded = request.headers['x-forwarded-for'];
+  const firstForwarded = Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(',')[0];
+  return firstForwarded?.trim() || request.ip || request.socket.remoteAddress || 'unknown';
+}
+
 function rateLimit(request: express.Request) {
-  const key = request.ip || request.socket.remoteAddress || 'unknown';
   const now = Date.now();
+  cleanupAttempts(now);
+  const key = clientKey(request);
   const current = attempts.get(key);
   if (!current || current.resetAt <= now) {
     attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
@@ -65,31 +86,29 @@ function employeeUsername(row: Record<string, unknown>) {
 }
 
 async function findByUsername(prisma: PrismaClient, username: string) {
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT to_jsonb(u) AS data
-       FROM "User" u
-      WHERE lower(COALESCE(to_jsonb(u)->>'username', to_jsonb(u)->>'employeeUsername', to_jsonb(u)->>'employeeEmail', to_jsonb(u)->>'email', '')) = lower($1)
-        AND COALESCE(to_jsonb(u)->>'isActive', 'true') <> 'false'
-      LIMIT 1`,
-    username,
-  );
-  return (rows[0]?.data || null) as Record<string, unknown> | null;
+  const rows = await prisma.$queryRaw<Array<{ data: Record<string, unknown> }>>(Prisma.sql`
+    SELECT to_jsonb(u) AS data
+      FROM "User" u
+     WHERE lower(COALESCE(to_jsonb(u)->>'username', to_jsonb(u)->>'employeeUsername', to_jsonb(u)->>'employeeEmail', to_jsonb(u)->>'email', '')) = lower(${username})
+       AND COALESCE(to_jsonb(u)->>'isActive', 'true') <> 'false'
+     LIMIT 1
+  `);
+  return rows[0]?.data || null;
 }
 
 async function findByRecoveryEmail(prisma: PrismaClient, email: string) {
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT to_jsonb(u) AS data
-       FROM "User" u
-      WHERE lower($1) IN (
-        lower(COALESCE(to_jsonb(u)->>'personalEmail', '')),
-        lower(COALESCE(to_jsonb(u)->>'email', '')),
-        lower(COALESCE(to_jsonb(u)->>'employeeEmail', ''))
-      )
-        AND COALESCE(to_jsonb(u)->>'isActive', 'true') <> 'false'
-      LIMIT 1`,
-    email,
-  );
-  return (rows[0]?.data || null) as Record<string, unknown> | null;
+  const rows = await prisma.$queryRaw<Array<{ data: Record<string, unknown> }>>(Prisma.sql`
+    SELECT to_jsonb(u) AS data
+      FROM "User" u
+     WHERE lower(${email}) IN (
+       lower(COALESCE(to_jsonb(u)->>'personalEmail', '')),
+       lower(COALESCE(to_jsonb(u)->>'email', '')),
+       lower(COALESCE(to_jsonb(u)->>'employeeEmail', ''))
+     )
+       AND COALESCE(to_jsonb(u)->>'isActive', 'true') <> 'false'
+     LIMIT 1
+  `);
+  return rows[0]?.data || null;
 }
 
 async function sendMail(to: string[], subject: string, html: string, text: string) {
