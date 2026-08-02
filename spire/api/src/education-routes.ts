@@ -3,7 +3,7 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { registerAuthRecoveryRoutes } from './auth-recovery-routes.js';
-import { registerEmployeeHiringRoutes } from './employee-hiring-routes.js';
+import { registerOfferOnboardingRoutes } from './offer-onboarding-routes.js';
 
 type AuthContext = { userId: string; organizationId: string; role: UserRole };
 type Helpers = {
@@ -31,7 +31,7 @@ const progressSchema = z.object({
 export function registerEducationRoutes(app: express.Express, prisma: PrismaClient, helpers: Helpers) {
   const { authOf, requireRoles, audit } = helpers;
   registerAuthRecoveryRoutes(app, prisma);
-  registerEmployeeHiringRoutes(app, prisma, helpers);
+  registerOfferOnboardingRoutes(app, prisma, helpers);
 
   app.get('/api/education/my-assignments', async (_req, res, next) => {
     try {
