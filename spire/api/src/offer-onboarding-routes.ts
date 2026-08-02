@@ -121,6 +121,48 @@ async function documentProgress(prisma: PrismaClient, offerId: string) {
 export function registerOfferOnboardingRoutes(app: express.Express, prisma: PrismaClient, helpers: Helpers) {
   const { authOf, requireRoles, audit } = helpers;
 
+  app.get('/api/admin/applications/:id/offer-progress', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
+    try {
+      const auth = authOf(res);
+      const applicationId = String(req.params.id);
+      const rows = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT o.*,a."firstName",a."lastName",a."email"
+           FROM "EmploymentOffer" o
+           JOIN "EmployeeApplication" a ON a."id"=o."applicationId"
+          WHERE o."applicationId"=$1 AND o."organizationId"=$2
+          LIMIT 1`,
+        applicationId,
+        auth.organizationId,
+      );
+      const offer = rows[0];
+      if (!offer) return res.json({ data: { offer: null, progress: null } });
+      const progress = await documentProgress(prisma, offer.id);
+      res.json({
+        data: {
+          offer: {
+            id: offer.id,
+            status: offer.status,
+            positionTitle: offer.positionTitle,
+            employmentType: offer.employmentType,
+            compensationType: offer.compensationType,
+            payAmount: offer.payAmount,
+            supervisorName: offer.supervisorName,
+            startDate: offer.startDate,
+            orientationDate: offer.orientationDate,
+            workLocation: offer.workLocation,
+            viewedAt: offer.viewedAt,
+            acceptedAt: offer.acceptedAt,
+            documentsCompletedAt: offer.documentsCompletedAt,
+            employeeId: offer.employeeId,
+            createdAt: offer.createdAt,
+            tokenExpiresAt: offer.tokenExpiresAt,
+          },
+          progress,
+        },
+      });
+    } catch (error) { next(error); }
+  });
+
   app.post('/api/admin/applications/:id/offers', requireRoles(UserRole.ADMINISTRATOR), async (req, res, next) => {
     try {
       const auth = authOf(res);
