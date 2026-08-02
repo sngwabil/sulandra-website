@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sulandra Health | Employment Offer</title>
+<style>
+:root{--p:#075985;--a:#0284c7;--b:#dbe6f2;--t:#102448;--m:#64748b;--ok:#166534;--bad:#991b1b}*{box-sizing:border-box}body{margin:0;background:#f5f8fb;color:var(--t);font-family:Segoe UI,Arial,sans-serif}.wrap{max-width:920px;margin:30px auto;padding:0 18px}.card{background:#fff;border:1px solid var(--b);border-radius:20px;box-shadow:0 18px 45px rgba(15,45,75,.1);overflow:hidden}.head{padding:28px;background:linear-gradient(135deg,#073a67,#0b6192);color:#fff}.body{padding:28px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.box{border:1px solid var(--b);border-radius:14px;padding:14px;background:#fbfdff}.docs{display:grid;gap:10px;margin:18px 0}.doc{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--b);padding:12px;border-radius:12px}.doc input{margin-top:3px}.sign{display:grid;gap:12px;margin-top:18px}.sign input{padding:12px;border:1px solid var(--b);border-radius:10px;font-size:15px}.button{border:0;border-radius:11px;padding:13px 18px;background:var(--p);color:#fff;font-weight:800;cursor:pointer}.msg{margin-top:14px;padding:12px;border-radius:10px;display:none}.msg.show{display:block}.msg.ok{background:#ecfdf5;color:var(--ok)}.msg.bad{background:#fef2f2;color:var(--bad)}@media(max-width:700px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main class="wrap"><section class="card"><header class="head"><h1>Employment Offer</h1><p>Sulandra Community Living Services · A Division of Sulandra Health</p></header><div class="body"><div id="loading">Loading your secure offer…</div><div id="content" hidden><p id="greeting"></p><p>We are pleased to offer you the position shown below. Please review the terms and complete each required employment document before accepting.</p><div class="grid" id="terms"></div><h2>Required employment documents</h2><div class="docs" id="docs"></div><div class="sign"><label>Full legal name<input id="name" autocomplete="name"></label><label>Electronic signature<input id="signature" placeholder="Type your full legal name"></label><label><input id="accept" type="checkbox"> I have reviewed the offer and required disclosures, and I accept the terms of employment.</label><button class="button" id="submit">Accept Offer and Submit</button></div><div id="msg" class="msg"></div></div></div></section></main><script>
+(function(){
+const API='https://sulandra-website-production.up.railway.app';
+const token=new URLSearchParams(location.search).get('token');
+const loading=document.getElementById('loading'),content=document.getElementById('content'),msg=document.getElementById('msg');
+const show=(text,type)=>{msg.textContent=text;msg.className='msg show '+type};
+if(!token){loading.textContent='This offer link is missing or invalid.';return;}
+fetch(API+'/public/careers/offers/'+encodeURIComponent(token)).then(r=>r.json().then(p=>({r,p}))).then(({r,p})=>{
+if(!r.ok)throw new Error(p.error||'Unable to load offer.');const o=p.data||p;loading.hidden=true;content.hidden=false;
+document.getElementById('greeting').textContent='Dear '+o.firstName+' '+o.lastName+',';
+const items=[['Position',o.positionTitle],['Employment type',String(o.employmentType||'').replaceAll('_',' ')],['Compensation',o.compensationType==='SALARY'?'$'+Number(o.payAmount).toLocaleString()+' per year':'$'+Number(o.payAmount).toFixed(2)+' per hour'],['Start date',new Date(o.startDate).toLocaleDateString()],['Supervisor',o.supervisorName||'To be assigned'],['Work location',o.workLocation||'To be assigned']];
+document.getElementById('terms').innerHTML=items.map(x=>'<div class="box"><strong>'+x[0]+'</strong><br>'+x[1]+'</div>').join('');
+const docs=Array.isArray(o.requiredDocuments)?o.requiredDocuments:[];document.getElementById('docs').innerHTML=docs.map((d,i)=>'<label class="doc"><input type="checkbox" data-doc value="'+d.replaceAll('"','&quot;')+'"><span><strong>'+d+'</strong><br><small>I have reviewed and completed this item.</small></span></label>').join('');
+}).catch(e=>{loading.textContent=e.message});
+document.getElementById('submit').onclick=async()=>{const completed=[...document.querySelectorAll('[data-doc]:checked')].map(x=>x.value);const payload={fullLegalName:document.getElementById('name').value.trim(),signature:document.getElementById('signature').value.trim(),acceptedTerms:document.getElementById('accept').checked,completedDocuments:completed};try{const r=await fetch(API+'/public/careers/offers/'+encodeURIComponent(token)+'/accept',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const p=await r.json().catch(()=>({}));if(!r.ok)throw new Error(p.error||'Unable to accept offer.');show('Your offer has been accepted. Your employee account has been created, and your welcome email is on the way.','ok');document.getElementById('submit').disabled=true}catch(e){show(e.message,'bad')}};
+})();
+</script></body></html>
