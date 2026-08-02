@@ -33,11 +33,15 @@ const offerSchema = z.object({
   requiredDocuments: z.array(z.string().trim().min(2).max(120)).min(1).max(50),
 });
 
+const documentCompleteSchema = z.object({
+  fullLegalName: z.string().trim().min(2).max(180),
+  signature: z.string().trim().min(2).max(500),
+});
+
 const acceptSchema = z.object({
   fullLegalName: z.string().trim().min(2).max(180),
   signature: z.string().trim().min(2).max(500),
   acceptedTerms: z.literal(true),
-  completedDocuments: z.array(z.string().trim().min(2).max(120)).min(1).max(50),
 });
 
 const DEFAULT_DOCUMENTS = [
@@ -91,6 +95,29 @@ function temporaryPassword() {
   return `Scl$${randomBytes(9).toString('base64url')}9a`;
 }
 
+async function offerByToken(prisma: PrismaClient, rawToken: string) {
+  const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+  const rows = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId"
+     FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId"
+     WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW() LIMIT 1`,
+    tokenHash,
+  );
+  return rows[0] || null;
+}
+
+async function documentProgress(prisma: PrismaClient, offerId: string) {
+  const documents = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT "id","name","status","signedByName","completedAt"
+       FROM "EmploymentOfferDocument"
+      WHERE "offerId"=$1
+      ORDER BY "createdAt","name"`,
+    offerId,
+  );
+  const completed = documents.filter((document) => document.status === 'COMPLETED').length;
+  return { documents, completed, total: documents.length, allComplete: documents.length > 0 && completed === documents.length };
+}
+
 export function registerOfferOnboardingRoutes(app: express.Express, prisma: PrismaClient, helpers: Helpers) {
   const { authOf, requireRoles, audit } = helpers;
 
@@ -123,6 +150,12 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
           input.ptoEligible, input.benefitsEligible, input.probationDays, input.bonusAmount ?? null,
           input.notes ?? null, JSON.stringify(input.requiredDocuments), tokenHash, auth.userId,
         );
+        for (const name of input.requiredDocuments) {
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "EmploymentOfferDocument" ("id","offerId","name","status","createdAt","updatedAt") VALUES ($1,$2,$3,'PENDING',NOW(),NOW())`,
+            randomUUID(), offerId, name,
+          );
+        }
         await tx.$executeRawUnsafe(
           `UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_SENT',"updatedAt"=NOW() WHERE "id"=$1`,
           applicationId,
@@ -138,39 +171,55 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
 
   app.get('/public/careers/offers/:token', async (req, res, next) => {
     try {
-      const tokenHash = createHash('sha256').update(String(req.params.token)).digest('hex');
-      const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT o.*,a."firstName",a."lastName",a."email"
-         FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId"
-         WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW() LIMIT 1`,
-        tokenHash,
-      );
-      const offer = rows[0];
+      const offer = await offerByToken(prisma, String(req.params.token));
       if (!offer) return res.status(404).json({ error: 'Offer not found or expired.' });
       if (offer.status === 'OFFER_SENT') {
         await prisma.$executeRawUnsafe(`UPDATE "EmploymentOffer" SET "status"='OFFER_VIEWED',"viewedAt"=COALESCE("viewedAt",NOW()),"updatedAt"=NOW() WHERE "id"=$1`, offer.id);
       }
-      res.json({ data: { ...offer, tokenHash: undefined } });
+      const progress = await documentProgress(prisma, offer.id);
+      res.json({ data: { ...offer, tokenHash: undefined, documentProgress: progress } });
+    } catch (error) { next(error); }
+  });
+
+  app.post('/public/careers/offers/:token/documents/:documentId/complete', async (req, res, next) => {
+    try {
+      const offer = await offerByToken(prisma, String(req.params.token));
+      if (!offer) return res.status(404).json({ error: 'Offer not found or expired.' });
+      if (offer.employeeId) return res.status(409).json({ error: 'This offer has already been completed.' });
+      const input = documentCompleteSchema.parse(req.body);
+      const documentId = String(req.params.documentId);
+      const updated = await prisma.$executeRawUnsafe(
+        `UPDATE "EmploymentOfferDocument"
+            SET "status"='COMPLETED',"signature"=$1,"signedByName"=$2,"completedAt"=NOW(),"updatedAt"=NOW()
+          WHERE "id"=$3 AND "offerId"=$4`,
+        input.signature, input.fullLegalName, documentId, offer.id,
+      );
+      if (!updated) return res.status(404).json({ error: 'Required document not found.' });
+      const progress = await documentProgress(prisma, offer.id);
+      if (progress.allComplete) {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "EmploymentOffer" SET "status"='DOCUMENTS_COMPLETE',"documentsCompletedAt"=NOW(),"updatedAt"=NOW() WHERE "id"=$1`,
+          offer.id,
+        );
+      }
+      res.json({ data: progress });
     } catch (error) { next(error); }
   });
 
   app.post('/public/careers/offers/:token/accept', async (req, res, next) => {
     try {
-      const tokenHash = createHash('sha256').update(String(req.params.token)).digest('hex');
       const input = acceptSchema.parse(req.body);
-      const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId"
-         FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId"
-         WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW() LIMIT 1`,
-        tokenHash,
-      );
-      const offer = rows[0];
+      const offer = await offerByToken(prisma, String(req.params.token));
       if (!offer) return res.status(404).json({ error: 'Offer not found or expired.' });
       if (offer.employeeId) return res.json({ data: { status: 'EMPLOYEE_CREATED', employeeId: offer.employeeId } });
 
-      const requiredDocuments = Array.isArray(offer.requiredDocuments) ? offer.requiredDocuments : JSON.parse(offer.requiredDocuments || '[]');
-      const complete = requiredDocuments.every((name: string) => input.completedDocuments.includes(name));
-      if (!complete) return res.status(400).json({ error: 'All required employment documents must be completed before the offer can be accepted.' });
+      const progress = await documentProgress(prisma, offer.id);
+      if (!progress.allComplete) {
+        return res.status(400).json({
+          error: `All required employment documents must be completed before the offer can be accepted. ${progress.completed} of ${progress.total} are complete.`,
+          progress,
+        });
+      }
 
       const username = await uniqueUsername(prisma, offer.firstName, offer.lastName);
       const password = temporaryPassword();
@@ -185,7 +234,7 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
           offer.phone ?? null, offer.appliedRole || UserRole.DSP, passwordHash,
         );
         await tx.$executeRawUnsafe(
-          `UPDATE "EmploymentOffer" SET "status"='EMPLOYEE_CREATED',"acceptedAt"=NOW(),"documentsCompletedAt"=NOW(),"acceptedByName"=$1,"signature"=$2,"employeeId"=$3,"updatedAt"=NOW() WHERE "id"=$4`,
+          `UPDATE "EmploymentOffer" SET "status"='EMPLOYEE_CREATED',"acceptedAt"=NOW(),"documentsCompletedAt"=COALESCE("documentsCompletedAt",NOW()),"acceptedByName"=$1,"signature"=$2,"employeeId"=$3,"updatedAt"=NOW() WHERE "id"=$4`,
           input.fullLegalName, input.signature, employeeId, offer.id,
         );
         await tx.$executeRawUnsafe(
