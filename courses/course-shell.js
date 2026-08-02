@@ -1,0 +1,1 @@
+(()=>{document.getElementById('returnBtn')?.addEventListener('click',()=>location.href='/education-portal.html#catalog')})();
