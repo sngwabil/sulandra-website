@@ -20,7 +20,7 @@ function renderProgress(progress){
  document.getElementById('progressText').textContent=`Employment paperwork progress: ${completed} of ${total} completed`;
  document.getElementById('progressBar').style.width=percent+'%';
  submit.disabled=!progress.allComplete;
- if(progress.allComplete)show('All required employment documents are complete. You may now accept and submit your employment offer.','ok');
+ if(progress.allComplete)show('All required employment documents are complete. You may now accept and submit your employment offer for Human Resources review.','ok');
 }
 function renderDocuments(progress){
  document.getElementById('docs').innerHTML=(progress.documents||[]).map(d=>`<article class="doc ${d.status==='COMPLETED'?'done':''}" data-id="${esc(d.id)}"><div class="doc-head"><div><strong>${esc(d.name)}</strong><br><small>${d.status==='COMPLETED'?'Completed and saved':'Not yet completed'}</small></div><span class="status">${esc(d.status)}</span></div>${d.status==='COMPLETED'?`<p><small>Signed by ${esc(d.signedByName||'Applicant')} on ${d.completedAt?new Date(d.completedAt).toLocaleString():''}</small></p>`:`<div class="doc-actions"><input data-name placeholder="Full legal name"><input data-sign placeholder="Electronic signature"><button class="button secondary" data-complete>Complete and Save</button></div>`}</article>`).join('');
@@ -51,7 +51,7 @@ submit.onclick=async()=>{
  const payload={fullLegalName:document.getElementById('name').value.trim(),signature:document.getElementById('signature').value.trim(),acceptedTerms:document.getElementById('accept').checked};
  try{
   const r=await fetch(API+'/public/careers/offers/'+encodeURIComponent(token)+'/accept',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const p=await r.json().catch(()=>({}));if(!r.ok)throw new Error(p.error||'Unable to accept offer.');
-  show('Your offer has been accepted and your employment paperwork has been submitted successfully. Your employee account has been created. Please check your email for your welcome message and login information.','ok');submit.disabled=true;
+  show('Your offer has been accepted and your employment paperwork has been submitted successfully. Human Resources will review your completed package and finalize your hire. You will receive a separate welcome email with employee portal access only after that final approval.','ok');submit.disabled=true;
  }catch(e){show(e.message,'bad');}
 };
 })();
