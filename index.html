@@ -84,7 +84,7 @@
       .top-nav{height:80px;min-height:80px;padding:15px 20px;gap:16px}.logo{flex:0 1 auto;overflow:visible}.logo img{width:240px;height:auto;max-height:100%;max-width:100%;transform:none}.header-tools a:not(.btn-cta){display:none}.header-tools{gap:8px}.btn-cta{padding:10px 12px}.menu-toggle{display:inline-block}.main-nav{display:none}.main-nav.open{display:block}.nav-links{display:block;padding:8px 14px 14px}.nav-links a{padding:13px 12px;border-radius:6px}.hero{min-height:480px}.hero-content{padding:48px 18px}.action-bar{grid-template-columns:repeat(2,1fr);margin-top:0}.consultation-wrap{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.services-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr}
     }
     @media(orientation:landscape) and (max-height:600px){
-      .site-shell{position:sticky;top:0}
+      .site-shell{position:static;box-shadow:none}
       .alert-bar{padding:8px 16px;font-size:13px}
       .top-nav{height:72px;min-height:72px;padding:8px 18px;gap:14px}
       .logo img{width:220px;max-height:56px}
@@ -178,19 +178,21 @@
       <div class="consultation-wrap">
         <div>
           <h2 id="consultation-title">Request a Free Consultation</h2>
-          <p>Tell us how to contact you and which service you are interested in. A team member will follow up to discuss availability and next steps.</p>
+          <p>Tell us how to contact you and what kind of support you are exploring. A Sulandra representative will follow up to discuss available services and next steps.</p>
+          <p class="form-note">Do not submit diagnoses, medication details, Social Security numbers, insurance identifiers, or emergency information through this form. Call 911 for emergencies.</p>
         </div>
         <form class="consultation-form" id="consultation-form">
           <div class="form-grid">
-            <div class="field"><label for="consult-name">Full name</label><input id="consult-name" name="name" autocomplete="name" required maxlength="100"></div>
-            <div class="field"><label for="consult-phone">Phone number</label><input id="consult-phone" name="phone" type="tel" autocomplete="tel" required maxlength="30"></div>
-            <div class="field"><label for="consult-email">Email address</label><input id="consult-email" name="email" type="email" autocomplete="email" maxlength="254"></div>
-            <div class="field"><label for="consult-zip">ZIP code</label><input id="consult-zip" name="zipCode" inputmode="numeric" autocomplete="postal-code" maxlength="10"></div>
-            <div class="field full"><label for="consult-service">Service interest</label><select id="consult-service" name="serviceInterest" required><option value="">Select a service</option><option>Community Living Support</option><option>Personalized In-Home Support</option><option>Transportation</option><option>Respite and Caregiver Support</option><option>Employment or Careers</option><option>Other</option></select></div>
-            <div class="field full"><label for="consult-message">How can we help?</label><textarea id="consult-message" name="message" maxlength="1000"></textarea></div>
+            <div class="field"><label for="consult-name">Name</label><input id="consult-name" name="name" autocomplete="name" required maxlength="120"></div>
+            <div class="field"><label for="consult-phone">Phone</label><input id="consult-phone" name="phone" type="tel" autocomplete="tel" maxlength="30"></div>
+            <div class="field"><label for="consult-email">Email</label><input id="consult-email" name="email" type="email" autocomplete="email" maxlength="254"></div>
+            <div class="field"><label for="consult-contact">Preferred contact</label><select id="consult-contact" name="preferredContact"><option value="Phone">Phone</option><option value="Email">Email</option><option value="Either">Either</option></select></div>
+            <div class="field"><label for="consult-service">Service interest</label><select id="consult-service" name="serviceInterest"><option>General consultation</option><option>Community living support</option><option>Personalized in-home support</option><option>Transportation</option><option>Respite or caregiver support</option><option>Employment inquiry</option></select></div>
+            <div class="field"><label for="consult-area">City or ZIP code</label><input id="consult-area" name="serviceArea" autocomplete="postal-code" maxlength="80"></div>
+            <div class="field full"><label for="consult-message">How may we help?</label><textarea id="consult-message" name="message" maxlength="1000" placeholder="Provide a general description of the support you are seeking. Do not include sensitive medical or identity information."></textarea></div>
           </div>
-          <p class="form-note">Please do not submit diagnoses, medication information, Social Security numbers, financial information, or emergency details through this form. Call 911 for an emergency.</p>
-          <button class="btn-cta" type="submit">Submit Consultation Request</button>
+          <p class="form-note">At least one contact method—phone or email—is required. By submitting, you authorize Sulandra Health to contact you about this request.</p>
+          <button type="submit" class="btn-cta">Submit Consultation Request</button>
           <div class="form-status" id="consultation-status" role="status" aria-live="polite"></div>
         </form>
       </div>
@@ -198,80 +200,61 @@
 
     <section class="section" id="services" aria-labelledby="services-title">
       <h2 class="section-heading" id="services-title">Personalized Support Services</h2>
-      <p class="section-intro">Services are coordinated around individual needs, goals, preferences, approved plans, and availability.</p>
+      <p class="section-intro">Support options designed around individual goals, routines, preferences, dignity, and safety.</p>
       <div class="services-grid">
-        <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=800&q=78" alt="A caregiver providing attentive support during a conversation" class="service-img" loading="lazy" width="800" height="520"><div class="service-copy"><h3>Community Living Support</h3><p>Residential and community-based support focused on choice, independence, and personal safety.</p></div></a>
-        <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&q=78" alt="Vehicle used to support transportation in the community" class="service-img" loading="lazy" width="800" height="520"><div class="service-copy"><h3>Transportation Services</h3><p>Transportation support for appointments, shopping, employment, and approved community activities.</p></div></a>
-        <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=800&q=78" alt="Caregiver offering respectful assistance and companionship" class="service-img" loading="lazy" width="800" height="520"><div class="service-copy"><h3>Respite and Caregiver Support</h3><p>Dependable support that gives family caregivers time to rest while maintaining continuity of care.</p></div></a>
+        <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=800&q=80" alt="A caregiver and an older adult spending time together at home" class="service-img" loading="lazy" width="800" height="533"><div class="service-copy"><h3>Community Living Support</h3><p>Residential and community-based support focused on independence, informed choice, and safety.</p></div></a>
+        <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&q=80" alt="A driver providing community transportation" class="service-img" loading="lazy" width="800" height="533"><div class="service-copy"><h3>Transportation Services</h3><p>Transportation support for appointments, shopping, employment, and community activities.</p></div></a>
+        <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=800&q=80" alt="A caregiver providing respectful assistance to an adult at home" class="service-img" loading="lazy" width="800" height="533"><div class="service-copy"><h3>Respite and Caregiver Support</h3><p>Dependable assistance that supports the individual while giving family caregivers time to rest.</p></div></a>
       </div>
     </section>
   </main>
 
   <footer id="contact">
     <div class="footer-grid">
-      <div class="footer-col"><a href="/" class="logo"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span class="logo-fallback">Sulandra Health</span></a><p>© 2026 Sulandra Health.<br>Changing the way the world ages.</p><p class="footer-small">This website is not monitored for emergencies. Call 911 when immediate assistance is required.</p></div>
-      <div class="footer-col"><h2>Our Services</h2><ul><li><a href="/services.html">Community Living</a></li><li><a href="/services.html">Transportation</a></li><li><a href="/services.html">Respite Support</a></li><li><a href="/services.html">Personalized Support</a></li></ul></div>
-      <div class="footer-col"><h2>Resources</h2><ul><li><a href="/Careers.html">Careers</a></li><li><a href="/employee-login.html">Employee Portal</a></li><li><a href="/privacy.html">Privacy Notice</a></li><li><a href="/accessibility.html">Accessibility</a></li></ul></div>
+      <div class="footer-col"><a href="/" class="logo" aria-label="Sulandra Health home"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span class="logo-fallback">Sulandra Health</span></a><p>© 2026 Sulandra Health.<br>Personalized support that promotes dignity and independence.</p><p class="footer-small">This website is not monitored for emergencies and should not be used to transmit sensitive health, financial, or identity information.</p></div>
+      <div class="footer-col"><h2>Services</h2><ul><li><a href="/services.html">Community Living</a></li><li><a href="/services.html">Transportation</a></li><li><a href="/services.html">Respite Support</a></li><li><a href="/services.html">Personalized Care</a></li></ul></div>
+      <div class="footer-col"><h2>Resources</h2><ul><li><a href="/Careers.html">Careers</a></li><li><a href="/employee-login.html">Employee Portal</a></li><li><a href="/privacy.html">Privacy</a></li><li><a href="/accessibility.html">Accessibility</a></li></ul></div>
     </div>
   </footer>
 
   <script>
     const menuButton=document.querySelector('.menu-toggle');
-    const navigation=document.querySelector('.main-nav');
+    const navigation=document.getElementById('primary-navigation');
     if(menuButton&&navigation){
       menuButton.addEventListener('click',()=>{
         const open=navigation.classList.toggle('open');
         menuButton.setAttribute('aria-expanded',String(open));
+        if(open) navigation.querySelector('a')?.focus();
       });
       navigation.addEventListener('click',(event)=>{
-        if(event.target instanceof HTMLAnchorElement&&window.matchMedia('(max-width:800px)').matches){
-          navigation.classList.remove('open');
-          menuButton.setAttribute('aria-expanded','false');
-        }
+        if(event.target instanceof HTMLAnchorElement&&innerWidth<=800){navigation.classList.remove('open');menuButton.setAttribute('aria-expanded','false');}
       });
+      document.addEventListener('keydown',(event)=>{if(event.key==='Escape'){navigation.classList.remove('open');menuButton.setAttribute('aria-expanded','false');menuButton.focus();}});
     }
 
-    const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const slides=document.querySelectorAll('.hero-slide');
-    let current=0;
-    let slideshowTimer;
-    function startSlideshow(){
-      if(reduceMotion||slides.length<2||slideshowTimer)return;
-      slideshowTimer=window.setInterval(()=>{
-        slides[current].classList.remove('active');
-        current=(current+1)%slides.length;
-        slides[current].classList.add('active');
-      },6000);
-    }
-    function stopSlideshow(){if(slideshowTimer){clearInterval(slideshowTimer);slideshowTimer=undefined;}}
-    document.addEventListener('visibilitychange',()=>document.hidden?stopSlideshow():startSlideshow());
-    startSlideshow();
+    const slides=[...document.querySelectorAll('.hero-slide')];
+    const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let current=0,timer;
+    const startSlides=()=>{if(reduceMotion||slides.length<2||timer)return;timer=setInterval(()=>{slides[current].classList.remove('active');current=(current+1)%slides.length;slides[current].classList.add('active');},5000);};
+    const stopSlides=()=>{clearInterval(timer);timer=undefined;};
+    document.addEventListener('visibilitychange',()=>document.hidden?stopSlides():startSlides());
+    startSlides();
 
-    const consultationForm=document.getElementById('consultation-form');
-    const consultationStatus=document.getElementById('consultation-status');
-    if(consultationForm&&consultationStatus){
-      consultationForm.addEventListener('submit',async(event)=>{
-        event.preventDefault();
-        consultationStatus.textContent='Submitting your request…';
-        const button=consultationForm.querySelector('button[type="submit"]');
-        if(button)button.disabled=true;
-        const formData=new FormData(consultationForm);
-        const payload=Object.fromEntries(formData.entries());
+    const form=document.getElementById('consultation-form');
+    const status=document.getElementById('consultation-status');
+    if(form&&status){form.addEventListener('submit',async(event)=>{
+      event.preventDefault();
+      const data=Object.fromEntries(new FormData(form).entries());
+      if(!String(data.phone||'').trim()&&!String(data.email||'').trim()){status.textContent='Please provide a phone number or email address.';return;}
+      const button=form.querySelector('button[type="submit"]');button.disabled=true;status.textContent='Submitting your request…';
+      try{
         const endpoint=window.SULANDRA_CONSULTATION_ENDPOINT||'/public/consultations';
-        try{
-          const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-          const result=await response.json().catch(()=>({}));
-          if(!response.ok)throw new Error(result.error||'The request could not be submitted.');
-          consultationForm.reset();
-          consultationStatus.textContent='Thank you. Your consultation request has been received.';
-        }catch(error){
-          consultationStatus.textContent=error instanceof Error?error.message:'The request could not be submitted. Please contact Sulandra Health directly.';
-        }finally{
-          if(button)button.disabled=false;
-        }
-      });
-    }
-
+        const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+        const payload=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(payload.error||'Your request could not be submitted.');
+        form.reset();status.textContent='Thank you. Your consultation request has been submitted.';
+      }catch(error){status.textContent=error instanceof Error?error.message:'Your request could not be submitted. Please contact Sulandra Health directly.';}finally{button.disabled=false;}
+    });}
     if(location.pathname.endsWith('/index.html'))history.replaceState(null,'','/');
   </script>
 </body>
