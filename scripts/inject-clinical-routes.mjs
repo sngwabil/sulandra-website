@@ -13,6 +13,7 @@ const imports = [
   "import { registerClinicalRoutes } from './clinical-routes.js';",
   "import { registerOfferProgressRoute } from './offer-progress-route.js';",
   "import { registerOfferSendRoute } from './offer-send-route.js';",
+  "import { registerOfferAcceptancePdfRoute } from './offer-acceptance-pdf-route.js';",
   "import { registerProfessionalOfferFormsRoute } from './professional-offer-forms-route.js';",
   "import { registerOfferOnboardingRoutes } from './offer-onboarding-routes.js';",
   "import { registerW4Routes } from './w4-routes.js';",
@@ -21,6 +22,7 @@ const calls = [
   'registerClinicalRoutes(app, prisma, { authOf });',
   'registerOfferProgressRoute(app, prisma, { authOf, requireRoles });',
   'registerOfferSendRoute(app, prisma, { authOf, requireRoles, audit });',
+  'registerOfferAcceptancePdfRoute(app, prisma, { audit });',
   'registerProfessionalOfferFormsRoute(app, prisma);',
   'registerOfferOnboardingRoutes(app, prisma, { authOf, requireRoles, audit });',
   'registerW4Routes(app, prisma, { authOf, requireRoles, audit });',
@@ -37,4 +39,4 @@ for (const statement of calls) {
 }
 
 await writeFile(target, source, 'utf8');
-console.log(`Registered clinical, offer, structured onboarding, and signed W-4 routes in ${target}.`);
+console.log(`Registered clinical, offer, signed-offer PDF, structured onboarding, and signed W-4 routes in ${target}.`);
