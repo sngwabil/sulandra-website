@@ -45,6 +45,20 @@ const requiredColumns = {
 };
 
 try {
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "EmployeeApplication"
+       DROP CONSTRAINT IF EXISTS "EmployeeApplication_workflowStatus_check"`,
+  );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "EmployeeApplication"
+       ADD CONSTRAINT "EmployeeApplication_workflowStatus_check"
+       CHECK ("workflowStatus" IN (
+         'RECEIVED','REVIEWING','DOCUMENTS_NEEDED','INTERVIEW','OFFER_PENDING',
+         'OFFER_ACCEPTED','OFFER','HIRE','HIRED','NOT_SELECTED','WITHDRAWN',
+         'TERMINATED','POSITION_FILLED','ARCHIVED'
+       ))`,
+  );
+
   const rows = await prisma.$queryRawUnsafe(
     `SELECT table_name AS "tableName", column_name AS "columnName"
        FROM information_schema.columns
@@ -71,15 +85,9 @@ try {
       WHERE pg_type.typname = 'UserRole'`,
   );
 
-  if (!enumRows.some(({ label }) => label === 'GENERAL')) {
-    missing.push('UserRole.GENERAL');
-  }
-  if (!enumRows.some(({ label }) => label === 'DRIVER')) {
-    missing.push('UserRole.DRIVER');
-  }
-  if (!enumRows.some(({ label }) => label === 'COO')) {
-    missing.push('UserRole.COO');
-  }
+  if (!enumRows.some(({ label }) => label === 'GENERAL')) missing.push('UserRole.GENERAL');
+  if (!enumRows.some(({ label }) => label === 'DRIVER')) missing.push('UserRole.DRIVER');
+  if (!enumRows.some(({ label }) => label === 'COO')) missing.push('UserRole.COO');
 
   const roleConstraintRows = await prisma.$queryRawUnsafe(
     `SELECT pg_get_constraintdef(oid) AS "definition"
@@ -88,17 +96,24 @@ try {
         AND conrelid = '"EmployeeApplication"'::regclass`,
   );
   const roleConstraint = String(roleConstraintRows[0]?.definition || '');
-  if (!roleConstraint.includes('COO')) {
-    missing.push('EmployeeApplication_role_check.COO');
+  if (!roleConstraint.includes('COO')) missing.push('EmployeeApplication_role_check.COO');
+
+  const workflowConstraintRows = await prisma.$queryRawUnsafe(
+    `SELECT pg_get_constraintdef(oid) AS "definition"
+       FROM pg_constraint
+      WHERE conname = 'EmployeeApplication_workflowStatus_check'
+        AND conrelid = '"EmployeeApplication"'::regclass`,
+  );
+  const workflowConstraint = String(workflowConstraintRows[0]?.definition || '');
+  if (!workflowConstraint.includes('OFFER_ACCEPTED')) {
+    missing.push('EmployeeApplication_workflowStatus_check.OFFER_ACCEPTED');
   }
 
   if (missing.length > 0) {
-    throw new Error(
-      `Careers lifecycle schema is incomplete after migrations. Missing: ${missing.join(', ')}`,
-    );
+    throw new Error(`Careers lifecycle schema is incomplete after migrations. Missing: ${missing.join(', ')}`);
   }
 
-  console.log('Careers lifecycle schema is ready.');
+  console.log('Careers lifecycle schema is ready, including offer workflow statuses.');
 } finally {
   await prisma.$disconnect();
 }
