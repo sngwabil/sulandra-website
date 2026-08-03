@@ -58,13 +58,12 @@ if (!adminPortal.includes('Admin Spire <small>Clinical</small>')) {
 
 adminPortal = adminPortal.replace(
   /careers-admin-workflow\.js\?v=[^"']+/g,
-  'careers-admin-workflow.js?v=20260803-offer-only-runtime-5',
+  'careers-admin-workflow.js?v=20260803-offer-only-runtime-6',
 );
 
-const runtimeScript = '  <script src="offer-only-runtime.js?v=20260803-offer-only-runtime-5"></script>\n';
-if (!adminPortal.includes('offer-only-runtime.js')) {
-  adminPortal = adminPortal.replace('</body>', `${runtimeScript}</body>`);
-}
+const runtimeScript = '  <script src="offer-only-runtime.js?v=20260803-offer-only-runtime-6"></script>\n';
+adminPortal = adminPortal.replace(/\s*<script src="offer-only-runtime\.js\?v=[^"']+"><\/script>\s*/g, '\n');
+adminPortal = adminPortal.replace('</body>', `${runtimeScript}</body>`);
 
 await writeFile(adminPortalPath, adminPortal, 'utf8');
 
