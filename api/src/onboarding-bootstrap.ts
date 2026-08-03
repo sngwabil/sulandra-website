@@ -319,43 +319,33 @@ const resolveAdministrator = async (): Promise<AuthContext & { email: string }> 
     );
     administrator = rows[0];
   } catch (error) {
-    console.warn('[auth] administrator lookup failed; checking configured identifiers', error);
+    console.warn('[auth] administrator lookup by email failed', error);
   }
 
-  if (administrator) {
-    const role = isUserRole(administrator.role)
-      ? administrator.role
-      : UserRole.ADMINISTRATOR;
-    if (role !== UserRole.ADMINISTRATOR) {
-      throw Object.assign(new Error('Administrator account is not authorized'), { status: 403 });
-    }
-    return {
-      userId: administrator.id,
-      organizationId: administrator.organizationId,
-      role,
-      email: administrator.email || administratorEmail,
-    };
+  if (!administrator) {
+    const fallback = await prisma.$queryRawUnsafe<AdministratorRow[]>(
+      `SELECT "id", "organizationId", "role", "email"
+       FROM "User"
+       WHERE "role"::text = 'ADMINISTRATOR'
+       ORDER BY "createdAt" ASC
+       LIMIT 1`,
+    );
+    administrator = fallback[0];
   }
 
-  const userId = process.env.PRIMARY_ADMIN_USER_ID?.trim();
-  const organizationId = process.env.CAREERS_ORGANIZATION_ID?.trim();
-  if (!userId || !organizationId) {
+  if (!administrator || !isUserRole(administrator.role)) {
     throw Object.assign(new Error('Administrator account is not configured'), { status: 503 });
   }
 
   return {
-    userId,
-    organizationId,
-    role: UserRole.ADMINISTRATOR,
-    email: administratorEmail,
+    userId: administrator.id,
+    organizationId: administrator.organizationId,
+    role: administrator.role,
+    email: administrator.email?.trim().toLowerCase() || administratorEmail,
   };
 };
 
-const resolvePortalAccount = async (identifier: string): Promise<(LoginAccount & {
-  passwordHash: string | null;
-  failedLoginAttempts: number;
-  lockedUntil: Date | null;
-}) | null> => {
+const resolvePortalAccount = async (identifier: string): Promise<LoginAccount | null> => {
   const rows = await prisma.$queryRawUnsafe<PortalCredentialRow[]>(
     `SELECT
        u."id",
@@ -369,9 +359,9 @@ const resolvePortalAccount = async (identifier: string): Promise<(LoginAccount &
        c."failedLoginAttempts",
        c."lockedUntil",
        to_jsonb(u) AS "userRecord"
-     FROM "User" u
-     LEFT JOIN "EmployeePortalCredential" c ON c."userId" = u."id"
-     WHERE LOWER(COALESCE(c."username", '')) = LOWER($1)
+     FROM "EmployeePortalCredential" c
+     JOIN "User" u ON u."id" = c."userId"
+     WHERE LOWER(c."username") = LOWER($1)
         OR LOWER(COALESCE(u."email", '')) = LOWER($1)
      LIMIT 1`,
     identifier,
@@ -379,34 +369,32 @@ const resolvePortalAccount = async (identifier: string): Promise<(LoginAccount &
   const row = rows[0];
   if (!row || !isUserRole(row.role)) return null;
 
-  const status = stringField(row.userRecord, 'status');
-  const active = row.userRecord?.active ?? row.userRecord?.isActive;
-  if (active === false || status === 'INACTIVE' || status === 'DISABLED' || status === 'TERMINATED') {
-    throw Object.assign(new Error('Employee account is not active'), { status: 403 });
-  }
-
-  const email = row.email?.trim().toLowerCase() || identifier;
-  const username = row.username?.trim()
-    || stringField(row.userRecord, 'username')
-    || email;
-  const displayName = row.displayName?.trim()
-    || stringField(row.userRecord, 'displayName', 'fullName', 'name')
-    || [stringField(row.userRecord, 'firstName'), stringField(row.userRecord, 'lastName')]
-      .filter(Boolean)
-      .join(' ')
-    || email;
+  const lockedUntil = row.lockedUntil ? new Date(row.lockedUntil) : null;
+  const displayName = row.displayName
+    || [
+      stringField(row.userRecord, 'firstName'),
+      stringField(row.userRecord, 'middleName'),
+      stringField(row.userRecord, 'lastName'),
+    ].filter(Boolean).join(' ')
+    || row.email
+    || row.username
+    || 'Sulandra Health Employee';
 
   return {
     userId: row.id,
     organizationId: row.organizationId,
     role: row.role,
-    email,
-    username,
+    email: row.email?.trim().toLowerCase() || '',
+    username: row.username || row.email || row.id,
     displayName,
-    mustChangePassword: row.mustChangePassword ?? true,
+    mustChangePassword: Boolean(row.mustChangePassword),
     passwordHash: row.passwordHash,
-    failedLoginAttempts: row.failedLoginAttempts ?? 0,
-    lockedUntil: row.lockedUntil ? new Date(row.lockedUntil) : null,
+    failedLoginAttempts: row.failedLoginAttempts || 0,
+    lockedUntil,
+  } as LoginAccount & {
+    passwordHash: string | null;
+    failedLoginAttempts: number;
+    lockedUntil: Date | null;
   };
 };
 
@@ -417,7 +405,7 @@ const recordFailedPortalLogin = async (userId: string) => {
        "failedLoginAttempts" = "failedLoginAttempts" + 1,
        "lockedUntil" = CASE
          WHEN "failedLoginAttempts" + 1 >= 5 THEN NOW() + INTERVAL '15 minutes'
-         ELSE "lockedUntil"
+         ELSE NULL
        END,
        "updatedAt" = NOW()
      WHERE "userId" = $1`,
@@ -721,7 +709,15 @@ const requireRoles = (...roles: UserRole[]): express.RequestHandler => (_req, re
   next();
 };
 
-let auditColumnNames: Set<string> | null = null;
+type AuditColumn = {
+  columnName: string;
+  isNullable: 'YES' | 'NO';
+  dataType: string;
+  udtName: string;
+  columnDefault: string | null;
+};
+
+let auditColumns: AuditColumn[] | null = null;
 
 const audit = async (
   auth: Partial<AuthContext>,
@@ -756,34 +752,70 @@ const audit = async (
     const ipAddress = auth.ipAddress?.trim() || '0.0.0.0';
     const userAgent = auth.userAgent?.trim() || 'Sulandra Health API';
 
-    if (!auditColumnNames) {
-      const columns = await prisma.$queryRawUnsafe<Array<{ columnName: string }>>(
-        `SELECT "column_name" AS "columnName"
-           FROM "information_schema"."columns"
-          WHERE "table_schema"=current_schema() AND "table_name"='AuditEvent'`,
+    if (!auditColumns) {
+      auditColumns = await prisma.$queryRawUnsafe<AuditColumn[]>(
+        `SELECT
+           "column_name" AS "columnName",
+           "is_nullable" AS "isNullable",
+           "data_type" AS "dataType",
+           "udt_name" AS "udtName",
+           "column_default" AS "columnDefault"
+         FROM "information_schema"."columns"
+         WHERE "table_schema"=current_schema() AND "table_name"='AuditEvent'
+         ORDER BY "ordinal_position"`,
       );
-      auditColumnNames = new Set(columns.map((column) => column.columnName));
     }
 
-    const candidates = [
-      { name: 'id', value: randomUUID() },
-      { name: 'organizationId', value: organizationId },
-      { name: 'userId', value: userId },
-      { name: 'actorId', value: userId },
-      { name: 'actorUserId', value: userId },
-      { name: 'performedById', value: userId },
-      { name: 'actorEmail', value: actorEmail },
-      { name: 'actorRole', value: auth.role ?? UserRole.ADMINISTRATOR },
-      { name: 'ipAddress', value: ipAddress },
-      { name: 'userAgent', value: userAgent },
-      { name: 'action', value: action },
-      { name: 'resourceType', value: resourceType },
-      { name: 'resourceId', value: resourceId ?? null },
-      { name: 'metadata', value: JSON.stringify(metadata ?? {}), cast: '::jsonb' },
-    ].filter((candidate) => auditColumnNames?.has(candidate.name));
+    const available = new Map(auditColumns.map((column) => [column.columnName, column]));
+    const metadataJson = JSON.stringify(metadata ?? {});
+    const knownValues = new Map<string, { value: unknown; cast?: string }>([
+      ['id', { value: randomUUID() }],
+      ['organizationId', { value: organizationId }],
+      ['userId', { value: userId }],
+      ['actorId', { value: userId }],
+      ['actorUserId', { value: userId }],
+      ['performedById', { value: userId }],
+      ['actorEmail', { value: actorEmail }],
+      ['actorRole', { value: auth.role ?? UserRole.ADMINISTRATOR }],
+      ['ipAddress', { value: ipAddress }],
+      ['userAgent', { value: userAgent }],
+      ['action', { value: action }],
+      ['resourceType', { value: resourceType }],
+      ['resourceId', { value: resourceId ?? null }],
+      ['metadata', { value: metadataJson, cast: '::jsonb' }],
+      ['details', { value: metadataJson, cast: '::jsonb' }],
+      ['changes', { value: metadataJson, cast: '::jsonb' }],
+      ['description', { value: `${action} ${resourceType}${resourceId ? ` ${resourceId}` : ''}` }],
+    ]);
+
+    const candidates: Array<{ name: string; value: unknown; cast?: string }> = [];
+    for (const [name, candidate] of knownValues) {
+      if (available.has(name)) candidates.push({ name, ...candidate });
+    }
+
+    for (const column of auditColumns) {
+      if (
+        column.isNullable === 'YES'
+        || column.columnDefault
+        || candidates.some((candidate) => candidate.name === column.columnName)
+        || column.columnName === 'createdAt'
+      ) continue;
+
+      const jsonLike = column.dataType === 'json' || column.dataType === 'jsonb' || column.udtName === 'jsonb';
+      const booleanLike = column.dataType === 'boolean' || column.udtName === 'bool';
+      const numericLike = ['smallint', 'integer', 'bigint', 'numeric', 'real', 'double precision'].includes(column.dataType);
+      const timestampLike = column.dataType.includes('timestamp') || column.udtName.includes('timestamp');
+
+      candidates.push({
+        name: column.columnName,
+        value: jsonLike ? metadataJson : booleanLike ? false : numericLike ? 0 : timestampLike ? new Date() : '',
+        cast: jsonLike ? '::jsonb' : undefined,
+      });
+    }
+
     const columnSql = candidates.map((candidate) => `"${candidate.name}"`);
     const valueSql = candidates.map((candidate, index) => `$${index + 1}${candidate.cast || ''}`);
-    if (auditColumnNames.has('createdAt')) {
+    if (available.has('createdAt')) {
       columnSql.push('"createdAt"');
       valueSql.push('NOW()');
     }
@@ -849,117 +881,56 @@ const provisionPortalCredential: express.RequestHandler = async (req, res, next)
          "lockedUntil" = NULL,
          "updatedAt" = NOW()`,
       user.id,
-      input.username.toLowerCase(),
+      input.username,
       passwordHash,
       input.displayName ?? null,
     );
-
-    await audit(auth, 'EMPLOYEE_PORTAL_CREDENTIAL_PROVISIONED', 'User', user.id, {
-      username: input.username.toLowerCase(),
-      role: user.role,
+    await audit(auth, 'PROVISION_EMPLOYEE_PORTAL_ACCESS', 'User', user.id, {
+      username: input.username,
     });
-    const authorization = accessForRole(user.role);
-    res.status(201).json({
-      data: {
-        userId: user.id,
-        email: user.email,
-        username: input.username.toLowerCase(),
-        displayName: input.displayName ?? null,
-        role: user.role,
-        mustChangePassword: true,
-        permissions: authorization.permissions,
-        access: authorization.access,
-        apps: authorization.apps,
-        landingRoute: authorization.landingRoute,
-      },
-    });
+    res.status(201).json({ data: { userId: user.id, username: input.username } });
   } catch (error) {
     next(error);
   }
 };
 
 app.post(
-  '/api/admin/portal-credentials',
+  '/api/admin/users/:userId/portal-credentials',
   requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
   provisionPortalCredential,
 );
-app.put(
-  '/api/admin/users/:userId/credentials',
+app.post(
+  '/api/admin/employee-portal/credentials',
   requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
   provisionPortalCredential,
 );
-
-app.get('/api/spire/access', (_req, res) => {
-  const auth = authOf(res);
-  const authorization = accessForRole(auth.role);
-  if (!authorization.access.spire.enabled) {
-    res.status(403).json({ error: 'S.P.I.R.E. access is not assigned to this employee role' });
-    return;
-  }
-  res.json({
-    data: {
-      userId: auth.userId,
-      organizationId: auth.organizationId,
-      role: auth.role,
-      ...authorization.access.spire,
-      permissions: authorization.permissions,
-    },
-  });
-});
 
 registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });
 
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
-
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[spire-api]', error);
-
   if (error instanceof ZodError) {
     res.status(400).json({
-      error: 'Invalid request',
-      issues: error.issues.map((issue) => ({
-        path: issue.path.join('.'),
-        message: issue.message,
-      })),
+      error: 'Validation failed',
+      details: error.issues,
     });
     return;
   }
 
   const httpError = error as HttpError;
   const status = httpError.status ?? httpError.statusCode ?? 500;
-  const message = status < 500 && error instanceof Error
-    ? error.message
-    : 'Unexpected server error';
-  res.status(status).json({ error: message });
+  if (status >= 500) console.error(error);
+  res.status(status).json({ error: httpError.message || 'Internal server error' });
 });
 
-const server = app.listen(port, '0.0.0.0', () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`SPIRE API listening on 0.0.0.0:${port}`);
 });
 
-let shuttingDown = false;
-const shutdown = (signal: string) => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  console.log(`[spire-api] received ${signal}; shutting down`);
-
-  const forceExit = setTimeout(() => {
-    console.error('[spire-api] shutdown timed out');
-    process.exit(1);
-  }, 10_000);
-  forceExit.unref();
-
-  server.close(async (error) => {
-    await prisma.$disconnect();
-    if (error) {
-      console.error('[spire-api] shutdown failed', error);
-      process.exit(1);
-    }
-    process.exit(0);
-  });
+const shutdown = async (signal: string) => {
+  console.log(`Received ${signal}; disconnecting database client.`);
+  await prisma.$disconnect();
+  process.exit(0);
 };
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
