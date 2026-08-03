@@ -889,7 +889,7 @@ export function registerApplicantWorkflowRoutes(
           );
         });
 
-        const resetUrl = `${careersPortalUrl}?reset=${encodeURIComponent(token)}`;
+        const resetUrl = `${careersPortalUrl}#reset=${encodeURIComponent(token)}`;
         const body = [
           `Dear ${account.firstName || 'Applicant'},`,
           '',
