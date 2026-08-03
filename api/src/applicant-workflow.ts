@@ -79,10 +79,14 @@ type ApplicantToken = {
   exp: number;
 };
 
-const portalUrl = (
+const configuredPortalUrl = (
   process.env.CAREERS_PORTAL_URL
-  ?? 'https://www.sulandrahealth.com/applicant-portal.html'
+  ?? 'https://www.sulandrahealth.com/applicant'
 ).replace(/\/$/, '');
+export const careersPortalUrl = configuredPortalUrl.replace(
+  /\/applicant-portal(?:\.html)?$/i,
+  '/applicant',
+);
 const careersFromEmail = (
   process.env.CAREERS_EMAIL_FROM
   ?? process.env.ADMIN_EMAIL
@@ -99,16 +103,48 @@ function escapeEmailHtml(value: string) {
     .replaceAll("'", '&#039;');
 }
 
+function emailLineHtml(line: string) {
+  const linkPrefixes: Array<[string, string]> = [
+    ['Portal:', 'Open Applicant Portal'],
+    ['Applicant portal:', 'Open Applicant Portal'],
+    ['Upload requested document:', 'Upload Requested Document'],
+    ['Schedule your interview:', 'Choose Interview Appointment'],
+    ['Review your appointment:', 'Review Interview Appointment'],
+  ];
+  for (const [prefix, label] of linkPrefixes) {
+    if (line.startsWith(prefix)) {
+      const href = line.slice(prefix.length).trim();
+      return `<div style="margin:15px 0"><a href="${escapeEmailHtml(href)}" style="display:inline-block;padding:13px 20px;background:#075985;color:#ffffff;text-decoration:none;border-radius:9px;font-weight:800">${label}</a></div>`;
+    }
+  }
+  const detail = /^(Applicant username|Username|Temporary password|Application reference|Selection deadline):\s*(.*)$/.exec(line);
+  if (detail) {
+    return `<div style="margin:5px 0"><strong>${escapeEmailHtml(detail[1])}:</strong> ${escapeEmailHtml(detail[2])}</div>`;
+  }
+  return `<div>${escapeEmailHtml(line)}</div>`;
+}
+
 function brandedEmailHtml(body: string) {
   const paragraphs = body
     .split(/\n{2,}/)
-    .map((paragraph) => `<p style="margin:0 0 17px;line-height:1.65">${escapeEmailHtml(paragraph).replaceAll('\n', '<br>')}</p>`)
+    .map((paragraph) => `<div style="margin:0 0 17px;line-height:1.65">${paragraph.split('\n').map(emailLineHtml).join('')}</div>`)
     .join('');
   return `<div style="margin:0;background:#eef5fa;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#102448"><div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #d8e5ef;border-radius:18px;overflow:hidden"><div style="padding:25px 30px;background:linear-gradient(135deg,#dceffc,#8ec4e8)"><div style="font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#075985">Sulandra Health</div><h1 style="margin:8px 0 0;font-size:27px;line-height:1.2">Human Resources Department</h1></div><div style="padding:30px">${paragraphs}<p style="margin:26px 0 0;padding-top:17px;border-top:1px solid #d8e5ef;font-size:12px;line-height:1.55;color:#64748b">This message concerns your employment application with Sulandra Health. Please protect your applicant-portal credentials and include your application reference number when contacting Human Resources.</p></div></div></div>`;
 }
 
 function normalizePhone(value?: string | null) {
   return (value ?? '').replace(/[^\d+]/g, '');
+}
+
+export function applicantUsernameFor(application: {
+  applicantUsername?: string | null;
+  email?: string | null;
+  phone?: string | null;
+}) {
+  return application.applicantUsername?.trim()
+    || application.email?.trim().toLowerCase()
+    || normalizePhone(application.phone)
+    || 'Contact Human Resources';
 }
 
 async function resolveApplicantUsername(
@@ -183,6 +219,18 @@ function applicantAuth(req: express.Request): ApplicantToken | null {
   const header = req.header('authorization') ?? '';
   const match = /^Bearer\s+(.+)$/i.exec(header);
   return match ? readApplicantToken(match[1]) : null;
+}
+
+async function applicantMustChangePassword(prisma: PrismaClient, auth: ApplicantToken) {
+  const rows = await prisma.$queryRawUnsafe<Array<{ mustChangePassword: boolean }>>(
+    `SELECT "mustChangePassword"
+       FROM "ApplicantPortalAccount"
+      WHERE "id"=$1 AND "applicationId"=$2
+      LIMIT 1`,
+    auth.accountId,
+    auth.applicationId,
+  );
+  return rows[0]?.mustChangePassword !== false;
 }
 
 function pdfEscape(value: string) {
@@ -563,12 +611,13 @@ function welcomeMessage(input: ProvisionApplicantInput, username: string, tempor
     `Thank you for considering Sulandra Health. We received your application for ${input.jobTitle}.`,
     `Application reference: ${input.referenceNumber}`,
     '',
-    'To view and monitor your application, upload requested documents, and see status updates, sign in using:',
-    `Portal: ${portalUrl}`,
-    `Username: ${username}`,
+    'Your secure applicant portal account has been created. Use the credentials below to monitor your application, review Human Resources updates, and upload requested documents.',
+    `Applicant username: ${username}`,
     `Temporary password: ${temporaryPassword}`,
+    `Applicant portal: ${careersPortalUrl}`,
     '',
-    'You will be asked to create a permanent password after your first sign-in. Please monitor your application periodically for updates.',
+    'Required first step: when you sign in for the first time, you must create a permanent password before the applicant portal will open. This temporary password is for your first sign-in only and should not be shared.',
+    'Please monitor your application periodically and keep an eye on your email for updates or requested documentation from Human Resources.',
     `If you have questions, email ${careersFromEmail} and include application reference ${input.referenceNumber}. A member of HR Services will reach out to guide you.`,
     '',
     'Sincerely,',
@@ -687,10 +736,10 @@ export async function provisionApplicantWorkflow(
       id: input.applicationId,
       email: input.email,
       phone: input.phone,
-      preferredCommunication: input.preferredCommunication,
+      preferredCommunication: input.email ? 'EMAIL' : input.preferredCommunication,
     },
     'GENERAL',
-    `Sulandra Health application received — ${input.referenceNumber}`,
+    `Application received and applicant portal access — ${input.referenceNumber}`,
     welcomeMessage(input, username, temporaryPassword),
   );
 
@@ -770,7 +819,8 @@ function statusMessage(application: any, status: ApplicationStatus, note?: strin
     note ? `Additional message from Human Resources:\n${note}` : '',
     note ? '' : '',
     `Application reference: ${application.referenceNumber}`,
-    `Applicant portal: ${portalUrl}`,
+    `Applicant username: ${applicantUsernameFor(application)}`,
+    `Applicant portal: ${careersPortalUrl}`,
     `Questions may be sent to ${careersFromEmail}. Please include your application reference number in all correspondence.`,
     '',
     'Sincerely,',
@@ -836,6 +886,7 @@ export function registerApplicantWorkflowRoutes(
           }),
           expiresAt,
           mustChangePassword: account.mustChangePassword,
+          username: account.username,
           referenceNumber: account.referenceNumber,
         },
       });
@@ -848,6 +899,12 @@ export function registerApplicantWorkflowRoutes(
     try {
       const auth = applicantAuth(req);
       if (!auth) return res.status(401).json({ error: 'Applicant authentication required.' });
+      if (await applicantMustChangePassword(prisma, auth)) {
+        return res.status(403).json({
+          error: 'Create a permanent password before accessing the applicant portal.',
+          code: 'PASSWORD_CHANGE_REQUIRED',
+        });
+      }
       const applications = await prisma.$queryRawUnsafe<any[]>(
         `SELECT a."id",a."referenceNumber",a."firstName",a."middleName",a."lastName",
                 a."email",a."phone",a."workflowStatus",a."submittedAt",
@@ -906,6 +963,12 @@ export function registerApplicantWorkflowRoutes(
     try {
       const auth = applicantAuth(req);
       if (!auth) return res.status(401).json({ error: 'Applicant authentication required.' });
+      if (await applicantMustChangePassword(prisma, auth)) {
+        return res.status(403).json({
+          error: 'Create a permanent password before uploading applicant documents.',
+          code: 'PASSWORD_CHANGE_REQUIRED',
+        });
+      }
       const input = z.object({
         documentId: z.string().trim().min(1),
         fileName: z.string().trim().min(1).max(255),
@@ -978,11 +1041,11 @@ export function registerApplicantWorkflowRoutes(
           `Dear ${application.firstName},`,
           '',
           'Your Sulandra Health applicant-portal access has been reset.',
-          `Portal: ${portalUrl}`,
-          `Username: ${username}`,
+          `Applicant username: ${username}`,
           `Temporary password: ${temporaryPassword}`,
+          `Applicant portal: ${careersPortalUrl}`,
           '',
-          'You will be asked to create a permanent password after signing in.',
+          'Required first step: you must create a new permanent password before the applicant portal will open. This temporary password is for your first sign-in only and should not be shared.',
           `Application reference: ${application.referenceNumber}`,
           '',
           'Sincerely,',
@@ -1093,7 +1156,7 @@ export function registerApplicantWorkflowRoutes(
           notifyApplicant: z.boolean().default(true),
         }).parse(req.body);
         const rows = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT d.*,a."firstName",a."email",a."phone",a."preferredCommunication",a."referenceNumber"
+          `SELECT d.*,a."firstName",a."email",a."phone",a."preferredCommunication",a."referenceNumber",a."applicantUsername"
              FROM "ApplicantDocument" d
              JOIN "EmployeeApplication" a ON a."id"=d."applicationId"
             WHERE d."id"=$1 AND d."applicationId"=$2 AND a."organizationId"=$3`,
@@ -1119,7 +1182,8 @@ export function registerApplicantWorkflowRoutes(
             '',
             `The ${document.label} document for application ${document.referenceNumber} needs to be replaced.`,
             input.reviewNotes ? `HR note: ${input.reviewNotes}` : '',
-            `Upload a replacement at ${portalUrl}.`,
+            `Applicant username: ${applicantUsernameFor(document)}`,
+            `Upload requested document: ${careersPortalUrl}`,
             '',
             'Sincerely,',
             careersHrDisplayName,

@@ -4,7 +4,9 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { registerEducationRoutes } from './education-routes.js';
 import {
+  applicantUsernameFor,
   careersHrDisplayName,
+  careersPortalUrl,
   provisionApplicantWorkflow,
   recordAndDeliver,
   registerApplicantWorkflowRoutes,
@@ -392,8 +394,7 @@ export function registerCareersRoutes(
           notificationStatus: workflow?.deliveryStatus ?? 'FAILED',
           assessment: workflow?.assessment ?? null,
           workflowSetupPending,
-          applicantPortalUrl: process.env.CAREERS_PORTAL_URL
-            ?? 'https://www.sulandrahealth.com/applicant-portal.html',
+          applicantPortalUrl: careersPortalUrl,
         },
       });
     } catch (error) {
@@ -666,8 +667,6 @@ export function registerCareersRoutes(
           );
         }
       });
-      const portal = process.env.CAREERS_PORTAL_URL
-        ?? 'https://www.sulandrahealth.com/applicant-portal.html';
       const deliveryStatus = await recordAndDeliver(
         prisma,
         application,
@@ -677,7 +676,8 @@ export function registerCareersRoutes(
           `Dear ${application.firstName || 'Applicant'},`,
           '',
           input.message ?? `Please upload your ${input.label} through the applicant portal.`,
-          `Portal: ${portal}`,
+          `Applicant username: ${applicantUsernameFor(application)}`,
+          `Upload requested document: ${careersPortalUrl}`,
           `Application reference: ${application.referenceNumber}`,
           '',
           'Sincerely,',
@@ -693,7 +693,7 @@ export function registerCareersRoutes(
       res.status(201).json({
         data: {
           deliveryStatus,
-          applicantPortalUrl: portal,
+          applicantPortalUrl: careersPortalUrl,
         },
       });
     } catch (error) {

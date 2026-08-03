@@ -2,7 +2,12 @@ import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { careersHrDisplayName, recordAndDeliver } from './applicant-workflow.js';
+import {
+  applicantUsernameFor,
+  careersHrDisplayName,
+  careersPortalUrl,
+  recordAndDeliver,
+} from './applicant-workflow.js';
 
 type AuthContext = { userId: string; organizationId: string; role: UserRole };
 type Helpers = {
@@ -137,7 +142,7 @@ async function companySettings(prisma: PrismaClient, organizationId: string) {
 async function invitationByToken(prisma: PrismaClient, token: string) {
   const rows = await prisma.$queryRawUnsafe<any[]>(
     `SELECT i.*,a."firstName",a."middleName",a."lastName",a."email",a."phone",
-            a."preferredCommunication",a."referenceNumber",a."workflowStatus",
+            a."preferredCommunication",a."referenceNumber",a."workflowStatus",a."applicantUsername",
             j."title" AS "jobTitle"
        FROM "InterviewInvitation" i
        JOIN "EmployeeApplication" a ON a."id"=i."applicationId"
@@ -164,6 +169,8 @@ function interviewInvitationMessage(application: any, url: string, deadline: Dat
     note ? `Additional message from Human Resources:\n${note}` : '',
     '',
     `Application reference: ${application.referenceNumber}`,
+    `Applicant username: ${applicantUsernameFor(application)}`,
+    `Applicant portal: ${careersPortalUrl}`,
     '',
     'Sincerely,',
     careersHrDisplayName,
@@ -183,6 +190,8 @@ function interviewConfirmationMessage(application: any, slot: any, url: string, 
     '',
     `Review your appointment: ${url}`,
     `Application reference: ${application.referenceNumber}`,
+    `Applicant username: ${applicantUsernameFor(application)}`,
+    `Applicant portal: ${careersPortalUrl}`,
     '',
     'Please arrive or connect on time and bring any documents previously requested by Human Resources.',
     '',

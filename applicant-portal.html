@@ -28,13 +28,28 @@
       <section class="panel" id="loginPanel">
         <div class="eyebrow" style="color:var(--blue)">SECURE APPLICANT ACCESS</div>
         <h2>Sign in</h2>
-        <p class="lead">Use the username and temporary password sent after your application was received.</p>
+        <p class="lead">Use the applicant username and temporary password included in your application-received email.</p>
         <form id="loginForm">
-          <div class="field"><label for="username">Email or phone username</label><input id="username" autocomplete="username" required></div>
+          <div class="field"><label for="username">Applicant username</label><input id="username" autocomplete="username" required></div>
           <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required></div>
           <div class="notice error" id="loginError"></div>
           <button class="primary" type="submit">Sign in securely</button>
         </form>
+      </section>
+
+      <section class="panel" id="passwordSetupPanel" style="display:none">
+        <div class="eyebrow" style="color:var(--blue)">REQUIRED FIRST STEP</div>
+        <h2>Create your permanent password</h2>
+        <p class="lead">For your security, the applicant portal will open only after you replace the temporary password sent by Human Resources.</p>
+        <div class="card" style="margin-bottom:22px"><h3>Applicant username</h3><strong id="setupUsername">—</strong></div>
+        <div class="notice success" id="passwordMessage"></div>
+        <div class="notice error" id="passwordError"></div>
+        <form id="passwordForm">
+          <div class="field"><label for="newPassword">New permanent password</label><input id="newPassword" type="password" minlength="12" autocomplete="new-password" required></div>
+          <div class="field"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" type="password" minlength="12" autocomplete="new-password" required></div>
+          <button class="primary" type="submit">Create password and open portal</button>
+        </form>
+        <button class="signout" id="setupSignout" type="button" style="margin-top:18px">Sign out</button>
       </section>
 
       <section class="panel" id="workspace">
@@ -57,17 +72,14 @@
         </section>
         <section class="timeline"><h3>Status history</h3><div id="history"></div></section>
         <section><h3>Application documents</h3><p class="lead">Upload files marked Missing, Requested, or Rejected. PDF, DOC, DOCX, JPG, and PNG files up to 20 MB are accepted.</p><div class="documents" id="documents"></div></section>
-        <section class="password-box" id="passwordBox">
-          <h3>Create a permanent password</h3>
-          <p class="lead">Your new password must contain at least 12 characters.</p>
-          <form id="passwordForm"><div class="field"><label for="newPassword">New password</label><input id="newPassword" type="password" minlength="12" autocomplete="new-password" required></div><button class="secondary" type="submit">Update password</button></form>
-        </section>
       </section>
     </main>
   </div>
   <script>
     const API_BASE='https://sulandra-website-production.up.railway.app';
     const tokenKey='sulandraApplicantToken';
+    const mustChangeKey='sulandraApplicantMustChange';
+    const usernameKey='sulandraApplicantUsername';
     const $=id=>document.getElementById(id);
     const title=value=>String(value||'').replaceAll('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
     function notice(id,text){const el=$(id);el.textContent=text;el.classList.toggle('show',Boolean(text))}
@@ -75,24 +87,33 @@
       const token=sessionStorage.getItem(tokenKey);
       const response=await fetch(API_BASE+path,{...options,headers:{'content-type':'application/json',...(token?{authorization:`Bearer ${token}`}:{}) ,...(options.headers||{})}});
       const body=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(body.error||'Unable to complete the request.');
+      if(!response.ok){const error=new Error(body.error||'Unable to complete the request.');error.code=body.code||'';throw error}
       return body.data;
+    }
+    function clearApplicantSession(){sessionStorage.removeItem(tokenKey);sessionStorage.removeItem(mustChangeKey);sessionStorage.removeItem(usernameKey)}
+    function showPasswordSetup(username=''){
+      $('loginPanel').style.display='none';$('workspace').style.display='none';$('passwordSetupPanel').style.display='block';
+      $('setupUsername').textContent=username||sessionStorage.getItem(usernameKey)||'Applicant';
+      notice('passwordError','');
     }
     $('loginForm').addEventListener('submit',async event=>{
       event.preventDefault();notice('loginError','');
       try{
         const data=await api('/public/careers/applicant/login',{method:'POST',body:JSON.stringify({username:$('username').value.trim(),password:$('password').value})});
         sessionStorage.setItem(tokenKey,data.token);
-        sessionStorage.setItem('sulandraApplicantMustChange',String(data.mustChangePassword));
-        await loadWorkspace();
+        sessionStorage.setItem(mustChangeKey,String(data.mustChangePassword));
+        sessionStorage.setItem(usernameKey,data.username||$('username').value.trim());
+        if(data.mustChangePassword)showPasswordSetup(data.username);else await loadWorkspace();
       }catch(error){notice('loginError',error.message)}
     });
     $('passwordForm').addEventListener('submit',async event=>{
-      event.preventDefault();
-      try{await api('/public/careers/applicant/change-password',{method:'POST',body:JSON.stringify({password:$('newPassword').value})});$('passwordBox').style.display='none';notice('message','Your permanent password has been saved.')}
-      catch(error){notice('workspaceError',error.message)}
+      event.preventDefault();notice('passwordError','');
+      if($('newPassword').value!==$('confirmPassword').value){notice('passwordError','The passwords do not match.');return}
+      try{await api('/public/careers/applicant/change-password',{method:'POST',body:JSON.stringify({password:$('newPassword').value})});sessionStorage.setItem(mustChangeKey,'false');$('passwordSetupPanel').style.display='none';await loadWorkspace();notice('message','Your permanent password has been saved and your applicant portal is now open.')}
+      catch(error){notice('passwordError',error.message)}
     });
-    $('signout').addEventListener('click',()=>{sessionStorage.removeItem(tokenKey);location.reload()});
+    $('signout').addEventListener('click',()=>{clearApplicantSession();location.reload()});
+    $('setupSignout').addEventListener('click',()=>{clearApplicantSession();location.reload()});
     async function upload(documentId,file){
       notice('workspaceError','');notice('message','Uploading document…');
       if(file.size>20_000_000){notice('workspaceError','The selected file is larger than 20 MB.');return}
@@ -109,9 +130,10 @@
       }catch(error){notice('message','');notice('workspaceError',error.message);await loadWorkspace()}
     }
     async function loadWorkspace(){
+      if(sessionStorage.getItem(mustChangeKey)==='true'){showPasswordSetup();return}
       try{
         const data=await api('/public/careers/applicant/me');
-        $('loginPanel').style.display='none';$('workspace').style.display='block';
+        $('loginPanel').style.display='none';$('passwordSetupPanel').style.display='none';$('workspace').style.display='block';
         const app=data.application;
         $('applicantName').textContent=[app.firstName,app.middleName,app.lastName].filter(Boolean).join(' ');
         $('reference').textContent=app.referenceNumber;
@@ -133,10 +155,9 @@
         $('history').innerHTML=data.history.length?data.history.map(item=>`<div class="event"><span class="dot"></span><div><strong>${title(item.toStatus)}</strong><p>${item.note||''}</p><small>${new Date(item.createdAt).toLocaleString()}</small></div></div>`).join(''):'<p class="lead">Your application has been received.</p>';
         $('documents').innerHTML=data.documents.map(doc=>`<div class="document"><div><strong>${doc.label}</strong><small>${title(doc.status)}${doc.reviewNotes?` • ${doc.reviewNotes}`:''}</small></div>${['MISSING','REQUESTED','REJECTED'].includes(doc.status)?`<label class="upload">Upload replacement<input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" data-document="${doc.id}"></label>`:''}</div>`).join('');
         document.querySelectorAll('input[data-document]').forEach(input=>input.addEventListener('change',event=>{const file=event.target.files[0];if(file)upload(event.target.dataset.document,file)}));
-        $('passwordBox').style.display=sessionStorage.getItem('sulandraApplicantMustChange')==='true'?'block':'none';
-      }catch(error){sessionStorage.removeItem(tokenKey);$('workspace').style.display='none';$('loginPanel').style.display='block';notice('loginError',error.message)}
+      }catch(error){if(error.code==='PASSWORD_CHANGE_REQUIRED'){sessionStorage.setItem(mustChangeKey,'true');showPasswordSetup();return}clearApplicantSession();$('workspace').style.display='none';$('passwordSetupPanel').style.display='none';$('loginPanel').style.display='block';notice('loginError',error.message)}
     }
-    if(sessionStorage.getItem(tokenKey))loadWorkspace();
+    if(sessionStorage.getItem(tokenKey)){if(sessionStorage.getItem(mustChangeKey)==='true')showPasswordSetup();else loadWorkspace()}
   </script>
 </body>
 </html>

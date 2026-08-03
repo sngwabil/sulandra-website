@@ -3,6 +3,7 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
+import { applicantUsernameFor, careersPortalUrl } from './applicant-workflow.js';
 
 const require = createRequire(import.meta.url);
 const nodemailer = require('nodemailer') as typeof import('nodemailer');
@@ -185,6 +186,7 @@ export function registerOfferSendRoute(app: express.Express, prisma: PrismaClien
                 <tr><td style="padding:10px;border:1px solid #d8e3ed;background:#f7fafc"><strong>Supervisor</strong></td><td style="padding:10px;border:1px solid #d8e3ed">${htmlEscape(input.supervisorName || 'To be assigned')}</td></tr>
               </table>
               <p style="margin:26px 0;text-align:center"><a href="${htmlEscape(offerUrl)}" style="display:inline-block;background:#087fb8;color:#ffffff;text-decoration:none;padding:14px 24px;border-radius:8px;font-weight:700">Review and Sign Offer of Employment</a></p>
+              <div style="margin:22px 0;padding:16px 18px;background:#f2f8fc;border:1px solid #cfe0ec;border-radius:10px"><strong>Applicant portal username:</strong> ${htmlEscape(applicantUsernameFor(application))}<br><a href="${htmlEscape(careersPortalUrl)}" style="display:inline-block;margin-top:10px;color:#075985;font-weight:700;text-decoration:none">Open Applicant Portal</a></div>
               <p>After you sign and submit the offer, the signed PDF will be delivered to the Sulandra Health Human Resources Department for review. If Human Resources proceeds with hiring, you will receive a separate welcome email and secure employee-portal access for your onboarding requirements.</p>
               <p><strong>Security notice:</strong> This link is personal to you. Do not forward or share it.</p>
               <p style="margin-top:28px">We appreciate your interest in joining Sulandra Community Living Services and look forward to receiving your response.</p>
@@ -206,6 +208,8 @@ export function registerOfferSendRoute(app: express.Express, prisma: PrismaClien
           `Work location: ${input.workLocation || 'To be confirmed'}`,
           '',
           `Review and sign your Offer of Employment: ${offerUrl}`,
+          `Applicant username: ${applicantUsernameFor(application)}`,
+          `Applicant portal: ${careersPortalUrl}`,
           '',
           'After you submit the signed offer, the Sulandra Health Human Resources Department will review it. Onboarding requirements will be assigned only after employee-profile creation.',
           '',
