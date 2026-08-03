@@ -13,6 +13,15 @@ export function registerOfferProgressRoute(app: express.Express, prisma: PrismaC
       const auth = authOf(res); const applicationId = String(req.params.id);
       const offers = await prisma.$queryRawUnsafe<any[]>(`SELECT o.*,a."workflowStatus" AS "applicationWorkflowStatus",a."firstName",a."lastName" FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId" WHERE o."applicationId"=$1 AND o."organizationId"=$2 ORDER BY o."createdAt" DESC LIMIT 1`,applicationId,auth.organizationId);
       const offer=offers[0]; if(!offer){res.json({data:{offer:null,progress:null}});return;}
+
+      if ((offer.status === 'OFFER_ACCEPTED' || offer.acceptedAt) && offer.applicationWorkflowStatus !== 'OFFER_ACCEPTED') {
+        await prisma.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_ACCEPTED',"updatedAt"=NOW() WHERE "id"=$1`, applicationId);
+        offer.applicationWorkflowStatus = 'OFFER_ACCEPTED';
+      } else if (offer.status !== 'OFFER_ACCEPTED' && !offer.acceptedAt && offer.applicationWorkflowStatus !== 'OFFER_PENDING') {
+        await prisma.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_PENDING',"updatedAt"=NOW() WHERE "id"=$1`, applicationId);
+        offer.applicationWorkflowStatus = 'OFFER_PENDING';
+      }
+
       let signedOfferRows=await prisma.$queryRawUnsafe<any[]>(`SELECT "id","label","status","fileName","mimeType","sizeBytes","uploadedAt" FROM "ApplicantDocument" WHERE "applicationId"=$1 AND "label"='Signed Offer of Employment' ORDER BY "createdAt" DESC LIMIT 1`,applicationId);
       if(!signedOfferRows[0] && offer.status==='OFFER_ACCEPTED' && offer.acceptedByName && offer.signature){
         const acceptedAt=offer.acceptedAt?new Date(offer.acceptedAt):new Date(); const pdf=buildSignedOfferPdf(offer,offer.acceptedByName,offer.signature,acceptedAt); const id=randomUUID();
