@@ -76,6 +76,7 @@ export type ProvisionApplicantInput = {
 type ApplicantToken = {
   accountId: string;
   applicationId: string;
+  version: number;
   exp: number;
 };
 
@@ -110,6 +111,7 @@ function emailLineHtml(line: string) {
     ['Upload requested document:', 'Upload Requested Document'],
     ['Schedule your interview:', 'Choose Interview Appointment'],
     ['Review your appointment:', 'Review Interview Appointment'],
+    ['Reset password:', 'Reset Applicant Password'],
   ];
   for (const [prefix, label] of linkPrefixes) {
     if (line.startsWith(prefix)) {
@@ -208,7 +210,13 @@ function readApplicantToken(value: string): ApplicantToken | null {
   }
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as ApplicantToken;
-    if (!payload.accountId || !payload.applicationId || payload.exp < Date.now()) return null;
+    if (
+      !payload.accountId
+      || !payload.applicationId
+      || !Number.isInteger(payload.version)
+      || payload.version < 0
+      || payload.exp < Date.now()
+    ) return null;
     return payload;
   } catch {
     return null;
@@ -221,16 +229,21 @@ function applicantAuth(req: express.Request): ApplicantToken | null {
   return match ? readApplicantToken(match[1]) : null;
 }
 
-async function applicantMustChangePassword(prisma: PrismaClient, auth: ApplicantToken) {
-  const rows = await prisma.$queryRawUnsafe<Array<{ mustChangePassword: boolean }>>(
-    `SELECT "mustChangePassword"
+async function applicantSessionState(prisma: PrismaClient, auth: ApplicantToken) {
+  const rows = await prisma.$queryRawUnsafe<Array<{
+    mustChangePassword: boolean;
+    sessionVersion: number;
+  }>>(
+    `SELECT "mustChangePassword","sessionVersion"
        FROM "ApplicantPortalAccount"
       WHERE "id"=$1 AND "applicationId"=$2
       LIMIT 1`,
     auth.accountId,
     auth.applicationId,
   );
-  return rows[0]?.mustChangePassword !== false;
+  const account = rows[0];
+  if (!account || Number(account.sessionVersion) !== auth.version) return null;
+  return account;
 }
 
 function pdfEscape(value: string) {
@@ -678,6 +691,7 @@ export async function provisionApplicantWorkflow(
          "username"=EXCLUDED."username",
          "passwordHash"=EXCLUDED."passwordHash",
          "mustChangePassword"=TRUE,
+         "sessionVersion"="ApplicantPortalAccount"."sessionVersion"+1,
          "failedLoginAttempts"=0,
          "lockedUntil"=NULL,
          "updatedAt"=NOW()`,
@@ -836,6 +850,174 @@ export function registerApplicantWorkflowRoutes(
 ) {
   const { authOf, requireRoles, audit } = helpers;
 
+  app.post('/public/careers/applicant/forgot-password', async (req, res, next) => {
+    try {
+      const input = z.object({
+        identifier: z.string().trim().min(3).max(320),
+      }).parse(req.body);
+      const genericMessage = 'If an applicant account matches that information, a secure password-reset link has been sent to the email address on file.';
+      const accounts = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT p."id" AS "accountId",p."applicationId",p."username",
+                a."email",a."firstName",a."referenceNumber"
+           FROM "ApplicantPortalAccount" p
+           JOIN "EmployeeApplication" a ON a."id"=p."applicationId"
+          WHERE LOWER(p."username")=LOWER($1)
+             OR LOWER(COALESCE(a."email",''))=LOWER($1)
+          ORDER BY p."createdAt" DESC
+          LIMIT 1`,
+        input.identifier,
+      );
+      const account = accounts[0];
+      if (account?.email) {
+        const token = randomBytes(32).toString('base64url');
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const resetId = randomUUID();
+        await prisma.$transaction(async (tx) => {
+          await tx.$executeRawUnsafe(
+            `UPDATE "ApplicantPasswordReset"
+                SET "usedAt"=NOW()
+              WHERE "accountId"=$1 AND "usedAt" IS NULL`,
+            account.accountId,
+          );
+          await tx.$executeRawUnsafe(
+            `INSERT INTO "ApplicantPasswordReset"
+              ("id","accountId","tokenHash","expiresAt","createdAt")
+             VALUES ($1,$2,$3,NOW()+INTERVAL '30 minutes',NOW())`,
+            resetId,
+            account.accountId,
+            tokenHash,
+          );
+        });
+
+        const resetUrl = `${careersPortalUrl}?reset=${encodeURIComponent(token)}`;
+        const body = [
+          `Dear ${account.firstName || 'Applicant'},`,
+          '',
+          'We received a request to reset the password for your Sulandra Health applicant portal account.',
+          `Applicant username: ${account.username}`,
+          `Reset password: ${resetUrl}`,
+          '',
+          'This secure link expires in 30 minutes and can be used only once. If you did not request a password reset, you may safely ignore this message; your current password will remain unchanged.',
+          `Application reference: ${account.referenceNumber}`,
+          '',
+          'Sincerely,',
+          careersHrDisplayName,
+          'Sulandra Health',
+        ].join('\n');
+        try {
+          const delivery = await sendEmail(
+            String(account.email).trim().toLowerCase(),
+            `Secure applicant portal password reset — ${account.referenceNumber}`,
+            body,
+          );
+          if (delivery.status !== 'SENT') {
+            await prisma.$executeRawUnsafe(
+              `UPDATE "ApplicantPasswordReset" SET "usedAt"=NOW() WHERE "id"=$1`,
+              resetId,
+            );
+            console.warn('[careers] applicant password-reset email was not sent', {
+              applicationId: account.applicationId,
+              resetId,
+              status: delivery.status,
+            });
+          }
+        } catch (deliveryError) {
+          await prisma.$executeRawUnsafe(
+            `UPDATE "ApplicantPasswordReset" SET "usedAt"=NOW() WHERE "id"=$1`,
+            resetId,
+          );
+          console.error('[careers] applicant password-reset delivery failed', {
+            applicationId: account.applicationId,
+            resetId,
+            error: safeDeliveryError(deliveryError),
+          });
+        }
+      }
+      res.status(202).json({ data: { message: genericMessage } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/public/careers/applicant/reset-password', async (req, res, next) => {
+    try {
+      const input = z.object({
+        token: z.string().trim().min(32).max(512),
+        password: z.string().min(12).max(256),
+      }).parse(req.body);
+      const tokenHash = createHash('sha256').update(input.token).digest('hex');
+      const changed = await prisma.$transaction(async (tx) => {
+        const resets = await tx.$queryRawUnsafe<any[]>(
+          `SELECT r."id",r."accountId",p."applicationId",p."username",
+                  a."email",a."firstName",a."referenceNumber"
+             FROM "ApplicantPasswordReset" r
+             JOIN "ApplicantPortalAccount" p ON p."id"=r."accountId"
+             JOIN "EmployeeApplication" a ON a."id"=p."applicationId"
+            WHERE r."tokenHash"=$1
+              AND r."usedAt" IS NULL
+              AND r."expiresAt">NOW()
+            LIMIT 1
+            FOR UPDATE OF r`,
+          tokenHash,
+        );
+        const reset = resets[0];
+        if (!reset) return null;
+        await tx.$executeRawUnsafe(
+          `UPDATE "ApplicantPortalAccount"
+              SET "passwordHash"=$1,"mustChangePassword"=FALSE,
+                  "failedLoginAttempts"=0,"lockedUntil"=NULL,
+                  "sessionVersion"="sessionVersion"+1,"updatedAt"=NOW()
+            WHERE "id"=$2`,
+          hashPassword(input.password),
+          reset.accountId,
+        );
+        await tx.$executeRawUnsafe(
+          `UPDATE "ApplicantPasswordReset"
+              SET "usedAt"=NOW()
+            WHERE "accountId"=$1 AND "usedAt" IS NULL`,
+          reset.accountId,
+        );
+        return reset;
+      });
+      if (!changed) {
+        return res.status(400).json({
+          error: 'This password-reset link is invalid, expired, or has already been used. Request a new link from the applicant portal.',
+          code: 'INVALID_RESET_TOKEN',
+        });
+      }
+
+      if (changed.email) {
+        const body = [
+          `Dear ${changed.firstName || 'Applicant'},`,
+          '',
+          'The password for your Sulandra Health applicant portal account was changed successfully.',
+          `Applicant username: ${changed.username}`,
+          `Applicant portal: ${careersPortalUrl}`,
+          '',
+          'If you did not make this change, contact the Sulandra Health Human Resources Department immediately.',
+          `Application reference: ${changed.referenceNumber}`,
+          '',
+          'Sincerely,',
+          careersHrDisplayName,
+          'Sulandra Health',
+        ].join('\n');
+        sendEmail(
+          String(changed.email).trim().toLowerCase(),
+          `Applicant portal password changed — ${changed.referenceNumber}`,
+          body,
+        ).catch((deliveryError) => {
+          console.error('[careers] applicant password-change confirmation failed', {
+            applicationId: changed.applicationId,
+            error: safeDeliveryError(deliveryError),
+          });
+        });
+      }
+      res.json({ data: { changed: true, username: changed.username } });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post('/public/careers/applicant/login', async (req, res, next) => {
     try {
       if (!tokenSecret()) {
@@ -882,6 +1064,7 @@ export function registerApplicantWorkflowRoutes(
           token: createApplicantToken({
             accountId: account.id,
             applicationId: account.applicationId,
+            version: Number(account.sessionVersion),
             exp: expiresAt,
           }),
           expiresAt,
@@ -899,7 +1082,9 @@ export function registerApplicantWorkflowRoutes(
     try {
       const auth = applicantAuth(req);
       if (!auth) return res.status(401).json({ error: 'Applicant authentication required.' });
-      if (await applicantMustChangePassword(prisma, auth)) {
+      const session = await applicantSessionState(prisma, auth);
+      if (!session) return res.status(401).json({ error: 'Applicant session expired. Please sign in again.' });
+      if (session.mustChangePassword) {
         return res.status(403).json({
           error: 'Create a permanent password before accessing the applicant portal.',
           code: 'PASSWORD_CHANGE_REQUIRED',
@@ -944,16 +1129,35 @@ export function registerApplicantWorkflowRoutes(
     try {
       const auth = applicantAuth(req);
       if (!auth) return res.status(401).json({ error: 'Applicant authentication required.' });
+      if (!await applicantSessionState(prisma, auth)) {
+        return res.status(401).json({ error: 'Applicant session expired. Please sign in again.' });
+      }
       const input = z.object({ password: z.string().min(12).max(256) }).parse(req.body);
-      await prisma.$executeRawUnsafe(
+      const accounts = await prisma.$queryRawUnsafe<Array<{ sessionVersion: number }>>(
         `UPDATE "ApplicantPortalAccount"
-            SET "passwordHash"=$1,"mustChangePassword"=FALSE,"updatedAt"=NOW()
-          WHERE "id"=$2 AND "applicationId"=$3`,
+            SET "passwordHash"=$1,"mustChangePassword"=FALSE,
+                "failedLoginAttempts"=0,"lockedUntil"=NULL,
+                "sessionVersion"="sessionVersion"+1,"updatedAt"=NOW()
+          WHERE "id"=$2 AND "applicationId"=$3
+          RETURNING "sessionVersion"`,
         hashPassword(input.password),
         auth.accountId,
         auth.applicationId,
       );
-      res.json({ data: { changed: true } });
+      if (!accounts[0]) return res.status(401).json({ error: 'Applicant session expired. Please sign in again.' });
+      const expiresAt = Date.now() + 8 * 60 * 60 * 1000;
+      res.json({
+        data: {
+          changed: true,
+          token: createApplicantToken({
+            accountId: auth.accountId,
+            applicationId: auth.applicationId,
+            version: Number(accounts[0].sessionVersion),
+            exp: expiresAt,
+          }),
+          expiresAt,
+        },
+      });
     } catch (error) {
       next(error);
     }
@@ -963,7 +1167,9 @@ export function registerApplicantWorkflowRoutes(
     try {
       const auth = applicantAuth(req);
       if (!auth) return res.status(401).json({ error: 'Applicant authentication required.' });
-      if (await applicantMustChangePassword(prisma, auth)) {
+      const session = await applicantSessionState(prisma, auth);
+      if (!session) return res.status(401).json({ error: 'Applicant session expired. Please sign in again.' });
+      if (session.mustChangePassword) {
         return res.status(403).json({
           error: 'Create a permanent password before uploading applicant documents.',
           code: 'PASSWORD_CHANGE_REQUIRED',
@@ -1027,6 +1233,7 @@ export function registerApplicantWorkflowRoutes(
         const changed = await prisma.$executeRawUnsafe(
           `UPDATE "ApplicantPortalAccount"
               SET "username"=$1,"passwordHash"=$2,"mustChangePassword"=TRUE,
+                  "sessionVersion"="sessionVersion"+1,
                   "failedLoginAttempts"=0,"lockedUntil"=NULL,"updatedAt"=NOW()
             WHERE "applicationId"=$3`,
           username,
