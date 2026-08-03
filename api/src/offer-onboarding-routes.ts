@@ -43,7 +43,6 @@ const acceptSchema = z.object({
   acceptedTerms: z.literal(true),
 });
 const DEFAULT_DOCUMENTS = [
-  'Offer Letter',
   'Form W-4',
   'Form I-9',
   'Direct Deposit Authorization',
@@ -124,7 +123,7 @@ export function registerOfferOnboardingRoutes(
         const input = offerSchema.parse({
           ...req.body,
           requiredDocuments: req.body?.requiredDocuments?.length
-            ? req.body.requiredDocuments
+            ? req.body.requiredDocuments.filter((name: string) => name !== 'Offer Letter')
             : DEFAULT_DOCUMENTS,
         });
         const [application] = await prisma.$queryRawUnsafe<any[]>(
@@ -195,12 +194,12 @@ export function registerOfferOnboardingRoutes(
           );
         });
 
-        const emailHtml = `<p>Dear ${application.firstName},</p><p>We are pleased to offer you the position of <strong>${input.positionTitle}</strong> with Sulandra Community Living Services.</p><p>Please review your employment offer and complete all required disclosure paperwork using the secure link below:</p><p><a href="${offerUrl}">Review and accept your employment offer</a></p><p>Your employee account will be created only after you accept the offer, complete all required documents, and Human Resources finalizes your hire.</p><p><strong>Human Resources</strong><br>Sulandra Community Living Services<br>A Division of Sulandra Health</p>`;
+        const emailHtml = `<p>Dear ${application.firstName},</p><p>We are pleased to offer you the position of <strong>${input.positionTitle}</strong> with Sulandra Community Living Services.</p><p>Please use the secure link below to review the employment terms and electronically sign the offer:</p><p><a href="${offerUrl}">Review and accept your employment offer</a></p><p>No W-4, I-9, direct-deposit, background-check, or other sensitive onboarding information is requested at this stage. After you accept the offer and Human Resources creates your employee profile, you will receive a separate welcome email with secure employee-portal access and onboarding instructions.</p><p><strong>Human Resources</strong><br>Sulandra Community Living Services<br>A Division of Sulandra Health</p>`;
         await sendMail(
           application.email,
           `Employment Offer — ${input.positionTitle}`,
           emailHtml,
-          `We are pleased to offer you the position of ${input.positionTitle}. Review and accept your offer here: ${offerUrl}`,
+          `We are pleased to offer you the position of ${input.positionTitle}. Review and accept your offer here: ${offerUrl}. Onboarding forms will be assigned after acceptance and employee-profile creation.`,
         );
         await audit(auth, 'SEND_EMPLOYMENT_OFFER', 'EmploymentOffer', offerId, {
           applicationId,
@@ -244,6 +243,9 @@ export function registerOfferOnboardingRoutes(
     try {
       const offer = await offerByToken(prisma, String(req.params.token));
       if (!offer) return res.status(404).json({ error: 'Offer not found or expired.' });
+      if (!offer.employeeId) {
+        return res.status(403).json({ error: 'Onboarding documents become available after Human Resources creates the employee profile.' });
+      }
       const input = documentCompleteSchema.parse(req.body);
       const updated = await prisma.$executeRawUnsafe(
         `UPDATE "EmploymentOfferDocument"
@@ -276,17 +278,9 @@ export function registerOfferOnboardingRoutes(
       const input = acceptSchema.parse(req.body);
       const offer = await offerByToken(prisma, String(req.params.token));
       if (!offer) return res.status(404).json({ error: 'Offer not found or expired.' });
-      const progress = await documentProgress(prisma, offer.id);
-      if (!progress.allComplete) {
-        return res.status(400).json({
-          error: `All required employment documents must be completed before the offer can be accepted. ${progress.completed} of ${progress.total} are complete.`,
-          progress,
-        });
-      }
       await prisma.$executeRawUnsafe(
         `UPDATE "EmploymentOffer"
             SET "status"='OFFER_ACCEPTED',"acceptedAt"=NOW(),
-                "documentsCompletedAt"=COALESCE("documentsCompletedAt",NOW()),
                 "acceptedByName"=$1,"signature"=$2,"updatedAt"=NOW()
           WHERE "id"=$3`,
         input.fullLegalName,
@@ -295,14 +289,18 @@ export function registerOfferOnboardingRoutes(
       );
       await prisma.$executeRawUnsafe(
         `UPDATE "EmployeeApplication"
-            SET "workflowStatus"='OFFER_PENDING',"updatedAt"=NOW()
+            SET "workflowStatus"='OFFER_ACCEPTED',"updatedAt"=NOW()
           WHERE "id"=$1`,
         offer.applicationId,
       );
+      await audit({}, 'ACCEPT_EMPLOYMENT_OFFER', 'EmploymentOffer', offer.id, {
+        applicationId: offer.applicationId,
+        acceptedByName: input.fullLegalName,
+      });
       res.json({
         data: {
           status: 'OFFER_ACCEPTED',
-          message: 'Your offer has been accepted and submitted to Human Resources for final hiring approval.',
+          message: 'Your signed employment offer has been received. Human Resources will review it and contact you with the next steps.',
         },
       });
     } catch (error) {
