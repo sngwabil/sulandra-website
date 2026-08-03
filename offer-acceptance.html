@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sulandra Health | Conditional Employment Offer</title>
+<style>
+:root{--primary:#075985;--accent:#0284c7;--navy:#102448;--border:#dbe6f2;--muted:#64748b;--ok:#166534;--bad:#991b1b;--soft:#f5f8fb;--gold:#b78913}*{box-sizing:border-box}body{margin:0;background:var(--soft);color:var(--navy);font-family:Segoe UI,Arial,sans-serif;line-height:1.55}.wrap{max-width:920px;margin:28px auto;padding:0 18px}.card{background:#fff;border:1px solid var(--border);border-radius:20px;box-shadow:0 18px 45px rgba(15,45,75,.1);overflow:hidden}.head{padding:34px;background:linear-gradient(135deg,#073a67,#0b6192);color:#fff}.head small{letter-spacing:.12em;text-transform:uppercase;font-weight:800}.head h1{margin:.35rem 0}.body{padding:30px}.intro{font-size:17px;color:#334155}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:20px 0}.box{border:1px solid var(--border);border-radius:14px;padding:14px;background:#fbfdff}.box strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#52657d;margin-bottom:5px}.section{margin-top:24px;border-top:1px solid var(--border);padding-top:20px}.section h2{margin:0 0 10px}.notice{padding:17px;border:1px solid #ead9a0;background:#fffaf0;border-radius:13px;margin:20px 0}.secure{padding:17px;border:1px solid #b9d9ef;background:#eef7ff;border-radius:13px;margin:20px 0}.check{display:flex;gap:10px;align-items:flex-start;margin:12px 0}.check input{margin-top:5px}.acceptance{margin-top:26px;padding:22px;border:1px solid var(--border);border-radius:15px;background:#fbfdff}.acceptance label.field{display:grid;gap:6px;margin:12px 0;font-weight:700}.acceptance input[type=text]{width:100%;padding:12px;border:1px solid #cbd8e5;border-radius:10px;font:inherit}.button{width:100%;border:0;border-radius:11px;padding:14px 18px;background:var(--primary);color:#fff;font-weight:800;cursor:pointer;font-size:16px}.button:disabled{opacity:.5;cursor:not-allowed}.msg{margin-top:14px;padding:13px;border-radius:10px;display:none}.msg.show{display:block}.msg.ok{background:#ecfdf5;color:var(--ok)}.msg.bad{background:#fef2f2;color:var(--bad)}.legal{font-size:12px;color:var(--muted);margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px}ul{padding-left:22px}@media(max-width:700px){.grid{grid-template-columns:1fr}.head,.body{padding:24px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<section class="card">
+<header class="head">
+<small>Sulandra Health secure offer</small>
+<h1>Conditional Employment Offer</h1>
+<p>Sulandra Community Living Services · A Division of Sulandra Health</p>
+</header>
+<div class="body">
+<div id="loading">Loading your secure employment offer…</div>
+<div id="content" hidden>
+<p id="greeting" class="intro"></p>
+<p class="intro">Please review the job terms below. This page asks only for your decision and electronic signature. Sensitive onboarding forms are not collected during the offer stage.</p>
+<div class="grid" id="terms"></div>
+<section class="section">
+<h2>Your agreement with Sulandra</h2>
+<p>By accepting this offer, you agree to perform the responsibilities of the position safely, professionally, honestly, and in accordance with applicable laws, company policies, training requirements, client rights, confidentiality requirements, attendance expectations, and supervisor direction.</p>
+<p>You agree that the information provided during your application and hiring process is accurate and that you will promptly provide any credentials or verification documents lawfully required for the position.</p>
+</section>
+<section class="section">
+<h2>What Sulandra agrees to provide</h2>
+<p>Sulandra Community Living Services agrees to provide the compensation and employment terms stated in this offer, appropriate orientation and training, access to applicable policies and procedures, reasonable supervision and support, a professional work environment, and the resources required to perform assigned duties, subject to business needs and applicable law.</p>
+</section>
+<div class="notice">
+<strong>Conditional nature of this offer:</strong> Your acceptance confirms agreement with the offered job terms, but employment remains conditional upon satisfactory completion of all lawful pre-employment and onboarding requirements. Depending on the position, these requirements may include identity and work-authorization verification, credential and reference verification, background screening, drug testing, exclusion-list screening, driving-record review, health or training requirements, and other role-specific clearances. The anticipated start date may be changed until Human Resources provides final clearance.
+</div>
+<div class="secure">
+<strong>What happens after you accept:</strong> Human Resources will receive your signed offer. After your employee profile is created, you will receive a separate welcome email with your employee portal credentials. Your W-4, I-9, direct-deposit form, emergency contact form, background authorization, policy acknowledgments, and other onboarding documents will then appear securely in your employee portal for completion and submission.
+</div>
+<section class="acceptance">
+<h2>Accept the conditional offer</h2>
+<label class="field">Full legal name<input id="name" type="text" autocomplete="name"></label>
+<label class="field">Electronic signature<input id="signature" type="text" placeholder="Type your full legal name"></label>
+<label class="check"><input id="accept" type="checkbox"><span>I have reviewed the job terms and understand the expectations of the position and the company. I accept this conditional employment offer and understand that employment and the anticipated start date remain subject to satisfactory completion of all applicable pre-employment and onboarding requirements.</span></label>
+<button class="button" id="submit" disabled>Sign and Accept Offer</button>
+</section>
+<div id="msg" class="msg"></div>
+<p class="legal">Your electronic signature is intended to have the same force and effect as a handwritten signature. This offer does not create employment for a guaranteed duration and does not alter at-will employment where applicable. Only an authorized written agreement may modify these terms.</p>
+</div>
+</div>
+</section>
+</main>
+<script>
+(function(){
+const API='https://sulandra-website-production.up.railway.app';
+const token=new URLSearchParams(location.search).get('token');
+const loading=document.getElementById('loading');
+const content=document.getElementById('content');
+const terms=document.getElementById('terms');
+const msg=document.getElementById('msg');
+const submit=document.getElementById('submit');
+const nameInput=document.getElementById('name');
+const signatureInput=document.getElementById('signature');
+const acceptInput=document.getElementById('accept');
+let offer=null;
+const esc=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+const show=(text,type)=>{msg.textContent=text;msg.className='msg show '+type;msg.scrollIntoView({behavior:'smooth',block:'nearest'});};
+const date=value=>value?new Date(value).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}):'To be confirmed';
+const money=value=>Number(value||0).toLocaleString(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2});
+function refresh(){submit.disabled=!(nameInput.value.trim()&&signatureInput.value.trim()&&acceptInput.checked);}
+[nameInput,signatureInput,acceptInput].forEach(element=>element.addEventListener('input',refresh));
+async function load(){
+  if(!token){loading.textContent='This offer link is incomplete.';return;}
+  try{
+    const response=await fetch(`${API}/public/careers/offers/${encodeURIComponent(token)}`);
+    const payload=await response.json();
+    if(!response.ok)throw new Error(payload.error||'Unable to load this offer.');
+    offer=payload.data;
+    document.getElementById('greeting').textContent=`Dear ${offer.firstName||''} ${offer.lastName||''}, Sulandra Community Living Services is pleased to offer you the position described below.`;
+    const compensation=offer.compensationType==='SALARY'?`${money(offer.payAmount)} annually`:`${money(offer.payAmount)} per hour`;
+    const items=[['Position',offer.positionTitle],['Department',offer.department||'As assigned'],['Employment type',String(offer.employmentType||'').replaceAll('_',' ')],['Compensation',compensation],['Expected shift',offer.shift||'As scheduled'],['Supervisor',offer.supervisorName||'To be assigned'],['Work location',offer.workLocation||'As assigned'],['Anticipated start date',date(offer.startDate)],['Orientation date',date(offer.orientationDate)],['PTO eligibility',offer.ptoEligible?'Eligible':'Not currently eligible'],['Benefits eligibility',offer.benefitsEligible?'Eligible':'Not currently eligible'],['Introductory period',`${offer.probationDays??90} days`]];
+    terms.innerHTML=items.map(([label,value])=>`<div class="box"><strong>${esc(label)}</strong>${esc(value)}</div>`).join('');
+    if(offer.notes)terms.insertAdjacentHTML('beforeend',`<div class="box" style="grid-column:1/-1"><strong>Additional job terms</strong>${esc(offer.notes)}</div>`);
+    if(['OFFER_ACCEPTED','EMPLOYEE_CREATED','DOCUMENTS_COMPLETE','HIRED'].includes(offer.status)){
+      show('This conditional offer has already been accepted. Human Resources will contact you with the next steps.','ok');
+      submit.disabled=true;nameInput.disabled=true;signatureInput.disabled=true;acceptInput.disabled=true;
+    }
+    loading.hidden=true;content.hidden=false;
+  }catch(error){loading.textContent=error.message||'Unable to load this offer.';}
+}
+submit.addEventListener('click',async()=>{
+  refresh();if(submit.disabled||!offer)return;
+  submit.disabled=true;submit.textContent='Submitting signed offer…';
+  try{
+    const response=await fetch(`${API}/public/careers/offers/${encodeURIComponent(token)}/accept`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fullLegalName:nameInput.value.trim(),signature:signatureInput.value.trim(),acceptedTerms:true})});
+    const payload=await response.json();
+    if(!response.ok)throw new Error(payload.error||'Unable to submit your acceptance.');
+    show(payload.data?.message||'Your signed conditional offer has been received.','ok');
+    nameInput.disabled=true;signatureInput.disabled=true;acceptInput.disabled=true;submit.textContent='Offer Accepted';
+  }catch(error){show(error.message||'Unable to submit your acceptance.','bad');submit.textContent='Sign and Accept Offer';refresh();}
+});
+load();
+})();
+</script>
+</body>
+</html>
