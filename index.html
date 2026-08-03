@@ -28,9 +28,9 @@
     .site-shell{position:sticky;top:0;z-index:2000;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08)}
     .alert-bar{background:var(--accent);color:#fff;text-align:center;padding:10px 20px;font-size:14px;font-weight:700}
     header{border-bottom:1px solid #ddd;background:#fff}
-    .top-nav{max-width:1200px;margin:auto;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;min-height:96px;gap:24px}
-    .logo{display:flex;align-items:center;text-decoration:none;color:var(--primary);font-weight:900;min-width:0;flex:0 0 auto}
-    .logo img{display:block;width:240px;height:auto;max-height:72px;object-fit:contain;object-position:left center}
+    .top-nav{max-width:1200px;margin:0 auto;padding:15px 20px;height:80px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .logo{display:flex;align-items:center;text-decoration:none;color:var(--primary);font-weight:900;min-width:0}
+    .logo img{display:block;width:240px;height:auto;max-height:100%;object-fit:contain;object-position:left center}
     .logo-fallback{display:none;font-size:25px;letter-spacing:-.5px;color:var(--primary);align-items:center;gap:10px}
     .logo-fallback::before{content:'S';display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;font-size:28px}
     .header-tools{display:flex;gap:18px;align-items:center;font-size:14px;font-weight:600}
@@ -81,14 +81,13 @@
     .company-note{background:#edf5fb;border-left:5px solid var(--secondary);padding:18px 20px;max-width:950px;margin:36px auto 0;border-radius:6px}
     footer{background:#f4f7f9;padding:60px 20px;border-top:1px solid #e0e6eb}.footer-grid{max-width:1200px;margin:auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px}.footer-col h2{margin-bottom:18px;font-size:16px;color:var(--primary)}.footer-col ul{list-style:none}.footer-col li{margin-bottom:10px;font-size:14px}.footer-col a{text-decoration:none;color:#44515c}.footer-col a:hover{text-decoration:underline}.footer-col .logo{margin-bottom:14px}.footer-small{font-size:13px;color:#5b6670;margin-top:12px}
     @media(max-width:800px){
-      .top-nav{height:80px;min-height:80px;padding:15px 20px;gap:16px}.logo{flex:0 1 auto;overflow:visible}.logo img{width:240px;height:auto;max-height:100%;max-width:100%;transform:none}.header-tools a:not(.btn-cta){display:none}.header-tools{gap:8px}.btn-cta{padding:10px 12px}.menu-toggle{display:inline-block}.main-nav{display:none}.main-nav.open{display:block}.nav-links{display:block;padding:8px 14px 14px}.nav-links a{padding:13px 12px;border-radius:6px}.hero{min-height:480px}.hero-content{padding:48px 18px}.action-bar{grid-template-columns:repeat(2,1fr);margin-top:0}.consultation-wrap{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.services-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr}
+      .top-nav{height:72px;padding:12px 14px;gap:12px}.logo img{width:200px}.header-tools a:not(.btn-cta){display:none}.header-tools{gap:10px}.btn-cta{padding:10px 12px}.menu-toggle{display:inline-block}.main-nav{display:none}.main-nav.open{display:block}.nav-links{display:block;padding:8px 14px 14px}.nav-links a{padding:13px 12px;border-radius:6px}.hero{min-height:480px}.hero-content{padding:48px 18px}.action-bar{grid-template-columns:repeat(2,1fr);margin-top:0}.consultation-wrap{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.services-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr}
     }
     @media(orientation:landscape) and (max-height:600px){
       .site-shell{position:static;box-shadow:none}
       .alert-bar{padding:8px 16px;font-size:13px}
-      .top-nav{height:84px;min-height:84px;padding:10px 20px;gap:16px}
-      .logo{flex:0 0 240px;overflow:visible}
-      .logo img{width:240px;max-width:none;max-height:64px}
+      .top-nav{height:80px;padding:15px 20px;gap:16px}
+      .logo img{width:240px;max-height:100%}
       .header-tools{gap:14px}
       .main-nav{display:block}
       .nav-links{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
