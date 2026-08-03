@@ -16,7 +16,7 @@ const publicExtensions = new Set([
   '.webmanifest',
   '.xml',
 ]);
-const publicRootFiles = new Set(['CNAME']);
+const publicRootFiles = new Set(['CNAME', 'vercel.json']);
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
@@ -56,13 +56,14 @@ if (!adminPortal.includes('Admin Spire <small>Clinical</small>')) {
   adminPortal = adminPortal.replace(sideOnboardingButton, `${sideSpireLink}${sideOnboardingButton}`);
 }
 
+const deploymentVersion = '20260803-terminal-actions-live-1';
 adminPortal = adminPortal.replace(
-  /careers-admin-workflow\.js\?v=[^"']+/g,
-  'careers-admin-workflow.js?v=20260803-offer-only-runtime-6',
+  /careers-admin-workflow\.js(?:\?v=[^"']+)?/g,
+  `careers-admin-workflow.js?v=${deploymentVersion}`,
 );
 
-const runtimeScript = '  <script src="offer-only-runtime.js?v=20260803-offer-only-runtime-6"></script>\n';
-adminPortal = adminPortal.replace(/\s*<script src="offer-only-runtime\.js\?v=[^"']+"><\/script>\s*/g, '\n');
+const runtimeScript = `  <script src="offer-only-runtime.js?v=${deploymentVersion}"></script>\n`;
+adminPortal = adminPortal.replace(/\s*<script src="offer-only-runtime\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
 adminPortal = adminPortal.replace('</body>', `${runtimeScript}</body>`);
 
 await writeFile(adminPortalPath, adminPortal, 'utf8');
