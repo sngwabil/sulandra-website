@@ -35,25 +35,41 @@ jobs:
           grep -q 'application/ld+json' index.html
           grep -q 'Sitemap:' robots.txt
 
+      - name: Detect API workspace
+        id: api-workspace
+        shell: bash
+        run: |
+          if [[ -s package.json && -s package-lock.json && -d api ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "Static-site branch detected; API checks are not required for this checkout."
+          fi
+
       - name: Set up Node.js
+        if: steps.api-workspace.outputs.present == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-          cache-dependency-path: spire/api/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install API dependencies
-        working-directory: spire/api
+        if: steps.api-workspace.outputs.present == 'true'
         run: npm ci
 
       - name: Generate Prisma client
-        working-directory: spire/api
-        run: npx prisma generate
+        if: steps.api-workspace.outputs.present == 'true'
+        run: npm run db:generate
 
       - name: Type-check API
-        working-directory: spire/api
-        run: npm run typecheck --if-present
+        if: steps.api-workspace.outputs.present == 'true'
+        run: npm run typecheck
+
+      - name: Build API
+        if: steps.api-workspace.outputs.present == 'true'
+        run: npm run build
 
       - name: Run API tests
-        working-directory: spire/api
+        if: steps.api-workspace.outputs.present == 'true'
         run: npm test --if-present
