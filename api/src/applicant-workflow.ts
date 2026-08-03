@@ -333,6 +333,7 @@ async function graphAccessToken() {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body,
+    signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 500);
@@ -346,6 +347,7 @@ async function sendEmail(to: string, subject: string, body: string) {
   const smtpHost = process.env.SMTP_HOST?.trim();
   const smtpUser = process.env.SMTP_USER?.trim();
   const smtpPass = process.env.SMTP_PASS?.trim();
+  let smtpError: unknown = null;
   if (smtpHost && smtpUser && smtpPass) {
     const smtpPort = Number(process.env.SMTP_PORT || 587);
     const transporter = nodemailer.createTransport({
@@ -354,27 +356,48 @@ async function sendEmail(to: string, subject: string, body: string) {
       secure: smtpPort === 465,
       requireTLS: smtpPort !== 465,
       auth: { user: smtpUser, pass: smtpPass },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 12_000,
     });
-    const result = await transporter.sendMail({
-      from: {
-        name: careersHrDisplayName,
-        address: smtpUser,
-      },
-      sender: {
-        name: careersHrDisplayName,
-        address: smtpUser,
-      },
-      to,
-      replyTo: { name: careersHrDisplayName, address: careersFromEmail },
-      subject,
-      text: body,
-      html: brandedEmailHtml(body),
-    });
-    return { status: 'SENT', providerMessageId: result.messageId || null };
+    try {
+      const result = await transporter.sendMail({
+        from: {
+          name: careersHrDisplayName,
+          address: smtpUser,
+        },
+        sender: {
+          name: careersHrDisplayName,
+          address: smtpUser,
+        },
+        to,
+        replyTo: { name: careersHrDisplayName, address: careersFromEmail },
+        subject,
+        text: body,
+        html: brandedEmailHtml(body),
+      });
+      return { status: 'SENT', providerMessageId: result.messageId || null };
+    } catch (error) {
+      smtpError = error;
+      console.warn('[careers] SMTP delivery failed; attempting Microsoft Graph fallback', {
+        error: safeDeliveryError(error),
+      });
+    } finally {
+      transporter.close();
+    }
   }
 
-  const token = await graphAccessToken();
-  if (!token) return { status: 'QUEUED', providerMessageId: null };
+  let token: string | null = null;
+  try {
+    token = await graphAccessToken();
+  } catch (error) {
+    if (smtpError) throw smtpError;
+    throw error;
+  }
+  if (!token) {
+    if (smtpError) throw smtpError;
+    return { status: 'QUEUED', providerMessageId: null };
+  }
   const response = await fetch(
     `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(careersFromEmail)}/sendMail`,
     {
@@ -390,7 +413,8 @@ async function sendEmail(to: string, subject: string, body: string) {
           replyTo: [{ emailAddress: { name: careersHrDisplayName, address: careersFromEmail } }],
         },
         saveToSentItems: true,
-      }),
+        }),
+      signal: AbortSignal.timeout(10_000),
     },
   );
   if (!response.ok) {
