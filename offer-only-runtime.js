@@ -2,11 +2,22 @@
   'use strict';
 
   const OFFER_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/offers(?:\?|$)/;
+  const STATUS_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/(?:status|offers|hire)(?:\?|$)/;
   const originalFetch = window.fetch.bind(window);
 
-  window.fetch = function (input, init) {
+  function refreshAdminViews() {
+    window.setTimeout(() => {
+      const progressButton = Array.from(document.querySelectorAll('button')).find((button) => /refresh progress/i.test(button.textContent || ''));
+      if (progressButton && !progressButton.disabled) progressButton.click();
+      const mainRefresh = document.getElementById('refreshBtn');
+      if (mainRefresh && !mainRefresh.disabled) mainRefresh.click();
+    }, 350);
+  }
+
+  window.fetch = async function (input, init) {
     const url = typeof input === 'string' ? input : String(input && input.url || '');
-    if (OFFER_ENDPOINT.test(url) && String(init && init.method || 'GET').toUpperCase() === 'POST' && init && typeof init.body === 'string') {
+    const method = String(init && init.method || 'GET').toUpperCase();
+    if (OFFER_ENDPOINT.test(url) && method === 'POST' && init && typeof init.body === 'string') {
       try {
         const body = JSON.parse(init.body);
         body.requiredDocuments = ['Offer Letter'];
@@ -15,7 +26,9 @@
         // Leave non-JSON requests unchanged.
       }
     }
-    return originalFetch(input, init);
+    const response = await originalFetch(input, init);
+    if (response.ok && STATUS_ENDPOINT.test(url) && ['POST', 'PATCH'].includes(method)) refreshAdminViews();
+    return response;
   };
 
   function removeOnboardingChecklist() {
@@ -24,7 +37,7 @@
     if (!heading) return;
 
     let section = heading.parentElement;
-    for (let i = 0; i < 4 && section; i += 1) {
+    for (let i = 0; i < 5 && section; i += 1) {
       if (section.querySelectorAll('input[type="checkbox"]').length >= 2) break;
       section = section.parentElement;
     }
@@ -52,4 +65,11 @@
   observer.observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener('DOMContentLoaded', removeOnboardingChecklist);
   removeOnboardingChecklist();
+
+  window.setInterval(() => {
+    const modal = document.getElementById('detailsModal');
+    if (!modal || getComputedStyle(modal).display === 'none') return;
+    const progressButton = Array.from(modal.querySelectorAll('button')).find((button) => /refresh progress/i.test(button.textContent || ''));
+    if (progressButton && !progressButton.disabled) progressButton.click();
+  }, 6000);
 })();
