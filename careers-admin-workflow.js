@@ -15,9 +15,7 @@
 
   function createClient(options) {
     const base = String(options.apiBase || "").replace(/\/$/, "");
-    const getToken = typeof options.getToken === "function"
-      ? options.getToken
-      : () => options.token || "";
+    const getToken = typeof options.getToken === "function" ? options.getToken : () => options.token || "";
 
     async function raw(path, init = {}) {
       const token = await getToken();
@@ -43,18 +41,13 @@
         error.status = response.status;
         throw error;
       }
-      return payload && Object.prototype.hasOwnProperty.call(payload, "data")
-        ? payload.data
-        : payload;
+      return payload && Object.prototype.hasOwnProperty.call(payload, "data") ? payload.data : payload;
     }
 
     async function download(path, fileName) {
       const token = await getToken();
       if (!token) throw new Error("Administrator sign-in is required.");
-      const response = await fetch(base + path, {
-        cache: "no-store",
-        headers: { Authorization: "Bearer " + token }
-      });
+      const response = await fetch(base + path, { cache: "no-store", headers: { Authorization: "Bearer " + token } });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload.error || "The document could not be downloaded.");
@@ -84,10 +77,37 @@
     document.head.appendChild(style);
   }
 
+  function simplifyOfferModal() {
+    const all = Array.from(document.querySelectorAll("body *"));
+    const heading = all.find((node) => /required disclosures and onboarding paperwork/i.test(node.textContent || ""));
+    if (!heading) return;
+    heading.textContent = "Offer document";
+    const container = heading.parentElement || heading;
+    const labels = Array.from(container.querySelectorAll("label"));
+    labels.forEach((label) => {
+      const text = (label.textContent || "").trim();
+      const input = label.querySelector('input[type="checkbox"]');
+      if (!input) return;
+      if (/offer letter/i.test(text)) {
+        input.checked = true;
+        input.disabled = true;
+        label.style.display = "flex";
+      } else {
+        input.checked = false;
+        label.style.display = "none";
+      }
+    });
+    container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      if (!/offer letter/i.test(input.closest("label")?.textContent || "")) input.checked = false;
+    });
+  }
+
+  const observer = new MutationObserver(simplifyOfferModal);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener("DOMContentLoaded", simplifyOfferModal);
+
   function mount(options) {
-    const root = typeof options.root === "string"
-      ? document.querySelector(options.root)
-      : options.root;
+    const root = typeof options.root === "string" ? document.querySelector(options.root) : options.root;
     if (!root) throw new Error("A Careers workflow root element is required.");
     if (!options.applicationId) throw new Error("An applicationId is required.");
 
@@ -98,9 +118,7 @@
 
     function setBusy(value) {
       state.busy = value;
-      root.querySelectorAll("button,select,input,textarea").forEach((node) => {
-        node.disabled = value;
-      });
+      root.querySelectorAll("button,select,input,textarea").forEach((node) => { node.disabled = value; });
     }
 
     function message(text, type) {
@@ -134,7 +152,8 @@
       const documents = folder.documents || [];
       const history = folder.history || [];
       const status = String(application.workflowStatus || application.status || "RECEIVED").toUpperCase();
-      const statuses = ["RECEIVED","REVIEWING","DOCUMENTS_NEEDED","INTERVIEW","OFFER_PENDING","HIRED","WITHDRAWN","TERMINATED","POSITION_FILLED"];
+      const statuses = ["RECEIVED","REVIEWING","DOCUMENTS_NEEDED","INTERVIEW","OFFER_PENDING","OFFER_ACCEPTED","HIRED","WITHDRAWN","TERMINATED","POSITION_FILLED"];
+      if (!statuses.includes(status)) statuses.splice(0, 0, status);
       const statusOptions = statuses.map((value) => `<option value="${value}" ${status === value ? "selected" : ""}>${title(value)}</option>`).join("");
       const score = application.assessmentScore ?? application.scoreTotal;
       const maximum = application.assessmentMaxScore ?? application.scoreMaximum;
