@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/applicant",
-      "destination": "/applicant-portal.html"
-    }
-  ]
-}
