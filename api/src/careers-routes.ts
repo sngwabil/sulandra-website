@@ -11,6 +11,7 @@ import {
   recordAndDeliver,
   registerApplicantWorkflowRoutes,
 } from './applicant-workflow.js';
+import { registerApplicantTerminalRoutes } from './applicant-terminal-routes.js';
 import { registerInterviewSchedulingRoutes } from './interview-scheduling-routes.js';
 
 type AuthContext = {
@@ -381,9 +382,6 @@ export function registerCareersRoutes(
         });
       }
 
-      // The application and its submitted documents are authoritative at this point.
-      // A profile, PDF, or notification failure must not tell the applicant that the
-      // submission failed or delete an application that HR can already process.
       createdApplicationId = null;
       res.status(201).json({
         data: {
@@ -406,7 +404,6 @@ export function registerCareersRoutes(
           `DELETE FROM "ApplicantDocument" WHERE "applicationId"=$1`,
           `DELETE FROM "EmployeeApplication" WHERE "id"=$1`,
         ];
-
         for (const statement of cleanupStatements) {
           try {
             await prisma.$executeRawUnsafe(statement, createdApplicationId);
@@ -548,8 +545,10 @@ export function registerCareersRoutes(
         q: z.string().trim().max(160).optional(),
         status: z.string().trim().max(60).optional(),
         jobOpeningId: z.string().trim().max(200).optional(),
+        archived: z.enum(['true', 'false']).default('false'),
         limit: z.coerce.number().int().min(1).max(200).default(100),
       }).parse(req.query);
+      const archived = query.archived === 'true';
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT
            a.*,
@@ -567,19 +566,22 @@ export function registerCareersRoutes(
          FROM "EmployeeApplication" a
          LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
          WHERE a."organizationId"=$1
+           AND (($5::boolean=TRUE AND a."archivedAt" IS NOT NULL)
+             OR ($5::boolean=FALSE AND a."archivedAt" IS NULL))
            AND ($2::text IS NULL OR CONCAT_WS(' ',a."firstName",a."middleName",a."lastName",
                 a."email",a."phone",a."referenceNumber") ILIKE '%' || $2::text || '%')
            AND ($3::text IS NULL OR a."workflowStatus"=$3::text)
            AND ($4::text IS NULL OR a."jobOpeningId"=$4::text)
-         ORDER BY a."submittedAt" DESC NULLS LAST, a."createdAt" DESC
-         LIMIT $5`,
+         ORDER BY COALESCE(a."archivedAt",a."submittedAt",a."createdAt") DESC
+         LIMIT $6`,
         auth.organizationId,
         query.q || null,
         query.status || null,
         query.jobOpeningId || null,
+        archived,
         query.limit,
       );
-      res.json({ data: rows, statuses: [
+      res.json({ data: rows, archived, statuses: [
         'RECEIVED', 'REVIEWING', 'DOCUMENTS_NEEDED', 'INTERVIEW', 'OFFER_PENDING',
         'HIRED', 'NOT_SELECTED', 'WITHDRAWN', 'TERMINATED', 'POSITION_FILLED',
       ] });
@@ -702,5 +704,6 @@ export function registerCareersRoutes(
   });
 
   registerApplicantWorkflowRoutes(app, prisma, helpers);
+  registerApplicantTerminalRoutes(app, prisma, helpers);
   registerInterviewSchedulingRoutes(app, prisma, helpers);
 }
