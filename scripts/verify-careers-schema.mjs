@@ -35,6 +35,13 @@ const requiredColumns = {
     'username',
     'passwordHash',
     'mustChangePassword',
+    'sessionVersion',
+  ],
+  ApplicantPasswordReset: [
+    'accountId',
+    'tokenHash',
+    'expiresAt',
+    'usedAt',
   ],
   ApplicantStatusHistory: [
     'applicationId',
