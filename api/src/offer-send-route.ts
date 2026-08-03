@@ -53,7 +53,7 @@ async function sendOfferEmail(to: string, subject: string, html: string, text: s
   await transporter.sendMail({
     from: {
       name: 'Sulandra Human Resources Department',
-      address: process.env.SMTP_FROM || user,
+      address: user.trim(),
     },
     to,
     subject,

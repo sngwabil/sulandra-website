@@ -365,7 +365,10 @@ async function sendEmail(to: string, subject: string, body: string) {
     auth: { user: smtpUser, pass: smtpPass },
   });
   const result = await transporter.sendMail({
-    from: process.env.SMTP_FROM?.trim() || careersFromEmail || smtpUser,
+    from: {
+      name: 'Sulandra Human Resources Department',
+      address: smtpUser,
+    },
     to,
     replyTo: careersFromEmail,
     subject,

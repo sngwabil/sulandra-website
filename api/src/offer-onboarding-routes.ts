@@ -58,7 +58,7 @@ function smtpTransporter() {
 }
 
 async function sendMail(to: string, subject: string, html: string, text: string) {
-  const senderAddress = (process.env.SMTP_FROM || process.env.SMTP_USER || 'admin@sulandrahealth.com').trim();
+  const senderAddress = (process.env.SMTP_USER || 'admin@sulandrahealth.com').trim();
   await smtpTransporter().sendMail({
     from: { name: 'Sulandra Human Resources Department', address: senderAddress },
     sender: { name: 'Sulandra Human Resources Department', address: senderAddress },
