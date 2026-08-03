@@ -101,7 +101,7 @@
     const tokenKey='sulandraApplicantToken';
     const mustChangeKey='sulandraApplicantMustChange';
     const usernameKey='sulandraApplicantUsername';
-    let resetToken=new URLSearchParams(location.search).get('reset')||'';
+    let resetToken=new URLSearchParams(location.hash.slice(1)).get('reset')||'';
     const $=id=>document.getElementById(id);
     const title=value=>String(value||'').replaceAll('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
     function notice(id,text){const el=$(id);el.textContent=text;el.classList.toggle('show',Boolean(text))}
