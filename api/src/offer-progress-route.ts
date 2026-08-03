@@ -22,7 +22,7 @@ export function registerOfferProgressRoute(
   app.get(
     '/api/admin/applications/:id/offer-progress',
     requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
-    async (req, res, next) => {
+    async (req, res) => {
       try {
         const auth = authOf(res);
         const applicationId = String(req.params.id);
@@ -82,7 +82,13 @@ export function registerOfferProgressRoute(
           },
         });
       } catch (error) {
-        next(error);
+        // Older production databases may not have the employment-offer tables yet.
+        // The applicant folder must remain usable while those optional tables are absent.
+        console.warn('[offer-progress] unavailable; returning an empty offer state', {
+          applicationId: String(req.params.id),
+          error: error instanceof Error ? error.message : String(error),
+        });
+        res.json({ data: { offer: null, progress: null } });
       }
     },
   );
