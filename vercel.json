@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist-web",
+  "rewrites": [
+    {
+      "source": "/applicant",
+      "destination": "/applicant-portal.html"
+    }
+  ]
+}
