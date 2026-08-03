@@ -3,126 +3,163 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sulandra Health | Empowering Independence at Home</title>
+  <title>Sulandra Health | In-Home and Community Support in Ohio</title>
+  <meta name="description" content="Sulandra Health and Sulandra Community Living Services provide personalized in-home and community-based support focused on dignity, safety, and independence in Ohio.">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#004b8d">
+  <link rel="canonical" href="https://sulandrahealth.com/">
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <meta name="description" content="Sulandra Health provides personalized in-home care services that empower independence, dignity, and quality of life.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Sulandra Health | In-Home and Community Support in Ohio">
+  <meta property="og:description" content="Personalized support that promotes dignity, safety, choice, and independence.">
+  <meta property="og:url" content="https://sulandrahealth.com/">
+  <meta property="og:image" content="https://sulandrahealth.com/assets/mainlogo.png">
+  <meta name="twitter:card" content="summary_large_image">
   <style>
-    :root{--primary:#004b8d;--secondary:#0077c8;--accent:#d14124;--text:#333;--white:#fff;--dark-green:#0b3c5d}
+    :root{--primary:#004b8d;--secondary:#0077c8;--accent:#b93820;--text:#263238;--muted:#5c6770;--white:#fff;--surface:#f6f9fc;--dark:#0b3c5d;--focus:#ffbf47}
     *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
     body{font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--text);background:#fff;line-height:1.6}
+    a,button,input,select,textarea{font:inherit}
+    a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+    .skip-link{position:absolute;left:-9999px;top:8px;background:#fff;color:#000;padding:10px 14px;z-index:3000;border-radius:4px}
+    .skip-link:focus{left:8px}
+    .site-shell{position:sticky;top:0;z-index:2000;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.08)}
     .alert-bar{background:var(--accent);color:#fff;text-align:center;padding:10px 20px;font-size:14px;font-weight:700}
-    header{border-bottom:1px solid #ddd;position:sticky;top:0;background:#fff;z-index:1000}
-    .top-nav{max-width:1200px;margin:auto;display:flex;justify-content:space-between;align-items:center;padding:15px 20px;min-height:80px;gap:24px}
-    .logo{display:flex;align-items:center;text-decoration:none;color:var(--primary);font-weight:900;min-width:220px}
-    .logo img{width:240px;height:58px;object-fit:contain;object-position:left center;display:block}
+    header{border-bottom:1px solid #ddd;background:#fff}
+    .top-nav{max-width:1200px;margin:0 auto;padding:15px 20px;height:80px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .logo{display:flex;align-items:center;text-decoration:none;color:var(--primary);font-weight:900;min-width:0}
+    .logo img{display:block;width:240px;height:auto;max-height:100%;object-fit:contain;object-position:left center}
     .logo-fallback{display:none;font-size:25px;letter-spacing:-.5px;color:var(--primary);align-items:center;gap:10px}
     .logo-fallback::before{content:'S';display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--primary);color:#fff;font-size:28px}
-    .header-tools{display:flex;gap:20px;align-items:center;font-size:14px;font-weight:600}
+    .header-tools{display:flex;gap:18px;align-items:center;font-size:14px;font-weight:600}
     .header-tools a{text-decoration:none;color:var(--text);white-space:nowrap}
-    .btn-cta{background:var(--primary);color:#fff!important;padding:10px 18px;border-radius:4px;text-decoration:none}
+    .btn-cta{background:var(--primary);color:#fff!important;padding:11px 18px;border-radius:6px;text-decoration:none;border:0;cursor:pointer;font-weight:800}
+    .btn-cta:hover{background:#003e75}
+    .menu-toggle{display:none;background:var(--primary);color:#fff;border:0;border-radius:6px;padding:10px 13px;font-weight:800;cursor:pointer}
     .main-nav{background:#fff;border-top:1px solid #eee}
     .nav-links{max-width:1200px;margin:auto;display:flex;list-style:none;padding:0 20px}
-    .nav-links a{display:block;padding:15px 20px;text-decoration:none;color:var(--text);font-weight:600;font-size:15px;white-space:nowrap}
-    .nav-links a:hover{color:var(--primary);background:#f0f4f8}
-    .hero{position:relative;height:550px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;background:#555}
+    .nav-links a{display:block;padding:15px 20px;text-decoration:none;color:var(--text);font-weight:650;font-size:15px;white-space:nowrap}
+    .nav-links a:hover,.nav-links a[aria-current="page"]{color:var(--primary);background:#edf4fa}
+    main{display:block}
+    .hero{position:relative;min-height:550px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#fff;background:#555}
     .hero-slideshow,.hero-slide{position:absolute;inset:0}
-    .hero-slide{background-size:cover;background-position:center;opacity:0;transition:opacity 1.5s ease-in-out}
+    .hero-slide{background-size:cover;background-position:center;opacity:0;transition:opacity 1.2s ease-in-out}
     .hero-slide.active{opacity:1}
-    .hero-overlay{position:absolute;inset:0;background:rgba(0,0,0,.38)}
-    .hero-content{position:relative;z-index:2;max-width:1200px;width:100%;padding:0 40px;text-align:center}
-    .hero-content h1{font-size:48px;font-weight:900;margin-bottom:15px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
-    .hero-content p{font-size:20px;max-width:800px;margin:0 auto 30px;text-shadow:0 1px 5px rgba(0,0,0,.6)}
+    .hero-overlay{position:absolute;inset:0;background:rgba(0,0,0,.46)}
+    .hero-content{position:relative;z-index:2;max-width:1100px;width:100%;padding:50px 30px;text-align:center}
+    .hero-content h1{font-size:clamp(2.2rem,5vw,3.4rem);font-weight:900;line-height:1.12;margin-bottom:18px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+    .hero-content p{font-size:clamp(1rem,2vw,1.25rem);max-width:830px;margin:0 auto 30px;text-shadow:0 1px 5px rgba(0,0,0,.7)}
     .hero-content .btn-cta{display:inline-block;font-size:18px;padding:15px 30px}
-    .action-bar{background:var(--secondary);display:grid;grid-template-columns:repeat(4,1fr);max-width:1000px;margin:-40px auto 0;position:relative;z-index:20;box-shadow:0 4px 15px rgba(0,0,0,.1)}
-    .action-item{color:#fff;text-decoration:none;padding:25px 10px;text-align:center;font-weight:700;font-size:14px;border-right:1px solid rgba(255,255,255,.2)}
+    .action-bar{background:var(--secondary);display:grid;grid-template-columns:repeat(4,1fr);max-width:1000px;margin:-40px auto 0;position:relative;z-index:20;box-shadow:0 4px 15px rgba(0,0,0,.12)}
+    .action-item{color:#fff;text-decoration:none;padding:25px 10px;text-align:center;font-weight:800;font-size:14px;border-right:1px solid rgba(255,255,255,.25)}
     .action-item:last-child{border-right:0}.action-item:hover{background:var(--primary)}
     .process-section{background:#fff;padding:80px 20px;text-align:center}
+    .eyebrow{text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:800}
+    .section-heading{font-size:clamp(1.9rem,4vw,2.3rem);line-height:1.2;color:var(--primary);margin:8px 0 12px;text-align:center}
+    .section-intro{max-width:800px;margin:0 auto;color:var(--muted);text-align:center}
     .process-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));max-width:1200px;margin:40px auto 0;gap:30px}
-    .process-step h4{color:var(--accent);margin:15px 0 10px;font-size:18px;text-transform:uppercase}.process-step p{font-size:14px;color:#666;padding:0 10px}
-    .quiz-strip{background:var(--dark-green);color:#fff;padding:40px 20px;text-align:center}
-    .btn-outline{border:2px solid #fff;color:#fff;padding:10px 25px;text-decoration:none;font-weight:700;border-radius:4px;display:inline-block;margin-top:15px}
-    .section{max-width:1200px;margin:60px auto;padding:0 20px}.section-title{font-size:32px;font-weight:800;color:var(--primary);margin-bottom:10px;text-align:center}.section-subtitle{text-align:center;margin-bottom:40px;color:#666}
-    .services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:30px}.service-card{text-decoration:none;color:var(--text);display:block}.service-img{width:100%;height:230px;object-fit:cover;border-radius:4px}.service-card h3{margin:15px 0 5px;font-size:20px;color:var(--primary);display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding-bottom:10px}.service-card h3::after{content:'⊕';font-size:24px;color:#999}.service-card p{color:#666;font-size:15px;margin-top:8px}
-    footer{background:#f8f9fa;padding:60px 20px;border-top:1px solid #eee}.footer-grid{max-width:1200px;margin:auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px}.footer-col h4{margin-bottom:20px;font-size:16px;color:var(--primary)}.footer-col ul{list-style:none}.footer-col li{margin-bottom:10px;font-size:14px}.footer-col a{text-decoration:none;color:#555}.footer-col .logo{margin-bottom:14px}
-    @media(max-width:800px){.alert-bar{font-size:13px}.top-nav{padding:12px 14px;min-height:72px}.logo{min-width:170px}.logo img{width:195px;height:50px}.header-tools{gap:10px}.header-tools a:not(.btn-cta){display:none}.btn-cta{padding:10px 14px}.nav-links{overflow-x:auto}.nav-links a{padding:14px}.hero{height:450px}.hero-content{padding:0 18px}.hero-content h1{font-size:32px}.hero-content p{font-size:16px}.action-bar{grid-template-columns:repeat(2,1fr);margin-top:0}.services-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr}}
+    .process-step{background:var(--surface);padding:24px 18px;border-radius:12px;border:1px solid #e2eaf1}
+    .process-step h3{color:var(--accent);margin:0 0 10px;font-size:18px;text-transform:uppercase}.process-step p{font-size:14px;color:var(--muted)}
+    .consultation{background:var(--dark);color:#fff;padding:64px 20px}
+    .consultation-wrap{max-width:1050px;margin:auto;display:grid;grid-template-columns:.9fr 1.1fr;gap:38px;align-items:start}
+    .consultation h2{font-size:clamp(2rem,4vw,2.7rem);line-height:1.15;margin-bottom:14px}
+    .consultation p{color:#e4edf4}
+    .consultation-form{background:#fff;color:var(--text);padding:24px;border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,.18)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .field{display:grid;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:14px;font-weight:800;color:#34495e}
+    .field input,.field select,.field textarea{width:100%;border:1px solid #b8c6d1;border-radius:7px;padding:11px 12px;background:#fff;color:#17232c}
+    .field textarea{min-height:100px;resize:vertical}
+    .form-note{font-size:12px;color:var(--muted);margin:12px 0 16px}
+    .form-status{margin-top:12px;font-weight:700;min-height:24px}
+    .section{max-width:1200px;margin:70px auto;padding:0 20px}
+    .services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:30px;margin-top:40px}
+    .service-card{text-decoration:none;color:var(--text);display:block;border:1px solid #e0e7ed;border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+    .service-card:focus-visible{outline-offset:5px}.service-img{width:100%;height:230px;object-fit:cover;display:block}
+    .service-copy{padding:18px}.service-card h3{font-size:20px;color:var(--primary);margin-bottom:8px}.service-card p{color:var(--muted);font-size:15px}
+    .company-note{background:#edf5fb;border-left:5px solid var(--secondary);padding:18px 20px;max-width:950px;margin:36px auto 0;border-radius:6px}
+    footer{background:#f4f7f9;padding:60px 20px;border-top:1px solid #e0e6eb}.footer-grid{max-width:1200px;margin:auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px}.footer-col h2{margin-bottom:18px;font-size:16px;color:var(--primary)}.footer-col ul{list-style:none}.footer-col li{margin-bottom:10px;font-size:14px}.footer-col a{text-decoration:none;color:#44515c}.footer-col a:hover{text-decoration:underline}.footer-col .logo{margin-bottom:14px}.footer-small{font-size:13px;color:#5b6670;margin-top:12px}
+    @media(max-width:800px){
+      .top-nav{height:72px;padding:12px 14px;gap:12px}.logo img{width:200px}.header-tools a:not(.btn-cta){display:none}.header-tools{gap:10px}.btn-cta{padding:10px 12px}.menu-toggle{display:inline-block}.main-nav{display:none}.main-nav.open{display:block}.nav-links{display:block;padding:8px 14px 14px}.nav-links a{padding:13px 12px;border-radius:6px}.hero{min-height:480px}.hero-content{padding:48px 18px}.action-bar{grid-template-columns:repeat(2,1fr);margin-top:0}.consultation-wrap{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.services-grid{grid-template-columns:1fr}.footer-grid{grid-template-columns:1fr}
+    }
+    @media(orientation:landscape) and (max-height:600px){
+      .site-shell{position:static;box-shadow:none}
+      .alert-bar{padding:8px 16px;font-size:13px}
+      .top-nav{height:80px;padding:15px 20px;gap:16px}
+      .logo img{width:240px;max-height:100%}
+      .header-tools{gap:14px}
+      .main-nav{display:block}
+      .nav-links{justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
+      .nav-links::-webkit-scrollbar{display:none}
+      .nav-links a{padding:12px 18px}
+      .menu-toggle{display:none}
+      .hero{min-height:430px}
+    }
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.hero-slide{transition:none}}
   </style>
 </head>
 <body>
-  <div class="alert-bar">Sulandra Health is changing the way the world ages. Call us today for a free consultation.</div>
-  <header>
-    <div class="top-nav">
-      <a href="/" class="logo" aria-label="Sulandra Health Home">
-        <img src="/assets/mainlogo.png" alt="Sulandra Health" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-        <span class="logo-fallback">Sulandra Health</span>
-      </a>
-      <div class="header-tools">
-        <a href="#reviews">Reviews</a>
-        <a href="#resources">Resources</a>
-        <a href="/employee-login.html">Employee Portal</a>
-        <a href="#consultation" class="btn-cta">Free Consultation</a>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="site-shell">
+    <div class="alert-bar">Now accepting consultation requests for personalized in-home and community support.</div>
+    <header>
+      <div class="top-nav">
+        <a href="/" class="logo" aria-label="Sulandra Health home">
+          <img src="/assets/mainlogo.png" alt="Sulandra Health">
+          <span class="logo-fallback">Sulandra Health</span>
+        </a>
+        <div class="header-tools">
+          <a href="#services">Services</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#resources">Resources</a>
+          <a href="/employee-login.html">Employee Portal</a>
+          <a href="#consultation" class="btn-cta">Free Consultation</a>
+          <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">Menu</button>
+        </div>
       </div>
-    </div>
-    <nav class="main-nav">
-      <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/services.html">Services</a></li>
-        <li><a href="#about">About Us</a></li>
-        <li><a href="/careers.html">Careers</a></li>
-        <li><a href="#contact">Contact</a></li>
-      </ul>
-    </nav>
-  </header>
-  <section class="hero">
-    <div class="hero-slideshow">
-      <div class="hero-slide active" style="background-image:url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80')"></div>
-      <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=1500&q=80')"></div>
-      <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1500&q=80')"></div>
-    </div>
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <h1>Changing The Way The World Ages</h1>
-      <p>At Sulandra Health, we believe that with the proper in-home care, we can empower you or your loved one to enjoy a happier, healthier, and more fulfilling lifestyle at home.</p>
-      <a href="#consultation" class="btn-cta">Schedule a Consultation Today</a>
-    </div>
-  </section>
-  <div class="action-bar">
-    <a href="/services.html" class="action-item">Personalized Care</a>
-    <a href="/services.html" class="action-item">Transportation</a>
-    <a href="/services.html" class="action-item">Community Living</a>
-    <a href="/services.html" class="action-item">Caregiver Support</a>
+      <nav class="main-nav" id="primary-navigation" aria-label="Primary navigation">
+        <ul class="nav-links">
+          <li><a href="/" aria-current="page">Home</a></li>
+          <li><a href="/services.html">Services</a></li>
+          <li><a href="#about">About Us</a></li>
+          <li><a href="/Careers.html">Careers</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </nav>
+    </header>
   </div>
-  <section class="process-section" id="about">
-    <p style="text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:700">Simple Process</p>
-    <h2 style="font-size:32px;margin-bottom:10px">How To Start Home Care</h2>
-    <p style="max-width:800px;margin:auto;color:#666">We make it easy to get extra care whenever you call home.</p>
-    <div class="process-grid">
-      <div class="process-step"><h4>1. Call Us</h4><p>Speak with one of our experienced Care Advisors to see if our services match your needs.</p></div>
-      <div class="process-step"><h4>2. Home Consultation</h4><p>Our care team conducts an in-home evaluation to match you with the right care and caregiver.</p></div>
-      <div class="process-step"><h4>3. Create Care Plan</h4><p>Our customized care plans provide the right home care services for each person.</p></div>
-      <div class="process-step"><h4>4. Begin Care</h4><p>Care can usually begin in as little as a few days.</p></div>
+  <main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-slideshow" aria-hidden="true">
+        <div class="hero-slide active" style="background-image:url('https://images.unsplash.com/photo-1581578731548-c64695ce6958?auto=format&fit=crop&w=1500&q=80')"></div>
+        <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=1500&q=80')"></div>
+        <div class="hero-slide" style="background-image:url('https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1500&q=80')"></div>
+      </div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <h1 id="hero-title">Support That Protects Dignity and Builds Independence</h1>
+        <p>Sulandra Health connects individuals and families with personalized in-home and community-based support designed around safety, choice, respect, and quality of life.</p>
+        <a href="#consultation" class="btn-cta">Schedule a Free Consultation</a>
+      </div>
+    </section>
+    <div class="action-bar" aria-label="Featured services">
+      <a href="/services.html" class="action-item">Personalized Care</a><a href="/services.html" class="action-item">Transportation</a><a href="/services.html" class="action-item">Community Living</a><a href="/services.html" class="action-item">Caregiver Support</a>
     </div>
-  </section>
-  <section class="quiz-strip" id="consultation"><h2>Is Home Care Right For Me?</h2><p>Contact us to learn more about your care needs.</p><a href="#contact" class="btn-outline">START NOW</a></section>
-  <section class="section" id="resources">
-    <div class="section-title">Personalized Home Care Services</div>
-    <div class="section-subtitle">Customized care plans designed around dignity, safety, and independence.</div>
-    <div class="services-grid">
-      <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=600&q=80" alt="Community Living" class="service-img"><h3>Community Living Support</h3><p>Residential and community-based support focused on independence and safety.</p></a>
-      <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=600&q=80" alt="Transportation" class="service-img"><h3>Transportation Services</h3><p>Safe transportation for appointments, shopping, and community activities.</p></a>
-      <a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=600&q=80" alt="Respite Care" class="service-img"><h3>Respite Services</h3><p>Dependable support that gives family caregivers time to rest and recharge.</p></a>
-    </div>
-  </section>
-  <footer id="contact">
-    <div class="footer-grid">
-      <div class="footer-col"><a href="/" class="logo"><img src="/assets/mainlogo.png" alt="Sulandra Health" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="logo-fallback">Sulandra Health</span></a><p>© 2026 Sulandra Health.<br>Changing the Way the World Ages.</p></div>
-      <div class="footer-col"><h4>Our Services</h4><ul><li><a href="/services.html">Community Living</a></li><li><a href="/services.html">Transportation</a></li><li><a href="/services.html">Respite Care</a></li><li><a href="/services.html">Companion Care</a></li></ul></div>
-      <div class="footer-col"><h4>Resources</h4><ul><li><a href="/careers.html">Careers</a></li><li><a href="/employee-login.html">Employee Portal</a></li></ul></div>
-    </div>
-  </footer>
+    <section class="process-section" id="about" aria-labelledby="process-title">
+      <p class="eyebrow">Simple process</p><h2 class="section-heading" id="process-title">How to Start Services</h2><p class="section-intro">Our team listens to your needs, explains available options, and helps build a support plan that fits the individual and family.</p>
+      <div class="process-grid"><article class="process-step"><h3>1. Contact Us</h3><p>Tell us what support you are looking for and the best way to reach you.</p></article><article class="process-step"><h3>2. Consultation</h3><p>We discuss goals, preferences, schedule, service area, and next steps.</p></article><article class="process-step"><h3>3. Support Plan</h3><p>We develop a person-centered plan focused on safety, dignity, and independence.</p></article><article class="process-step"><h3>4. Begin Services</h3><p>Once the plan and staffing are confirmed, services can begin.</p></article></div>
+      <div class="company-note"><strong>Sulandra Community Living Services LLC</strong> is the active operating company under the Sulandra Health umbrella.</div>
+    </section>
+    <section class="consultation" id="consultation" aria-labelledby="consultation-title"><div class="consultation-wrap"><div><h2 id="consultation-title">Request a Free Consultation</h2><p>Tell us how to reach you and which service you are interested in. A member of the Sulandra team will follow up to discuss availability and next steps.</p><p class="form-note">Do not include diagnoses, medication details, Social Security numbers, Medicaid identifiers, or other sensitive medical or financial information.</p></div><form class="consultation-form" id="consultation-form"><div class="form-grid"><div class="field"><label for="consultation-name">Full name</label><input id="consultation-name" name="name" autocomplete="name" maxlength="120" required></div><div class="field"><label for="consultation-phone">Phone</label><input id="consultation-phone" name="phone" type="tel" autocomplete="tel" maxlength="30" required></div><div class="field"><label for="consultation-email">Email</label><input id="consultation-email" name="email" type="email" autocomplete="email" maxlength="254"></div><div class="field"><label for="consultation-service">Service interest</label><select id="consultation-service" name="service" required><option value="">Select a service</option><option>Community living support</option><option>Personalized in-home care</option><option>Transportation</option><option>Respite or caregiver support</option><option>Employment inquiry</option><option>Other</option></select></div><div class="field full"><label for="consultation-message">How may we help?</label><textarea id="consultation-message" name="message" maxlength="1000" placeholder="Share general scheduling, service, or location information only."></textarea></div></div><p class="form-note">Submitting this form does not create a client-provider relationship and should not be used for emergencies.</p><button class="btn-cta" type="submit">Send Consultation Request</button><div class="form-status" id="consultation-status" role="status" aria-live="polite"></div></form></div></section>
+    <section class="section" id="services" aria-labelledby="services-title"><h2 class="section-heading" id="services-title">Personalized Support Services</h2><p class="section-intro">Support options designed around dignity, safety, participation, and individual choice.</p><div class="services-grid"><a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=720&q=78" alt="Caregiver and older adult reviewing a support plan together" class="service-img" loading="lazy" width="720" height="480"><div class="service-copy"><h3>Community Living Support</h3><p>Residential and community-based assistance focused on daily living, participation, and independence.</p></div></a><a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=720&q=78" alt="Vehicle traveling on a road for community transportation" class="service-img" loading="lazy" width="720" height="480"><div class="service-copy"><h3>Transportation Services</h3><p>Dependable transportation for appointments, employment, shopping, and community activities.</p></div></a><a href="/services.html" class="service-card"><img src="https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=720&q=78" alt="Caregiver offering reassuring support to an older adult" class="service-img" loading="lazy" width="720" height="480"><div class="service-copy"><h3>Respite and Caregiver Support</h3><p>Reliable assistance that gives family caregivers time to rest while maintaining continuity of care.</p></div></a></div></section>
+  </main>
+  <footer id="contact"><div class="footer-grid"><div class="footer-col"><a href="/" class="logo"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span class="logo-fallback">Sulandra Health</span></a><p>Sulandra Health<br>Sulandra Community Living Services LLC</p><p class="footer-small">For emergencies, call 911. Website consultation forms are not monitored as emergency communication channels.</p></div><div class="footer-col"><h2>Our Services</h2><ul><li><a href="/services.html">Community Living</a></li><li><a href="/services.html">Transportation</a></li><li><a href="/services.html">Respite Care</a></li><li><a href="/services.html">Personalized Support</a></li></ul></div><div class="footer-col"><h2>Resources</h2><ul><li><a href="/Careers.html">Careers</a></li><li><a href="/employee-login.html">Employee Portal</a></li><li><a href="/privacy.html">Privacy Notice</a></li><li><a href="/accessibility.html">Accessibility</a></li></ul></div></div></footer>
   <script>
-    const slides=document.querySelectorAll('.hero-slide');let current=0;if(slides.length>1)setInterval(()=>{slides[current].classList.remove('active');current=(current+1)%slides.length;slides[current].classList.add('active')},5000);
-    if(location.pathname.endsWith('/index.html')) history.replaceState(null,'','/');
+    const menuButton=document.querySelector('.menu-toggle');const primaryNav=document.querySelector('.main-nav');menuButton?.addEventListener('click',()=>{const open=primaryNav.classList.toggle('open');menuButton.setAttribute('aria-expanded',String(open));});primaryNav?.addEventListener('click',(event)=>{if(event.target.closest('a')&&window.matchMedia('(max-width:800px)').matches){primaryNav.classList.remove('open');menuButton?.setAttribute('aria-expanded','false');}});
+    const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;const slides=document.querySelectorAll('.hero-slide');let current=0;let slideTimer=null;const startSlides=()=>{if(reducedMotion||slides.length<2||slideTimer)return;slideTimer=setInterval(()=>{slides[current].classList.remove('active');current=(current+1)%slides.length;slides[current].classList.add('active');},5000);};const stopSlides=()=>{if(slideTimer){clearInterval(slideTimer);slideTimer=null;}};document.addEventListener('visibilitychange',()=>document.hidden?stopSlides():startSlides());startSlides();
+    const form=document.getElementById('consultation-form');const status=document.getElementById('consultation-status');form?.addEventListener('submit',async(event)=>{event.preventDefault();const button=form.querySelector('button[type="submit"]');const payload=Object.fromEntries(new FormData(form).entries());status.textContent='Sending your request…';button.disabled=true;try{const endpoint=window.SULANDRA_CONSULTATION_ENDPOINT||'/public/consultations';const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.error||'Your request could not be sent.');form.reset();status.textContent='Thank you. Your consultation request has been received.';}catch(error){status.textContent=error.message||'Your request could not be sent. Please contact Sulandra Health directly.';}finally{button.disabled=false;}});
+    if(location.pathname.endsWith('/index.html'))history.replaceState(null,'','/');
   </script>
 </body>
 </html>
