@@ -1,6 +1,6 @@
 import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { z } from 'zod';
 
@@ -28,6 +28,10 @@ const careersFromEmail = (
   ?? 'admin@sulandrahealth.com'
 ).trim().toLowerCase();
 const careersHrDisplayName = 'Sulandra Health Human Resources Department';
+const careersPortalUrl = (
+  process.env.CAREERS_PORTAL_URL
+  ?? 'https://www.sulandrahealth.com/applicant'
+).replace(/\/applicant-portal(?:\.html)?$/i, '/applicant');
 const companyAddress = [
   process.env.SULANDRA_ADDRESS_LINE_1?.trim() || '822 Dalewood Place, Suite A',
   process.env.SULANDRA_ADDRESS_LINE_2?.trim() || 'Dayton, Ohio 45426',
@@ -35,6 +39,9 @@ const companyAddress = [
 const terminalActionInput = z.object({
   note: z.string().trim().max(4000).optional(),
   acknowledged: z.literal(true),
+});
+const restoreInput = z.object({
+  notifyApplicant: z.boolean().default(true),
 });
 
 function escapeHtml(value: string) {
@@ -54,7 +61,7 @@ function positionFor(application: any) {
 }
 
 function equalOpportunityParagraph() {
-  return 'Sulandra Health is an equal opportunity employer. Employment decisions are based on legitimate business needs, the requirements of the position, qualifications, experience, performance during the selection process, and other lawful job-related considerations. Sulandra Health does not discriminate on the basis of race, color, religion, sex, pregnancy, national origin, age, disability, genetic information, military or veteran status, or any other status protected by applicable federal, state, or local law.';
+  return 'DISCLAIMER — EQUAL OPPORTUNITY EMPLOYER: Sulandra Health is an equal opportunity employer. Employment decisions are based on legitimate business needs, the requirements of the position, qualifications, experience, performance during the selection process, and other lawful job-related considerations. Sulandra Health does not discriminate on the basis of race, color, religion, sex, pregnancy, national origin, age, disability, genetic information, military or veteran status, or any other status protected by applicable federal, state, or local law.';
 }
 
 function notSelectedText(application: any, note?: string) {
@@ -64,7 +71,7 @@ function notSelectedText(application: any, note?: string) {
     '',
     `Thank you for your interest in ${position} and for the time and effort you invested in the Sulandra Health hiring process.`,
     '',
-    'After careful consideration, we regret to inform you that you were not selected to move forward in the hiring process for this opportunity. We appreciate the opportunity to review your qualifications and learn more about your interest in joining our organization.',
+    'We regret to inform you that you were not selected to move forward in the hiring process for this opportunity. After careful consideration, Human Resources has concluded the review of your application for this opening.',
     '',
     'This decision relates only to the current opening. You are welcome to submit a new application for other Sulandra Health opportunities for which you meet the stated qualifications and requirements.',
     note ? `Additional message from Human Resources: ${note}` : '',
@@ -89,7 +96,7 @@ function positionFilledText(application: any, note?: string) {
     '',
     `Thank you for your interest in ${position} and for the time and effort you invested in the Sulandra Health hiring process.`,
     '',
-    `The ${position} opening connected to your application has been filled. Although we will not be moving your application forward for this specific opening, we were pleased to receive your information and appreciate your interest in Sulandra Health.`,
+    `We regret to inform you that the ${position} opening connected to your application has been filled. Although we will not be moving your application forward for this specific opening, we were pleased to receive your information and appreciate your interest in Sulandra Health.`,
     '',
     'We will keep your application on file in our archived applicant records and may contact you if a similar position becomes available and your qualifications appear to match the needs of that opportunity. Retaining your application does not guarantee future consideration, an interview, or an offer of employment. You may also submit a new application for other posted positions that interest you.',
     note ? `Additional message from Human Resources: ${note}` : '',
@@ -107,6 +114,29 @@ function positionFilledText(application: any, note?: string) {
   ].filter((line, index, values) => line !== '' || values[index - 1] !== '').join('\n');
 }
 
+function restoredText(application: any, username: string, temporaryPassword: string) {
+  return [
+    `Dear ${application.firstName || 'Applicant'},`,
+    '',
+    `Sulandra Health Human Resources has returned your application for ${positionFor(application)} to active review because a new or similar opportunity may be available.`,
+    '',
+    'Your applicant portal access has been restored. For security, a new temporary password has been issued and you will be required to change it after signing in.',
+    `Applicant username: ${username}`,
+    `Temporary password: ${temporaryPassword}`,
+    `Applicant portal: ${careersPortalUrl}`,
+    `Application reference: ${application.referenceNumber}`,
+    '',
+    'This message is not an offer of employment and does not guarantee an interview, selection, or employment.',
+    '',
+    equalOpportunityParagraph(),
+    '',
+    'Sincerely,',
+    careersHrDisplayName,
+    'Sulandra Health',
+    ...companyAddress,
+  ].join('\n');
+}
+
 function emailHtml(body: string) {
   const signatureName = escapeHtml(careersHrDisplayName);
   const companyName = 'Sulandra Health';
@@ -121,6 +151,14 @@ function emailHtml(body: string) {
       const reference = /^Application reference:\s*(.*)$/i.exec(paragraph);
       if (reference) {
         return `<div style="margin:22px 0;padding:14px 16px;background:#f1f7fb;border-left:4px solid #075985;border-radius:8px"><strong>Application reference:</strong> ${escapeHtml(reference[1])}</div>`;
+      }
+      const disclaimer = /^DISCLAIMER\s*—\s*EQUAL OPPORTUNITY EMPLOYER:/i.test(paragraph);
+      if (disclaimer) {
+        return `<div style="margin:24px 0;padding:18px;background:#fff8e7;border:1px solid #d6b45b;border-radius:10px;line-height:1.7;font-size:14px;color:#4b3a13"><div style="font-weight:900;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Disclaimer — Equal Opportunity Employer</div>${escapeHtml(paragraph.replace(/^DISCLAIMER\s*—\s*EQUAL OPPORTUNITY EMPLOYER:\s*/i, ''))}</div>`;
+      }
+      const portal = /^Applicant portal:\s*(.*)$/i.exec(paragraph);
+      if (portal) {
+        return `<div style="margin:18px 0"><a href="${escapeHtml(portal[1])}" style="display:inline-block;padding:13px 20px;background:#075985;color:#fff;text-decoration:none;border-radius:9px;font-weight:800">Open Applicant Portal</a></div>`;
       }
       return `<p style="margin:0 0 18px;line-height:1.72;font-size:16px;color:#263b52">${escapeHtml(paragraph).replaceAll('\n', '<br>')}</p>`;
     })
@@ -150,17 +188,9 @@ async function graphAccessToken() {
   const clientId = process.env.MICROSOFT_CLIENT_ID?.trim();
   const clientSecret = process.env.MICROSOFT_CLIENT_SECRET?.trim();
   if (!tenant || !clientId || !clientSecret) return null;
-  const body = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    scope: 'https://graph.microsoft.com/.default',
-    grant_type: 'client_credentials',
-  });
+  const body = new URLSearchParams({ client_id: clientId, client_secret: clientSecret, scope: 'https://graph.microsoft.com/.default', grant_type: 'client_credentials' });
   const response = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(tenant)}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body,
-    signal: AbortSignal.timeout(8_000),
+    method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body, signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) throw new Error(`Microsoft authentication returned ${response.status}`);
   const payload = await response.json() as { access_token?: string };
@@ -175,24 +205,13 @@ async function sendEmail(to: string, subject: string, text: string) {
   if (smtpHost && smtpUser && smtpPass) {
     const smtpPort = Number(process.env.SMTP_PORT || 587);
     const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      requireTLS: smtpPort !== 465,
-      auth: { user: smtpUser, pass: smtpPass },
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 12_000,
+      host: smtpHost, port: smtpPort, secure: smtpPort === 465, requireTLS: smtpPort !== 465,
+      auth: { user: smtpUser, pass: smtpPass }, connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 12_000,
     });
     try {
       const result = await transporter.sendMail({
-        from: { name: careersHrDisplayName, address: smtpUser },
-        sender: { name: careersHrDisplayName, address: smtpUser },
-        to,
-        replyTo: { name: careersHrDisplayName, address: careersFromEmail },
-        subject,
-        text,
-        html: emailHtml(text),
+        from: { name: careersHrDisplayName, address: smtpUser }, sender: { name: careersHrDisplayName, address: smtpUser },
+        to, replyTo: { name: careersHrDisplayName, address: careersFromEmail }, subject, text, html: emailHtml(text),
       });
       return { status: 'SENT', providerMessageId: result.messageId || null };
     } catch (error) {
@@ -201,182 +220,150 @@ async function sendEmail(to: string, subject: string, text: string) {
       transporter.close();
     }
   }
-
   const token = await graphAccessToken();
   if (!token) {
     if (smtpError) throw smtpError;
     throw new Error('Human Resources email delivery is not configured. No applicant record was changed.');
   }
-  const response = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(careersFromEmail)}/sendMail`,
-    {
-      method: 'POST',
-      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        message: {
-          subject,
-          body: { contentType: 'HTML', content: emailHtml(text) },
-          from: { emailAddress: { name: careersHrDisplayName, address: careersFromEmail } },
-          sender: { emailAddress: { name: careersHrDisplayName, address: careersFromEmail } },
-          toRecipients: [{ emailAddress: { address: to } }],
-          replyTo: [{ emailAddress: { name: careersHrDisplayName, address: careersFromEmail } }],
-        },
-        saveToSentItems: true,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    },
-  );
+  const response = await fetch(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(careersFromEmail)}/sendMail`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      message: {
+        subject, body: { contentType: 'HTML', content: emailHtml(text) },
+        from: { emailAddress: { name: careersHrDisplayName, address: careersFromEmail } },
+        sender: { emailAddress: { name: careersHrDisplayName, address: careersFromEmail } },
+        toRecipients: [{ emailAddress: { address: to } }],
+        replyTo: [{ emailAddress: { name: careersHrDisplayName, address: careersFromEmail } }],
+      }, saveToSentItems: true,
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!response.ok) throw new Error(`Microsoft Graph returned ${response.status}. No applicant record was changed.`);
   return { status: 'SENT', providerMessageId: response.headers.get('request-id') };
 }
 
-async function applicationForAction(
-  prisma: PrismaClient,
-  applicationId: string,
-  organizationId: string,
-) {
+async function applicationForAction(prisma: PrismaClient, applicationId: string, organizationId: string) {
   const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT a.*,j."title" AS "jobTitle"
-       FROM "EmployeeApplication" a
-       LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-      WHERE a."id"=$1 AND a."organizationId"=$2`,
-    applicationId,
-    organizationId,
+    `SELECT a.*,j."title" AS "jobTitle" FROM "EmployeeApplication" a LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId" WHERE a."id"=$1 AND a."organizationId"=$2`,
+    applicationId, organizationId,
   );
   return rows[0] ?? null;
 }
 
+function generateTemporaryPassword() {
+  return `Su!${randomBytes(9).toString('base64url')}9a`;
+}
+
+function hashPassword(password: string) {
+  const salt = randomBytes(16);
+  const derived = scryptSync(password, salt, 64);
+  return `scrypt:${salt.toString('hex')}:${derived.toString('hex')}`;
+}
+
 async function invalidatePortalAccess(prisma: PrismaClient, applicationId: string) {
   await prisma.$executeRawUnsafe(
-    `UPDATE "ApplicantPortalAccount"
-        SET "sessionVersion"="sessionVersion"+1,
-            "failedLoginAttempts"=0,
-            "lockedUntil"=NOW()+INTERVAL '100 years',
-            "passwordHash"=$1,
-            "updatedAt"=NOW()
-      WHERE "applicationId"=$2`,
-    `disabled:${randomBytes(48).toString('hex')}`,
-    applicationId,
+    `UPDATE "ApplicantPortalAccount" SET "sessionVersion"="sessionVersion"+1,"failedLoginAttempts"=0,"lockedUntil"=NOW()+INTERVAL '100 years',"passwordHash"=$1,"updatedAt"=NOW() WHERE "applicationId"=$2`,
+    `disabled:${randomBytes(48).toString('hex')}`, applicationId,
   );
   await prisma.$executeRawUnsafe(
-    `UPDATE "ApplicantPasswordReset"
-        SET "usedAt"=COALESCE("usedAt",NOW())
-      WHERE "accountId" IN (SELECT "id" FROM "ApplicantPortalAccount" WHERE "applicationId"=$1)`,
+    `UPDATE "ApplicantPasswordReset" SET "usedAt"=COALESCE("usedAt",NOW()) WHERE "accountId" IN (SELECT "id" FROM "ApplicantPortalAccount" WHERE "applicationId"=$1)`,
     applicationId,
   );
 }
 
-export function registerApplicantTerminalRoutes(
-  app: express.Express,
-  prisma: PrismaClient,
-  helpers: Helpers,
-) {
+export function registerApplicantTerminalRoutes(app: express.Express, prisma: PrismaClient, helpers: Helpers) {
   const { authOf, requireRoles, audit } = helpers;
 
-  app.post(
-    '/api/admin/applications/:id/reject',
-    requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const input = terminalActionInput.parse(req.body);
-        const applicationId = String(req.params.id);
-        const application = await applicationForAction(prisma, applicationId, auth.organizationId);
-        if (!application) return res.status(404).json({ error: 'Application not found.' });
-        if (!application.email) {
-          return res.status(400).json({ error: 'This applicant has no email address. The record was not deleted.' });
-        }
-        const subject = `Update regarding your employment application — ${application.referenceNumber}`;
-        const text = notSelectedText(application, input.note);
-        const delivery = await sendEmail(String(application.email).trim().toLowerCase(), subject, text);
-        await audit(auth, 'NOT_SELECTED_DELETE_APPLICANT', 'EmployeeApplication', applicationId, {
-          referenceNumber: application.referenceNumber,
-          applicantEmailHash: createHash('sha256').update(String(application.email).trim().toLowerCase()).digest('hex'),
-          position: positionFor(application),
-          deliveryStatus: delivery.status,
-        });
-        await invalidatePortalAccess(prisma, applicationId);
-        await prisma.$executeRawUnsafe(
-          `DELETE FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`,
-          applicationId,
-          auth.organizationId,
-        );
-        res.json({ data: { deleted: true, deliveryStatus: delivery.status } });
-      } catch (error) {
-        next(error);
-      }
-    },
-  );
+  app.post('/api/admin/applications/:id/reject', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
+    try {
+      const auth = authOf(res);
+      const input = terminalActionInput.parse(req.body);
+      const applicationId = String(req.params.id);
+      const application = await applicationForAction(prisma, applicationId, auth.organizationId);
+      if (!application) return res.status(404).json({ error: 'Application not found.' });
+      if (!application.email) return res.status(400).json({ error: 'This applicant has no email address. The record was not deleted.' });
+      const delivery = await sendEmail(String(application.email).trim().toLowerCase(), `Update regarding your employment application — ${application.referenceNumber}`, notSelectedText(application, input.note));
+      await audit(auth, 'NOT_SELECTED_DELETE_APPLICANT', 'EmployeeApplication', applicationId, {
+        referenceNumber: application.referenceNumber,
+        applicantEmailHash: createHash('sha256').update(String(application.email).trim().toLowerCase()).digest('hex'),
+        position: positionFor(application), deliveryStatus: delivery.status,
+      });
+      await invalidatePortalAccess(prisma, applicationId);
+      await prisma.$executeRawUnsafe(`DELETE FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`, applicationId, auth.organizationId);
+      res.json({ data: { deleted: true, deliveryStatus: delivery.status } });
+    } catch (error) { next(error); }
+  });
 
-  app.post(
-    '/api/admin/applications/:id/archive',
-    requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
-    async (req, res, next) => {
-      try {
-        const auth = authOf(res);
-        const input = terminalActionInput.parse(req.body);
-        const applicationId = String(req.params.id);
-        const application = await applicationForAction(prisma, applicationId, auth.organizationId);
-        if (!application) return res.status(404).json({ error: 'Application not found.' });
-        if (application.archivedAt) {
-          return res.status(409).json({ error: 'This application is already archived.' });
-        }
-        if (!application.email) {
-          return res.status(400).json({ error: 'This applicant has no email address. The application was not archived.' });
-        }
-        const subject = `The position connected to your application has been filled — ${application.referenceNumber}`;
-        const text = positionFilledText(application, input.note);
-        const delivery = await sendEmail(String(application.email).trim().toLowerCase(), subject, text);
-        await prisma.$transaction(async (tx) => {
-          await tx.$executeRawUnsafe(
-            `UPDATE "ApplicantPortalAccount"
-                SET "sessionVersion"="sessionVersion"+1,
-                    "failedLoginAttempts"=0,
-                    "lockedUntil"=NOW()+INTERVAL '100 years',
-                    "passwordHash"=$1,
-                    "updatedAt"=NOW()
-              WHERE "applicationId"=$2`,
-            `disabled:${randomBytes(48).toString('hex')}`,
-            applicationId,
-          );
-          await tx.$executeRawUnsafe(
-            `UPDATE "ApplicantPasswordReset"
-                SET "usedAt"=COALESCE("usedAt",NOW())
-              WHERE "accountId" IN (SELECT "id" FROM "ApplicantPortalAccount" WHERE "applicationId"=$1)`,
-            applicationId,
-          );
-          await tx.$executeRawUnsafe(
-            `UPDATE "EmployeeApplication"
-                SET "workflowStatus"='POSITION_FILLED',
-                    "archivedAt"=NOW(),
-                    "archivedById"=$1,
-                    "archiveReason"='POSITION_FILLED',
-                    "updatedAt"=NOW()
-              WHERE "id"=$2 AND "organizationId"=$3`,
-            auth.userId,
-            applicationId,
-            auth.organizationId,
-          );
-          await tx.$executeRawUnsafe(
-            `INSERT INTO "ApplicantStatusHistory"
-              ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt")
-             VALUES ($1,$2,$3,'POSITION_FILLED',$4,FALSE,$5,NOW())`,
-            randomUUID(),
-            applicationId,
-            application.workflowStatus || application.status || 'RECEIVED',
-            input.note ?? 'Position filled; application retained in the archived applicant list.',
-            auth.userId,
-          );
-        });
-        await audit(auth, 'POSITION_FILLED_ARCHIVE_APPLICANT', 'EmployeeApplication', applicationId, {
-          referenceNumber: application.referenceNumber,
-          position: positionFor(application),
-          deliveryStatus: delivery.status,
-        });
-        res.json({ data: { archived: true, deliveryStatus: delivery.status } });
-      } catch (error) {
-        next(error);
+  app.post('/api/admin/applications/:id/archive', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
+    try {
+      const auth = authOf(res);
+      const input = terminalActionInput.parse(req.body);
+      const applicationId = String(req.params.id);
+      const application = await applicationForAction(prisma, applicationId, auth.organizationId);
+      if (!application) return res.status(404).json({ error: 'Application not found.' });
+      if (application.workflowStatus === 'POSITION_FILLED') return res.status(409).json({ error: 'This application is already archived.' });
+      if (!application.email) return res.status(400).json({ error: 'This applicant has no email address. The application was not archived.' });
+      const delivery = await sendEmail(String(application.email).trim().toLowerCase(), `The position connected to your application has been filled — ${application.referenceNumber}`, positionFilledText(application, input.note));
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(
+          `UPDATE "ApplicantPortalAccount" SET "sessionVersion"="sessionVersion"+1,"failedLoginAttempts"=0,"lockedUntil"=NOW()+INTERVAL '100 years',"passwordHash"=$1,"updatedAt"=NOW() WHERE "applicationId"=$2`,
+          `disabled:${randomBytes(48).toString('hex')}`, applicationId,
+        );
+        await tx.$executeRawUnsafe(`UPDATE "ApplicantPasswordReset" SET "usedAt"=COALESCE("usedAt",NOW()) WHERE "accountId" IN (SELECT "id" FROM "ApplicantPortalAccount" WHERE "applicationId"=$1)`, applicationId);
+        await tx.$executeRawUnsafe(
+          `UPDATE "EmployeeApplication" SET "workflowStatus"='POSITION_FILLED',"archivedAt"=NULL,"archivedById"=$1,"archiveReason"='POSITION_FILLED',"updatedAt"=NOW() WHERE "id"=$2 AND "organizationId"=$3`,
+          auth.userId, applicationId, auth.organizationId,
+        );
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "ApplicantStatusHistory" ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt") VALUES ($1,$2,$3,'POSITION_FILLED',$4,FALSE,$5,NOW())`,
+          randomUUID(), applicationId, application.workflowStatus || application.status || 'RECEIVED', input.note ?? 'Position filled; application retained in the archived applicant list.', auth.userId,
+        );
+      });
+      await audit(auth, 'POSITION_FILLED_ARCHIVE_APPLICANT', 'EmployeeApplication', applicationId, {
+        referenceNumber: application.referenceNumber, position: positionFor(application), deliveryStatus: delivery.status,
+      });
+      res.json({ data: { archived: true, deliveryStatus: delivery.status } });
+    } catch (error) { next(error); }
+  });
+
+  app.post('/api/admin/applications/:id/restore', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
+    try {
+      const auth = authOf(res);
+      const input = restoreInput.parse(req.body ?? {});
+      const applicationId = String(req.params.id);
+      const application = await applicationForAction(prisma, applicationId, auth.organizationId);
+      if (!application) return res.status(404).json({ error: 'Application not found.' });
+      if (application.workflowStatus !== 'POSITION_FILLED' && !application.archivedAt) {
+        return res.status(409).json({ error: 'This applicant is already active.' });
       }
-    },
-  );
+      if (!application.email) return res.status(400).json({ error: 'This applicant has no email address. Portal access could not be restored.' });
+      const [account] = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "ApplicantPortalAccount" WHERE "applicationId"=$1`, applicationId);
+      if (!account) return res.status(409).json({ error: 'Applicant portal account not found.' });
+      const temporaryPassword = generateTemporaryPassword();
+      const username = account.username || application.applicantUsername || String(application.email).trim().toLowerCase();
+      let delivery = { status: 'NOT_SENT', providerMessageId: null as string | null };
+      if (input.notifyApplicant) {
+        delivery = await sendEmail(String(application.email).trim().toLowerCase(), `Your Sulandra Health application is back under review — ${application.referenceNumber}`, restoredText(application, username, temporaryPassword));
+      }
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(
+          `UPDATE "ApplicantPortalAccount" SET "passwordHash"=$1,"mustChangePassword"=TRUE,"failedLoginAttempts"=0,"lockedUntil"=NULL,"sessionVersion"="sessionVersion"+1,"updatedAt"=NOW() WHERE "applicationId"=$2`,
+          hashPassword(temporaryPassword), applicationId,
+        );
+        await tx.$executeRawUnsafe(
+          `UPDATE "EmployeeApplication" SET "workflowStatus"='REVIEWING',"archivedAt"=NULL,"archivedById"=NULL,"archiveReason"=NULL,"updatedAt"=NOW() WHERE "id"=$1 AND "organizationId"=$2`,
+          applicationId, auth.organizationId,
+        );
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "ApplicantStatusHistory" ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt") VALUES ($1,$2,'POSITION_FILLED','REVIEWING','Applicant returned to active review.',TRUE,$3,NOW())`,
+          randomUUID(), applicationId, auth.userId,
+        );
+      });
+      await audit(auth, 'RESTORE_ARCHIVED_APPLICANT', 'EmployeeApplication', applicationId, {
+        referenceNumber: application.referenceNumber, deliveryStatus: delivery.status,
+      });
+      res.json({ data: { restored: true, deliveryStatus: delivery.status } });
+    } catch (error) { next(error); }
+  });
 }
