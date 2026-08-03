@@ -578,6 +578,22 @@ app.use('/public/careers/applicant/login', rateLimit({
   message: { error: 'Too many applicant sign-in attempts. Please try again later.' },
 }));
 
+app.use('/public/careers/applicant/forgot-password', rateLimit({
+  windowMs: 60 * 60 * 1_000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many password-reset requests. Please try again later.' },
+}));
+
+app.use('/public/careers/applicant/reset-password', rateLimit({
+  windowMs: 15 * 60 * 1_000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: 'Too many password-reset attempts. Please request a new link later.' },
+}));
+
 app.use('/public/careers/applications', rateLimit({
   windowMs: 15 * 60 * 1_000,
   limit: 20,
