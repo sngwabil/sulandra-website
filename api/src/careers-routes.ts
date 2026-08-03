@@ -4,10 +4,12 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { registerEducationRoutes } from './education-routes.js';
 import {
+  careersHrDisplayName,
   provisionApplicantWorkflow,
   recordAndDeliver,
   registerApplicantWorkflowRoutes,
 } from './applicant-workflow.js';
+import { registerInterviewSchedulingRoutes } from './interview-scheduling-routes.js';
 
 type AuthContext = {
   userId: string;
@@ -678,7 +680,8 @@ export function registerCareersRoutes(
           `Portal: ${portal}`,
           `Application reference: ${application.referenceNumber}`,
           '',
-          'Regards,',
+          'Sincerely,',
+          careersHrDisplayName,
           'Sulandra Health',
         ].join('\n'),
         auth.userId,
@@ -699,4 +702,5 @@ export function registerCareersRoutes(
   });
 
   registerApplicantWorkflowRoutes(app, prisma, helpers);
+  registerInterviewSchedulingRoutes(app, prisma, helpers);
 }

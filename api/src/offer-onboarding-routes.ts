@@ -60,9 +60,9 @@ function smtpTransporter() {
 async function sendMail(to: string, subject: string, html: string, text: string) {
   const senderAddress = (process.env.SMTP_USER || 'admin@sulandrahealth.com').trim();
   await smtpTransporter().sendMail({
-    from: { name: 'Sulandra Human Resources Department', address: senderAddress },
-    sender: { name: 'Sulandra Human Resources Department', address: senderAddress },
-    replyTo: { name: 'Sulandra Human Resources Department', address: senderAddress },
+    from: { name: 'Sulandra Health Human Resources Department', address: senderAddress },
+    sender: { name: 'Sulandra Health Human Resources Department', address: senderAddress },
+    replyTo: { name: 'Sulandra Health Human Resources Department', address: senderAddress },
     to,
     subject,
     html,
@@ -144,13 +144,13 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
       });
 
       const logoUrl = 'https://www.sulandrahealth.com/assets/mainlogo.png';
-      const emailHtml = `<div style="margin:0;background:#f3f7fb;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#102448"><div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #dbe6f2;border-radius:18px;overflow:hidden"><div style="padding:30px;background:linear-gradient(135deg,#dceffc,#8ec4e8)"><img src="${logoUrl}" alt="Sulandra Health" style="width:230px;max-width:75%;height:auto;display:block"><p style="margin:22px 0 4px;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">Sulandra Community Living Services</p><h1 style="margin:8px 0;font-size:34px;line-height:1.15">Offer of Employment</h1><p style="margin:0;font-size:17px">A Division of Sulandra Health</p></div><div style="padding:34px"><p>Dear ${application.firstName},</p><p>We are pleased to offer you employment with <strong>Sulandra Community Living Services</strong> in the position of <strong>${input.positionTitle}</strong>. We appreciate the time you invested in our selection process and believe your experience, professionalism, and commitment to person-centered care will be valuable to our organization and the individuals we serve.</p><p>Your complete job terms, responsibilities, company commitments, and conditions of the offer are available through the secure link below.</p><p style="margin:28px 0"><a href="${offerUrl}" style="display:inline-block;padding:14px 22px;background:#075985;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:800">Review and Sign Offer of Employment</a></p><p>This link is personal to you. Please do not forward or share it. No tax, banking, identity-verification, or onboarding paperwork is requested during this offer stage.</p><p>After you accept the offer and the Sulandra Human Resources Department creates your employee profile, you will receive a separate welcome message with secure employee-portal access and onboarding instructions.</p><p style="margin-top:30px"><strong>Sulandra Human Resources Department</strong><br>Sulandra Community Living Services<br>A Division of Sulandra Health</p><p style="font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:16px">This offer remains subject to satisfactory completion of applicable job requirements, background screening, drug testing, credential verification, and other lawful pre-employment conditions.</p></div></div></div>`;
+      const emailHtml = `<div style="margin:0;background:#f3f7fb;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#102448"><div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #dbe6f2;border-radius:18px;overflow:hidden"><div style="padding:30px;background:linear-gradient(135deg,#dceffc,#8ec4e8)"><img src="${logoUrl}" alt="Sulandra Health" style="width:230px;max-width:75%;height:auto;display:block"><p style="margin:22px 0 4px;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">Sulandra Community Living Services</p><h1 style="margin:8px 0;font-size:34px;line-height:1.15">Offer of Employment</h1><p style="margin:0;font-size:17px">A Division of Sulandra Health</p></div><div style="padding:34px"><p>Dear ${application.firstName},</p><p>We are pleased to offer you employment with <strong>Sulandra Community Living Services</strong> in the position of <strong>${input.positionTitle}</strong>. We appreciate the time you invested in our selection process and believe your experience, professionalism, and commitment to person-centered care will be valuable to our organization and the individuals we serve.</p><p>Your complete job terms, responsibilities, company commitments, and conditions of the offer are available through the secure link below.</p><p style="margin:28px 0"><a href="${offerUrl}" style="display:inline-block;padding:14px 22px;background:#075985;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:800">Review and Sign Offer of Employment</a></p><p>This link is personal to you. Please do not forward or share it. No tax, banking, identity-verification, or onboarding paperwork is requested during this offer stage.</p><p>After you accept the offer and the Sulandra Health Human Resources Department creates your employee profile, you will receive a separate welcome message with secure employee-portal access and onboarding instructions.</p><p style="margin-top:30px"><strong>Sulandra Health Human Resources Department</strong><br>Sulandra Community Living Services<br>A Division of Sulandra Health</p><p style="font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:16px">This offer remains subject to satisfactory completion of applicable job requirements, background screening, drug testing, credential verification, and other lawful pre-employment conditions.</p></div></div></div>`;
 
       await sendMail(
         application.email,
         `Offer of Employment — ${input.positionTitle}`,
         emailHtml,
-        `Sulandra Human Resources Department is pleased to offer you the position of ${input.positionTitle}. Review and sign your offer here: ${offerUrl}`,
+        `Sulandra Health Human Resources Department is pleased to offer you the position of ${input.positionTitle}. Review and sign your offer here: ${offerUrl}`,
       );
 
       await audit(auth, 'SEND_EMPLOYMENT_OFFER', 'EmploymentOffer', offerId, { applicationId, positionTitle: input.positionTitle, payAmount: input.payAmount });
@@ -181,7 +181,7 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
       });
 
       await audit({}, 'ACCEPT_EMPLOYMENT_OFFER', 'EmploymentOffer', offer.id, { applicationId: offer.applicationId, acceptedByName: input.fullLegalName });
-      res.json({ data: { status: 'OFFER_ACCEPTED', applicationStatus: 'OFFER_ACCEPTED', message: 'Your signed offer of employment has been received. The Sulandra Human Resources Department will review it and contact you with the next steps.' } });
+      res.json({ data: { status: 'OFFER_ACCEPTED', applicationStatus: 'OFFER_ACCEPTED', message: 'Your signed offer of employment has been received. The Sulandra Health Human Resources Department will review it and contact you with the next steps.' } });
     } catch (error) { next(error); }
   });
 }

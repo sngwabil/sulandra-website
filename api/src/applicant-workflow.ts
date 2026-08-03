@@ -88,6 +88,24 @@ const careersFromEmail = (
   ?? process.env.ADMIN_EMAIL
   ?? 'admin@sulandrahealth.com'
 ).trim().toLowerCase();
+export const careersHrDisplayName = 'Sulandra Health Human Resources Department';
+
+function escapeEmailHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function brandedEmailHtml(body: string) {
+  const paragraphs = body
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p style="margin:0 0 17px;line-height:1.65">${escapeEmailHtml(paragraph).replaceAll('\n', '<br>')}</p>`)
+    .join('');
+  return `<div style="margin:0;background:#eef5fa;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#102448"><div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #d8e5ef;border-radius:18px;overflow:hidden"><div style="padding:25px 30px;background:linear-gradient(135deg,#dceffc,#8ec4e8)"><div style="font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#075985">Sulandra Health</div><h1 style="margin:8px 0 0;font-size:27px;line-height:1.2">Human Resources Department</h1></div><div style="padding:30px">${paragraphs}<p style="margin:26px 0 0;padding-top:17px;border-top:1px solid #d8e5ef;font-size:12px;line-height:1.55;color:#64748b">This message concerns your employment application with Sulandra Health. Please protect your applicant-portal credentials and include your application reference number when contacting Human Resources.</p></div></div></div>`;
+}
 
 function normalizePhone(value?: string | null) {
   return (value ?? '').replace(/[^\d+]/g, '');
@@ -325,74 +343,78 @@ async function graphAccessToken() {
 }
 
 async function sendEmail(to: string, subject: string, body: string) {
-  const token = await graphAccessToken();
-  if (token) {
-    const response = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(careersFromEmail)}/sendMail`,
-      {
-        method: 'POST',
-        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-        body: JSON.stringify({
-          message: {
-            subject,
-            body: { contentType: 'HTML', content: body.replaceAll('\n', '<br>') },
-            toRecipients: [{ emailAddress: { address: to } }],
-            replyTo: [{ emailAddress: { address: careersFromEmail } }],
-          },
-          saveToSentItems: true,
-        }),
-      },
-    );
-    if (!response.ok) {
-      const detail = (await response.text()).slice(0, 500);
-      throw new Error(`Microsoft Graph returned ${response.status}: ${detail}`);
-    }
-    return { status: 'SENT', providerMessageId: response.headers.get('request-id') };
-  }
-
   const smtpHost = process.env.SMTP_HOST?.trim();
   const smtpUser = process.env.SMTP_USER?.trim();
   const smtpPass = process.env.SMTP_PASS?.trim();
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    return { status: 'QUEUED', providerMessageId: null };
+  if (smtpHost && smtpUser && smtpPass) {
+    const smtpPort = Number(process.env.SMTP_PORT || 587);
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      requireTLS: smtpPort !== 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    const result = await transporter.sendMail({
+      from: {
+        name: careersHrDisplayName,
+        address: smtpUser,
+      },
+      sender: {
+        name: careersHrDisplayName,
+        address: smtpUser,
+      },
+      to,
+      replyTo: { name: careersHrDisplayName, address: careersFromEmail },
+      subject,
+      text: body,
+      html: brandedEmailHtml(body),
+    });
+    return { status: 'SENT', providerMessageId: result.messageId || null };
   }
-  const smtpPort = Number(process.env.SMTP_PORT || 587);
-  const transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    requireTLS: smtpPort !== 465,
-    auth: { user: smtpUser, pass: smtpPass },
-  });
-  const result = await transporter.sendMail({
-    from: {
-      name: 'Sulandra Human Resources Department',
-      address: smtpUser,
+
+  const token = await graphAccessToken();
+  if (!token) return { status: 'QUEUED', providerMessageId: null };
+  const response = await fetch(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(careersFromEmail)}/sendMail`,
+    {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        message: {
+          subject,
+          body: { contentType: 'HTML', content: brandedEmailHtml(body) },
+          from: { emailAddress: { name: careersHrDisplayName, address: careersFromEmail } },
+          sender: { emailAddress: { name: careersHrDisplayName, address: careersFromEmail } },
+          toRecipients: [{ emailAddress: { address: to } }],
+          replyTo: [{ emailAddress: { name: careersHrDisplayName, address: careersFromEmail } }],
+        },
+        saveToSentItems: true,
+      }),
     },
-    to,
-    replyTo: careersFromEmail,
-    subject,
-    text: body,
-    html: body.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\n', '<br>'),
-  });
-  return { status: 'SENT', providerMessageId: result.messageId || null };
+  );
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500);
+    throw new Error(`Microsoft Graph returned ${response.status}: ${detail}`);
+  }
+  return { status: 'SENT', providerMessageId: response.headers.get('request-id') };
 }
 
 function notificationProvider(channel: CommunicationChannel) {
   if (channel === 'SMS') return 'TWILIO';
-  if (
-    process.env.MICROSOFT_TENANT_ID?.trim()
-    && process.env.MICROSOFT_CLIENT_ID?.trim()
-    && process.env.MICROSOFT_CLIENT_SECRET?.trim()
-  ) {
-    return 'MICROSOFT_GRAPH';
-  }
   if (
     process.env.SMTP_HOST?.trim()
     && process.env.SMTP_USER?.trim()
     && process.env.SMTP_PASS?.trim()
   ) {
     return 'SMTP';
+  }
+  if (
+    process.env.MICROSOFT_TENANT_ID?.trim()
+    && process.env.MICROSOFT_CLIENT_ID?.trim()
+    && process.env.MICROSOFT_CLIENT_SECRET?.trim()
+  ) {
+    return 'MICROSOFT_GRAPH';
   }
   return 'NOT_CONFIGURED';
 }
@@ -525,7 +547,8 @@ function welcomeMessage(input: ProvisionApplicantInput, username: string, tempor
     'You will be asked to create a permanent password after your first sign-in. Please monitor your application periodically for updates.',
     `If you have questions, email ${careersFromEmail} and include application reference ${input.referenceNumber}. A member of HR Services will reach out to guide you.`,
     '',
-    'Regards,',
+    'Sincerely,',
+    careersHrDisplayName,
     'Sulandra Health',
   ].join('\n');
 }
@@ -655,31 +678,81 @@ export async function provisionApplicantWorkflow(
   };
 }
 
+function statusSubject(application: any, status: ApplicationStatus) {
+  const subjects: Record<ApplicationStatus, string> = {
+    RECEIVED: 'We received your employment application',
+    REVIEWING: 'Human Resources is reviewing your application',
+    DOCUMENTS_NEEDED: 'Action required: documents are needed for your application',
+    INTERVIEW: 'Your application has advanced to the interview stage',
+    OFFER_PENDING: 'Your employment application has advanced to the offer stage',
+    HIRED: 'Welcome to Sulandra Health',
+    NOT_SELECTED: 'Update regarding your employment application',
+    WITHDRAWN: 'Your application withdrawal has been recorded',
+    TERMINATED: 'Your application process has been closed',
+    POSITION_FILLED: 'The position connected to your application has been filled',
+  };
+  return `${subjects[status]} — ${application.referenceNumber}`;
+}
+
 function statusMessage(application: any, status: ApplicationStatus, note?: string) {
-  const friendly: Record<ApplicationStatus, string> = {
-    RECEIVED: 'Received',
-    REVIEWING: 'Reviewing',
-    DOCUMENTS_NEEDED: 'Documents needed',
-    INTERVIEW: 'Interview',
-    OFFER_PENDING: 'Offer pending',
-    HIRED: 'Hired',
-    NOT_SELECTED: 'Not selected',
-    WITHDRAWN: 'Withdrawn',
-    TERMINATED: 'Terminated',
-    POSITION_FILLED: 'Position filled',
+  const position = application.jobTitle || application.positionTitle || application.appliedRole || 'the position';
+  const details: Record<ApplicationStatus, string[]> = {
+    RECEIVED: [
+      `The ${careersHrDisplayName} has received your application for ${position}.`,
+      'Your application and submitted documents are now part of our secure recruitment record. Please use the applicant portal to monitor your progress and respond promptly if Human Resources requests additional information.',
+    ],
+    REVIEWING: [
+      `The ${careersHrDisplayName} is now reviewing your application for ${position}.`,
+      'During this period, Human Resources will review your application, qualifications, assessment information, and all documents submitted. Please keep a close eye on your email for any request for additional documentation or clarification.',
+      'Use the applicant portal to track your progress and securely submit all required documents. Prompt responses help prevent delays in the review process.',
+    ],
+    DOCUMENTS_NEEDED: [
+      `The ${careersHrDisplayName} reviewed your application for ${position} and requires additional or corrected documentation before the review can continue.`,
+      'Please sign in to the applicant portal, review every document marked Requested, Missing, or Rejected, and upload the requested file as soon as possible. Human Resources will resume the review after the required documentation is received.',
+    ],
+    INTERVIEW: [
+      `Your application for ${position} has advanced to the interview stage.`,
+      'Human Resources will provide available interview dates and times through a secure scheduling link. Select one available appointment promptly and keep the confirmation for your records.',
+    ],
+    OFFER_PENDING: [
+      `Your application for ${position} has advanced to the employment-offer stage.`,
+      'Please monitor your email for a secure Offer of Employment from the Sulandra Health Human Resources Department. Review all terms carefully and complete the electronic acceptance within the period stated in the offer.',
+    ],
+    HIRED: [
+      `Congratulations. The ${careersHrDisplayName} has completed the hiring action associated with your application for ${position}.`,
+      'Follow the instructions in your welcome and onboarding messages carefully. Your employment may remain subject to completion and verification of all applicable onboarding, credentialing, screening, and work-authorization requirements.',
+    ],
+    NOT_SELECTED: [
+      `Thank you for your interest in ${position} and for the time you invested in the Sulandra Health selection process.`,
+      'After careful consideration, Human Resources will not be moving your application forward for this opportunity. This decision applies to the current opening and does not prevent you from applying for other positions for which you are qualified.',
+    ],
+    WITHDRAWN: [
+      `The ${careersHrDisplayName} has recorded your application for ${position} as withdrawn.`,
+      'No further recruitment action will be taken on this application. If you believe this update was made in error, contact Human Resources and include your application reference number.',
+    ],
+    TERMINATED: [
+      `The recruitment process associated with your application for ${position} has been closed.`,
+      'If Human Resources provided specific instructions or requested a response, please follow those instructions. Questions should include your application reference number so the correct record can be located.',
+    ],
+    POSITION_FILLED: [
+      `The ${position} opening connected to your application has been filled.`,
+      'We appreciate your interest in Sulandra Health. Your application will not move forward for this opening, but you may review and apply for other available opportunities that match your qualifications.',
+    ],
   };
   return [
     `Dear ${application.firstName},`,
     '',
-    `Your Sulandra Health application ${application.referenceNumber} is now: ${friendly[status]}.`,
-    note ? `Update from HR Services: ${note}` : '',
+    ...details[status].flatMap((paragraph) => [paragraph, '']),
+    note ? `Additional message from Human Resources:\n${note}` : '',
+    note ? '' : '',
+    `Application reference: ${application.referenceNumber}`,
+    `Applicant portal: ${portalUrl}`,
+    `Questions may be sent to ${careersFromEmail}. Please include your application reference number in all correspondence.`,
     '',
-    `View your application: ${portalUrl}`,
-    `Questions may be sent to ${careersFromEmail}. Please include your application reference number.`,
-    '',
-    'Regards,',
+    'Sincerely,',
+    careersHrDisplayName,
     'Sulandra Health',
-  ].filter(Boolean).join('\n');
+  ].filter((line, index, values) => line !== '' || values[index - 1] !== '').join('\n');
 }
 
 export function registerApplicantWorkflowRoutes(
@@ -888,7 +961,8 @@ export function registerApplicantWorkflowRoutes(
           'You will be asked to create a permanent password after signing in.',
           `Application reference: ${application.referenceNumber}`,
           '',
-          'Regards,',
+          'Sincerely,',
+          careersHrDisplayName,
           'Sulandra Health',
         ].join('\n');
         const deliveryStatus = await recordAndDeliver(
@@ -965,7 +1039,7 @@ export function registerApplicantWorkflowRoutes(
             prisma,
             application,
             'STATUS_UPDATE',
-            `Application update — ${application.referenceNumber}`,
+            statusSubject(application, input.status),
             statusMessage(application, input.status, input.note),
             auth.userId,
           );
@@ -1023,7 +1097,8 @@ export function registerApplicantWorkflowRoutes(
             input.reviewNotes ? `HR note: ${input.reviewNotes}` : '',
             `Upload a replacement at ${portalUrl}.`,
             '',
-            'Regards,',
+            'Sincerely,',
+            careersHrDisplayName,
             'Sulandra Health',
           ].filter(Boolean).join('\n');
           await recordAndDeliver(prisma, document, 'DOCUMENT_REQUEST', 'Document update required', body, auth.userId);

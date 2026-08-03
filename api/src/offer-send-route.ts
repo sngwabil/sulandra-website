@@ -52,7 +52,15 @@ async function sendOfferEmail(to: string, subject: string, html: string, text: s
 
   await transporter.sendMail({
     from: {
-      name: 'Sulandra Human Resources Department',
+      name: 'Sulandra Health Human Resources Department',
+      address: user.trim(),
+    },
+    sender: {
+      name: 'Sulandra Health Human Resources Department',
+      address: user.trim(),
+    },
+    replyTo: {
+      name: 'Sulandra Health Human Resources Department',
       address: user.trim(),
     },
     to,
@@ -177,10 +185,10 @@ export function registerOfferSendRoute(app: express.Express, prisma: PrismaClien
                 <tr><td style="padding:10px;border:1px solid #d8e3ed;background:#f7fafc"><strong>Supervisor</strong></td><td style="padding:10px;border:1px solid #d8e3ed">${htmlEscape(input.supervisorName || 'To be assigned')}</td></tr>
               </table>
               <p style="margin:26px 0;text-align:center"><a href="${htmlEscape(offerUrl)}" style="display:inline-block;background:#087fb8;color:#ffffff;text-decoration:none;padding:14px 24px;border-radius:8px;font-weight:700">Review and Sign Offer of Employment</a></p>
-              <p>After you sign and submit the offer, the signed PDF will be delivered to the Sulandra Human Resources Department for review. If Human Resources proceeds with hiring, you will receive a separate welcome email and secure employee-portal access for your onboarding requirements.</p>
+              <p>After you sign and submit the offer, the signed PDF will be delivered to the Sulandra Health Human Resources Department for review. If Human Resources proceeds with hiring, you will receive a separate welcome email and secure employee-portal access for your onboarding requirements.</p>
               <p><strong>Security notice:</strong> This link is personal to you. Do not forward or share it.</p>
               <p style="margin-top:28px">We appreciate your interest in joining Sulandra Community Living Services and look forward to receiving your response.</p>
-              <p style="margin-top:26px"><strong style="color:#0284c7">Sulandra Human Resources Department</strong><br>Sulandra Community Living Services<br>A Division of Sulandra Health</p>
+              <p style="margin-top:26px"><strong style="color:#0284c7">Sulandra Health Human Resources Department</strong><br>Sulandra Community Living Services<br>A Division of Sulandra Health</p>
               <p style="font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:15px;margin-top:26px">This offer remains conditional upon satisfactory completion of applicable job requirements, background screening, drug testing where required, identity and employment-eligibility verification, credential verification, and final Human Resources approval. This mailbox may not be monitored for replies.</p>
             </div>
           </div>`;
@@ -199,9 +207,9 @@ export function registerOfferSendRoute(app: express.Express, prisma: PrismaClien
           '',
           `Review and sign your Offer of Employment: ${offerUrl}`,
           '',
-          'After you submit the signed offer, the Sulandra Human Resources Department will review it. Onboarding requirements will be assigned only after employee-profile creation.',
+          'After you submit the signed offer, the Sulandra Health Human Resources Department will review it. Onboarding requirements will be assigned only after employee-profile creation.',
           '',
-          'Sulandra Human Resources Department',
+          'Sulandra Health Human Resources Department',
           'Sulandra Community Living Services',
           'A Division of Sulandra Health',
         ].join('\n');

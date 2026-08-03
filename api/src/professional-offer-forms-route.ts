@@ -92,7 +92,7 @@ function createOfferLetterPdf(offer: any, signerName: string, signature: string)
     `We are pleased to welcome you to Sulandra Community Living Services and look forward to the contribution you can make to our mission.`,
     '',
     `Sincerely,`,
-    `Human Resources`,
+    `Sulandra Health Human Resources Department`,
     `Sulandra Community Living Services`,
     `A Division of Sulandra Health`,
     '',

@@ -42,6 +42,27 @@ const requiredColumns = {
     'toStatus',
     'visibleToApplicant',
   ],
+  CompanySetting: [
+    'organizationId',
+    'emailDisplayName',
+    'timeZone',
+  ],
+  InterviewSlot: [
+    'organizationId',
+    'startsAt',
+    'status',
+    'bookedApplicationId',
+  ],
+  InterviewInvitation: [
+    'applicationId',
+    'tokenHash',
+    'expiresAt',
+    'status',
+  ],
+  InterviewInvitationSlot: [
+    'invitationId',
+    'slotId',
+  ],
 };
 
 try {
@@ -113,7 +134,7 @@ try {
     throw new Error(`Careers lifecycle schema is incomplete after migrations. Missing: ${missing.join(', ')}`);
   }
 
-  console.log('Careers lifecycle schema is ready, including offer workflow statuses.');
+  console.log('Careers lifecycle schema is ready, including offer workflow statuses and interview scheduling.');
 } finally {
   await prisma.$disconnect();
 }
