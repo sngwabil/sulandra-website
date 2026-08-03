@@ -56,20 +56,16 @@ if (!adminPortal.includes('Admin Spire <small>Clinical</small>')) {
   adminPortal = adminPortal.replace(sideOnboardingButton, `${sideSpireLink}${sideOnboardingButton}`);
 }
 
-// Always publish the current applicant workflow under a new URL. The admin portal had
-// previously used a long-lived query string, which allowed browsers/CDNs to keep serving
-// the retired offer modal containing onboarding-document checkboxes.
-const workflowBuildVersion = '20260803-offer-letter-only-4';
-adminPortal = adminPortal
-  .replace(
-    /careers-admin-workflow\.js(?:\?v=[^"']*)?/g,
-    `careers-admin-workflow.js?v=${workflowBuildVersion}`,
-  )
-  .replace(
-    /admin-railway\.js(?:\?v=[^"']*)?/g,
-    `admin-railway.js?v=${workflowBuildVersion}`,
-  );
+adminPortal = adminPortal.replace(
+  /careers-admin-workflow\.js\?v=[^"']+/g,
+  'careers-admin-workflow.js?v=20260803-offer-only-runtime-5',
+);
+
+const runtimeScript = '  <script src="offer-only-runtime.js?v=20260803-offer-only-runtime-5"></script>\n';
+if (!adminPortal.includes('offer-only-runtime.js')) {
+  adminPortal = adminPortal.replace('</body>', `${runtimeScript}</body>`);
+}
 
 await writeFile(adminPortalPath, adminPortal, 'utf8');
 
-console.log(`Static website prepared in ${outputDirectory} with workflow version ${workflowBuildVersion}`);
+console.log(`Static website prepared in ${outputDirectory}`);
