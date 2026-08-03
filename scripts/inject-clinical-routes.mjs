@@ -15,6 +15,7 @@ const imports = [
   "import { registerOfferSendRoute } from './offer-send-route.js';",
   "import { registerProfessionalOfferFormsRoute } from './professional-offer-forms-route.js';",
   "import { registerOfferOnboardingRoutes } from './offer-onboarding-routes.js';",
+  "import { registerW4Routes } from './w4-routes.js';",
 ];
 const calls = [
   'registerClinicalRoutes(app, prisma, { authOf });',
@@ -22,6 +23,7 @@ const calls = [
   'registerOfferSendRoute(app, prisma, { authOf, requireRoles, audit });',
   'registerProfessionalOfferFormsRoute(app, prisma);',
   'registerOfferOnboardingRoutes(app, prisma, { authOf, requireRoles, audit });',
+  'registerW4Routes(app, prisma, { authOf, requireRoles, audit });',
 ];
 
 if (!source.includes(importMarker) || !source.includes(callMarker)) {
@@ -35,4 +37,4 @@ for (const statement of calls) {
 }
 
 await writeFile(target, source, 'utf8');
-console.log(`Registered clinical, offer, and structured onboarding form routes in ${target}.`);
+console.log(`Registered clinical, offer, structured onboarding, and signed W-4 routes in ${target}.`);
