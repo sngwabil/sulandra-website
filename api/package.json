@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/onboarding-bootstrap.ts",
-    "build": "tsc -p tsconfig.json && node ../scripts/inject-clinical-routes.mjs",
+    "build": "node ../scripts/fix-login-account-types.mjs && tsc -p tsconfig.json && node ../scripts/inject-clinical-routes.mjs",
     "start": "node dist/onboarding-bootstrap.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "node ../scripts/fix-login-account-types.mjs && tsc --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",
