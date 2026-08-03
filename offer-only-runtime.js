@@ -2,7 +2,8 @@
   'use strict';
 
   const OFFER_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/offers(?:\?|$)/;
-  const STATUS_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/(?:status|offers|hire)(?:\?|$)/;
+  const STATUS_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/status(?:\?|$)/;
+  const REFRESH_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/(?:offers|status|hire)(?:\?|$)/;
   const originalFetch = window.fetch.bind(window);
 
   function refreshAdminViews() {
@@ -11,23 +12,36 @@
       if (progressButton && !progressButton.disabled) progressButton.click();
       const mainRefresh = document.getElementById('refreshBtn');
       if (mainRefresh && !mainRefresh.disabled) mainRefresh.click();
-    }, 350);
+      synchronizeFolderStatus();
+    }, 250);
   }
 
   window.fetch = async function (input, init) {
     const url = typeof input === 'string' ? input : String(input && input.url || '');
     const method = String(init && init.method || 'GET').toUpperCase();
+
     if (OFFER_ENDPOINT.test(url) && method === 'POST' && init && typeof init.body === 'string') {
       try {
         const body = JSON.parse(init.body);
         body.requiredDocuments = ['Offer Letter'];
         init = { ...init, body: JSON.stringify(body) };
-      } catch (_) {
-        // Leave non-JSON requests unchanged.
-      }
+      } catch (_) {}
     }
+
+    if (STATUS_ENDPOINT.test(url) && method === 'PATCH' && init && typeof init.body === 'string') {
+      try {
+        const body = JSON.parse(init.body);
+        if (body.status === 'OFFER_PENDING' || body.status === 'OFFER_ACCEPTED') {
+          body.notifyApplicant = false;
+          body.visibleToApplicant = true;
+          body.note = '';
+          init = { ...init, body: JSON.stringify(body) };
+        }
+      } catch (_) {}
+    }
+
     const response = await originalFetch(input, init);
-    if (response.ok && STATUS_ENDPOINT.test(url) && ['POST', 'PATCH'].includes(method)) refreshAdminViews();
+    if (response.ok && REFRESH_ENDPOINT.test(url) && ['POST', 'PATCH'].includes(method)) refreshAdminViews();
     return response;
   };
 
@@ -61,15 +75,39 @@
     }
   }
 
-  const observer = new MutationObserver(removeOnboardingChecklist);
+  function synchronizeFolderStatus() {
+    const offerPanel = Array.from(document.querySelectorAll('.scw-card, section, div')).find((node) => /employment offer/i.test(node.textContent || '') && /offer status/i.test(node.textContent || ''));
+    if (!offerPanel) return;
+    const text = offerPanel.textContent || '';
+    let value = '';
+    if (/offer accepted/i.test(text)) value = 'OFFER_ACCEPTED';
+    else if (/offer pending|offer sent|offer viewed/i.test(text)) value = 'OFFER_PENDING';
+    if (!value) return;
+
+    const select = document.querySelector('[data-scw-status], [data-status]');
+    if (select && select.value !== value) {
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
+  const observer = new MutationObserver(() => {
+    removeOnboardingChecklist();
+    synchronizeFolderStatus();
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  document.addEventListener('DOMContentLoaded', removeOnboardingChecklist);
+  document.addEventListener('DOMContentLoaded', () => {
+    removeOnboardingChecklist();
+    synchronizeFolderStatus();
+  });
   removeOnboardingChecklist();
+  synchronizeFolderStatus();
 
   window.setInterval(() => {
     const modal = document.getElementById('detailsModal');
     if (!modal || getComputedStyle(modal).display === 'none') return;
     const progressButton = Array.from(modal.querySelectorAll('button')).find((button) => /refresh progress/i.test(button.textContent || ''));
     if (progressButton && !progressButton.disabled) progressButton.click();
+    synchronizeFolderStatus();
   }, 6000);
 })();
