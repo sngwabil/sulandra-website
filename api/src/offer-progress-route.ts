@@ -22,6 +22,15 @@ export function registerOfferProgressRoute(app: express.Express, prisma: PrismaC
         offer.applicationWorkflowStatus = 'OFFER_PENDING';
       }
 
+      if (offer.status === 'OFFER_ACCEPTED' || offer.acceptedAt) {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "ApplicantStatusHistory" ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","createdAt")
+           SELECT $1,$2,'OFFER_PENDING','OFFER_ACCEPTED','Signed Offer of Employment received.',TRUE,COALESCE($3,NOW())
+            WHERE NOT EXISTS (SELECT 1 FROM "ApplicantStatusHistory" WHERE "applicationId"=$2 AND "toStatus"='OFFER_ACCEPTED')`,
+          randomUUID(), applicationId, offer.acceptedAt,
+        );
+      }
+
       let signedOfferRows=await prisma.$queryRawUnsafe<any[]>(`SELECT "id","label","status","fileName","mimeType","sizeBytes","uploadedAt" FROM "ApplicantDocument" WHERE "applicationId"=$1 AND "label"='Signed Offer of Employment' ORDER BY "createdAt" DESC LIMIT 1`,applicationId);
       if(!signedOfferRows[0] && offer.status==='OFFER_ACCEPTED' && offer.acceptedByName && offer.signature){
         const acceptedAt=offer.acceptedAt?new Date(offer.acceptedAt):new Date(); const pdf=buildSignedOfferPdf(offer,offer.acceptedByName,offer.signature,acceptedAt); const id=randomUUID();

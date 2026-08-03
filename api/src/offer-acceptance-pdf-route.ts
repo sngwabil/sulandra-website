@@ -60,7 +60,7 @@ export function buildSignedOfferPdf(offer: any, acceptedBy: string, signature: s
 
 async function offerByToken(prisma: PrismaClient, rawToken: string) {
   const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId" FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId" WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW() LIMIT 1`, tokenHash);
+  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId",a."workflowStatus" AS "applicationWorkflowStatus" FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId" WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW() LIMIT 1`, tokenHash);
   return rows[0] || null;
 }
 
@@ -69,17 +69,31 @@ export function registerOfferAcceptancePdfRoute(app: express.Express, prisma: Pr
     try {
       const input = acceptSchema.parse(req.body); const offer = await offerByToken(prisma, String(req.params.token)); if (!offer) return res.status(404).json({ error: 'Offer not found or expired.' });
       const existingDocs = await prisma.$queryRawUnsafe<any[]>(`SELECT "id" FROM "ApplicantDocument" WHERE "applicationId"=$1 AND "label"='Signed Offer of Employment' LIMIT 1`, offer.applicationId);
-      if ((offer.status === 'OFFER_ACCEPTED' || offer.acceptedAt) && existingDocs[0]) return res.json({ data: { status:'OFFER_ACCEPTED', signedOfferDocumentId:existingDocs[0].id, message:'Your signed Offer of Employment has already been received by the Sulandra Human Resources Department.' } });
+      if ((offer.status === 'OFFER_ACCEPTED' || offer.acceptedAt) && existingDocs[0]) {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "ApplicantStatusHistory" ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","createdAt")
+           SELECT $1,$2,'OFFER_PENDING','OFFER_ACCEPTED','Signed Offer of Employment received.',TRUE,COALESCE($3,NOW())
+            WHERE NOT EXISTS (SELECT 1 FROM "ApplicantStatusHistory" WHERE "applicationId"=$2 AND "toStatus"='OFFER_ACCEPTED')`,
+          randomUUID(), offer.applicationId, offer.acceptedAt,
+        );
+        return res.json({ data: { status:'OFFER_ACCEPTED', signedOfferDocumentId:existingDocs[0].id, message:'Your signed Offer of Employment has already been received by the Sulandra Human Resources Department.' } });
+      }
       const acceptedAt = offer.acceptedAt ? new Date(offer.acceptedAt) : new Date(); const acceptedBy = offer.acceptedByName || input.fullLegalName; const signature = offer.signature || input.signature;
       const pdf = buildSignedOfferPdf(offer, acceptedBy, signature, acceptedAt); const pdfHash=createHash('sha256').update(pdf).digest('hex'); const documentId=randomUUID(); const fileName=`Signed-Offer-of-Employment-${cleanPdfText(`${offer.firstName}-${offer.lastName}`).replaceAll(' ','-')}.pdf`;
       await prisma.$transaction(async tx=>{
         await tx.$executeRawUnsafe(`UPDATE "EmploymentOffer" SET "status"='OFFER_ACCEPTED',"acceptedAt"=$1,"acceptedByName"=$2,"signature"=$3,"updatedAt"=NOW() WHERE "id"=$4`,acceptedAt,acceptedBy,signature,offer.id);
         await tx.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_ACCEPTED',"updatedAt"=NOW() WHERE "id"=$1`,offer.applicationId);
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "ApplicantStatusHistory" ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","createdAt")
+           SELECT $1,$2,$3,'OFFER_ACCEPTED','Signed Offer of Employment received.',TRUE,$4
+            WHERE NOT EXISTS (SELECT 1 FROM "ApplicantStatusHistory" WHERE "applicationId"=$2 AND "toStatus"='OFFER_ACCEPTED')`,
+          randomUUID(), offer.applicationId, offer.applicationWorkflowStatus || 'OFFER_PENDING', acceptedAt,
+        );
         await tx.$executeRawUnsafe(`DELETE FROM "EmploymentOfferDocument" WHERE "offerId"=$1 AND "status"='PENDING'`,offer.id);
         await tx.$executeRawUnsafe(`DELETE FROM "ApplicantDocument" WHERE "applicationId"=$1 AND "label"='Signed Offer of Employment'`,offer.applicationId);
         await tx.$executeRawUnsafe(`INSERT INTO "ApplicantDocument" ("id","applicationId","category","label","status","fileName","mimeType","sizeBytes","fileData","contentSha256","uploadedByType","uploadedAt","createdAt","updatedAt") VALUES ($1,$2,'OTHER'::"ApplicantDocumentCategory",'Signed Offer of Employment','RECEIVED'::"ApplicantDocumentStatus",$3,'application/pdf',$4,$5,$6,'APPLICANT',NOW(),NOW(),NOW())`,documentId,offer.applicationId,fileName,pdf.length,pdf,pdfHash);
       });
-      await helpers.audit({},'ACCEPT_EMPLOYMENT_OFFER','EmploymentOffer',offer.id,{applicationId:offer.applicationId,signedOfferDocumentId:documentId,acceptedByName:acceptedBy});
+      await helpers.audit({ organizationId: offer.organizationId },'ACCEPT_EMPLOYMENT_OFFER','EmploymentOffer',offer.id,{applicationId:offer.applicationId,signedOfferDocumentId:documentId,acceptedByName:acceptedBy});
       res.json({data:{status:'OFFER_ACCEPTED',signedOfferDocumentId:documentId,message:'Your signed Offer of Employment has been received by the Sulandra Human Resources Department.'}});
     } catch(error){next(error);}
   });
