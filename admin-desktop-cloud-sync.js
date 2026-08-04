@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const API_BASE='https://sulandra-website-production.up.railway.app';
+const API_BASE='';
 const TOKEN_KEY='sulandra:employee:access-token';
 const SESSION_KEY='sulandra:employee:session';
 const PROFILE_PREFIX='sulandra:admin:desktop-profile:';

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Driver Application | Sulandra Health</title>
+  <meta name="description" content="Apply for a Sulandra Health NEMT Driver, Transportation Specialist, or Van Driver position.">
+  <style>
+    html,body{width:100%;height:100%;margin:0;background:#f5f8fb}
+    iframe{display:block;width:100%;height:100%;border:0}
+  </style>
+</head>
+<body>
+  <iframe id="driverApplication" title="Sulandra Health driver application"></iframe>
+  <script>
+    const source = new URL("applydsp.html", window.location.href);
+    const current = new URLSearchParams(window.location.search);
+    source.searchParams.set("role", "DRIVER");
+    if (current.get("opening")) source.searchParams.set("opening", current.get("opening"));
+    document.getElementById("driverApplication").src = source.href;
+  </script>
+</body>
+</html>

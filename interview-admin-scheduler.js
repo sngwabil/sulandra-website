@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const API_BASE = "https://sulandra-website-production.up.railway.app";
+  const API_BASE = "";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const $ = (selector, root = document) => root.querySelector(selector);
   const esc = (value) => String(value == null ? "" : value)

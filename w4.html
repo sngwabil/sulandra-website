@@ -21,7 +21,7 @@
 <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
 (async function(){
-const API='https://sulandra-website-production.up.railway.app';const token=new URLSearchParams(location.search).get('token');
+const API='';const token=new URLSearchParams(location.search).get('token');
 const $=id=>document.getElementById(id);let context,pdfBase64,previewUrl;
 const show=(text,type)=>{const m=$('msg');m.textContent=text;m.className='msg show '+type;m.scrollIntoView({behavior:'smooth',block:'nearest'})};
 const money=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0});

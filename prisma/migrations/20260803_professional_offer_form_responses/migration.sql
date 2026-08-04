@@ -1,0 +1,5 @@
+ALTER TABLE "EmploymentOfferDocument"
+  ADD COLUMN IF NOT EXISTS "formData" JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS "attestedAt" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "ipAddress" TEXT,
+  ADD COLUMN IF NOT EXISTS "userAgent" TEXT;

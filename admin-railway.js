@@ -15,7 +15,6 @@
     ["/admin-desktop-operating-system.js?v=20260804-4", "data-admin-desktop-operating-system"],
     ["/admin-live-module-window-bridge.js?v=20260804-3", "data-admin-live-module-window-bridge"],
     ["/admin-record-empty-state.js?v=20260804-4", "data-admin-record-empty-state"],
-    ["/admin-workspace-watchdog.js?v=20260804-3", "data-admin-workspace-watchdog"],
     ["/admin-authoritative-navigation.js?v=20260804-2", "data-admin-authoritative-navigation"]
   ];
 

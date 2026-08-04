@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const API='https://sulandra-website-production.up.railway.app';
+  const API='';
   const TOKEN_KEY='sulandra:employee:access-token';
   const $=id=>document.getElementById(id);
   const esc=v=>String(v==null?'':v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');

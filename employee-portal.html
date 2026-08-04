@@ -360,7 +360,7 @@
         <section class="card" id="clock">
           <h2>
             Clock In / Clock Out
-            <span class="hint">Quick punch (demo)</span>
+            <span class="hint">Use approved timekeeping system</span>
           </h2>
 
           <div class="row">
@@ -384,7 +384,7 @@
           <input id="clockNote" name="clockNote" type="text" placeholder="e.g., Arrived early for handoff">
 
           <div class="btn-row">
-            <button class="btn btn-primary" id="btnClockIn" type="button">Clock In</button>
+            <button class="btn btn-primary" id="btnClockIn" type="button" disabled>Clock In</button>
             <button class="btn btn-danger" id="btnClockOut" type="button" disabled>Clock Out</button>
             <button class="btn btn-secondary" id="btnBreak" type="button" disabled>Start Break</button>
           </div>
@@ -401,7 +401,7 @@
         <section class="card" id="timesheet">
           <h2>
             Timesheet Submission
-            <span class="hint">Weekly entry (demo)</span>
+            <span class="hint">Not enabled in this portal</span>
           </h2>
 
           <div class="row">
@@ -435,12 +435,12 @@
           <textarea id="timesheetNotes" name="timesheetNotes" placeholder="Add any important notes for payroll..."></textarea>
 
           <div class="btn-row">
-            <button class="btn btn-primary" id="btnSubmitTimesheet" type="button">Submit Timesheet</button>
-            <button class="btn btn-secondary" id="btnSaveDraftTimesheet" type="button">Save Draft</button>
+            <button class="btn btn-primary" id="btnSubmitTimesheet" type="button" disabled>Submit Timesheet</button>
+            <button class="btn btn-secondary" id="btnSaveDraftTimesheet" type="button" disabled>Save Draft</button>
           </div>
 
           <p class="hint" style="margin-top:10px;">
-            Tip: When you connect your backend, submit these values to your payroll/timekeeping system.
+            Timesheets are not stored by this page. Use the approved payroll/timekeeping workflow provided by your supervisor.
           </p>
         </section>
 
@@ -490,8 +490,8 @@
           <input id="incidentUpload" name="incidentUpload" type="file" multiple>
 
           <div class="btn-row">
-            <button class="btn btn-danger" id="btnSubmitIncident" type="button">Submit Incident Report</button>
-            <button class="btn btn-secondary" id="btnSaveDraftIncident" type="button">Save Draft</button>
+            <button class="btn btn-danger" id="btnSubmitIncident" type="button" disabled>Submit Incident Report</button>
+            <button class="btn btn-secondary" id="btnSaveDraftIncident" type="button" disabled>Save Draft</button>
           </div>
         </section>
 
@@ -508,16 +508,12 @@
           </h2>
           <ul class="list">
             <li>
-              <span><strong>Reminder:</strong> Complete annual compliance training.</span>
-              <span class="badge orange">Due Soon</span>
+              <span>Live announcements are not connected to this page.</span>
+              <span class="badge">Unavailable</span>
             </li>
             <li>
-              <span><strong>Update:</strong> New incident policy form available.</span>
-              <span class="badge blue">New</span>
-            </li>
-            <li>
-              <span><strong>Holiday:</strong> Office hours posted in Resources.</span>
-              <span class="badge">Info</span>
+              <span>Contact your supervisor for current operational notices.</span>
+              <span class="badge blue">Verified channel</span>
             </li>
           </ul>
         </section>
@@ -533,27 +529,14 @@
             <div class="card" style="box-shadow:none; border:1px solid var(--border);">
               <h2 style="font-size:16px; margin-bottom:6px;">Assigned Training</h2>
               <ul class="list" style="margin-top:8px;">
-                <li>
-                  <span>Orientation (Module 1)</span>
-                  <span class="badge orange">In Progress</span>
-                </li>
-                <li>
-                  <span>HIPAA + Privacy</span>
-                  <span class="badge orange">Due</span>
-                </li>
-                <li>
-                  <span>Infection Control</span>
-                  <span class="badge green">Complete</span>
-                </li>
+                <li><span>Open the Education Portal for live assignments.</span><span class="badge blue">Live data</span></li>
               </ul>
             </div>
 
             <div class="card" style="box-shadow:none; border:1px solid var(--border);">
               <h2 style="font-size:16px; margin-bottom:6px;">Learning Library</h2>
               <ul class="list" style="margin-top:8px;">
-                <li><span>Safe Transfers</span><span class="badge">Video</span></li>
-                <li><span>De-escalation Basics</span><span class="badge">Course</span></li>
-                <li><span>Documentation Tips</span><span class="badge">Guide</span></li>
+                <li><span>Course availability is managed in the Education Portal.</span><span class="badge">Catalog</span></li>
               </ul>
             </div>
           </div>
@@ -564,7 +547,7 @@
           </div>
 
           <p class="hint" style="margin-top:10px;">
-            Later: connect this to your LMS (training system) and show real due dates, scores, and completion status.
+            Assignments and completion status are shown only after the production education service confirms them.
           </p>
         </section>
 
@@ -572,7 +555,7 @@
         <section class="card" id="documents">
           <h2>
             Submit Requested Documents
-            <span class="hint">Secure uploads (demo)</span>
+            <span class="hint">Not enabled in this portal</span>
           </h2>
 
           <label for="docType">Document Type</label>
@@ -592,12 +575,12 @@
           <input id="docUpload" name="docUpload" type="file" multiple>
 
           <div class="btn-row">
-            <button class="btn btn-primary" id="btnSubmitDocs" type="button">Submit Documents</button>
-            <button class="btn btn-secondary" id="btnViewDocStatus" type="button">View Status</button>
+            <button class="btn btn-primary" id="btnSubmitDocs" type="button" disabled>Submit Documents</button>
+            <button class="btn btn-secondary" id="btnViewDocStatus" type="button" disabled>View Status</button>
           </div>
 
           <p class="hint" style="margin-top:10px;">
-            Later: add encryption, storage (S3/Drive), and an admin review workflow.
+            This page does not upload or store employee documents. Use the secure workflow provided by Human Resources.
           </p>
         </section>
 
@@ -616,8 +599,8 @@
           </ul>
 
           <div class="btn-row" style="margin-top:12px;">
-            <button class="btn btn-secondary" type="button" id="btnOpenHandbook">Open Handbook</button>
-            <button class="btn btn-secondary" type="button" id="btnOpenOnboarding">Onboarding</button>
+            <button class="btn btn-secondary" type="button" id="btnOpenHandbook" disabled>Open Handbook</button>
+            <button class="btn btn-secondary" type="button" id="btnOpenOnboarding" disabled>Onboarding</button>
           </div>
         </section>
 
@@ -661,111 +644,17 @@
   <!-- Railway Bearer-token authentication guard -->
   <script src="employee-portal-railway.js"></script>
 
-  <!-- Demo-only behaviors (no backend): -->
+  <!-- Fail-closed controls: no action is represented as saved without a live endpoint. -->
   <script>
     (function () {
-      const $ = (id) => document.getElementById(id);
-
-      const clockLog = $("clockLog");
-      const btnIn = $("btnClockIn");
-      const btnOut = $("btnClockOut");
-      const btnBreak = $("btnBreak");
-
-      let isClockedIn = false;
-      let onBreak = false;
-
-      function addLog(message, badgeText) {
-        const first = clockLog.querySelector("li");
-        if (first && first.textContent.includes("Clock activity will show here")) {
-          clockLog.innerHTML = "";
-        }
-
-        const li = document.createElement("li");
-        const left = document.createElement("span");
-        const right = document.createElement("span");
-
-        left.textContent = message;
-        right.className = "badge blue";
-        right.textContent = badgeText || "Log";
-
-        li.appendChild(left);
-        li.appendChild(right);
-        clockLog.prepend(li);
-      }
-
-      function nowString() {
-        const d = new Date();
-        return d.toLocaleString();
-      }
-
-      btnIn.addEventListener("click", () => {
-        if (isClockedIn) return;
-        isClockedIn = true;
-        onBreak = false;
-
-        btnIn.disabled = true;
-        btnOut.disabled = false;
-        btnBreak.disabled = false;
-        btnBreak.textContent = "Start Break";
-
-        addLog(`Clocked IN — ${nowString()}`, "IN");
+      document.getElementById("clockLog").firstElementChild.firstElementChild.textContent =
+        "Timekeeping is not connected to this portal. No clock activity is stored here.";
+      document.getElementById("btnLaunchTraining").addEventListener("click", () => {
+        location.href = "/education/";
       });
-
-      btnOut.addEventListener("click", () => {
-        if (!isClockedIn) return;
-        isClockedIn = false;
-        onBreak = false;
-
-        btnIn.disabled = false;
-        btnOut.disabled = true;
-        btnBreak.disabled = true;
-
-        addLog(`Clocked OUT — ${nowString()}`, "OUT");
+      document.getElementById("btnViewCertificates").addEventListener("click", () => {
+        location.href = "/education-certificate.html";
       });
-
-      btnBreak.addEventListener("click", () => {
-        if (!isClockedIn) return;
-
-        onBreak = !onBreak;
-        btnBreak.textContent = onBreak ? "End Break" : "Start Break";
-        addLog(`${onBreak ? "Break STARTED" : "Break ENDED"} — ${nowString()}`, "BREAK");
-      });
-
-      $("btnSubmitTimesheet").addEventListener("click", () => {
-        alert("Timesheet submitted (demo). Connect this to your backend to store & approve timesheets.");
-      });
-      $("btnSaveDraftTimesheet").addEventListener("click", () => {
-        alert("Timesheet saved as draft (demo).");
-      });
-
-      $("btnSubmitIncident").addEventListener("click", () => {
-        alert("Incident report submitted (demo). Connect to your admin workflow + notifications.");
-      });
-      $("btnSaveDraftIncident").addEventListener("click", () => {
-        alert("Incident report saved as draft (demo).");
-      });
-
-      $("btnSubmitDocs").addEventListener("click", () => {
-        alert("Documents submitted (demo). Connect to secure upload + review queue.");
-      });
-
-      $("btnLaunchTraining").addEventListener("click", () => {
-        alert("Launch training (demo). Next step: link to your LMS/training provider.");
-      });
-
-      $("btnViewCertificates").addEventListener("click", () => {
-        alert("Certificates (demo). Next step: generate certificate list and downloads.");
-      });
-
-      $("btnOpenHandbook").addEventListener("click", () => {
-        alert("Handbook page coming next. When ready, I’ll link it here.");
-      });
-
-      $("btnOpenOnboarding").addEventListener("click", () => {
-        alert("Onboarding page coming next. When ready, I’ll link it here.");
-      });
-
-      // Sign out is handled by the Railway session guard above.
     })();
   </script>
 
