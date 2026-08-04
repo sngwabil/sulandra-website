@@ -15,8 +15,49 @@
     style.id = 'adminThreePanelConsolidationStyles';
     style.textContent = `
       .ec-retired-workspace-sidebar{display:none!important;width:0!important;min-width:0!important;max-width:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important}
-      body.ec-panels-ready .layout,body.ec-panels-ready .admin-layout,body.ec-panels-ready .workspace-layout{grid-template-columns:minmax(0,1fr)!important}
-      body.ec-panels-ready main,body.ec-panels-ready .main-content{min-width:0!important}
+
+      /* Remove the original reserved sidebar column and restore the main workspace. */
+      body.ec-panels-ready .grid,
+      body.ec-panels-ready .layout,
+      body.ec-panels-ready .admin-layout,
+      body.ec-panels-ready .workspace-layout{
+        display:grid!important;
+        grid-template-columns:minmax(0,1fr)!important;
+        width:100%!important;
+        max-width:none!important;
+      }
+      body.ec-panels-ready .grid>main,
+      body.ec-panels-ready .grid>.main-content,
+      body.ec-panels-ready .grid>.modules,
+      body.ec-panels-ready .grid>section:not(.ec-retired-workspace-sidebar){
+        grid-column:1!important;
+        width:100%!important;
+        min-width:0!important;
+        max-width:none!important;
+      }
+      body.ec-panels-ready .container{
+        width:auto!important;
+        max-width:none!important;
+        padding-left:18px!important;
+        padding-right:18px!important;
+        transition:margin-left .22s ease,margin-right .22s ease!important;
+      }
+      body.ec-left-open .container{margin-left:calc(var(--ec-left-w) + 18px)!important}
+      body:not(.ec-left-open) .container{margin-left:54px!important}
+      body.ec-right-open .container{margin-right:calc(var(--ec-right-w) + 18px)!important}
+      body:not(.ec-right-open) .container{margin-right:54px!important}
+      body.ec-panels-ready main,
+      body.ec-panels-ready .main-content,
+      body.ec-panels-ready .module,
+      body.ec-panels-ready .ec-command-center{
+        width:100%!important;
+        min-width:0!important;
+        max-width:none!important;
+      }
+      body.ec-panels-ready .ec-command-center .ec-grid{
+        grid-template-columns:repeat(auto-fit,minmax(240px,1fr))!important;
+      }
+
       .ec-side-rail{top:var(--ec-panel-top)!important;bottom:0!important;border-radius:0!important;max-width:calc(100vw - 42px)!important}
       .ec-side-rail.left{border-left:0!important}.ec-side-rail.right{border-right:0!important}
       .ec-rail-handle{display:none!important}
@@ -27,7 +68,15 @@
       .ec-fixed-rail-tab .ec-tab-label{font-size:12px}.ec-fixed-rail-tab .ec-tab-arrow{font-size:20px;line-height:1}
       .ec-original-tools-section{padding-bottom:5px;border-bottom:1px solid #d7e4ef;margin-bottom:16px}
       .ec-original-tools-section .ec-rail-section-title{display:flex;align-items:center;justify-content:space-between}
-      @media(max-width:760px){.ec-fixed-rail-tab .ec-tab-label{display:none}.ec-fixed-rail-tab{min-width:44px;padding:0 10px}}
+
+      @media(max-width:1280px){
+        body.ec-left-open .container,body:not(.ec-left-open) .container{margin-left:18px!important}
+        body.ec-right-open .container,body:not(.ec-right-open) .container{margin-right:18px!important}
+      }
+      @media(max-width:760px){
+        .ec-fixed-rail-tab .ec-tab-label{display:none}.ec-fixed-rail-tab{min-width:44px;padding:0 10px}
+        body.ec-panels-ready .container{padding-left:10px!important;padding-right:10px!important;margin-left:0!important;margin-right:0!important}
+      }
     `;
     document.head.appendChild(style);
   }
