@@ -1,0 +1,9 @@
+{
+  "purpose": "Force feature branch rebuild after desktop empty-state and cloud runtime fixes",
+  "branch": "feature/spire-ehr-platform",
+  "required_commits": [
+    "4f3f5c05dabc9b0b91ab3dafba6e442fa090253e",
+    "64616ce232228ae62ffd7b2a03b2f5a38ca2c0e3"
+  ],
+  "created_at": "2026-08-04T17:54:00Z"
+}
