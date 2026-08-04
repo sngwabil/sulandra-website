@@ -2,138 +2,176 @@
   "use strict";
 
   const CORE_SCRIPT = "https://cdn.jsdelivr.net/gh/sngwabil/sulandra-website@27e9241555ed630bf95c892141d5cce50b975755/admin-railway.js";
-  const INTERVIEW_SCRIPT = "/interview-admin-scheduler.js?v=20260804-1";
-  const ENTERPRISE_SCRIPT = "/admin-enterprise-command-center.js?v=20260804-1";
-  const THREE_PANEL_SCRIPT = "/admin-three-panel-layout.js?v=20260804-1";
-  const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
-  const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-5";
-  const NEW_SERVICE_WORKSPACE_SCRIPT = "/admin-new-service-workspace.js?v=20260804-1";
-  const DESKTOP_CLOUD_SYNC_SCRIPT = "/admin-desktop-cloud-sync.js?v=20260804-3";
-  const DESKTOP_EXPERIENCE_SCRIPT = "/admin-desktop-experience.js?v=20260804-1";
-  const DESKTOP_STABILITY_SCRIPT = "/admin-desktop-stability-fix.js?v=20260804-5";
-  const DESKTOP_OS_SCRIPT = "/admin-desktop-operating-system.js?v=20260804-2";
-  const LIVE_MODULE_BRIDGE_SCRIPT = "/admin-live-module-window-bridge.js?v=20260804-1";
-  const RECORD_EMPTY_STATE_SCRIPT = "/admin-record-empty-state.js?v=20260804-1";
+  const SCRIPTS = [
+    ["/interview-admin-scheduler.js?v=20260804-2", "data-interview-admin-scheduler"],
+    ["/admin-enterprise-command-center.js?v=20260804-2", "data-enterprise-command-center"],
+    ["/admin-three-panel-layout.js?v=20260804-2", "data-admin-three-panel-layout"],
+    ["/admin-three-panel-consolidation.js?v=20260804-2", "data-admin-three-panel-consolidation"],
+    ["/admin-workspace-router.js?v=20260804-6", "data-admin-workspace-router"],
+    ["/admin-new-service-workspace.js?v=20260804-2", "data-admin-new-service-workspace"],
+    ["/admin-desktop-cloud-sync.js?v=20260804-5", "data-admin-desktop-cloud-sync"],
+    ["/admin-desktop-experience.js?v=20260804-2", "data-admin-desktop-experience"],
+    ["/admin-desktop-stability-fix.js?v=20260804-6", "data-admin-desktop-stability"],
+    ["/admin-desktop-operating-system.js?v=20260804-3", "data-admin-desktop-operating-system"],
+    ["/admin-live-module-window-bridge.js?v=20260804-2", "data-admin-live-module-window-bridge"],
+    ["/admin-record-empty-state.js?v=20260804-3", "data-admin-record-empty-state"],
+    ["/admin-workspace-watchdog.js?v=20260804-2", "data-admin-workspace-watchdog"]
+  ];
 
-  function makeTopLink(id, href, text, title) {
-    const item = document.createElement("li");
-    const link = document.createElement("a");
-    link.id = id;
-    link.href = href;
-    link.textContent = text;
-    link.title = title;
-    item.appendChild(link);
-    return item;
+  function installBootScreen() {
+    document.documentElement.classList.add("sulandra-admin-booting");
+    const style = document.createElement("style");
+    style.id = "sulandraAdminFirstPaintStyle";
+    style.textContent = `
+      html.sulandra-admin-booting body > *:not(#sulandraAdminBootScreen) {
+        visibility: hidden !important;
+      }
+      #sulandraAdminBootScreen {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 50% 34%, rgba(35,151,205,.16), transparent 34%),
+          linear-gradient(145deg, #f6fbff 0%, #ffffff 52%, #eef6fb 100%);
+        color: #12345a;
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      #sulandraAdminBootScreen .sab-card {
+        width: min(440px, calc(100vw - 36px));
+        padding: 34px;
+        border: 1px solid #d7e5ef;
+        border-radius: 24px;
+        background: rgba(255,255,255,.94);
+        box-shadow: 0 24px 80px rgba(15,49,84,.17);
+        text-align: center;
+      }
+      #sulandraAdminBootScreen img { width: min(260px, 75%); height: auto; }
+      #sulandraAdminBootScreen h1 { margin: 18px 0 7px; font-size: 24px; color: #12345a; }
+      #sulandraAdminBootScreen p { margin: 0; color: #61758a; line-height: 1.55; }
+      #sulandraAdminBootScreen .sab-progress {
+        height: 6px;
+        margin-top: 24px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e4eef5;
+      }
+      #sulandraAdminBootScreen .sab-progress::after {
+        content: "";
+        display: block;
+        width: 42%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #075b9c, #29a8d8);
+        animation: sab-load 1.1s ease-in-out infinite alternate;
+      }
+      #sulandraAdminBootScreen button {
+        margin-top: 22px;
+        border: 0;
+        border-radius: 12px;
+        padding: 11px 18px;
+        background: #075b9c;
+        color: #fff;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      @keyframes sab-load { from { transform: translateX(-10%); } to { transform: translateX(150%); } }
+    `;
+    document.head.appendChild(style);
+
+    const screen = document.createElement("div");
+    screen.id = "sulandraAdminBootScreen";
+    screen.innerHTML = `
+      <section class="sab-card" role="status" aria-live="polite">
+        <img src="/assets/mainlogo.png" alt="Sulandra Health">
+        <h1>Opening your administration desktop</h1>
+        <p id="sulandraAdminBootMessage">Loading your departments, workspace, live activity and saved preferences.</p>
+        <div class="sab-progress" aria-hidden="true"></div>
+      </section>`;
+    document.body.appendChild(screen);
   }
 
-  function makeSideButton(id, label, detail, href) {
-    const button = document.createElement("button");
-    button.id = id;
-    button.className = "side-btn";
-    button.type = "button";
-    button.innerHTML = `${label} <small>${detail}</small>`;
-    button.addEventListener("click", () => { window.location.href = href; });
-    return button;
-  }
-
-  function addSettingsControlCards() {
-    const settingsModule = document.getElementById("module-settings");
-    if (!settingsModule || document.getElementById("intranetSettingsControlCard")) return;
-    const wrap = document.createElement("div");
-    wrap.id = "intranetSettingsControlCard";
-    wrap.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:20px;";
-    wrap.innerHTML = `
-      <a href="intranet-control.html" style="display:block;text-decoration:none;background:linear-gradient(135deg,#0f172a,#075985);color:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(15,23,42,.16);">
-        <div style="font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd;">Intranet Publishing</div>
-        <h2 style="margin:7px 0 5px;color:#fff;font-size:20px;">Content Control Center</h2>
-        <p style="margin:0;color:#dbeafe;font-size:13px;line-height:1.5;">Create, schedule, upload and manage intranet announcements, images, videos, animations, cards, banners and timed slideshows.</p>
-        <div style="margin-top:14px;font-weight:900;font-size:13px;">Open Control Center →</div>
-      </a>
-      <a href="education-portal.html" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:linear-gradient(135deg,#064e3b,#0f766e);color:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(15,118,110,.16);">
-        <div style="font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#99f6e4;">Education</div>
-        <h2 style="margin:7px 0 5px;color:#fff;font-size:20px;">Sulandra Learning Center</h2>
-        <p style="margin:0;color:#ccfbf1;font-size:13px;line-height:1.5;">Open the production education portal using the current administrator profile and view approved curriculum and live employee records.</p>
-        <div style="margin-top:14px;font-weight:900;font-size:13px;">Open Education Portal →</div>
-      </a>`;
-    settingsModule.appendChild(wrap);
-  }
-
-  function addAdminPortalLinks() {
-    const topNav = document.getElementById("topModuleNav");
-    if (topNav && !document.getElementById("adminEmployeePortalTopLink")) {
-      const onboardingItem = Array.from(topNav.children).find((item) => item.querySelector('a[data-module="onboarding"]'));
-      const employee = makeTopLink("adminEmployeePortalTopLink", "employee-portal.html?stay=1&source=admin", "Employee Portal", "Open the employee experience using your current administrator identity");
-      const intranet = makeTopLink("adminIntranetTopLink", "intranet.html", "Sulandra Intranet", "Open the Sulandra Enterprise Intranet Portal");
-      employee.querySelector('a').target = "_blank";
-      employee.querySelector('a').rel = "noopener";
-      intranet.querySelector('a').target = "_blank";
-      intranet.querySelector('a').rel = "noopener";
-      topNav.insertBefore(employee, onboardingItem || null);
-      topNav.insertBefore(intranet, onboardingItem || null);
+  function setBootMessage(message, failed) {
+    const node = document.getElementById("sulandraAdminBootMessage");
+    if (node) node.textContent = message;
+    const card = document.querySelector("#sulandraAdminBootScreen .sab-card");
+    if (failed && card && !card.querySelector("button")) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Retry loading portal";
+      button.onclick = function () { location.reload(); };
+      card.appendChild(button);
     }
-    const sideNav = document.getElementById("sideModuleNav");
-    if (sideNav && !document.getElementById("adminEmployeePortalSideLink")) {
-      const onboardingButton = sideNav.querySelector('[data-module="onboarding"]');
-      sideNav.insertBefore(makeSideButton("adminEmployeePortalSideLink", "Employee Portal", "Admin Access", "employee-portal.html?stay=1&source=admin"), onboardingButton || null);
-      sideNav.insertBefore(makeSideButton("adminIntranetSideLink", "Sulandra Intranet", "Enterprise Hub", "intranet.html"), onboardingButton || null);
-    }
-    if (sideNav && !document.getElementById("adminIntranetControlSideLink")) {
-      const settingsButton = sideNav.querySelector('[data-module="settings"]');
-      sideNav.insertBefore(makeSideButton("adminIntranetControlSideLink", "Intranet Control", "Publishing", "intranet-control.html"), settingsButton || null);
-    }
-    addSettingsControlCards();
   }
 
-  function loadScriptOnce(src, marker, errorMessage, onload) {
-    if (document.querySelector(`script[${marker}]`)) { if (onload) onload(); return; }
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = false;
-    script.setAttribute(marker, "true");
-    if (onload) script.onload = onload;
-    script.onerror = function () { console.error(errorMessage); };
-    document.head.appendChild(script);
+  function revealPortal() {
+    document.documentElement.classList.remove("sulandra-admin-booting");
+    document.getElementById("sulandraAdminBootScreen")?.remove();
+    document.getElementById("sulandraAdminFirstPaintStyle")?.remove();
+    document.documentElement.dataset.adminDesktopReady = "true";
   }
 
-  function loadDesktopExperience() {
-    loadScriptOnce(DESKTOP_EXPERIENCE_SCRIPT, "data-admin-desktop-experience", "The Sulandra desktop workspace experience could not be loaded.", function () {
-      loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.", function () {
-        loadScriptOnce(DESKTOP_OS_SCRIPT, "data-admin-desktop-operating-system", "The Sulandra desktop operating system could not be loaded.", function () {
-          loadScriptOnce(LIVE_MODULE_BRIDGE_SCRIPT, "data-admin-live-module-window-bridge", "The live department module bridge could not be loaded.", function () {
-            loadScriptOnce(RECORD_EMPTY_STATE_SCRIPT, "data-admin-record-empty-state", "The record empty-state manager could not be loaded.");
-          });
-        });
-      });
+  function workspaceReady() {
+    const host = document.getElementById("adminInternalWorkspace");
+    if (!host) return false;
+    const visible = host.querySelector(
+      ".sos-service-shell, .sos-mounted-module, .sos-record-state, [data-department-code], .dx-window, .os-managed-window"
+    );
+    return Boolean(visible && visible.getClientRects().length);
+  }
+
+  function waitForDesktop() {
+    const started = Date.now();
+    const timer = window.setInterval(function () {
+      if (workspaceReady()) {
+        clearInterval(timer);
+        requestAnimationFrame(function () { requestAnimationFrame(revealPortal); });
+        return;
+      }
+      if (Date.now() - started > 16000) {
+        clearInterval(timer);
+        setBootMessage("The modern administration desktop did not finish loading. No data was changed.", true);
+      }
+    }, 120);
+  }
+
+  function loadScript(src, marker) {
+    return new Promise(function (resolve) {
+      if (document.querySelector(`script[${marker}]`)) { resolve(); return; }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.setAttribute(marker, "true");
+      script.onload = function () { resolve(); };
+      script.onerror = function () {
+        console.error("Admin enhancement failed to load:", src);
+        resolve();
+      };
+      document.head.appendChild(script);
     });
   }
-  function loadCloudThenDesktop() {
-    loadScriptOnce(DESKTOP_CLOUD_SYNC_SCRIPT, "data-admin-desktop-cloud-sync", "The Sulandra desktop cloud profile could not be loaded.", function () {
-      Promise.resolve(window.SulandraDesktopCloud?.ready)
-        .catch(function (error) { console.warn("Desktop cloud profile unavailable; using cached settings.", error); })
-        .finally(loadDesktopExperience);
-    });
+
+  async function start() {
+    installBootScreen();
+    waitForDesktop();
+    setBootMessage("Connecting to the Sulandra administration system…");
+    await loadScript(CORE_SCRIPT, "data-sulandra-core-admin");
+
+    for (const [src, marker] of SCRIPTS) {
+      setBootMessage("Preparing your saved administration workspace…");
+      await loadScript(src, marker);
+      if (marker === "data-admin-desktop-cloud-sync") {
+        try { await Promise.resolve(window.SulandraDesktopCloud?.ready); }
+        catch (error) { console.warn("Desktop profile sync unavailable; continuing with cached preferences.", error); }
+      }
+    }
+
+    window.dispatchEvent(new Event("sulandra:admin-enhancements-loaded"));
   }
-  function loadEnhancements() {
-    loadScriptOnce(INTERVIEW_SCRIPT, "data-interview-admin-scheduler", "The Sulandra interview scheduler could not be loaded.");
-    loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.", function () {
-      loadScriptOnce(THREE_PANEL_SCRIPT, "data-admin-three-panel-layout", "The Sulandra three-panel administration layout could not be loaded.", function () {
-        loadScriptOnce(PANEL_CONSOLIDATION_SCRIPT, "data-admin-three-panel-consolidation", "The Sulandra panel consolidation repair could not be loaded.", function () {
-          loadScriptOnce(WORKSPACE_ROUTER_SCRIPT, "data-admin-workspace-router", "The Sulandra unified workspace router could not be loaded.", function () {
-            loadScriptOnce(NEW_SERVICE_WORKSPACE_SCRIPT, "data-admin-new-service-workspace", "The Sulandra service provisioning workspace could not be loaded.", loadCloudThenDesktop);
-          });
-        });
-      });
-    });
-  }
-  function loadCoreAdminApplication() {
-    const script = document.createElement("script");
-    script.src = CORE_SCRIPT;
-    script.async = false;
-    script.onload = function () { loadEnhancements(); addAdminPortalLinks(); window.setTimeout(addAdminPortalLinks, 250); };
-    script.onerror = function () { console.error("The core Sulandra admin controller could not be loaded."); loadEnhancements(); addAdminPortalLinks(); };
-    document.head.appendChild(script);
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addAdminPortalLinks, { once: true });
-  else addAdminPortalLinks();
-  loadCoreAdminApplication();
+
+  start().catch(function (error) {
+    console.error("The Sulandra admin desktop could not initialize.", error);
+    setBootMessage("The administration desktop could not be initialized. No data was changed.", true);
+  });
 })();
