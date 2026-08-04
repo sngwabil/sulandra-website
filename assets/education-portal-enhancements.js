@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token';
+const API='',TK='sulandra:employee:access-token';
 const $=id=>document.getElementById(id);let courses=[],lastAssignmentSignature='',refreshing=false,emptyReads=0,hasRenderedRecords=false,lastOpenRows=[],lastDoneRows=[],repairObserver=null;
 function token(){return sessionStorage.getItem(TK)||''}
 function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}

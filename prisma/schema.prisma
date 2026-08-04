@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMINISTRATOR
+  PROGRAM_MANAGER
+  AUDITOR
+  DSP
+  DELEGATING_NURSE
+  LPN
+  RN
+  HOUSE_MANAGER
+  HR_MANAGER
+  SCHEDULER
+  BILLING_SPECIALIST
+  ADMINISTRATIVE_ASSISTANT
+  CEO
+  DOO
+  DRIVER
+  GENERAL
+}
+
+model RuntimeMarker {
+  id String @id
+
+  @@map("RuntimeMarker")
+}

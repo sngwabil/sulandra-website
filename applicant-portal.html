@@ -97,13 +97,16 @@
     </main>
   </div>
   <script>
-    const API_BASE='https://sulandra-website-production.up.railway.app';
+    const API_BASE=window.SULANDRA_API_BASE||'';
     const tokenKey='sulandraApplicantToken';
     const mustChangeKey='sulandraApplicantMustChange';
     const usernameKey='sulandraApplicantUsername';
     let resetToken=new URLSearchParams(location.hash.slice(1)).get('reset')||'';
     const $=id=>document.getElementById(id);
     const title=value=>String(value||'').replaceAll('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+    const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,character=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[character]);
     function notice(id,text){const el=$(id);el.textContent=text;el.classList.toggle('show',Boolean(text))}
     async function api(path,options={}){
       const token=sessionStorage.getItem(tokenKey);
@@ -172,8 +175,8 @@
         $('status').textContent=title(app.workflowStatus);
         $('position').textContent=app.jobTitle||'Sulandra Health opportunity';
         $('assessment').textContent=app.assessmentMaxScore?`${app.assessmentScore}/${app.assessmentMaxScore} (${Number(app.assessmentPercent).toFixed(0)}%)`:'Not applicable';
-        $('history').innerHTML=data.history.length?data.history.map(item=>`<div class="event"><span class="dot"></span><div><strong>${title(item.toStatus)}</strong><p>${item.note||''}</p><small>${new Date(item.createdAt).toLocaleString()}</small></div></div>`).join(''):'<p class="lead">Your application has been received.</p>';
-        $('documents').innerHTML=data.documents.map(doc=>`<div class="document"><div><strong>${doc.label}</strong><small>${title(doc.status)}${doc.reviewNotes?` • ${doc.reviewNotes}`:''}</small></div>${['MISSING','REQUESTED','REJECTED'].includes(doc.status)?`<label class="upload">Upload replacement<input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" data-document="${doc.id}"></label>`:''}</div>`).join('');
+        $('history').innerHTML=data.history.length?data.history.map(item=>`<div class="event"><span class="dot"></span><div><strong>${escapeHtml(title(item.toStatus))}</strong><p>${escapeHtml(item.note||'')}</p><small>${escapeHtml(new Date(item.createdAt).toLocaleString())}</small></div></div>`).join(''):'<p class="lead">Your application has been received.</p>';
+        $('documents').innerHTML=data.documents.map(doc=>`<div class="document"><div><strong>${escapeHtml(doc.label)}</strong><small>${escapeHtml(title(doc.status))}${doc.reviewNotes?` • ${escapeHtml(doc.reviewNotes)}`:''}</small></div>${['MISSING','REQUESTED','REJECTED'].includes(doc.status)?`<label class="upload">Upload replacement<input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" data-document="${escapeHtml(doc.id)}"></label>`:''}</div>`).join('');
         document.querySelectorAll('input[data-document]').forEach(input=>input.addEventListener('change',event=>{const file=event.target.files[0];if(file)upload(event.target.dataset.document,file)}));
       }catch(error){if(error.code==='PASSWORD_CHANGE_REQUIRED'){sessionStorage.setItem(mustChangeKey,'true');showPasswordSetup();return}clearApplicantSession();$('workspace').style.display='none';$('passwordSetupPanel').style.display='none';$('loginPanel').style.display='block';notice('loginError',error.message)}
     }

@@ -1,28 +1,49 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist-web",
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://sulandra-website-production.up.railway.app/api/:path*"
+    },
+    {
+      "source": "/public/:path*",
+      "destination": "https://sulandra-website-production.up.railway.app/public/:path*"
+    },
     {
       "source": "/applicant",
       "destination": "/applicant-portal.html"
     }
   ],
+  "redirects": [
+    { "source": "/services/home-health/:path*", "destination": "/services.html", "permanent": true },
+    { "source": "/services/rehab/:path*", "destination": "/services.html", "permanent": true },
+    { "source": "/services/transportation/:path*", "destination": "/services.html", "permanent": true },
+    { "source": "/services/behavioral-health/:path*", "destination": "/services.html", "permanent": true },
+    { "source": "/services/respite-care/:path*", "destination": "/services.html", "permanent": true },
+    { "source": "/services/companion-care/:path*", "destination": "/services.html", "permanent": true }
+  ],
   "headers": [
     {
-      "source": "/admin.html",
+      "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com; connect-src 'self' https://sulandra-website-production.up.railway.app https://api.open-meteo.com; worker-src 'self' blob:; upgrade-insecure-requests" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" }
       ]
     },
-    {
-      "source": "/careers-admin-workflow.js",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, max-age=0" }
-      ]
-    },
-    {
-      "source": "/admin-railway.js",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, max-age=0" }
-      ]
-    }
+    { "source": "/admin.html", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/employee-portal.html", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/employee-login.html", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/applicant-portal.html", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/spire-workspace.html", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/admin-railway.js", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/careers-admin-workflow.js", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/employee-login-railway.js", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] },
+    { "source": "/employee-portal-railway.js", "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }] }
   ]
 }

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const API_BASE = "https://sulandra-website-production.up.railway.app";
+  const API_BASE = "";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
   const message = document.getElementById("msg");
@@ -35,10 +35,6 @@
       showError(error.message || "Unable to process the recovery request.");
     }
   }
-
-  document.getElementById("demo").addEventListener("click", () => {
-    window.location.assign("spire-demo.html");
-  });
 
   document.getElementById("clear").addEventListener("click", () => {
     document.getElementById("email").value = "";

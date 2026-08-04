@@ -27,7 +27,7 @@
 </main>
 <div id="error" class="error">Loading verified certificate…</div>
 <script>
-const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token',SK='sulandra:employee:session';
+const API='',TK='sulandra:employee:access-token',SK='sulandra:employee:session';
 const code=new URLSearchParams(location.search).get('code');let certificateFileName='Sulandra-Health-Certificate.pdf';
 function token(){return sessionStorage.getItem(TK)||''}
 async function api(path){const r=await fetch(API+path,{cache:'no-store',headers:{Accept:'application/json',Authorization:'Bearer '+token()}});const p=await r.json().catch(()=>({}));if(!r.ok)throw Error(p.error||`Request failed (${r.status})`);return p}

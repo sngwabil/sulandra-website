@@ -1,1 +1,214 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Spire Clinical Workspace</title><style>:root{--n:#082d4d;--b:#0b6eac;--g:#e5b94c;--r:#b93b3b;--bg:#edf3f7;--l:#dce5ec;--m:#667584}*{box-sizing:border-box}body{margin:0;font:14px Segoe UI,Arial;background:var(--bg);color:#1d2a35}button,input,select,textarea{font:inherit}.top{background:linear-gradient(90deg,#062b49,#0a5f93);color:white;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:9}.brand{font-size:20px;font-weight:900}.brand small{display:block;font-size:10px;opacity:.8}.search{flex:1}.search input{width:100%;padding:10px;border:0;border-radius:8px}.user{font-weight:800}.layout{display:grid;grid-template-columns:235px 1fr;min-height:calc(100vh - 58px)}aside{background:white;border-right:1px solid var(--l);padding:10px}.nav button{width:100%;text-align:left;border:0;background:transparent;padding:10px;border-radius:8px;font-weight:800;color:#345}.nav button.active,.nav button:hover{background:#e8f3f9;color:#075f95}.main{padding:14px}.bar,.card{background:white;border:1px solid var(--l);border-radius:12px;box-shadow:0 7px 22px #0e314b12}.bar{padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.bar select{padding:8px;border:1px solid var(--l);border-radius:8px}.grid{display:grid;gap:12px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{padding:13px}.card h2{font-size:16px;color:#174766;margin:0 0 10px}.muted{color:var(--m);font-size:12px}.badge{display:inline-block;padding:3px 8px;border-radius:99px;background:#e8f5ed;color:#23704f;font-size:11px;font-weight:850}.warn{background:#fff5dc;color:#80600f}.danger{background:#fde6e6;color:#a12828}.task{display:grid;grid-template-columns:auto 1fr auto;gap:9px;padding:10px 0;border-bottom:1px solid var(--l);align-items:center}.task:last-child{border-bottom:0}.btn{border:0;border-radius:8px;padding:8px 10px;background:var(--b);color:#fff;font-weight:850;cursor:pointer}.btn.secondary{background:#e8f2f7;color:#174f70}.panel{display:none}.panel.active{display:block}.patient{padding:10px;border:1px solid var(--l);border-radius:10px;margin-bottom:8px;cursor:pointer}.patient:hover{background:#f2f8fb}.locked{opacity:.5;pointer-events:none}.notice{background:#fff9e9;border-left:4px solid var(--g);padding:10px;border-radius:8px;margin-bottom:10px}@media(max-width:800px){.layout{grid-template-columns:1fr}aside{display:none}.g2,.g3{grid-template-columns:1fr}.top{flex-wrap:wrap}.search{order:3;flex-basis:100%}}</style></head><body><header class="top"><div class="brand">SPIRE<small>Clinical Intelligence Platform</small></div><div class="search"><input placeholder="Search only your assigned clients"></div><div class="user" id="user">Loading…</div></header><div class="layout"><aside><div class="nav"><button class="active" data-p="home">⌂ My Homes</button><button data-p="brain">◉ Brain <span id="brainCount"></span></button><button data-p="chart">▦ Client Chart</button><button data-p="mar">💊 MAR</button><button data-p="notes">✎ Notes</button><button data-p="vitals">⌁ Vitals</button><button data-p="nursing" id="nursingNav">♡ Nursing</button><button onclick="location.href='employee-portal.html?stay=1'">← Employee Portal</button><button onclick="location.href='spire-admin.html'" id="adminNav">⚙ Spire Admin</button></div></aside><main class="main"><section class="bar"><label><b>Home</b> <select id="homeSelect"></select></label><label><b>Client</b> <select id="clientSelect"></select></label><span class="badge" id="accessBadge">Assigned access</span></section><div style="height:12px"></div><section id="home" class="panel active"><div class="grid g2"><div class="card"><h2>My Assigned Homes</h2><div id="homes"></div></div><div class="card"><h2>My Assigned Clients</h2><div id="clients"></div></div></div></section><section id="brain" class="panel"><div class="card"><h2>Spire Brain — Today</h2><div class="notice">Medication times, vitals, appointments, care-plan tasks, notes due, safety checks and shift responsibilities appear here for assigned clients only.</div><div id="tasks"></div></div></section><section id="chart" class="panel"><div class="grid g2"><div class="card"><h2>Client Summary</h2><div id="summary">Select a client.</div></div><div class="card"><h2>Protected Clinical History</h2><div id="history" class="muted">Viewable by assigned staff. Imported history edits are restricted to authorized administrators.</div></div></div></section><section id="mar" class="panel"><div class="card"><h2>Medication Administration Record</h2><div id="marRows"><div class="muted">Select a client to load scheduled medications.</div></div></div></section><section id="notes" class="panel"><div class="card"><h2>Progress / Shift Note</h2><textarea id="note" style="width:100%;min-height:150px;border:1px solid var(--l);border-radius:8px;padding:10px"></textarea><br><br><button class="btn" onclick="saveNote()">Sign Note</button></div></section><section id="vitals" class="panel"><div class="card"><h2>Basic Vitals</h2><div class="grid g3"><input placeholder="Temperature"><input placeholder="Pulse"><input placeholder="Respirations"><input placeholder="Blood pressure"><input placeholder="SpO₂"><input placeholder="Weight"></div><br><button class="btn">Save Vitals</button></div></section><section id="nursing" class="panel"><div class="card"><h2>Nursing Workspace</h2><p>Assessments, care plans, nursing interventions, clinical review and nurse-only tasks.</p><button class="btn">Open Nursing Assessment</button></div></section></main></div><script>const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token',CK='sulandra:spire:context';let ctx=null,homes=[],clients=[],tasks=[];try{ctx=JSON.parse(sessionStorage.getItem(CK)||'null')}catch{}if(!ctx||!sessionStorage.getItem(TK))location.replace('employee-login.html');user.textContent=ctx.displayName+' · '+ctx.role;adminNav.style.display=ctx.isAdmin?'block':'none';nursingNav.style.display=(ctx.isNurse||ctx.isAdmin)?'block':'none';function api(p){return fetch(API+p,{headers:{Authorization:'Bearer '+sessionStorage.getItem(TK)}}).then(async r=>{const x=await r.json().catch(()=>({}));if(!r.ok)throw Error(x.error||'Request failed');return x})}function fillSelect(el,rows,label){el.innerHTML='<option value="">'+label+'</option>'+rows.map(x=>'<option value="'+x.id+'">'+(x.name||x.displayName||x.id)+'</option>').join('')}function demo(){homes=[{id:'h1',name:'Assigned Home'}];clients=[{id:'c1',name:'Assigned Client',homeId:'h1',dob:'01/01/1980',allergies:'See chart'}];tasks=[{time:'08:00',type:'Medication',clientId:'c1',title:'Morning medications'},{time:'10:00',type:'Vitals',clientId:'c1',title:'Record vitals'},{time:'14:00',type:'Task',clientId:'c1',title:'Community activity'}];render()}async function load(){try{const x=await api('/api/spire/workspace');homes=x.data?.homes||[];clients=x.data?.clients||[];tasks=x.data?.tasks||[];render()}catch(e){demo()}}function render(){fillSelect(homeSelect,homes,'All assigned homes');fillSelect(clientSelect,clients,'Select assigned client');document.getElementById('homes').innerHTML=homes.map(h=>'<div class="patient"><b>'+h.name+'</b><div class="muted">'+clients.filter(c=>c.homeId===h.id).length+' assigned clients</div></div>').join('')||'<div class="muted">No assigned homes.</div>';document.getElementById('clients').innerHTML=clients.map(c=>'<div class="patient" onclick="selectClient(\''+c.id+'\')"><b>'+c.name+'</b><div class="muted">Assigned access</div></div>').join('')||'<div class="muted">No assigned clients.</div>';document.getElementById('tasks').innerHTML=tasks.map(t=>'<div class="task"><b>'+t.time+'</b><div><b>'+t.title+'</b><div class="muted">'+t.type+' · '+(clients.find(c=>c.id===t.clientId)?.name||'Client')+'</div></div><button class="btn secondary">Open</button></div>').join('');brainCount.textContent=tasks.length?'('+tasks.length+')':''}function selectClient(id){clientSelect.value=id;const c=clients.find(x=>x.id===id);summary.innerHTML=c?'<b>'+c.name+'</b><p>DOB: '+(c.dob||'Not listed')+'</p><p>Allergies: '+(c.allergies||'None documented')+'</p>':'Select a client.';show('chart')}function show(id){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button[data-p]').forEach(x=>x.classList.toggle('active',x.dataset.p===id))}document.querySelectorAll('.nav button[data-p]').forEach(b=>b.onclick=()=>show(b.dataset.p));homeSelect.onchange=()=>{const id=homeSelect.value;const filtered=id?clients.filter(c=>c.homeId===id):clients;fillSelect(clientSelect,filtered,'Select assigned client')};clientSelect.onchange=()=>selectClient(clientSelect.value);function saveNote(){if(!clientSelect.value)return alert('Select a client');if(!note.value.trim())return alert('Enter a note');alert('Note signed for selected client. Backend chart endpoint will store the signed note and audit record.');note.value=''}load();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>S.P.I.R.E. Clinical Workspace | Sulandra Health</title>
+  <style>
+    :root{--navy:#082d4d;--blue:#0b6eac;--gold:#e5b94c;--red:#a12828;--green:#23704f;--bg:#edf3f7;--line:#dce5ec;--muted:#667584}
+    *{box-sizing:border-box}body{margin:0;font:14px "Segoe UI",Arial,sans-serif;background:var(--bg);color:#1d2a35}button,input,select,textarea{font:inherit}
+    .top{background:linear-gradient(90deg,#062b49,#0a5f93);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:9}.brand{font-size:20px;font-weight:900}.brand small{display:block;font-size:10px;opacity:.8}.search{flex:1}.search input{width:100%;padding:10px;border:0;border-radius:8px}.user{font-weight:800}
+    .layout{display:grid;grid-template-columns:235px 1fr;min-height:calc(100vh - 58px)}aside{background:#fff;border-right:1px solid var(--line);padding:10px}.nav button{width:100%;text-align:left;border:0;background:transparent;padding:10px;border-radius:8px;font-weight:800;color:#345;cursor:pointer}.nav button.active,.nav button:hover{background:#e8f3f9;color:#075f95}.nav button:disabled{opacity:.45;cursor:not-allowed}
+    main{padding:14px}.bar,.card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 7px 22px #0e314b12}.bar{padding:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.bar select{padding:8px;border:1px solid var(--line);border-radius:8px}.grid{display:grid;gap:12px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{padding:13px}.card h2{font-size:16px;color:#174766;margin:0 0 10px}.muted{color:var(--muted);font-size:12px}.badge{display:inline-block;padding:3px 8px;border-radius:99px;background:#e8f5ed;color:var(--green);font-size:11px;font-weight:850}.danger{background:#fde6e6;color:var(--red)}.notice{background:#fff9e9;border-left:4px solid var(--gold);padding:10px;border-radius:8px;margin-bottom:10px}.notice.error{background:#fff0ef;border-color:var(--red);color:var(--red)}
+    .task{display:grid;grid-template-columns:auto 1fr auto;gap:9px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}.task:last-child{border-bottom:0}.btn{border:0;border-radius:8px;padding:8px 10px;background:var(--blue);color:#fff;font-weight:850;cursor:pointer}.btn.secondary{background:#e8f2f7;color:#174f70}.btn:disabled{opacity:.5;cursor:not-allowed}.panel{display:none}.panel.active{display:block}.patient{padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px}.patient button{border:0;background:transparent;padding:0;text-align:left;cursor:pointer;color:inherit;width:100%}.field{display:grid;gap:5px}.field input,.field textarea,.field select{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px}.field textarea{min-height:150px}.actions{display:flex;gap:8px;margin-top:12px}.record{padding:9px 0;border-bottom:1px solid var(--line)}.record:last-child{border-bottom:0}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}aside{display:none}.g2,.g3{grid-template-columns:1fr}.top{flex-wrap:wrap}.search{order:3;flex-basis:100%}}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">S.P.I.R.E.<small>Clinical workspace</small></div>
+    <div class="search"><input id="workspaceSearch" type="search" placeholder="Filter assigned clients" aria-label="Filter assigned clients"></div>
+    <div class="user" id="user">Verifying session…</div>
+  </header>
+  <div class="layout">
+    <aside>
+      <nav class="nav" aria-label="Clinical workspace">
+        <button class="active" data-panel="home">My Homes</button>
+        <button data-panel="brain">Today <span id="brainCount"></span></button>
+        <button data-panel="chart">Client Chart</button>
+        <button data-panel="mar">MAR</button>
+        <button data-panel="notes">Notes</button>
+        <button data-panel="vitals">Vitals</button>
+        <button data-panel="nursing" id="nursingNav" disabled>Nursing</button>
+        <button id="employeePortal">Employee Portal</button>
+        <button id="adminNav" hidden>S.P.I.R.E. Admin</button>
+      </nav>
+    </aside>
+    <main>
+      <div id="globalStatus" class="notice">Loading assigned clinical records…</div>
+      <section class="bar">
+        <label><strong>Home</strong> <select id="homeSelect"><option value="">All assigned homes</option></select></label>
+        <label><strong>Client</strong> <select id="clientSelect"><option value="">Select assigned client</option></select></label>
+        <span class="badge" id="accessBadge">Verified assigned access</span>
+      </section>
+      <div style="height:12px"></div>
+
+      <section id="home" class="panel active">
+        <div class="grid g2">
+          <div class="card"><h2>My Assigned Homes</h2><div id="homes"></div></div>
+          <div class="card"><h2>My Assigned Clients</h2><div id="clients"></div></div>
+        </div>
+      </section>
+      <section id="brain" class="panel"><div class="card"><h2>Today</h2><div id="tasks"></div></div></section>
+      <section id="chart" class="panel">
+        <div class="grid g2">
+          <div class="card"><h2>Client Summary</h2><div id="summary" class="muted">Select an assigned client.</div></div>
+          <div class="card"><h2>Recent Signed Notes</h2><div id="history" class="muted">Select a client to load the audited chart.</div></div>
+        </div>
+      </section>
+      <section id="mar" class="panel"><div class="card"><h2>Medication Administration Record</h2><div id="marRows" class="muted">Select a client to load the live MAR.</div></div></section>
+      <section id="notes" class="panel">
+        <form class="card" id="noteForm">
+          <h2>Sign Progress / Shift Note</h2>
+          <div class="field"><label for="noteType">Note type</label><select id="noteType"><option value="PROGRESS_NOTE">Progress note</option><option value="SHIFT_NOTE">Shift note</option></select></div>
+          <div class="field"><label for="note">Objective note</label><textarea id="note" maxlength="50000" required></textarea></div>
+          <div class="actions"><button class="btn" type="submit">Sign and save note</button></div>
+          <p id="noteStatus" class="muted" role="status"></p>
+        </form>
+      </section>
+      <section id="vitals" class="panel">
+        <form class="card" id="vitalsForm">
+          <h2>Record Basic Vitals</h2>
+          <div class="grid g3">
+            <div class="field"><label for="temperature">Temperature °F</label><input id="temperature" type="number" min="80" max="115" step="0.1"></div>
+            <div class="field"><label for="pulse">Pulse</label><input id="pulse" type="number" min="0" max="300"></div>
+            <div class="field"><label for="respirations">Respirations</label><input id="respirations" type="number" min="0" max="100"></div>
+            <div class="field"><label for="systolic">Systolic</label><input id="systolic" type="number" min="0" max="350"></div>
+            <div class="field"><label for="diastolic">Diastolic</label><input id="diastolic" type="number" min="0" max="250"></div>
+            <div class="field"><label for="spo2">SpO₂ %</label><input id="spo2" type="number" min="0" max="100"></div>
+            <div class="field"><label for="weight">Weight</label><input id="weight" type="number" min="0" max="2000" step="0.1"></div>
+            <div class="field"><label for="oxygen">Oxygen</label><input id="oxygen" maxlength="120"></div>
+          </div>
+          <div class="actions"><button class="btn" type="submit">Save vitals</button></div>
+          <p id="vitalsStatus" class="muted" role="status"></p>
+        </form>
+      </section>
+      <section id="nursing" class="panel"><div class="card"><h2>Nursing Workspace</h2><p>Nursing-specific assessments are not enabled in this release. Use the verified chart, MAR, notes, and vitals tools above.</p></div></section>
+    </main>
+  </div>
+  <script>
+    const API='';
+    const tokenKey='sulandra:employee:access-token';
+    const contextKey='sulandra:spire:context';
+    const token=sessionStorage.getItem(tokenKey)||'';
+    let context=null;
+    let homes=[];
+    let clients=[];
+    let tasks=[];
+    let permissions={};
+
+    try{context=JSON.parse(sessionStorage.getItem(contextKey)||'null')}catch{context=null}
+    if(!token||!context)location.replace('employee-login.html');
+
+    const byId=id=>document.getElementById(id);
+    const text=(tag,value,className='')=>{const element=document.createElement(tag);element.textContent=String(value??'');if(className)element.className=className;return element};
+    const clear=element=>element.replaceChildren();
+    const displayDate=value=>{const date=new Date(value);return Number.isNaN(date.valueOf())?'Not recorded':date.toLocaleString()};
+
+    async function api(path,options={}){
+      const response=await fetch(API+path,{...options,cache:'no-store',headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${token}`,...(options.headers||{})}});
+      const body=await response.json().catch(()=>({}));
+      if(!response.ok){const error=new Error(body.error||'The production service did not complete this request.');error.status=response.status;throw error}
+      return body.data;
+    }
+
+    function failClosed(error){
+      const message=error?.message||'The clinical workspace is unavailable.';
+      byId('globalStatus').className='notice error';
+      byId('globalStatus').textContent=`Clinical data was not loaded: ${message}`;
+      document.querySelectorAll('form button').forEach(button=>button.disabled=true);
+      clear(byId('homes'));byId('homes').append(text('p','No clinical data is displayed while the production service is unavailable.','muted'));
+      clear(byId('clients'));byId('clients').append(text('p','Sign in again or contact an administrator.','muted'));
+      if(error?.status===401){sessionStorage.removeItem(tokenKey);sessionStorage.removeItem(contextKey);setTimeout(()=>location.replace('employee-login.html'),1200)}
+    }
+
+    function fillSelect(element,rows,label){
+      clear(element);const first=document.createElement('option');first.value='';first.textContent=label;element.append(first);
+      rows.forEach(row=>{const option=document.createElement('option');option.value=String(row.id);option.textContent=String(row.name||row.displayName||row.id);element.append(option)});
+    }
+
+    function show(panelId){
+      document.querySelectorAll('.panel').forEach(panel=>panel.classList.toggle('active',panel.id===panelId));
+      document.querySelectorAll('.nav button[data-panel]').forEach(button=>button.classList.toggle('active',button.dataset.panel===panelId));
+    }
+
+    function renderHomes(){
+      const container=byId('homes');clear(container);
+      if(!homes.length){container.append(text('p','No homes are assigned.','muted'));return}
+      homes.forEach(home=>{const card=document.createElement('div');card.className='patient';card.append(text('strong',home.name));card.append(text('div',`${clients.filter(client=>String(client.homeId)===String(home.id)).length} assigned clients`,'muted'));container.append(card)});
+    }
+
+    function renderClients(rows=clients){
+      const container=byId('clients');clear(container);
+      if(!rows.length){container.append(text('p','No clients are assigned.','muted'));return}
+      rows.forEach(client=>{const card=document.createElement('div');card.className='patient';const button=document.createElement('button');button.type='button';button.append(text('strong',client.name));button.append(text('div','Assigned access','muted'));button.addEventListener('click',()=>selectClient(client.id));card.append(button);container.append(card)});
+    }
+
+    function renderTasks(){
+      const container=byId('tasks');clear(container);
+      if(!tasks.length){container.append(text('p','No open tasks are assigned for today.','muted'));return}
+      tasks.forEach(task=>{const row=document.createElement('div');row.className='task';row.append(text('strong',task.time||'—'));const details=document.createElement('div');details.append(text('strong',task.title||'Assigned task'));const client=clients.find(item=>String(item.id)===String(task.clientId));details.append(text('div',`${task.type||'Task'} · ${client?.name||'Assigned client'}`,'muted'));row.append(details);const open=document.createElement('button');open.type='button';open.className='btn secondary';open.textContent='Open client';open.addEventListener('click',()=>task.clientId?selectClient(task.clientId):show('brain'));row.append(open);container.append(row)});
+      byId('brainCount').textContent=`(${tasks.length})`;
+    }
+
+    async function selectClient(clientId){
+      if(!clientId)return;
+      byId('clientSelect').value=String(clientId);
+      const client=clients.find(item=>String(item.id)===String(clientId));
+      const summary=byId('summary');clear(summary);
+      if(client){summary.append(text('strong',client.name));summary.append(text('p',`DOB: ${client.dob?displayDate(client.dob).split(',')[0]:'Not listed'}`));summary.append(text('p',`Allergies: ${client.allergies||'None documented'}`))}
+      show('chart');
+      try{
+        const [chart,mar]=await Promise.all([api(`/api/spire/clients/${encodeURIComponent(clientId)}/chart`),api(`/api/spire/clients/${encodeURIComponent(clientId)}/mar`)]);
+        renderChart(chart);renderMar(mar);
+      }catch(error){byId('history').textContent=error.message;byId('marRows').textContent=error.message}
+    }
+
+    function renderChart(chart){
+      const history=byId('history');clear(history);
+      const notes=Array.isArray(chart?.notes)?chart.notes:[];
+      if(!notes.length){history.append(text('p','No signed notes were returned.','muted'));return}
+      notes.forEach(note=>{const row=document.createElement('div');row.className='record';row.append(text('strong',String(note.noteType||'Note').replaceAll('_',' ')));row.append(text('p',note.body||''));row.append(text('small',displayDate(note.signedAt),'muted'));history.append(row)});
+    }
+
+    function renderMar(rows){
+      const container=byId('marRows');clear(container);const entries=Array.isArray(rows)?rows:[];
+      if(!entries.length){container.append(text('p','No scheduled medications were returned.','muted'));return}
+      entries.forEach(entry=>{const row=document.createElement('div');row.className='record';row.append(text('strong',`${entry.name||'Medication'} ${entry.dose||''}`.trim()));row.append(text('div',`${entry.route||'Route not listed'} · ${displayDate(entry.scheduledFor)} · ${entry.status||'SCHEDULED'}`,'muted'));if(entry.instructions)row.append(text('p',entry.instructions));container.append(row)});
+    }
+
+    byId('noteForm').addEventListener('submit',async event=>{
+      event.preventDefault();const clientId=byId('clientSelect').value;const body=byId('note').value.trim();
+      if(!clientId){byId('noteStatus').textContent='Select an assigned client first.';return}
+      if(!body){byId('noteStatus').textContent='Enter an objective note.';return}
+      try{await api('/api/spire/notes',{method:'POST',body:JSON.stringify({clientId,noteType:byId('noteType').value,body})});byId('note').value='';byId('noteStatus').textContent='The signed note was stored and audited.';await selectClient(clientId)}catch(error){byId('noteStatus').textContent=`Note not saved: ${error.message}`}
+    });
+
+    byId('vitalsForm').addEventListener('submit',async event=>{
+      event.preventDefault();const clientId=byId('clientSelect').value;if(!clientId){byId('vitalsStatus').textContent='Select an assigned client first.';return}
+      const payload={clientId};['temperature','pulse','respirations','systolic','diastolic','spo2','weight'].forEach(id=>{if(byId(id).value!=='')payload[id]=Number(byId(id).value)});if(byId('oxygen').value.trim())payload.oxygen=byId('oxygen').value.trim();
+      if(Object.keys(payload).length===1){byId('vitalsStatus').textContent='Enter at least one vital sign.';return}
+      try{await api('/api/spire/vitals',{method:'POST',body:JSON.stringify(payload)});event.target.reset();byId('vitalsStatus').textContent='Vitals were stored and audited.';await selectClient(clientId)}catch(error){byId('vitalsStatus').textContent=`Vitals not saved: ${error.message}`}
+    });
+
+    document.querySelectorAll('.nav button[data-panel]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.panel)));
+    byId('employeePortal').addEventListener('click',()=>location.href='employee-portal.html?stay=1');
+    byId('adminNav').addEventListener('click',()=>location.href='spire-admin.html');
+    byId('homeSelect').addEventListener('change',()=>{const id=byId('homeSelect').value;const filtered=id?clients.filter(client=>String(client.homeId)===id):clients;fillSelect(byId('clientSelect'),filtered,'Select assigned client');renderClients(filtered)});
+    byId('clientSelect').addEventListener('change',()=>selectClient(byId('clientSelect').value));
+    byId('workspaceSearch').addEventListener('input',()=>{const term=byId('workspaceSearch').value.trim().toLowerCase();renderClients(term?clients.filter(client=>String(client.name||'').toLowerCase().includes(term)):clients)});
+
+    async function load(){
+      try{
+        const [session,workspace]=await Promise.all([api('/api/session'),api('/api/spire/workspace')]);
+        context={...context,...session};homes=Array.isArray(workspace?.homes)?workspace.homes:[];clients=Array.isArray(workspace?.clients)?workspace.clients:[];tasks=Array.isArray(workspace?.tasks)?workspace.tasks:[];permissions=workspace?.permissions||{};
+        byId('user').textContent=`${context.displayName||context.email||'Verified employee'} · ${context.role||''}`;
+        byId('adminNav').hidden=!permissions.isAdmin;byId('nursingNav').disabled=!permissions.isNurse;
+        fillSelect(byId('homeSelect'),homes,'All assigned homes');fillSelect(byId('clientSelect'),clients,'Select assigned client');renderHomes();renderClients();renderTasks();
+        byId('globalStatus').textContent='Live assigned records loaded. All chart access and writes are audited.';
+      }catch(error){failClosed(error)}
+    }
+    load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate API and website
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://user:password@127.0.0.1:5432/spire
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Detect committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Validate Prisma and API
+        run: npm run check
+
+      - name: Validate browser workflow modules
+        run: |
+          node --check careers-admin-workflow.js
+          node --check admin-railway.js
+          node --check employee-login-railway.js
+          node --check employee-portal-railway.js
+
+      - name: Build static website
+        run: npm run build:web
+
+      - name: Verify public output
+        run: |
+          test -f dist-web/index.html
+          test -f dist-web/services/community-living/index.html
+          test -f dist-web/careers.html
+          test -f dist-web/applydsp.html
+          test -f dist-web/applydriver.html
+          test -f dist-web/applylpn.html
+          test -f dist-web/applygeneral.html
+          test -f dist-web/applicant-portal.html
+          test -f dist-web/careers-admin-workflow.js
+          test -f dist-web/admin-railway.js
+          test -f dist-web/employee-login-railway.js
+          test -f dist-web/employee-portal-railway.js
+          test -f dist-web/apple-touch-icon.png
+          test -f dist-web/courses/sh-cap-101.html
+          test -f dist-web/education/index.html
+          test ! -e dist-web/package.json
+          test ! -e dist-web/api
+          test ! -e dist-web/prisma
+          test ! -e dist-web/spire-demo.html
+          test ! -e dist-web/Admin.html-Backup
+          test ! -e dist-web/admin-setup.html
+          test ! -e dist-web/admin-users.html
+          test ! -e dist-web/admin-profile.html
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

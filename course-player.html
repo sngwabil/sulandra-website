@@ -14,7 +14,7 @@
 <main class="page"><section class="card"><div class="tabs"><button class="active">Learning Activities</button><button id="overviewTab">Overview</button></div><div class="body"><h2>Learning Activities <em style="font-size:16px">in this Course</em></h2><div id="activityList"></div><section id="overview" hidden><h2>Description</h2><p id="courseDescription"></p></section></div></section><aside><div class="side"><h3>Options</h3><a href="/education-portal.html?tab=learning&refresh=1">Return to To Do</a></div><div class="side"><h3>Support</h3><p>Progress is saved securely to the employee record and can be resumed on another device.</p></div></aside></main>
 <div class="module" id="moduleView"><div class="modulehead"><strong id="moduleHeading">Course activity</strong><button id="closeModule">Return to Course Details</button></div><iframe id="moduleFrame" title="Course activity"></iframe></div>
 <script>
-const API='https://sulandra-website-production.up.railway.app',TK='sulandra:employee:access-token',SK='sulandra:employee:session';
+const API='',TK='sulandra:employee:access-token',SK='sulandra:employee:session';
 const courseMap={'SH-PC-101':'/module-1-person-centered-care.html','SH-CAP-101':'/sh-cap-101-client-rights-advocacy.html','SH-CAP-102':'/sh-cap-102-person-centered-support.html','SH-MED-201':'/sh-med-201-safe-medication-administration.html','SH-SAF-301':'/sh-saf-301-workplace-safety-preparedness.html'};
 const params=new URLSearchParams(location.search),code=params.get('code');let course={},assignment=null,syncTimer=null,lastSent=-1;
 const $=id=>document.getElementById(id),token=()=>sessionStorage.getItem(TK)||'';
