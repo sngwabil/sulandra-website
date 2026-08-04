@@ -66,9 +66,7 @@ adminPortal = adminPortal.replace(
   `admin-railway.js?v=${deploymentVersion}`,
 );
 
-const runtimeScript = `  <script src="offer-only-runtime.js?v=${deploymentVersion}"></script>\n`;
 adminPortal = adminPortal.replace(/\s*<script src="offer-only-runtime\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
-adminPortal = adminPortal.replace('</body>', `${runtimeScript}</body>`);
 
 await writeFile(adminPortalPath, adminPortal, 'utf8');
 
