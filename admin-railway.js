@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const CORE_SCRIPT = "https://cdn.jsdelivr.net/gh/sngwabil/sulandra-website@e198497d5e40d45bca529059560ee3aa71b59a40/admin-railway.js";
+  const CORE_SCRIPT = "https://cdn.jsdelivr.net/gh/sngwabil/sulandra-website@27e9241555ed630bf95c892141d5cce50b975755/admin-railway.js";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
