@@ -1,5367 +1,1145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sulandra Admin | Operations & Onboarding Portal</title>
+  <meta name="description" content="Admin portal to manage applicants, onboarding, job listings, employees, scheduling, time tracking, documents, and operations." />
 
-  <title>Sulandra Health Admin Console</title>
-
-  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="shortcut icon" href="/favicon.ico">
 
   <style>
     :root {
-      --navy: #082f57;
-      --navy-light: #123f6a;
-      --blue: #075fa8;
-      --sky: #0b85ca;
-      --red: #ed2808;
-      --danger: #b42318;
-      --green: #16734a;
-      --amber: #a16207;
-      --purple: #5145cd;
-      --ink: #10233d;
-      --muted: #64748b;
-      --line: #d8e4ef;
-      --soft: #f4f8fc;
+      --primary: #004b8d;
+      --secondary: #0077c8;
+      --accent: #d14124;
+      --sky-blue: #00bfff;
+      --text: #333333;
+      --bg-light: #f7f9fc;
       --white: #ffffff;
-      --shadow: 0 12px 32px rgba(8, 47, 87, 0.12);
+      --border: #e6e6e6;
+      --muted: #666;
+      --shadow: 0 6px 20px rgba(0,0,0,0.08);
+      --radius: 12px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
-      min-height: 100%;
-      background: var(--soft);
-      color: var(--ink);
-      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg-light);
+      line-height: 1.6;
     }
+    a { color: inherit; }
 
-    body.modal-open {
-      overflow: hidden;
-    }
-
-    button,
-    input,
-    select,
-    textarea {
-      font: inherit;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    a {
-      color: inherit;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .confidential {
-      position: relative;
-      z-index: 120;
-      padding: 12px 18px;
-      color: white;
-      background: var(--red);
+    /* --- ALERT BAR --- */
+    .alert-bar {
+      background: var(--accent);
+      color: #fff;
       text-align: center;
-      font-weight: 900;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 800;
     }
 
-    .header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.98);
-      backdrop-filter: blur(16px);
+    /* --- HEADER --- */
+    header { border-bottom: 1px solid #ddd; position: sticky; top: 0; background: white; z-index: 1000; }
+    .top-nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      height: 80px;
+      gap: 14px;
     }
-
-    .header-top {
-      max-width: 1540px;
-      margin: auto;
+    .logo {
+      text-decoration: none;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 14px 22px 10px;
+      gap: 10px;
+      color: var(--primary);
+      font-weight: 800;
+      min-width: 0;
     }
-
-    .logo {
-      width: 230px;
-      max-width: 34vw;
+    .logo img {
+      width: 240px;
+      height: auto;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
     }
 
     .header-tools {
       display: flex;
+      gap: 12px;
       align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
+      font-size: 14px;
+      font-weight: 600;
       flex-wrap: wrap;
+      justify-content: flex-end;
     }
-
     .pill {
-      min-height: 40px;
-      display: inline-flex;
-      align-items: center;
-      padding: 8px 12px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--border);
+      background: #fff;
       border-radius: 999px;
-      background: white;
+      padding: 8px 10px;
       font-size: 12px;
-      font-weight: 900;
+      font-weight: 800;
+      color: #444;
       white-space: nowrap;
     }
-
-    .connection-dot {
-      width: 9px;
-      height: 9px;
-      margin-right: 8px;
-      border-radius: 50%;
-      background: var(--amber);
-    }
-
-    .connection-dot.connected {
-      background: var(--green);
-    }
-
-    .connection-dot.error {
-      background: var(--danger);
-    }
-
-    .button {
-      min-height: 40px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      border: 1px solid #bfd0e0;
-      border-radius: 10px;
-      padding: 9px 14px;
-      color: #17466d;
-      background: white;
-      font-weight: 900;
+    .btn-cta {
+      background: var(--primary);
+      color: white !important;
+      padding: 10px 16px;
+      border-radius: 4px;
       text-decoration: none;
-    }
-
-    .button:hover {
-      filter: brightness(0.98);
-    }
-
-    .button-primary {
-      border-color: var(--blue);
-      color: white;
-      background: var(--blue);
-    }
-
-    .button-success {
-      border-color: var(--green);
-      color: white;
-      background: var(--green);
-    }
-
-    .button-warning {
-      border-color: var(--amber);
-      color: white;
-      background: var(--amber);
-    }
-
-    .button-danger {
-      border-color: var(--danger);
-      color: white;
-      background: var(--danger);
-    }
-
-    .button-purple {
-      border-color: var(--purple);
-      color: white;
-      background: var(--purple);
-    }
-
-    .button-small {
-      min-height: 34px;
-      padding: 7px 10px;
-      font-size: 12px;
-    }
-
-    .top-navigation {
-      max-width: 1540px;
-      margin: auto;
-      display: flex;
-      gap: 5px;
-      overflow-x: auto;
-      padding: 0 22px 12px;
-    }
-
-    .top-navigation button,
-    .top-navigation a {
-      min-height: 44px;
-      flex: 0 0 auto;
       border: 0;
-      border-radius: 12px;
-      padding: 10px 15px;
-      color: var(--ink);
-      background: transparent;
-      text-decoration: none;
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-    .top-navigation button:hover,
-    .top-navigation a:hover {
-      color: var(--blue);
-      background: #f3faff;
-    }
-
-    .top-navigation .active {
-      color: var(--blue);
-      background: white;
-      box-shadow: inset 0 0 0 2px var(--blue);
-    }
-
-    .layout {
-      max-width: 1540px;
-      margin: auto;
-      display: grid;
-      grid-template-columns: 300px minmax(0, 1fr) 300px;
-      gap: 18px;
-      padding: 18px 22px 70px;
-    }
-
-    .sidebar,
-    .right-sidebar {
-      position: sticky;
-      top: 166px;
-      align-self: start;
-      max-height: calc(100vh - 184px);
-      overflow-y: auto;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: white;
-      box-shadow: 0 4px 14px rgba(8, 47, 87, 0.08);
-    }
-
-    .sidebar-heading {
-      padding: 18px;
-      color: white;
-      background: var(--navy);
-    }
-
-    .sidebar-heading h2 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .sidebar-heading p {
-      margin: 4px 0 0;
-      color: #dceeff;
-      font-size: 13px;
-    }
-
-    .sidebar-content {
-      padding: 14px;
-    }
-
-    .sidebar-label {
-      margin: 4px 0 8px;
-      color: var(--blue);
-      font-size: 12px;
-      font-weight: 1000;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .sidebar-navigation {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 18px;
-    }
-
-    .sidebar-navigation button,
-    .sidebar-navigation a {
-      width: 100%;
-      min-height: 58px;
-      display: grid;
-      grid-template-columns: 38px minmax(0, 1fr);
-      align-items: center;
-      gap: 10px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 10px 12px;
-      color: var(--ink);
-      background: white;
-      text-align: left;
-      text-decoration: none;
-    }
-
-    .sidebar-navigation button:hover,
-    .sidebar-navigation a:hover {
-      border-color: var(--sky);
-      background: #f8fcff;
-    }
-
-    .sidebar-navigation .active {
-      border-color: var(--purple);
-      outline: 3px solid rgba(81, 69, 205, 0.18);
-    }
-
-    .navigation-icon {
-      width: 38px;
-      height: 38px;
-      display: grid;
-      place-items: center;
-      border-radius: 11px;
-      background: #eef5fb;
-      font-weight: 1000;
-    }
-
-    .navigation-copy strong {
-      display: block;
+      cursor: pointer;
+      font-weight: 800;
       font-size: 14px;
     }
+    .btn-cta.secondary { background: var(--secondary); }
+    .btn-cta.danger { background: var(--accent); }
 
-    .navigation-copy small {
+    .main-nav { background: #fff; border-top: 1px solid #eee; }
+    .nav-links {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      list-style: none;
+      padding: 0 20px;
+      gap: 2px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .nav-links::-webkit-scrollbar { display: none; }
+    .nav-links a {
       display: block;
-      margin-top: 2px;
-      color: var(--muted);
-    }
-
-    .main-content {
-      min-width: 0;
-    }
-
-    .module {
-      display: none;
-    }
-
-    .module.active {
-      display: block;
-    }
-
-    .hero {
-      overflow: hidden;
-      margin-bottom: 18px;
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: white;
-      box-shadow: var(--shadow);
-    }
-
-    .hero-bar {
-      padding: 13px 20px;
-      color: white;
-      background: var(--navy);
-      font-size: 13px;
-      font-weight: 900;
-    }
-
-    .hero-body {
-      padding: 28px;
-      background:
-        radial-gradient(
-          circle at top right,
-          rgba(11, 133, 202, 0.14),
-          transparent 35%
-        ),
-        linear-gradient(135deg, white, #f7fbff);
-    }
-
-    .eyebrow {
-      margin: 0 0 10px;
-      color: var(--blue);
-      font-size: 12px;
-      font-weight: 1000;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .hero h1 {
-      margin: 0;
-      font-size: clamp(36px, 5vw, 58px);
-      line-height: 1.08;
-      letter-spacing: -0.04em;
-    }
-
-    .hero p {
-      max-width: 900px;
-      margin: 16px 0 0;
-      color: #52657d;
-      font-size: 16px;
-      line-height: 1.65;
-    }
-
-    .quick-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 24px;
-    }
-
-    .quick-card {
-      min-height: 112px;
-      display: grid;
-      grid-template-columns: 48px minmax(0, 1fr);
-      gap: 14px;
-      align-items: start;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      color: inherit;
-      background: rgba(255, 255, 255, 0.92);
-      text-align: left;
+      padding: 15px 18px;
       text-decoration: none;
-    }
-
-    .quick-card:hover {
-      border-color: var(--sky);
-      box-shadow: 0 4px 14px rgba(8, 47, 87, 0.08);
-    }
-
-    .quick-icon {
-      width: 48px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      border-radius: 14px;
-      background: #eef5fb;
-      font-size: 22px;
-    }
-
-    .quick-card h3 {
-      margin: 2px 0 4px;
+      color: var(--text);
+      font-weight: 700;
       font-size: 15px;
+      white-space: nowrap;
+      border-radius: 6px;
+      margin: 6px 0;
+      cursor: pointer;
+    }
+    .nav-links a:hover { color: var(--primary); background: #f0f4f8; }
+    .nav-links a.active { color: var(--primary); background: #eef6ff; border: 1px solid #cfe4fb; }
+
+    /* --- LAYOUT --- */
+    .container {
+      max-width: 1200px;
+      margin: 22px auto 70px;
+      padding: 0 20px;
     }
 
-    .quick-card p {
-      margin: 0;
-      font-size: 13px;
-      line-height: 1.45;
+    .grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 16px;
+      align-items: start;
+      margin-top: 16px;
+    }
+    @media (max-width: 980px){
+      .grid { grid-template-columns: 1fr; }
+      .opening-grid { grid-template-columns: 1fr; }
     }
 
     .card {
-      margin-bottom: 18px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 20px;
-      background: white;
-      box-shadow: 0 4px 14px rgba(8, 47, 87, 0.08);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 18px;
     }
 
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-      margin-bottom: 16px;
-    }
-
-    .card-header h2 {
-      margin: 0;
-      color: var(--navy);
-    }
-
-    .card-header p {
-      margin: 4px 0 0;
+    .sidebar .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
       color: var(--muted);
-      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 10px;
     }
 
-    .toolbar {
+    .side-btns {
       display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin: 14px 0;
+      flex-direction: column;
+      gap: 8px;
     }
-
-    .toolbar-group {
-      display: flex;
-      gap: 9px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .search-input {
-      min-width: 280px;
-      min-height: 44px;
-      border: 1px solid #bfd0e0;
-      border-radius: 11px;
-      padding: 10px 13px;
-      outline: none;
-    }
-
-    .search-input:focus,
-    .field input:focus,
-    .field select:focus,
-    .field textarea:focus {
-      border-color: var(--sky);
-      box-shadow: 0 0 0 4px rgba(11, 133, 202, 0.12);
-    }
-
-    .table-wrapper {
-      overflow-x: auto;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-    }
-
-    th,
-    td {
-      padding: 12px 13px;
-      border-bottom: 1px solid #e7eef5;
+    .side-btn {
       text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      color: #52657d;
-      background: #eef4f9;
-      font-size: 12px;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    tbody tr:last-child td {
-      border-bottom: 0;
-    }
-
-    tbody tr:hover td {
-      background: #fbfdff;
-    }
-
-    .status {
-      min-height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 5px 9px;
-      border-radius: 999px;
-      background: #eef4fa;
-      font-size: 11px;
-      font-weight: 1000;
-      white-space: nowrap;
-    }
-
-    .status-blue {
-      color: var(--blue);
-      background: #dff2ff;
-    }
-
-    .status-green {
-      color: #146c43;
-      background: #d9f3e5;
-    }
-
-    .status-amber {
-      color: #8a5606;
-      background: #fff0c2;
-    }
-
-    .status-red {
-      color: var(--danger);
-      background: #fee4e2;
-    }
-
-    .status-purple {
-      color: var(--purple);
-      background: #e9e7ff;
-    }
-
-    .empty-state {
-      min-height: 140px;
-      display: grid;
-      place-items: center;
-      padding: 28px;
-      border: 2px dashed #c9d9e6;
-      border-radius: 16px;
-      color: var(--muted);
-      background: #fbfdff;
-      text-align: center;
-    }
-
-    .two-column {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 18px;
-    }
-
-    .field {
-      display: grid;
-      gap: 6px;
-      margin-bottom: 13px;
-    }
-
-    .field label {
-      color: #52657d;
-      font-size: 12px;
-      font-weight: 1000;
-      text-transform: uppercase;
-    }
-
-    .field input,
-    .field select,
-    .field textarea {
       width: 100%;
-      min-height: 44px;
-      border: 1px solid #bfd0e0;
+      background: #fff;
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 10px 12px;
-      background: white;
-      outline: none;
-    }
-
-    .field textarea {
-      min-height: 112px;
-      resize: vertical;
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .actions-end {
-      justify-content: flex-end;
-    }
-
-    .job-card,
-    .archive-card,
-    .document-card,
-    .history-card,
-    .activity-card {
-      margin: 10px 0;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px;
-      background: #fbfdff;
-    }
-
-    .job-heading,
-    .archive-heading,
-    .document-heading {
+      cursor: pointer;
+      font-weight: 900;
+      color: #333;
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
+      align-items: center;
+      gap: 10px;
+    }
+    .side-btn:hover { background: #f7fbff; border-color: #cfe4fb; color: var(--primary); }
+    .side-btn.active { background: #eef6ff; border-color: #cfe4fb; color: var(--primary); }
+    .side-btn small { color: var(--muted); font-weight: 800; }
+
+    /* --- ONBOARDING STYLES --- */
+    .onboarding-hero { 
+      background: linear-gradient(135deg,#063f72 0%,#087fbd 68%,#15a6bd 100%); 
+      color:#fff; 
+      border-radius:18px; 
+      padding:24px; 
+      box-shadow:0 14px 34px rgba(0,75,141,.2); 
+      position:relative; 
+      overflow:hidden; 
+    }
+    .onboarding-hero::after { 
+      content:""; position:absolute; width:180px; height:180px; right:-45px; top:-70px; 
+      border:24px solid rgba(255,255,255,.11); border-radius:50%; 
+    }
+    .onboarding-hero h1 { color:#fff; font-size:29px; }
+    .onboarding-hero p { color:#dff4ff; max-width:720px; }
+
+    .onboarding-tabs { display:flex; flex-wrap:wrap; gap:9px; margin:16px 0; }
+    .onboarding-tab { 
+      border:1px solid #c8dced; background:#fff; color:#17466d; 
+      border-radius:999px; padding:10px 15px; font-weight:900; cursor:pointer; 
+    }
+    .onboarding-tab.active { background:#e9b94f; border-color:#e9b94f; color:#12345a; }
+
+    .archive-subtabs { display:flex; gap:10px; margin-bottom:16px; border-bottom:1px solid #e0e0e0; padding-bottom:8px; }
+    .archive-subtab { background:none; border:none; padding:8px 14px; font-weight:800; cursor:pointer; color:#666; border-radius:6px; }
+    .archive-subtab.active { background:#eef6ff; color:var(--primary); font-weight:900; }
+
+    .onboarding-panel { display:none; }
+    .onboarding-panel.active { display:block; }
+    .opening-grid { display:grid; grid-template-columns:minmax(280px,.9fr) minmax(420px,1.1fr); gap:16px; }
+    .opening-form { display:grid; gap:11px; }
+    .opening-form label { color:#49627b; font-size:12px; font-weight:900; text-transform:uppercase; }
+    .opening-form input, .opening-form select, .opening-form textarea { 
+      width:100%; min-width:0; border:1px solid #ccdae7; border-radius:10px; padding:10px 11px; font:inherit; background:#fff; 
+    }
+    .opening-form textarea { min-height:85px; resize:vertical; }
+    .opening-cards { display:grid; gap:11px; }
+    .opening-card { border:1px solid #d8e4ee; border-radius:14px; padding:14px; background:#fbfdff; }
+    .opening-card-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .opening-card h3 { color:#12345a; margin:0; }
+    .opening-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+
+    .future-card { text-align:center; padding:46px 25px; border:2px dashed #bfd5e6; border-radius:18px; background:linear-gradient(145deg,#f7fbff,#eef8f6); }
+    .future-icon { width:58px; height:58px; display:grid; place-items:center; margin:0 auto 14px; border-radius:18px; background:#0b78bb; color:#fff; font-size:27px; }
+
+    h1 { color: var(--primary); font-size: 22px; margin-bottom: 6px; }
+    .sub { color: var(--muted); font-size: 13px; }
+
+    /* --- TABLES / FIELDS --- */
+    .toolbar{
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .filters{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .field{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      background:#fff;
+    }
+    .field label{
+      font-size:12px;
+      font-weight:900;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    input[type="search"], input[type="text"], select{
+      border:0;
+      outline:none;
+      background:transparent;
+      font-size:13px;
+      min-width: 180px;
+    }
+    select{ min-width: 150px; }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top: 14px;
+      background:#fff;
+      border:1px solid rgba(230,230,230,.9);
+      border-radius: 10px;
+      overflow:hidden;
+    }
+    thead th{
+      text-align:left;
+      padding:12px;
+      background:#edf2f7;
+      color:#4a5568;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    tbody td{
+      padding:12px;
+      border-bottom:1px solid #edf2f7;
+      font-size:13px;
+      vertical-align:top;
+    }
+    tbody tr:hover{ background:#fbfdff; }
+    .muted { color: var(--muted); }
+
+    .btn {
+      border: 0;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight: 900;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: var(--secondary); color: #fff; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: #333; }
+    .btn-danger { background: #fee2e2; color:#7f1d1d; border:1px solid #fecaca; }
+
+    .status-pill{
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      display:inline-block;
+      border:1px solid rgba(230,230,230,.9);
+    }
+    .Pending { background:#fef3c7; color:#92400e; border-color:#f59e0b33; }
+    .Reviewed { background:#e0f2fe; color:#075985; border-color:#0284c733; }
+    .Hired { background:#dcfce7; color:#166534; border-color:#22c55e33; }
+    .Rejected { background:#fee2e2; color:#7f1d1d; border-color:#ef444433; }
+
+    .score{
+      font-weight:900;
+      padding:4px 8px;
+      border-radius:10px;
+      border:1px solid rgba(230,230,230,.9);
+      display:inline-block;
+      min-width: 62px;
+      text-align:center;
+      background:#fff;
     }
 
-    .job-heading h3,
-    .archive-heading h3,
-    .document-heading h3 {
-      margin: 0;
+    /* --- MODULE SWITCHING --- */
+    .module { display: none; }
+    .module.active { display: block; }
+
+    /* --- MODALS --- */
+    #detailsModal, .modal-overlay {
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:2000;
+      padding:16px;
+    }
+    .modal {
+      background:#fff;
+      max-width: 920px;
+      margin: 24px auto;
+      border-radius: 16px;
+      border:1px solid rgba(230,230,230,.9);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      max-height: calc(100vh - 48px);
+      display:flex;
+      flex-direction:column;
+    }
+    .modal-head {
+      padding:14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border-bottom:1px solid rgba(230,230,230,.9);
+      background:#fcfcfd;
+    }
+    .modal-title { font-weight:950; font-size:14px; color:#111; display:flex; align-items:center; gap:10px; }
+    .modal-body { padding:16px; overflow:auto; }
+    .close-x { font-size:22px; cursor:pointer; padding:4px 10px; border-radius:8px; border:1px solid var(--border); background:#fff; }
+
+    /* --- HR SIGNATURE DISPLAY PREVIEW --- */
+    .hr-tag-preview {
+      color: var(--sky-blue);
+      font-weight: bold;
+      font-style: italic;
       font-size: 15px;
     }
 
-    .job-card p {
-      color: #52657d;
-      font-size: 13px;
-    }
-
-    .sub {
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    .stat-card {
-      min-height: 96px;
-      padding: 14px;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: #f6faff;
-    }
-
-    .stat-card strong {
-      display: block;
-      color: var(--navy);
-      font-size: 24px;
-    }
-
-    .stat-card span {
-      display: block;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .right-section {
-      margin-top: 18px;
-    }
-
-    .right-section:first-child {
-      margin-top: 0;
-    }
-
-    .right-title {
-      margin: 0 0 9px;
-      color: var(--blue);
-      font-size: 12px;
-      text-transform: uppercase;
-    }
-
-    .connection-card {
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px;
-      background: linear-gradient(135deg, #eef9f3, #fffbea);
-    }
-
-    .connection-card p {
-      margin: 6px 0 0;
-      color: #52657d;
-      font-size: 12px;
-    }
-
-    .message {
-      margin: 12px 0;
-      padding: 12px 14px;
-      border-radius: 11px;
-      font-size: 13px;
-    }
-
-    .message-success {
-      border: 1px solid #b9e4cb;
-      color: #146c43;
-      background: #f0fbf5;
-    }
-
-    .message-error {
-      border: 1px solid #ffcaca;
-      color: var(--danger);
-      background: #fff5f4;
-    }
-
-    .message-warning {
-      border: 1px solid #f2d17f;
-      color: #8a5606;
-      background: #fff9e8;
-    }
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 1000;
-      overflow-y: auto;
-      padding: 4vh 18px;
-      background: rgba(5, 25, 46, 0.72);
-      backdrop-filter: blur(5px);
-    }
-
-    .modal {
-      width: min(1120px, 100%);
-      margin: auto;
-      overflow: hidden;
-      border-radius: 20px;
-      background: white;
-      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
-    }
-
-    .modal-small {
-      width: min(720px, 100%);
-    }
-
-    .modal-header {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 14px;
-      padding: 17px 20px;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.98);
-    }
-
-    .modal-header h2 {
-      margin: 0;
-      color: var(--navy);
-    }
-
-    .modal-body {
-      padding: 20px;
-    }
-
-    .modal-footer {
-      position: sticky;
-      bottom: 0;
-      z-index: 2;
-      display: flex;
-      justify-content: flex-end;
-      gap: 9px;
-      padding: 14px 20px;
-      border-top: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.98);
-    }
-
-    .folder-header {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: flex-start;
-      flex-wrap: wrap;
-    }
-
-    .folder-header h2 {
-      margin: 0;
-    }
-
-    .folder-header p {
-      margin: 5px 0 0;
-      color: var(--muted);
-    }
-
-    .folder-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-      margin-top: 18px;
-    }
-
-    .folder-section {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      background: #fbfdff;
-    }
-
-    .folder-section-wide {
-      grid-column: 1 / -1;
-    }
-
-    .folder-section-danger {
-      border-color: #ffc9c5;
-      background: #fff8f7;
-    }
-
-    .folder-section h3 {
-      margin: 0 0 12px;
-      color: var(--navy);
-    }
-
     .toast {
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
-      z-index: 2200;
-      width: min(390px, calc(100vw - 40px));
-      padding: 14px 16px;
-      border-radius: 14px;
-      color: white;
-      background: #102f52;
-      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+      position: fixed; right: 16px; bottom: 16px;
+      width: min(420px, calc(100vw - 32px));
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 14px; box-shadow: var(--shadow);
+      padding: 14px; display:none; z-index: 2500;
     }
+    .toast.show{ display:block; }
 
-    .toast strong {
-      display: block;
-    }
-
-    .toast small {
-      display: block;
-      margin-top: 4px;
-      color: #d9efff;
-      line-height: 1.45;
-    }
-
-    .loading-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 3000;
-      display: grid;
-      place-items: center;
-      background: rgba(244, 248, 252, 0.75);
-      backdrop-filter: blur(4px);
-    }
-
-    .loading-card {
-      min-width: 260px;
-      display: grid;
-      place-items: center;
-      gap: 12px;
-      padding: 24px;
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      background: white;
-      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
-    }
-
-    .spinner {
-      width: 34px;
-      height: 34px;
-      border: 4px solid #dbeaf6;
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
-    @media (max-width: 1260px) {
-      .layout {
-        grid-template-columns: 270px minmax(0, 1fr);
-      }
-
-      .right-sidebar {
-        display: none;
-      }
-    }
-
-    @media (max-width: 920px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        position: static;
-        max-height: none;
-      }
-
-      .two-column,
-      .folder-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .folder-section-wide {
-        grid-column: auto;
-      }
-
-      .quick-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .header-top {
-        display: grid;
-        grid-template-columns: 1fr;
-      }
-
-      .header-tools {
-        justify-content: flex-start;
-      }
-
-      .logo {
-        max-width: 55vw;
-      }
-
-      .layout {
-        padding: 14px 12px 60px;
-      }
-
-      .search-input {
-        min-width: 100%;
-      }
-
-      .modal-backdrop {
-        padding: 0;
-      }
-
-      .modal,
-      .modal-small {
-        min-height: 100vh;
-        border-radius: 0;
-      }
+    @media (max-width: 800px) {
+      .top-nav { padding: 12px 14px; height: 72px; }
+      .logo img { width: 200px; max-height: 100%; }
+      .header-tools .hide-mobile { display:none; }
+      .container { padding: 0 14px; }
     }
   </style>
 </head>
 
 <body>
-  <div class="confidential">
-    Admin Console — confidential. Authorized staff only.
-  </div>
+  <div class="alert-bar">Admin Console — confidential. Authorized staff only.</div>
 
-  <header class="header">
-    <div class="header-top">
-      <a href="/" aria-label="Sulandra Health home">
-        <img
-          class="logo"
-          src="/assets/mainlogo.png"
-          alt="Sulandra Health"
-        >
+  <header>
+    <div class="top-nav">
+      <a href="index.html" class="logo" aria-label="Sulandra Health Home">
+        <img src="assets/mainlogo.png" alt="Sulandra Health Logo">
+        <span class="sr-only">Sulandra Health</span>
       </a>
 
       <div class="header-tools">
-        <span class="pill" id="adminIdentity">
-          Administrator
-        </span>
-
-        <span class="pill">
-          <span
-            class="connection-dot"
-            id="connectionDot"
-          ></span>
-
-          <span id="connectionText">
-            Railway: connecting…
-          </span>
-        </span>
-
-        <button
-          class="button button-primary"
-          id="refreshButton"
-          type="button"
-        >
-          Refresh
-        </button>
-
-        <button
-          class="button"
-          id="exportButton"
-          type="button"
-        >
-          Export CSV
-        </button>
-
-        <a
-          class="button button-purple"
-          href="profile.html"
-        >
-          Profile
-        </a>
-
-        <button
-          class="button button-danger"
-          id="signOutButton"
-          type="button"
-        >
-          Sign Out
-        </button>
+        <span class="pill hide-mobile" id="adminEmailPill">Admin</span>
+        <span class="pill hide-mobile" id="livePill">Live: connecting…</span>
+        <button class="btn-cta secondary hide-mobile" id="refreshBtn" type="button">Refresh</button>
+        <button class="btn-cta hide-mobile" id="exportBtn" type="button">Export CSV</button>
+        <button class="btn-cta danger" id="btnAdminSignOut" type="button">Sign Out</button>
       </div>
     </div>
 
-    <nav class="top-navigation">
-      <button
-        class="active"
-        type="button"
-        data-module="dashboard"
-      >
-        Community Living
-      </button>
-
-      <a href="home-health-admin.html">
-        Home Health Care
-      </a>
-
-      <a href="transportation-admin.html">
-        Transportation
-      </a>
-
-      <a href="Sulandra-Education-Portal.html">
-        Learning
-      </a>
-
-      <a href="intranet.html">
-        Sulandra Intranet
-      </a>
-
-      <a href="employee-portal.html">
-        Employee Portal
-      </a>
-
-      <a href="shared-settings.html">
-        Shared Settings
-      </a>
+    <!-- Top navigation bar -->
+    <nav class="main-nav">
+      <ul class="nav-links" id="topModuleNav">
+        <li><a data-module="dashboard">Dashboard</a></li>
+        <li><a data-module="service-homes">Service Homes</a></li>
+        <li><a data-module="employees">Employees</a></li>
+        <li><a data-module="scheduling">Scheduling</a></li>
+        <li><a data-module="time">Time & Attendance</a></li>
+        <li><a data-module="documents">Documents</a></li>
+        <li><a data-module="reports">Reports</a></li>
+        <li><a href="spire-admin.html">Admin Spire</a></li>
+        <li><a data-module="onboarding" class="active">Onboarding</a></li>
+        <li><a data-module="settings">Settings</a></li>
+      </ul>
     </nav>
   </header>
 
-  <main class="layout">
-    <aside class="sidebar">
-      <div class="sidebar-heading">
-        <h2>Operations</h2>
-        <p>Parent company tools</p>
-      </div>
-
-      <div class="sidebar-content">
-        <h3 class="sidebar-label">
-          Core Portal Navigation
-        </h3>
-
-        <nav class="sidebar-navigation">
-          <button
-            class="active"
-            type="button"
-            data-module="dashboard"
-          >
-            <span class="navigation-icon">◆</span>
-
-            <span class="navigation-copy">
-              <strong>Dashboard</strong>
-              <small>Overview</small>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            data-module="applicants"
-          >
-            <span class="navigation-icon">◎</span>
-
-            <span class="navigation-copy">
-              <strong>Applicants</strong>
-              <small>Recruiting workflow</small>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            data-module="jobs"
-          >
-            <span class="navigation-icon">＋</span>
-
-            <span class="navigation-copy">
-              <strong>Job Openings</strong>
-              <small>Create and publish</small>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            data-module="archives"
-          >
-            <span class="navigation-icon">▣</span>
-
-            <span class="navigation-copy">
-              <strong>Archives</strong>
-              <small>Closed records</small>
-            </span>
-          </button>
-
-          <a href="/spire">
-            <span class="navigation-icon">◇</span>
-
-            <span class="navigation-copy">
-              <strong>Admin Spire</strong>
-              <small>Clinical platform</small>
-            </span>
-          </a>
-
-          <a href="documents.html">
-            <span class="navigation-icon">▤</span>
-
-            <span class="navigation-copy">
-              <strong>Documents</strong>
-              <small>Compliance library</small>
-            </span>
-          </a>
-        </nav>
-
-        <h3 class="sidebar-label">
-          Subsidiary & Service Routing Hub
-        </h3>
-
-        <nav class="sidebar-navigation">
-          <button
-            type="button"
-            data-module="dashboard"
-          >
-            <span class="navigation-icon">🏠</span>
-
-            <span class="navigation-copy">
-              <strong>
-                Sulandra Community Living Services
-              </strong>
-
-              <small>
-                Residential and waiver services
-              </small>
-            </span>
-          </button>
-
-          <a href="home-health-admin.html">
-            <span class="navigation-icon">✚</span>
-
-            <span class="navigation-copy">
-              <strong>
-                Sulandra Home Health Care
-              </strong>
-
-              <small>
-                Skilled nursing services
-              </small>
-            </span>
-          </a>
-
-          <a href="transportation-admin.html">
-            <span class="navigation-icon">▰</span>
-
-            <span class="navigation-copy">
-              <strong>
-                Sulandra Transportation
-              </strong>
-
-              <small>
-                NEMT operations
-              </small>
-            </span>
-          </a>
-        </nav>
-      </div>
-    </aside>
-
-    <section class="main-content">
-      <section
-        class="hero module active"
-        id="module-dashboard"
-      >
-        <div class="hero-bar">
-          Department: Community Living
+  <main class="container">
+    <div class="grid">
+      <!-- Sidebar -->
+      <aside class="card sidebar">
+        <div class="section-title">Operations</div>
+        <div class="side-btns" id="sideModuleNav">
+          <button class="side-btn" type="button" data-module="dashboard">Dashboard <small>Overview</small></button>
+          <button class="side-btn" type="button" data-module="service-homes">Service Homes <small>Homes</small></button>
+          <button class="side-btn" type="button" data-module="employees">Employees <small>Profiles</small></button>
+          <button class="side-btn" type="button" data-module="scheduling">Scheduling <small>Shifts</small></button>
+          <button class="side-btn" type="button" data-module="time">Time & Attendance <small>Clock-ins</small></button>
+          <button class="side-btn" type="button" data-module="documents">Documents <small>Compliance</small></button>
+          <button class="side-btn" type="button" data-module="reports">Reports <small>Audit</small></button>
+          <button class="side-btn" type="button" onclick="window.location.href='spire-admin.html'">Admin Spire <small>Clinical</small></button>
+          <button class="side-btn active" type="button" data-module="onboarding">Onboarding <small>Hiring</small></button>
+          <button class="side-btn" type="button" data-module="settings">Settings <small>Roles & Address</small></button>
         </div>
 
-        <div class="hero-body">
-          <p class="eyebrow">
-            Community Living Operating Environment
-          </p>
+        <div class="section-title" style="margin-top:14px;">Notes</div>
+        <p class="sub">
+          Service homes, employees, onboarding, schedules, timekeeping, documents, training, audits, and role-based access live in one secure workspace.
+        </p>
+      </aside>
 
-          <h1>
-            Sulandra Community Living Services
-          </h1>
+      <!-- Content Views -->
+      <section style="display:flex; flex-direction:column; gap:16px;">
 
-          <p>
-            Residential homes, waiver services, DSP workforce,
-            client supports, ISP implementation, onboarding,
-            and DODD compliance are managed from this unified
-            administrative environment.
-          </p>
-
-          <div class="quick-grid">
-            <button
-              class="quick-card"
-              type="button"
-              data-module="applicants"
-            >
-              <span class="quick-icon">◎</span>
-
-              <span>
-                <h3>Applicants & Onboarding</h3>
-
-                <p>
-                  Review applications, send portal access,
-                  schedule interviews, update status, prepare
-                  offers, and archive records.
-                </p>
-              </span>
-            </button>
-
-            <button
-              class="quick-card"
-              type="button"
-              data-module="jobs"
-            >
-              <span class="quick-icon">＋</span>
-
-              <span>
-                <h3>Job Openings</h3>
-
-                <p>
-                  Create, edit, publish, close, archive, and
-                  restore openings shown on the careers page.
-                </p>
-              </span>
-            </button>
-
-            <a
-              class="quick-card"
-              href="/spire"
-            >
-              <span class="quick-icon">◇</span>
-
-              <span>
-                <h3>Clients & ISP Records</h3>
-
-                <p>
-                  Open the Spire clinical platform for client
-                  records, service plans, and compliance.
-                </p>
-              </span>
-            </a>
-
-            <a
-              class="quick-card"
-              href="employee-portal.html"
-            >
-              <span class="quick-icon">♟</span>
-
-              <span>
-                <h3>Employees & DSP Workforce</h3>
-
-                <p>
-                  Open employee tools, training, staffing,
-                  and workforce records.
-                </p>
-              </span>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section
-        class="module"
-        id="module-applicants"
-      >
-        <article class="card">
-          <div class="card-header">
-            <div>
-              <h2>Active Applicants</h2>
-
-              <p>
-                Open an applicant folder to manage the complete
-                recruiting workflow.
-              </p>
-            </div>
-
-            <span
-              class="status status-blue"
-              id="applicantCount"
-            >
-              0 applicants
-            </span>
-          </div>
-
+        <!-- Dashboard Module -->
+        <section class="card module" id="module-dashboard">
+          <h1>Dashboard</h1>
+          <p class="sub">Quick overview of system metrics and alerts.</p>
           <div class="toolbar">
-            <div class="toolbar-group">
-              <input
-                class="search-input"
-                id="applicantSearch"
-                type="search"
-                placeholder="Search applicant, email, phone, position, or status"
-              >
-
-              <select
-                class="button"
-                id="applicantStatusFilter"
-              >
-                <option value="">
-                  All active statuses
-                </option>
-
-                <option value="RECEIVED">
-                  Received
-                </option>
-
-                <option value="REVIEWING">
-                  Reviewing
-                </option>
-
-                <option value="DOCUMENTS_NEEDED">
-                  Documents Needed
-                </option>
-
-                <option value="INTERVIEW">
-                  Interview
-                </option>
-
-                <option value="OFFER_PENDING">
-                  Offer Pending
-                </option>
-
-                <option value="OFFER_ACCEPTED">
-                  Offer Accepted
-                </option>
-
-                <option value="HIRE">
-                  Hire
-                </option>
-
-                <option value="HIRED">
-                  Hired
-                </option>
-
-                <option value="WITHDRAWN">
-                  Withdrawn
-                </option>
-              </select>
-            </div>
-
-            <button
-              class="button"
-              id="clearFiltersButton"
-              type="button"
-            >
-              Clear Filters
-            </button>
-          </div>
-
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Submitted</th>
-                  <th>Applicant</th>
-                  <th>Position</th>
-                  <th>Score</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody id="applicantRows">
-                <tr>
-                  <td colspan="6">
-                    <div class="empty-state">
-                      Loading active applicants…
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </section>
-
-      <section
-        class="module"
-        id="module-jobs"
-      >
-        <div class="two-column">
-          <article class="card">
-            <div class="card-header">
-              <div>
-                <h2 id="jobFormTitle">
-                  Create Job Opening
-                </h2>
-
-                <p>
-                  Use a template or create a custom opening.
-                </p>
-              </div>
-            </div>
-
-            <form id="jobForm">
-              <div class="field">
-                <label for="jobPreset">
-                  Template
-                </label>
-
-                <select id="jobPreset">
-                  <option value="">
-                    Choose a template
-                  </option>
-
-                  <option value="DSP">
-                    DSP / Direct Support Professional
-                  </option>
-
-                  <option value="LPN">
-                    LPN / Licensed Practical Nurse
-                  </option>
-
-                  <option value="RN">
-                    RN / Registered Nurse
-                  </option>
-
-                  <option value="DELEGATING_NURSE">
-                    Delegating Nurse
-                  </option>
-
-                  <option value="DRIVER">
-                    NEMT Driver
-                  </option>
-
-                  <option value="DOO">
-                    Director of Operations
-                  </option>
-
-                  <option value="COO">
-                    Chief Operating Officer
-                  </option>
-
-                  <option value="GENERAL">
-                    General Employment Opportunity
-                  </option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="jobTitle">
-                  Job Title
-                </label>
-
-                <input
-                  id="jobTitle"
-                  required
-                >
-              </div>
-
-              <div class="field">
-                <label for="jobSlug">
-                  Job Slug
-                </label>
-
-                <input
-                  id="jobSlug"
-                  required
-                >
-              </div>
-
-              <div class="two-column">
-                <div class="field">
-                  <label for="jobDepartment">
-                    Department
-                  </label>
-
-                  <input id="jobDepartment">
-                </div>
-
-                <div class="field">
-                  <label for="jobType">
-                    Employment Type
-                  </label>
-
-                  <select id="jobType">
-                    <option>Full-Time</option>
-                    <option>Part-Time</option>
-                    <option>PRN</option>
-                    <option>Contract</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="two-column">
-                <div class="field">
-                  <label for="jobLocation">
-                    Location
-                  </label>
-
-                  <input
-                    id="jobLocation"
-                    value="Dayton, OH"
-                  >
-                </div>
-
-                <div class="field">
-                  <label for="jobPay">
-                    Pay Range
-                  </label>
-
-                  <input id="jobPay">
-                </div>
-              </div>
-
-              <div class="field">
-                <label for="jobPath">
-                  Application Form
-                </label>
-
-                <select id="jobPath">
-                  <option value="/applydsp.html">
-                    DSP application
-                  </option>
-
-                  <option value="/applylpn.html?role=LPN">
-                    LPN application
-                  </option>
-
-                  <option value="/applylpn.html?role=RN">
-                    RN application
-                  </option>
-
-                  <option value="/applylpn.html?role=DELEGATING_NURSE">
-                    Delegating Nurse application
-                  </option>
-
-                  <option value="/applydriver.html">
-                    Driver application
-                  </option>
-
-                  <option value="/applydoo.html">
-                    Director of Operations application
-                  </option>
-
-                  <option value="/applycoo.html">
-                    Chief Operating Officer application
-                  </option>
-
-                  <option value="/applygeneral.html">
-                    General application
-                  </option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="jobSummary">
-                  Summary
-                </label>
-
-                <textarea
-                  id="jobSummary"
-                  required
-                ></textarea>
-              </div>
-
-              <div class="field">
-                <label for="jobDescription">
-                  Description
-                </label>
-
-                <textarea
-                  id="jobDescription"
-                  required
-                ></textarea>
-              </div>
-
-              <div class="field">
-                <label for="jobRequirements">
-                  Requirements
-                </label>
-
-                <textarea id="jobRequirements"></textarea>
-              </div>
-
-              <div class="field">
-                <label for="jobBenefits">
-                  Benefits
-                </label>
-
-                <textarea id="jobBenefits"></textarea>
-              </div>
-
-              <div class="field">
-                <label for="jobStatus">
-                  Status
-                </label>
-
-                <select id="jobStatus">
-                  <option value="DRAFT">
-                    Draft
-                  </option>
-
-                  <option value="PUBLISHED">
-                    Published
-                  </option>
-                </select>
-              </div>
-
-              <div id="jobFormMessage"></div>
-
-              <div class="actions actions-end">
-                <button
-                  class="button hidden"
-                  id="cancelJobEditButton"
-                  type="button"
-                >
-                  Cancel Edit
-                </button>
-
-                <button
-                  class="button button-primary"
-                  id="saveJobButton"
-                  type="submit"
-                >
-                  Save Job Opening
-                </button>
-              </div>
-            </form>
-          </article>
-
-          <article class="card">
-            <div class="card-header">
-              <div>
-                <h2>Current Job Openings</h2>
-
-                <p>
-                  Draft and published openings.
-                </p>
-              </div>
-
-              <span
-                class="status status-blue"
-                id="jobCount"
-              >
-                0 jobs
-              </span>
-            </div>
-
-            <div id="jobList">
-              <div class="empty-state">
-                Loading job openings…
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section
-        class="module"
-        id="module-archives"
-      >
-        <div class="two-column">
-          <article class="card">
-            <div class="card-header">
-              <div>
-                <h2>Archived Applicants</h2>
-
-                <p>
-                  Position-filled and archived records.
-                </p>
-              </div>
-            </div>
-
-            <div id="archivedApplicants">
-              <div class="empty-state">
-                Loading archived applicants…
-              </div>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="card-header">
-              <div>
-                <h2>Archived Jobs</h2>
-
-                <p>
-                  Closed and archived public openings.
-                </p>
-              </div>
-            </div>
-
-            <div id="archivedJobs">
-              <div class="empty-state">
-                Loading archived jobs…
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-    </section>
-
-    <aside class="right-sidebar">
-      <div class="sidebar-heading">
-        <h2>Live Activity</h2>
-        <p>System-wide operational pulse</p>
-      </div>
-
-      <div class="sidebar-content">
-        <section class="right-section">
-          <h3 class="right-title">
-            Live Workforce
-          </h3>
-
-          <div class="stat-grid">
-            <div class="stat-card">
-              <strong id="clockedInStat">—</strong>
-              <span>Clocked in</span>
-            </div>
-
-            <div class="stat-card">
-              <strong id="activeEmployeesStat">—</strong>
-              <span>Active employees</span>
-            </div>
-
-            <div class="stat-card">
-              <strong id="openApplicantsStat">0</strong>
-              <span>Open applicants</span>
-            </div>
-
-            <div class="stat-card">
-              <strong id="interviewsStat">0</strong>
-              <span>Upcoming interviews</span>
+            <div class="filters">
+              <span class="pill">Applicants: <span id="kpiApplicants">—</span></span>
+              <span class="pill">Employees: <span id="kpiEmployees">—</span></span>
+              <span class="pill">Pending Timesheets: <span id="kpiTimesheets">—</span></span>
             </div>
           </div>
         </section>
 
-        <section class="right-section">
-          <h3 class="right-title">
-            System Connection
-          </h3>
-
-          <div class="connection-card">
-            <strong id="connectionCardTitle">
-              Connecting to Railway
-            </strong>
-
-            <p id="connectionCardMessage">
-              Waiting for an authenticated API response.
-            </p>
+        <!-- Service Homes Module -->
+        <section class="card module" id="module-service-homes">
+          <h1>Service Homes</h1>
+          <p class="sub">A dedicated workspace for client homes and group homes served by Sulandra Health.</p>
+          <div class="future-card" style="margin-top:18px;">
+            <div class="future-icon">⌂</div>
+            <h2 style="color:var(--primary);">Service Homes Workspace</h2>
+            <p class="sub">Home profiles, client assignments, staffing, compliance documents, and service intake forms will be managed here.</p>
           </div>
         </section>
 
-        <section class="right-section">
-          <h3 class="right-title">
-            Recruiting Summary
-          </h3>
+        <!-- Onboarding Module (Primary Suite) -->
+        <section class="module active" id="module-onboarding">
+          <div class="onboarding-hero">
+            <h1>Onboarding</h1>
+            <p>Manage the complete hiring pipeline—from published job openings and active applicants to retained talent and future service requests.</p>
+          </div>
 
-          <div id="recruitingSummary">
-            <div class="activity-card">
-              Applicant data has not loaded yet.
+          <!-- Onboarding Sub-Navigation -->
+          <div class="onboarding-tabs" role="tablist">
+            <button class="onboarding-tab active" type="button" data-onboarding-panel="applicants">Active Applicants</button>
+            <button class="onboarding-tab" type="button" data-onboarding-panel="openings">Job Openings</button>
+            <button class="onboarding-tab" type="button" data-onboarding-panel="archived">Archived</button>
+            <button class="onboarding-tab" type="button" data-onboarding-panel="service-requests">Service Requests</button>
+          </div>
+
+          <!-- 1. Active Applicants Panel -->
+          <div class="onboarding-panel active" id="onboarding-applicants">
+            <section class="card">
+              <h1>Active Applicants</h1>
+              <p class="sub">Review applications, view uploaded documents, update status, and schedule interviews.</p>
+
+              <div class="toolbar">
+                <div class="filters">
+                  <div class="field">
+                    <label for="search">Search</label>
+                    <input id="search" type="search" placeholder="Name, email, phone…" />
+                  </div>
+
+                  <div class="field">
+                    <label for="statusFilter">Status</label>
+                    <select id="statusFilter" onchange="handleStatusChange(this.value)">
+                      <option value="all">All</option>
+                      <option value="RECEIVED">Received</option>
+                      <option value="REVIEWING">Reviewing</option>
+                      <option value="DOCUMENTS_NEEDED">Documents Needed</option>
+                      <option value="INTERVIEW">Interview (Open Scheduler)</option>
+                      <option value="OFFER_PENDING">Offer Pending</option>
+                      <option value="HIRED">Hired</option>
+                      <option value="WITHDRAWN">Withdrawn</option>
+                      <option value="TERMINATED">Terminated</option>
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label for="jobFilter">Job</label>
+                    <select id="jobFilter">
+                      <option value="all">All</option>
+                      <option value="LPN">LPN</option>
+                      <option value="RN">RN</option>
+                      <option value="DELEGATING_NURSE">Delegating Nurse</option>
+                      <option value="DSP">DSP</option>
+                      <option value="GENERAL">General</option>
+                      <option value="COO">COO - Chief Operating Officer</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="sub" id="countLabel">0 applications</div>
+              </div>
+
+              <table aria-label="Applications table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Applicant</th>
+                    <th>Job</th>
+                    <th>Score</th>
+                    <th>Status</th>
+                    <th style="width:260px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="applicantTable">
+                  <tr><td colspan="6" class="muted">Loading applications…</td></tr>
+                </tbody>
+              </table>
+            </section>
+          </div>
+
+          <!-- 2. Job Openings Panel (Smart Presets & Ohio Search) -->
+          <div class="onboarding-panel" id="onboarding-openings">
+            <div class="opening-grid">
+              <section class="card">
+                <h1 id="openingFormTitle">Create Job Opening</h1>
+                <p class="sub">Select a Home Health/Waiver preset to auto-fill all pertinent fields.</p>
+
+                <form class="opening-form" id="jobOpeningForm">
+                  <input type="hidden" id="openingId">
+
+                  <div>
+                    <label for="presetSelect" style="color:var(--primary);">★ Select Job Role Preset</label>
+                    <select id="presetSelect" onchange="applyJobPreset(this.value)">
+                      <option value="">-- Choose Preset to Auto-Populate --</option>
+                      <option value="coo">COO - Chief Operating Officer (DODD & Home Health)</option>
+                      <option value="dsp">DSP - Direct Support Professional</option>
+                      <option value="cna">CNA / Home Health Aide (HHA)</option>
+                      <option value="lpn">LPN - Licensed Practical Nurse</option>
+                      <option value="rn">RN - Registered Nurse / Clinical Supervisor</option>
+                      <option value="driver">NEMT Driver / Transportation Specialist</option>
+                      <option value="supervisor">Site Supervisor / House Manager</option>
+                      <option value="hr">Human Resources Manager</option>
+                      <option value="compliance">Compliance & Quality Officer</option>
+                      <option value="billing">Billing & Revenue Specialist</option>
+                      <option value="ceo">Chief Executive Officer (CEO)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label for="openingTitle">Job title</label>
+                    <input id="openingTitle" required maxlength="160" placeholder="Direct Support Professional">
+                  </div>
+
+                  <div>
+                    <label for="openingSlug">URL slug</label>
+                    <input id="openingSlug" required maxlength="120" placeholder="direct-support-professional">
+                  </div>
+
+                  <div>
+                    <label for="openingDepartment">Department</label>
+                    <input id="openingDepartment" maxlength="120" placeholder="Executive Leadership">
+                  </div>
+
+                  <div>
+                    <label for="openingType">Employment type</label>
+                    <input id="openingType" maxlength="120" placeholder="Full-time">
+                  </div>
+
+                  <div>
+                    <label for="openingLocation">Location (Ohio)</label>
+                    <input id="openingLocation" list="ohioCities" placeholder="Dayton, OH" value="Dayton, OH">
+                    <datalist id="ohioCities">
+                      <option value="Dayton, OH"></option>
+                      <option value="Columbus, OH"></option>
+                      <option value="Cincinnati, OH"></option>
+                      <option value="Cleveland, OH"></option>
+                      <option value="Akron, OH"></option>
+                      <option value="Toledo, OH"></option>
+                      <option value="Springfield, OH"></option>
+                    </datalist>
+                  </div>
+
+                  <div>
+                    <label for="openingPay">Pay range</label>
+                    <input id="openingPay" maxlength="120" placeholder="$110,000–$145,000 per year">
+                  </div>
+
+                  <div>
+                    <label for="openingPath">Application Page Link</label>
+                    <input id="openingPath" maxlength="300" placeholder="/applycoo.html" value="/applycoo.html">
+                  </div>
+
+                  <div>
+                    <label for="openingSummary">Summary</label>
+                    <textarea id="openingSummary" required minlength="10" maxlength="1000"></textarea>
+                  </div>
+
+                  <div>
+                    <label for="openingDescription">Description & DODD Duties</label>
+                    <textarea id="openingDescription" required minlength="20" maxlength="20000"></textarea>
+                  </div>
+
+                  <div>
+                    <label for="openingRequirements">Requirements & Qualifications</label>
+                    <textarea id="openingRequirements" maxlength="10000"></textarea>
+                  </div>
+
+                  <div>
+                    <label for="openingBenefits">Benefits & Growth Opportunity</label>
+                    <textarea id="openingBenefits" maxlength="10000"></textarea>
+                  </div>
+
+                  <div>
+                    <label for="openingStatus">Visibility</label>
+                    <select id="openingStatus">
+                      <option value="PUBLISHED">Published (Live on Careers Page)</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="CLOSED">Closed (Move to Archive)</option>
+                      <option value="ARCHIVED">Archived (Move to Archive)</option>
+                    </select>
+                  </div>
+
+                  <div class="opening-actions">
+                    <button class="btn btn-primary" type="submit">Save Job Opening</button>
+                    <button class="btn" id="cancelOpeningEdit" type="button" hidden>Cancel Edit</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="card">
+                <h1>Manage Active Job Openings</h1>
+                <p class="sub">Published jobs appear on the careers site. Closing or archiving an opening automatically moves it into the Archive Hub.</p>
+                <div class="opening-cards" id="jobOpeningList"><p class="muted">Loading active openings…</p></div>
+              </section>
             </div>
           </div>
+
+          <!-- 3. Archived Hub Panel (Split Applicants & Jobs) -->
+          <div class="onboarding-panel" id="onboarding-archived">
+            <section class="card">
+              <h1>Archived Hub</h1>
+              <p class="sub">Manage retained candidate profiles and stored job listings.</p>
+
+              <div class="archive-subtabs">
+                <button class="archive-subtab active" type="button" onclick="switchArchiveFolder('applicants')">Applicants Archive</button>
+                <button class="archive-subtab" type="button" onclick="switchArchiveFolder('jobs')">Jobs Archive</button>
+              </div>
+
+              <!-- Folder 1: Applicants Archive -->
+              <div id="archiveFolderApplicants">
+                <p class="sub" style="margin-bottom:12px;">Candidates kept on file when positions were full. Revisit and reactivate candidates as new shifts open.</p>
+                <table aria-label="Archived applicants table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Applicant</th>
+                      <th>Position</th>
+                      <th>Score</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="archivedApplicantTable">
+                    <tr><td colspan="5" class="muted">No archived applicants found.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Folder 2: Jobs Archive -->
+              <div id="archiveFolderJobs" style="display:none;">
+                <p class="sub" style="margin-bottom:12px;">Archived or closed job listings. Click 'Restore' to return any opening to Published/Live status.</p>
+                <div class="opening-cards" id="archivedJobsList">
+                  <p class="muted">Loading archived jobs…</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- 4. Service Requests Panel -->
+          <div class="onboarding-panel" id="onboarding-service-requests">
+            <section class="card">
+              <div class="future-card">
+                <div class="future-icon">✦</div>
+                <h1>Client Service Requests</h1>
+                <p class="sub">Client intake forms and incoming service-request applications will populate directly here.</p>
+              </div>
+            </section>
+          </div>
         </section>
-      </div>
-    </aside>
+
+        <!-- Settings Module -->
+        <section class="card module" id="module-settings">
+          <h1>System & Company Settings</h1>
+          <p class="sub">Configure company address, automated email headers, and system preferences.</p>
+
+          <form style="margin-top:20px; display:grid; gap:16px; max-width:680px;" onsubmit="return false;">
+            <div style="border:1px solid #d0e2f5; padding:18px; border-radius:12px; background:#f8fbff;">
+              <h3 style="color:var(--primary); margin-bottom:10px;">🏢 Centralized Company & Address Details</h3>
+              <p class="sub" style="margin-bottom:12px;">All emails, candidate portals, and offer documents dynamically pull from this central setting.</p>
+
+              <div style="display:grid; gap:10px;">
+                <div>
+                  <label style="font-size:12px; font-weight:800;">COMPANY NAME</label>
+                  <input type="text" id="settingCompanyName" value="Sulandra Health" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div>
+                  <label style="font-size:12px; font-weight:800;">HEADQUARTERS ADDRESS</label>
+                  <input type="text" id="settingCompanyAddress" value="822 Dalewood Pl Dayton Ohio 45426 Suite A" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div>
+                    <label style="font-size:12px; font-weight:800;">PHONE NUMBER</label>
+                    <input type="text" id="settingCompanyPhone" value="(937) 555-0199" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                  </div>
+                  <div>
+                    <label style="font-size:12px; font-weight:800;">CAREERS SENDER EMAIL</label>
+                    <input type="text" id="settingCompanyEmail" value="admin@sulandrahealth.com" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="border:1px solid #d0e2f5; padding:18px; border-radius:12px; background:#f8fbff;">
+              <h3 style="color:var(--primary); margin-bottom:10px;">✉️ Automated HR Email Branding & Disclaimers</h3>
+              
+              <div style="display:grid; gap:10px;">
+                <div>
+                  <label style="font-size:12px; font-weight:800;">SENDER DISPLAY NAME</label>
+                  <input type="text" id="settingSenderName" value="Human Resources" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div>
+                  <label style="font-size:12px; font-weight:800;">SIGNATURE TAG STYLE PREVIEW</label>
+                  <div style="padding:10px; border:1px solid #ddd; background:#fff; border-radius:6px;">
+                    <span class="hr-tag-preview">Human Resources</span>
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size:12px; font-weight:800;">UNMONITORED INBOX NOTICE</label>
+                  <input type="text" id="settingUnmonitoredNotice" value="Note: This email was sent from an unmonitored notification mailbox. Please do not reply directly to this message." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px;">
+                </div>
+                <div>
+                  <label style="font-size:12px; font-weight:800;">GLOBAL EMPLOYMENT DISCLAIMER</label>
+                  <textarea style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; min-height:60px;">This email notification does not constitute a formal offer of employment. All employment offers are issued separately upon successful completion of background checks and verification.</textarea>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" type="button" style="padding:12px;" onclick="saveCompanySettings()">Save Settings</button>
+          </form>
+        </section>
+
+      </section>
+    </div>
   </main>
 
-  <div
-    class="modal-backdrop hidden"
-    id="folderModal"
-  >
+  <!-- Application Details Modal -->
+  <div id="detailsModal" role="dialog" aria-modal="true" aria-label="Application details">
     <div class="modal">
-      <header class="modal-header">
-        <h2 id="folderTitle">
-          Applicant Folder
-        </h2>
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle">Application Details</div>
+        <button class="close-x" id="closeModalBtn" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
 
-        <button
-          class="button"
-          id="closeFolderButton"
-          type="button"
-        >
-          ×
-        </button>
-      </header>
+  <!-- Interactive Interview Scheduling Modal -->
+  <div class="modal-overlay" id="interviewModal">
+    <div class="modal" style="max-width:540px;">
+      <div class="modal-head">
+        <div class="modal-title">📅 Schedule Candidate Interview</div>
+        <button class="close-x" type="button" onclick="closeInterviewModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="sub" style="margin-bottom:14px;">Select available dates and 30-minute time slots to send to <strong id="interviewApplicantName">Candidate</strong>.</p>
 
-      <div
-        class="modal-body"
-        id="folderBody"
-      >
-        <div class="empty-state">
-          Loading applicant folder…
+        <div style="display:grid; gap:12px;">
+          <div>
+            <label style="font-size:12px; font-weight:800;">SELECT INTERVIEW DATE</label>
+            <input type="date" id="interviewDateInput" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;">
+          </div>
+
+          <div>
+            <label style="font-size:12px; font-weight:800;">AVAILABLE 30-MIN TIME SLOTS</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
+              <label><input type="checkbox" name="slot" value="09:00 AM - 09:30 AM"> 09:00 AM - 09:30 AM</label>
+              <label><input type="checkbox" name="slot" value="10:00 AM - 10:30 AM"> 10:00 AM - 10:30 AM</label>
+              <label><input type="checkbox" name="slot" value="11:00 AM - 11:30 AM"> 11:00 AM - 11:30 AM</label>
+              <label><input type="checkbox" name="slot" value="01:00 PM - 01:30 PM"> 01:00 PM - 01:30 PM</label>
+              <label><input type="checkbox" name="slot" value="02:00 PM - 02:30 PM"> 02:00 PM - 02:30 PM</label>
+              <label><input type="checkbox" name="slot" value="03:00 PM - 03:30 PM"> 03:00 PM - 03:30 PM</label>
+            </div>
+          </div>
+
+          <div style="background:#f0f7ff; padding:12px; border-radius:8px; border-left:4px solid var(--primary); font-size:12px;">
+            <strong>Location:</strong> 822 Dalewood Pl Dayton Ohio 45426 Suite A<br>
+            <em>The candidate will receive a link to select their slot in the portal. Locked slots will automatically gray out for other applicants.</em>
+          </div>
+
+          <button class="btn btn-primary" type="button" onclick="confirmInterviewInvite()" style="padding:12px; width:100%; justify-content:center; margin-top:8px;">Send Interview Invites</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div
-    class="modal-backdrop hidden"
-    id="offerModal"
-  >
-    <div class="modal">
-      <header class="modal-header">
-        <h2>
-          Prepare Offer of Employment
-        </h2>
-
-        <button
-          class="button"
-          id="closeOfferButton"
-          type="button"
-        >
-          ×
-        </button>
-      </header>
-
-      <form id="offerForm">
-        <div class="modal-body">
-          <div class="two-column">
-            <div class="field">
-              <label for="offerPosition">
-                Position Title
-              </label>
-
-              <input
-                id="offerPosition"
-                required
-              >
-            </div>
-
-            <div class="field">
-              <label for="offerDepartment">
-                Department
-              </label>
-
-              <input id="offerDepartment">
-            </div>
-
-            <div class="field">
-              <label for="offerSupervisor">
-                Supervisor
-              </label>
-
-              <input id="offerSupervisor">
-            </div>
-
-            <div class="field">
-              <label for="offerEmployment">
-                Employment Type
-              </label>
-
-              <select id="offerEmployment">
-                <option value="FULL_TIME">
-                  Full-time
-                </option>
-
-                <option value="PART_TIME">
-                  Part-time
-                </option>
-
-                <option value="PRN">
-                  PRN
-                </option>
-
-                <option value="CONTRACT">
-                  Contract
-                </option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="offerCompensationType">
-                Compensation Type
-              </label>
-
-              <select id="offerCompensationType">
-                <option value="HOURLY">
-                  Hourly
-                </option>
-
-                <option value="SALARY">
-                  Salary
-                </option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="offerPay">
-                Pay Amount
-              </label>
-
-              <input
-                id="offerPay"
-                type="number"
-                min="0.01"
-                step="0.01"
-                required
-              >
-            </div>
-
-            <div class="field">
-              <label for="offerStart">
-                Start Date
-              </label>
-
-              <input
-                id="offerStart"
-                type="date"
-                required
-              >
-            </div>
-
-            <div class="field">
-              <label for="offerOrientation">
-                Orientation Date
-              </label>
-
-              <input
-                id="offerOrientation"
-                type="date"
-              >
-            </div>
-
-            <div class="field">
-              <label for="offerShift">
-                Shift
-              </label>
-
-              <input id="offerShift">
-            </div>
-
-            <div class="field">
-              <label for="offerLocation">
-                Work Location
-              </label>
-
-              <input
-                id="offerLocation"
-                value="Dayton, OH"
-              >
-            </div>
-
-            <div class="field">
-              <label for="offerProbation">
-                Probation Days
-              </label>
-
-              <input
-                id="offerProbation"
-                type="number"
-                value="90"
-              >
-            </div>
-
-            <div class="field">
-              <label for="offerBonus">
-                Bonus Amount
-              </label>
-
-              <input
-                id="offerBonus"
-                type="number"
-                min="0"
-                step="0.01"
-              >
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="offerNotes">
-              Offer Notes
-            </label>
-
-            <textarea id="offerNotes"></textarea>
-          </div>
-
-          <div class="two-column">
-            <label>
-              <input
-                id="offerPto"
-                type="checkbox"
-              >
-
-              PTO eligible
-            </label>
-
-            <label>
-              <input
-                id="offerBenefits"
-                type="checkbox"
-              >
-
-              Benefits eligible
-            </label>
-          </div>
-
-          <div id="offerMessage"></div>
-        </div>
-
-        <footer class="modal-footer">
-          <button
-            class="button"
-            id="cancelOfferButton"
-            type="button"
-          >
-            Cancel
-          </button>
-
-          <button
-            class="button button-success"
-            type="submit"
-          >
-            Send Offer
-          </button>
-        </footer>
-      </form>
-    </div>
-  </div>
-
-  <div
-    class="modal-backdrop hidden"
-    id="interviewModal"
-  >
-    <div class="modal modal-small">
-      <header class="modal-header">
-        <h2>Schedule Interview</h2>
-
-        <button
-          class="button"
-          id="closeInterviewButton"
-          type="button"
-        >
-          ×
-        </button>
-      </header>
-
-      <form id="interviewForm">
-        <div class="modal-body">
-          <div class="field">
-            <label for="interviewSlotOne">
-              Primary Date and Time
-            </label>
-
-            <input
-              id="interviewSlotOne"
-              type="datetime-local"
-              required
-            >
-          </div>
-
-          <div class="field">
-            <label for="interviewSlotTwo">
-              Alternative Date and Time
-            </label>
-
-            <input
-              id="interviewSlotTwo"
-              type="datetime-local"
-            >
-          </div>
-
-          <div class="field">
-            <label for="interviewSlotThree">
-              Second Alternative
-            </label>
-
-            <input
-              id="interviewSlotThree"
-              type="datetime-local"
-            >
-          </div>
-
-          <div class="field">
-            <label for="interviewLocation">
-              Location
-            </label>
-
-            <input
-              id="interviewLocation"
-              value="Sulandra Health, Dayton, Ohio"
-            >
-          </div>
-
-          <div class="field">
-            <label for="interviewNotes">
-              Instructions
-            </label>
-
-            <textarea id="interviewNotes"></textarea>
-          </div>
-
-          <div id="interviewMessage"></div>
-        </div>
-
-        <footer class="modal-footer">
-          <button
-            class="button"
-            id="cancelInterviewButton"
-            type="button"
-          >
-            Cancel
-          </button>
-
-          <button
-            class="button button-primary"
-            type="submit"
-          >
-            Send Interview Invitation
-          </button>
-        </footer>
-      </form>
-    </div>
-  </div>
-
-  <div
-    class="toast hidden"
-    id="toast"
-  >
-    <strong id="toastTitle"></strong>
-    <small id="toastMessage"></small>
-  </div>
-
-  <div
-    class="loading-overlay hidden"
-    id="loadingOverlay"
-  >
-    <div class="loading-card">
-      <div class="spinner"></div>
-      <strong id="loadingText">Working…</strong>
-    </div>
+  <!-- Toast Notification -->
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <strong id="toastTitle">Success</strong>
+    <small id="toastBody">Settings updated cleanly.</small>
   </div>
 
   <script>
-    (() => {
-      "use strict";
+    // --- TOP LEVEL & SIDEBAR MODULE NAVIGATION ---
+    document.querySelectorAll('[data-module]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-module');
 
-      const API_BASE =
-        "https://sulandra-website-production.up.railway.app";
+        document.querySelectorAll('[data-module]').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll(`[data-module="${target}"]`).forEach(b => b.classList.add('active'));
 
-      const TOKEN_KEY =
-        "sulandra:employee:access-token";
+        document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+        const activeModule = document.getElementById(`module-${target}`);
+        if(activeModule) activeModule.classList.add('active');
 
-      const SESSION_KEY =
-        "sulandra:employee:session";
-
-      const LOGIN_PAGE =
-        "employee-login.html";
-
-      const EMPLOYEE_PORTAL =
-        "employee-portal.html";
-
-      const ALLOWED_ROLES = [
-        "ADMINISTRATOR",
-        "DOO",
-        "COO"
-      ];
-
-      const state = {
-        applications: [],
-        jobs: [],
-        activeApplicationId: "",
-        folder: null,
-        offerProgress: null,
-        editingJobId: "",
-        busyCount: 0,
-        toastTimer: null
-      };
-
-      const workflowStatuses = [
-        ["RECEIVED", "Received"],
-        ["REVIEWING", "Reviewing"],
-        ["DOCUMENTS_NEEDED", "Documents Needed"],
-        ["INTERVIEW", "Interview"],
-        ["OFFER_PENDING", "Offer Pending"],
-        ["OFFER_ACCEPTED", "Offer Accepted"],
-        ["HIRE", "Hire"],
-        ["HIRED", "Hired"],
-        ["WITHDRAWN", "Withdrawn"]
-      ];
-
-      const jobPresets = {
-        DSP: {
-          title:
-            "DSP / Direct Support Professional",
-
-          department:
-            "Community Living Services",
-
-          employmentType:
-            "Full-Time",
-
-          payRange:
-            "$16–$20 per hour",
-
-          applicationPath:
-            "/applydsp.html"
-        },
-
-        LPN: {
-          title:
-            "LPN / Licensed Practical Nurse",
-
-          department:
-            "Clinical Services",
-
-          employmentType:
-            "PRN",
-
-          payRange:
-            "$28–$34 per hour",
-
-          applicationPath:
-            "/applylpn.html?role=LPN"
-        },
-
-        RN: {
-          title:
-            "RN / Registered Nurse",
-
-          department:
-            "Clinical Services",
-
-          employmentType:
-            "PRN",
-
-          payRange:
-            "$36–$45 per hour",
-
-          applicationPath:
-            "/applylpn.html?role=RN"
-        },
-
-        DELEGATING_NURSE: {
-          title:
-            "Delegating Nurse",
-
-          department:
-            "Clinical Services",
-
-          employmentType:
-            "PRN",
-
-          payRange:
-            "$40–$52 per hour",
-
-          applicationPath:
-            "/applylpn.html?role=DELEGATING_NURSE"
-        },
-
-        DRIVER: {
-          title:
-            "NEMT Driver / Transportation Specialist",
-
-          department:
-            "Transportation",
-
-          employmentType:
-            "Full-Time",
-
-          payRange:
-            "$16–$21 per hour",
-
-          applicationPath:
-            "/applydriver.html"
-        },
-
-        DOO: {
-          title:
-            "Director of Operations",
-
-          department:
-            "Executive Leadership",
-
-          employmentType:
-            "Full-Time",
-
-          payRange:
-            "$85,000–$120,000 annually",
-
-          applicationPath:
-            "/applydoo.html"
-        },
-
-        COO: {
-          title:
-            "Chief Operating Officer",
-
-          department:
-            "Executive Leadership",
-
-          employmentType:
-            "Full-Time",
-
-          payRange:
-            "Competitive executive compensation",
-
-          applicationPath:
-            "/applycoo.html"
-        },
-
-        GENERAL: {
-          title:
-            "General Employment Opportunity",
-
-          department:
-            "Administration",
-
-          employmentType:
-            "Full-Time",
-
-          payRange:
-            "Competitive pay",
-
-          applicationPath:
-            "/applygeneral.html"
+        if ((target === 'onboarding' || target === 'dashboard')) {
+          const refreshBtn = document.getElementById('refreshBtn');
+          if (refreshBtn) refreshBtn.click();
         }
-      };
+      });
+    });
 
-      const byId = (id) =>
-        document.getElementById(id);
+    // --- ONBOARDING PANEL NAVIGATION ---
+    document.querySelectorAll('.onboarding-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetPanel = tab.getAttribute('data-onboarding-panel');
+        document.querySelectorAll('.onboarding-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
 
-      const selectAll = (
-        selector,
-        root = document
-      ) =>
-        Array.from(
-          root.querySelectorAll(selector)
-        );
+        document.querySelectorAll('.onboarding-panel').forEach(p => p.classList.remove('active'));
+        const activeP = document.getElementById(`onboarding-${targetPanel}`);
+        if(activeP) activeP.classList.add('active');
 
-      const escapeHtml = (value) =>
-        String(value ?? "")
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
-
-      const normalizeStatus = (value) =>
-        String(value ?? "")
-          .trim()
-          .toUpperCase();
-
-      const titleCase = (value) =>
-        String(value ?? "")
-          .trim()
-          .toLowerCase()
-          .replaceAll("_", " ")
-          .replace(
-            /\b\w/g,
-            (character) =>
-              character.toUpperCase()
-          );
-
-      const fullName = (application) =>
-        [
-          application?.firstName,
-          application?.middleName,
-          application?.lastName
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .trim() ||
-        "Applicant";
-
-      const applicationStatus = (
-        application
-      ) =>
-        normalizeStatus(
-          application?.workflowStatus ||
-          application?.status ||
-          "RECEIVED"
-        );
-
-      const applicationPosition = (
-        application
-      ) =>
-        application?.jobTitle ||
-        application?.positionTitle ||
-        titleCase(application?.appliedRole) ||
-        "General Employment Opportunity";
-
-      const formatDate = (value) => {
-        if (!value) {
-          return "—";
+        if(targetPanel === 'archived') {
+          syncArchivedJobsContainer();
         }
-
-        const date = new Date(value);
-
-        if (Number.isNaN(date.getTime())) {
-          return String(value);
-        }
-
-        return date.toLocaleDateString();
-      };
-
-      const formatDateTime = (value) => {
-        if (!value) {
-          return "";
-        }
-
-        const date = new Date(value);
-
-        if (Number.isNaN(date.getTime())) {
-          return String(value);
-        }
-
-        return date.toLocaleString();
-      };
-
-      const slugify = (value) =>
-        String(value ?? "")
-          .toLowerCase()
-          .trim()
-          .replace(
-            /[^a-z0-9]+/g,
-            "-"
-          )
-          .replace(
-            /^-+|-+$/g,
-            ""
-          );
-
-      const isArchivedApplication = (
-        application
-      ) =>
-        [
-          "ARCHIVED",
-          "POSITION_FILLED",
-          "NOT_SELECTED",
-          "REJECTED",
-          "DELETED"
-        ].includes(
-          applicationStatus(application)
-        );
-
-      const isArchivedJob = (job) =>
-        [
-          "CLOSED",
-          "ARCHIVED"
-        ].includes(
-          normalizeStatus(job?.status)
-        );
-
-      const statusClass = (value) => {
-        const status =
-          normalizeStatus(value);
-
-        if (
-          [
-            "HIRED",
-            "HIRE",
-            "OFFER_ACCEPTED",
-            "PUBLISHED",
-            "ACTIVE"
-          ].includes(status)
-        ) {
-          return "status-green";
-        }
-
-        if (
-          [
-            "REJECTED",
-            "NOT_SELECTED",
-            "DELETED",
-            "CANCELLED"
-          ].includes(status)
-        ) {
-          return "status-red";
-        }
-
-        if (
-          [
-            "DOCUMENTS_NEEDED",
-            "OFFER_PENDING",
-            "CLOSED",
-            "WITHDRAWN"
-          ].includes(status)
-        ) {
-          return "status-amber";
-        }
-
-        if (
-          [
-            "INTERVIEW",
-            "REVIEWING",
-            "RECEIVED"
-          ].includes(status)
-        ) {
-          return "status-blue";
-        }
-
-        return "status-purple";
-      };
-
-      const getToken = () =>
-        sessionStorage.getItem(
-          TOKEN_KEY
-        ) || "";
-
-      const signOut = () => {
-        sessionStorage.removeItem(
-          TOKEN_KEY
-        );
-
-        sessionStorage.removeItem(
-          SESSION_KEY
-        );
-
-        window.location.replace(
-          LOGIN_PAGE
-        );
-      };
-
-      const setConnectionState = (
-        stateName,
-        message
-      ) => {
-        const dot =
-          byId("connectionDot");
-
-        dot.classList.remove(
-          "connected",
-          "error"
-        );
-
-        if (
-          stateName === "connected"
-        ) {
-          dot.classList.add(
-            "connected"
-          );
-
-          byId(
-            "connectionText"
-          ).textContent =
-            "Railway: connected";
-
-          byId(
-            "connectionCardTitle"
-          ).textContent =
-            "Railway Connected";
-
-          byId(
-            "connectionCardMessage"
-          ).textContent =
-            message ||
-            "The authenticated backend API is responding.";
-
-          return;
-        }
-
-        if (
-          stateName === "error"
-        ) {
-          dot.classList.add(
-            "error"
-          );
-
-          byId(
-            "connectionText"
-          ).textContent =
-            "Railway: error";
-
-          byId(
-            "connectionCardTitle"
-          ).textContent =
-            "Connection Error";
-
-          byId(
-            "connectionCardMessage"
-          ).textContent =
-            message ||
-            "The administrative API could not be reached.";
-
-          return;
-        }
-
-        byId(
-          "connectionText"
-        ).textContent =
-          "Railway: connecting…";
-
-        byId(
-          "connectionCardTitle"
-        ).textContent =
-          "Connecting to Railway";
-
-        byId(
-          "connectionCardMessage"
-        ).textContent =
-          message ||
-          "Waiting for an authenticated API response.";
-      };
-
-      const showToast = (
-        heading,
-        message
-      ) => {
-        byId(
-          "toastTitle"
-        ).textContent =
-          heading;
-
-        byId(
-          "toastMessage"
-        ).textContent =
-          message;
-
-        byId(
-          "toast"
-        ).classList.remove(
-          "hidden"
-        );
-
-        clearTimeout(
-          state.toastTimer
-        );
-
-        state.toastTimer =
-          setTimeout(
-            () => {
-              byId(
-                "toast"
-              ).classList.add(
-                "hidden"
-              );
-            },
-            4200
-          );
-      };
-
-      const setBusy = (
-        busy,
-        text = "Working…"
-      ) => {
-        state.busyCount +=
-          busy ? 1 : -1;
-
-        state.busyCount =
-          Math.max(
-            0,
-            state.busyCount
-          );
-
-        byId(
-          "loadingText"
-        ).textContent =
-          text;
-
-        byId(
-          "loadingOverlay"
-        ).classList.toggle(
-          "hidden",
-          state.busyCount === 0
-        );
-      };
-
-      const openModal = (id) => {
-        byId(id).classList.remove(
-          "hidden"
-        );
-
-        document.body.classList.add(
-          "modal-open"
-        );
-      };
-
-      const closeModal = (id) => {
-        byId(id).classList.add(
-          "hidden"
-        );
-
-        const anyOpen =
-          selectAll(
-            ".modal-backdrop"
-          ).some(
-            (modal) =>
-              !modal.classList.contains(
-                "hidden"
-              )
-          );
-
-        if (!anyOpen) {
-          document.body.classList.remove(
-            "modal-open"
-          );
-        }
-      };
-
-      const activateModule = (
-        moduleName
-      ) => {
-        selectAll(
-          "[data-module]"
-        ).forEach(
-          (element) => {
-            element.classList.toggle(
-              "active",
-              element.dataset.module ===
-                moduleName
-            );
-          }
-        );
-
-        selectAll(
-          ".module"
-        ).forEach(
-          (element) => {
-            element.classList.toggle(
-              "active",
-              element.id ===
-                `module-${moduleName}`
-            );
-          }
-        );
-
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth"
-        });
-      };
-
-      const api = async (
-        path,
-        options = {}
-      ) => {
-        if (!getToken()) {
-          signOut();
-
-          throw new Error(
-            "Administrator sign-in is required."
-          );
-        }
-
-        const controller =
-          new AbortController();
-
-        const timeout =
-          setTimeout(
-            () =>
-              controller.abort(),
-            30000
-          );
-
-        try {
-          const response =
-            await fetch(
-              API_BASE + path,
-              {
-                ...options,
-
-                signal:
-                  controller.signal,
-
-                cache:
-                  "no-store",
-
-                headers: {
-                  Accept:
-                    "application/json",
-
-                  Authorization:
-                    `Bearer ${getToken()}`,
-
-                  ...(
-                    options.body
-                      ? {
-                          "Content-Type":
-                            "application/json"
-                        }
-                      : {}
-                  ),
-
-                  ...(
-                    options.headers ||
-                    {}
-                  )
-                }
-              }
-            );
-
-          const payload =
-            await response
-              .json()
-              .catch(
-                () => ({})
-              );
-
-          if (
-            response.status === 401
-          ) {
-            signOut();
-
-            throw new Error(
-              "Your session has expired."
-            );
+      });
+    });
+
+    // --- AUTOMATIC INTERVIEW MODAL TRIGGER FROM STATUS SELECT ---
+    function handleStatusChange(statusVal) {
+      if (statusVal === 'INTERVIEW') {
+        openInterviewModal('Selected Candidate');
+      }
+    }
+
+    // --- ARCHIVE SUB-FOLDER SWITCHER ---
+    function switchArchiveFolder(folder) {
+      document.querySelectorAll('.archive-subtab').forEach(b => b.classList.remove('active'));
+      if (window.event && window.event.target) window.event.target.classList.add('active');
+
+      if (folder === 'applicants') {
+        document.getElementById('archiveFolderApplicants').style.display = 'block';
+        document.getElementById('archiveFolderJobs').style.display = 'none';
+      } else {
+        document.getElementById('archiveFolderApplicants').style.display = 'none';
+        document.getElementById('archiveFolderJobs').style.display = 'block';
+        syncArchivedJobsContainer();
+      }
+    }
+
+    // --- REMOVE ARCHIVED/CLOSED JOBS FROM LIVE LIST AND TRANSFER ONLY TO JOBS ARCHIVE ---
+    function syncArchivedJobsContainer() {
+      const activeList = document.getElementById('jobOpeningList');
+      const archivedList = document.getElementById('archivedJobsList');
+      if (!activeList || !archivedList) return;
+
+      const cards = Array.from(activeList.querySelectorAll('.opening-card'));
+
+      cards.forEach(card => {
+        const text = card.innerText || '';
+        const isArchivedOrClosed = text.includes('Archived') || text.includes('Closed');
+
+        if (isArchivedOrClosed) {
+          // Clear default placeholder if present
+          if (archivedList.querySelector('.muted')) {
+            archivedList.innerHTML = '';
           }
 
-          if (!response.ok) {
-            throw new Error(
-              payload?.error ||
-              payload?.message ||
-              `Request failed with status ${response.status}.`
-            );
-          }
+          // Move (transfer) card out of activeList directly into archivedList
+          archivedList.appendChild(card);
 
-          return (
-            payload?.data !==
-            undefined
-              ? payload.data
-              : payload
-          );
-        } catch (error) {
-          if (
-            error?.name ===
-            "AbortError"
-          ) {
-            throw new Error(
-              "The server took too long to respond."
-            );
+          // Append Restore button if not already present
+          if (!card.querySelector('.btn-restore')) {
+            const actionsDiv = card.querySelector('.opening-actions') || card;
+            const restoreBtn = document.createElement('button');
+            restoreBtn.className = 'btn btn-primary btn-restore';
+            restoreBtn.type = 'button';
+            restoreBtn.innerText = 'Restore to Live';
+            restoreBtn.style.cssText = 'background:#166534; color:#fff; font-size:11px; margin-left:6px;';
+            restoreBtn.onclick = function() {
+              const publishBtn = card.querySelector('button[data-action="publish"]') || card.querySelector('.btn');
+              if(publishBtn) publishBtn.click();
+              showToast("Job Restored", "Position restored to active listings.");
+              setTimeout(syncArchivedJobsContainer, 500);
+            };
+            actionsDiv.appendChild(restoreBtn);
           }
-
-          throw error;
-        } finally {
-          clearTimeout(
-            timeout
-          );
         }
-      };
-
-      const renderRecruitingSummary =
-        () => {
-          const active =
-            state.applications.filter(
-              (application) =>
-                !isArchivedApplication(
-                  application
-                )
-            );
-
-          const counts =
-            active.reduce(
-              (
-                accumulator,
-                application
-              ) => {
-                const status =
-                  applicationStatus(
-                    application
-                  );
-
-                accumulator[
-                  status
-                ] =
-                  (
-                    accumulator[
-                      status
-                    ] || 0
-                  ) + 1;
-
-                return accumulator;
-              },
-              {}
-            );
-
-          byId(
-            "interviewsStat"
-          ).textContent =
-            String(
-              counts.INTERVIEW ||
-              0
-            );
-
-          const summary = [
-            [
-              "Received",
-              counts.RECEIVED || 0
-            ],
-            [
-              "Reviewing",
-              counts.REVIEWING || 0
-            ],
-            [
-              "Interview",
-              counts.INTERVIEW || 0
-            ],
-            [
-              "Offer Pending",
-              counts.OFFER_PENDING || 0
-            ],
-            [
-              "Offer Accepted",
-              counts.OFFER_ACCEPTED || 0
-            ]
-          ];
-
-          byId(
-            "recruitingSummary"
-          ).innerHTML =
-            summary
-              .map(
-                ([
-                  label,
-                  count
-                ]) => `
-                  <div class="activity-card">
-                    <strong>
-                      ${escapeHtml(label)}
-                    </strong>
-
-                    <div class="sub">
-                      ${count}
-                      applicant${count === 1 ? "" : "s"}
-                    </div>
-                  </div>
-                `
-              )
-              .join("");
-        };
-
-      const renderApplicants = () => {
-        const search =
-          byId(
-            "applicantSearch"
-          )
-            .value
-            .trim()
-            .toLowerCase();
-
-        const statusFilter =
-          normalizeStatus(
-            byId(
-              "applicantStatusFilter"
-            ).value
-          );
-
-        const active =
-          state.applications.filter(
-            (application) =>
-              !isArchivedApplication(
-                application
-              )
-          );
-
-        const filtered =
-          active.filter(
-            (application) => {
-              const searchable = [
-                fullName(application),
-                application?.email,
-                application?.phone,
-                applicationPosition(
-                  application
-                ),
-                applicationStatus(
-                  application
-                )
-              ]
-                .filter(Boolean)
-                .join(" ")
-                .toLowerCase();
-
-              return (
-                (
-                  !search ||
-                  searchable.includes(
-                    search
-                  )
-                ) &&
-                (
-                  !statusFilter ||
-                  applicationStatus(
-                    application
-                  ) ===
-                    statusFilter
-                )
-              );
-            }
-          );
-
-        byId(
-          "applicantCount"
-        ).textContent =
-          `${filtered.length} applicant` +
-          (
-            filtered.length === 1
-              ? ""
-              : "s"
-          );
-
-        byId(
-          "openApplicantsStat"
-        ).textContent =
-          String(active.length);
-
-        if (!filtered.length) {
-          byId(
-            "applicantRows"
-          ).innerHTML = `
-            <tr>
-              <td colspan="6">
-                <div class="empty-state">
-                  No active applications found.
-                </div>
-              </td>
-            </tr>
-          `;
-
-          renderRecruitingSummary();
-
-          return;
-        }
-
-        byId(
-          "applicantRows"
-        ).innerHTML =
-          filtered
-            .map(
-              (application) => {
-                const status =
-                  applicationStatus(
-                    application
-                  );
-
-                return `
-                  <tr>
-                    <td>
-                      ${escapeHtml(
-                        formatDate(
-                          application?.submittedAt ||
-                          application?.createdAt
-                        )
-                      )}
-                    </td>
-
-                    <td>
-                      <strong>
-                        ${escapeHtml(
-                          fullName(
-                            application
-                          )
-                        )}
-                      </strong>
-
-                      <div class="sub">
-                        ${escapeHtml(
-                          application?.email ||
-                          application?.phone ||
-                          ""
-                        )}
-                      </div>
-                    </td>
-
-                    <td>
-                      ${escapeHtml(
-                        applicationPosition(
-                          application
-                        )
-                      )}
-                    </td>
-
-                    <td>
-                      ${escapeHtml(
-                        application?.assessmentScore ??
-                        "—"
-                      )}
-                    </td>
-
-                    <td>
-                      <span
-                        class="status ${statusClass(status)}"
-                      >
-                        ${escapeHtml(
-                          titleCase(status)
-                        )}
-                      </span>
-                    </td>
-
-                    <td>
-                      <button
-                        class="button button-primary button-small"
-                        type="button"
-                        data-open-folder="${escapeHtml(application.id)}"
-                      >
-                        Open Folder
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }
-            )
-            .join("");
-
-        renderRecruitingSummary();
-      };
-
-      const loadApplications =
-        async () => {
-          try {
-            const data =
-              await api(
-                "/api/admin/applications?limit=500"
-              );
-
-            state.applications =
-              Array.isArray(data)
-                ? data
-                : [];
-
-            renderApplicants();
-            renderArchives();
-
-            setConnectionState(
-              "connected",
-              "Applicant and recruiting data loaded successfully."
-            );
-          } catch (error) {
-            setConnectionState(
-              "error",
-              error.message
-            );
-
-            byId(
-              "applicantRows"
-            ).innerHTML = `
-              <tr>
-                <td colspan="6">
-                  <div class="message message-error">
-                    ${escapeHtml(error.message)}
-                  </div>
-                </td>
-              </tr>
-            `;
-
-            showToast(
-              "Applicants unavailable",
-              error.message
-            );
-          }
-        };
-
-      const workflowOptionsHtml = (
-        currentStatus
-      ) =>
-        workflowStatuses
-          .map(
-            ([
-              value,
-              label
-            ]) => `
-              <option
-                value="${value}"
-                ${
-                  normalizeStatus(
-                    currentStatus
-                  ) === value
-                    ? "selected"
-                    : ""
-                }
-              >
-                ${label}
-              </option>
-            `
-          )
-          .join("");
-
-      const renderDocuments = (
-        documents
-      ) => {
-        if (
-          !Array.isArray(documents) ||
-          !documents.length
-        ) {
-          return `
-            <div class="sub">
-              No uploaded documents were returned.
-            </div>
-          `;
-        }
-
-        return documents
-          .map(
-            (document) => {
-              const name =
-                document?.name ||
-                document?.fileName ||
-                document?.documentType ||
-                "Applicant Document";
-
-              const status =
-                document?.status ||
-                "UPLOADED";
-
-              const link =
-                document?.downloadUrl ||
-                document?.url ||
-                "";
-
-              return `
-                <article class="document-card">
-                  <div class="document-heading">
-                    <div>
-                      <h3>
-                        ${escapeHtml(name)}
-                      </h3>
-
-                      <div class="sub">
-                        ${escapeHtml(
-                          titleCase(status)
-                        )}
-                      </div>
-                    </div>
-
-                    <span
-                      class="status ${statusClass(status)}"
-                    >
-                      ${escapeHtml(
-                        titleCase(status)
-                      )}
-                    </span>
-                  </div>
-
-                  ${
-                    link
-                      ? `
-                        <div
-                          class="actions"
-                          style="margin-top:10px"
-                        >
-                          <a
-                            class="button button-small"
-                            href="${escapeHtml(link)}"
-                            target="_blank"
-                            rel="noopener"
-                          >
-                            Open Document
-                          </a>
-                        </div>
-                      `
-                      : ""
-                  }
-                </article>
-              `;
-            }
-          )
-          .join("");
-      };
-
-      const renderHistory = (
-        history
-      ) => {
-        if (
-          !Array.isArray(history) ||
-          !history.length
-        ) {
-          return `
-            <div class="sub">
-              No workflow history was returned.
-            </div>
-          `;
-        }
-
-        return history
-          .map(
-            (entry) => `
-              <article class="history-card">
-                <strong>
-                  ${escapeHtml(
-                    titleCase(
-                      entry?.status ||
-                      entry?.action ||
-                      entry?.eventType ||
-                      "Workflow Update"
-                    )
-                  )}
-                </strong>
-
-                <div class="sub">
-                  ${escapeHtml(
-                    formatDateTime(
-                      entry?.createdAt
-                    )
-                  )}
-
-                  ${
-                    entry?.note ||
-                    entry?.message
-                      ? ` · ${escapeHtml(
-                          entry?.note ||
-                          entry?.message
-                        )}`
-                      : ""
-                  }
-                </div>
-              </article>
-            `
-          )
-          .join("");
-      };
-
-      const renderOfferProgress = (
-        progress
-      ) => {
-        const offer =
-          progress?.offer ||
-          progress?.currentOffer;
-
-        if (!offer) {
-          return `
-            <p class="sub">
-              No employment offer has been sent.
-            </p>
-          `;
-        }
-
-        const status =
-          offer?.status ||
-          progress?.status ||
-          "PENDING";
-
-        return `
-          <p>
-            <strong>
-              ${escapeHtml(
-                offer?.positionTitle ||
-                "Employment Offer"
-              )}
-            </strong>
-          </p>
-
-          <p>
-            <span
-              class="status ${statusClass(status)}"
-            >
-              ${escapeHtml(
-                titleCase(status)
-              )}
-            </span>
-          </p>
-        `;
-      };
-
-      const renderApplicantFolder = (
-        folder,
-        offerProgress
-      ) => {
-        const application =
-          folder?.application ||
-          folder ||
-          {};
-
-        const documents =
-          folder?.documents ||
-          application?.documents ||
-          [];
-
-        const history =
-          folder?.history ||
-          folder?.workflowHistory ||
-          application?.history ||
-          [];
-
-        const status =
-          applicationStatus(
-            application
-          );
-
-        byId(
-          "folderTitle"
-        ).textContent =
-          fullName(application);
-
-        byId(
-          "folderBody"
-        ).innerHTML = `
-          <div class="folder-header">
-            <div>
-              <h2>
-                ${escapeHtml(
-                  fullName(application)
-                )}
-              </h2>
-
-              <p>
-                ${escapeHtml(
-                  application?.email ||
-                  ""
-                )}
-
-                ${
-                  application?.phone
-                    ? ` · ${escapeHtml(application.phone)}`
-                    : ""
-                }
-
-                · ${escapeHtml(
-                  applicationPosition(
-                    application
-                  )
-                )}
-              </p>
-            </div>
-
-            <span
-              class="status ${statusClass(status)}"
-            >
-              ${escapeHtml(
-                titleCase(status)
-              )}
-            </span>
-          </div>
-
-          <div id="folderMessage"></div>
-
-          <div class="folder-grid">
-            <section class="folder-section">
-              <h3>Workflow Status</h3>
-
-              <div class="field">
-                <label for="folderStatus">
-                  New Status
-                </label>
-
-                <select id="folderStatus">
-                  ${workflowOptionsHtml(status)}
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="folderNote">
-                  Internal Note
-                </label>
-
-                <textarea id="folderNote"></textarea>
-              </div>
-
-              <button
-                class="button button-primary"
-                id="saveFolderStatusButton"
-                type="button"
-              >
-                Save Status and Send Update
-              </button>
-            </section>
-
-            <section class="folder-section">
-              <h3>
-                Applicant Portal Access
-              </h3>
-
-              <p>
-                <strong>Username:</strong>
-
-                ${escapeHtml(
-                  application?.portalUsername ||
-                  application?.username ||
-                  application?.email ||
-                  "Not available"
-                )}
-              </p>
-
-              <div class="actions">
-                <button
-                  class="button"
-                  id="resendPortalButton"
-                  type="button"
-                >
-                  Resend Portal Access
-                </button>
-
-                <button
-                  class="button button-primary"
-                  id="scheduleInterviewButton"
-                  type="button"
-                >
-                  Schedule Interview
-                </button>
-              </div>
-            </section>
-
-            <section class="folder-section">
-              <h3>
-                Applicant Documents
-              </h3>
-
-              ${renderDocuments(documents)}
-            </section>
-
-            <section class="folder-section">
-              <h3>
-                Employment Offer
-              </h3>
-
-              ${renderOfferProgress(offerProgress)}
-
-              <button
-                class="button button-success"
-                id="prepareOfferButton"
-                type="button"
-              >
-                Prepare and Send Offer
-              </button>
-            </section>
-
-            <section
-              class="folder-section folder-section-wide"
-            >
-              <h3>
-                Workflow History
-              </h3>
-
-              ${renderHistory(history)}
-            </section>
-
-            <section
-              class="folder-section folder-section-wide folder-section-danger"
-            >
-              <h3>
-                Terminal Actions
-              </h3>
-
-              <p class="sub">
-                These actions may disable portal access and
-                send the applicable Human Resources email.
-              </p>
-
-              <div class="actions">
-                <button
-                  class="button button-warning"
-                  id="archiveApplicantButton"
-                  type="button"
-                >
-                  Position Filled — Archive
-                </button>
-
-                <button
-                  class="button button-danger"
-                  id="rejectApplicantButton"
-                  type="button"
-                >
-                  Not Selected — Permanently Delete
-                </button>
-              </div>
-            </section>
-          </div>
-        `;
-
-        byId(
-          "saveFolderStatusButton"
-        ).onclick =
-          saveApplicantStatus;
-
-        byId(
-          "resendPortalButton"
-        ).onclick =
-          resendPortalAccess;
-
-        byId(
-          "scheduleInterviewButton"
-        ).onclick =
-          () =>
-            openModal(
-              "interviewModal"
-            );
-
-        byId(
-          "prepareOfferButton"
-        ).onclick =
-          () =>
-            openOfferForm(
-              application
-            );
-
-        byId(
-          "archiveApplicantButton"
-        ).onclick =
-          () =>
-            terminalApplicantAction(
-              "archive"
-            );
-
-        byId(
-          "rejectApplicantButton"
-        ).onclick =
-          () =>
-            terminalApplicantAction(
-              "reject"
-            );
-      };
-
-      const openApplicantFolder =
-        async (
-          applicationId
-        ) => {
-          state.activeApplicationId =
-            applicationId;
-
-          byId(
-            "folderBody"
-          ).innerHTML = `
-            <div class="empty-state">
-              Loading applicant folder…
-            </div>
-          `;
-
-          openModal(
-            "folderModal"
-          );
-
-          try {
-            const [
-              folder,
-              offerProgress
-            ] =
-              await Promise.all([
-                api(
-                  `/api/admin/applications/${encodeURIComponent(applicationId)}/folder`
-                ),
-
-                api(
-                  `/api/admin/applications/${encodeURIComponent(applicationId)}/offer-progress`
-                ).catch(
-                  () => ({})
-                )
-              ]);
-
-            state.folder =
-              folder;
-
-            state.offerProgress =
-              offerProgress;
-
-            renderApplicantFolder(
-              folder,
-              offerProgress
-            );
-          } catch (error) {
-            byId(
-              "folderBody"
-            ).innerHTML = `
-              <div class="message message-error">
-                ${escapeHtml(error.message)}
-              </div>
-            `;
-          }
-        };
-
-      const setFolderMessage = (
-        message,
-        type = "success"
-      ) => {
-        const container =
-          byId("folderMessage");
-
-        if (!container) {
-          return;
-        }
-
-        container.innerHTML = `
-          <div
-            class="message ${
-              type === "error"
-                ? "message-error"
-                : type === "warning"
-                  ? "message-warning"
-                  : "message-success"
-            }"
-          >
-            ${escapeHtml(message)}
-          </div>
-        `;
-      };
-
-      const saveApplicantStatus =
-        async () => {
-          setBusy(
-            true,
-            "Updating applicant status…"
-          );
-
-          try {
-            await api(
-              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/status`,
-              {
-                method:
-                  "PATCH",
-
-                body:
-                  JSON.stringify({
-                    status:
-                      byId(
-                        "folderStatus"
-                      ).value,
-
-                    note:
-                      byId(
-                        "folderNote"
-                      )
-                        .value
-                        .trim() ||
-                      undefined
-                  })
-              }
-            );
-
-            setFolderMessage(
-              "Status updated and applicant notification processed."
-            );
-
-            await Promise.all([
-              loadApplications(),
-
-              openApplicantFolder(
-                state.activeApplicationId
-              )
-            ]);
-          } catch (error) {
-            setFolderMessage(
-              error.message,
-              "error"
-            );
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const resendPortalAccess =
-        async () => {
-          setBusy(
-            true,
-            "Resending portal access…"
-          );
-
-          try {
-            await api(
-              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/resend-portal-access`,
-              {
-                method:
-                  "POST",
-
-                body:
-                  JSON.stringify({})
-              }
-            );
-
-            setFolderMessage(
-              "Portal access email resent successfully."
-            );
-          } catch (error) {
-            setFolderMessage(
-              error.message,
-              "error"
-            );
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const terminalApplicantAction =
-        async (action) => {
-          const deleting =
-            action === "reject";
-
-          const confirmed =
-            window.confirm(
-              deleting
-                ? "This will send the non-selection email, disable portal access, and permanently delete the applicant record. Continue?"
-                : "This will send the position-filled email, disable portal access, and archive the application. Continue?"
-            );
-
-          if (!confirmed) {
-            return;
-          }
-
-          setBusy(
-            true,
-            deleting
-              ? "Deleting applicant…"
-              : "Archiving applicant…"
-          );
-
-          try {
-            await api(
-              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/${action}`,
-              {
-                method:
-                  "POST",
-
-                body:
-                  JSON.stringify({
-                    note:
-                      byId(
-                        "folderNote"
-                      )
-                        ?.value
-                        .trim() ||
-                      undefined,
-
-                    acknowledged:
-                      true
-                  })
-              }
-            );
-
-            closeModal(
-              "folderModal"
-            );
-
-            showToast(
-              deleting
-                ? "Applicant deleted"
-                : "Applicant archived",
-
-              deleting
-                ? "The non-selection workflow was completed."
-                : "The position-filled workflow was completed."
-            );
-
-            await loadApplications();
-          } catch (error) {
-            setFolderMessage(
-              error.message,
-              "error"
-            );
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const openOfferForm = (
-        application
-      ) => {
-        byId(
-          "offerForm"
-        ).reset();
-
-        byId(
-          "offerPosition"
-        ).value =
-          application?.positionTitle ||
-          application?.jobTitle ||
-          titleCase(
-            application?.appliedRole
-          );
-
-        byId(
-          "offerDepartment"
-        ).value =
-          application?.department ||
-          "";
-
-        byId(
-          "offerLocation"
-        ).value =
-          application?.locationText ||
-          "Dayton, OH";
-
-        byId(
-          "offerProbation"
-        ).value =
-          "90";
-
-        byId(
-          "offerMessage"
-        ).innerHTML =
-          "";
-
-        openModal(
-          "offerModal"
-        );
-      };
-
-      const sendOffer =
-        async (event) => {
-          event.preventDefault();
-
-          const payload = {
-            positionTitle:
-              byId(
-                "offerPosition"
-              )
-                .value
-                .trim(),
-
-            department:
-              byId(
-                "offerDepartment"
-              )
-                .value
-                .trim() ||
-              undefined,
-
-            supervisorName:
-              byId(
-                "offerSupervisor"
-              )
-                .value
-                .trim() ||
-              undefined,
-
-            employmentType:
-              byId(
-                "offerEmployment"
-              ).value,
-
-            compensationType:
-              byId(
-                "offerCompensationType"
-              ).value,
-
-            payAmount:
-              Number(
-                byId(
-                  "offerPay"
-                ).value
-              ),
-
-            startDate:
-              byId(
-                "offerStart"
-              ).value,
-
-            orientationDate:
-              byId(
-                "offerOrientation"
-              ).value ||
-              undefined,
-
-            shift:
-              byId(
-                "offerShift"
-              )
-                .value
-                .trim() ||
-              undefined,
-
-            workLocation:
-              byId(
-                "offerLocation"
-              )
-                .value
-                .trim() ||
-              undefined,
-
-            probationDays:
-              Number(
-                byId(
-                  "offerProbation"
-                ).value ||
-                90
-              ),
-
-            bonusAmount:
-              byId(
-                "offerBonus"
-              ).value
-                ? Number(
-                    byId(
-                      "offerBonus"
-                    ).value
-                  )
-                : undefined,
-
-            ptoEligible:
-              byId(
-                "offerPto"
-              ).checked,
-
-            benefitsEligible:
-              byId(
-                "offerBenefits"
-              ).checked,
-
-            notes:
-              byId(
-                "offerNotes"
-              )
-                .value
-                .trim() ||
-              undefined,
-
-            requiredDocuments: [
-              "Offer Letter"
-            ]
-          };
-
-          if (
-            !payload.positionTitle ||
-            !payload.startDate ||
-            !Number.isFinite(
-              payload.payAmount
-            ) ||
-            payload.payAmount <= 0
-          ) {
-            byId(
-              "offerMessage"
-            ).innerHTML = `
-              <div class="message message-error">
-                Position title, valid pay amount,
-                and start date are required.
-              </div>
-            `;
-
-            return;
-          }
-
-          setBusy(
-            true,
-            "Sending offer…"
-          );
-
-          try {
-            await api(
-              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/offers`,
-              {
-                method:
-                  "POST",
-
-                body:
-                  JSON.stringify(
-                    payload
-                  )
-              }
-            );
-
-            closeModal(
-              "offerModal"
-            );
-
-            showToast(
-              "Offer sent",
-              "The application status has been updated to Offer Pending."
-            );
-
-            await Promise.all([
-              loadApplications(),
-
-              openApplicantFolder(
-                state.activeApplicationId
-              )
-            ]);
-          } catch (error) {
-            byId(
-              "offerMessage"
-            ).innerHTML = `
-              <div class="message message-error">
-                ${escapeHtml(error.message)}
-              </div>
-            `;
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const scheduleInterview =
-        async (event) => {
-          event.preventDefault();
-
-          const slots = [
-            byId(
-              "interviewSlotOne"
-            ).value,
-
-            byId(
-              "interviewSlotTwo"
-            ).value,
-
-            byId(
-              "interviewSlotThree"
-            ).value
-          ]
-            .filter(Boolean)
-            .map(
-              (value) =>
-                new Date(
-                  value
-                ).toISOString()
-            );
-
-          if (!slots.length) {
-            byId(
-              "interviewMessage"
-            ).innerHTML = `
-              <div class="message message-error">
-                Enter at least one interview
-                date and time.
-              </div>
-            `;
-
-            return;
-          }
-
-          setBusy(
-            true,
-            "Sending interview invitation…"
-          );
-
-          try {
-            await api(
-              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/interview-slots`,
-              {
-                method:
-                  "POST",
-
-                body:
-                  JSON.stringify({
-                    slots,
-
-                    location:
-                      byId(
-                        "interviewLocation"
-                      )
-                        .value
-                        .trim() ||
-                      undefined,
-
-                    notes:
-                      byId(
-                        "interviewNotes"
-                      )
-                        .value
-                        .trim() ||
-                      undefined
-                  })
-              }
-            );
-
-            closeModal(
-              "interviewModal"
-            );
-
-            setFolderMessage(
-              "Interview invitation sent successfully."
-            );
-
-            showToast(
-              "Interview invitation sent",
-              "The applicant can select from the available times."
-            );
-
-            await loadApplications();
-          } catch (error) {
-            byId(
-              "interviewMessage"
-            ).innerHTML = `
-              <div class="message message-error">
-                ${escapeHtml(error.message)}
-              </div>
-            `;
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const applyJobPreset =
-        () => {
-          const preset =
-            jobPresets[
-              byId(
-                "jobPreset"
-              ).value
-            ];
-
-          if (!preset) {
-            return;
-          }
-
-          byId(
-            "jobTitle"
-          ).value =
-            preset.title;
-
-          byId(
-            "jobSlug"
-          ).value =
-            slugify(
-              preset.title
-            );
-
-          byId(
-            "jobDepartment"
-          ).value =
-            preset.department;
-
-          byId(
-            "jobType"
-          ).value =
-            preset.employmentType;
-
-          byId(
-            "jobPay"
-          ).value =
-            preset.payRange;
-
-          byId(
-            "jobPath"
-          ).value =
-            preset.applicationPath;
-
-          byId(
-            "jobSummary"
-          ).value =
-            `Join Sulandra Health as a ${preset.title} and help deliver dependable, person-centered services.`;
-
-          byId(
-            "jobDescription"
-          ).value =
-            `The ${preset.title} supports safe, respectful, compliant service delivery while collaborating with clients, families, employees, and leadership.`;
-
-          byId(
-            "jobRequirements"
-          ).value =
-            "Relevant education or experience; dependable communication; successful credential and background verification as applicable.";
-
-          byId(
-            "jobBenefits"
-          ).value =
-            "Competitive compensation, paid training, professional development, and a supportive team environment.";
-        };
-
-      const getJobPayload = () => ({
-        title:
-          byId(
-            "jobTitle"
-          )
-            .value
-            .trim(),
-
-        slug:
-          byId(
-            "jobSlug"
-          )
-            .value
-            .trim(),
-
-        department:
-          byId(
-            "jobDepartment"
-          )
-            .value
-            .trim() ||
-          undefined,
-
-        employmentType:
-          byId(
-            "jobType"
-          ).value,
-
-        locationText:
-          byId(
-            "jobLocation"
-          )
-            .value
-            .trim() ||
-          undefined,
-
-        payRange:
-          byId(
-            "jobPay"
-          )
-            .value
-            .trim() ||
-          undefined,
-
-        applicationPath:
-          byId(
-            "jobPath"
-          ).value,
-
-        summary:
-          byId(
-            "jobSummary"
-          )
-            .value
-            .trim(),
-
-        description:
-          byId(
-            "jobDescription"
-          )
-            .value
-            .trim(),
-
-        requirements:
-          byId(
-            "jobRequirements"
-          )
-            .value
-            .trim() ||
-          undefined,
-
-        benefits:
-          byId(
-            "jobBenefits"
-          )
-            .value
-            .trim() ||
-          undefined,
-
-        status:
-          byId(
-            "jobStatus"
-          ).value
       });
 
-      const resetJobForm = () => {
-        state.editingJobId =
-          "";
-
-        byId(
-          "jobForm"
-        ).reset();
-
-        byId(
-          "jobLocation"
-        ).value =
-          "Dayton, OH";
-
-        byId(
-          "jobFormTitle"
-        ).textContent =
-          "Create Job Opening";
-
-        byId(
-          "saveJobButton"
-        ).textContent =
-          "Save Job Opening";
-
-        byId(
-          "cancelJobEditButton"
-        ).classList.add(
-          "hidden"
-        );
-
-        byId(
-          "jobFormMessage"
-        ).innerHTML =
-          "";
-      };
-
-      const saveJob =
-        async (event) => {
-          event.preventDefault();
-
-          const payload =
-            getJobPayload();
-
-          if (
-            !payload.title ||
-            !payload.slug ||
-            !payload.summary ||
-            !payload.description
-          ) {
-            byId(
-              "jobFormMessage"
-            ).innerHTML = `
-              <div class="message message-error">
-                Title, slug, summary, and
-                description are required.
-              </div>
-            `;
-
-            return;
-          }
-
-          const editing =
-            Boolean(
-              state.editingJobId
-            );
-
-          const path =
-            editing
-              ? `/api/admin/job-openings/${encodeURIComponent(state.editingJobId)}`
-              : "/api/admin/job-openings";
-
-          setBusy(
-            true,
-            editing
-              ? "Saving job changes…"
-              : "Creating job opening…"
-          );
-
-          try {
-            await api(
-              path,
-              {
-                method:
-                  editing
-                    ? "PATCH"
-                    : "POST",
-
-                body:
-                  JSON.stringify(
-                    payload
-                  )
-              }
-            );
-
-            showToast(
-              "Job opening saved",
-
-              payload.status ===
-              "PUBLISHED"
-                ? "The job opening is published."
-                : "The job opening was saved as a draft."
-            );
-
-            resetJobForm();
-            await loadJobs();
-          } catch (error) {
-            byId(
-              "jobFormMessage"
-            ).innerHTML = `
-              <div class="message message-error">
-                ${escapeHtml(error.message)}
-              </div>
-            `;
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const editJob = (
-        jobId
-      ) => {
-        const job =
-          state.jobs.find(
-            (entry) =>
-              String(entry.id) ===
-              String(jobId)
-          );
-
-        if (!job) {
-          return;
-        }
-
-        state.editingJobId =
-          jobId;
-
-        byId(
-          "jobFormTitle"
-        ).textContent =
-          "Edit Job Opening";
-
-        byId(
-          "saveJobButton"
-        ).textContent =
-          "Save Changes";
-
-        byId(
-          "cancelJobEditButton"
-        ).classList.remove(
-          "hidden"
-        );
-
-        byId(
-          "jobTitle"
-        ).value =
-          job?.title ||
-          "";
-
-        byId(
-          "jobSlug"
-        ).value =
-          job?.slug ||
-          "";
-
-        byId(
-          "jobDepartment"
-        ).value =
-          job?.department ||
-          "";
-
-        byId(
-          "jobType"
-        ).value =
-          job?.employmentType ||
-          "Full-Time";
-
-        byId(
-          "jobLocation"
-        ).value =
-          job?.locationText ||
-          "Dayton, OH";
-
-        byId(
-          "jobPay"
-        ).value =
-          job?.payRange ||
-          "";
-
-        byId(
-          "jobPath"
-        ).value =
-          job?.applicationPath ||
-          "/applygeneral.html";
-
-        byId(
-          "jobSummary"
-        ).value =
-          job?.summary ||
-          "";
-
-        byId(
-          "jobDescription"
-        ).value =
-          job?.description ||
-          "";
-
-        byId(
-          "jobRequirements"
-        ).value =
-          job?.requirements ||
-          "";
-
-        byId(
-          "jobBenefits"
-        ).value =
-          job?.benefits ||
-          "";
-
-        byId(
-          "jobStatus"
-        ).value =
-          normalizeStatus(
-            job?.status
-          ) ||
-          "DRAFT";
-
-        activateModule(
-          "jobs"
-        );
-      };
-
-      const setJobStatus =
-        async (
-          jobId,
-          status
-        ) => {
-          setBusy(
-            true,
-            "Updating job status…"
-          );
-
-          try {
-            await api(
-              `/api/admin/job-openings/${encodeURIComponent(jobId)}`,
-              {
-                method:
-                  "PATCH",
-
-                body:
-                  JSON.stringify({
-                    status
-                  })
-              }
-            );
-
-            showToast(
-              "Job opening updated",
-              `Status changed to ${titleCase(status)}.`
-            );
-
-            await loadJobs();
-          } catch (error) {
-            showToast(
-              "Job opening not updated",
-              error.message
-            );
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const renderJobs = () => {
-        const active =
-          state.jobs.filter(
-            (job) =>
-              !isArchivedJob(job)
-          );
-
-        byId(
-          "jobCount"
-        ).textContent =
-          `${active.length} job` +
-          (
-            active.length === 1
-              ? ""
-              : "s"
-          );
-
-        if (!active.length) {
-          byId(
-            "jobList"
-          ).innerHTML = `
-            <div class="empty-state">
-              No active job openings.
-            </div>
-          `;
-
-          renderArchives();
-
-          return;
-        }
-
-        byId(
-          "jobList"
-        ).innerHTML =
-          active
-            .map(
-              (job) => {
-                const status =
-                  normalizeStatus(
-                    job?.status
-                  ) ||
-                  "DRAFT";
-
-                const nextStatus =
-                  status ===
-                  "PUBLISHED"
-                    ? "CLOSED"
-                    : "PUBLISHED";
-
-                return `
-                  <article class="job-card">
-                    <div class="job-heading">
-                      <div>
-                        <h3>
-                          ${escapeHtml(
-                            job?.title ||
-                            "Untitled Job"
-                          )}
-                        </h3>
-
-                        <div class="sub">
-                          ${escapeHtml(
-                            job?.department ||
-                            "General"
-                          )}
-
-                          ${
-                            job?.locationText
-                              ? ` · ${escapeHtml(job.locationText)}`
-                              : ""
-                          }
-                        </div>
-                      </div>
-
-                      <span
-                        class="status ${statusClass(status)}"
-                      >
-                        ${escapeHtml(
-                          titleCase(status)
-                        )}
-                      </span>
-                    </div>
-
-                    <p>
-                      ${escapeHtml(
-                        job?.summary ||
-                        ""
-                      )}
-                    </p>
-
-                    <div class="actions">
-                      <button
-                        class="button button-primary button-small"
-                        type="button"
-                        data-edit-job="${escapeHtml(job.id)}"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        class="button button-small"
-                        type="button"
-                        data-job-id="${escapeHtml(job.id)}"
-                        data-job-status="${nextStatus}"
-                      >
-                        ${
-                          status ===
-                          "PUBLISHED"
-                            ? "Close"
-                            : "Publish Live"
-                        }
-                      </button>
-
-                      <button
-                        class="button button-warning button-small"
-                        type="button"
-                        data-job-id="${escapeHtml(job.id)}"
-                        data-job-status="ARCHIVED"
-                      >
-                        Archive
-                      </button>
-                    </div>
-                  </article>
-                `;
-              }
-            )
-            .join("");
-
-        renderArchives();
-      };
-
-      const loadJobs =
-        async () => {
-          try {
-            const data =
-              await api(
-                "/api/admin/job-openings"
-              );
-
-            state.jobs =
-              Array.isArray(data)
-                ? data
-                : [];
-
-            renderJobs();
-          } catch (error) {
-            byId(
-              "jobList"
-            ).innerHTML = `
-              <div class="message message-error">
-                ${escapeHtml(error.message)}
-              </div>
-            `;
-
-            showToast(
-              "Job openings unavailable",
-              error.message
-            );
-          }
-        };
-
-      const renderArchives = () => {
-        const applicants =
-          state.applications.filter(
-            isArchivedApplication
-          );
-
-        const jobs =
-          state.jobs.filter(
-            isArchivedJob
-          );
-
-        byId(
-          "archivedApplicants"
-        ).innerHTML =
-          applicants.length
-            ? applicants
-                .map(
-                  (application) => `
-                    <article class="archive-card">
-                      <div class="archive-heading">
-                        <div>
-                          <h3>
-                            ${escapeHtml(
-                              fullName(application)
-                            )}
-                          </h3>
-
-                          <div class="sub">
-                            ${escapeHtml(
-                              applicationPosition(
-                                application
-                              )
-                            )}
-                          </div>
-                        </div>
-
-                        <span
-                          class="status ${statusClass(applicationStatus(application))}"
-                        >
-                          ${escapeHtml(
-                            titleCase(
-                              applicationStatus(
-                                application
-                              )
-                            )
-                          )}
-                        </span>
-                      </div>
-                    </article>
-                  `
-                )
-                .join("")
-            : `
-              <div class="empty-state">
-                No archived applicants were returned.
-              </div>
-            `;
-
-        byId(
-          "archivedJobs"
-        ).innerHTML =
-          jobs.length
-            ? jobs
-                .map(
-                  (job) => `
-                    <article class="archive-card">
-                      <div class="archive-heading">
-                        <div>
-                          <h3>
-                            ${escapeHtml(
-                              job?.title ||
-                              "Untitled Job"
-                            )}
-                          </h3>
-
-                          <div class="sub">
-                            ${escapeHtml(
-                              job?.department ||
-                              "General"
-                            )}
-                          </div>
-                        </div>
-
-                        <span
-                          class="status ${statusClass(job?.status)}"
-                        >
-                          ${escapeHtml(
-                            titleCase(
-                              job?.status
-                            )
-                          )}
-                        </span>
-                      </div>
-
-                      <div
-                        class="actions"
-                        style="margin-top:12px"
-                      >
-                        <button
-                          class="button button-primary button-small"
-                          type="button"
-                          data-job-id="${escapeHtml(job.id)}"
-                          data-job-status="PUBLISHED"
-                        >
-                          Restore and Publish
-                        </button>
-                      </div>
-                    </article>
-                  `
-                )
-                .join("")
-            : `
-              <div class="empty-state">
-                No archived jobs.
-              </div>
-            `;
-      };
-
-      const exportApplicants = () => {
-        const quote = (value) =>
-          `"${String(value ?? "")
-            .replaceAll(
-              '"',
-              '""'
-            )}"`;
-
-        const rows = [
-          [
-            "Submitted",
-            "Applicant",
-            "Email",
-            "Phone",
-            "Position",
-            "Score",
-            "Status"
-          ],
-
-          ...state.applications.map(
-            (application) => [
-              application?.submittedAt ||
-              application?.createdAt ||
-              "",
-
-              fullName(application),
-
-              application?.email ||
-              "",
-
-              application?.phone ||
-              "",
-
-              applicationPosition(
-                application
-              ),
-
-              application?.assessmentScore ??
-              "",
-
-              titleCase(
-                applicationStatus(
-                  application
-                )
-              )
-            ]
-          )
-        ];
-
-        const csv =
-          rows
-            .map(
-              (row) =>
-                row
-                  .map(quote)
-                  .join(",")
-            )
-            .join("\n");
-
-        const blob =
-          new Blob(
-            [csv],
-            {
-              type:
-                "text/csv;charset=utf-8"
-            }
-          );
-
-        const url =
-          URL.createObjectURL(
-            blob
-          );
-
-        const link =
-          document.createElement(
-            "a"
-          );
-
-        link.href =
-          url;
-
-        link.download =
-          `sulandra-applicants-${new Date()
-            .toISOString()
-            .slice(0, 10)}.csv`;
-
-        document.body.appendChild(
-          link
-        );
-
-        link.click();
-        link.remove();
-
-        URL.revokeObjectURL(
-          url
-        );
-      };
-
-      const refreshAll =
-        async () => {
-          setBusy(
-            true,
-            "Refreshing admin console…"
-          );
-
-          setConnectionState(
-            "connecting"
-          );
-
-          try {
-            await Promise.all([
-              loadApplications(),
-              loadJobs()
-            ]);
-
-            showToast(
-              "Admin console refreshed",
-              "Applicant and job-opening data are current."
-            );
-          } finally {
-            setBusy(false);
-          }
-        };
-
-      const bindEvents = () => {
-        selectAll(
-          "[data-module]"
-        ).forEach(
-          (element) => {
-            element.addEventListener(
-              "click",
-              () =>
-                activateModule(
-                  element.dataset.module
-                )
-            );
-          }
-        );
-
-        byId(
-          "applicantSearch"
-        ).addEventListener(
-          "input",
-          renderApplicants
-        );
-
-        byId(
-          "applicantStatusFilter"
-        ).addEventListener(
-          "change",
-          renderApplicants
-        );
-
-        byId(
-          "clearFiltersButton"
-        ).onclick =
-          () => {
-            byId(
-              "applicantSearch"
-            ).value =
-              "";
-
-            byId(
-              "applicantStatusFilter"
-            ).value =
-              "";
-
-            renderApplicants();
-          };
-
-        byId(
-          "applicantRows"
-        ).addEventListener(
-          "click",
-          (event) => {
-            const button =
-              event.target.closest(
-                "[data-open-folder]"
-              );
-
-            if (button) {
-              openApplicantFolder(
-                button.dataset
-                  .openFolder
-              );
-            }
-          }
-        );
-
-        byId(
-          "jobPreset"
-        ).addEventListener(
-          "change",
-          applyJobPreset
-        );
-
-        byId(
-          "jobTitle"
-        ).addEventListener(
-          "input",
-          () => {
-            if (
-              !state.editingJobId
-            ) {
-              byId(
-                "jobSlug"
-              ).value =
-                slugify(
-                  byId(
-                    "jobTitle"
-                  ).value
-                );
-            }
-          }
-        );
-
-        byId(
-          "jobForm"
-        ).addEventListener(
-          "submit",
-          saveJob
-        );
-
-        byId(
-          "cancelJobEditButton"
-        ).onclick =
-          resetJobForm;
-
-        byId(
-          "jobList"
-        ).addEventListener(
-          "click",
-          (event) => {
-            const editButton =
-              event.target.closest(
-                "[data-edit-job]"
-              );
-
-            if (editButton) {
-              editJob(
-                editButton.dataset
-                  .editJob
-              );
-
-              return;
-            }
-
-            const statusButton =
-              event.target.closest(
-                "[data-job-id]"
-              );
-
-            if (statusButton) {
-              setJobStatus(
-                statusButton.dataset
-                  .jobId,
-
-                statusButton.dataset
-                  .jobStatus
-              );
-            }
-          }
-        );
-
-        byId(
-          "archivedJobs"
-        ).addEventListener(
-          "click",
-          (event) => {
-            const button =
-              event.target.closest(
-                "[data-job-id]"
-              );
-
-            if (button) {
-              setJobStatus(
-                button.dataset.jobId,
-                button.dataset
-                  .jobStatus
-              );
-            }
-          }
-        );
-
-        byId(
-          "closeFolderButton"
-        ).onclick =
-          () =>
-            closeModal(
-              "folderModal"
-            );
-
-        byId(
-          "closeOfferButton"
-        ).onclick =
-          () =>
-            closeModal(
-              "offerModal"
-            );
-
-        byId(
-          "cancelOfferButton"
-        ).onclick =
-          () =>
-            closeModal(
-              "offerModal"
-            );
-
-        byId(
-          "closeInterviewButton"
-        ).onclick =
-          () =>
-            closeModal(
-              "interviewModal"
-            );
-
-        byId(
-          "cancelInterviewButton"
-        ).onclick =
-          () =>
-            closeModal(
-              "interviewModal"
-            );
-
-        byId(
-          "offerForm"
-        ).addEventListener(
-          "submit",
-          sendOffer
-        );
-
-        byId(
-          "interviewForm"
-        ).addEventListener(
-          "submit",
-          scheduleInterview
-        );
-
-        byId(
-          "refreshButton"
-        ).onclick =
-          refreshAll;
-
-        byId(
-          "exportButton"
-        ).onclick =
-          exportApplicants;
-
-        byId(
-          "signOutButton"
-        ).onclick =
-          signOut;
-
-        selectAll(
-          ".modal-backdrop"
-        ).forEach(
-          (modal) => {
-            modal.addEventListener(
-              "click",
-              (event) => {
-                if (
-                  event.target ===
-                  modal
-                ) {
-                  closeModal(
-                    modal.id
-                  );
-                }
-              }
-            );
-          }
-        );
-
-        document.addEventListener(
-          "keydown",
-          (event) => {
-            if (
-              event.key !==
-              "Escape"
-            ) {
-              return;
-            }
-
-            const open =
-              selectAll(
-                ".modal-backdrop"
-              ).find(
-                (modal) =>
-                  !modal.classList.contains(
-                    "hidden"
-                  )
-              );
-
-            if (open) {
-              closeModal(
-                open.id
-              );
-            }
-          }
-        );
-      };
-
-      const initialize =
-        async () => {
-          bindEvents();
-
-          setConnectionState(
-            "connecting"
-          );
-
-          try {
-            const session =
-              await api(
-                "/api/session"
-              );
-
-            const role =
-              normalizeStatus(
-                session?.role
-              );
-
-            if (
-              !ALLOWED_ROLES.includes(
-                role
-              )
-            ) {
-              window.location.replace(
-                EMPLOYEE_PORTAL
-              );
-
-              return;
-            }
-
-            byId(
-              "adminIdentity"
-            ).textContent =
-              session?.email ||
-              session?.username ||
-              titleCase(role);
-
-            await Promise.all([
-              loadApplications(),
-              loadJobs()
-            ]);
-
-            setConnectionState(
-              "connected",
-              "The Sulandra Health administrative API is available."
-            );
-          } catch (error) {
-            setConnectionState(
-              "error",
-              error.message
-            );
-
-            showToast(
-              "Admin portal unavailable",
-              error.message
-            );
-          }
-        };
-
-      initialize();
-    })();
+      // Show placeholder if activeList becomes empty after moving archived cards
+      if (activeList.querySelectorAll('.opening-card').length === 0 && !activeList.querySelector('.muted')) {
+        activeList.innerHTML = '<p class="muted" style="padding:12px; text-align:center;">No active job openings available.</p>';
+      }
+
+      // Show placeholder if no archived cards are present
+      if (archivedList.querySelectorAll('.opening-card').length === 0 && !archivedList.querySelector('.muted')) {
+        archivedList.innerHTML = '<p class="muted" style="padding:12px; text-align:center;">No archived or closed job openings found.</p>';
+      }
+    }
+
+    // Observe changes in active job listings to trigger instant card migration
+    const jobListObserver = new MutationObserver(() => {
+      syncArchivedJobsContainer();
+    });
+    const activeJobListElem = document.getElementById('jobOpeningList');
+    if (activeJobListElem) {
+      jobListObserver.observe(activeJobListElem, { childList: true, subtree: true });
+    }
+
+    // --- ALL JOB ROLE PRESETS (INCLUDING COMPREHENSIVE COO & DODD STANDARDS) ---
+    const jobPresets = {
+      coo: {
+        title: "Chief Operating Officer (COO)",
+        slug: "chief-operating-officer-coo",
+        dept: "Executive Leadership",
+        type: "Full-time",
+        pay: "$110,000–$145,000 per year",
+        path: "/applycoo.html",
+        summary: "Sulandra Health is seeking a visionary Chief Operating Officer (COO) / Director of Operations to oversee enterprise-wide operations, home health, and DODD waiver services across Ohio.",
+        description: "The Chief Operating Officer (COO) serves as the primary operational leader responsible for day-to-day agency operations, clinical administration, regulatory compliance, and fiscal management under Ohio Department of Developmental Disabilities (DODD) OAC 5123 and Ohio Department of Health guidelines.\n\nKey Responsibilities:\n• Direct daily operations of residential community living homes, home health aide services, and NEMT transportation networks.\n• Enforce compliance with DODD rules, Medicaid waiver standards, Electronic Visit Verification (EVV), and Ohio Administrative Code OAC 5123.\n• Oversee Major Unusual Incident (MUI) and Unusual Incident (UI) investigations, reporting, and prevention plans.\n• Manage organizational finances, staffing ratios, line-of-credit compliance, and departmental performance.\n• Lead quality assurance audits, survey readiness, and workforce development across clinical and administrative teams.",
+        reqs: "• Bachelor's or Master's Degree in Healthcare Administration, Business, Nursing, or Human Services.\n• Minimum 4 years of executive or supervisory experience in developmental disabilities (DD) or home health operations.\n• Must meet DODD Director of Operations (DOO) qualifications under OAC 5123-2-08 (Age 21+, BCII/FBI criminal background check clearance, completion of DODD DOO Orientation Training).\n• Proven expertise in Medicaid billing, EVV systems, and DODD certification standards.",
+        benefits: "• Competitive Executive Base Salary + Performance Bonus Pool\n• Comprehensive Medical, Dental, and Vision Coverage\n• Paid Time Off (PTO), Paid Holidays, and Executive Professional Development\n• 401(k) Retirement Plan with Company Match\n• Significant leadership autonomy and enterprise growth opportunity"
+      },
+      dsp: {
+        title: "Direct Support Professional (DSP)",
+        slug: "direct-support-professional",
+        dept: "Community Living Services",
+        type: "Full-time / Part-time",
+        pay: "$18–$22 per hour",
+        path: "/applydsp.html",
+        summary: "Sulandra Health is seeking dedicated Direct Support Professionals to provide person-centered support, independence, and meaningful community participation for individuals in residential care.",
+        description: "As a Direct Support Professional (DSP), you will empower individuals with developmental disabilities in community living homes. Responsibilities include assisting with daily living activities, medication administration, goal tracking, and promoting independence.",
+        reqs: "High School Diploma/GED; Valid Driver's License & Auto Insurance; CPR/First Aid Certification; Clean Background Check.",
+        benefits: "Medical/Dental Benefits, Paid Training, PTO, Flexible Schedules."
+      },
+      cna: {
+        title: "Certified Nursing Assistant (CNA) / Home Health Aide",
+        slug: "certified-nursing-assistant-hha",
+        dept: "Nursing & Clinical",
+        type: "Full-time / Part-time",
+        pay: "$19–$23 per hour",
+        path: "/applydsp.html",
+        summary: "Providing hands-on personal care, mobility assistance, and health monitoring for individuals receiving home health and waiver services.",
+        description: "Assists clients with bathing, grooming, mobility, vital sign monitoring, and light housekeeping under RN/LPN supervision.",
+        reqs: "Active Ohio CNA/STNA Certification or Home Health Aide Training Certificate; CPR/BLS Certification.",
+        benefits: "Competitive Hourly Pay, Health Benefits, Shift Differential."
+      },
+      lpn: {
+        title: "Licensed Practical Nurse (LPN)",
+        slug: "licensed-practical-nurse-lpn",
+        dept: "Nursing & Clinical",
+        type: "Full-time / Part-time",
+        pay: "$28–$34 per hour",
+        path: "/applylpn.html",
+        summary: "Delivering direct skilled nursing care, medication management, and health assessments for home health and community living clients.",
+        description: "Administers medications, performs wound care, updates care plans, coordinates with physicians, and monitors client health status in home settings.",
+        reqs: "Active Ohio LPN License; Current CPR/BLS Certification; Minimum 1 year nursing experience preferred.",
+        benefits: "High-yield Hourly Pay, PTO, Medical Coverage, License Renewal Reimbursement."
+      },
+      rn: {
+        title: "Registered Nurse (RN) / Clinical Supervisor",
+        slug: "registered-nurse-rn",
+        dept: "Nursing & Clinical",
+        type: "Full-time",
+        pay: "$38–$48 per hour",
+        path: "/applylpn.html",
+        summary: "Overseeing nursing assessments, delegating clinical care, and managing home health waiver compliance.",
+        description: "Conducts client admissions, formulates nursing care plans, performs delegated nursing oversight, and ensures high clinical standards across community living homes.",
+        reqs: "Active Ohio RN License; BSN preferred; Minimum 2 years clinical/community nursing experience.",
+        benefits: "Competitive Salary, CME Allowance, Full Health/Dental Package."
+      },
+      driver: {
+        title: "NEMT Driver / Transportation Specialist",
+        slug: "nemt-transportation-driver",
+        dept: "Transportation & NEMT",
+        type: "Full-time / Part-time",
+        pay: "$19–$23 per hour",
+        path: "/applydriver.html",
+        summary: "Providing safe, reliable non-emergency medical transportation and community mobility for clients.",
+        description: "Safely operates company vehicles or transport vans to transport clients to medical appointments, day programs, and community outings. Ensures proper vehicle inspections and passenger safety.",
+        reqs: "Valid Ohio Driver's License; Clean 3-Year Motor Vehicle Record (MVR); Pass Defensive Driving & Passenger Assistance Training; Clean Drug Screen.",
+        benefits: "Company Vehicle Provided, Paid Driver Training, Overtime Availability."
+      },
+      supervisor: {
+        title: "Site Supervisor / House Manager",
+        slug: "site-supervisor-house-manager",
+        dept: "Community Living Services",
+        type: "Full-time",
+        pay: "$24–$28 per hour",
+        path: "/applydsp.html",
+        summary: "Managing daily operations, staffing, and compliance for residential community living homes.",
+        description: "Supervises DSP staff, coordinates client schedules, manages home supplies, ensures waiver compliance, and maintains a safe, supportive living environment.",
+        reqs: "Minimum 2 years experience in DD/Waiver field; Leadership experience; High School Diploma or Bachelor's Degree.",
+        benefits: "Full Benefits, PTO, Leadership Growth Path."
+      }
+    };
+
+    function applyJobPreset(key) {
+      if(!key || !jobPresets[key]) return;
+      const data = jobPresets[key];
+
+      document.getElementById('openingTitle').value = data.title;
+      document.getElementById('openingSlug').value = data.slug;
+      document.getElementById('openingDepartment').value = data.dept;
+      document.getElementById('openingType').value = data.type;
+      document.getElementById('openingPay').value = data.pay;
+      document.getElementById('openingPath').value = data.path;
+      document.getElementById('openingSummary').value = data.summary;
+      document.getElementById('openingDescription').value = data.description;
+      document.getElementById('openingRequirements').value = data.reqs;
+      if (document.getElementById('openingBenefits') && data.benefits) {
+        document.getElementById('openingBenefits').value = data.benefits;
+      }
+
+      showToast("Preset Applied", `${data.title} details loaded into all form fields.`);
+    }
+
+    function openInterviewModal(candidateName) {
+      document.getElementById('interviewApplicantName').innerText = candidateName || 'Candidate';
+      document.getElementById('interviewModal').style.display = 'block';
+    }
+
+    function closeInterviewModal() {
+      document.getElementById('interviewModal').style.display = 'none';
+    }
+
+    function confirmInterviewInvite() {
+      closeInterviewModal();
+      showToast("Interview Sent", "Invitation link and time slots sent to candidate portal.");
+    }
+
+    function showToast(title, body) {
+      const t = document.getElementById('toast');
+      document.getElementById('toastTitle').innerText = title;
+      document.getElementById('toastBody').innerText = body;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    function saveCompanySettings() {
+      showToast("Settings Saved", "Company details and HR email signatures updated.");
+    }
+
+    // --- AUTOMATIC REFRESH ON DOM LOAD ---
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) refreshBtn.click();
+        syncArchivedJobsContainer();
+      }, 400);
+    });
   </script>
+
+  <!-- External workflow scripts -->
+  <script src="careers-admin-workflow.js?v=20260803-hr-interviews-2"></script>
+  <script src="admin-railway.js?v=20260729-7"></script>
 </body>
 </html>
