@@ -7,6 +7,7 @@
   const THREE_PANEL_SCRIPT = "/admin-three-panel-layout.js?v=20260804-1";
   const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
   const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-1";
+  const NEW_SERVICE_WORKSPACE_SCRIPT = "/admin-new-service-workspace.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -107,7 +108,9 @@
     loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.", function () {
       loadScriptOnce(THREE_PANEL_SCRIPT, "data-admin-three-panel-layout", "The Sulandra three-panel administration layout could not be loaded.", function () {
         loadScriptOnce(PANEL_CONSOLIDATION_SCRIPT, "data-admin-three-panel-consolidation", "The Sulandra panel consolidation repair could not be loaded.", function () {
-          loadScriptOnce(WORKSPACE_ROUTER_SCRIPT, "data-admin-workspace-router", "The Sulandra unified workspace router could not be loaded.");
+          loadScriptOnce(WORKSPACE_ROUTER_SCRIPT, "data-admin-workspace-router", "The Sulandra unified workspace router could not be loaded.", function () {
+            loadScriptOnce(NEW_SERVICE_WORKSPACE_SCRIPT, "data-admin-new-service-workspace", "The Sulandra service provisioning workspace could not be loaded.");
+          });
         });
       });
     });
