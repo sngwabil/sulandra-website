@@ -11,7 +11,7 @@
   const DESKTOP_CLOUD_SYNC_SCRIPT = "/admin-desktop-cloud-sync.js?v=20260804-3";
   const DESKTOP_EXPERIENCE_SCRIPT = "/admin-desktop-experience.js?v=20260804-1";
   const DESKTOP_STABILITY_SCRIPT = "/admin-desktop-stability-fix.js?v=20260804-5";
-  const DESKTOP_OS_SCRIPT = "/admin-desktop-operating-system.js?v=20260804-1";
+  const DESKTOP_OS_SCRIPT = "/admin-desktop-operating-system.js?v=20260804-2";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
