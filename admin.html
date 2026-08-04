@@ -2,99 +2,5366 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>Sulandra Health Admin Console</title>
+
   <link rel="icon" href="/favicon.ico">
+
   <style>
-    :root{--navy:#082f57;--blue:#075fa8;--sky:#0b85ca;--red:#ed2808;--gold:#dfaa31;--ink:#10233d;--muted:#64748b;--line:#d8e4ef;--bg:#f4f8fc;--white:#fff;--green:#16734a;--shadow:0 12px 32px rgba(8,47,87,.12)}
-    *{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:none!important}
-    .confidential{background:var(--red);color:#fff;text-align:center;font-weight:900;padding:12px}.header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}.top{max-width:1280px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 22px}.logo{width:230px;max-width:34vw}.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.pill{padding:9px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:900;background:#fff}.btn{border:1px solid #bfd0e0;border-radius:10px;background:#fff;color:#17466d;padding:10px 14px;font-weight:900}.btn:hover{filter:brightness(.97)}.primary{background:var(--blue);border-color:var(--blue);color:#fff}.danger{background:#b42318;border-color:#b42318;color:#fff}.warning{background:#a16207;border-color:#a16207;color:#fff}.success{background:var(--green);border-color:var(--green);color:#fff}.nav{display:flex;gap:4px;overflow:auto;max-width:1280px;margin:auto;padding:0 22px 10px}.nav button,.nav a{border:0;background:#fff;color:var(--ink);text-decoration:none;padding:13px 16px;border-radius:12px;font-weight:900;white-space:nowrap}.nav .active{outline:3px solid #6673ff;color:var(--blue)}
-    .layout{max-width:1280px;margin:22px auto 70px;padding:0 22px;display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px}.side,.card{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.side{padding:18px;align-self:start;position:sticky;top:170px}.side h3{margin:0 0 12px;color:var(--navy)}.side button{width:100%;text-align:left;margin:5px 0}.content{min-width:0}.hero{background:linear-gradient(135deg,#073663,#0b86c7);color:#fff;border-radius:22px;padding:24px;margin-bottom:18px;box-shadow:var(--shadow)}.hero h1{margin:0 0 7px;font-size:30px}.hero p{margin:0;color:#dff4ff}.card{padding:20px;margin-bottom:18px}.card h2{margin:0 0 6px;color:var(--navy)}.sub{color:var(--muted);font-size:13px}.toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:16px 0}.search{min-width:260px;flex:1;border:1px solid #bfd0df;border-radius:11px;padding:11px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:12px;border-bottom:1px solid #e5edf5;text-align:left;vertical-align:top}th{background:#eef4f9;color:#53667d;font-size:12px}.status{display:inline-flex;padding:6px 9px;border-radius:999px;background:#eef4fa;font-size:11px;font-weight:900}.empty{padding:35px;text-align:center;color:var(--muted);border:2px dashed #c9d9e6;border-radius:16px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.field{display:grid;gap:6px;margin-bottom:12px}.field label{font-size:12px;text-transform:uppercase;font-weight:900;color:#52657d}.field input,.field select,.field textarea{width:100%;border:1px solid #c5d5e4;border-radius:10px;padding:11px;background:#fff}.field textarea{min-height:95px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap}.job-card,.doc-card,.history-card{border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0;background:#fbfdff}.job-head{display:flex;justify-content:space-between;gap:12px}.module{display:none}.module.active{display:block}
-    .modal-bg{position:fixed;inset:0;background:rgba(5,25,46,.68);z-index:1000;padding:5vh 18px;overflow:auto}.modal{max-width:1000px;margin:auto;background:#fff;border-radius:20px;box-shadow:0 30px 90px rgba(0,0,0,.3);overflow:hidden}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}.modal-head h2{margin:0}.modal-body{padding:20px}.close{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:24px}.folder-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.folder-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.folder-section{border:1px solid var(--line);border-radius:16px;padding:16px;background:#fbfdff}.folder-section.wide{grid-column:1/-1}.message{padding:12px;border-radius:11px;margin:12px 0}.message.ok{background:#e8f7ef;color:#11603a;border:1px solid #b9e4cb}.message.error{background:#fff0f0;color:#9d2424;border:1px solid #ffcaca}.toast{position:fixed;right:20px;bottom:20px;background:#102f52;color:#fff;padding:14px 16px;border-radius:12px;box-shadow:var(--shadow);z-index:2000;max-width:360px}.toast small{display:block;color:#d9efff;margin-top:3px}
-    @media(max-width:900px){.layout{grid-template-columns:1fr}.side{position:static}.grid,.folder-grid{grid-template-columns:1fr}.folder-section.wide{grid-column:auto}.logo{max-width:55vw}.top{align-items:flex-start}}
+    :root {
+      --navy: #082f57;
+      --navy-light: #123f6a;
+      --blue: #075fa8;
+      --sky: #0b85ca;
+      --red: #ed2808;
+      --danger: #b42318;
+      --green: #16734a;
+      --amber: #a16207;
+      --purple: #5145cd;
+      --ink: #10233d;
+      --muted: #64748b;
+      --line: #d8e4ef;
+      --soft: #f4f8fc;
+      --white: #ffffff;
+      --shadow: 0 12px 32px rgba(8, 47, 87, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--soft);
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .confidential {
+      position: relative;
+      z-index: 120;
+      padding: 12px 18px;
+      color: white;
+      background: var(--red);
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(16px);
+    }
+
+    .header-top {
+      max-width: 1540px;
+      margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 22px 10px;
+    }
+
+    .logo {
+      width: 230px;
+      max-width: 34vw;
+    }
+
+    .header-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: white;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .connection-dot {
+      width: 9px;
+      height: 9px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: var(--amber);
+    }
+
+    .connection-dot.connected {
+      background: var(--green);
+    }
+
+    .connection-dot.error {
+      background: var(--danger);
+    }
+
+    .button {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid #bfd0e0;
+      border-radius: 10px;
+      padding: 9px 14px;
+      color: #17466d;
+      background: white;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .button:hover {
+      filter: brightness(0.98);
+    }
+
+    .button-primary {
+      border-color: var(--blue);
+      color: white;
+      background: var(--blue);
+    }
+
+    .button-success {
+      border-color: var(--green);
+      color: white;
+      background: var(--green);
+    }
+
+    .button-warning {
+      border-color: var(--amber);
+      color: white;
+      background: var(--amber);
+    }
+
+    .button-danger {
+      border-color: var(--danger);
+      color: white;
+      background: var(--danger);
+    }
+
+    .button-purple {
+      border-color: var(--purple);
+      color: white;
+      background: var(--purple);
+    }
+
+    .button-small {
+      min-height: 34px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+
+    .top-navigation {
+      max-width: 1540px;
+      margin: auto;
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 0 22px 12px;
+    }
+
+    .top-navigation button,
+    .top-navigation a {
+      min-height: 44px;
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 15px;
+      color: var(--ink);
+      background: transparent;
+      text-decoration: none;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .top-navigation button:hover,
+    .top-navigation a:hover {
+      color: var(--blue);
+      background: #f3faff;
+    }
+
+    .top-navigation .active {
+      color: var(--blue);
+      background: white;
+      box-shadow: inset 0 0 0 2px var(--blue);
+    }
+
+    .layout {
+      max-width: 1540px;
+      margin: auto;
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr) 300px;
+      gap: 18px;
+      padding: 18px 22px 70px;
+    }
+
+    .sidebar,
+    .right-sidebar {
+      position: sticky;
+      top: 166px;
+      align-self: start;
+      max-height: calc(100vh - 184px);
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: white;
+      box-shadow: 0 4px 14px rgba(8, 47, 87, 0.08);
+    }
+
+    .sidebar-heading {
+      padding: 18px;
+      color: white;
+      background: var(--navy);
+    }
+
+    .sidebar-heading h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .sidebar-heading p {
+      margin: 4px 0 0;
+      color: #dceeff;
+      font-size: 13px;
+    }
+
+    .sidebar-content {
+      padding: 14px;
+    }
+
+    .sidebar-label {
+      margin: 4px 0 8px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-navigation {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .sidebar-navigation button,
+    .sidebar-navigation a {
+      width: 100%;
+      min-height: 58px;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: var(--ink);
+      background: white;
+      text-align: left;
+      text-decoration: none;
+    }
+
+    .sidebar-navigation button:hover,
+    .sidebar-navigation a:hover {
+      border-color: var(--sky);
+      background: #f8fcff;
+    }
+
+    .sidebar-navigation .active {
+      border-color: var(--purple);
+      outline: 3px solid rgba(81, 69, 205, 0.18);
+    }
+
+    .navigation-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      background: #eef5fb;
+      font-weight: 1000;
+    }
+
+    .navigation-copy strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .navigation-copy small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+    }
+
+    .main-content {
+      min-width: 0;
+    }
+
+    .module {
+      display: none;
+    }
+
+    .module.active {
+      display: block;
+    }
+
+    .hero {
+      overflow: hidden;
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: white;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-bar {
+      padding: 13px 20px;
+      color: white;
+      background: var(--navy);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .hero-body {
+      padding: 28px;
+      background:
+        radial-gradient(
+          circle at top right,
+          rgba(11, 133, 202, 0.14),
+          transparent 35%
+        ),
+        linear-gradient(135deg, white, #f7fbff);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(36px, 5vw, 58px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      max-width: 900px;
+      margin: 16px 0 0;
+      color: #52657d;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .quick-card {
+      min-height: 112px;
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      color: inherit;
+      background: rgba(255, 255, 255, 0.92);
+      text-align: left;
+      text-decoration: none;
+    }
+
+    .quick-card:hover {
+      border-color: var(--sky);
+      box-shadow: 0 4px 14px rgba(8, 47, 87, 0.08);
+    }
+
+    .quick-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: #eef5fb;
+      font-size: 22px;
+    }
+
+    .quick-card h3 {
+      margin: 2px 0 4px;
+      font-size: 15px;
+    }
+
+    .quick-card p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .card {
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      background: white;
+      box-shadow: 0 4px 14px rgba(8, 47, 87, 0.08);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      color: var(--navy);
+    }
+
+    .card-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 14px 0;
+    }
+
+    .toolbar-group {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .search-input {
+      min-width: 280px;
+      min-height: 44px;
+      border: 1px solid #bfd0e0;
+      border-radius: 11px;
+      padding: 10px 13px;
+      outline: none;
+    }
+
+    .search-input:focus,
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--sky);
+      box-shadow: 0 0 0 4px rgba(11, 133, 202, 0.12);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      border-bottom: 1px solid #e7eef5;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #52657d;
+      background: #eef4f9;
+      font-size: 12px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    tbody tr:hover td {
+      background: #fbfdff;
+    }
+
+    .status {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #eef4fa;
+      font-size: 11px;
+      font-weight: 1000;
+      white-space: nowrap;
+    }
+
+    .status-blue {
+      color: var(--blue);
+      background: #dff2ff;
+    }
+
+    .status-green {
+      color: #146c43;
+      background: #d9f3e5;
+    }
+
+    .status-amber {
+      color: #8a5606;
+      background: #fff0c2;
+    }
+
+    .status-red {
+      color: var(--danger);
+      background: #fee4e2;
+    }
+
+    .status-purple {
+      color: var(--purple);
+      background: #e9e7ff;
+    }
+
+    .empty-state {
+      min-height: 140px;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      border: 2px dashed #c9d9e6;
+      border-radius: 16px;
+      color: var(--muted);
+      background: #fbfdff;
+      text-align: center;
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 13px;
+    }
+
+    .field label {
+      color: #52657d;
+      font-size: 12px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid #bfd0e0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: white;
+      outline: none;
+    }
+
+    .field textarea {
+      min-height: 112px;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .actions-end {
+      justify-content: flex-end;
+    }
+
+    .job-card,
+    .archive-card,
+    .document-card,
+    .history-card,
+    .activity-card {
+      margin: 10px 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfdff;
+    }
+
+    .job-heading,
+    .archive-heading,
+    .document-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .job-heading h3,
+    .archive-heading h3,
+    .document-heading h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .job-card p {
+      color: #52657d;
+      font-size: 13px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card {
+      min-height: 96px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #f6faff;
+    }
+
+    .stat-card strong {
+      display: block;
+      color: var(--navy);
+      font-size: 24px;
+    }
+
+    .stat-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .right-section {
+      margin-top: 18px;
+    }
+
+    .right-section:first-child {
+      margin-top: 0;
+    }
+
+    .right-title {
+      margin: 0 0 9px;
+      color: var(--blue);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .connection-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(135deg, #eef9f3, #fffbea);
+    }
+
+    .connection-card p {
+      margin: 6px 0 0;
+      color: #52657d;
+      font-size: 12px;
+    }
+
+    .message {
+      margin: 12px 0;
+      padding: 12px 14px;
+      border-radius: 11px;
+      font-size: 13px;
+    }
+
+    .message-success {
+      border: 1px solid #b9e4cb;
+      color: #146c43;
+      background: #f0fbf5;
+    }
+
+    .message-error {
+      border: 1px solid #ffcaca;
+      color: var(--danger);
+      background: #fff5f4;
+    }
+
+    .message-warning {
+      border: 1px solid #f2d17f;
+      color: #8a5606;
+      background: #fff9e8;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      overflow-y: auto;
+      padding: 4vh 18px;
+      background: rgba(5, 25, 46, 0.72);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal {
+      width: min(1120px, 100%);
+      margin: auto;
+      overflow: hidden;
+      border-radius: 20px;
+      background: white;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-small {
+      width: min(720px, 100%);
+    }
+
+    .modal-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 17px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.98);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      color: var(--navy);
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal-footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.98);
+    }
+
+    .folder-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .folder-header h2 {
+      margin: 0;
+    }
+
+    .folder-header p {
+      margin: 5px 0 0;
+      color: var(--muted);
+    }
+
+    .folder-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .folder-section {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      background: #fbfdff;
+    }
+
+    .folder-section-wide {
+      grid-column: 1 / -1;
+    }
+
+    .folder-section-danger {
+      border-color: #ffc9c5;
+      background: #fff8f7;
+    }
+
+    .folder-section h3 {
+      margin: 0 0 12px;
+      color: var(--navy);
+    }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 2200;
+      width: min(390px, calc(100vw - 40px));
+      padding: 14px 16px;
+      border-radius: 14px;
+      color: white;
+      background: #102f52;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.28);
+    }
+
+    .toast strong {
+      display: block;
+    }
+
+    .toast small {
+      display: block;
+      margin-top: 4px;
+      color: #d9efff;
+      line-height: 1.45;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: grid;
+      place-items: center;
+      background: rgba(244, 248, 252, 0.75);
+      backdrop-filter: blur(4px);
+    }
+
+    .loading-card {
+      min-width: 260px;
+      display: grid;
+      place-items: center;
+      gap: 12px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: white;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
+    }
+
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 4px solid #dbeaf6;
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 1260px) {
+      .layout {
+        grid-template-columns: 270px minmax(0, 1fr);
+      }
+
+      .right-sidebar {
+        display: none;
+      }
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        max-height: none;
+      }
+
+      .two-column,
+      .folder-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .folder-section-wide {
+        grid-column: auto;
+      }
+
+      .quick-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .header-top {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .header-tools {
+        justify-content: flex-start;
+      }
+
+      .logo {
+        max-width: 55vw;
+      }
+
+      .layout {
+        padding: 14px 12px 60px;
+      }
+
+      .search-input {
+        min-width: 100%;
+      }
+
+      .modal-backdrop {
+        padding: 0;
+      }
+
+      .modal,
+      .modal-small {
+        min-height: 100vh;
+        border-radius: 0;
+      }
+    }
   </style>
 </head>
+
 <body>
-  <div class="confidential">Admin Console — confidential. Authorized staff only.</div>
+  <div class="confidential">
+    Admin Console — confidential. Authorized staff only.
+  </div>
+
   <header class="header">
-    <div class="top">
-      <a href="/"><img class="logo" src="/assets/mainlogo.png" alt="Sulandra Health"></a>
-      <div class="tools"><span class="pill" id="adminIdentity">Administrator</span><span class="pill" id="connection">Railway: connecting…</span><button class="btn primary" id="refresh">Refresh</button><button class="btn" id="export">Export CSV</button><button class="btn danger" id="signOut">Sign Out</button></div>
+    <div class="header-top">
+      <a href="/" aria-label="Sulandra Health home">
+        <img
+          class="logo"
+          src="/assets/mainlogo.png"
+          alt="Sulandra Health"
+        >
+      </a>
+
+      <div class="header-tools">
+        <span class="pill" id="adminIdentity">
+          Administrator
+        </span>
+
+        <span class="pill">
+          <span
+            class="connection-dot"
+            id="connectionDot"
+          ></span>
+
+          <span id="connectionText">
+            Railway: connecting…
+          </span>
+        </span>
+
+        <button
+          class="button button-primary"
+          id="refreshButton"
+          type="button"
+        >
+          Refresh
+        </button>
+
+        <button
+          class="button"
+          id="exportButton"
+          type="button"
+        >
+          Export CSV
+        </button>
+
+        <a
+          class="button button-purple"
+          href="profile.html"
+        >
+          Profile
+        </a>
+
+        <button
+          class="button button-danger"
+          id="signOutButton"
+          type="button"
+        >
+          Sign Out
+        </button>
+      </div>
     </div>
-    <nav class="nav" id="topNav"><button data-module="applicants" class="active">Applicants</button><button data-module="jobs">Job Openings</button><button data-module="archives">Archives</button><a href="/spire">Admin Spire</a><a href="employee-portal.html">Employee Portal</a><a href="intranet.html">Sulandra Intranet</a></nav>
+
+    <nav class="top-navigation">
+      <button
+        class="active"
+        type="button"
+        data-module="dashboard"
+      >
+        Community Living
+      </button>
+
+      <a href="home-health-admin.html">
+        Home Health Care
+      </a>
+
+      <a href="transportation-admin.html">
+        Transportation
+      </a>
+
+      <a href="Sulandra-Education-Portal.html">
+        Learning
+      </a>
+
+      <a href="intranet.html">
+        Sulandra Intranet
+      </a>
+
+      <a href="employee-portal.html">
+        Employee Portal
+      </a>
+
+      <a href="shared-settings.html">
+        Shared Settings
+      </a>
+    </nav>
   </header>
 
   <main class="layout">
-    <aside class="side"><h3>Human Resources</h3><button class="btn primary" data-module="applicants">Applicant Workflow</button><button class="btn" data-module="jobs">Create Job Opening</button><button class="btn" data-module="archives">Archived Records</button><hr style="border:0;border-top:1px solid var(--line);margin:16px 0"><div class="sub">This page contains its complete workflow and does not depend on careers-admin-workflow.js, admin-railway.js, or offer-only-runtime.js.</div></aside>
-    <section class="content">
-      <div class="hero"><h1>Sulandra Health Human Resources</h1><p>Manage applicants, interviews, employment offers, job openings, and archived records from one unified admin file.</p></div>
+    <aside class="sidebar">
+      <div class="sidebar-heading">
+        <h2>Operations</h2>
+        <p>Parent company tools</p>
+      </div>
 
-      <section id="module-applicants" class="module active">
-        <div class="card"><h2>Active Applicants</h2><p class="sub">Open an applicant folder to manage the full workflow.</p><div class="toolbar"><input id="search" class="search" placeholder="Search applicant, email, phone, or position"><strong id="count">0 applicants</strong></div><div class="table-wrap"><table><thead><tr><th>Submitted</th><th>Applicant</th><th>Position</th><th>Score</th><th>Status</th><th>Action</th></tr></thead><tbody id="applicantRows"></tbody></table></div></div>
-      </section>
+      <div class="sidebar-content">
+        <h3 class="sidebar-label">
+          Core Portal Navigation
+        </h3>
 
-      <section id="module-jobs" class="module">
-        <div class="grid">
-          <div class="card"><h2 id="jobFormTitle">Create Job Opening</h2><form id="jobForm">
-            <div class="field"><label>Template</label><select id="jobPreset"><option value="">Choose a template</option><option value="DSP">DSP / Direct Support Professional</option><option value="LPN">LPN / Licensed Practical Nurse</option><option value="RN">RN / Registered Nurse</option><option value="DELEGATING_NURSE">Delegating Nurse</option><option value="DRIVER">NEMT Driver</option><option value="DOO">Director of Operations</option><option value="GENERAL">General Employment Opportunity</option></select></div>
-            <div class="field"><label>Job title</label><input id="jobTitle" required></div><div class="field"><label>Slug</label><input id="jobSlug" required></div><div class="field"><label>Department</label><input id="jobDepartment"></div><div class="field"><label>Employment type</label><select id="jobType"><option>Full-Time</option><option>Part-Time</option><option>PRN</option><option>Contract</option></select></div><div class="field"><label>Location</label><input id="jobLocation" value="Dayton, OH"></div><div class="field"><label>Pay range</label><input id="jobPay"></div><div class="field"><label>Application form</label><select id="jobPath"><option value="/applydsp.html">DSP form</option><option value="/applylpn.html?role=LPN">LPN form</option><option value="/applylpn.html?role=RN">RN form</option><option value="/applylpn.html?role=DELEGATING_NURSE">Delegating Nurse form</option><option value="/applydriver.html">Driver form</option><option value="/applydoo.html">DOO form</option><option value="/applygeneral.html">General form</option></select></div><div class="field"><label>Summary</label><textarea id="jobSummary" required></textarea></div><div class="field"><label>Description</label><textarea id="jobDescription" required></textarea></div><div class="field"><label>Requirements</label><textarea id="jobRequirements"></textarea></div><div class="field"><label>Benefits</label><textarea id="jobBenefits"></textarea></div><div class="field"><label>Status</label><select id="jobStatus"><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option></select></div><div class="actions"><button class="btn primary" type="submit">Save Job</button><button class="btn hidden" type="button" id="cancelJobEdit">Cancel Edit</button></div>
-          </form></div>
-          <div class="card"><h2>Current Job Openings</h2><div id="jobList"></div></div>
+        <nav class="sidebar-navigation">
+          <button
+            class="active"
+            type="button"
+            data-module="dashboard"
+          >
+            <span class="navigation-icon">◆</span>
+
+            <span class="navigation-copy">
+              <strong>Dashboard</strong>
+              <small>Overview</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            data-module="applicants"
+          >
+            <span class="navigation-icon">◎</span>
+
+            <span class="navigation-copy">
+              <strong>Applicants</strong>
+              <small>Recruiting workflow</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            data-module="jobs"
+          >
+            <span class="navigation-icon">＋</span>
+
+            <span class="navigation-copy">
+              <strong>Job Openings</strong>
+              <small>Create and publish</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            data-module="archives"
+          >
+            <span class="navigation-icon">▣</span>
+
+            <span class="navigation-copy">
+              <strong>Archives</strong>
+              <small>Closed records</small>
+            </span>
+          </button>
+
+          <a href="/spire">
+            <span class="navigation-icon">◇</span>
+
+            <span class="navigation-copy">
+              <strong>Admin Spire</strong>
+              <small>Clinical platform</small>
+            </span>
+          </a>
+
+          <a href="documents.html">
+            <span class="navigation-icon">▤</span>
+
+            <span class="navigation-copy">
+              <strong>Documents</strong>
+              <small>Compliance library</small>
+            </span>
+          </a>
+        </nav>
+
+        <h3 class="sidebar-label">
+          Subsidiary & Service Routing Hub
+        </h3>
+
+        <nav class="sidebar-navigation">
+          <button
+            type="button"
+            data-module="dashboard"
+          >
+            <span class="navigation-icon">🏠</span>
+
+            <span class="navigation-copy">
+              <strong>
+                Sulandra Community Living Services
+              </strong>
+
+              <small>
+                Residential and waiver services
+              </small>
+            </span>
+          </button>
+
+          <a href="home-health-admin.html">
+            <span class="navigation-icon">✚</span>
+
+            <span class="navigation-copy">
+              <strong>
+                Sulandra Home Health Care
+              </strong>
+
+              <small>
+                Skilled nursing services
+              </small>
+            </span>
+          </a>
+
+          <a href="transportation-admin.html">
+            <span class="navigation-icon">▰</span>
+
+            <span class="navigation-copy">
+              <strong>
+                Sulandra Transportation
+              </strong>
+
+              <small>
+                NEMT operations
+              </small>
+            </span>
+          </a>
+        </nav>
+      </div>
+    </aside>
+
+    <section class="main-content">
+      <section
+        class="hero module active"
+        id="module-dashboard"
+      >
+        <div class="hero-bar">
+          Department: Community Living
+        </div>
+
+        <div class="hero-body">
+          <p class="eyebrow">
+            Community Living Operating Environment
+          </p>
+
+          <h1>
+            Sulandra Community Living Services
+          </h1>
+
+          <p>
+            Residential homes, waiver services, DSP workforce,
+            client supports, ISP implementation, onboarding,
+            and DODD compliance are managed from this unified
+            administrative environment.
+          </p>
+
+          <div class="quick-grid">
+            <button
+              class="quick-card"
+              type="button"
+              data-module="applicants"
+            >
+              <span class="quick-icon">◎</span>
+
+              <span>
+                <h3>Applicants & Onboarding</h3>
+
+                <p>
+                  Review applications, send portal access,
+                  schedule interviews, update status, prepare
+                  offers, and archive records.
+                </p>
+              </span>
+            </button>
+
+            <button
+              class="quick-card"
+              type="button"
+              data-module="jobs"
+            >
+              <span class="quick-icon">＋</span>
+
+              <span>
+                <h3>Job Openings</h3>
+
+                <p>
+                  Create, edit, publish, close, archive, and
+                  restore openings shown on the careers page.
+                </p>
+              </span>
+            </button>
+
+            <a
+              class="quick-card"
+              href="/spire"
+            >
+              <span class="quick-icon">◇</span>
+
+              <span>
+                <h3>Clients & ISP Records</h3>
+
+                <p>
+                  Open the Spire clinical platform for client
+                  records, service plans, and compliance.
+                </p>
+              </span>
+            </a>
+
+            <a
+              class="quick-card"
+              href="employee-portal.html"
+            >
+              <span class="quick-icon">♟</span>
+
+              <span>
+                <h3>Employees & DSP Workforce</h3>
+
+                <p>
+                  Open employee tools, training, staffing,
+                  and workforce records.
+                </p>
+              </span>
+            </a>
+          </div>
         </div>
       </section>
 
-      <section id="module-archives" class="module"><div class="grid"><div class="card"><h2>Archived Applicants</h2><div id="archivedApplicants"></div></div><div class="card"><h2>Archived Jobs</h2><div id="archivedJobs"></div></div></div></section>
+      <section
+        class="module"
+        id="module-applicants"
+      >
+        <article class="card">
+          <div class="card-header">
+            <div>
+              <h2>Active Applicants</h2>
+
+              <p>
+                Open an applicant folder to manage the complete
+                recruiting workflow.
+              </p>
+            </div>
+
+            <span
+              class="status status-blue"
+              id="applicantCount"
+            >
+              0 applicants
+            </span>
+          </div>
+
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <input
+                class="search-input"
+                id="applicantSearch"
+                type="search"
+                placeholder="Search applicant, email, phone, position, or status"
+              >
+
+              <select
+                class="button"
+                id="applicantStatusFilter"
+              >
+                <option value="">
+                  All active statuses
+                </option>
+
+                <option value="RECEIVED">
+                  Received
+                </option>
+
+                <option value="REVIEWING">
+                  Reviewing
+                </option>
+
+                <option value="DOCUMENTS_NEEDED">
+                  Documents Needed
+                </option>
+
+                <option value="INTERVIEW">
+                  Interview
+                </option>
+
+                <option value="OFFER_PENDING">
+                  Offer Pending
+                </option>
+
+                <option value="OFFER_ACCEPTED">
+                  Offer Accepted
+                </option>
+
+                <option value="HIRE">
+                  Hire
+                </option>
+
+                <option value="HIRED">
+                  Hired
+                </option>
+
+                <option value="WITHDRAWN">
+                  Withdrawn
+                </option>
+              </select>
+            </div>
+
+            <button
+              class="button"
+              id="clearFiltersButton"
+              type="button"
+            >
+              Clear Filters
+            </button>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Submitted</th>
+                  <th>Applicant</th>
+                  <th>Position</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody id="applicantRows">
+                <tr>
+                  <td colspan="6">
+                    <div class="empty-state">
+                      Loading active applicants…
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section
+        class="module"
+        id="module-jobs"
+      >
+        <div class="two-column">
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2 id="jobFormTitle">
+                  Create Job Opening
+                </h2>
+
+                <p>
+                  Use a template or create a custom opening.
+                </p>
+              </div>
+            </div>
+
+            <form id="jobForm">
+              <div class="field">
+                <label for="jobPreset">
+                  Template
+                </label>
+
+                <select id="jobPreset">
+                  <option value="">
+                    Choose a template
+                  </option>
+
+                  <option value="DSP">
+                    DSP / Direct Support Professional
+                  </option>
+
+                  <option value="LPN">
+                    LPN / Licensed Practical Nurse
+                  </option>
+
+                  <option value="RN">
+                    RN / Registered Nurse
+                  </option>
+
+                  <option value="DELEGATING_NURSE">
+                    Delegating Nurse
+                  </option>
+
+                  <option value="DRIVER">
+                    NEMT Driver
+                  </option>
+
+                  <option value="DOO">
+                    Director of Operations
+                  </option>
+
+                  <option value="COO">
+                    Chief Operating Officer
+                  </option>
+
+                  <option value="GENERAL">
+                    General Employment Opportunity
+                  </option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="jobTitle">
+                  Job Title
+                </label>
+
+                <input
+                  id="jobTitle"
+                  required
+                >
+              </div>
+
+              <div class="field">
+                <label for="jobSlug">
+                  Job Slug
+                </label>
+
+                <input
+                  id="jobSlug"
+                  required
+                >
+              </div>
+
+              <div class="two-column">
+                <div class="field">
+                  <label for="jobDepartment">
+                    Department
+                  </label>
+
+                  <input id="jobDepartment">
+                </div>
+
+                <div class="field">
+                  <label for="jobType">
+                    Employment Type
+                  </label>
+
+                  <select id="jobType">
+                    <option>Full-Time</option>
+                    <option>Part-Time</option>
+                    <option>PRN</option>
+                    <option>Contract</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="two-column">
+                <div class="field">
+                  <label for="jobLocation">
+                    Location
+                  </label>
+
+                  <input
+                    id="jobLocation"
+                    value="Dayton, OH"
+                  >
+                </div>
+
+                <div class="field">
+                  <label for="jobPay">
+                    Pay Range
+                  </label>
+
+                  <input id="jobPay">
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="jobPath">
+                  Application Form
+                </label>
+
+                <select id="jobPath">
+                  <option value="/applydsp.html">
+                    DSP application
+                  </option>
+
+                  <option value="/applylpn.html?role=LPN">
+                    LPN application
+                  </option>
+
+                  <option value="/applylpn.html?role=RN">
+                    RN application
+                  </option>
+
+                  <option value="/applylpn.html?role=DELEGATING_NURSE">
+                    Delegating Nurse application
+                  </option>
+
+                  <option value="/applydriver.html">
+                    Driver application
+                  </option>
+
+                  <option value="/applydoo.html">
+                    Director of Operations application
+                  </option>
+
+                  <option value="/applycoo.html">
+                    Chief Operating Officer application
+                  </option>
+
+                  <option value="/applygeneral.html">
+                    General application
+                  </option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="jobSummary">
+                  Summary
+                </label>
+
+                <textarea
+                  id="jobSummary"
+                  required
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="jobDescription">
+                  Description
+                </label>
+
+                <textarea
+                  id="jobDescription"
+                  required
+                ></textarea>
+              </div>
+
+              <div class="field">
+                <label for="jobRequirements">
+                  Requirements
+                </label>
+
+                <textarea id="jobRequirements"></textarea>
+              </div>
+
+              <div class="field">
+                <label for="jobBenefits">
+                  Benefits
+                </label>
+
+                <textarea id="jobBenefits"></textarea>
+              </div>
+
+              <div class="field">
+                <label for="jobStatus">
+                  Status
+                </label>
+
+                <select id="jobStatus">
+                  <option value="DRAFT">
+                    Draft
+                  </option>
+
+                  <option value="PUBLISHED">
+                    Published
+                  </option>
+                </select>
+              </div>
+
+              <div id="jobFormMessage"></div>
+
+              <div class="actions actions-end">
+                <button
+                  class="button hidden"
+                  id="cancelJobEditButton"
+                  type="button"
+                >
+                  Cancel Edit
+                </button>
+
+                <button
+                  class="button button-primary"
+                  id="saveJobButton"
+                  type="submit"
+                >
+                  Save Job Opening
+                </button>
+              </div>
+            </form>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Current Job Openings</h2>
+
+                <p>
+                  Draft and published openings.
+                </p>
+              </div>
+
+              <span
+                class="status status-blue"
+                id="jobCount"
+              >
+                0 jobs
+              </span>
+            </div>
+
+            <div id="jobList">
+              <div class="empty-state">
+                Loading job openings…
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section
+        class="module"
+        id="module-archives"
+      >
+        <div class="two-column">
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Archived Applicants</h2>
+
+                <p>
+                  Position-filled and archived records.
+                </p>
+              </div>
+            </div>
+
+            <div id="archivedApplicants">
+              <div class="empty-state">
+                Loading archived applicants…
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <h2>Archived Jobs</h2>
+
+                <p>
+                  Closed and archived public openings.
+                </p>
+              </div>
+            </div>
+
+            <div id="archivedJobs">
+              <div class="empty-state">
+                Loading archived jobs…
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
     </section>
+
+    <aside class="right-sidebar">
+      <div class="sidebar-heading">
+        <h2>Live Activity</h2>
+        <p>System-wide operational pulse</p>
+      </div>
+
+      <div class="sidebar-content">
+        <section class="right-section">
+          <h3 class="right-title">
+            Live Workforce
+          </h3>
+
+          <div class="stat-grid">
+            <div class="stat-card">
+              <strong id="clockedInStat">—</strong>
+              <span>Clocked in</span>
+            </div>
+
+            <div class="stat-card">
+              <strong id="activeEmployeesStat">—</strong>
+              <span>Active employees</span>
+            </div>
+
+            <div class="stat-card">
+              <strong id="openApplicantsStat">0</strong>
+              <span>Open applicants</span>
+            </div>
+
+            <div class="stat-card">
+              <strong id="interviewsStat">0</strong>
+              <span>Upcoming interviews</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="right-section">
+          <h3 class="right-title">
+            System Connection
+          </h3>
+
+          <div class="connection-card">
+            <strong id="connectionCardTitle">
+              Connecting to Railway
+            </strong>
+
+            <p id="connectionCardMessage">
+              Waiting for an authenticated API response.
+            </p>
+          </div>
+        </section>
+
+        <section class="right-section">
+          <h3 class="right-title">
+            Recruiting Summary
+          </h3>
+
+          <div id="recruitingSummary">
+            <div class="activity-card">
+              Applicant data has not loaded yet.
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
   </main>
 
-  <div id="folderModal" class="modal-bg hidden"><div class="modal"><div class="modal-head"><h2 id="folderTitle">Applicant Folder</h2><button class="close" id="closeFolder">×</button></div><div class="modal-body" id="folderBody"></div></div></div>
-  <div id="offerModal" class="modal-bg hidden"><div class="modal"><div class="modal-head"><h2>Prepare Offer of Employment</h2><button class="close" id="closeOffer">×</button></div><div class="modal-body"><form id="offerForm"><div class="grid"><div class="field"><label>Position title</label><input id="offerPosition" required></div><div class="field"><label>Department</label><input id="offerDepartment"></div><div class="field"><label>Supervisor</label><input id="offerSupervisor"></div><div class="field"><label>Employment type</label><select id="offerEmployment"><option value="FULL_TIME">Full-time</option><option value="PART_TIME">Part-time</option><option value="PRN">PRN</option><option value="CONTRACT">Contract</option></select></div><div class="field"><label>Compensation type</label><select id="offerCompType"><option value="HOURLY">Hourly</option><option value="SALARY">Salary</option></select></div><div class="field"><label>Pay amount</label><input id="offerPay" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Start date</label><input id="offerStart" type="date" required></div><div class="field"><label>Orientation date</label><input id="offerOrientation" type="date"></div><div class="field"><label>Shift</label><input id="offerShift"></div><div class="field"><label>Work location</label><input id="offerLocation"></div><div class="field"><label>Probation days</label><input id="offerProbation" type="number" value="90"></div><div class="field"><label>Bonus amount</label><input id="offerBonus" type="number" min="0" step="0.01"></div></div><div class="field"><label>Offer notes</label><textarea id="offerNotes"></textarea></div><label><input id="offerPto" type="checkbox"> PTO eligible</label><br><label><input id="offerBenefits" type="checkbox"> Benefits eligible</label><div id="offerError"></div><div class="actions" style="justify-content:flex-end;margin-top:18px"><button class="btn" type="button" id="cancelOffer">Cancel</button><button class="btn primary" type="submit">Send Offer</button></div></form></div></div></div>
-  <div id="toast" class="toast hidden"><strong id="toastTitle"></strong><small id="toastMessage"></small></div>
+  <div
+    class="modal-backdrop hidden"
+    id="folderModal"
+  >
+    <div class="modal">
+      <header class="modal-header">
+        <h2 id="folderTitle">
+          Applicant Folder
+        </h2>
 
-<script>
-(() => {
-  'use strict';
-  const API_BASE='https://sulandra-website-production.up.railway.app';
-  const TOKEN_KEY='sulandra:employee:access-token';
-  const SESSION_KEY='sulandra:employee:session';
-  const $=id=>document.getElementById(id);
-  const state={applications:[],jobs:[],folder:null,activeApplicationId:'',editingJobId:''};
-  const presets={DSP:['DSP / Direct Support Professional','Waiver Services','Full-Time','$16–$20 per hour','/applydsp.html'],LPN:['LPN / Licensed Practical Nurse','Clinical Services','PRN','$28–$34 per hour','/applylpn.html?role=LPN'],RN:['RN / Registered Nurse','Clinical Services','PRN','$36–$45 per hour','/applylpn.html?role=RN'],DELEGATING_NURSE:['Delegating Nurse','Clinical Services','PRN','$40–$52 per hour','/applylpn.html?role=DELEGATING_NURSE'],DRIVER:['NEMT Driver / Transportation Specialist','Transportation','Full-Time','$16–$21 per hour','/applydriver.html'],DOO:['Director of Operations (DOO)','Executive Leadership','Full-Time','$85,000–$120,000 annually','/applydoo.html'],GENERAL:['General Employment Opportunity','Administration','Full-Time','Competitive pay','/applygeneral.html']};
-  const statuses=[['RECEIVED','Received'],['REVIEWING','Reviewing'],['DOCUMENTS_NEEDED','Documents Needed'],['INTERVIEW','Interview'],['OFFER_PENDING','Offer Pending'],['OFFER_ACCEPTED','Offer Accepted'],['HIRE','Hire'],['HIRED','Hired'],['WITHDRAWN','Withdrawn']];
-  const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-  const title=v=>String(v||'').toLowerCase().replaceAll('_',' ').replace(/(^|\s)\S/g,m=>m.toUpperCase());
-  const name=a=>[a?.firstName,a?.middleName,a?.lastName].filter(Boolean).join(' ')||'Applicant';
-  const token=()=>sessionStorage.getItem(TOKEN_KEY)||'';
-  function signOut(){sessionStorage.removeItem(TOKEN_KEY);sessionStorage.removeItem(SESSION_KEY);location.replace('employee-login.html')}
-  function toast(h,m){$('toastTitle').textContent=h;$('toastMessage').textContent=m;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),3800)}
-  async function api(path,init={}){if(!token()){signOut();throw new Error('Administrator sign-in is required.')}const r=await fetch(API_BASE+path,{...init,cache:'no-store',headers:{Accept:'application/json',Authorization:'Bearer '+token(),...(init.body?{'Content-Type':'application/json'}:{}),...(init.headers||{})}});const p=await r.json().catch(()=>({}));if(r.status===401)signOut();if(!r.ok)throw new Error(p.error||p.message||'The request could not be completed.');return p.data!==undefined?p.data:p}
-  function activate(key){document.querySelectorAll('[data-module]').forEach(n=>n.classList.toggle('active',n.dataset.module===key));document.querySelectorAll('.module').forEach(n=>n.classList.toggle('active',n.id==='module-'+key))}
-  function renderApplicants(){const q=$('search').value.toLowerCase();const rows=state.applications.filter(a=>!q||`${name(a)} ${a.email||''} ${a.phone||''} ${a.jobTitle||''}`.toLowerCase().includes(q));$('count').textContent=`${rows.length} applicant${rows.length===1?'':'s'}`;$('applicantRows').innerHTML=rows.length?rows.map(a=>`<tr><td>${a.submittedAt||a.createdAt?new Date(a.submittedAt||a.createdAt).toLocaleDateString():'—'}</td><td><strong>${esc(name(a))}</strong><div class="sub">${esc(a.email||a.phone||'')}</div></td><td>${esc(a.jobTitle||title(a.appliedRole))}</td><td>${esc(a.assessmentScore??'—')}</td><td><span class="status">${esc(title(a.workflowStatus||a.status||'RECEIVED'))}</span></td><td><button class="btn primary" data-open-folder="${esc(a.id)}">Open Folder</button></td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">No active applications found.</div></td></tr>'}
-  async function loadApplications(){try{const data=await api('/api/admin/applications?limit=200');state.applications=Array.isArray(data)?data:[];renderApplicants();$('connection').textContent='Railway: connected'}catch(e){$('connection').textContent='Railway: error';toast('Applicants unavailable',e.message)}}
-  async function loadJobs(){try{const data=await api('/api/admin/job-openings');state.jobs=Array.isArray(data)?data:[];renderJobs()}catch(e){toast('Job openings unavailable',e.message)}}
-  function renderJobs(){const active=state.jobs.filter(j=>['DRAFT','PUBLISHED'].includes(String(j.status).toUpperCase()));$('jobList').innerHTML=active.length?active.map(j=>`<article class="job-card"><div class="job-head"><div><strong>${esc(j.title)}</strong><div class="sub">${esc(j.department||'General')} · ${esc(j.locationText||'')}</div></div><span class="status">${esc(title(j.status))}</span></div><p>${esc(j.summary||'')}</p><div class="actions"><button class="btn primary" data-edit-job="${esc(j.id)}">Edit</button><button class="btn" data-job-status="${esc(j.id)}" data-status="${String(j.status).toUpperCase()==='PUBLISHED'?'CLOSED':'PUBLISHED'}">${String(j.status).toUpperCase()==='PUBLISHED'?'Close':'Publish Live'}</button><button class="btn warning" data-job-status="${esc(j.id)}" data-status="ARCHIVED">Archive</button></div></article>`).join(''):'<div class="empty">No active job openings.</div>';const aa=state.applications.filter(a=>['ARCHIVED','POSITION_FILLED','NOT_SELECTED'].includes(String(a.workflowStatus||a.status).toUpperCase()));$('archivedApplicants').innerHTML=aa.length?aa.map(a=>`<div class="job-card"><strong>${esc(name(a))}</strong><div class="sub">${esc(title(a.workflowStatus||a.status))}</div></div>`).join(''):'<div class="empty">No archived applicants returned by the active applications endpoint.</div>';const aj=state.jobs.filter(j=>['CLOSED','ARCHIVED'].includes(String(j.status).toUpperCase()));$('archivedJobs').innerHTML=aj.length?aj.map(j=>`<div class="job-card"><strong>${esc(j.title)}</strong><div class="sub">${esc(title(j.status))}</div><button class="btn primary" data-job-status="${esc(j.id)}" data-status="PUBLISHED">Restore and Publish</button></div>`).join(''):'<div class="empty">No archived jobs.</div>'}
-  async function openFolder(id){state.activeApplicationId=id;$('folderModal').classList.remove('hidden');$('folderBody').innerHTML='<div class="empty">Loading applicant folder…</div>';try{const [folder,offer]=await Promise.all([api(`/api/admin/applications/${encodeURIComponent(id)}/folder`),api(`/api/admin/applications/${encodeURIComponent(id)}/offer-progress`).catch(()=>({}))]);state.folder=folder;renderFolder(folder,offer)}catch(e){$('folderBody').innerHTML=`<div class="message error">${esc(e.message)}</div>`}}
-  function renderFolder(folder,offerData){const a=folder.application||folder;const docs=folder.documents||[];const history=folder.history||[];$('folderTitle').textContent=name(a);$('folderBody').innerHTML=`<div class="folder-head"><div><h2 style="margin:0">${esc(name(a))}</h2><div class="sub">${esc(a.email||'')} · ${esc(a.phone||'')} · ${esc(a.jobTitle||title(a.appliedRole))}</div></div><span class="status">${esc(title(a.workflowStatus||a.status||'RECEIVED'))}</span></div><div id="folderMessage"></div><div class="folder-grid"><section class="folder-section"><h3>Workflow Status</h3><div class="field"><label>New status</label><select id="folderStatus">${statuses.map(([v,l])=>`<option value="${v}" ${v===String(a.workflowStatus||a.status).toUpperCase()?'selected':''}>${l}</option>`).join('')}</select></div><div class="field"><label>Internal note</label><textarea id="folderNote"></textarea></div><button class="btn primary" id="saveFolderStatus">Save Status and Send Update</button></section><section class="folder-section"><h3>Portal Access</h3><p><strong>Username:</strong> ${esc(a.portalUsername||a.username||a.email||'Not available')}</p><div class="actions"><button class="btn" id="resendPortal">Resend Portal Access</button><button class="btn" id="scheduleInterview">Schedule Interview</button></div></section><section class="folder-section"><h3>Documents</h3>${docs.length?docs.map(d=>`<div class="doc-card"><strong>${esc(d.name||d.documentType||'Document')}</strong><div class="sub">${esc(title(d.status||'UPLOADED'))}</div>${d.downloadUrl?`<a class="btn" href="${esc(d.downloadUrl)}" target="_blank">Open</a>`:''}</div>`).join(''):'<div class="sub">No documents found.</div>'}</section><section class="folder-section"><h3>Employment Offer</h3>${offerData?.offer?`<p><strong>${esc(offerData.offer.positionTitle||'Offer')}</strong></p><p class="sub">${esc(title(offerData.offer.status||'PENDING'))}</p>`:'<p class="sub">No offer has been sent.</p>'}<button class="btn success" id="prepareOffer">Prepare and Send Offer</button></section><section class="folder-section wide"><h3>History</h3>${history.length?history.map(h=>`<div class="history-card"><strong>${esc(title(h.status||h.action||'Update'))}</strong><div class="sub">${esc(h.createdAt?new Date(h.createdAt).toLocaleString():'')} ${esc(h.note||h.message||'')}</div></div>`).join(''):'<div class="sub">No history available.</div>'}</section><section class="folder-section wide"><h3>Terminal Actions</h3><p class="sub">These actions disable portal access immediately and send the appropriate Human Resources email.</p><div class="actions"><button class="btn warning" id="archiveApplicant">Position Filled — Archive</button><button class="btn danger" id="rejectApplicant">Not Selected — Permanently Delete</button></div></section></div>`;
-    $('saveFolderStatus').onclick=saveFolderStatus;$('resendPortal').onclick=resendPortal;$('prepareOffer').onclick=()=>openOffer(a);$('archiveApplicant').onclick=()=>terminalAction('archive');$('rejectApplicant').onclick=()=>terminalAction('reject');$('scheduleInterview').onclick=scheduleInterview;
-  }
-  function folderMessage(text,error=false){const n=$('folderMessage');if(n)n.innerHTML=`<div class="message ${error?'error':'ok'}">${esc(text)}</div>`}
-  async function saveFolderStatus(){try{await api(`/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/status`,{method:'PATCH',body:JSON.stringify({status:$('folderStatus').value,note:$('folderNote').value.trim()||undefined})});folderMessage('Status updated and applicant notification processed.');await Promise.all([loadApplications(),openFolder(state.activeApplicationId)])}catch(e){folderMessage(e.message,true)}}
-  async function resendPortal(){try{await api(`/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/resend-portal-access`,{method:'POST',body:'{}'});folderMessage('Portal access email resent successfully.')}catch(e){folderMessage(e.message,true)}}
-  async function scheduleInterview(){const raw=prompt('Enter interview date and time, for example: 2026-08-10 10:00 AM');if(!raw)return;try{await api(`/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/interview-slots`,{method:'POST',body:JSON.stringify({slots:[raw]})});folderMessage('Interview invitation sent.')}catch(e){folderMessage(e.message,true)}}
-  function openOffer(a){$('offerPosition').value=a.positionTitle||a.jobTitle||title(a.appliedRole);$('offerModal').classList.remove('hidden')}
-  async function sendOffer(e){e.preventDefault();$('offerError').innerHTML='';const payload={positionTitle:$('offerPosition').value.trim(),department:$('offerDepartment').value.trim()||undefined,supervisorName:$('offerSupervisor').value.trim()||undefined,employmentType:$('offerEmployment').value,compensationType:$('offerCompType').value,payAmount:Number($('offerPay').value),startDate:$('offerStart').value,orientationDate:$('offerOrientation').value||undefined,shift:$('offerShift').value.trim()||undefined,workLocation:$('offerLocation').value.trim()||undefined,probationDays:Number($('offerProbation').value||90),bonusAmount:$('offerBonus').value?Number($('offerBonus').value):undefined,ptoEligible:$('offerPto').checked,benefitsEligible:$('offerBenefits').checked,notes:$('offerNotes').value.trim()||undefined,requiredDocuments:['Offer Letter']};try{await api(`/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/offers`,{method:'POST',body:JSON.stringify(payload)});$('offerModal').classList.add('hidden');toast('Offer sent','Status changed to Offer Pending.');await openFolder(state.activeApplicationId);await loadApplications()}catch(err){$('offerError').innerHTML=`<div class="message error">${esc(err.message)}</div>`}}
-  async function terminalAction(kind){const deleting=kind==='reject';const accepted=confirm(deleting?'This will email the applicant, disable portal access, and permanently delete the applicant record. Continue?':'This will email the applicant, disable portal access, and move the application to archive. Continue?');if(!accepted)return;const note=$('folderNote')?.value.trim()||undefined;try{await api(`/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/${kind}`,{method:'POST',body:JSON.stringify({note,acknowledged:true})});$('folderModal').classList.add('hidden');toast(deleting?'Applicant deleted':'Applicant archived',deleting?'Non-selection email sent and record removed.':'Position-filled email sent and record archived.');await loadApplications()}catch(e){folderMessage(e.message,true)}}
-  function slug(v){return String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
-  function applyPreset(){const p=presets[$('jobPreset').value];if(!p)return;const [t,d,type,pay,path]=p;$('jobTitle').value=t;$('jobSlug').value=slug(t);$('jobDepartment').value=d;$('jobType').value=type;$('jobPay').value=pay;$('jobPath').value=path;$('jobSummary').value=`Join Sulandra Health as a ${t} and help deliver dependable, person-centered services.`;$('jobDescription').value=`The ${t} supports safe, respectful, compliant service delivery while collaborating with clients, families, employees, and leadership.`;$('jobRequirements').value='Relevant education or experience; dependable communication; successful credential and background verification as applicable.';$('jobBenefits').value='Competitive compensation, paid training, professional development, and a supportive team environment.'}
-  function jobPayload(){return{title:$('jobTitle').value.trim(),slug:$('jobSlug').value.trim(),department:$('jobDepartment').value.trim()||undefined,employmentType:$('jobType').value,locationText:$('jobLocation').value.trim()||undefined,payRange:$('jobPay').value.trim()||undefined,applicationPath:$('jobPath').value,summary:$('jobSummary').value.trim(),description:$('jobDescription').value.trim(),requirements:$('jobRequirements').value.trim()||undefined,benefits:$('jobBenefits').value.trim()||undefined,status:$('jobStatus').value}}
-  async function saveJob(e){e.preventDefault();try{await api(state.editingJobId?`/api/admin/job-openings/${encodeURIComponent(state.editingJobId)}`:'/api/admin/job-openings',{method:state.editingJobId?'PATCH':'POST',body:JSON.stringify(jobPayload())});toast('Job opening saved',$('jobStatus').value==='PUBLISHED'?'The job is live on Careers.':'Saved as draft.');resetJob();await loadJobs()}catch(err){toast('Job not saved',err.message)}}
-  function editJob(id){const j=state.jobs.find(x=>x.id===id);if(!j)return;state.editingJobId=id;$('jobFormTitle').textContent='Edit Job Opening';$('cancelJobEdit').classList.remove('hidden');$('jobTitle').value=j.title||'';$('jobSlug').value=j.slug||'';$('jobDepartment').value=j.department||'';$('jobType').value=j.employmentType||'Full-Time';$('jobLocation').value=j.locationText||'Dayton, OH';$('jobPay').value=j.payRange||'';$('jobPath').value=j.applicationPath||'/applygeneral.html';$('jobSummary').value=j.summary||'';$('jobDescription').value=j.description||'';$('jobRequirements').value=j.requirements||'';$('jobBenefits').value=j.benefits||'';$('jobStatus').value=String(j.status||'DRAFT').toUpperCase();scrollTo({top:0,behavior:'smooth'})}
-  function resetJob(){state.editingJobId='';$('jobForm').reset();$('jobLocation').value='Dayton, OH';$('jobFormTitle').textContent='Create Job Opening';$('cancelJobEdit').classList.add('hidden')}
-  async function setJobStatus(id,status){try{await api(`/api/admin/job-openings/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify({status})});toast('Job updated',`Status changed to ${title(status)}.`);await loadJobs()}catch(e){toast('Job not updated',e.message)}}
-  function exportCsv(){const q=v=>'"'+String(v??'').replaceAll('"','""')+'"';const rows=[['Submitted','Applicant','Email','Phone','Position','Status'],...state.applications.map(a=>[a.submittedAt||a.createdAt,name(a),a.email,a.phone,a.jobTitle||title(a.appliedRole),title(a.workflowStatus||a.status)])];const blob=new Blob([rows.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='sulandra-applicants.csv';a.click();URL.revokeObjectURL(u)}
-  document.querySelectorAll('[data-module]').forEach(n=>n.addEventListener('click',()=>activate(n.dataset.module)));$('search').addEventListener('input',renderApplicants);$('applicantRows').addEventListener('click',e=>{const b=e.target.closest('[data-open-folder]');if(b)openFolder(b.dataset.openFolder)});$('closeFolder').onclick=()=>$('folderModal').classList.add('hidden');$('closeOffer').onclick=$('cancelOffer').onclick=()=>$('offerModal').classList.add('hidden');$('offerForm').addEventListener('submit',sendOffer);$('jobPreset').addEventListener('change',applyPreset);$('jobTitle').addEventListener('input',()=>{if(!state.editingJobId)$('jobSlug').value=slug($('jobTitle').value)});$('jobForm').addEventListener('submit',saveJob);$('cancelJobEdit').onclick=resetJob;$('jobList').addEventListener('click',e=>{const edit=e.target.closest('[data-edit-job]'),status=e.target.closest('[data-job-status]');if(edit)editJob(edit.dataset.editJob);if(status)setJobStatus(status.dataset.jobStatus,status.dataset.status)});$('archivedJobs').addEventListener('click',e=>{const b=e.target.closest('[data-job-status]');if(b)setJobStatus(b.dataset.jobStatus,b.dataset.status)});$('refresh').onclick=()=>Promise.all([loadApplications(),loadJobs()]);$('export').onclick=exportCsv;$('signOut').onclick=signOut;
-  (async()=>{try{const s=await api('/api/session');if(!s||!['ADMINISTRATOR','DOO'].includes(String(s.role))){location.replace('employee-portal.html');return}$('adminIdentity').textContent=s.email||s.username||title(s.role);await Promise.all([loadApplications(),loadJobs()])}catch(e){toast('Admin portal unavailable',e.message)}})();
-})();
-</script>
+        <button
+          class="button"
+          id="closeFolderButton"
+          type="button"
+        >
+          ×
+        </button>
+      </header>
+
+      <div
+        class="modal-body"
+        id="folderBody"
+      >
+        <div class="empty-state">
+          Loading applicant folder…
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="modal-backdrop hidden"
+    id="offerModal"
+  >
+    <div class="modal">
+      <header class="modal-header">
+        <h2>
+          Prepare Offer of Employment
+        </h2>
+
+        <button
+          class="button"
+          id="closeOfferButton"
+          type="button"
+        >
+          ×
+        </button>
+      </header>
+
+      <form id="offerForm">
+        <div class="modal-body">
+          <div class="two-column">
+            <div class="field">
+              <label for="offerPosition">
+                Position Title
+              </label>
+
+              <input
+                id="offerPosition"
+                required
+              >
+            </div>
+
+            <div class="field">
+              <label for="offerDepartment">
+                Department
+              </label>
+
+              <input id="offerDepartment">
+            </div>
+
+            <div class="field">
+              <label for="offerSupervisor">
+                Supervisor
+              </label>
+
+              <input id="offerSupervisor">
+            </div>
+
+            <div class="field">
+              <label for="offerEmployment">
+                Employment Type
+              </label>
+
+              <select id="offerEmployment">
+                <option value="FULL_TIME">
+                  Full-time
+                </option>
+
+                <option value="PART_TIME">
+                  Part-time
+                </option>
+
+                <option value="PRN">
+                  PRN
+                </option>
+
+                <option value="CONTRACT">
+                  Contract
+                </option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="offerCompensationType">
+                Compensation Type
+              </label>
+
+              <select id="offerCompensationType">
+                <option value="HOURLY">
+                  Hourly
+                </option>
+
+                <option value="SALARY">
+                  Salary
+                </option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="offerPay">
+                Pay Amount
+              </label>
+
+              <input
+                id="offerPay"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+              >
+            </div>
+
+            <div class="field">
+              <label for="offerStart">
+                Start Date
+              </label>
+
+              <input
+                id="offerStart"
+                type="date"
+                required
+              >
+            </div>
+
+            <div class="field">
+              <label for="offerOrientation">
+                Orientation Date
+              </label>
+
+              <input
+                id="offerOrientation"
+                type="date"
+              >
+            </div>
+
+            <div class="field">
+              <label for="offerShift">
+                Shift
+              </label>
+
+              <input id="offerShift">
+            </div>
+
+            <div class="field">
+              <label for="offerLocation">
+                Work Location
+              </label>
+
+              <input
+                id="offerLocation"
+                value="Dayton, OH"
+              >
+            </div>
+
+            <div class="field">
+              <label for="offerProbation">
+                Probation Days
+              </label>
+
+              <input
+                id="offerProbation"
+                type="number"
+                value="90"
+              >
+            </div>
+
+            <div class="field">
+              <label for="offerBonus">
+                Bonus Amount
+              </label>
+
+              <input
+                id="offerBonus"
+                type="number"
+                min="0"
+                step="0.01"
+              >
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="offerNotes">
+              Offer Notes
+            </label>
+
+            <textarea id="offerNotes"></textarea>
+          </div>
+
+          <div class="two-column">
+            <label>
+              <input
+                id="offerPto"
+                type="checkbox"
+              >
+
+              PTO eligible
+            </label>
+
+            <label>
+              <input
+                id="offerBenefits"
+                type="checkbox"
+              >
+
+              Benefits eligible
+            </label>
+          </div>
+
+          <div id="offerMessage"></div>
+        </div>
+
+        <footer class="modal-footer">
+          <button
+            class="button"
+            id="cancelOfferButton"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button
+            class="button button-success"
+            type="submit"
+          >
+            Send Offer
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    class="modal-backdrop hidden"
+    id="interviewModal"
+  >
+    <div class="modal modal-small">
+      <header class="modal-header">
+        <h2>Schedule Interview</h2>
+
+        <button
+          class="button"
+          id="closeInterviewButton"
+          type="button"
+        >
+          ×
+        </button>
+      </header>
+
+      <form id="interviewForm">
+        <div class="modal-body">
+          <div class="field">
+            <label for="interviewSlotOne">
+              Primary Date and Time
+            </label>
+
+            <input
+              id="interviewSlotOne"
+              type="datetime-local"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="interviewSlotTwo">
+              Alternative Date and Time
+            </label>
+
+            <input
+              id="interviewSlotTwo"
+              type="datetime-local"
+            >
+          </div>
+
+          <div class="field">
+            <label for="interviewSlotThree">
+              Second Alternative
+            </label>
+
+            <input
+              id="interviewSlotThree"
+              type="datetime-local"
+            >
+          </div>
+
+          <div class="field">
+            <label for="interviewLocation">
+              Location
+            </label>
+
+            <input
+              id="interviewLocation"
+              value="Sulandra Health, Dayton, Ohio"
+            >
+          </div>
+
+          <div class="field">
+            <label for="interviewNotes">
+              Instructions
+            </label>
+
+            <textarea id="interviewNotes"></textarea>
+          </div>
+
+          <div id="interviewMessage"></div>
+        </div>
+
+        <footer class="modal-footer">
+          <button
+            class="button"
+            id="cancelInterviewButton"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button
+            class="button button-primary"
+            type="submit"
+          >
+            Send Interview Invitation
+          </button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <div
+    class="toast hidden"
+    id="toast"
+  >
+    <strong id="toastTitle"></strong>
+    <small id="toastMessage"></small>
+  </div>
+
+  <div
+    class="loading-overlay hidden"
+    id="loadingOverlay"
+  >
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <strong id="loadingText">Working…</strong>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const API_BASE =
+        "https://sulandra-website-production.up.railway.app";
+
+      const TOKEN_KEY =
+        "sulandra:employee:access-token";
+
+      const SESSION_KEY =
+        "sulandra:employee:session";
+
+      const LOGIN_PAGE =
+        "employee-login.html";
+
+      const EMPLOYEE_PORTAL =
+        "employee-portal.html";
+
+      const ALLOWED_ROLES = [
+        "ADMINISTRATOR",
+        "DOO",
+        "COO"
+      ];
+
+      const state = {
+        applications: [],
+        jobs: [],
+        activeApplicationId: "",
+        folder: null,
+        offerProgress: null,
+        editingJobId: "",
+        busyCount: 0,
+        toastTimer: null
+      };
+
+      const workflowStatuses = [
+        ["RECEIVED", "Received"],
+        ["REVIEWING", "Reviewing"],
+        ["DOCUMENTS_NEEDED", "Documents Needed"],
+        ["INTERVIEW", "Interview"],
+        ["OFFER_PENDING", "Offer Pending"],
+        ["OFFER_ACCEPTED", "Offer Accepted"],
+        ["HIRE", "Hire"],
+        ["HIRED", "Hired"],
+        ["WITHDRAWN", "Withdrawn"]
+      ];
+
+      const jobPresets = {
+        DSP: {
+          title:
+            "DSP / Direct Support Professional",
+
+          department:
+            "Community Living Services",
+
+          employmentType:
+            "Full-Time",
+
+          payRange:
+            "$16–$20 per hour",
+
+          applicationPath:
+            "/applydsp.html"
+        },
+
+        LPN: {
+          title:
+            "LPN / Licensed Practical Nurse",
+
+          department:
+            "Clinical Services",
+
+          employmentType:
+            "PRN",
+
+          payRange:
+            "$28–$34 per hour",
+
+          applicationPath:
+            "/applylpn.html?role=LPN"
+        },
+
+        RN: {
+          title:
+            "RN / Registered Nurse",
+
+          department:
+            "Clinical Services",
+
+          employmentType:
+            "PRN",
+
+          payRange:
+            "$36–$45 per hour",
+
+          applicationPath:
+            "/applylpn.html?role=RN"
+        },
+
+        DELEGATING_NURSE: {
+          title:
+            "Delegating Nurse",
+
+          department:
+            "Clinical Services",
+
+          employmentType:
+            "PRN",
+
+          payRange:
+            "$40–$52 per hour",
+
+          applicationPath:
+            "/applylpn.html?role=DELEGATING_NURSE"
+        },
+
+        DRIVER: {
+          title:
+            "NEMT Driver / Transportation Specialist",
+
+          department:
+            "Transportation",
+
+          employmentType:
+            "Full-Time",
+
+          payRange:
+            "$16–$21 per hour",
+
+          applicationPath:
+            "/applydriver.html"
+        },
+
+        DOO: {
+          title:
+            "Director of Operations",
+
+          department:
+            "Executive Leadership",
+
+          employmentType:
+            "Full-Time",
+
+          payRange:
+            "$85,000–$120,000 annually",
+
+          applicationPath:
+            "/applydoo.html"
+        },
+
+        COO: {
+          title:
+            "Chief Operating Officer",
+
+          department:
+            "Executive Leadership",
+
+          employmentType:
+            "Full-Time",
+
+          payRange:
+            "Competitive executive compensation",
+
+          applicationPath:
+            "/applycoo.html"
+        },
+
+        GENERAL: {
+          title:
+            "General Employment Opportunity",
+
+          department:
+            "Administration",
+
+          employmentType:
+            "Full-Time",
+
+          payRange:
+            "Competitive pay",
+
+          applicationPath:
+            "/applygeneral.html"
+        }
+      };
+
+      const byId = (id) =>
+        document.getElementById(id);
+
+      const selectAll = (
+        selector,
+        root = document
+      ) =>
+        Array.from(
+          root.querySelectorAll(selector)
+        );
+
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+      const normalizeStatus = (value) =>
+        String(value ?? "")
+          .trim()
+          .toUpperCase();
+
+      const titleCase = (value) =>
+        String(value ?? "")
+          .trim()
+          .toLowerCase()
+          .replaceAll("_", " ")
+          .replace(
+            /\b\w/g,
+            (character) =>
+              character.toUpperCase()
+          );
+
+      const fullName = (application) =>
+        [
+          application?.firstName,
+          application?.middleName,
+          application?.lastName
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .trim() ||
+        "Applicant";
+
+      const applicationStatus = (
+        application
+      ) =>
+        normalizeStatus(
+          application?.workflowStatus ||
+          application?.status ||
+          "RECEIVED"
+        );
+
+      const applicationPosition = (
+        application
+      ) =>
+        application?.jobTitle ||
+        application?.positionTitle ||
+        titleCase(application?.appliedRole) ||
+        "General Employment Opportunity";
+
+      const formatDate = (value) => {
+        if (!value) {
+          return "—";
+        }
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+          return String(value);
+        }
+
+        return date.toLocaleDateString();
+      };
+
+      const formatDateTime = (value) => {
+        if (!value) {
+          return "";
+        }
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+          return String(value);
+        }
+
+        return date.toLocaleString();
+      };
+
+      const slugify = (value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .trim()
+          .replace(
+            /[^a-z0-9]+/g,
+            "-"
+          )
+          .replace(
+            /^-+|-+$/g,
+            ""
+          );
+
+      const isArchivedApplication = (
+        application
+      ) =>
+        [
+          "ARCHIVED",
+          "POSITION_FILLED",
+          "NOT_SELECTED",
+          "REJECTED",
+          "DELETED"
+        ].includes(
+          applicationStatus(application)
+        );
+
+      const isArchivedJob = (job) =>
+        [
+          "CLOSED",
+          "ARCHIVED"
+        ].includes(
+          normalizeStatus(job?.status)
+        );
+
+      const statusClass = (value) => {
+        const status =
+          normalizeStatus(value);
+
+        if (
+          [
+            "HIRED",
+            "HIRE",
+            "OFFER_ACCEPTED",
+            "PUBLISHED",
+            "ACTIVE"
+          ].includes(status)
+        ) {
+          return "status-green";
+        }
+
+        if (
+          [
+            "REJECTED",
+            "NOT_SELECTED",
+            "DELETED",
+            "CANCELLED"
+          ].includes(status)
+        ) {
+          return "status-red";
+        }
+
+        if (
+          [
+            "DOCUMENTS_NEEDED",
+            "OFFER_PENDING",
+            "CLOSED",
+            "WITHDRAWN"
+          ].includes(status)
+        ) {
+          return "status-amber";
+        }
+
+        if (
+          [
+            "INTERVIEW",
+            "REVIEWING",
+            "RECEIVED"
+          ].includes(status)
+        ) {
+          return "status-blue";
+        }
+
+        return "status-purple";
+      };
+
+      const getToken = () =>
+        sessionStorage.getItem(
+          TOKEN_KEY
+        ) || "";
+
+      const signOut = () => {
+        sessionStorage.removeItem(
+          TOKEN_KEY
+        );
+
+        sessionStorage.removeItem(
+          SESSION_KEY
+        );
+
+        window.location.replace(
+          LOGIN_PAGE
+        );
+      };
+
+      const setConnectionState = (
+        stateName,
+        message
+      ) => {
+        const dot =
+          byId("connectionDot");
+
+        dot.classList.remove(
+          "connected",
+          "error"
+        );
+
+        if (
+          stateName === "connected"
+        ) {
+          dot.classList.add(
+            "connected"
+          );
+
+          byId(
+            "connectionText"
+          ).textContent =
+            "Railway: connected";
+
+          byId(
+            "connectionCardTitle"
+          ).textContent =
+            "Railway Connected";
+
+          byId(
+            "connectionCardMessage"
+          ).textContent =
+            message ||
+            "The authenticated backend API is responding.";
+
+          return;
+        }
+
+        if (
+          stateName === "error"
+        ) {
+          dot.classList.add(
+            "error"
+          );
+
+          byId(
+            "connectionText"
+          ).textContent =
+            "Railway: error";
+
+          byId(
+            "connectionCardTitle"
+          ).textContent =
+            "Connection Error";
+
+          byId(
+            "connectionCardMessage"
+          ).textContent =
+            message ||
+            "The administrative API could not be reached.";
+
+          return;
+        }
+
+        byId(
+          "connectionText"
+        ).textContent =
+          "Railway: connecting…";
+
+        byId(
+          "connectionCardTitle"
+        ).textContent =
+          "Connecting to Railway";
+
+        byId(
+          "connectionCardMessage"
+        ).textContent =
+          message ||
+          "Waiting for an authenticated API response.";
+      };
+
+      const showToast = (
+        heading,
+        message
+      ) => {
+        byId(
+          "toastTitle"
+        ).textContent =
+          heading;
+
+        byId(
+          "toastMessage"
+        ).textContent =
+          message;
+
+        byId(
+          "toast"
+        ).classList.remove(
+          "hidden"
+        );
+
+        clearTimeout(
+          state.toastTimer
+        );
+
+        state.toastTimer =
+          setTimeout(
+            () => {
+              byId(
+                "toast"
+              ).classList.add(
+                "hidden"
+              );
+            },
+            4200
+          );
+      };
+
+      const setBusy = (
+        busy,
+        text = "Working…"
+      ) => {
+        state.busyCount +=
+          busy ? 1 : -1;
+
+        state.busyCount =
+          Math.max(
+            0,
+            state.busyCount
+          );
+
+        byId(
+          "loadingText"
+        ).textContent =
+          text;
+
+        byId(
+          "loadingOverlay"
+        ).classList.toggle(
+          "hidden",
+          state.busyCount === 0
+        );
+      };
+
+      const openModal = (id) => {
+        byId(id).classList.remove(
+          "hidden"
+        );
+
+        document.body.classList.add(
+          "modal-open"
+        );
+      };
+
+      const closeModal = (id) => {
+        byId(id).classList.add(
+          "hidden"
+        );
+
+        const anyOpen =
+          selectAll(
+            ".modal-backdrop"
+          ).some(
+            (modal) =>
+              !modal.classList.contains(
+                "hidden"
+              )
+          );
+
+        if (!anyOpen) {
+          document.body.classList.remove(
+            "modal-open"
+          );
+        }
+      };
+
+      const activateModule = (
+        moduleName
+      ) => {
+        selectAll(
+          "[data-module]"
+        ).forEach(
+          (element) => {
+            element.classList.toggle(
+              "active",
+              element.dataset.module ===
+                moduleName
+            );
+          }
+        );
+
+        selectAll(
+          ".module"
+        ).forEach(
+          (element) => {
+            element.classList.toggle(
+              "active",
+              element.id ===
+                `module-${moduleName}`
+            );
+          }
+        );
+
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      };
+
+      const api = async (
+        path,
+        options = {}
+      ) => {
+        if (!getToken()) {
+          signOut();
+
+          throw new Error(
+            "Administrator sign-in is required."
+          );
+        }
+
+        const controller =
+          new AbortController();
+
+        const timeout =
+          setTimeout(
+            () =>
+              controller.abort(),
+            30000
+          );
+
+        try {
+          const response =
+            await fetch(
+              API_BASE + path,
+              {
+                ...options,
+
+                signal:
+                  controller.signal,
+
+                cache:
+                  "no-store",
+
+                headers: {
+                  Accept:
+                    "application/json",
+
+                  Authorization:
+                    `Bearer ${getToken()}`,
+
+                  ...(
+                    options.body
+                      ? {
+                          "Content-Type":
+                            "application/json"
+                        }
+                      : {}
+                  ),
+
+                  ...(
+                    options.headers ||
+                    {}
+                  )
+                }
+              }
+            );
+
+          const payload =
+            await response
+              .json()
+              .catch(
+                () => ({})
+              );
+
+          if (
+            response.status === 401
+          ) {
+            signOut();
+
+            throw new Error(
+              "Your session has expired."
+            );
+          }
+
+          if (!response.ok) {
+            throw new Error(
+              payload?.error ||
+              payload?.message ||
+              `Request failed with status ${response.status}.`
+            );
+          }
+
+          return (
+            payload?.data !==
+            undefined
+              ? payload.data
+              : payload
+          );
+        } catch (error) {
+          if (
+            error?.name ===
+            "AbortError"
+          ) {
+            throw new Error(
+              "The server took too long to respond."
+            );
+          }
+
+          throw error;
+        } finally {
+          clearTimeout(
+            timeout
+          );
+        }
+      };
+
+      const renderRecruitingSummary =
+        () => {
+          const active =
+            state.applications.filter(
+              (application) =>
+                !isArchivedApplication(
+                  application
+                )
+            );
+
+          const counts =
+            active.reduce(
+              (
+                accumulator,
+                application
+              ) => {
+                const status =
+                  applicationStatus(
+                    application
+                  );
+
+                accumulator[
+                  status
+                ] =
+                  (
+                    accumulator[
+                      status
+                    ] || 0
+                  ) + 1;
+
+                return accumulator;
+              },
+              {}
+            );
+
+          byId(
+            "interviewsStat"
+          ).textContent =
+            String(
+              counts.INTERVIEW ||
+              0
+            );
+
+          const summary = [
+            [
+              "Received",
+              counts.RECEIVED || 0
+            ],
+            [
+              "Reviewing",
+              counts.REVIEWING || 0
+            ],
+            [
+              "Interview",
+              counts.INTERVIEW || 0
+            ],
+            [
+              "Offer Pending",
+              counts.OFFER_PENDING || 0
+            ],
+            [
+              "Offer Accepted",
+              counts.OFFER_ACCEPTED || 0
+            ]
+          ];
+
+          byId(
+            "recruitingSummary"
+          ).innerHTML =
+            summary
+              .map(
+                ([
+                  label,
+                  count
+                ]) => `
+                  <div class="activity-card">
+                    <strong>
+                      ${escapeHtml(label)}
+                    </strong>
+
+                    <div class="sub">
+                      ${count}
+                      applicant${count === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                `
+              )
+              .join("");
+        };
+
+      const renderApplicants = () => {
+        const search =
+          byId(
+            "applicantSearch"
+          )
+            .value
+            .trim()
+            .toLowerCase();
+
+        const statusFilter =
+          normalizeStatus(
+            byId(
+              "applicantStatusFilter"
+            ).value
+          );
+
+        const active =
+          state.applications.filter(
+            (application) =>
+              !isArchivedApplication(
+                application
+              )
+          );
+
+        const filtered =
+          active.filter(
+            (application) => {
+              const searchable = [
+                fullName(application),
+                application?.email,
+                application?.phone,
+                applicationPosition(
+                  application
+                ),
+                applicationStatus(
+                  application
+                )
+              ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+
+              return (
+                (
+                  !search ||
+                  searchable.includes(
+                    search
+                  )
+                ) &&
+                (
+                  !statusFilter ||
+                  applicationStatus(
+                    application
+                  ) ===
+                    statusFilter
+                )
+              );
+            }
+          );
+
+        byId(
+          "applicantCount"
+        ).textContent =
+          `${filtered.length} applicant` +
+          (
+            filtered.length === 1
+              ? ""
+              : "s"
+          );
+
+        byId(
+          "openApplicantsStat"
+        ).textContent =
+          String(active.length);
+
+        if (!filtered.length) {
+          byId(
+            "applicantRows"
+          ).innerHTML = `
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  No active applications found.
+                </div>
+              </td>
+            </tr>
+          `;
+
+          renderRecruitingSummary();
+
+          return;
+        }
+
+        byId(
+          "applicantRows"
+        ).innerHTML =
+          filtered
+            .map(
+              (application) => {
+                const status =
+                  applicationStatus(
+                    application
+                  );
+
+                return `
+                  <tr>
+                    <td>
+                      ${escapeHtml(
+                        formatDate(
+                          application?.submittedAt ||
+                          application?.createdAt
+                        )
+                      )}
+                    </td>
+
+                    <td>
+                      <strong>
+                        ${escapeHtml(
+                          fullName(
+                            application
+                          )
+                        )}
+                      </strong>
+
+                      <div class="sub">
+                        ${escapeHtml(
+                          application?.email ||
+                          application?.phone ||
+                          ""
+                        )}
+                      </div>
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        applicationPosition(
+                          application
+                        )
+                      )}
+                    </td>
+
+                    <td>
+                      ${escapeHtml(
+                        application?.assessmentScore ??
+                        "—"
+                      )}
+                    </td>
+
+                    <td>
+                      <span
+                        class="status ${statusClass(status)}"
+                      >
+                        ${escapeHtml(
+                          titleCase(status)
+                        )}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button
+                        class="button button-primary button-small"
+                        type="button"
+                        data-open-folder="${escapeHtml(application.id)}"
+                      >
+                        Open Folder
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }
+            )
+            .join("");
+
+        renderRecruitingSummary();
+      };
+
+      const loadApplications =
+        async () => {
+          try {
+            const data =
+              await api(
+                "/api/admin/applications?limit=500"
+              );
+
+            state.applications =
+              Array.isArray(data)
+                ? data
+                : [];
+
+            renderApplicants();
+            renderArchives();
+
+            setConnectionState(
+              "connected",
+              "Applicant and recruiting data loaded successfully."
+            );
+          } catch (error) {
+            setConnectionState(
+              "error",
+              error.message
+            );
+
+            byId(
+              "applicantRows"
+            ).innerHTML = `
+              <tr>
+                <td colspan="6">
+                  <div class="message message-error">
+                    ${escapeHtml(error.message)}
+                  </div>
+                </td>
+              </tr>
+            `;
+
+            showToast(
+              "Applicants unavailable",
+              error.message
+            );
+          }
+        };
+
+      const workflowOptionsHtml = (
+        currentStatus
+      ) =>
+        workflowStatuses
+          .map(
+            ([
+              value,
+              label
+            ]) => `
+              <option
+                value="${value}"
+                ${
+                  normalizeStatus(
+                    currentStatus
+                  ) === value
+                    ? "selected"
+                    : ""
+                }
+              >
+                ${label}
+              </option>
+            `
+          )
+          .join("");
+
+      const renderDocuments = (
+        documents
+      ) => {
+        if (
+          !Array.isArray(documents) ||
+          !documents.length
+        ) {
+          return `
+            <div class="sub">
+              No uploaded documents were returned.
+            </div>
+          `;
+        }
+
+        return documents
+          .map(
+            (document) => {
+              const name =
+                document?.name ||
+                document?.fileName ||
+                document?.documentType ||
+                "Applicant Document";
+
+              const status =
+                document?.status ||
+                "UPLOADED";
+
+              const link =
+                document?.downloadUrl ||
+                document?.url ||
+                "";
+
+              return `
+                <article class="document-card">
+                  <div class="document-heading">
+                    <div>
+                      <h3>
+                        ${escapeHtml(name)}
+                      </h3>
+
+                      <div class="sub">
+                        ${escapeHtml(
+                          titleCase(status)
+                        )}
+                      </div>
+                    </div>
+
+                    <span
+                      class="status ${statusClass(status)}"
+                    >
+                      ${escapeHtml(
+                        titleCase(status)
+                      )}
+                    </span>
+                  </div>
+
+                  ${
+                    link
+                      ? `
+                        <div
+                          class="actions"
+                          style="margin-top:10px"
+                        >
+                          <a
+                            class="button button-small"
+                            href="${escapeHtml(link)}"
+                            target="_blank"
+                            rel="noopener"
+                          >
+                            Open Document
+                          </a>
+                        </div>
+                      `
+                      : ""
+                  }
+                </article>
+              `;
+            }
+          )
+          .join("");
+      };
+
+      const renderHistory = (
+        history
+      ) => {
+        if (
+          !Array.isArray(history) ||
+          !history.length
+        ) {
+          return `
+            <div class="sub">
+              No workflow history was returned.
+            </div>
+          `;
+        }
+
+        return history
+          .map(
+            (entry) => `
+              <article class="history-card">
+                <strong>
+                  ${escapeHtml(
+                    titleCase(
+                      entry?.status ||
+                      entry?.action ||
+                      entry?.eventType ||
+                      "Workflow Update"
+                    )
+                  )}
+                </strong>
+
+                <div class="sub">
+                  ${escapeHtml(
+                    formatDateTime(
+                      entry?.createdAt
+                    )
+                  )}
+
+                  ${
+                    entry?.note ||
+                    entry?.message
+                      ? ` · ${escapeHtml(
+                          entry?.note ||
+                          entry?.message
+                        )}`
+                      : ""
+                  }
+                </div>
+              </article>
+            `
+          )
+          .join("");
+      };
+
+      const renderOfferProgress = (
+        progress
+      ) => {
+        const offer =
+          progress?.offer ||
+          progress?.currentOffer;
+
+        if (!offer) {
+          return `
+            <p class="sub">
+              No employment offer has been sent.
+            </p>
+          `;
+        }
+
+        const status =
+          offer?.status ||
+          progress?.status ||
+          "PENDING";
+
+        return `
+          <p>
+            <strong>
+              ${escapeHtml(
+                offer?.positionTitle ||
+                "Employment Offer"
+              )}
+            </strong>
+          </p>
+
+          <p>
+            <span
+              class="status ${statusClass(status)}"
+            >
+              ${escapeHtml(
+                titleCase(status)
+              )}
+            </span>
+          </p>
+        `;
+      };
+
+      const renderApplicantFolder = (
+        folder,
+        offerProgress
+      ) => {
+        const application =
+          folder?.application ||
+          folder ||
+          {};
+
+        const documents =
+          folder?.documents ||
+          application?.documents ||
+          [];
+
+        const history =
+          folder?.history ||
+          folder?.workflowHistory ||
+          application?.history ||
+          [];
+
+        const status =
+          applicationStatus(
+            application
+          );
+
+        byId(
+          "folderTitle"
+        ).textContent =
+          fullName(application);
+
+        byId(
+          "folderBody"
+        ).innerHTML = `
+          <div class="folder-header">
+            <div>
+              <h2>
+                ${escapeHtml(
+                  fullName(application)
+                )}
+              </h2>
+
+              <p>
+                ${escapeHtml(
+                  application?.email ||
+                  ""
+                )}
+
+                ${
+                  application?.phone
+                    ? ` · ${escapeHtml(application.phone)}`
+                    : ""
+                }
+
+                · ${escapeHtml(
+                  applicationPosition(
+                    application
+                  )
+                )}
+              </p>
+            </div>
+
+            <span
+              class="status ${statusClass(status)}"
+            >
+              ${escapeHtml(
+                titleCase(status)
+              )}
+            </span>
+          </div>
+
+          <div id="folderMessage"></div>
+
+          <div class="folder-grid">
+            <section class="folder-section">
+              <h3>Workflow Status</h3>
+
+              <div class="field">
+                <label for="folderStatus">
+                  New Status
+                </label>
+
+                <select id="folderStatus">
+                  ${workflowOptionsHtml(status)}
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="folderNote">
+                  Internal Note
+                </label>
+
+                <textarea id="folderNote"></textarea>
+              </div>
+
+              <button
+                class="button button-primary"
+                id="saveFolderStatusButton"
+                type="button"
+              >
+                Save Status and Send Update
+              </button>
+            </section>
+
+            <section class="folder-section">
+              <h3>
+                Applicant Portal Access
+              </h3>
+
+              <p>
+                <strong>Username:</strong>
+
+                ${escapeHtml(
+                  application?.portalUsername ||
+                  application?.username ||
+                  application?.email ||
+                  "Not available"
+                )}
+              </p>
+
+              <div class="actions">
+                <button
+                  class="button"
+                  id="resendPortalButton"
+                  type="button"
+                >
+                  Resend Portal Access
+                </button>
+
+                <button
+                  class="button button-primary"
+                  id="scheduleInterviewButton"
+                  type="button"
+                >
+                  Schedule Interview
+                </button>
+              </div>
+            </section>
+
+            <section class="folder-section">
+              <h3>
+                Applicant Documents
+              </h3>
+
+              ${renderDocuments(documents)}
+            </section>
+
+            <section class="folder-section">
+              <h3>
+                Employment Offer
+              </h3>
+
+              ${renderOfferProgress(offerProgress)}
+
+              <button
+                class="button button-success"
+                id="prepareOfferButton"
+                type="button"
+              >
+                Prepare and Send Offer
+              </button>
+            </section>
+
+            <section
+              class="folder-section folder-section-wide"
+            >
+              <h3>
+                Workflow History
+              </h3>
+
+              ${renderHistory(history)}
+            </section>
+
+            <section
+              class="folder-section folder-section-wide folder-section-danger"
+            >
+              <h3>
+                Terminal Actions
+              </h3>
+
+              <p class="sub">
+                These actions may disable portal access and
+                send the applicable Human Resources email.
+              </p>
+
+              <div class="actions">
+                <button
+                  class="button button-warning"
+                  id="archiveApplicantButton"
+                  type="button"
+                >
+                  Position Filled — Archive
+                </button>
+
+                <button
+                  class="button button-danger"
+                  id="rejectApplicantButton"
+                  type="button"
+                >
+                  Not Selected — Permanently Delete
+                </button>
+              </div>
+            </section>
+          </div>
+        `;
+
+        byId(
+          "saveFolderStatusButton"
+        ).onclick =
+          saveApplicantStatus;
+
+        byId(
+          "resendPortalButton"
+        ).onclick =
+          resendPortalAccess;
+
+        byId(
+          "scheduleInterviewButton"
+        ).onclick =
+          () =>
+            openModal(
+              "interviewModal"
+            );
+
+        byId(
+          "prepareOfferButton"
+        ).onclick =
+          () =>
+            openOfferForm(
+              application
+            );
+
+        byId(
+          "archiveApplicantButton"
+        ).onclick =
+          () =>
+            terminalApplicantAction(
+              "archive"
+            );
+
+        byId(
+          "rejectApplicantButton"
+        ).onclick =
+          () =>
+            terminalApplicantAction(
+              "reject"
+            );
+      };
+
+      const openApplicantFolder =
+        async (
+          applicationId
+        ) => {
+          state.activeApplicationId =
+            applicationId;
+
+          byId(
+            "folderBody"
+          ).innerHTML = `
+            <div class="empty-state">
+              Loading applicant folder…
+            </div>
+          `;
+
+          openModal(
+            "folderModal"
+          );
+
+          try {
+            const [
+              folder,
+              offerProgress
+            ] =
+              await Promise.all([
+                api(
+                  `/api/admin/applications/${encodeURIComponent(applicationId)}/folder`
+                ),
+
+                api(
+                  `/api/admin/applications/${encodeURIComponent(applicationId)}/offer-progress`
+                ).catch(
+                  () => ({})
+                )
+              ]);
+
+            state.folder =
+              folder;
+
+            state.offerProgress =
+              offerProgress;
+
+            renderApplicantFolder(
+              folder,
+              offerProgress
+            );
+          } catch (error) {
+            byId(
+              "folderBody"
+            ).innerHTML = `
+              <div class="message message-error">
+                ${escapeHtml(error.message)}
+              </div>
+            `;
+          }
+        };
+
+      const setFolderMessage = (
+        message,
+        type = "success"
+      ) => {
+        const container =
+          byId("folderMessage");
+
+        if (!container) {
+          return;
+        }
+
+        container.innerHTML = `
+          <div
+            class="message ${
+              type === "error"
+                ? "message-error"
+                : type === "warning"
+                  ? "message-warning"
+                  : "message-success"
+            }"
+          >
+            ${escapeHtml(message)}
+          </div>
+        `;
+      };
+
+      const saveApplicantStatus =
+        async () => {
+          setBusy(
+            true,
+            "Updating applicant status…"
+          );
+
+          try {
+            await api(
+              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/status`,
+              {
+                method:
+                  "PATCH",
+
+                body:
+                  JSON.stringify({
+                    status:
+                      byId(
+                        "folderStatus"
+                      ).value,
+
+                    note:
+                      byId(
+                        "folderNote"
+                      )
+                        .value
+                        .trim() ||
+                      undefined
+                  })
+              }
+            );
+
+            setFolderMessage(
+              "Status updated and applicant notification processed."
+            );
+
+            await Promise.all([
+              loadApplications(),
+
+              openApplicantFolder(
+                state.activeApplicationId
+              )
+            ]);
+          } catch (error) {
+            setFolderMessage(
+              error.message,
+              "error"
+            );
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const resendPortalAccess =
+        async () => {
+          setBusy(
+            true,
+            "Resending portal access…"
+          );
+
+          try {
+            await api(
+              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/resend-portal-access`,
+              {
+                method:
+                  "POST",
+
+                body:
+                  JSON.stringify({})
+              }
+            );
+
+            setFolderMessage(
+              "Portal access email resent successfully."
+            );
+          } catch (error) {
+            setFolderMessage(
+              error.message,
+              "error"
+            );
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const terminalApplicantAction =
+        async (action) => {
+          const deleting =
+            action === "reject";
+
+          const confirmed =
+            window.confirm(
+              deleting
+                ? "This will send the non-selection email, disable portal access, and permanently delete the applicant record. Continue?"
+                : "This will send the position-filled email, disable portal access, and archive the application. Continue?"
+            );
+
+          if (!confirmed) {
+            return;
+          }
+
+          setBusy(
+            true,
+            deleting
+              ? "Deleting applicant…"
+              : "Archiving applicant…"
+          );
+
+          try {
+            await api(
+              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/${action}`,
+              {
+                method:
+                  "POST",
+
+                body:
+                  JSON.stringify({
+                    note:
+                      byId(
+                        "folderNote"
+                      )
+                        ?.value
+                        .trim() ||
+                      undefined,
+
+                    acknowledged:
+                      true
+                  })
+              }
+            );
+
+            closeModal(
+              "folderModal"
+            );
+
+            showToast(
+              deleting
+                ? "Applicant deleted"
+                : "Applicant archived",
+
+              deleting
+                ? "The non-selection workflow was completed."
+                : "The position-filled workflow was completed."
+            );
+
+            await loadApplications();
+          } catch (error) {
+            setFolderMessage(
+              error.message,
+              "error"
+            );
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const openOfferForm = (
+        application
+      ) => {
+        byId(
+          "offerForm"
+        ).reset();
+
+        byId(
+          "offerPosition"
+        ).value =
+          application?.positionTitle ||
+          application?.jobTitle ||
+          titleCase(
+            application?.appliedRole
+          );
+
+        byId(
+          "offerDepartment"
+        ).value =
+          application?.department ||
+          "";
+
+        byId(
+          "offerLocation"
+        ).value =
+          application?.locationText ||
+          "Dayton, OH";
+
+        byId(
+          "offerProbation"
+        ).value =
+          "90";
+
+        byId(
+          "offerMessage"
+        ).innerHTML =
+          "";
+
+        openModal(
+          "offerModal"
+        );
+      };
+
+      const sendOffer =
+        async (event) => {
+          event.preventDefault();
+
+          const payload = {
+            positionTitle:
+              byId(
+                "offerPosition"
+              )
+                .value
+                .trim(),
+
+            department:
+              byId(
+                "offerDepartment"
+              )
+                .value
+                .trim() ||
+              undefined,
+
+            supervisorName:
+              byId(
+                "offerSupervisor"
+              )
+                .value
+                .trim() ||
+              undefined,
+
+            employmentType:
+              byId(
+                "offerEmployment"
+              ).value,
+
+            compensationType:
+              byId(
+                "offerCompensationType"
+              ).value,
+
+            payAmount:
+              Number(
+                byId(
+                  "offerPay"
+                ).value
+              ),
+
+            startDate:
+              byId(
+                "offerStart"
+              ).value,
+
+            orientationDate:
+              byId(
+                "offerOrientation"
+              ).value ||
+              undefined,
+
+            shift:
+              byId(
+                "offerShift"
+              )
+                .value
+                .trim() ||
+              undefined,
+
+            workLocation:
+              byId(
+                "offerLocation"
+              )
+                .value
+                .trim() ||
+              undefined,
+
+            probationDays:
+              Number(
+                byId(
+                  "offerProbation"
+                ).value ||
+                90
+              ),
+
+            bonusAmount:
+              byId(
+                "offerBonus"
+              ).value
+                ? Number(
+                    byId(
+                      "offerBonus"
+                    ).value
+                  )
+                : undefined,
+
+            ptoEligible:
+              byId(
+                "offerPto"
+              ).checked,
+
+            benefitsEligible:
+              byId(
+                "offerBenefits"
+              ).checked,
+
+            notes:
+              byId(
+                "offerNotes"
+              )
+                .value
+                .trim() ||
+              undefined,
+
+            requiredDocuments: [
+              "Offer Letter"
+            ]
+          };
+
+          if (
+            !payload.positionTitle ||
+            !payload.startDate ||
+            !Number.isFinite(
+              payload.payAmount
+            ) ||
+            payload.payAmount <= 0
+          ) {
+            byId(
+              "offerMessage"
+            ).innerHTML = `
+              <div class="message message-error">
+                Position title, valid pay amount,
+                and start date are required.
+              </div>
+            `;
+
+            return;
+          }
+
+          setBusy(
+            true,
+            "Sending offer…"
+          );
+
+          try {
+            await api(
+              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/offers`,
+              {
+                method:
+                  "POST",
+
+                body:
+                  JSON.stringify(
+                    payload
+                  )
+              }
+            );
+
+            closeModal(
+              "offerModal"
+            );
+
+            showToast(
+              "Offer sent",
+              "The application status has been updated to Offer Pending."
+            );
+
+            await Promise.all([
+              loadApplications(),
+
+              openApplicantFolder(
+                state.activeApplicationId
+              )
+            ]);
+          } catch (error) {
+            byId(
+              "offerMessage"
+            ).innerHTML = `
+              <div class="message message-error">
+                ${escapeHtml(error.message)}
+              </div>
+            `;
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const scheduleInterview =
+        async (event) => {
+          event.preventDefault();
+
+          const slots = [
+            byId(
+              "interviewSlotOne"
+            ).value,
+
+            byId(
+              "interviewSlotTwo"
+            ).value,
+
+            byId(
+              "interviewSlotThree"
+            ).value
+          ]
+            .filter(Boolean)
+            .map(
+              (value) =>
+                new Date(
+                  value
+                ).toISOString()
+            );
+
+          if (!slots.length) {
+            byId(
+              "interviewMessage"
+            ).innerHTML = `
+              <div class="message message-error">
+                Enter at least one interview
+                date and time.
+              </div>
+            `;
+
+            return;
+          }
+
+          setBusy(
+            true,
+            "Sending interview invitation…"
+          );
+
+          try {
+            await api(
+              `/api/admin/applications/${encodeURIComponent(state.activeApplicationId)}/interview-slots`,
+              {
+                method:
+                  "POST",
+
+                body:
+                  JSON.stringify({
+                    slots,
+
+                    location:
+                      byId(
+                        "interviewLocation"
+                      )
+                        .value
+                        .trim() ||
+                      undefined,
+
+                    notes:
+                      byId(
+                        "interviewNotes"
+                      )
+                        .value
+                        .trim() ||
+                      undefined
+                  })
+              }
+            );
+
+            closeModal(
+              "interviewModal"
+            );
+
+            setFolderMessage(
+              "Interview invitation sent successfully."
+            );
+
+            showToast(
+              "Interview invitation sent",
+              "The applicant can select from the available times."
+            );
+
+            await loadApplications();
+          } catch (error) {
+            byId(
+              "interviewMessage"
+            ).innerHTML = `
+              <div class="message message-error">
+                ${escapeHtml(error.message)}
+              </div>
+            `;
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const applyJobPreset =
+        () => {
+          const preset =
+            jobPresets[
+              byId(
+                "jobPreset"
+              ).value
+            ];
+
+          if (!preset) {
+            return;
+          }
+
+          byId(
+            "jobTitle"
+          ).value =
+            preset.title;
+
+          byId(
+            "jobSlug"
+          ).value =
+            slugify(
+              preset.title
+            );
+
+          byId(
+            "jobDepartment"
+          ).value =
+            preset.department;
+
+          byId(
+            "jobType"
+          ).value =
+            preset.employmentType;
+
+          byId(
+            "jobPay"
+          ).value =
+            preset.payRange;
+
+          byId(
+            "jobPath"
+          ).value =
+            preset.applicationPath;
+
+          byId(
+            "jobSummary"
+          ).value =
+            `Join Sulandra Health as a ${preset.title} and help deliver dependable, person-centered services.`;
+
+          byId(
+            "jobDescription"
+          ).value =
+            `The ${preset.title} supports safe, respectful, compliant service delivery while collaborating with clients, families, employees, and leadership.`;
+
+          byId(
+            "jobRequirements"
+          ).value =
+            "Relevant education or experience; dependable communication; successful credential and background verification as applicable.";
+
+          byId(
+            "jobBenefits"
+          ).value =
+            "Competitive compensation, paid training, professional development, and a supportive team environment.";
+        };
+
+      const getJobPayload = () => ({
+        title:
+          byId(
+            "jobTitle"
+          )
+            .value
+            .trim(),
+
+        slug:
+          byId(
+            "jobSlug"
+          )
+            .value
+            .trim(),
+
+        department:
+          byId(
+            "jobDepartment"
+          )
+            .value
+            .trim() ||
+          undefined,
+
+        employmentType:
+          byId(
+            "jobType"
+          ).value,
+
+        locationText:
+          byId(
+            "jobLocation"
+          )
+            .value
+            .trim() ||
+          undefined,
+
+        payRange:
+          byId(
+            "jobPay"
+          )
+            .value
+            .trim() ||
+          undefined,
+
+        applicationPath:
+          byId(
+            "jobPath"
+          ).value,
+
+        summary:
+          byId(
+            "jobSummary"
+          )
+            .value
+            .trim(),
+
+        description:
+          byId(
+            "jobDescription"
+          )
+            .value
+            .trim(),
+
+        requirements:
+          byId(
+            "jobRequirements"
+          )
+            .value
+            .trim() ||
+          undefined,
+
+        benefits:
+          byId(
+            "jobBenefits"
+          )
+            .value
+            .trim() ||
+          undefined,
+
+        status:
+          byId(
+            "jobStatus"
+          ).value
+      });
+
+      const resetJobForm = () => {
+        state.editingJobId =
+          "";
+
+        byId(
+          "jobForm"
+        ).reset();
+
+        byId(
+          "jobLocation"
+        ).value =
+          "Dayton, OH";
+
+        byId(
+          "jobFormTitle"
+        ).textContent =
+          "Create Job Opening";
+
+        byId(
+          "saveJobButton"
+        ).textContent =
+          "Save Job Opening";
+
+        byId(
+          "cancelJobEditButton"
+        ).classList.add(
+          "hidden"
+        );
+
+        byId(
+          "jobFormMessage"
+        ).innerHTML =
+          "";
+      };
+
+      const saveJob =
+        async (event) => {
+          event.preventDefault();
+
+          const payload =
+            getJobPayload();
+
+          if (
+            !payload.title ||
+            !payload.slug ||
+            !payload.summary ||
+            !payload.description
+          ) {
+            byId(
+              "jobFormMessage"
+            ).innerHTML = `
+              <div class="message message-error">
+                Title, slug, summary, and
+                description are required.
+              </div>
+            `;
+
+            return;
+          }
+
+          const editing =
+            Boolean(
+              state.editingJobId
+            );
+
+          const path =
+            editing
+              ? `/api/admin/job-openings/${encodeURIComponent(state.editingJobId)}`
+              : "/api/admin/job-openings";
+
+          setBusy(
+            true,
+            editing
+              ? "Saving job changes…"
+              : "Creating job opening…"
+          );
+
+          try {
+            await api(
+              path,
+              {
+                method:
+                  editing
+                    ? "PATCH"
+                    : "POST",
+
+                body:
+                  JSON.stringify(
+                    payload
+                  )
+              }
+            );
+
+            showToast(
+              "Job opening saved",
+
+              payload.status ===
+              "PUBLISHED"
+                ? "The job opening is published."
+                : "The job opening was saved as a draft."
+            );
+
+            resetJobForm();
+            await loadJobs();
+          } catch (error) {
+            byId(
+              "jobFormMessage"
+            ).innerHTML = `
+              <div class="message message-error">
+                ${escapeHtml(error.message)}
+              </div>
+            `;
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const editJob = (
+        jobId
+      ) => {
+        const job =
+          state.jobs.find(
+            (entry) =>
+              String(entry.id) ===
+              String(jobId)
+          );
+
+        if (!job) {
+          return;
+        }
+
+        state.editingJobId =
+          jobId;
+
+        byId(
+          "jobFormTitle"
+        ).textContent =
+          "Edit Job Opening";
+
+        byId(
+          "saveJobButton"
+        ).textContent =
+          "Save Changes";
+
+        byId(
+          "cancelJobEditButton"
+        ).classList.remove(
+          "hidden"
+        );
+
+        byId(
+          "jobTitle"
+        ).value =
+          job?.title ||
+          "";
+
+        byId(
+          "jobSlug"
+        ).value =
+          job?.slug ||
+          "";
+
+        byId(
+          "jobDepartment"
+        ).value =
+          job?.department ||
+          "";
+
+        byId(
+          "jobType"
+        ).value =
+          job?.employmentType ||
+          "Full-Time";
+
+        byId(
+          "jobLocation"
+        ).value =
+          job?.locationText ||
+          "Dayton, OH";
+
+        byId(
+          "jobPay"
+        ).value =
+          job?.payRange ||
+          "";
+
+        byId(
+          "jobPath"
+        ).value =
+          job?.applicationPath ||
+          "/applygeneral.html";
+
+        byId(
+          "jobSummary"
+        ).value =
+          job?.summary ||
+          "";
+
+        byId(
+          "jobDescription"
+        ).value =
+          job?.description ||
+          "";
+
+        byId(
+          "jobRequirements"
+        ).value =
+          job?.requirements ||
+          "";
+
+        byId(
+          "jobBenefits"
+        ).value =
+          job?.benefits ||
+          "";
+
+        byId(
+          "jobStatus"
+        ).value =
+          normalizeStatus(
+            job?.status
+          ) ||
+          "DRAFT";
+
+        activateModule(
+          "jobs"
+        );
+      };
+
+      const setJobStatus =
+        async (
+          jobId,
+          status
+        ) => {
+          setBusy(
+            true,
+            "Updating job status…"
+          );
+
+          try {
+            await api(
+              `/api/admin/job-openings/${encodeURIComponent(jobId)}`,
+              {
+                method:
+                  "PATCH",
+
+                body:
+                  JSON.stringify({
+                    status
+                  })
+              }
+            );
+
+            showToast(
+              "Job opening updated",
+              `Status changed to ${titleCase(status)}.`
+            );
+
+            await loadJobs();
+          } catch (error) {
+            showToast(
+              "Job opening not updated",
+              error.message
+            );
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const renderJobs = () => {
+        const active =
+          state.jobs.filter(
+            (job) =>
+              !isArchivedJob(job)
+          );
+
+        byId(
+          "jobCount"
+        ).textContent =
+          `${active.length} job` +
+          (
+            active.length === 1
+              ? ""
+              : "s"
+          );
+
+        if (!active.length) {
+          byId(
+            "jobList"
+          ).innerHTML = `
+            <div class="empty-state">
+              No active job openings.
+            </div>
+          `;
+
+          renderArchives();
+
+          return;
+        }
+
+        byId(
+          "jobList"
+        ).innerHTML =
+          active
+            .map(
+              (job) => {
+                const status =
+                  normalizeStatus(
+                    job?.status
+                  ) ||
+                  "DRAFT";
+
+                const nextStatus =
+                  status ===
+                  "PUBLISHED"
+                    ? "CLOSED"
+                    : "PUBLISHED";
+
+                return `
+                  <article class="job-card">
+                    <div class="job-heading">
+                      <div>
+                        <h3>
+                          ${escapeHtml(
+                            job?.title ||
+                            "Untitled Job"
+                          )}
+                        </h3>
+
+                        <div class="sub">
+                          ${escapeHtml(
+                            job?.department ||
+                            "General"
+                          )}
+
+                          ${
+                            job?.locationText
+                              ? ` · ${escapeHtml(job.locationText)}`
+                              : ""
+                          }
+                        </div>
+                      </div>
+
+                      <span
+                        class="status ${statusClass(status)}"
+                      >
+                        ${escapeHtml(
+                          titleCase(status)
+                        )}
+                      </span>
+                    </div>
+
+                    <p>
+                      ${escapeHtml(
+                        job?.summary ||
+                        ""
+                      )}
+                    </p>
+
+                    <div class="actions">
+                      <button
+                        class="button button-primary button-small"
+                        type="button"
+                        data-edit-job="${escapeHtml(job.id)}"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        class="button button-small"
+                        type="button"
+                        data-job-id="${escapeHtml(job.id)}"
+                        data-job-status="${nextStatus}"
+                      >
+                        ${
+                          status ===
+                          "PUBLISHED"
+                            ? "Close"
+                            : "Publish Live"
+                        }
+                      </button>
+
+                      <button
+                        class="button button-warning button-small"
+                        type="button"
+                        data-job-id="${escapeHtml(job.id)}"
+                        data-job-status="ARCHIVED"
+                      >
+                        Archive
+                      </button>
+                    </div>
+                  </article>
+                `;
+              }
+            )
+            .join("");
+
+        renderArchives();
+      };
+
+      const loadJobs =
+        async () => {
+          try {
+            const data =
+              await api(
+                "/api/admin/job-openings"
+              );
+
+            state.jobs =
+              Array.isArray(data)
+                ? data
+                : [];
+
+            renderJobs();
+          } catch (error) {
+            byId(
+              "jobList"
+            ).innerHTML = `
+              <div class="message message-error">
+                ${escapeHtml(error.message)}
+              </div>
+            `;
+
+            showToast(
+              "Job openings unavailable",
+              error.message
+            );
+          }
+        };
+
+      const renderArchives = () => {
+        const applicants =
+          state.applications.filter(
+            isArchivedApplication
+          );
+
+        const jobs =
+          state.jobs.filter(
+            isArchivedJob
+          );
+
+        byId(
+          "archivedApplicants"
+        ).innerHTML =
+          applicants.length
+            ? applicants
+                .map(
+                  (application) => `
+                    <article class="archive-card">
+                      <div class="archive-heading">
+                        <div>
+                          <h3>
+                            ${escapeHtml(
+                              fullName(application)
+                            )}
+                          </h3>
+
+                          <div class="sub">
+                            ${escapeHtml(
+                              applicationPosition(
+                                application
+                              )
+                            )}
+                          </div>
+                        </div>
+
+                        <span
+                          class="status ${statusClass(applicationStatus(application))}"
+                        >
+                          ${escapeHtml(
+                            titleCase(
+                              applicationStatus(
+                                application
+                              )
+                            )
+                          )}
+                        </span>
+                      </div>
+                    </article>
+                  `
+                )
+                .join("")
+            : `
+              <div class="empty-state">
+                No archived applicants were returned.
+              </div>
+            `;
+
+        byId(
+          "archivedJobs"
+        ).innerHTML =
+          jobs.length
+            ? jobs
+                .map(
+                  (job) => `
+                    <article class="archive-card">
+                      <div class="archive-heading">
+                        <div>
+                          <h3>
+                            ${escapeHtml(
+                              job?.title ||
+                              "Untitled Job"
+                            )}
+                          </h3>
+
+                          <div class="sub">
+                            ${escapeHtml(
+                              job?.department ||
+                              "General"
+                            )}
+                          </div>
+                        </div>
+
+                        <span
+                          class="status ${statusClass(job?.status)}"
+                        >
+                          ${escapeHtml(
+                            titleCase(
+                              job?.status
+                            )
+                          )}
+                        </span>
+                      </div>
+
+                      <div
+                        class="actions"
+                        style="margin-top:12px"
+                      >
+                        <button
+                          class="button button-primary button-small"
+                          type="button"
+                          data-job-id="${escapeHtml(job.id)}"
+                          data-job-status="PUBLISHED"
+                        >
+                          Restore and Publish
+                        </button>
+                      </div>
+                    </article>
+                  `
+                )
+                .join("")
+            : `
+              <div class="empty-state">
+                No archived jobs.
+              </div>
+            `;
+      };
+
+      const exportApplicants = () => {
+        const quote = (value) =>
+          `"${String(value ?? "")
+            .replaceAll(
+              '"',
+              '""'
+            )}"`;
+
+        const rows = [
+          [
+            "Submitted",
+            "Applicant",
+            "Email",
+            "Phone",
+            "Position",
+            "Score",
+            "Status"
+          ],
+
+          ...state.applications.map(
+            (application) => [
+              application?.submittedAt ||
+              application?.createdAt ||
+              "",
+
+              fullName(application),
+
+              application?.email ||
+              "",
+
+              application?.phone ||
+              "",
+
+              applicationPosition(
+                application
+              ),
+
+              application?.assessmentScore ??
+              "",
+
+              titleCase(
+                applicationStatus(
+                  application
+                )
+              )
+            ]
+          )
+        ];
+
+        const csv =
+          rows
+            .map(
+              (row) =>
+                row
+                  .map(quote)
+                  .join(",")
+            )
+            .join("\n");
+
+        const blob =
+          new Blob(
+            [csv],
+            {
+              type:
+                "text/csv;charset=utf-8"
+            }
+          );
+
+        const url =
+          URL.createObjectURL(
+            blob
+          );
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+        link.href =
+          url;
+
+        link.download =
+          `sulandra-applicants-${new Date()
+            .toISOString()
+            .slice(0, 10)}.csv`;
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(
+          url
+        );
+      };
+
+      const refreshAll =
+        async () => {
+          setBusy(
+            true,
+            "Refreshing admin console…"
+          );
+
+          setConnectionState(
+            "connecting"
+          );
+
+          try {
+            await Promise.all([
+              loadApplications(),
+              loadJobs()
+            ]);
+
+            showToast(
+              "Admin console refreshed",
+              "Applicant and job-opening data are current."
+            );
+          } finally {
+            setBusy(false);
+          }
+        };
+
+      const bindEvents = () => {
+        selectAll(
+          "[data-module]"
+        ).forEach(
+          (element) => {
+            element.addEventListener(
+              "click",
+              () =>
+                activateModule(
+                  element.dataset.module
+                )
+            );
+          }
+        );
+
+        byId(
+          "applicantSearch"
+        ).addEventListener(
+          "input",
+          renderApplicants
+        );
+
+        byId(
+          "applicantStatusFilter"
+        ).addEventListener(
+          "change",
+          renderApplicants
+        );
+
+        byId(
+          "clearFiltersButton"
+        ).onclick =
+          () => {
+            byId(
+              "applicantSearch"
+            ).value =
+              "";
+
+            byId(
+              "applicantStatusFilter"
+            ).value =
+              "";
+
+            renderApplicants();
+          };
+
+        byId(
+          "applicantRows"
+        ).addEventListener(
+          "click",
+          (event) => {
+            const button =
+              event.target.closest(
+                "[data-open-folder]"
+              );
+
+            if (button) {
+              openApplicantFolder(
+                button.dataset
+                  .openFolder
+              );
+            }
+          }
+        );
+
+        byId(
+          "jobPreset"
+        ).addEventListener(
+          "change",
+          applyJobPreset
+        );
+
+        byId(
+          "jobTitle"
+        ).addEventListener(
+          "input",
+          () => {
+            if (
+              !state.editingJobId
+            ) {
+              byId(
+                "jobSlug"
+              ).value =
+                slugify(
+                  byId(
+                    "jobTitle"
+                  ).value
+                );
+            }
+          }
+        );
+
+        byId(
+          "jobForm"
+        ).addEventListener(
+          "submit",
+          saveJob
+        );
+
+        byId(
+          "cancelJobEditButton"
+        ).onclick =
+          resetJobForm;
+
+        byId(
+          "jobList"
+        ).addEventListener(
+          "click",
+          (event) => {
+            const editButton =
+              event.target.closest(
+                "[data-edit-job]"
+              );
+
+            if (editButton) {
+              editJob(
+                editButton.dataset
+                  .editJob
+              );
+
+              return;
+            }
+
+            const statusButton =
+              event.target.closest(
+                "[data-job-id]"
+              );
+
+            if (statusButton) {
+              setJobStatus(
+                statusButton.dataset
+                  .jobId,
+
+                statusButton.dataset
+                  .jobStatus
+              );
+            }
+          }
+        );
+
+        byId(
+          "archivedJobs"
+        ).addEventListener(
+          "click",
+          (event) => {
+            const button =
+              event.target.closest(
+                "[data-job-id]"
+              );
+
+            if (button) {
+              setJobStatus(
+                button.dataset.jobId,
+                button.dataset
+                  .jobStatus
+              );
+            }
+          }
+        );
+
+        byId(
+          "closeFolderButton"
+        ).onclick =
+          () =>
+            closeModal(
+              "folderModal"
+            );
+
+        byId(
+          "closeOfferButton"
+        ).onclick =
+          () =>
+            closeModal(
+              "offerModal"
+            );
+
+        byId(
+          "cancelOfferButton"
+        ).onclick =
+          () =>
+            closeModal(
+              "offerModal"
+            );
+
+        byId(
+          "closeInterviewButton"
+        ).onclick =
+          () =>
+            closeModal(
+              "interviewModal"
+            );
+
+        byId(
+          "cancelInterviewButton"
+        ).onclick =
+          () =>
+            closeModal(
+              "interviewModal"
+            );
+
+        byId(
+          "offerForm"
+        ).addEventListener(
+          "submit",
+          sendOffer
+        );
+
+        byId(
+          "interviewForm"
+        ).addEventListener(
+          "submit",
+          scheduleInterview
+        );
+
+        byId(
+          "refreshButton"
+        ).onclick =
+          refreshAll;
+
+        byId(
+          "exportButton"
+        ).onclick =
+          exportApplicants;
+
+        byId(
+          "signOutButton"
+        ).onclick =
+          signOut;
+
+        selectAll(
+          ".modal-backdrop"
+        ).forEach(
+          (modal) => {
+            modal.addEventListener(
+              "click",
+              (event) => {
+                if (
+                  event.target ===
+                  modal
+                ) {
+                  closeModal(
+                    modal.id
+                  );
+                }
+              }
+            );
+          }
+        );
+
+        document.addEventListener(
+          "keydown",
+          (event) => {
+            if (
+              event.key !==
+              "Escape"
+            ) {
+              return;
+            }
+
+            const open =
+              selectAll(
+                ".modal-backdrop"
+              ).find(
+                (modal) =>
+                  !modal.classList.contains(
+                    "hidden"
+                  )
+              );
+
+            if (open) {
+              closeModal(
+                open.id
+              );
+            }
+          }
+        );
+      };
+
+      const initialize =
+        async () => {
+          bindEvents();
+
+          setConnectionState(
+            "connecting"
+          );
+
+          try {
+            const session =
+              await api(
+                "/api/session"
+              );
+
+            const role =
+              normalizeStatus(
+                session?.role
+              );
+
+            if (
+              !ALLOWED_ROLES.includes(
+                role
+              )
+            ) {
+              window.location.replace(
+                EMPLOYEE_PORTAL
+              );
+
+              return;
+            }
+
+            byId(
+              "adminIdentity"
+            ).textContent =
+              session?.email ||
+              session?.username ||
+              titleCase(role);
+
+            await Promise.all([
+              loadApplications(),
+              loadJobs()
+            ]);
+
+            setConnectionState(
+              "connected",
+              "The Sulandra Health administrative API is available."
+            );
+          } catch (error) {
+            setConnectionState(
+              "error",
+              error.message
+            );
+
+            showToast(
+              "Admin portal unavailable",
+              error.message
+            );
+          }
+        };
+
+      initialize();
+    })();
+  </script>
 </body>
 </html>
