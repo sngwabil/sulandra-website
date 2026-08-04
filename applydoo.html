@@ -3,20 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Director of Operations Application | Sulandra Health</title>
-  <meta http-equiv="refresh" content="0;url=/applycoo.html">
-  <script>
-    (function () {
-      var target = '/applycoo.html' + window.location.search + window.location.hash;
-      window.location.replace(target);
-    })();
-  </script>
+  <title>Director of Operations (DOO) Application | Sulandra Health</title>
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7f8;color:#0f172a;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .loading{padding:28px;text-align:center}.loading strong{display:block;font-size:20px;margin-bottom:8px}.loading span{color:#475569}
+  </style>
 </head>
 <body>
-  <p>Opening the Director of Operations application…</p>
-  <p><a id="continueLink" href="/applycoo.html">Continue to application</a></p>
+  <div class="loading" id="loading">
+    <strong>Opening the Director of Operations application…</strong>
+    <span>Please wait.</span>
+  </div>
   <script>
-    document.getElementById('continueLink').href = '/applycoo.html' + window.location.search + window.location.hash;
+    (async function () {
+      try {
+        const response = await fetch('/applycoo.html', { cache: 'no-store' });
+        if (!response.ok) throw new Error('The application template could not be loaded.');
+
+        let html = await response.text();
+        html = html
+          .replaceAll('Chief Operating Officer (COO)', 'Director of Operations (DOO)')
+          .replaceAll('Chief Operating Officer', 'Director of Operations')
+          .replaceAll('COO & DODD Operations Assessment', 'DOO & DODD Operations Assessment')
+          .replaceAll('COO’s', 'DOO’s')
+          .replaceAll('COO\'s', 'DOO\'s')
+          .replaceAll('COO Application', 'DOO Application')
+          .replaceAll('COO application', 'DOO application')
+          .replaceAll('COO Certificate', 'DOO Certificate')
+          .replaceAll('COO opening', 'DOO opening')
+          .replaceAll('COO-', 'DOO-')
+          .replaceAll('UserRole.COO', 'UserRole.DOO')
+          .replaceAll("'COO'", "'DOO'")
+          .replaceAll('"COO"', '"DOO"');
+
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        document.getElementById('loading').innerHTML =
+          '<strong>Application unavailable</strong><span>' +
+          String(error && error.message ? error.message : error) +
+          '</span><p><a href="/Careers.html">Return to Careers</a></p>';
+      }
+    })();
   </script>
 </body>
 </html>
