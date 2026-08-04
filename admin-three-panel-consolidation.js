@@ -59,10 +59,14 @@
 
       .ec-side-rail{top:var(--ec-panel-top)!important;bottom:0!important;border-radius:0!important;max-width:calc(100vw - 42px)!important}
       .ec-side-rail.left{border-left:0!important}.ec-side-rail.right{border-right:0!important}
+      .ec-side-rail.right .ec-rail-head{flex-direction:row-reverse!important}
+      .ec-side-rail.right .ec-rail-head>div{flex:1 1 auto;text-align:left}
+      .ec-side-rail.right .ec-rail-toggle{margin-right:auto!important;margin-left:0!important}
       .ec-rail-handle,.ec-fixed-rail-tab{display:none!important}
       .ec-side-rail.left.closed{transform:translateX(calc(-100% + 42px))!important}
       .ec-side-rail.right.closed{transform:translateX(calc(100% - 42px))!important}
       .ec-side-rail.closed .ec-rail-head{padding-left:6px!important;padding-right:6px!important;justify-content:flex-end!important}
+      .ec-side-rail.right.closed .ec-rail-head{flex-direction:row!important;justify-content:flex-start!important}
       .ec-side-rail.closed .ec-rail-head>div{display:none!important}
       .ec-side-rail.closed .ec-rail-toggle{display:grid!important;place-items:center!important;width:30px!important;height:38px!important;border-radius:9px!important;padding:0!important}
       .ec-side-rail:not(.closed) .ec-rail-toggle{flex:0 0 auto}
