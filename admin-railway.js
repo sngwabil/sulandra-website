@@ -11,6 +11,7 @@
   const DESKTOP_CLOUD_SYNC_SCRIPT = "/admin-desktop-cloud-sync.js?v=20260804-3";
   const DESKTOP_EXPERIENCE_SCRIPT = "/admin-desktop-experience.js?v=20260804-1";
   const DESKTOP_STABILITY_SCRIPT = "/admin-desktop-stability-fix.js?v=20260804-5";
+  const DESKTOP_OS_SCRIPT = "/admin-desktop-operating-system.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -29,9 +30,7 @@
     button.className = "side-btn";
     button.type = "button";
     button.innerHTML = `${label} <small>${detail}</small>`;
-    button.addEventListener("click", () => {
-      window.location.href = href;
-    });
+    button.addEventListener("click", () => { window.location.href = href; });
     return button;
   }
 
@@ -96,7 +95,9 @@
 
   function loadDesktopExperience() {
     loadScriptOnce(DESKTOP_EXPERIENCE_SCRIPT, "data-admin-desktop-experience", "The Sulandra desktop workspace experience could not be loaded.", function () {
-      loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.");
+      loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.", function () {
+        loadScriptOnce(DESKTOP_OS_SCRIPT, "data-admin-desktop-operating-system", "The Sulandra desktop operating system could not be loaded.");
+      });
     });
   }
   function loadCloudThenDesktop() {
