@@ -115,7 +115,7 @@ try {
 
   if (!enumRows.some(({ label }) => label === 'GENERAL')) missing.push('UserRole.GENERAL');
   if (!enumRows.some(({ label }) => label === 'DRIVER')) missing.push('UserRole.DRIVER');
-  if (!enumRows.some(({ label }) => label === 'COO')) missing.push('UserRole.COO');
+  if (!enumRows.some(({ label }) => label === 'DOO')) missing.push('UserRole.DOO');
 
   const roleConstraintRows = await prisma.$queryRawUnsafe(
     `SELECT pg_get_constraintdef(oid) AS "definition"
@@ -124,7 +124,7 @@ try {
         AND conrelid = '"EmployeeApplication"'::regclass`,
   );
   const roleConstraint = String(roleConstraintRows[0]?.definition || '');
-  if (!roleConstraint.includes('COO')) missing.push('EmployeeApplication_role_check.COO');
+  if (!roleConstraint.includes('DOO')) missing.push('EmployeeApplication_role_check.DOO');
 
   const workflowConstraintRows = await prisma.$queryRawUnsafe(
     `SELECT pg_get_constraintdef(oid) AS "definition"
@@ -141,7 +141,7 @@ try {
     throw new Error(`Careers lifecycle schema is incomplete after migrations. Missing: ${missing.join(', ')}`);
   }
 
-  console.log('Careers lifecycle schema is ready, including offer workflow statuses and interview scheduling.');
+  console.log('Careers lifecycle schema is ready, including DOO role, offer workflow statuses, and interview scheduling.');
 } finally {
   await prisma.$disconnect();
 }
