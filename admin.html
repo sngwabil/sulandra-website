@@ -361,7 +361,7 @@
     .module.active { display: block; }
 
     /* --- MODALS --- */
-    #detailsModal, .modal-overlay {
+    #detailsModal {
       display:none;
       position:fixed;
       inset:0;
@@ -537,7 +537,7 @@
 
                   <div class="field">
                     <label for="statusFilter">Status</label>
-                    <select id="statusFilter" onchange="handleStatusChange(this.value)">
+                    <select id="statusFilter">
                       <option value="all">All</option>
                       <option value="RECEIVED">Received</option>
                       <option value="REVIEWING">Reviewing</option>
@@ -709,8 +709,8 @@
               <p class="sub">Manage retained candidate profiles and stored job listings.</p>
 
               <div class="archive-subtabs">
-                <button class="archive-subtab active" type="button" onclick="switchArchiveFolder('applicants')">Applicants Archive</button>
-                <button class="archive-subtab" type="button" onclick="switchArchiveFolder('jobs')">Jobs Archive</button>
+                <button class="archive-subtab active" type="button" onclick="switchArchiveFolder('applicants', this)">Applicants Archive</button>
+                <button class="archive-subtab" type="button" onclick="switchArchiveFolder('jobs', this)">Jobs Archive</button>
               </div>
 
               <!-- Folder 1: Applicants Archive -->
@@ -837,118 +837,38 @@
   </div>
 
   <script>
-    // --- TOP LEVEL & SIDEBAR MODULE NAVIGATION ---
-    document.querySelectorAll('[data-module]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const target = btn.getAttribute('data-module');
+    // Only page-specific helpers live here.
+    // Navigation, Railway data, applicant folders, settings, and the sliding
+    // Operations taskbar are controlled by admin-railway.js.
 
-        document.querySelectorAll('[data-module]').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll(`[data-module="${target}"]`).forEach(b => b.classList.add('active'));
 
-        document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
-        const activeModule = document.getElementById(`module-${target}`);
-        if(activeModule) activeModule.classList.add('active');
+    function showToast(title, body) {
+      const toast = document.getElementById('toast');
+      const heading = document.getElementById('toastTitle');
+      const message = document.getElementById('toastBody');
+      if (!toast || !heading || !message) return;
+      heading.textContent = title;
+      message.textContent = body;
+      toast.classList.add('show');
+      window.setTimeout(() => toast.classList.remove('show'), 3500);
+    }
 
-        if ((target === 'onboarding' || target === 'dashboard')) {
-          const refreshBtn = document.getElementById('refreshBtn');
-          if (refreshBtn) refreshBtn.click();
-        }
-      });
-    });
+    function switchArchiveFolder(folder, button) {
+      document.querySelectorAll('.archive-subtab').forEach((item) => item.classList.remove('active'));
+      if (button) button.classList.add('active');
 
-    // --- ONBOARDING PANEL NAVIGATION ---
-    document.querySelectorAll('.onboarding-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const targetPanel = tab.getAttribute('data-onboarding-panel');
-        document.querySelectorAll('.onboarding-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
+      const applicants = document.getElementById('archiveFolderApplicants');
+      const jobs = document.getElementById('archiveFolderJobs');
 
-        document.querySelectorAll('.onboarding-panel').forEach(p => p.classList.remove('active'));
-        const activeP = document.getElementById(`onboarding-${targetPanel}`);
-        if(activeP) activeP.classList.add('active');
-
-        if(targetPanel === 'archived') {
-          syncArchivedJobsContainer();
-        }
-      });
-    });
-
-    // --- ARCHIVE SUB-FOLDER SWITCHER ---
-    function switchArchiveFolder(folder) {
-      document.querySelectorAll('.archive-subtab').forEach(b => b.classList.remove('active'));
-      if (window.event && window.event.target) window.event.target.classList.add('active');
-
-      if (folder === 'applicants') {
-        document.getElementById('archiveFolderApplicants').style.display = 'block';
-        document.getElementById('archiveFolderJobs').style.display = 'none';
+      if (folder === 'jobs') {
+        applicants.style.display = 'none';
+        jobs.style.display = 'block';
       } else {
-        document.getElementById('archiveFolderApplicants').style.display = 'none';
-        document.getElementById('archiveFolderJobs').style.display = 'block';
-        syncArchivedJobsContainer();
+        applicants.style.display = 'block';
+        jobs.style.display = 'none';
       }
     }
 
-    // --- REMOVE ARCHIVED/CLOSED JOBS FROM LIVE LIST AND TRANSFER ONLY TO JOBS ARCHIVE ---
-    function syncArchivedJobsContainer() {
-      const activeList = document.getElementById('jobOpeningList');
-      const archivedList = document.getElementById('archivedJobsList');
-      if (!activeList || !archivedList) return;
-
-      const cards = Array.from(activeList.querySelectorAll('.opening-card'));
-
-      cards.forEach(card => {
-        const text = card.innerText || '';
-        const isArchivedOrClosed = text.includes('Archived') || text.includes('Closed');
-
-        if (isArchivedOrClosed) {
-          // Clear default placeholder if present
-          if (archivedList.querySelector('.muted')) {
-            archivedList.innerHTML = '';
-          }
-
-          // Move (transfer) card out of activeList directly into archivedList
-          archivedList.appendChild(card);
-
-          // Append Restore button if not already present
-          if (!card.querySelector('.btn-restore')) {
-            const actionsDiv = card.querySelector('.opening-actions') || card;
-            const restoreBtn = document.createElement('button');
-            restoreBtn.className = 'btn btn-primary btn-restore';
-            restoreBtn.type = 'button';
-            restoreBtn.innerText = 'Restore to Live';
-            restoreBtn.style.cssText = 'background:#166534; color:#fff; font-size:11px; margin-left:6px;';
-            restoreBtn.onclick = function() {
-              const publishBtn = card.querySelector('button[data-action="publish"]') || card.querySelector('.btn');
-              if(publishBtn) publishBtn.click();
-              showToast("Job Restored", "Position restored to active listings.");
-              setTimeout(syncArchivedJobsContainer, 500);
-            };
-            actionsDiv.appendChild(restoreBtn);
-          }
-        }
-      });
-
-      // Show placeholder if activeList becomes empty after moving archived cards
-      if (activeList.querySelectorAll('.opening-card').length === 0 && !activeList.querySelector('.muted')) {
-        activeList.innerHTML = '<p class="muted" style="padding:12px; text-align:center;">No active job openings available.</p>';
-      }
-
-      // Show placeholder if no archived cards are present
-      if (archivedList.querySelectorAll('.opening-card').length === 0 && !archivedList.querySelector('.muted')) {
-        archivedList.innerHTML = '<p class="muted" style="padding:12px; text-align:center;">No archived or closed job openings found.</p>';
-      }
-    }
-
-    // Observe changes in active job listings to trigger instant card migration
-    const jobListObserver = new MutationObserver(() => {
-      syncArchivedJobsContainer();
-    });
-    const activeJobListElem = document.getElementById('jobOpeningList');
-    if (activeJobListElem) {
-      jobListObserver.observe(activeJobListElem, { childList: true, subtree: true });
-    }
-
-    // --- ALL JOB ROLE PRESETS (INCLUDING COMPREHENSIVE COO & DODD STANDARDS) ---
     const jobPresets = {
       coo: {
         title: "Chief Operating Officer (COO)",
@@ -958,9 +878,23 @@
         pay: "$110,000–$145,000 per year",
         path: "/applycoo.html",
         summary: "Sulandra Health is seeking a visionary Chief Operating Officer (COO) / Director of Operations to oversee enterprise-wide operations, home health, and DODD waiver services across Ohio.",
-        description: "The Chief Operating Officer (COO) serves as the primary operational leader responsible for day-to-day agency operations, clinical administration, regulatory compliance, and fiscal management under Ohio Department of Developmental Disabilities (DODD) OAC 5123 and Ohio Department of Health guidelines.\n\nKey Responsibilities:\n• Direct daily operations of residential community living homes, home health aide services, and NEMT transportation networks.\n• Enforce compliance with DODD rules, Medicaid waiver standards, Electronic Visit Verification (EVV), and Ohio Administrative Code OAC 5123.\n• Oversee Major Unusual Incident (MUI) and Unusual Incident (UI) investigations, reporting, and prevention plans.\n• Manage organizational finances, staffing ratios, line-of-credit compliance, and departmental performance.\n• Lead quality assurance audits, survey readiness, and workforce development across clinical and administrative teams.",
-        reqs: "• Bachelor's or Master's Degree in Healthcare Administration, Business, Nursing, or Human Services.\n• Minimum 4 years of executive or supervisory experience in developmental disabilities (DD) or home health operations.\n• Must meet DODD Director of Operations (DOO) qualifications under OAC 5123-2-08 (Age 21+, BCII/FBI criminal background check clearance, completion of DODD DOO Orientation Training).\n• Proven expertise in Medicaid billing, EVV systems, and DODD certification standards.",
-        benefits: "• Competitive Executive Base Salary + Performance Bonus Pool\n• Comprehensive Medical, Dental, and Vision Coverage\n• Paid Time Off (PTO), Paid Holidays, and Executive Professional Development\n• 401(k) Retirement Plan with Company Match\n• Significant leadership autonomy and enterprise growth opportunity"
+        description: "The Chief Operating Officer (COO) serves as the primary operational leader responsible for day-to-day agency operations, clinical administration, regulatory compliance, and fiscal management under Ohio Department of Developmental Disabilities (DODD) OAC 5123 and Ohio Department of Health guidelines.
+
+Key Responsibilities:
+• Direct daily operations of residential community living homes, home health aide services, and NEMT transportation networks.
+• Enforce compliance with DODD rules, Medicaid waiver standards, Electronic Visit Verification (EVV), and Ohio Administrative Code OAC 5123.
+• Oversee Major Unusual Incident (MUI) and Unusual Incident (UI) investigations, reporting, and prevention plans.
+• Manage organizational finances, staffing ratios, line-of-credit compliance, and departmental performance.
+• Lead quality assurance audits, survey readiness, and workforce development across clinical and administrative teams.",
+        reqs: "• Bachelor's or Master's Degree in Healthcare Administration, Business, Nursing, or Human Services.
+• Minimum 4 years of executive or supervisory experience in developmental disabilities (DD) or home health operations.
+• Must meet DODD Director of Operations (DOO) qualifications under OAC 5123-2-08 (Age 21+, BCII/FBI criminal background check clearance, completion of DODD DOO Orientation Training).
+• Proven expertise in Medicaid billing, EVV systems, and DODD certification standards.",
+        benefits: "• Competitive Executive Base Salary + Performance Bonus Pool
+• Comprehensive Medical, Dental, and Vision Coverage
+• Paid Time Off (PTO), Paid Holidays, and Executive Professional Development
+• 401(k) Retirement Plan with Company Match
+• Significant leadership autonomy and enterprise growth opportunity"
       },
       dsp: {
         title: "Direct Support Professional (DSP)",
@@ -1055,32 +989,11 @@
 
       showToast("Preset Applied", `${data.title} details loaded into all form fields.`);
     }
-
-    function showToast(title, body) {
-      const t = document.getElementById('toast');
-      document.getElementById('toastTitle').innerText = title;
-      document.getElementById('toastBody').innerText = body;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 3500);
-    }
-
-    function saveCompanySettings() {
-      showToast("Settings Saved", "Company details and HR email signatures updated.");
-    }
-
-    // --- AUTOMATIC REFRESH ON DOM LOAD ---
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        const refreshBtn = document.getElementById('refreshBtn');
-        if (refreshBtn) refreshBtn.click();
-        syncArchivedJobsContainer();
-      }, 400);
-    });
   </script>
 
-  <!-- External workflow scripts -->
-  <script src="careers-admin-workflow.js?v=20260804-original-interview-flow-1"></script>
-  <script src="interview-admin-scheduler.js?v=20260804-shared-slots-restore-2"></script>
-  <script src="admin-railway.js?v=20260804-remove-interview-shortcut-2"></script>
+  <!-- Load in this exact order: workflow, scheduler integration, controller. -->
+  <script src="careers-admin-workflow.js?v=20260804-interview-workflow-4"></script>
+  <script src="interview-admin-scheduler.js?v=20260804-shared-slots-4"></script>
+  <script src="admin-railway.js?v=20260804-admin-clean-4"></script>
 </body>
 </html>
