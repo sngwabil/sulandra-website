@@ -1,146 +1,39 @@
 (function(){
-  'use strict';
-  const $=id=>document.getElementById(id);
-  const esc=v=>String(v==null?'':v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-
-  const EXTERNAL_MAIN_SITES={
-    'Sulandra Intranet':'intranet.html',
-    'Learning & Development':'education-portal.html',
-    'Sulandra Learning Center':'education-portal.html',
-    'Employee Portal':'employee-portal.html?stay=1&source=admin'
-  };
-
-  const EMBEDDED_PAGES={
-    'Intranet Publishing':'intranet-control.html',
-    'Corporate Communications':'intranet-control.html'
-  };
-
-  const MODULE_TOOLS=new Set([
-    'Dashboard','Executive Dashboard','Service Homes','Employees','Scheduling','Time & Attendance',
-    'Documents & Compliance','Client Paperwork & Documentation','Reports','Admin S.P.I.R.E.','Admin Spire',
-    'Settings','Roles & Permissions','Onboarding','Job Openings'
-  ]);
-
-  const SUBSIDIARIES=new Set([
-    'Sulandra Community Living Services','Sulandra Home Health Care Services',
-    'Sulandra Health Non-Medical Transportation'
-  ]);
-
-  const WORKSPACE_DESCRIPTIONS={
-    'Payroll Services':'Compensation, pay rates, payroll review, deductions and processing controls.',
-    'Benefits Administration':'Eligibility, enrollment, leave coordination and employee benefit records.',
-    'Day-to-Day House Operations':'Food, household inventory, grocery coordination, maintenance and petty cash.',
-    'Care Plans & ISP Coordination':'Service outcomes, plan implementation, reviews and interdisciplinary follow-up.',
-    'Medication & MAR Oversight':'Medication records, administration reviews, errors and nursing follow-up.',
-    'Client Appointments & Activities':'Medical appointments, community activities and transportation coordination.',
-    'MUI / UI Management':'Secure incident logging, investigation, prevention plans and regulatory reporting.',
-    'EVV Compliance':'Visit verification, missing punches, exceptions, corrections and service reconciliation.',
-    'Fleet & Trip Dispatch':'Vehicle maintenance, driver logs, trip scheduling, routing and dispatch controls.',
-    'Billing & Claims':'Medicaid waiver billing, payer claims, denials, reconciliation and revenue cycle.',
-    'Quality Assurance':'Internal audits, corrective actions, performance indicators and survey readiness.',
-    'Audit & Security Center':'Administrative actions, access review, security events and governance controls.',
-    'Vendors & Procurement':'Vendor records, purchasing, contracts, supplies and approval workflows.',
-    'Finance & Budgeting':'Budgets, forecasts, expenses, cash planning and subsidiary financial controls.',
-    'Contracts & Legal':'Contracts, insurance, renewals, legal records and corporate obligations.',
-    'Facilities & Maintenance':'Properties, repairs, inspections, utilities and capital improvements.',
-    'Projects & Expansion':'New homes, service launches, milestones, approvals and implementation tracking.',
-    'Emergency & Business Continuity':'Emergency plans, disruptions, escalation trees and continuity readiness.'
-  };
-
-  function dashboard(){return $('module-dashboard')||document.querySelector('.module.active')||document.querySelector('main')||document.querySelector('.main-content');}
-
-  function ensureHost(){
-    let host=$('adminInternalWorkspace');
-    if(host) return host;
-    host=document.createElement('section');
-    host.id='adminInternalWorkspace';
-    host.hidden=true;
-    host.innerHTML='<div class="aiw-shell"><header class="aiw-head"><div><div class="aiw-kicker">Sulandra Health Admin Workspace</div><h1 id="aiwTitle">Workspace</h1><p id="aiwDescription"></p></div><div class="aiw-actions"><button type="button" id="aiwBack">Command Center</button><button type="button" id="aiwRefresh">Refresh</button></div></header><div id="aiwBody" class="aiw-body"></div></div>';
-    const target=dashboard();
-    target?.insertBefore(host,target.firstChild);
-    $('aiwBack').onclick=showCommandCenter;
-    $('aiwRefresh').onclick=()=>{const frame=$('aiwFrame');if(frame)frame.src=frame.src;};
-    return host;
-  }
-
-  function installStyles(){
-    if($('adminWorkspaceRouterStyles')) return;
-    const s=document.createElement('style');s.id='adminWorkspaceRouterStyles';s.textContent=`
-      #adminInternalWorkspace{width:100%;min-width:0;margin:0 0 24px}.aiw-shell{background:var(--ec-surface,#fff);border:1px solid var(--ec-line,#d7e4ef);border-radius:24px;box-shadow:var(--ec-shadow,0 18px 50px rgba(15,36,66,.11));overflow:hidden;color:var(--ec-ink,#102448)}
-      .aiw-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding:22px 24px;border-bottom:1px solid var(--ec-line,#d7e4ef);background:linear-gradient(145deg,var(--ec-soft,#f4f8fb),var(--ec-surface,#fff))}.aiw-kicker{font-size:12px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;color:var(--ec-accent,#075b9c)}.aiw-head h1{margin:5px 0 5px!important;font-size:clamp(25px,3vw,38px)!important;color:var(--ec-ink,#102448)!important}.aiw-head p{margin:0;color:var(--ec-muted,#62738b);line-height:1.55}.aiw-actions{display:flex;gap:9px;flex-wrap:wrap}.aiw-actions button,.aiw-action{border:1px solid var(--ec-line,#d7e4ef);border-radius:12px;background:#fff;color:#102448;padding:10px 14px;font-weight:850;cursor:pointer}.aiw-actions button:last-child,.aiw-action.primary{background:var(--ec-accent,#075b9c);color:#fff;border-color:transparent}.aiw-body{min-height:520px;background:#f7fafc}.aiw-frame{display:block;width:100%;height:calc(100vh - var(--ec-panel-top,252px) - 92px);min-height:620px;border:0;background:#fff}.aiw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;padding:24px}.aiw-card{border:1px solid var(--ec-line,#d7e4ef);border-radius:16px;background:#fff;padding:18px;min-height:130px}.aiw-card h3{margin:0 0 8px;color:#102448}.aiw-card p{margin:0;color:#62738b;line-height:1.55}.aiw-card button{margin-top:14px}.aiw-placeholder{padding:30px}.aiw-placeholder>div{max-width:850px;margin:auto;border:1px solid var(--ec-line,#d7e4ef);border-radius:18px;background:#fff;padding:24px}.aiw-placeholder h2{margin:0 0 8px;color:#102448}.aiw-placeholder p{color:#62738b;line-height:1.65}.aiw-status{display:inline-flex;margin-top:14px;border-radius:999px;padding:7px 11px;background:#eaf8ef;color:#166534;font-size:12px;font-weight:900}
-      @media(max-width:760px){.aiw-head{display:block;padding:18px}.aiw-actions{margin-top:14px}.aiw-frame{min-height:520px}.aiw-grid{grid-template-columns:1fr;padding:14px}}
-    `;document.head.appendChild(s);
-  }
-
-  function showHost(title,description){
-    const host=ensureHost();
-    const center=$('enterpriseCommandCenter');if(center)center.hidden=true;
-    host.hidden=false;$('aiwTitle').textContent=title;$('aiwDescription').textContent=description||'';
-    host.scrollIntoView({behavior:'smooth',block:'start'});
-    return $('aiwBody');
-  }
-
-  function showCommandCenter(){
-    const host=$('adminInternalWorkspace');if(host)host.hidden=true;
-    const center=$('enterpriseCommandCenter');if(center){center.hidden=false;center.scrollIntoView({behavior:'smooth',block:'start'});}
-  }
-
-  function openEmbedded(title,url,description){
-    const body=showHost(title,description||'Secure internal control loaded inside the administration workspace.');
-    body.innerHTML=`<iframe id="aiwFrame" class="aiw-frame" src="${esc(url)}" title="${esc(title)}"></iframe>`;
-  }
-
-  function openPlaceholder(title,description){
-    const body=showHost(title,description||'This operational workspace is provisioned for secure connection to its dedicated module.');
-    body.innerHTML=`<div class="aiw-placeholder"><div><div class="aiw-kicker">Internal operational workspace</div><h2>${esc(title)}</h2><p>${esc(description||'This workspace is ready for its live data, forms and workflow controls to be connected without leaving the admin portal.')}</p><span class="aiw-status">Workspace routed safely</span></div></div>`;
-  }
-
-  function openSubsidiary(title){
-    const body=showHost(title,'Manage this Sulandra Health service line from the shared parent-company workspace.');
-    const routes=[['Service Operations','homes'],['Workforce','employees'],['Scheduling','scheduling'],['Compliance','documents'],['Reports','reports'],['Service Settings','settings']];
-    body.innerHTML=`<div class="aiw-grid">${routes.map(([label,target])=>`<article class="aiw-card"><h3>${esc(label)}</h3><p>Open the ${esc(label.toLowerCase())} controls for this service line.</p><button class="aiw-action primary" type="button" data-aiw-module="${esc(target)}">Open in workspace</button></article>`).join('')}</div>`;
-    body.querySelectorAll('[data-aiw-module]').forEach(button=>button.onclick=()=>clickModule(button.dataset.aiwModule));
-  }
-
-  function clickModule(target){
-    const trigger=document.querySelector(`#topModuleNav [data-module="${target}"],#sideModuleNav [data-module="${target}"],[data-module="${target}"]`);
-    if(trigger){trigger.click();return true;}return false;
-  }
-
-  function labelOf(node){return (node.querySelector('h3,strong')?.textContent||node.textContent||'').trim().replace(/\s+/g,' ');}
-
-  function handleCapturedClick(event){
-    const node=event.target.closest('.ec-tool,.ec-rail-tool');
-    if(!node)return;
-    const title=labelOf(node);
-    if(MODULE_TOOLS.has(title)) return;
-    if(EXTERNAL_MAIN_SITES[title]){
-      event.preventDefault();event.stopImmediatePropagation();window.open(EXTERNAL_MAIN_SITES[title],'_blank','noopener,noreferrer');return;
-    }
-    if(EMBEDDED_PAGES[title]){
-      event.preventDefault();event.stopImmediatePropagation();openEmbedded(title,EMBEDDED_PAGES[title],node.querySelector('p')?.textContent||'');return;
-    }
-    if(SUBSIDIARIES.has(title)){
-      event.preventDefault();event.stopImmediatePropagation();openSubsidiary(title);return;
-    }
-    if(title==='Add & Route New Service') return;
-    if(WORKSPACE_DESCRIPTIONS[title]){
-      event.preventDefault();event.stopImmediatePropagation();openPlaceholder(title,WORKSPACE_DESCRIPTIONS[title]);
-    }
-  }
-
-  function enforceMainSiteTabs(){
-    document.addEventListener('click',event=>{
-      const link=event.target.closest('a');if(!link)return;
-      const href=(link.getAttribute('href')||'').toLowerCase();
-      if(href.includes('intranet.html')||href.includes('education-portal.html')||href.includes('employee-portal.html')){
-        event.preventDefault();window.open(link.href,'_blank','noopener,noreferrer');
-      }
-    },true);
-  }
-
-  function init(){
-    installStyles();ensureHost();document.addEventListener('click',handleCapturedClick,true);enforceMainSiteTabs();
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=v=>String(v==null?'':v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+const CONTEXT_KEY='sulandra:admin:active-service';
+const SERVICES={
+ parent:{name:'Sulandra Health Parent Company',short:'Parent Company',icon:'◆',description:'Enterprise governance, shared services, expansion, finance, human resources and subsidiary oversight.'},
+ community:{name:'Sulandra Community Living Services',short:'Community Living',icon:'🏠',description:'Residential homes, waiver services, DSP workforce, client supports, ISP implementation and DODD compliance.'},
+ homehealth:{name:'Sulandra Home Health Care Services',short:'Home Health Care',icon:'✚',description:'Skilled nursing, home health visits, clinical supervision, care documentation, EVV and healthcare compliance.'},
+ nemt:{name:'Sulandra Health Non-Medical Transportation Services',short:'Transportation',icon:'🚐',description:'NEMT clients, drivers, vehicles, dispatch, trip scheduling, maintenance and transportation compliance.'}
+};
+const SERVICE_TOOLS={
+ community:[['Dashboard','dashboard','◈'],['Service Homes','homes','🏘'],['Clients & ISP Records','documents','👤'],['Employees & DSP Workforce','employees','👥'],['Scheduling & Assignments','scheduling','🗓'],['Time & Attendance','time','⏱'],['Medication & MAR Oversight','workspace','💊'],['MUI / UI Management','workspace','⚠'],['EVV Compliance','workspace','📍'],['House Operations','workspace','🛒'],['Onboarding & Applicants','applicants','🧭'],['Job Openings','openings','📣'],['Documents & Compliance','documents','✅'],['Billing & Claims','workspace','💰'],['Reports & Audits','reports','📈'],['Service Settings','settings','⚙']],
+ homehealth:[['Dashboard','dashboard','◈'],['Clients & Care Plans','documents','👤'],['Nurses & Home Health Staff','employees','👥'],['Visit Scheduling & Assignments','scheduling','🗓'],['Time & Attendance','time','⏱'],['Clinical Documentation','spire','✦'],['Medication Management','workspace','💊'],['EVV Compliance','workspace','📍'],['Quality Assurance','workspace','📊'],['Incident Management','workspace','⚠'],['Onboarding & Applicants','applicants','🧭'],['Clinical Job Openings','openings','📣'],['Credentials & Compliance','documents','✅'],['Billing & Claims','workspace','💰'],['Reports & Audits','reports','📈'],['Service Settings','settings','⚙']],
+ nemt:[['Dashboard','dashboard','◈'],['Clients & Transportation Profiles','documents','👤'],['Drivers & Dispatch Staff','employees','👥'],['Trip Scheduling & Dispatch','scheduling','🗓'],['Driver Time & Attendance','time','⏱'],['Fleet & Vehicle Management','workspace','🚚'],['Route Planning','workspace','🧭'],['Trip Documentation','documents','📁'],['Vehicle Maintenance','workspace','🛠'],['Driver Compliance','documents','✅'],['Incident & Safety Management','workspace','⚠'],['Driver Onboarding','applicants','👥'],['Driver Job Openings','openings','📣'],['Billing & Trip Claims','workspace','💰'],['Transportation Reports','reports','📈'],['Service Settings','settings','⚙']],
+ parent:[['Enterprise Dashboard','dashboard','◈'],['Subsidiary Oversight','workspace','🏢'],['Shared Human Resources','employees','👥'],['Corporate Onboarding','applicants','🧭'],['Company-Wide Job Openings','openings','📣'],['Payroll Services','workspace','💳'],['Finance & Budgeting','workspace','🏦'],['Contracts & Legal','workspace','⚖'],['Vendors & Procurement','workspace','📦'],['Facilities & Maintenance','workspace','🛠'],['Corporate Compliance','documents','✅'],['Enterprise Reports','reports','📈'],['Admin S.P.I.R.E.','spire','✦'],['Projects & Expansion','workspace','🚀'],['Roles & Permissions','settings','🪪'],['Parent Company Settings','settings','⚙']]
+};
+let originalNav=[];
+function installStyles(){if($('serviceOperatingSystemStyles'))return;const s=document.createElement('style');s.id='serviceOperatingSystemStyles';s.textContent=`
+#topModuleNav{max-width:none!important;justify-content:center!important;gap:4px!important}.sos-nav-link{display:block;padding:14px 14px;margin:5px 0;border:1px solid transparent;border-radius:9px;background:transparent;color:#26384b;font-weight:850;white-space:nowrap;cursor:pointer;text-decoration:none}.sos-nav-link:hover,.sos-nav-link.active{color:#075b9c;background:#eef6ff;border-color:#cfe4fb}.sos-service-shell{width:100%;border:1px solid var(--ec-line,#d7e4ef);border-radius:24px;background:var(--ec-surface,#fff);box-shadow:var(--ec-shadow,0 18px 50px rgba(15,36,66,.11));overflow:hidden}.sos-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:24px;background:linear-gradient(145deg,var(--ec-soft,#f4f8fb),#fff);border-bottom:1px solid var(--ec-line,#d7e4ef)}.sos-kicker{font-size:12px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;color:var(--ec-accent,#075b9c)}.sos-head h1{margin:6px 0!important;font-size:clamp(28px,4vw,44px)!important;color:#102448!important}.sos-head p{margin:0;max-width:850px;color:#62738b;line-height:1.6}.sos-switch{display:flex;gap:8px;flex-wrap:wrap}.sos-switch button{border:1px solid #cfdce8;background:#fff;border-radius:11px;padding:9px 12px;font-weight:850;cursor:pointer}.sos-switch button.active{background:#075b9c;color:#fff;border-color:#075b9c}.sos-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;padding:24px;background:#f7fafc}.sos-tool{display:flex;gap:13px;text-align:left;border:1px solid #d7e4ef;border-radius:16px;background:#fff;padding:17px;min-height:118px;cursor:pointer;box-shadow:0 7px 20px rgba(15,36,66,.06)}.sos-tool:hover{border-color:#5d9dca;transform:translateY(-2px)}.sos-icon{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:13px;background:#edf5fb;font-size:20px}.sos-tool h3{margin:1px 0 6px;color:#102448;font-size:15px}.sos-tool p{margin:0;color:#62738b;font-size:12px;line-height:1.45}.sos-breadcrumb{padding:12px 24px;background:#0d3154;color:#d9efff;font-size:12px;font-weight:800}.sos-placeholder{padding:30px}.sos-placeholder-card{max-width:900px;margin:auto;border:1px solid #d7e4ef;border-radius:18px;background:#fff;padding:24px}.sos-context-banner{margin-top:14px;padding:12px 14px;border-radius:12px;background:#eaf4fb;color:#075b9c;font-weight:850}.sos-hidden-original-nav{display:none!important}
+@media(max-width:900px){.sos-head{display:block}.sos-switch{margin-top:15px}.sos-tools{grid-template-columns:1fr;padding:14px}.sos-nav-link{padding:11px 9px;font-size:13px}}
+`;document.head.appendChild(s)}
+function captureOriginalNav(){const nav=$('topModuleNav');if(!nav)return;originalNav=Array.from(nav.querySelectorAll('[data-module]')).map(n=>({module:n.dataset.module,node:n}));}
+function triggerModule(module){const item=originalNav.find(x=>x.module===module)||{node:document.querySelector(`[data-module="${module}"]`)};if(item.node){item.node.click();applyContextToVisibleModule(module);return true}return false}
+function activateOnboarding(panel){triggerModule('onboarding');setTimeout(()=>document.querySelector(`[data-onboarding-panel="${panel}"]`)?.click(),100)}
+function service(){return localStorage.getItem(CONTEXT_KEY)||'parent'}
+function setService(key){localStorage.setItem(CONTEXT_KEY,key);renderService(key)}
+function host(){let h=$('adminInternalWorkspace');if(!h){h=document.createElement('section');h.id='adminInternalWorkspace';const dashboard=$('module-dashboard')||document.querySelector('main');dashboard?.insertBefore(h,dashboard.firstChild)}h.hidden=false;return h}
+function hideCommand(){const c=$('enterpriseCommandCenter');if(c)c.hidden=true;document.querySelectorAll('.module').forEach(m=>{if(m.id!=='module-dashboard')m.classList.remove('active')})}
+function toolDescription(label,key){return `Manage ${label.toLowerCase()} for ${SERVICES[key].name}. Records, documents, assignments and reports remain identified with this service.`}
+function renderService(key){const svc=SERVICES[key]||SERVICES.parent;hideCommand();const h=host();document.title=`${svc.name} | Sulandra Admin`;h.innerHTML=`<section class="sos-service-shell"><div class="sos-breadcrumb">Sulandra Health Parent Company › ${esc(svc.name)}</div><header class="sos-head"><div><div class="sos-kicker">${esc(svc.short)} operating environment</div><h1>${esc(svc.name)}</h1><p>${esc(svc.description)} Every employee profile, schedule, assignment, document, report and workflow opened here carries the ${esc(svc.name)} service context.</p></div><div class="sos-switch">${Object.entries(SERVICES).map(([id,item])=>`<button type="button" data-sos-switch="${id}" class="${id===key?'active':''}">${esc(item.short)}</button>`).join('')}</div></header><div class="sos-tools">${SERVICE_TOOLS[key].map(([label,target,icon])=>`<button type="button" class="sos-tool" data-sos-target="${esc(target)}" data-sos-label="${esc(label)}"><span class="sos-icon">${icon}</span><span><h3>${esc(svc.name)} — ${esc(label)}</h3><p>${esc(toolDescription(label,key))}</p></span></button>`).join('')}</div></section>`;h.querySelectorAll('[data-sos-switch]').forEach(b=>b.onclick=()=>setService(b.dataset.sosSwitch));h.querySelectorAll('[data-sos-target]').forEach(b=>b.onclick=()=>openTool(key,b.dataset.sosLabel,b.dataset.sosTarget));h.scrollIntoView({behavior:'smooth',block:'start'});syncNav(key)}
+function openTool(key,label,target){const svc=SERVICES[key];if(target==='applicants'){activateOnboarding('applicants');applyContextToVisibleModule('onboarding',svc,label);return}if(target==='openings'){activateOnboarding('openings');applyContextToVisibleModule('onboarding',svc,label);return}if(target==='workspace'){renderPlaceholder(svc,label);return}if(triggerModule(target)){applyContextToVisibleModule(target,svc,label);return}renderPlaceholder(svc,label)}
+function renderPlaceholder(svc,label){const h=host();h.innerHTML=`<section class="sos-service-shell"><div class="sos-breadcrumb">Sulandra Health Parent Company › ${esc(svc.name)} › ${esc(label)}</div><header class="sos-head"><div><div class="sos-kicker">${esc(svc.short)} management tool</div><h1>${esc(svc.name)} — ${esc(label)}</h1><p>${esc(toolDescription(label,Object.keys(SERVICES).find(k=>SERVICES[k]===svc)||'parent'))}</p></div><button class="sos-nav-link active" type="button" data-back-service>Return to ${esc(svc.short)}</button></header><div class="sos-placeholder"><div class="sos-placeholder-card"><h2>${esc(label)}</h2><p>This dedicated ${esc(svc.name)} workspace is reserved for its live forms, records, approvals and reports. It remains inside the service environment and will not mix records with another Sulandra Health subsidiary.</p><div class="sos-context-banner">Active company context: ${esc(svc.name)}</div></div></div></section>`;h.querySelector('[data-back-service]').onclick=()=>renderService(Object.keys(SERVICES).find(k=>SERVICES[k]===svc)||'parent')}
+function applyContextToVisibleModule(module,svc=SERVICES[service()],label=''){setTimeout(()=>{const section=$(`module-${module}`);if(!section)return;section.dataset.serviceContext=svc.name;let banner=section.querySelector('.sos-module-context');if(!banner){banner=document.createElement('div');banner.className='sos-context-banner sos-module-context';section.insertBefore(banner,section.firstChild)}banner.textContent=`${svc.name}${label?' — '+label:''}. All records and documents in this view are managed under this service context.`;section.querySelectorAll('h1,h2').forEach((heading,index)=>{if(index===0&&!heading.dataset.sosOriginal){heading.dataset.sosOriginal=heading.textContent;heading.textContent=`${svc.name} — ${heading.textContent}`}})},80)}
+function rebuildTopNav(){const nav=$('topModuleNav');if(!nav)return;nav.innerHTML='';const items=[['parent','Parent Company'],['community','Community Living'],['homehealth','Home Health Care'],['nemt','Transportation']];items.forEach(([key,label])=>{const li=document.createElement('li');li.innerHTML=`<button type="button" class="sos-nav-link" data-service-nav="${key}">${label}</button>`;nav.appendChild(li)});[['Learning','education-portal.html'],['Sulandra Intranet','intranet.html'],['Employee Portal','employee-portal.html?stay=1&source=admin']].forEach(([label,href])=>{const li=document.createElement('li');li.innerHTML=`<a class="sos-nav-link" href="${href}" target="_blank" rel="noopener">${label}</a>`;nav.appendChild(li)});const settings=document.createElement('li');settings.innerHTML='<button type="button" class="sos-nav-link" data-shared-module="settings">Shared Settings</button>';nav.appendChild(settings);nav.querySelectorAll('[data-service-nav]').forEach(b=>b.onclick=()=>setService(b.dataset.serviceNav));nav.querySelector('[data-shared-module]').onclick=()=>{triggerModule('settings');applyContextToVisibleModule('settings',SERVICES.parent,'Shared Settings')};syncNav(service())}
+function syncNav(key){document.querySelectorAll('[data-service-nav]').forEach(b=>b.classList.toggle('active',b.dataset.serviceNav===key))}
+function init(){installStyles();captureOriginalNav();rebuildTopNav();renderService(service())}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,100),{once:true});else setTimeout(init,100)
 })();
