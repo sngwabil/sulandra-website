@@ -1,0 +1,6 @@
+{
+  "purpose": "Force static frontend deployment after admin desktop first-paint and workspace fixes",
+  "branch": "main",
+  "required_commit": "d1dab51c682834a61bd0b2a5f1a55be3851c9c62",
+  "created_at": "2026-08-04T17:54:00Z"
+}
