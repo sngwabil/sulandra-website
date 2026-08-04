@@ -6,7 +6,7 @@
   const ENTERPRISE_SCRIPT = "/admin-enterprise-command-center.js?v=20260804-1";
   const THREE_PANEL_SCRIPT = "/admin-three-panel-layout.js?v=20260804-1";
   const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
-  const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-3";
+  const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-4";
   const NEW_SERVICE_WORKSPACE_SCRIPT = "/admin-new-service-workspace.js?v=20260804-1";
   const DESKTOP_CLOUD_SYNC_SCRIPT = "/admin-desktop-cloud-sync.js?v=20260804-3";
   const DESKTOP_EXPERIENCE_SCRIPT = "/admin-desktop-experience.js?v=20260804-1";
@@ -38,11 +38,9 @@
   function addSettingsControlCards() {
     const settingsModule = document.getElementById("module-settings");
     if (!settingsModule || document.getElementById("intranetSettingsControlCard")) return;
-
     const wrap = document.createElement("div");
     wrap.id = "intranetSettingsControlCard";
     wrap.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:20px;";
-
     wrap.innerHTML = `
       <a href="intranet-control.html" style="display:block;text-decoration:none;background:linear-gradient(135deg,#0f172a,#075985);color:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(15,23,42,.16);">
         <div style="font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd;">Intranet Publishing</div>
@@ -56,16 +54,13 @@
         <p style="margin:0;color:#ccfbf1;font-size:13px;line-height:1.5;">Open the production education portal using the current administrator profile and view approved curriculum and live employee records.</p>
         <div style="margin-top:14px;font-weight:900;font-size:13px;">Open Education Portal →</div>
       </a>`;
-
     settingsModule.appendChild(wrap);
   }
 
   function addAdminPortalLinks() {
     const topNav = document.getElementById("topModuleNav");
     if (topNav && !document.getElementById("adminEmployeePortalTopLink")) {
-      const onboardingItem = Array.from(topNav.children).find((item) =>
-        item.querySelector('a[data-module="onboarding"]')
-      );
+      const onboardingItem = Array.from(topNav.children).find((item) => item.querySelector('a[data-module="onboarding"]'));
       const employee = makeTopLink("adminEmployeePortalTopLink", "employee-portal.html?stay=1&source=admin", "Employee Portal", "Open the employee experience using your current administrator identity");
       const intranet = makeTopLink("adminIntranetTopLink", "intranet.html", "Sulandra Intranet", "Open the Sulandra Enterprise Intranet Portal");
       employee.querySelector('a').target = "_blank";
@@ -75,28 +70,21 @@
       topNav.insertBefore(employee, onboardingItem || null);
       topNav.insertBefore(intranet, onboardingItem || null);
     }
-
     const sideNav = document.getElementById("sideModuleNav");
     if (sideNav && !document.getElementById("adminEmployeePortalSideLink")) {
       const onboardingButton = sideNav.querySelector('[data-module="onboarding"]');
       sideNav.insertBefore(makeSideButton("adminEmployeePortalSideLink", "Employee Portal", "Admin Access", "employee-portal.html?stay=1&source=admin"), onboardingButton || null);
       sideNav.insertBefore(makeSideButton("adminIntranetSideLink", "Sulandra Intranet", "Enterprise Hub", "intranet.html"), onboardingButton || null);
     }
-
     if (sideNav && !document.getElementById("adminIntranetControlSideLink")) {
       const settingsButton = sideNav.querySelector('[data-module="settings"]');
-      const controlButton = makeSideButton("adminIntranetControlSideLink", "Intranet Control", "Publishing", "intranet-control.html");
-      sideNav.insertBefore(controlButton, settingsButton || null);
+      sideNav.insertBefore(makeSideButton("adminIntranetControlSideLink", "Intranet Control", "Publishing", "intranet-control.html"), settingsButton || null);
     }
-
     addSettingsControlCards();
   }
 
   function loadScriptOnce(src, marker, errorMessage, onload) {
-    if (document.querySelector(`script[${marker}]`)) {
-      if (onload) onload();
-      return;
-    }
+    if (document.querySelector(`script[${marker}]`)) { if (onload) onload(); return; }
     const script = document.createElement("script");
     script.src = src;
     script.async = false;
@@ -111,7 +99,6 @@
       loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.");
     });
   }
-
   function loadCloudThenDesktop() {
     loadScriptOnce(DESKTOP_CLOUD_SYNC_SCRIPT, "data-admin-desktop-cloud-sync", "The Sulandra desktop cloud profile could not be loaded.", function () {
       Promise.resolve(window.SulandraDesktopCloud?.ready)
@@ -119,7 +106,6 @@
         .finally(loadDesktopExperience);
     });
   }
-
   function loadEnhancements() {
     loadScriptOnce(INTERVIEW_SCRIPT, "data-interview-admin-scheduler", "The Sulandra interview scheduler could not be loaded.");
     loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.", function () {
@@ -132,29 +118,15 @@
       });
     });
   }
-
   function loadCoreAdminApplication() {
     const script = document.createElement("script");
     script.src = CORE_SCRIPT;
     script.async = false;
-    script.onload = function () {
-      loadEnhancements();
-      addAdminPortalLinks();
-      window.setTimeout(addAdminPortalLinks, 250);
-    };
-    script.onerror = function () {
-      console.error("The core Sulandra admin controller could not be loaded.");
-      loadEnhancements();
-      addAdminPortalLinks();
-    };
+    script.onload = function () { loadEnhancements(); addAdminPortalLinks(); window.setTimeout(addAdminPortalLinks, 250); };
+    script.onerror = function () { console.error("The core Sulandra admin controller could not be loaded."); loadEnhancements(); addAdminPortalLinks(); };
     document.head.appendChild(script);
   }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", addAdminPortalLinks, { once: true });
-  } else {
-    addAdminPortalLinks();
-  }
-
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addAdminPortalLinks, { once: true });
+  else addAdminPortalLinks();
   loadCoreAdminApplication();
 })();
