@@ -542,7 +542,7 @@
                       <option value="RECEIVED">Received</option>
                       <option value="REVIEWING">Reviewing</option>
                       <option value="DOCUMENTS_NEEDED">Documents Needed</option>
-                      <option value="INTERVIEW">Interview (Open Scheduler)</option>
+                      <option value="INTERVIEW">Interview</option>
                       <option value="OFFER_PENDING">Offer Pending</option>
                       <option value="HIRED">Hired</option>
                       <option value="WITHDRAWN">Withdrawn</option>
@@ -830,45 +830,6 @@
     </div>
   </div>
 
-  <!-- Interactive Interview Scheduling Modal -->
-  <div class="modal-overlay" id="interviewModal">
-    <div class="modal" style="max-width:540px;">
-      <div class="modal-head">
-        <div class="modal-title">📅 Schedule Candidate Interview</div>
-        <button class="close-x" type="button" onclick="closeInterviewModal()">×</button>
-      </div>
-      <div class="modal-body">
-        <p class="sub" style="margin-bottom:14px;">Select available dates and 30-minute time slots to send to <strong id="interviewApplicantName">Candidate</strong>.</p>
-
-        <div style="display:grid; gap:12px;">
-          <div>
-            <label style="font-size:12px; font-weight:800;">SELECT INTERVIEW DATE</label>
-            <input type="date" id="interviewDateInput" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px;">
-          </div>
-
-          <div>
-            <label style="font-size:12px; font-weight:800;">AVAILABLE 30-MIN TIME SLOTS</label>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;">
-              <label><input type="checkbox" name="slot" value="09:00 AM - 09:30 AM"> 09:00 AM - 09:30 AM</label>
-              <label><input type="checkbox" name="slot" value="10:00 AM - 10:30 AM"> 10:00 AM - 10:30 AM</label>
-              <label><input type="checkbox" name="slot" value="11:00 AM - 11:30 AM"> 11:00 AM - 11:30 AM</label>
-              <label><input type="checkbox" name="slot" value="01:00 PM - 01:30 PM"> 01:00 PM - 01:30 PM</label>
-              <label><input type="checkbox" name="slot" value="02:00 PM - 02:30 PM"> 02:00 PM - 02:30 PM</label>
-              <label><input type="checkbox" name="slot" value="03:00 PM - 03:30 PM"> 03:00 PM - 03:30 PM</label>
-            </div>
-          </div>
-
-          <div style="background:#f0f7ff; padding:12px; border-radius:8px; border-left:4px solid var(--primary); font-size:12px;">
-            <strong>Location:</strong> 822 Dalewood Pl Dayton Ohio 45426 Suite A<br>
-            <em>The candidate will receive a link to select their slot in the portal. Locked slots will automatically gray out for other applicants.</em>
-          </div>
-
-          <button class="btn btn-primary" type="button" onclick="confirmInterviewInvite()" style="padding:12px; width:100%; justify-content:center; margin-top:8px;">Send Interview Invites</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Toast Notification -->
   <div class="toast" id="toast" role="status" aria-live="polite">
     <strong id="toastTitle">Success</strong>
@@ -911,13 +872,6 @@
         }
       });
     });
-
-    // --- AUTOMATIC INTERVIEW MODAL TRIGGER FROM STATUS SELECT ---
-    function handleStatusChange(statusVal) {
-      if (statusVal === 'INTERVIEW') {
-        openInterviewModal('Selected Candidate');
-      }
-    }
 
     // --- ARCHIVE SUB-FOLDER SWITCHER ---
     function switchArchiveFolder(folder) {
@@ -1102,20 +1056,6 @@
       showToast("Preset Applied", `${data.title} details loaded into all form fields.`);
     }
 
-    function openInterviewModal(candidateName) {
-      document.getElementById('interviewApplicantName').innerText = candidateName || 'Candidate';
-      document.getElementById('interviewModal').style.display = 'block';
-    }
-
-    function closeInterviewModal() {
-      document.getElementById('interviewModal').style.display = 'none';
-    }
-
-    function confirmInterviewInvite() {
-      closeInterviewModal();
-      showToast("Interview Sent", "Invitation link and time slots sent to candidate portal.");
-    }
-
     function showToast(title, body) {
       const t = document.getElementById('toast');
       document.getElementById('toastTitle').innerText = title;
@@ -1139,7 +1079,8 @@
   </script>
 
   <!-- External workflow scripts -->
-  <script src="careers-admin-workflow.js?v=20260803-hr-interviews-2"></script>
-  <script src="admin-railway.js?v=20260729-7"></script>
+  <script src="careers-admin-workflow.js?v=20260804-original-interview-flow-1"></script>
+  <script src="interview-admin-scheduler.js?v=20260804-shared-slots-restore-2"></script>
+  <script src="admin-railway.js?v=20260804-remove-interview-shortcut-2"></script>
 </body>
 </html>
