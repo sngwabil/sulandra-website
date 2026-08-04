@@ -5,6 +5,7 @@
   const INTERVIEW_SCRIPT = "/interview-admin-scheduler.js?v=20260804-1";
   const ENTERPRISE_SCRIPT = "/admin-enterprise-command-center.js?v=20260804-1";
   const THREE_PANEL_SCRIPT = "/admin-three-panel-layout.js?v=20260804-1";
+  const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -97,7 +98,9 @@
   function loadEnhancements() {
     loadScriptOnce(INTERVIEW_SCRIPT, "data-interview-admin-scheduler", "The Sulandra interview scheduler could not be loaded.");
     loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.", function () {
-      loadScriptOnce(THREE_PANEL_SCRIPT, "data-admin-three-panel-layout", "The Sulandra three-panel administration layout could not be loaded.");
+      loadScriptOnce(THREE_PANEL_SCRIPT, "data-admin-three-panel-layout", "The Sulandra three-panel administration layout could not be loaded.", function () {
+        loadScriptOnce(PANEL_CONSOLIDATION_SCRIPT, "data-admin-three-panel-consolidation", "The Sulandra panel consolidation repair could not be loaded.");
+      });
     });
   }
 
