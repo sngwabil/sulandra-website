@@ -13,6 +13,7 @@
   const DESKTOP_STABILITY_SCRIPT = "/admin-desktop-stability-fix.js?v=20260804-5";
   const DESKTOP_OS_SCRIPT = "/admin-desktop-operating-system.js?v=20260804-2";
   const LIVE_MODULE_BRIDGE_SCRIPT = "/admin-live-module-window-bridge.js?v=20260804-1";
+  const RECORD_EMPTY_STATE_SCRIPT = "/admin-record-empty-state.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -98,7 +99,9 @@
     loadScriptOnce(DESKTOP_EXPERIENCE_SCRIPT, "data-admin-desktop-experience", "The Sulandra desktop workspace experience could not be loaded.", function () {
       loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.", function () {
         loadScriptOnce(DESKTOP_OS_SCRIPT, "data-admin-desktop-operating-system", "The Sulandra desktop operating system could not be loaded.", function () {
-          loadScriptOnce(LIVE_MODULE_BRIDGE_SCRIPT, "data-admin-live-module-window-bridge", "The live department module bridge could not be loaded.");
+          loadScriptOnce(LIVE_MODULE_BRIDGE_SCRIPT, "data-admin-live-module-window-bridge", "The live department module bridge could not be loaded.", function () {
+            loadScriptOnce(RECORD_EMPTY_STATE_SCRIPT, "data-admin-record-empty-state", "The record empty-state manager could not be loaded.");
+          });
         });
       });
     });
