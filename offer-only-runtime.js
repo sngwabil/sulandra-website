@@ -1,6 +1,15 @@
 (function () {
   'use strict';
 
+  if (!document.querySelector('script[data-admin-desktop-cloud-sync]')) {
+    const cloudScript = document.createElement('script');
+    cloudScript.src = '/admin-desktop-cloud-sync.js?v=20260804-feature-2';
+    cloudScript.async = false;
+    cloudScript.setAttribute('data-admin-desktop-cloud-sync', 'true');
+    cloudScript.onerror = () => console.error('The Sulandra desktop cloud profile could not be loaded.');
+    document.head.appendChild(cloudScript);
+  }
+
   const OFFER_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/offers(?:\?|$)/;
   const STATUS_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/status(?:\?|$)/;
   const REFRESH_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/(?:offers|status|hire)(?:\?|$)/;
