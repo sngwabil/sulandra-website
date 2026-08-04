@@ -10,6 +10,15 @@
     document.head.appendChild(cloudScript);
   }
 
+  if (!document.querySelector('script[data-admin-record-empty-state]')) {
+    const emptyStateScript = document.createElement('script');
+    emptyStateScript.src = '/admin-record-empty-state.js?v=20260804-feature-1';
+    emptyStateScript.async = false;
+    emptyStateScript.setAttribute('data-admin-record-empty-state', 'true');
+    emptyStateScript.onerror = () => console.error('The Sulandra record empty-state manager could not be loaded.');
+    document.head.appendChild(emptyStateScript);
+  }
+
   const OFFER_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/offers(?:\?|$)/;
   const STATUS_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/status(?:\?|$)/;
   const REFRESH_ENDPOINT = /\/api\/admin\/applications\/[^/]+\/(?:offers|status|hire)(?:\?|$)/;
