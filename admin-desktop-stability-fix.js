@@ -11,22 +11,59 @@ function saveProfile(p){localStorage.setItem(profileKey(),JSON.stringify(p));}
 function rhythmSvg(){return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='76' viewBox='0 0 420 76'%3E%3Cpath d='M0 40h55l11-10 12 20 14-38 16 58 15-30h30l10-8 11 16 12-28 14 40 13-20h42l10-8 13 18 14-40 17 60 14-30h38' fill='none' stroke='%23075b9c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;}
 function applyRhythm(enabled){document.documentElement.style.setProperty('--dx-rhythm',enabled?rhythmSvg():'none');document.body.dataset.dxRhythm=enabled?'on':'off';}
 function installStyles(){if($('desktopStabilityFixStyles'))return;const s=document.createElement('style');s.id='desktopStabilityFixStyles';s.textContent=`
-/* A filter on body makes position:fixed descendants behave like absolute elements.
-   Keep body unfiltered so the taskbar is anchored to the actual browser viewport. */
-body.dx-ready{filter:none!important;overflow:hidden!important;height:100vh!important;min-height:100vh!important;padding-bottom:0!important}
+/* Keep fixed desktop controls anchored to the browser viewport. */
+html,body.dx-ready{height:100%!important;min-height:100%!important}
+body.dx-ready{filter:none!important;overflow:hidden!important;padding:0!important}
 body.dx-ready>header,body.dx-ready>.alert-bar,body.dx-ready>.main-nav{filter:contrast(var(--dx-contrast,1)) saturate(var(--dx-saturation,1)) brightness(var(--dx-brightness,1))}
-body.dx-ready .container{filter:contrast(var(--dx-contrast,1)) saturate(var(--dx-saturation,1)) brightness(var(--dx-brightness,1))}
 
-/* Three true, independently scrolling work areas. */
+/* Independent side rails. */
 body.dx-ready .ec-side-rail{position:fixed!important;top:var(--ec-panel-top,295px)!important;bottom:var(--dx-visible-dock-h,66px)!important;height:auto!important;overflow:hidden!important}
-body.dx-ready .ec-side-rail .ec-rail-scroll{height:calc(100vh - var(--ec-panel-top,295px) - var(--dx-visible-dock-h,66px))!important;max-height:none!important;overflow-y:auto!important;overscroll-behavior:contain!important}
-body.dx-ready .container{position:fixed!important;top:var(--ec-panel-top,295px)!important;bottom:var(--dx-visible-dock-h,66px)!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;margin-top:0!important;margin-bottom:0!important;padding-bottom:24px!important}
+body.dx-ready .ec-side-rail .ec-rail-scroll{height:100%!important;max-height:none!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important}
+
+/* Full-width independent center desktop. Remove all inherited grid margins. */
+body.dx-ready .container{
+  position:fixed!important;
+  top:var(--ec-panel-top,295px)!important;
+  bottom:var(--dx-visible-dock-h,66px)!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:12px 12px 24px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  box-sizing:border-box!important;
+  filter:contrast(var(--dx-contrast,1)) saturate(var(--dx-saturation,1)) brightness(var(--dx-brightness,1));
+}
 body.dx-ready.ec-left-open .container{left:calc(var(--ec-left-w,330px) + 10px)!important}
 body.dx-ready:not(.ec-left-open) .container{left:48px!important}
 body.dx-ready.ec-right-open .container{right:calc(var(--ec-right-w,360px) + 10px)!important}
 body.dx-ready:not(.ec-right-open) .container{right:48px!important}
+body.dx-ready .container>.grid,
+body.dx-ready .container>.layout,
+body.dx-ready .container .grid,
+body.dx-ready .container main,
+body.dx-ready .container .main-content,
+body.dx-ready .container .module,
+body.dx-ready #adminInternalWorkspace,
+body.dx-ready #adminInternalWorkspace>.sos-service-shell,
+body.dx-ready #enterpriseCommandCenter{
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin-left:0!important;
+  margin-right:0!important;
+  box-sizing:border-box!important;
+}
+body.dx-ready .container>.grid,
+body.dx-ready .container .grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+}
+body.dx-ready .container .module.active{display:block!important}
 
-/* Viewport-locked desktop taskbar. */
+/* Viewport taskbar. */
 #dxDesktopDock{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;transform:translateY(0)!important;width:100vw!important;max-width:none!important;height:var(--dx-dock-h,66px)!important;margin:0!important;border-radius:0!important;border-left:0!important;border-right:0!important;z-index:2147483000!important;transition:transform .22s ease!important;will-change:transform!important}
 #dxDesktopDock.dx-collapsed{transform:translateY(calc(100% - 22px))!important}
 #dxDesktopDock.dx-autohide,#dxDesktopDock.dx-autohide:not(:hover){transform:translateY(0)!important}
