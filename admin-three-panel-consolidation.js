@@ -16,7 +16,6 @@
     style.textContent = `
       .ec-retired-workspace-sidebar{display:none!important;width:0!important;min-width:0!important;max-width:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important}
 
-      /* Remove the original reserved sidebar column and restore the main workspace. */
       body.ec-panels-ready .grid,
       body.ec-panels-ready .layout,
       body.ec-panels-ready .admin-layout,
@@ -38,14 +37,14 @@
       body.ec-panels-ready .container{
         width:auto!important;
         max-width:none!important;
-        padding-left:18px!important;
-        padding-right:18px!important;
+        padding-left:12px!important;
+        padding-right:12px!important;
         transition:margin-left .22s ease,margin-right .22s ease!important;
       }
-      body.ec-left-open .container{margin-left:calc(var(--ec-left-w) + 18px)!important}
-      body:not(.ec-left-open) .container{margin-left:54px!important}
-      body.ec-right-open .container{margin-right:calc(var(--ec-right-w) + 18px)!important}
-      body:not(.ec-right-open) .container{margin-right:54px!important}
+      body.ec-left-open .container{margin-left:calc(var(--ec-left-w) + 10px)!important}
+      body:not(.ec-left-open) .container{margin-left:48px!important}
+      body.ec-right-open .container{margin-right:calc(var(--ec-right-w) + 10px)!important}
+      body:not(.ec-right-open) .container{margin-right:48px!important}
       body.ec-panels-ready main,
       body.ec-panels-ready .main-content,
       body.ec-panels-ready .module,
@@ -60,22 +59,22 @@
 
       .ec-side-rail{top:var(--ec-panel-top)!important;bottom:0!important;border-radius:0!important;max-width:calc(100vw - 42px)!important}
       .ec-side-rail.left{border-left:0!important}.ec-side-rail.right{border-right:0!important}
-      .ec-rail-handle{display:none!important}
-      .ec-fixed-rail-tab{position:fixed;top:var(--ec-panel-top);z-index:45250;height:48px;min-width:48px;border:0;background:linear-gradient(135deg,#0d3154,#075b9c);color:#fff;font-weight:900;cursor:pointer;box-shadow:0 10px 24px rgba(15,36,66,.2);display:flex;align-items:center;justify-content:center;gap:7px;padding:0 12px;transition:left .22s ease,right .22s ease,border-radius .22s ease;white-space:nowrap}
-      .ec-fixed-rail-tab.left{left:var(--ec-left-w);border-radius:0 0 13px 0}.ec-fixed-rail-tab.right{right:var(--ec-right-w);border-radius:0 0 0 13px}
-      body:not(.ec-left-open) .ec-fixed-rail-tab.left{left:0;border-radius:0 0 13px 0}
-      body:not(.ec-right-open) .ec-fixed-rail-tab.right{right:0;border-radius:0 0 0 13px}
-      .ec-fixed-rail-tab .ec-tab-label{font-size:12px}.ec-fixed-rail-tab .ec-tab-arrow{font-size:20px;line-height:1}
+      .ec-rail-handle,.ec-fixed-rail-tab{display:none!important}
+      .ec-side-rail.left.closed{transform:translateX(calc(-100% + 42px))!important}
+      .ec-side-rail.right.closed{transform:translateX(calc(100% - 42px))!important}
+      .ec-side-rail.closed .ec-rail-head{padding-left:6px!important;padding-right:6px!important;justify-content:flex-end!important}
+      .ec-side-rail.closed .ec-rail-head>div{display:none!important}
+      .ec-side-rail.closed .ec-rail-toggle{display:grid!important;place-items:center!important;width:30px!important;height:38px!important;border-radius:9px!important;padding:0!important}
+      .ec-side-rail:not(.closed) .ec-rail-toggle{flex:0 0 auto}
       .ec-original-tools-section{padding-bottom:5px;border-bottom:1px solid #d7e4ef;margin-bottom:16px}
       .ec-original-tools-section .ec-rail-section-title{display:flex;align-items:center;justify-content:space-between}
 
       @media(max-width:1280px){
-        body.ec-left-open .container,body:not(.ec-left-open) .container{margin-left:18px!important}
-        body.ec-right-open .container,body:not(.ec-right-open) .container{margin-right:18px!important}
+        body.ec-left-open .container,body:not(.ec-left-open) .container{margin-left:12px!important}
+        body.ec-right-open .container,body:not(.ec-right-open) .container{margin-right:12px!important}
       }
       @media(max-width:760px){
-        .ec-fixed-rail-tab .ec-tab-label{display:none}.ec-fixed-rail-tab{min-width:44px;padding:0 10px}
-        body.ec-panels-ready .container{padding-left:10px!important;padding-right:10px!important;margin-left:0!important;margin-right:0!important}
+        body.ec-panels-ready .container{padding-left:8px!important;padding-right:8px!important;margin-left:0!important;margin-right:0!important}
       }
     `;
     document.head.appendChild(style);
@@ -129,46 +128,32 @@
     const shouldOpen = rail.classList.contains('closed') || !document.body.classList.contains(bodyClass);
     rail.classList.toggle('closed', !shouldOpen);
     document.body.classList.toggle(bodyClass, shouldOpen);
-    syncTabs();
+    syncRailButtons();
   }
 
-  function syncTabs() {
-    const leftOpen = document.body.classList.contains('ec-left-open') && !$('enterpriseOperationsRail')?.classList.contains('closed');
-    const rightOpen = document.body.classList.contains('ec-right-open') && !$('enterpriseLiveRail')?.classList.contains('closed');
-    const left = $('ecOperationsFixedTab');
-    const right = $('ecLiveFixedTab');
-    if (left) {
-      left.setAttribute('aria-expanded', String(leftOpen));
-      left.querySelector('.ec-tab-arrow').textContent = leftOpen ? '‹' : '›';
-      left.title = leftOpen ? 'Close Operations panel' : 'Open Operations panel';
+  function syncRailButtons() {
+    const leftRail = $('enterpriseOperationsRail');
+    const rightRail = $('enterpriseLiveRail');
+    const leftButton = leftRail?.querySelector('.ec-rail-toggle');
+    const rightButton = rightRail?.querySelector('.ec-rail-toggle');
+    const leftOpen = Boolean(leftRail && !leftRail.classList.contains('closed') && document.body.classList.contains('ec-left-open'));
+    const rightOpen = Boolean(rightRail && !rightRail.classList.contains('closed') && document.body.classList.contains('ec-right-open'));
+    if (leftButton) {
+      leftButton.textContent = leftOpen ? '‹' : '›';
+      leftButton.setAttribute('aria-label', leftOpen ? 'Close Operations panel' : 'Open Operations panel');
+      leftButton.setAttribute('aria-expanded', String(leftOpen));
     }
-    if (right) {
-      right.setAttribute('aria-expanded', String(rightOpen));
-      right.querySelector('.ec-tab-arrow').textContent = rightOpen ? '›' : '‹';
-      right.title = rightOpen ? 'Close Live Activity panel' : 'Open Live Activity panel';
+    if (rightButton) {
+      rightButton.textContent = rightOpen ? '›' : '‹';
+      rightButton.setAttribute('aria-label', rightOpen ? 'Close Live Activity panel' : 'Open Live Activity panel');
+      rightButton.setAttribute('aria-expanded', String(rightOpen));
     }
   }
 
-  function installPermanentTabs() {
-    if (!$('ecOperationsFixedTab')) {
-      const left = document.createElement('button');
-      left.id = 'ecOperationsFixedTab';
-      left.type = 'button';
-      left.className = 'ec-fixed-rail-tab left';
-      left.innerHTML = '<span class="ec-tab-label">Operations</span><span class="ec-tab-arrow">‹</span>';
-      left.addEventListener('click', () => toggleRail('left'));
-      document.body.appendChild(left);
-    }
-    if (!$('ecLiveFixedTab')) {
-      const right = document.createElement('button');
-      right.id = 'ecLiveFixedTab';
-      right.type = 'button';
-      right.className = 'ec-fixed-rail-tab right';
-      right.innerHTML = '<span class="ec-tab-arrow">›</span><span class="ec-tab-label">Live</span>';
-      right.addEventListener('click', () => toggleRail('right'));
-      document.body.appendChild(right);
-    }
-    syncTabs();
+  function removeProtrudingTabs() {
+    $('ecOperationsFixedTab')?.remove();
+    $('ecLiveFixedTab')?.remove();
+    document.querySelectorAll('.ec-fixed-rail-tab').forEach((node) => node.remove());
   }
 
   function replaceRailHeaderToggles() {
@@ -182,6 +167,7 @@
       rightButton.dataset.ecFixed = 'true';
       rightButton.onclick = () => toggleRail('right');
     }
+    syncRailButtons();
   }
 
   function initialize() {
@@ -189,7 +175,7 @@
     initialized = true;
     installStyles();
     retireOriginalOperationsPanel();
-    installPermanentTabs();
+    removeProtrudingTabs();
     replaceRailHeaderToggles();
     calculatePanelTop();
 
@@ -199,6 +185,7 @@
     }, { passive: true });
 
     window.setTimeout(() => {
+      removeProtrudingTabs();
       replaceRailHeaderToggles();
       calculatePanelTop();
     }, 750);
