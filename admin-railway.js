@@ -8,7 +8,7 @@
   const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
   const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-3";
   const NEW_SERVICE_WORKSPACE_SCRIPT = "/admin-new-service-workspace.js?v=20260804-1";
-  const DESKTOP_CLOUD_SYNC_SCRIPT = "/admin-desktop-cloud-sync.js?v=20260804-2";
+  const DESKTOP_CLOUD_SYNC_SCRIPT = "/admin-desktop-cloud-sync.js?v=20260804-3";
   const DESKTOP_EXPERIENCE_SCRIPT = "/admin-desktop-experience.js?v=20260804-1";
   const DESKTOP_STABILITY_SCRIPT = "/admin-desktop-stability-fix.js?v=20260804-5";
 
