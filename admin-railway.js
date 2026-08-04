@@ -1,9 +1,9 @@
 (function () {
   "use strict";
 
-  const CORE_SCRIPT = "https://cdn.jsdelivr.net/gh/sngwabil/sulandra-website@27e9241555ed630bf95c892141d5cce50b975755/admin-railway.js";
+  const CORE_SCRIPT = "https://cdn.jsdelivr.net/gh/sngwabil/sulandra-website@d9e21e92dd795fff48713445471450fd71b68409/admin-railway.js";
   const SCRIPTS = [
-    ["/interview-admin-scheduler.js?v=20260804-3", "data-interview-admin-scheduler"],
+    ["/interview-admin-scheduler.js?v=20260804-4", "data-interview-admin-scheduler"],
     ["/admin-enterprise-command-center.js?v=20260804-3", "data-enterprise-command-center"],
     ["/admin-three-panel-layout.js?v=20260804-3", "data-admin-three-panel-layout"],
     ["/admin-three-panel-consolidation.js?v=20260804-3", "data-admin-three-panel-consolidation"],
@@ -101,7 +101,7 @@
     ensureDepartmentWorkspace();
     window.dispatchEvent(new Event("sulandra:admin-enhancements-loaded"));
     requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
+      requestAnimation(function () {
         revealPortal();
         showStartupWarning(failed);
       });
