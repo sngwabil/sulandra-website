@@ -1,0 +1,1 @@
+Force deployment of feature/spire-ehr-platform after removing the temporary Schedule interview shortcut. The restored interview flow is available only from the applicant folder through Interview → Continue.
