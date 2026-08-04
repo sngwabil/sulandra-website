@@ -6,6 +6,7 @@
   const ENTERPRISE_SCRIPT = "/admin-enterprise-command-center.js?v=20260804-1";
   const THREE_PANEL_SCRIPT = "/admin-three-panel-layout.js?v=20260804-1";
   const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
+  const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -45,7 +46,7 @@
         <p style="margin:0;color:#dbeafe;font-size:13px;line-height:1.5;">Create, schedule, upload and manage intranet announcements, images, videos, animations, cards, banners and timed slideshows.</p>
         <div style="margin-top:14px;font-weight:900;font-size:13px;">Open Control Center →</div>
       </a>
-      <a href="education-portal.html" style="display:block;text-decoration:none;background:linear-gradient(135deg,#064e3b,#0f766e);color:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(15,118,110,.16);">
+      <a href="education-portal.html" target="_blank" rel="noopener" style="display:block;text-decoration:none;background:linear-gradient(135deg,#064e3b,#0f766e);color:#fff;border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(15,118,110,.16);">
         <div style="font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#99f6e4;">Education</div>
         <h2 style="margin:7px 0 5px;color:#fff;font-size:20px;">Sulandra Learning Center</h2>
         <p style="margin:0;color:#ccfbf1;font-size:13px;line-height:1.5;">Open the production education portal using the current administrator profile and view approved curriculum and live employee records.</p>
@@ -61,8 +62,14 @@
       const onboardingItem = Array.from(topNav.children).find((item) =>
         item.querySelector('a[data-module="onboarding"]')
       );
-      topNav.insertBefore(makeTopLink("adminEmployeePortalTopLink", "employee-portal.html?stay=1&source=admin", "Employee Portal", "Open the employee experience using your current administrator identity"), onboardingItem || null);
-      topNav.insertBefore(makeTopLink("adminIntranetTopLink", "intranet.html", "Sulandra Intranet", "Open the Sulandra Enterprise Intranet Portal"), onboardingItem || null);
+      const employee = makeTopLink("adminEmployeePortalTopLink", "employee-portal.html?stay=1&source=admin", "Employee Portal", "Open the employee experience using your current administrator identity");
+      const intranet = makeTopLink("adminIntranetTopLink", "intranet.html", "Sulandra Intranet", "Open the Sulandra Enterprise Intranet Portal");
+      employee.querySelector('a').target = "_blank";
+      employee.querySelector('a').rel = "noopener";
+      intranet.querySelector('a').target = "_blank";
+      intranet.querySelector('a').rel = "noopener";
+      topNav.insertBefore(employee, onboardingItem || null);
+      topNav.insertBefore(intranet, onboardingItem || null);
     }
 
     const sideNav = document.getElementById("sideModuleNav");
@@ -99,7 +106,9 @@
     loadScriptOnce(INTERVIEW_SCRIPT, "data-interview-admin-scheduler", "The Sulandra interview scheduler could not be loaded.");
     loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.", function () {
       loadScriptOnce(THREE_PANEL_SCRIPT, "data-admin-three-panel-layout", "The Sulandra three-panel administration layout could not be loaded.", function () {
-        loadScriptOnce(PANEL_CONSOLIDATION_SCRIPT, "data-admin-three-panel-consolidation", "The Sulandra panel consolidation repair could not be loaded.");
+        loadScriptOnce(PANEL_CONSOLIDATION_SCRIPT, "data-admin-three-panel-consolidation", "The Sulandra panel consolidation repair could not be loaded.", function () {
+          loadScriptOnce(WORKSPACE_ROUTER_SCRIPT, "data-admin-workspace-router", "The Sulandra unified workspace router could not be loaded.");
+        });
       });
     });
   }
