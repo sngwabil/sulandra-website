@@ -73,20 +73,6 @@ const requiredColumns = {
 };
 
 try {
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE "EmployeeApplication"
-       DROP CONSTRAINT IF EXISTS "EmployeeApplication_workflowStatus_check"`,
-  );
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE "EmployeeApplication"
-       ADD CONSTRAINT "EmployeeApplication_workflowStatus_check"
-       CHECK ("workflowStatus" IN (
-         'RECEIVED','REVIEWING','DOCUMENTS_NEEDED','INTERVIEW','OFFER_PENDING',
-         'OFFER_ACCEPTED','OFFER','HIRE','HIRED','NOT_SELECTED','WITHDRAWN',
-         'TERMINATED','POSITION_FILLED','ARCHIVED'
-       ))`,
-  );
-
   const rows = await prisma.$queryRawUnsafe(
     `SELECT table_name AS "tableName", column_name AS "columnName"
        FROM information_schema.columns
@@ -118,22 +104,28 @@ try {
   if (!enumRows.some(({ label }) => label === 'DOO')) missing.push('UserRole.DOO');
 
   const roleConstraintRows = await prisma.$queryRawUnsafe(
-    `SELECT pg_get_constraintdef(oid) AS "definition"
-       FROM pg_constraint
-      WHERE conname = 'EmployeeApplication_role_check'
-        AND conrelid = '"EmployeeApplication"'::regclass`,
+    `SELECT EXISTS (
+       SELECT 1
+         FROM pg_constraint
+        WHERE conname = 'EmployeeApplication_role_check'
+          AND conrelid = '"EmployeeApplication"'::regclass
+          AND pg_get_constraintdef(oid) ILIKE '%DOO%'
+     ) AS "isReady"`,
   );
-  const roleConstraint = String(roleConstraintRows[0]?.definition || '');
-  if (!roleConstraint.includes('DOO')) missing.push('EmployeeApplication_role_check.DOO');
+  if (!roleConstraintRows[0]?.isReady) {
+    missing.push('EmployeeApplication_role_check.DOO');
+  }
 
   const workflowConstraintRows = await prisma.$queryRawUnsafe(
-    `SELECT pg_get_constraintdef(oid) AS "definition"
-       FROM pg_constraint
-      WHERE conname = 'EmployeeApplication_workflowStatus_check'
-        AND conrelid = '"EmployeeApplication"'::regclass`,
+    `SELECT EXISTS (
+       SELECT 1
+         FROM pg_constraint
+        WHERE conname = 'EmployeeApplication_workflowStatus_check'
+          AND conrelid = '"EmployeeApplication"'::regclass
+          AND pg_get_constraintdef(oid) ILIKE '%OFFER_ACCEPTED%'
+     ) AS "isReady"`,
   );
-  const workflowConstraint = String(workflowConstraintRows[0]?.definition || '');
-  if (!workflowConstraint.includes('OFFER_ACCEPTED')) {
+  if (!workflowConstraintRows[0]?.isReady) {
     missing.push('EmployeeApplication_workflowStatus_check.OFFER_ACCEPTED');
   }
 
