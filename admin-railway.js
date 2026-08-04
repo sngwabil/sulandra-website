@@ -2,6 +2,7 @@
   "use strict";
 
   const CORE_SCRIPT = "https://cdn.jsdelivr.net/gh/sngwabil/sulandra-website@27e9241555ed630bf95c892141d5cce50b975755/admin-railway.js";
+  const INTERVIEW_SCRIPT = "/interview-admin-scheduler.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -77,16 +78,30 @@
     addSettingsControlCards();
   }
 
+  function loadInterviewScheduler() {
+    if (document.querySelector('script[data-interview-admin-scheduler]')) return;
+    const script = document.createElement("script");
+    script.src = INTERVIEW_SCRIPT;
+    script.async = false;
+    script.dataset.interviewAdminScheduler = "true";
+    script.onerror = function () {
+      console.error("The Sulandra interview scheduler could not be loaded.");
+    };
+    document.head.appendChild(script);
+  }
+
   function loadCoreAdminApplication() {
     const script = document.createElement("script");
     script.src = CORE_SCRIPT;
     script.async = false;
     script.onload = function () {
+      loadInterviewScheduler();
       addAdminPortalLinks();
       window.setTimeout(addAdminPortalLinks, 250);
     };
     script.onerror = function () {
       console.error("The core Sulandra admin controller could not be loaded.");
+      loadInterviewScheduler();
       addAdminPortalLinks();
     };
     document.head.appendChild(script);
