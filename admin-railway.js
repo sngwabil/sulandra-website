@@ -5,6 +5,7 @@
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
   const SETTINGS_KEY = "sulandra:admin:company-settings";
+  const TASKBAR_KEY = "sulandra:admin:taskbar-open";
   const $ = (id) => document.getElementById(id);
   let applications = [];
   let jobOpenings = [];
@@ -47,12 +48,126 @@
     document.querySelectorAll("#topModuleNav [data-module], #sideModuleNav [data-module]").forEach((n) => n.classList.toggle("active", n.dataset.module === key));
     document.querySelectorAll(".module").forEach((n) => n.classList.remove("active"));
     $(`module-${key}`)?.classList.add("active");
+    if (window.innerWidth <= 980) setTaskbarOpen(false);
   }
 
   function activatePanel(key) {
     document.querySelectorAll("[data-onboarding-panel]").forEach((n) => n.classList.toggle("active", n.dataset.onboardingPanel === key));
     document.querySelectorAll(".onboarding-panel").forEach((n) => n.classList.toggle("active", n.id === `onboarding-${key}`));
   }
+
+  function installSlidingTaskbar() {
+    const sidebar = document.querySelector(".sidebar");
+    const grid = document.querySelector(".grid");
+    if (!sidebar || !grid || $("operationsTaskbarToggle")) return;
+
+    sidebar.id = "operationsTaskbar";
+    sidebar.setAttribute("aria-label", "Operations taskbar");
+
+    const style = document.createElement("style");
+    style.id = "operationsTaskbarStyles";
+    style.textContent = `
+      .grid { transition: grid-template-columns .28s ease, gap .28s ease; }
+      .sidebar { position:relative; transition:transform .28s ease, opacity .22s ease; }
+      .taskbar-toggle {
+        position:fixed; left:14px; top:50%; transform:translateY(-50%);
+        z-index:1850; width:46px; height:52px; border:0; border-radius:0 14px 14px 0;
+        background:var(--primary); color:#fff; box-shadow:0 8px 24px rgba(0,75,141,.28);
+        cursor:pointer; font-size:22px; font-weight:900; display:grid; place-items:center;
+        transition:left .28s ease, background .2s ease;
+      }
+      .taskbar-toggle:hover { background:var(--secondary); }
+      .taskbar-toggle span { transition:transform .28s ease; }
+      body.taskbar-open .taskbar-toggle { left:max(14px, calc((100vw - 1200px)/2 + 280px)); }
+      body.taskbar-open .taskbar-toggle span { transform:rotate(180deg); }
+      body.taskbar-closed .grid { grid-template-columns:0 minmax(0,1fr); gap:0; }
+      body.taskbar-closed .sidebar { transform:translateX(-115%); opacity:0; pointer-events:none; overflow:hidden; }
+      .taskbar-scrim { display:none; }
+      @media (max-width:980px) {
+        .grid { display:block; }
+        .sidebar {
+          position:fixed; top:0; left:0; bottom:0; z-index:1800; width:min(320px,86vw);
+          overflow-y:auto; border-radius:0 16px 16px 0; padding-top:28px;
+          transform:translateX(-110%); opacity:1;
+        }
+        body.taskbar-open .sidebar { transform:translateX(0); }
+        body.taskbar-closed .sidebar { transform:translateX(-110%); opacity:1; }
+        body.taskbar-open .taskbar-toggle { left:min(320px,86vw); }
+        .taskbar-scrim {
+          position:fixed; inset:0; z-index:1750; background:rgba(15,23,42,.48);
+        }
+        body.taskbar-open .taskbar-scrim { display:block; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    const toggle = document.createElement("button");
+    toggle.id = "operationsTaskbarToggle";
+    toggle.className = "taskbar-toggle";
+    toggle.type = "button";
+    toggle.setAttribute("aria-controls", "operationsTaskbar");
+    toggle.innerHTML = '<span aria-hidden="true">›</span><span class="sr-only">Toggle operations taskbar</span>';
+
+    const scrim = document.createElement("div");
+    scrim.id = "operationsTaskbarScrim";
+    scrim.className = "taskbar-scrim";
+    scrim.setAttribute("aria-hidden", "true");
+
+    document.body.append(toggle, scrim);
+    toggle.addEventListener("click", () => setTaskbarOpen(!document.body.classList.contains("taskbar-open")));
+    scrim.addEventListener("click", () => setTaskbarOpen(false));
+
+    const saved = localStorage.getItem(TASKBAR_KEY);
+    setTaskbarOpen(saved === null ? window.innerWidth > 980 : saved === "true", false);
+  }
+
+  function setTaskbarOpen(open, persist = true) {
+    document.body.classList.toggle("taskbar-open", open);
+    document.body.classList.toggle("taskbar-closed", !open);
+    const toggle = $("operationsTaskbarToggle");
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.title = open ? "Hide operations taskbar" : "Show operations taskbar";
+    }
+    if (persist) localStorage.setItem(TASKBAR_KEY, String(open));
+  }
+
+  function openInterviewScheduler(candidateName = "Selected Candidate") {
+    const modal = $("interviewModal");
+    const name = $("interviewApplicantName");
+    if (!modal) {
+      toast("Scheduler unavailable", "The interview scheduler could not be found on this page.");
+      return;
+    }
+    if (name) name.textContent = candidateName || "Selected Candidate";
+    modal.style.display = "block";
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    const dateInput = $("interviewDateInput");
+    if (dateInput) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const minDate = tomorrow.toISOString().slice(0, 10);
+      dateInput.min = minDate;
+      if (!dateInput.value) dateInput.value = minDate;
+      setTimeout(() => dateInput.focus(), 0);
+    }
+  }
+
+  function closeInterviewScheduler() {
+    const modal = $("interviewModal");
+    if (!modal) return;
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  window.openInterviewModal = openInterviewScheduler;
+  window.closeInterviewModal = closeInterviewScheduler;
+  window.handleStatusChange = function (statusValue) {
+    renderApplications();
+    if (String(statusValue).toUpperCase() === "INTERVIEW") openInterviewScheduler("Selected Candidate");
+  };
 
   const appName = (app) => [app.firstName, app.middleName, app.lastName].filter(Boolean).join(" ") || "Applicant";
   const appStatus = (app) => String(app.workflowStatus || app.status || "RECEIVED").toUpperCase();
@@ -76,7 +191,7 @@
     const score = app.assessmentScore == null ? "—" : app.assessmentScore;
     const role = app.jobTitle || title(appRole(app));
     if (archived) return `<tr><td>${esc(date)}</td><td><strong>${esc(appName(app))}</strong><div class="muted">${esc(app.email || app.phone || "")}</div></td><td>${esc(role)}</td><td>${esc(score)}</td><td><button class="btn btn-primary" data-application-id="${esc(app.id)}">Open folder</button></td></tr>`;
-    return `<tr><td>${esc(date)}</td><td><strong>${esc(appName(app))}</strong><div class="muted">${esc(app.email || app.phone || "")}</div></td><td>${esc(role)}</td><td><span class="score">${esc(score)}</span></td><td><span class="status-pill">${esc(title(appStatus(app)))}</span></td><td><button class="btn btn-primary" data-application-id="${esc(app.id)}">Open folder</button></td></tr>`;
+    return `<tr><td>${esc(date)}</td><td><strong>${esc(appName(app))}</strong><div class="muted">${esc(app.email || app.phone || "")}</div></td><td>${esc(role)}</td><td><span class="score">${esc(score)}</span></td><td><span class="status-pill">${esc(title(appStatus(app)))}</span></td><td><button class="btn btn-primary" data-application-id="${esc(app.id)}">Open folder</button>${appStatus(app) === "INTERVIEW" ? ` <button class="btn btn-secondary" data-interview-id="${esc(app.id)}">Schedule interview</button>` : ""}</td></tr>`;
   }
 
   function renderApplications() {
@@ -227,7 +342,6 @@
     toast("Settings saved", "Company and HR display settings were saved in this browser.");
   };
 
-  // Disable the legacy inline DOM-moving archive routine. Railway status is the source of truth.
   window.syncArchivedJobsContainer = function () {};
 
   function bindEvents() {
@@ -239,12 +353,27 @@
     $("exportBtn")?.addEventListener("click", exportApplications);
     $("closeModalBtn")?.addEventListener("click", () => { $("detailsModal").style.display = "none"; $("modalBody")?.replaceChildren(); });
     $("detailsModal")?.addEventListener("click", (e) => { if (e.target === $("detailsModal")) $("closeModalBtn")?.click(); });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("detailsModal")?.style.display === "block") $("closeModalBtn")?.click(); });
-    const folderClick = (e) => { const b = e.target.closest("[data-application-id]"); if (b) openFolder(b.dataset.applicationId); };
+    $("interviewModal")?.addEventListener("click", (e) => { if (e.target === $("interviewModal")) closeInterviewScheduler(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if ($("interviewModal")?.style.display === "block") closeInterviewScheduler();
+      else if ($("detailsModal")?.style.display === "block") $("closeModalBtn")?.click();
+      else if (document.body.classList.contains("taskbar-open") && window.innerWidth <= 980) setTaskbarOpen(false);
+    });
+    const folderClick = (e) => {
+      const interview = e.target.closest("[data-interview-id]");
+      if (interview) {
+        const app = applications.find((a) => String(a.id) === String(interview.dataset.interviewId));
+        openInterviewScheduler(appName(app || {}));
+        return;
+      }
+      const b = e.target.closest("[data-application-id]");
+      if (b) openFolder(b.dataset.applicationId);
+    };
     $("applicantTable")?.addEventListener("click", folderClick);
     $("archivedApplicantTable")?.addEventListener("click", folderClick);
     $("search")?.addEventListener("input", renderApplications);
-    $("statusFilter")?.addEventListener("change", renderApplications);
+    $("statusFilter")?.addEventListener("change", (event) => window.handleStatusChange(event.target.value));
     $("jobFilter")?.addEventListener("change", renderApplications);
     $("jobOpeningForm")?.addEventListener("submit", saveOpening);
     $("cancelOpeningEdit")?.addEventListener("click", resetOpeningForm);
@@ -254,6 +383,7 @@
   }
 
   async function initialize() {
+    installSlidingTaskbar();
     bindEvents();
     loadSettings();
     try {
