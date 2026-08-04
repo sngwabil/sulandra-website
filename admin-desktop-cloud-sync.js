@@ -10,7 +10,6 @@ let hydrating=true;
 let saveTimer=0;
 let originalSetItem=null;
 let cloudPicker=null;
-
 function session(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')||{};}catch{return {};}}
 function userId(){const s=session();return String(s.email||s.username||s.userId||'administrator').toLowerCase();}
 function profileKey(){return PROFILE_PREFIX+userId();}
@@ -30,7 +29,9 @@ function openCloudPicker(){if(!cloudPicker){cloudPicker=document.createElement('
 function installWallpaperClickTakeover(){document.addEventListener('click',event=>{const trigger=event.target.closest('[data-wallpaper],[data-dx-wallpaper],[data-desktop-wallpaper]');if(!trigger)return;event.preventDefault();event.stopImmediatePropagation();openCloudPicker();},true);}
 function installWallpaperInterceptor(){document.addEventListener('change',event=>{const input=event.target;if(!(input instanceof HTMLInputElement)||input.type!=='file')return;if(input.id!=='dxWallpaperInput'&&!input.matches('[data-desktop-wallpaper-input]'))return;const file=input.files?.[0];if(!file)return;event.preventDefault();event.stopImmediatePropagation();uploadWallpaperFile(file,input).catch(error=>{console.error(error);notify(error.message||'The desktop image could not be saved.',true);input.value='';});},true);}
 async function hydrate(){installStorageSync();try{const data=await request('/api/admin/desktop-profile');const profile=data?.profile&&typeof data.profile==='object'?data.profile:{};const remoteWallpapers=data?.wallpapers&&typeof data.wallpapers==='object'?data.wallpapers:{};if(Object.keys(profile).length)(originalSetItem||Storage.prototype.setItem).call(localStorage,profileKey(),JSON.stringify(profile));for(const service of ['community','homehealth','nemt']){if(typeof remoteWallpapers[service]==='string'&&remoteWallpapers[service])(originalSetItem||Storage.prototype.setItem).call(localStorage,wallpaperKey(service),remoteWallpapers[service]);}window.dispatchEvent(new CustomEvent('sulandra:desktop-profile-hydrated',{detail:data}));}catch(error){console.warn('[desktop cloud sync] using local cache',error);}finally{hydrating=false;document.documentElement.dataset.desktopCloudReady='true';window.dispatchEvent(new Event('sulandra:desktop-cloud-ready'));}}
+function loadFailureGuard(){if(document.querySelector('script[data-admin-workspace-failure-guard]'))return;const script=document.createElement('script');script.src='/admin-workspace-failure-guard.js?v=20260804-feature-1';script.async=false;script.setAttribute('data-admin-workspace-failure-guard','true');script.onerror=()=>console.error('The blank workspace failure guard could not be loaded.');document.head.appendChild(script);}
 installWallpaperClickTakeover();
 installWallpaperInterceptor();
+loadFailureGuard();
 window.SulandraDesktopCloud={ready:hydrate(),save:saveCloud,uploadWallpaperFile,openWallpaperPicker:openCloudPicker};
 })();
