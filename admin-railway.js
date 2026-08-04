@@ -9,6 +9,7 @@
   const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-3";
   const NEW_SERVICE_WORKSPACE_SCRIPT = "/admin-new-service-workspace.js?v=20260804-1";
   const DESKTOP_EXPERIENCE_SCRIPT = "/admin-desktop-experience.js?v=20260804-1";
+  const DESKTOP_STABILITY_SCRIPT = "/admin-desktop-stability-fix.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -111,7 +112,9 @@
         loadScriptOnce(PANEL_CONSOLIDATION_SCRIPT, "data-admin-three-panel-consolidation", "The Sulandra panel consolidation repair could not be loaded.", function () {
           loadScriptOnce(WORKSPACE_ROUTER_SCRIPT, "data-admin-workspace-router", "The Sulandra unified workspace router could not be loaded.", function () {
             loadScriptOnce(NEW_SERVICE_WORKSPACE_SCRIPT, "data-admin-new-service-workspace", "The Sulandra service provisioning workspace could not be loaded.", function () {
-              loadScriptOnce(DESKTOP_EXPERIENCE_SCRIPT, "data-admin-desktop-experience", "The Sulandra desktop workspace experience could not be loaded.");
+              loadScriptOnce(DESKTOP_EXPERIENCE_SCRIPT, "data-admin-desktop-experience", "The Sulandra desktop workspace experience could not be loaded.", function () {
+                loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.");
+              });
             });
           });
         });
