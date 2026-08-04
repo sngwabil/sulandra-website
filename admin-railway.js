@@ -8,6 +8,7 @@
   const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
   const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-3";
   const NEW_SERVICE_WORKSPACE_SCRIPT = "/admin-new-service-workspace.js?v=20260804-1";
+  const DESKTOP_CLOUD_SYNC_SCRIPT = "/admin-desktop-cloud-sync.js?v=20260804-1";
   const DESKTOP_EXPERIENCE_SCRIPT = "/admin-desktop-experience.js?v=20260804-1";
   const DESKTOP_STABILITY_SCRIPT = "/admin-desktop-stability-fix.js?v=20260804-5";
 
@@ -105,17 +106,27 @@
     document.head.appendChild(script);
   }
 
+  function loadDesktopExperience() {
+    loadScriptOnce(DESKTOP_EXPERIENCE_SCRIPT, "data-admin-desktop-experience", "The Sulandra desktop workspace experience could not be loaded.", function () {
+      loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.");
+    });
+  }
+
+  function loadCloudThenDesktop() {
+    loadScriptOnce(DESKTOP_CLOUD_SYNC_SCRIPT, "data-admin-desktop-cloud-sync", "The Sulandra desktop cloud profile could not be loaded.", function () {
+      Promise.resolve(window.SulandraDesktopCloud?.ready)
+        .catch(function (error) { console.warn("Desktop cloud profile unavailable; using cached settings.", error); })
+        .finally(loadDesktopExperience);
+    });
+  }
+
   function loadEnhancements() {
     loadScriptOnce(INTERVIEW_SCRIPT, "data-interview-admin-scheduler", "The Sulandra interview scheduler could not be loaded.");
     loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.", function () {
       loadScriptOnce(THREE_PANEL_SCRIPT, "data-admin-three-panel-layout", "The Sulandra three-panel administration layout could not be loaded.", function () {
         loadScriptOnce(PANEL_CONSOLIDATION_SCRIPT, "data-admin-three-panel-consolidation", "The Sulandra panel consolidation repair could not be loaded.", function () {
           loadScriptOnce(WORKSPACE_ROUTER_SCRIPT, "data-admin-workspace-router", "The Sulandra unified workspace router could not be loaded.", function () {
-            loadScriptOnce(NEW_SERVICE_WORKSPACE_SCRIPT, "data-admin-new-service-workspace", "The Sulandra service provisioning workspace could not be loaded.", function () {
-              loadScriptOnce(DESKTOP_EXPERIENCE_SCRIPT, "data-admin-desktop-experience", "The Sulandra desktop workspace experience could not be loaded.", function () {
-                loadScriptOnce(DESKTOP_STABILITY_SCRIPT, "data-admin-desktop-stability", "The Sulandra desktop stability controls could not be loaded.");
-              });
-            });
+            loadScriptOnce(NEW_SERVICE_WORKSPACE_SCRIPT, "data-admin-new-service-workspace", "The Sulandra service provisioning workspace could not be loaded.", loadCloudThenDesktop);
           });
         });
       });
