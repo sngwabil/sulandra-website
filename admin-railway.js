@@ -4,6 +4,7 @@
   const CORE_SCRIPT = "https://cdn.jsdelivr.net/gh/sngwabil/sulandra-website@27e9241555ed630bf95c892141d5cce50b975755/admin-railway.js";
   const INTERVIEW_SCRIPT = "/interview-admin-scheduler.js?v=20260804-1";
   const ENTERPRISE_SCRIPT = "/admin-enterprise-command-center.js?v=20260804-1";
+  const THREE_PANEL_SCRIPT = "/admin-three-panel-layout.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
     const item = document.createElement("li");
@@ -79,19 +80,25 @@
     addSettingsControlCards();
   }
 
-  function loadScriptOnce(src, marker, errorMessage) {
-    if (document.querySelector(`script[${marker}]`)) return;
+  function loadScriptOnce(src, marker, errorMessage, onload) {
+    if (document.querySelector(`script[${marker}]`)) {
+      if (onload) onload();
+      return;
+    }
     const script = document.createElement("script");
     script.src = src;
     script.async = false;
     script.setAttribute(marker, "true");
+    if (onload) script.onload = onload;
     script.onerror = function () { console.error(errorMessage); };
     document.head.appendChild(script);
   }
 
   function loadEnhancements() {
     loadScriptOnce(INTERVIEW_SCRIPT, "data-interview-admin-scheduler", "The Sulandra interview scheduler could not be loaded.");
-    loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.");
+    loadScriptOnce(ENTERPRISE_SCRIPT, "data-enterprise-command-center", "The Sulandra enterprise command center could not be loaded.", function () {
+      loadScriptOnce(THREE_PANEL_SCRIPT, "data-admin-three-panel-layout", "The Sulandra three-panel administration layout could not be loaded.");
+    });
   }
 
   function loadCoreAdminApplication() {
