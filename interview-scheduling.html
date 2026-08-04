@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Interview Appointment | Sulandra Health</title>
+  <meta name="description" content="Securely choose or review your Sulandra Health interview appointment.">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root{--navy:#0b3158;--blue:#075b9c;--sky:#dff2ff;--gold:#d4af37;--ink:#17324d;--muted:#64748b;--line:#d8e5ef;--bg:#f4f8fb;--success:#166534;--danger:#9b1c1c}
+    *{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:linear-gradient(145deg,#eef6fb,#fff 55%,#edf7fb);color:var(--ink);min-height:100vh}.shell{width:min(980px,calc(100% - 28px));margin:36px auto}.brand{display:flex;justify-content:center;margin-bottom:22px}.brand img{width:min(290px,76vw);height:auto}.card{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 24px 70px rgba(16,49,82,.14);overflow:hidden}.hero{padding:30px;background:linear-gradient(135deg,#0b3158,#087bb6);color:#fff;border-bottom:5px solid var(--gold)}.hero small{font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#ccecff}.hero h1{margin:7px 0 8px;font-size:clamp(28px,5vw,42px)}.hero p{margin:0;color:#e6f6ff;line-height:1.6}.body{padding:28px}.notice{border-radius:14px;padding:14px 16px;margin-bottom:18px;background:#eef7ff;border:1px solid #cde4f7;line-height:1.55}.notice.error{background:#fff1f1;border-color:#ffcaca;color:var(--danger)}.notice.success{background:#eaf8ef;border-color:#bfe9ce;color:var(--success)}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}.meta div{border:1px solid var(--line);border-radius:14px;padding:13px;background:#fbfdff}.meta strong{display:block;font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}.slots{display:grid;gap:12px;margin-top:18px}.slot{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff;cursor:pointer;transition:.2s}.slot:hover{border-color:#8ebbd8;transform:translateY(-1px)}.slot.disabled{opacity:.56;cursor:not-allowed;background:#f7f8fa}.slot.selected{border:2px solid var(--blue);background:#edf7ff}.slot input{width:20px;height:20px}.slot-title{font-weight:900;font-size:17px;color:var(--navy)}.slot-detail{color:var(--muted);font-size:14px;margin-top:3px}.badge{font-size:11px;font-weight:900;text-transform:uppercase;border-radius:999px;padding:6px 9px;background:#eef4fa;color:var(--blue)}.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.btn{border:0;border-radius:12px;padding:13px 18px;font-weight:900;font-size:15px;cursor:pointer}.btn.primary{background:var(--blue);color:#fff}.btn.secondary{background:#eef4fa;color:var(--navy)}.btn:disabled{opacity:.55;cursor:not-allowed}.risk{display:flex;gap:10px;align-items:flex-start;border:1px solid #f6d28b;background:#fff8e8;padding:14px;border-radius:14px;margin-top:18px}.risk input{margin-top:4px}.loading{text-align:center;padding:46px 20px;color:var(--muted)}.footer{text-align:center;color:var(--muted);font-size:13px;padding:18px}.hidden{display:none!important}@media(max-width:720px){.shell{margin:16px auto}.hero,.body{padding:20px}.meta{grid-template-columns:1fr}.slot{grid-template-columns:auto 1fr}.badge{grid-column:2}.actions{display:grid}.btn{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand"><img src="/assets/mainlogo.png" alt="Sulandra Health"></div>
+    <section class="card">
+      <header class="hero">
+        <small>Sulandra Health Human Resources Department</small>
+        <h1>Choose Interview Appointment</h1>
+        <p>Review the available appointments below and select the date and time that works best for you.</p>
+      </header>
+      <div class="body">
+        <div id="loading" class="loading">Loading your secure interview invitation…</div>
+        <div id="content" class="hidden">
+          <div id="message" class="notice hidden"></div>
+          <h2 id="greeting"></h2>
+          <p id="intro"></p>
+          <div class="meta">
+            <div><strong>Position</strong><span id="position">—</span></div>
+            <div><strong>Application reference</strong><span id="reference">—</span></div>
+            <div><strong>Selection deadline</strong><span id="deadline">—</span></div>
+          </div>
+          <div id="currentBox" class="notice success hidden"></div>
+          <h3 id="slotsHeading">Available appointments</h3>
+          <div id="slots" class="slots"></div>
+          <label id="riskBox" class="risk hidden"><input id="riskAck" type="checkbox"><span>I understand that changing my current appointment releases it immediately and another applicant may select it.</span></label>
+          <div class="actions"><button id="submitBtn" class="btn primary" type="button" disabled>Confirm appointment</button></div>
+        </div>
+      </div>
+      <div class="footer">This secure page is intended only for the applicant named in the invitation.</div>
+    </section>
+  </main>
+<script>
+(function(){
+  'use strict';
+  const API_BASE='https://sulandra-website-production-5fc4.up.railway.app';
+  const token=new URLSearchParams(location.search).get('token')||'';
+  const $=id=>document.getElementById(id);
+  let data=null,selectedId='';
+  const format=value=>new Intl.DateTimeFormat('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value));
+  function showMessage(text,type='error'){const n=$('message');n.textContent=text;n.className='notice '+type;n.classList.remove('hidden');}
+  function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));}
+  async function request(path,init={}){const response=await fetch(API_BASE+path,{...init,cache:'no-store',headers:{Accept:'application/json',...(init.body?{'Content-Type':'application/json'}:{}),...(init.headers||{})}});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||'The request could not be completed.');return payload.data??payload;}
+  function render(){
+    $('loading').classList.add('hidden');$('content').classList.remove('hidden');
+    const app=data.applicant||{},inv=data.invitation||{},current=data.selectedSlot;
+    $('greeting').textContent=`Hello ${app.firstName||'Applicant'},`;
+    $('intro').textContent=inv.note||'Please choose one of the available interview appointments below.';
+    $('position').textContent=app.jobTitle||'Position not specified';$('reference').textContent=app.referenceNumber||'—';$('deadline').textContent=inv.expiresAt?format(inv.expiresAt):'—';
+    if(current){$('currentBox').textContent=`Current appointment: ${format(current.startsAt)} · ${String(current.mode||'IN_PERSON').replaceAll('_',' ')} · ${current.locationOrLink||data.companyDetails?.formattedAddress||''}`;$('currentBox').classList.remove('hidden');$('slotsHeading').textContent='Choose another appointment';$('riskBox').classList.remove('hidden');}
+    if(!inv.open)showMessage('This scheduling link is no longer open. Contact Human Resources for assistance.');
+    const slots=Array.isArray(data.slots)?data.slots:[];
+    $('slots').innerHTML=slots.length?slots.map(slot=>{const disabled=Boolean(slot.unavailable)||!inv.open;const selected=Boolean(slot.selectedByApplicant);return `<label class="slot ${disabled?'disabled':''} ${selected?'selected':''}"><input type="radio" name="slot" value="${escapeHtml(slot.id)}" ${disabled?'disabled':''} ${selected?'checked':''}><div><div class="slot-title">${escapeHtml(format(slot.startsAt))}</div><div class="slot-detail">${escapeHtml(String(slot.mode||'IN_PERSON').replaceAll('_',' '))} · ${escapeHtml(slot.locationOrLink||data.companyDetails?.formattedAddress||'Details provided after confirmation')}</div></div><span class="badge">${selected?'Current':disabled?'Unavailable':'Available'}</span></label>`;}).join(''):'<div class="notice">No interview appointments are currently available. Contact Human Resources for assistance.</div>';
+    document.querySelectorAll('input[name="slot"]').forEach(input=>input.addEventListener('change',()=>{selectedId=input.value;updateButton();}));
+    updateButton();
+  }
+  function updateButton(){const current=data?.selectedSlot;const changed=current&&selectedId&&selectedId!==current.id;const allowed=!changed||data.canReschedule;const acknowledged=!changed||$('riskAck').checked;$('submitBtn').disabled=!selectedId||!data?.invitation?.open||!allowed||!acknowledged;$('submitBtn').textContent=changed?'Change appointment':'Confirm appointment';if(changed&&!data.canReschedule&&data.rescheduleBlockedReason)showMessage(data.rescheduleBlockedReason);}
+  $('riskAck').addEventListener('change',updateButton);
+  $('submitBtn').addEventListener('click',async()=>{try{$('submitBtn').disabled=true;$('submitBtn').textContent='Saving…';const current=data.selectedSlot;const changed=current&&selectedId!==current.id;const result=await request(`/public/careers/interviews/${encodeURIComponent(token)}/select`,{method:'POST',body:JSON.stringify({slotId:selectedId,acknowledgedRescheduleRisk:Boolean(changed&&$('riskAck').checked)})});showMessage(`Your interview is confirmed for ${format(result.selectedSlot.startsAt)}. A confirmation email has been sent.`,'success');data.selectedSlot=result.selectedSlot;await load();}catch(error){showMessage(error.message);updateButton();}});
+  async function load(){if(!token){$('loading').classList.add('hidden');$('content').classList.remove('hidden');showMessage('The interview scheduling token is missing from this link.');return;}try{data=await request(`/public/careers/interviews/${encodeURIComponent(token)}`);selectedId=data.selectedSlot?.id||'';render();}catch(error){$('loading').classList.add('hidden');$('content').classList.remove('hidden');showMessage(error.message);}}
+  load();
+})();
+</script>
+</body>
+</html>
