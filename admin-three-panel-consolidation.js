@@ -6,6 +6,9 @@
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
+  let initialized = false;
+  let resizeTimer = 0;
+
   function installStyles() {
     if ($('adminThreePanelConsolidationStyles')) return;
     const style = document.createElement('style');
@@ -44,7 +47,7 @@
 
     const railScroll = $('enterpriseOperationsRail')?.querySelector('.ec-rail-scroll');
     if (railScroll) {
-      const existingLabels = new Set(Array.from(railScroll.querySelectorAll('.ec-rail-tool strong')).map(node => node.textContent.trim().toLowerCase()));
+      const existingLabels = new Set(Array.from(railScroll.querySelectorAll('.ec-rail-tool strong')).map((node) => node.textContent.trim().toLowerCase()));
       const section = document.createElement('section');
       section.className = 'ec-rail-section ec-original-tools-section';
       section.innerHTML = '<h3 class="ec-rail-section-title"><span>Core Portal Navigation</span><span>Live</span></h3>';
@@ -65,13 +68,8 @@
       if (section.querySelector('.ec-rail-tool')) railScroll.prepend(section);
     }
 
-    const candidates = [
-      sideNav.closest('aside'),
-      sideNav.closest('.sidebar'),
-      sideNav.closest('.side-panel'),
-      sideNav.parentElement
-    ].filter(Boolean);
-    const container = candidates.find(node => node !== document.body && !node.classList.contains('main-content')) || sideNav;
+    const candidates = [sideNav.closest('aside'), sideNav.closest('.sidebar'), sideNav.closest('.side-panel'), sideNav.parentElement].filter(Boolean);
+    const container = candidates.find((node) => node !== document.body && !node.classList.contains('main-content')) || sideNav;
     container.classList.add('ec-retired-workspace-sidebar');
   }
 
@@ -138,22 +136,23 @@
   }
 
   function initialize() {
+    if (initialized) return;
+    initialized = true;
     installStyles();
-    calculatePanelTop();
     retireOriginalOperationsPanel();
     installPermanentTabs();
     replaceRailHeaderToggles();
+    calculatePanelTop();
 
-    window.addEventListener('resize', calculatePanelTop, { passive: true });
-    window.addEventListener('scroll', calculatePanelTop, { passive: true });
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(calculatePanelTop, 120);
+    }, { passive: true });
 
-    const observer = new MutationObserver(() => {
-      retireOriginalOperationsPanel();
+    window.setTimeout(() => {
       replaceRailHeaderToggles();
-      installPermanentTabs();
       calculatePanelTop();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+    }, 750);
   }
 
   function waitForPanels(attempt = 0) {
@@ -161,7 +160,7 @@
       initialize();
       return;
     }
-    if (attempt < 120) window.setTimeout(() => waitForPanels(attempt + 1), 100);
+    if (attempt < 80) window.setTimeout(() => waitForPanels(attempt + 1), 100);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => waitForPanels(), { once: true });
