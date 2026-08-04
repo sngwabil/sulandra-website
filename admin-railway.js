@@ -6,7 +6,7 @@
   const ENTERPRISE_SCRIPT = "/admin-enterprise-command-center.js?v=20260804-1";
   const THREE_PANEL_SCRIPT = "/admin-three-panel-layout.js?v=20260804-1";
   const PANEL_CONSOLIDATION_SCRIPT = "/admin-three-panel-consolidation.js?v=20260804-1";
-  const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-2";
+  const WORKSPACE_ROUTER_SCRIPT = "/admin-workspace-router.js?v=20260804-3";
   const NEW_SERVICE_WORKSPACE_SCRIPT = "/admin-new-service-workspace.js?v=20260804-1";
 
   function makeTopLink(id, href, text, title) {
