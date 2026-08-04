@@ -8,10 +8,10 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=spire-api",
-    "build": "node scripts/fix-doo-role-references.mjs && npm run build --workspace=spire-api && node scripts/patch-professional-hr-footer.mjs",
+    "build": "node scripts/install-admin-desktop-profile-routes.mjs && node scripts/fix-doo-role-references.mjs && npm run build --workspace=spire-api && node scripts/patch-professional-hr-footer.mjs",
     "build:web": "node scripts/build-static-site.mjs && node scripts/patch-admin-interview-calendar.mjs && node scripts/fix-interview-scheduler-foreground.mjs",
     "start": "npm run start --workspace=spire-api",
-    "typecheck": "node scripts/fix-doo-role-references.mjs && npm run typecheck --workspace=spire-api",
+    "typecheck": "node scripts/install-admin-desktop-profile-routes.mjs && node scripts/fix-doo-role-references.mjs && npm run typecheck --workspace=spire-api",
     "check": "npm run db:validate && npm run typecheck && npm run build",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
