@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +14,8 @@ const outputDirectory = path.join(
 
 const publicDirectories = [
   'assets',
+  'courses',
+  'education',
   'services',
 ];
 
@@ -68,15 +70,31 @@ for (const entry of entries) {
 }
 
 for (const directory of publicDirectories) {
-  await cp(
-    path.join(repositoryRoot, directory),
-    path.join(outputDirectory, directory),
-    {
-      recursive: true,
-    },
+  try {
+    await cp(
+      path.join(repositoryRoot, directory),
+      path.join(outputDirectory, directory),
+      { recursive: true },
+    );
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+}
+
+const adminPath = path.join(outputDirectory, 'admin.html');
+try {
+  let adminHtml = await readFile(adminPath, 'utf8');
+  const version = '20260805-restored-platform-navigation-1';
+  adminHtml = adminHtml.replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+  adminHtml = adminHtml.replace(
+    '</body>',
+    `  <script src="admin-restored-navigation.js?v=${version}"></script>\n</body>`,
   );
+  await writeFile(adminPath, adminHtml, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
 }
 
 console.log(
-  'Static website prepared in dist-web without admin runtime patches.',
+  'Static website prepared in dist-web with restored intranet, education, employee, service, and admin navigation routes.',
 );
