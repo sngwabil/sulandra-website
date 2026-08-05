@@ -12,6 +12,7 @@ RUN npm ci --include=dev
 
 COPY prisma ./prisma
 COPY scripts ./scripts
+COPY interview-scheduling.html ./interview-scheduling.html
 RUN npm run db:generate
 
 COPY api ./api
