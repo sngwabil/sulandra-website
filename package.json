@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=spire-api",
-    "build": "npm run build:web && npm run build --workspace=spire-api",
+    "build": "npm run db:generate && npm run build:web && npm run build --workspace=spire-api",
     "build:web": "node scripts/build-static-site.mjs",
     "start": "node scripts/production-server.mjs",
     "typecheck": "npm run typecheck --workspace=spire-api",
