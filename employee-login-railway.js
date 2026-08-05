@@ -11,6 +11,18 @@
     message.className = "msg show";
   }
 
+  function safeReturnTarget() {
+    const requested = new URLSearchParams(window.location.search).get("returnTo");
+    if (!requested) return "";
+    try {
+      const resolved = new URL(requested, window.location.origin);
+      if (resolved.origin !== window.location.origin) return "";
+      return resolved.pathname + resolved.search + resolved.hash;
+    } catch {
+      return "";
+    }
+  }
+
   document.getElementById("demo").addEventListener("click", () => {
     window.location.assign("spire-demo.html");
   });
@@ -55,8 +67,10 @@
 
       window.sessionStorage.setItem(TOKEN_KEY, token);
       window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+
+      const requestedTarget = safeReturnTarget();
       window.location.assign(
-        session.role === "ADMINISTRATOR" ? "admin.html" : "employee-portal.html"
+        requestedTarget || (session.role === "ADMINISTRATOR" ? "admin.html" : "employee-portal.html")
       );
     } catch (error) {
       window.sessionStorage.removeItem(TOKEN_KEY);
