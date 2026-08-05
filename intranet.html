@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sulandra Health Intranet</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root{--navy:#082f57;--blue:#075fa8;--sky:#0b85ca;--gold:#c99a2e;--ink:#10233d;--muted:#64748b;--line:#d8e4ef;--soft:#eef5fa;--white:#fff}
+    *{box-sizing:border-box}body{margin:0;background:var(--soft);color:var(--ink);font-family:Inter,"Segoe UI",Arial,sans-serif}a{text-decoration:none;color:inherit}
+    .top{background:linear-gradient(135deg,var(--navy),var(--sky));color:white;border-bottom:5px solid var(--gold)}
+    .top-inner{max-width:1440px;margin:auto;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:14px}.brand img{width:68px;height:68px;object-fit:contain}.brand h1{margin:0;font-size:28px}.brand p{margin:5px 0 0;color:#dceffc}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 15px;border-radius:10px;background:white;color:var(--navy);font-weight:800}.btn.alt{background:#ffffff18;color:white;border:1px solid #ffffff55}
+    .nav{background:#061f3a;color:white;overflow-x:auto}.nav-inner{max-width:1440px;margin:auto;display:flex;gap:4px;padding:0 18px}.nav a{padding:14px 16px;white-space:nowrap;font-weight:800;font-size:14px}.nav a:hover{background:#ffffff18}
+    main{max-width:1440px;margin:auto;padding:28px 22px 70px}.hero{background:white;border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 18px 48px rgba(8,47,87,.12);display:grid;grid-template-columns:1.35fr .65fr}.hero-copy{padding:42px}.eyebrow{color:var(--blue);font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.hero h2{font-size:42px;line-height:1.1;margin:12px 0}.hero p{font-size:18px;color:var(--muted);line-height:1.65}.hero-side{background:linear-gradient(145deg,#dceffc,#8ec4e8);padding:34px;display:flex;flex-direction:column;justify-content:center}.hero-side strong{font-size:22px}.hero-side p{font-size:15px;color:#244560}
+    .section-title{margin:34px 0 16px}.section-title h2{margin:0;font-size:25px}.section-title p{margin:5px 0;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.card{background:white;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 8px 24px rgba(8,47,87,.07);min-height:175px}.card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(8,47,87,.12)}.icon{width:46px;height:46px;border-radius:12px;background:#e0f2fe;color:var(--blue);display:grid;place-items:center;font-size:23px}.card h3{margin:15px 0 7px}.card p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}.card span{display:inline-block;margin-top:16px;color:var(--blue);font-weight:900;font-size:13px}
+    .services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.service{background:linear-gradient(135deg,#fff,#f6fbff);border:1px solid var(--line);border-radius:16px;padding:22px}.service h3{margin:0 0 8px}.service p{color:var(--muted);line-height:1.55}.service a{color:var(--blue);font-weight:900}
+    footer{background:#061f3a;color:#c8d8e7;padding:25px;text-align:center;font-size:13px}
+    @media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}.services{grid-template-columns:1fr 1fr}.hero{grid-template-columns:1fr}.hero h2{font-size:34px}}
+    @media(max-width:620px){.grid,.services{grid-template-columns:1fr}.hero-copy{padding:28px}.brand h1{font-size:23px}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="top-inner"><div class="brand"><img src="/favicon-48x48.png" alt="Sulandra Health"><div><h1>Sulandra Health Intranet</h1><p>Employee, clinical, education, transportation, home-health and administrative operations</p></div></div><div class="actions"><a class="btn" href="/employee-portal.html?stay=1">Employee Portal</a><a class="btn alt" href="/admin.html">Admin Console</a></div></div></header>
+  <nav class="nav"><div class="nav-inner"><a href="/intranet.html">Home</a><a href="/employee-portal.html?stay=1">Employee Portal</a><a href="/education-portal.html">Education</a><a href="/spire.html">Spire EHR</a><a href="/transportation.html">Transportation</a><a href="/home-health.html">Home Health</a><a href="/admin.html#onboarding">Onboarding</a><a href="/careers.html">Careers</a></div></nav>
+  <main>
+    <section class="hero"><div class="hero-copy"><div class="eyebrow">Inside Sulandra</div><h2>One secure workplace for every Sulandra service.</h2><p>Access employee tools, learning assignments, clinical records, schedules, transportation operations, home-health resources, hiring workflows, documents and company updates from one place.</p><div class="actions"><a class="btn" style="background:var(--blue);color:white" href="/employee-portal.html?stay=1">Open Employee Portal</a><a class="btn" style="border:1px solid var(--line)" href="/education-portal.html">Open Education Portal</a></div></div><aside class="hero-side"><strong>Authorized staff access</strong><p>Protect all client, employee and applicant information. Use only approved Sulandra systems and sign out when finished.</p></aside></section>
+
+    <div class="section-title"><h2>Employee Work Tools</h2><p>The restored links from the employee intranet and administrative platform.</p></div>
+    <section class="grid">
+      <a class="card" href="/employee-portal.html?stay=1"><div class="icon">👤</div><h3>Employee Portal</h3><p>Schedules, time, attendance, documents, payroll resources and staff services.</p><span>Open portal →</span></a>
+      <a class="card" href="/education-portal.html"><div class="icon">🎓</div><h3>Education Portal</h3><p>Assigned courses, annual renewals, certificates and professional development.</p><span>Open learning center →</span></a>
+      <a class="card" href="/spire.html"><div class="icon">⚕</div><h3>Spire EHR</h3><p>Clinical documentation, client records, medication, incidents and care workflows.</p><span>Open EHR →</span></a>
+      <a class="card" href="/admin.html"><div class="icon">🛡</div><h3>Admin Console</h3><p>Applicants, onboarding, employees, service homes, scheduling, reports and operations.</p><span>Open administration →</span></a>
+      <a class="card" href="/transportation.html"><div class="icon">🚐</div><h3>Transportation</h3><p>Driver operations, trip assignments, vehicle records and transportation services.</p><span>Open transportation →</span></a>
+      <a class="card" href="/home-health.html"><div class="icon">🏠</div><h3>Home Health Services</h3><p>Home-health operations, client service coordination and caregiver resources.</p><span>Open home health →</span></a>
+      <a class="card" href="/admin.html#onboarding"><div class="icon">📋</div><h3>Careers & Onboarding</h3><p>Job openings, applicants, interviews, offers, credentials and hiring workflows.</p><span>Open onboarding →</span></a>
+      <a class="card" href="/careers.html"><div class="icon">💼</div><h3>Public Careers</h3><p>Published positions and professional employment application forms.</p><span>View careers →</span></a>
+    </section>
+
+    <div class="section-title"><h2>Sulandra Services</h2><p>Operational areas restored to the central platform.</p></div>
+    <section class="services">
+      <article class="service"><h3>Community Living & Waiver Services</h3><p>Residential support, supported living, homemaker/personal care, community integration and person-centered services.</p><a href="/services/community-living.html">Open service area →</a></article>
+      <article class="service"><h3>Home Health & Nursing</h3><p>Skilled nursing, medication administration, delegation, care coordination and in-home support.</p><a href="/home-health.html">Open service area →</a></article>
+      <article class="service"><h3>Transportation Services</h3><p>Driver applications, scheduling, trip coordination, vehicle compliance and non-emergency transportation operations.</p><a href="/transportation.html">Open service area →</a></article>
+    </section>
+  </main>
+  <footer>© 2026 Sulandra Health · Confidential internal portal · Authorized staff only</footer>
+</body>
+</html>
