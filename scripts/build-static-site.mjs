@@ -56,7 +56,7 @@ if (!adminPortal.includes('Admin Spire <small>Clinical</small>')) {
   adminPortal = adminPortal.replace(sideOnboardingButton, `${sideSpireLink}${sideOnboardingButton}`);
 }
 
-const deploymentVersion = '20260803-terminal-actions-direct-2';
+const deploymentVersion = '20260805-admin-onboarding-enhancements-1';
 adminPortal = adminPortal.replace(
   /careers-admin-workflow\.js(?:\?v=[^"']+)?/g,
   `careers-admin-workflow.js?v=${deploymentVersion}`,
@@ -66,9 +66,13 @@ adminPortal = adminPortal.replace(
   `admin-railway.js?v=${deploymentVersion}`,
 );
 
-const runtimeScript = `  <script src="offer-only-runtime.js?v=${deploymentVersion}"></script>\n`;
+const runtimeScripts = [
+  `  <script src="offer-only-runtime.js?v=${deploymentVersion}"></script>`,
+  `  <script src="admin-onboarding-enhancements.js?v=${deploymentVersion}"></script>`,
+].join('\n') + '\n';
 adminPortal = adminPortal.replace(/\s*<script src="offer-only-runtime\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
-adminPortal = adminPortal.replace('</body>', `${runtimeScript}</body>`);
+adminPortal = adminPortal.replace(/\s*<script src="admin-onboarding-enhancements\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+adminPortal = adminPortal.replace('</body>', `${runtimeScripts}</body>`);
 
 await writeFile(adminPortalPath, adminPortal, 'utf8');
 
