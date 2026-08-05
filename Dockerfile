@@ -20,6 +20,7 @@ RUN npm run build
 
 ENV NODE_ENV=production
 ENV PORT=4000
+ENV INTERVIEW_SCHEDULING_URL=https://sulandra-static-website-production.up.railway.app/interview-scheduling.html
 
 EXPOSE 4000
 
