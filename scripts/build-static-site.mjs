@@ -86,11 +86,12 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260805-restored-platform-navigation-2';
+  const version = '20260805-applicant-lifecycle-filter-1';
   adminHtml = adminHtml.replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+  adminHtml = adminHtml.replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
   adminHtml = adminHtml.replace(
     '</body>',
-    `  <script src="admin-restored-navigation.js?v=${version}"></script>\n</body>`,
+    `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n</body>`,
   );
   await writeFile(adminPath, adminHtml, 'utf8');
 } catch (error) {
@@ -125,5 +126,5 @@ try {
 }
 
 console.log(
-  'Static website prepared with shared employee authentication across admin, employee, and education portals.',
+  'Static website prepared with shared employee authentication and corrected applicant lifecycle lists.',
 );
