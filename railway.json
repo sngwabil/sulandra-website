@@ -8,7 +8,7 @@
     "preDeployCommand": [
       "npm run db:predeploy"
     ],
-    "startCommand": "INTERVIEW_SCHEDULING_URL=https://portal.sulandrahealth.com/interview-scheduling.html npm run start",
+    "startCommand": "npm run start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
