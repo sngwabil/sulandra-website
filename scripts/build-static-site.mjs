@@ -76,4 +76,12 @@ adminPortal = adminPortal.replace('</body>', `${runtimeScripts}</body>`);
 
 await writeFile(adminPortalPath, adminPortal, 'utf8');
 
+const builtEntries = await readdir(outputDirectory, { withFileTypes: true });
+const builtFiles = new Set(builtEntries.filter((entry) => entry.isFile()).map((entry) => entry.name));
+for (const requiredFile of ['index.html', 'careers.html']) {
+  if (!builtFiles.has(requiredFile)) {
+    throw new Error(`Static build missing required file: ${requiredFile}`);
+  }
+}
+
 console.log(`Static website prepared in ${outputDirectory}`);
