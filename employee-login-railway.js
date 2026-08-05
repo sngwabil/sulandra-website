@@ -5,10 +5,17 @@
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
   const message = document.getElementById("msg");
+  const usernamePanel = document.getElementById("usernameRecoveryPanel");
+  const passwordPanel = document.getElementById("passwordRecoveryPanel");
 
-  function showError(text) {
+  function showMessage(text, type) {
     message.textContent = text;
-    message.className = "msg show";
+    message.className = type === "success" ? "msg success" : "msg show";
+  }
+
+  function clearMessage() {
+    message.textContent = "";
+    message.className = "msg";
   }
 
   function safeReturnTarget() {
@@ -23,6 +30,49 @@
     }
   }
 
+  function closeRecoveryPanels() {
+    usernamePanel.classList.remove("open");
+    passwordPanel.classList.remove("open");
+  }
+
+  function openRecoveryPanel(panel) {
+    clearMessage();
+    closeRecoveryPanels();
+    panel.classList.add("open");
+    panel.querySelector("input")?.focus();
+  }
+
+  async function recoveryRequest(path, body, button) {
+    clearMessage();
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Sending…";
+    try {
+      const response = await fetch(API_BASE + path, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to process the recovery request.");
+      }
+      closeRecoveryPanels();
+      showMessage(
+        payload.message || "If the information matches an active employee account, recovery instructions have been sent.",
+        "success"
+      );
+    } catch (error) {
+      showMessage(error.message || "Unable to process the recovery request.", "error");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+
   document.getElementById("demo").addEventListener("click", () => {
     window.location.assign("spire-demo.html");
   });
@@ -30,17 +80,63 @@
   document.getElementById("clear").addEventListener("click", () => {
     document.getElementById("email").value = "";
     document.getElementById("password").value = "";
-    message.className = "msg";
+    document.getElementById("recoveryEmail").value = "";
+    document.getElementById("recoveryUsername").value = "";
+    closeRecoveryPanels();
+    clearMessage();
+  });
+
+  document.getElementById("forgotUsername").addEventListener("click", () => {
+    const loginEmail = document.getElementById("email").value.trim();
+    if (loginEmail) document.getElementById("recoveryEmail").value = loginEmail;
+    openRecoveryPanel(usernamePanel);
+  });
+
+  document.getElementById("forgotPassword").addEventListener("click", () => {
+    const loginEmail = document.getElementById("email").value.trim();
+    if (loginEmail) document.getElementById("recoveryUsername").value = loginEmail;
+    openRecoveryPanel(passwordPanel);
+  });
+
+  document.querySelectorAll("[data-close-recovery]").forEach((button) => {
+    button.addEventListener("click", closeRecoveryPanels);
+  });
+
+  document.getElementById("sendUsernameRecovery").addEventListener("click", () => {
+    const email = document.getElementById("recoveryEmail").value.trim().toLowerCase();
+    if (!email) {
+      showMessage("Enter the email connected to your employee account.", "error");
+      return;
+    }
+    recoveryRequest(
+      "/api/auth/forgot-username",
+      { email },
+      document.getElementById("sendUsernameRecovery")
+    );
+  });
+
+  document.getElementById("sendPasswordRecovery").addEventListener("click", () => {
+    const username = document.getElementById("recoveryUsername").value.trim().toLowerCase();
+    if (!username) {
+      showMessage("Enter your Sulandra employee username or email.", "error");
+      return;
+    }
+    recoveryRequest(
+      "/api/auth/forgot-password",
+      { username },
+      document.getElementById("sendPasswordRecovery")
+    );
   });
 
   document.getElementById("form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    message.className = "msg";
+    clearMessage();
+    closeRecoveryPanels();
 
     const email = document.getElementById("email").value.trim().toLowerCase();
     const password = document.getElementById("password").value;
     if (!email || !password) {
-      showError("Enter your employee email and password.");
+      showMessage("Enter your employee email and password.", "error");
       return;
     }
 
@@ -75,7 +171,7 @@
     } catch (error) {
       window.sessionStorage.removeItem(TOKEN_KEY);
       window.sessionStorage.removeItem(SESSION_KEY);
-      showError(error.message || "Unable to sign in.");
+      showMessage(error.message || "Unable to sign in.", "error");
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
