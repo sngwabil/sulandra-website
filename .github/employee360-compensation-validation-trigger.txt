@@ -1,0 +1,2 @@
+Employee 360 Section 5 validation marker.
+Tests compensation history, payroll profiles, deductions, benefit plans, enrollments, pay runs, payroll items, employee pay statements, frontend publishing, backend typecheck/build, static build, and all Employee 360 regression suites.
