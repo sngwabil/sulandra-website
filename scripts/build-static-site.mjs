@@ -28,7 +28,7 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260806-time-attendance-recovery-1';
+  const version = '20260806-enterprise-owner-1';
   adminHtml = adminHtml
     .replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
@@ -80,12 +80,26 @@ try {
     .replace(/\s*<script src="\/assets\/time-attendance-admin-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-location-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-geofence\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
-    .replace('</body>', '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-recovery-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-recovery-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-recovery-1"></script>\n</body>');
+    .replace('</body>', '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-owner-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-owner-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-owner-1"></script>\n</body>');
   await writeFile(timeAttendancePath, timeAttendanceHtml, 'utf8');
   const cleanRouteDirectory = path.join(outputDirectory, 'time-attendance');
   await mkdir(cleanRouteDirectory, { recursive: true });
   await writeFile(path.join(cleanRouteDirectory, 'index.html'), timeAttendanceHtml, 'utf8');
 } catch (error) { if (error?.code !== 'ENOENT') throw error; }
 
+const ownerAsset = '<script src="/assets/sulandra-enterprise-owner.js?v=20260806-owner-1"></script>';
+async function injectOwnerAsset(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const target = path.join(directory, entry.name);
+    if (entry.isDirectory()) { await injectOwnerAsset(target); continue; }
+    if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== '.html') continue;
+    let html = await readFile(target, 'utf8');
+    html = html.replace(/\s*<script src="\/assets\/sulandra-enterprise-owner\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+    if (html.includes('</body>')) html = html.replace('</body>', `  ${ownerAsset}\n</body>`);
+    await writeFile(target, html, 'utf8');
+  }
+}
+await injectOwnerAsset(outputDirectory);
+
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with restored Time and Attendance admin scheduler, shared authentication, and GPS controls.');
+console.log('Static website prepared with enterprise-owner identity and role management, restored Time and Attendance admin scheduler, shared authentication, and GPS controls.');
