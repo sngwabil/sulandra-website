@@ -1,5 +1,10 @@
 # Sulandra Website and S.P.I.R.E. API
 
+> **STOP: Read [`DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md) before editing this repository.**
+>
+> The permanent primary development branch is `feature/spire-ehr-platform`.
+> The **Sulandra Static Website** is the frontend, while **sulandra-website** is the backend API. Do not mix their routing, deployment, or build responsibilities.
+
 This repository contains the public Sulandra website and the production API used by
 the unified Sulandra Employee Portal.
 
