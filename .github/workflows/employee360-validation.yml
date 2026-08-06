@@ -38,6 +38,9 @@ jobs:
       - name: Build static frontend
         run: npm run build:web
 
+      - name: Verify Careers static frontend routing
+        run: node scripts/verify-careers-static-routing.mjs
+
       - name: Verify Employee 360 permissions
         run: node scripts/verify-employee-360-permissions.mjs
 
