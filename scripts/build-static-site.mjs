@@ -28,10 +28,11 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260806-scheduler-timezone-1';
+  const version = '20260806-service-homes-1';
   adminHtml = adminHtml
     .replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(/\s*<script src="\/assets\/admin-service-home-management\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/<a\s+data-module=["']time["']\s*>\s*Time\s*&(?:amp;)?\s*Attendance\s*<\/a>/gi, `<a href="${attendanceAdminTarget}" id="adminTimeAttendanceTopLink">Time &amp; Attendance</a>`)
     .replace(/<button([^>]*?)data-module=["']time["']([^>]*)>\s*Time\s*&(?:amp;)?\s*Attendance([\s\S]*?)<\/button>/gi, `<button$1id="adminTimeAttendanceSideLink"$2 type="button">Time &amp; Attendance$3</button>`);
   const directNavigation = `
@@ -50,7 +51,7 @@ try {
 })();
 </script>`;
   adminHtml = adminHtml.replace(/\s*<script id="admin-time-attendance-hard-route">[\s\S]*?<\/script>\s*/g, '\n');
-  adminHtml = adminHtml.replace('</body>', `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n  ${directNavigation}\n</body>`);
+  adminHtml = adminHtml.replace('</body>', `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n  <script src="/assets/admin-service-home-management.js?v=${version}"></script>\n  ${directNavigation}\n</body>`);
   await writeFile(adminPath, adminHtml, 'utf8');
 } catch (error) { if (error?.code !== 'ENOENT') throw error; }
 
@@ -80,7 +81,7 @@ try {
     .replace(/\s*<script src="\/assets\/time-attendance-admin-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-location-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-geofence\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
-    .replace('</body>', '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-scheduler-timezone-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-scheduler-timezone-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-scheduler-timezone-1"></script>\n</body>');
+    .replace('</body>', '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-service-homes-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-service-homes-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-service-homes-1"></script>\n</body>');
   await writeFile(timeAttendancePath, timeAttendanceHtml, 'utf8');
   const cleanRouteDirectory = path.join(outputDirectory, 'time-attendance');
   await mkdir(cleanRouteDirectory, { recursive: true });
@@ -102,4 +103,4 @@ async function injectOwnerAsset(directory) {
 await injectOwnerAsset(outputDirectory);
 
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with local-time schedule persistence, right-click edit/delete controls, enterprise-owner identity, GPS controls, and shared authentication.');
+console.log('Static website prepared with unified Service Homes management, local-time schedules, right-click edit/delete controls, enterprise-owner identity, GPS controls, and shared authentication.');
