@@ -17,7 +17,8 @@ const assetsAccessImport = "import { registerEmployeeAssetsAccessRoutes } from '
 const analyticsImport = "import { registerEmployeeAnalyticsReportsRoutes } from './employee-analytics-reports-routes.js';";
 const documentsImport = "import { registerEmployeeDocumentsESignRoutes } from './employee-documents-esign-routes.js';";
 const bulkDataImport = "import { registerEmployeeBulkDataRoutes } from './employee-bulk-data-routes.js';";
-const workflowImport = "import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflow-automation-routes.js';";
+const workflowImport = "import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflows-automation-routes.js';";
+const obsoleteWorkflowImport = "import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflow-automation-routes.js';";
 const careersRegister = 'registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
 const permissionsRegister = 'registerEmployee360Permissions({ app, prisma, authOf, requireRoles, audit });';
 const employeeRegister = 'registerEmployeeManagementRoutes({ app, prisma, authOf, requireRoles, audit });';
@@ -34,6 +35,7 @@ const bulkDataRegister = 'registerEmployeeBulkDataRoutes({ app, prisma, authOf, 
 const workflowRegister = 'registerEmployeeWorkflowAutomationRoutes({ app, prisma, authOf, requireRoles, audit });';
 
 let bootstrap = await readFile(bootstrapPath, 'utf8');
+bootstrap = bootstrap.replaceAll(obsoleteWorkflowImport, workflowImport);
 if (!bootstrap.includes(careersImport)) throw new Error('Unable to locate the careers import anchor for Employee 360');
 for (const importLine of [permissionsImport, employeeImport, selfServiceImport, complianceImport, collaborationImport, performanceImport, compensationImport, leaveOffboardingImport, assetsAccessImport, analyticsImport, documentsImport, bulkDataImport, workflowImport]) {
   if (!bootstrap.includes(importLine)) bootstrap = bootstrap.replace(careersImport, `${careersImport}\n${importLine}`);
