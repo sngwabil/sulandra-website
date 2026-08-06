@@ -21,5 +21,19 @@ if (!source.includes('Employee360AccessGrant_active_unique_idx')) {
   );
 }
 
+if (!source.includes('const profileSnapshot = async')) {
+  const maskAnchor = '  const maskEmployee = (employee: Record<string, unknown>, capabilities: Record<Capability, boolean>) => {';
+  const snapshotHelper = `  const profileSnapshot = async (auth: AuthContext, employeeId: string) => {\n    const rows = await prisma.$queryRawUnsafe<any[]>(\n      \`SELECT COALESCE(NULLIF(p."displayName",''),NULLIF(c."displayName",''),u."email") AS "displayName",\n              p."employeeNumber",p."personalEmail",p."phone",p."alternatePhone",p."department",p."jobTitle",\n              COALESCE(p."employmentStatus",'ACTIVE') AS "employmentStatus",p."hireDate",p."terminationDate",p."supervisorId",\n              p."streetAddress",p."city",p."state",p."zipCode",p."emergencyContactName",p."emergencyContactPhone",p."notes"\n       FROM "User" u\n       LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"\n       LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"\n       WHERE u."id"=$1 AND u."organizationId"=$2 LIMIT 1\`,\n      employeeId,\n      auth.organizationId,\n    );\n    if (!rows[0]) throw Object.assign(new Error('Employee profile was not found'), { status: 404 });\n    return rows[0];\n  };\n\n${maskAnchor}`;
+  if (!source.includes(maskAnchor)) throw new Error('Unable to locate Employee 360 profile masking anchor');
+  source = source.replace(maskAnchor, snapshotHelper);
+}
+
+const profileBlockAnchor = `        if (Object.prototype.hasOwnProperty.call(req.body || {}, 'notes')) {\n          await requireCapability(auth, req, policies, target, 'VIEW_HR_NOTES', { write: true });\n        }\n        return void next();`;
+if (!source.includes('Preserve fields outside the actor')) {
+  const replacement = `        if (Object.prototype.hasOwnProperty.call(req.body || {}, 'notes')) {\n          await requireCapability(auth, req, policies, target, 'VIEW_HR_NOTES', { write: true });\n        }\n\n        // Preserve fields outside the actor's permission set so a limited edit cannot erase confidential data.\n        const current = await profileSnapshot(auth, target.id);\n        const access = capabilityMap(policies, target);\n        const merged = { ...current, ...(req.body || {}) };\n        if (!access.MANAGE_PRIVATE_PROFILE) {\n          for (const field of sensitiveFields) merged[field] = current[field];\n        }\n        if (!access.MANAGE_EMPLOYMENT) {\n          for (const field of ['employmentStatus', 'hireDate', 'terminationDate', 'supervisorId']) merged[field] = current[field];\n        }\n        if (!access.VIEW_HR_NOTES) merged.notes = current.notes;\n        merged.displayName = merged.displayName || current.displayName;\n        merged.employmentStatus = merged.employmentStatus || current.employmentStatus || 'ACTIVE';\n        req.body = merged;\n        return void next();`;
+  if (!source.includes(profileBlockAnchor)) throw new Error('Unable to locate Employee 360 scoped profile-write anchor');
+  source = source.replace(profileBlockAnchor, replacement);
+}
+
 await writeFile(permissionPath, source, 'utf8');
-console.log('Employee 360 permission prerequisites and duplicate-grant protection are build-safe.');
+console.log('Employee 360 permission prerequisites, duplicate-grant protection, and restricted-field preservation are build-safe.');
