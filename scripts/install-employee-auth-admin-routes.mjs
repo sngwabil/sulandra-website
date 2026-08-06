@@ -1,0 +1,16 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const target=path.join(root,'api/src/onboarding-bootstrap.ts');
+let source=await readFile(target,'utf8');
+const careersImport="import { registerCareersRoutes } from './careers-routes.js';";
+const routeImport="import { registerEmployeeAuthAdminRoutes } from './employee-auth-admin-routes.js';";
+const careersRegister='registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
+const routeRegister='registerEmployeeAuthAdminRoutes({ app, prisma, authOf, requireRoles });';
+if(!source.includes(routeImport))source=source.replace(careersImport,`${careersImport}\n${routeImport}`);
+source=source.replace(new RegExp(`\\n?${routeRegister.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\n?`,'g'),'\n');
+if(!source.includes(careersRegister))throw new Error('Careers registration anchor is missing');
+source=source.replace(careersRegister,`${routeRegister}\n${careersRegister}`);
+await writeFile(target,source,'utf8');
+console.log('Employee session, MFA, login-history, and per-portal administration routes are installed.');
