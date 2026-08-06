@@ -1,0 +1,2 @@
+Section 6 validation marker.
+Tests backend typecheck/build, static frontend build, leave policies, balances, employee leave requests, manager decisions, accommodations, offboarding cases, required task completion, exit interviews, employee self-service, admin UI, owner protection, auditor read-only access, organization isolation, and all prior Employee 360 regression suites.
