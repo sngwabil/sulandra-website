@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +11,7 @@ const files=[
 for(const file of files){const target=path.join(root,file);let source=await readFile(target,'utf8');if(source.includes(workflowRegister))continue;const marker=`${careersRegister}`;if(source.includes(marker)){source=source.replace(marker,`${workflowRegister}\\n\\n${careersRegister}`);await writeFile(target,source,'utf8')}}
 
 const routePath=path.join(root,'api/src/employee-workflows-automation-routes.ts');
+await access(routePath);
 let routeSource=await readFile(routePath,'utf8');
 const malformed=".length}})}catch(e){next(e)}});\n}";
 const corrected=".length}}});}catch(e){next(e)}});\n}";
@@ -22,4 +23,15 @@ if(routeSource.includes(malformed)){
   throw new Error('Unable to verify Employee workflow self-service response closure');
 }
 
-console.log('Employee 360 workflow route syntax and prior-section validation integration are build-safe.');
+const bootstrapPath=path.join(root,'api/src/onboarding-bootstrap.ts');
+let bootstrap=await readFile(bootstrapPath,'utf8');
+const obsoleteImport="import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflow-automation-routes.js';";
+const correctImport="import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflows-automation-routes.js';";
+if(bootstrap.includes(obsoleteImport)){
+  bootstrap=bootstrap.replaceAll(obsoleteImport,correctImport);
+  await writeFile(bootstrapPath,bootstrap,'utf8');
+  console.log('Employee workflow backend import path repaired.');
+}
+if(!bootstrap.includes(correctImport))throw new Error('Employee workflow backend import is missing or points to the wrong module');
+
+console.log('Employee 360 workflow route syntax, module path, and prior-section validation integration are build-safe.');
