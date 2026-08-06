@@ -1,0 +1,1 @@
+Final Section 2 validation after correcting the installer-template regression assertion.
