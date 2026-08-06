@@ -9,10 +9,10 @@
   "scripts": {
     "dev": "npm run dev --workspace=spire-api",
     "build": "node scripts/install-public-interview-page-route.mjs && node scripts/install-admin-desktop-profile-routes.mjs && node scripts/install-department-routing.mjs && node scripts/install-time-attendance-platform.mjs && node scripts/fix-doo-role-references.mjs && npm run build --workspace=spire-api && node scripts/patch-professional-hr-footer.mjs",
-    "build:web": "node scripts/build-static-site.mjs",
+    "build:web": "node scripts/install-time-attendance-platform.mjs && node scripts/build-static-site.mjs",
     "start": "npm run start --workspace=spire-api",
     "typecheck": "node scripts/install-public-interview-page-route.mjs && node scripts/install-admin-desktop-profile-routes.mjs && node scripts/install-department-routing.mjs && node scripts/install-time-attendance-platform.mjs && node scripts/fix-doo-role-references.mjs && npm run typecheck --workspace=spire-api",
-    "check": "npm run db:validate && npm run typecheck && npm run build",
+    "check": "npm run db:validate && npm run typecheck && npm run build && npm run build:web",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:recover-failed-doo-migration": "node scripts/recover-failed-doo-migration.mjs",
