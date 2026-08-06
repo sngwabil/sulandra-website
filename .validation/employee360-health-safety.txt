@@ -1,0 +1,1 @@
+Validation-only marker for Employee 360 Section 15: health, safety, incident prevention, corrective actions, employee incident reporting, wellness resources, owner protection, auditor read-only access, organization isolation, backend build, static frontend build, Careers routing regression, and all prior Employee 360 verification suites.
