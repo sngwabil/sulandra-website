@@ -44,4 +44,5 @@ source=source.replace('  const auth = internalAuth(req) ?? tokenAuth(req);','  c
 if(!source.includes('validateEmployeeSession(prisma'))throw new Error('Failed to install revocable session validation');
 if(!source.includes('verifyEmployeeLoginMfa(prisma'))throw new Error('Failed to install MFA login verification');
 await writeFile(bootstrapPath,source,'utf8');
-console.log('Employee authentication now uses revocable server-side sessions, portal controls, MFA verification, and login history.');
+await import('./install-employee360-scope-enforcement.mjs');
+console.log('Employee authentication now uses revocable server-side sessions, portal controls, MFA verification, login history, and global Employee 360 scope enforcement.');
