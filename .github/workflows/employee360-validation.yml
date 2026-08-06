@@ -1,0 +1,39 @@
+name: Employee 360 Validation
+
+on:
+  push:
+    branches:
+      - feature/spire-ehr-platform
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check backend
+        run: npm run typecheck
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Build static frontend
+        run: npm run build:web
+
+      - name: Verify Employee 360 generated output
+        run: node scripts/verify-employee-360-permissions.mjs
