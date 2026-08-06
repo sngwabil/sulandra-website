@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { Express, RequestHandler, Response } from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 
@@ -57,7 +58,8 @@ export function registerEmployeeSelfServiceRoutes({ app, prisma, authOf, require
       await prisma.$executeRawUnsafe(
         `INSERT INTO "Employee360AccessEvent"
           ("id","organizationId","actorUserId","targetEmployeeId","action","resourceType","resourceId","capability","sensitivity","decision","reason","ipAddress","userAgent")
-         VALUES (gen_random_uuid()::text,$1,$2,$2,'SELF_DOWNLOAD','EmployeeDocument',$3,'VIEW_DOCUMENTS',$4,'ALLOW','Employee downloaded an approved self-service document',$5,$6)`,
+         VALUES ($1,$2,$3,$3,'SELF_DOWNLOAD','EmployeeDocument',$4,'VIEW_DOCUMENTS',$5,'ALLOW','Employee downloaded an approved self-service document',$6,$7)`,
+        randomUUID(),
         auth.organizationId,
         auth.userId,
         document.id,
