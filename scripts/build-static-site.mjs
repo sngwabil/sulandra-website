@@ -98,9 +98,6 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-// The static Railway frontend and API are separate services. The restored
-// education portal originally used same-origin /api requests, which caused a
-// false authentication failure and redirected signed-in users back to login.
 const educationPath = path.join(outputDirectory, 'education-portal.html');
 try {
   let educationHtml = await readFile(educationPath, 'utf8');
@@ -125,6 +122,24 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
+const timeAttendancePath = path.join(outputDirectory, 'time-attendance.html');
+try {
+  let timeAttendanceHtml = await readFile(timeAttendancePath, 'utf8');
+  timeAttendanceHtml = timeAttendanceHtml.replace(
+    "const API=(localStorage.getItem('sulandra_api_url')||window.SULANDRA_API_URL||'').replace(/\\/$/,'');",
+    `const API=(localStorage.getItem('sulandra_api_url')||window.SULANDRA_API_URL||'${railwayApiBase}').replace(/\\/$/,'');`,
+  );
+  await writeFile(timeAttendancePath, timeAttendanceHtml, 'utf8');
+
+  const cleanRouteDirectory = path.join(outputDirectory, 'time-attendance');
+  await mkdir(cleanRouteDirectory, { recursive: true });
+  await writeFile(path.join(cleanRouteDirectory, 'index.html'), timeAttendanceHtml, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
+await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
+
 console.log(
-  'Static website prepared with shared employee authentication and corrected applicant lifecycle lists.',
+  'Static website prepared with shared employee authentication, corrected applicant lifecycle lists, and Time and Attendance frontend routing.',
 );
