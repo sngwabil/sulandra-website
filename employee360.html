@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Employee 360 | Sulandra Health</title>
+  <meta name="robots" content="noindex,nofollow">
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}header{background:#fff;border-bottom:1px solid #dce3ec;position:sticky;top:0;z-index:4}.bar{max-width:1500px;margin:auto;padding:14px 24px;display:flex;align-items:center;gap:16px}.brand{font-weight:800;color:#174e8f}.bar nav{margin-left:auto;display:flex;gap:10px}.bar a,.bar button{border:0;background:#edf4fb;color:#174e8f;padding:10px 14px;border-radius:9px;text-decoration:none;font-weight:700;cursor:pointer}main{max-width:1500px;margin:auto;padding:24px}.hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}.hero h1{margin:0 0 6px}.muted{color:#637083}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.metric,.panel{background:#fff;border:1px solid #dce3ec;border-radius:14px;box-shadow:0 4px 20px rgba(31,64,104,.06)}.metric{padding:16px}.metric strong{font-size:1.8rem;display:block}.layout{display:grid;grid-template-columns:300px 1fr;gap:18px}.panel{padding:18px}.directory input,.toolbar input,.toolbar select,.toolbar button,form input,form select,form textarea,form button{width:100%;padding:10px;border:1px solid #cdd7e4;border-radius:8px;font:inherit}.employee{display:block;width:100%;text-align:left;border:0;background:#fff;border-bottom:1px solid #e7ecf2;padding:12px;cursor:pointer}.employee:hover,.employee.active{background:#eef6ff}.tabs{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #dce3ec;padding-bottom:12px;margin-bottom:16px}.tabs button{border:0;background:#edf1f6;padding:9px 12px;border-radius:8px;cursor:pointer}.tabs button.active{background:#174e8f;color:#fff}.section{display:none}.section.active{display:block}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{border:1px solid #dce3ec;border-radius:10px;padding:14px;background:#fff}.table{width:100%;border-collapse:collapse}.table th,.table td{text-align:left;padding:10px;border-bottom:1px solid #e5eaf0;vertical-align:top}.status{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef1f4;font-size:.8rem;font-weight:700}.danger{color:#a51d2d}.ok{color:#18623c}.notice{padding:12px;border-radius:9px;background:#fff7db;border:1px solid #eed58d;margin-bottom:12px}.hidden{display:none!important}@media(max-width:900px){.layout{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.directory{max-height:320px;overflow:auto}}
+  </style>
+</head>
+<body>
+<header><div class="bar"><div class="brand">✚ Sulandra Health</div><strong>Employee 360</strong><nav><a href="/admin.html">Admin Home</a><a href="/time-attendance.html#admin">Time &amp; Attendance</a><button id="logout">Sign out</button></nav></div></header>
+<main>
+  <div class="hero"><div><h1>Employee 360 Enterprise Workspace</h1><div class="muted">Personnel, secure files, assignments, compliance, time, communications, security and audit controls.</div></div><div id="identity" class="muted"></div></div>
+  <div id="notice" class="notice hidden"></div>
+  <div class="metrics"><div class="metric"><span>Employees</span><strong id="mEmployees">—</strong></div><div class="metric"><span>Blocked assignments</span><strong id="mBlocked">—</strong></div><div class="metric"><span>Secure files</span><strong id="mFiles">—</strong></div><div class="metric"><span>Failed communications</span><strong id="mFailed">—</strong></div></div>
+  <div class="layout">
+    <aside class="panel directory"><input id="employeeSearch" placeholder="Search employees"><div id="employees"></div></aside>
+    <section class="panel">
+      <div id="empty">Select an employee to open the complete profile.</div>
+      <div id="workspace" class="hidden">
+        <h2 id="employeeName"></h2><div id="employeeMeta" class="muted"></div>
+        <div class="tabs" id="tabs">
+          <button data-tab="overview" class="active">Overview</button><button data-tab="files">Secure Files</button><button data-tab="onboarding">Onboarding</button><button data-tab="assignments">Assignments</button><button data-tab="time">Time &amp; Attendance</button><button data-tab="communications">Communications</button><button data-tab="security">Security</button><button data-tab="audit">Audit</button>
+        </div>
+        <div id="tab-overview" class="section active"><div class="grid" id="overviewGrid"></div></div>
+        <div id="tab-files" class="section"><div class="toolbar grid"><input type="file" id="secureFile"><select id="fileCategory"><option>GENERAL</option><option>LICENSE</option><option>BACKGROUND_CHECK</option><option>MEDICAL</option><option>IDENTITY</option><option>DISCIPLINARY</option></select><select id="fileSensitivity"><option>GENERAL</option><option>HR_CONFIDENTIAL</option><option>MEDICAL</option><option>BACKGROUND</option><option>DISCIPLINARY</option><option>IDENTITY</option><option>COMPENSATION</option></select><input id="fileReason" placeholder="Reason for upload"><button id="uploadFile">Scan, encrypt and upload</button></div><div id="filesTable"></div></div>
+        <div id="tab-onboarding" class="section"><div class="grid"><input id="applicationId" placeholder="Applicant/application ID"><input id="onboardingReason" placeholder="Reason for conversion"><button id="convertApplicant">Link and migrate applicant folder</button></div><div id="onboardingResult"></div></div>
+        <div id="tab-assignments" class="section"><div id="assignmentsTable"></div></div>
+        <div id="tab-time" class="section"><div id="timeTable"></div></div>
+        <div id="tab-communications" class="section"><div id="communicationsTable"></div></div>
+        <div id="tab-security" class="section"><div id="securityTable"></div></div>
+        <div id="tab-audit" class="section"><div id="auditTable"></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+<script src="/assets/employee360-app.js?v=20260806-enterprise-source-1"></script>
+</body>
+</html>
