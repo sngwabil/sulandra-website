@@ -5,17 +5,19 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const adminPath = path.join(root, 'dist-web', 'admin.html');
 const employeeAssetPath = path.join(root, 'dist-web', 'assets', 'admin-employee-management.js');
-const version = '20260806-employee360-2';
+const version = '20260806-employee360-permissions-1';
 
 let html = await readFile(adminPath, 'utf8');
-html = html.replace(/\s*<script src="\/assets\/admin-employee-management\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+html = html
+  .replace(/\s*<script src="\/assets\/admin-employee-permissions\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+  .replace(/\s*<script src="\/assets\/admin-employee-management\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
 
 if (!html.includes('id="module-employees"')) {
   const employeeModule = `
         <!-- Employee 360 Module -->
         <section class="card module" id="module-employees" aria-label="Employee management workspace">
           <h1>Employees</h1>
-          <p class="sub">Loading employee directory, compliance records, education, timekeeping, communications, and account tools…</p>
+          <p class="sub">Loading employee directory, scoped permissions, compliance records, education, timekeeping, communications, and account tools…</p>
         </section>
 
 `;
@@ -31,7 +33,7 @@ if (!html.includes('id="module-employees"')) {
 }
 
 if (!html.includes('</body>')) throw new Error('dist-web/admin.html is missing a closing body tag');
-html = html.replace('</body>', `  <script src="/assets/admin-employee-management.js?v=${version}"></script>\n</body>`);
+html = html.replace('</body>', `  <script src="/assets/admin-employee-permissions.js?v=${version}"></script>\n  <script src="/assets/admin-employee-management.js?v=${version}"></script>\n</body>`);
 await writeFile(adminPath, html, 'utf8');
 
 let employeeAsset = await readFile(employeeAssetPath, 'utf8');
@@ -45,4 +47,4 @@ if (!employeeAsset.includes("document.getElementById('module-employees')")) {
 }
 await writeFile(employeeAssetPath, employeeAsset, 'utf8');
 
-console.log('Employee 360 module and management workspace added to the static Admin portal.');
+console.log('Employee 360 module, scoped permissions, and management workspace added to the static Admin portal.');
