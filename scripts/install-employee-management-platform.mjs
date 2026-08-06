@@ -11,6 +11,7 @@ const selfServiceImport = "import { registerEmployeeSelfServiceRoutes } from './
 const complianceImport = "import { registerEmployeeComplianceRoutes } from './employee-compliance-routes.js';";
 const collaborationImport = "import { registerEmployeeCollaborationRoutes } from './employee-collaboration-routes.js';";
 const performanceImport = "import { registerEmployeePerformanceRoutes } from './employee-performance-routes.js';";
+const compensationImport = "import { registerEmployeeCompensationRoutes } from './employee-compensation-routes.js';";
 const careersRegister = 'registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
 const permissionsRegister = 'registerEmployee360Permissions({ app, prisma, authOf, requireRoles, audit });';
 const employeeRegister = 'registerEmployeeManagementRoutes({ app, prisma, authOf, requireRoles, audit });';
@@ -18,16 +19,17 @@ const selfServiceRegister = 'registerEmployeeSelfServiceRoutes({ app, prisma, au
 const complianceRegister = 'registerEmployeeComplianceRoutes({ app, prisma, authOf, requireRoles, audit });';
 const collaborationRegister = 'registerEmployeeCollaborationRoutes({ app, prisma, authOf, requireRoles, audit });';
 const performanceRegister = 'registerEmployeePerformanceRoutes({ app, prisma, authOf, requireRoles, audit });';
+const compensationRegister = 'registerEmployeeCompensationRoutes({ app, prisma, authOf, requireRoles, audit });';
 
 let bootstrap = await readFile(bootstrapPath, 'utf8');
 if (!bootstrap.includes(careersImport)) throw new Error('Unable to locate the careers import anchor for Employee 360');
-for (const importLine of [permissionsImport, employeeImport, selfServiceImport, complianceImport, collaborationImport, performanceImport]) {
+for (const importLine of [permissionsImport, employeeImport, selfServiceImport, complianceImport, collaborationImport, performanceImport, compensationImport]) {
   if (!bootstrap.includes(importLine)) bootstrap = bootstrap.replace(careersImport, `${careersImport}\n${importLine}`);
 }
-for (const registerLine of [permissionsRegister, employeeRegister, selfServiceRegister, complianceRegister, collaborationRegister, performanceRegister]) {
+for (const registerLine of [permissionsRegister, employeeRegister, selfServiceRegister, complianceRegister, collaborationRegister, performanceRegister, compensationRegister]) {
   bootstrap = bootstrap.replace(new RegExp(`\\n?${registerLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`, 'g'), '\n');
 }
 if (!bootstrap.includes(careersRegister)) throw new Error('Unable to locate the careers registration anchor for Employee 360');
-bootstrap = bootstrap.replace(careersRegister, `${permissionsRegister}\n${employeeRegister}\n${selfServiceRegister}\n${complianceRegister}\n${collaborationRegister}\n${performanceRegister}\n\n${careersRegister}`);
+bootstrap = bootstrap.replace(careersRegister, `${permissionsRegister}\n${employeeRegister}\n${selfServiceRegister}\n${complianceRegister}\n${collaborationRegister}\n${performanceRegister}\n${compensationRegister}\n\n${careersRegister}`);
 await writeFile(bootstrapPath, bootstrap, 'utf8');
-console.log('Employee 360 permissions, management, self-service, compliance, collaboration, approvals, feedback, recognition, notifications, performance reviews, goals, development plans, and action plans are installed.');
+console.log('Employee 360 permissions, management, self-service, compliance, collaboration, performance, compensation, payroll, benefits, deductions, pay runs, and statements are installed.');
