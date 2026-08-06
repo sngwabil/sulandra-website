@@ -28,7 +28,7 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260806-office-grid-1';
+  const version = '20260806-employee-name-1';
   adminHtml = adminHtml
     .replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
@@ -76,11 +76,12 @@ try {
     .replace("const API=(localStorage.getItem('sulandra_api_url')||window.SULANDRA_API_URL||'').replace(/\\/$/,'');", `const API=(localStorage.getItem('sulandra_api_url')||window.SULANDRA_API_URL||'${railwayApiBase}').replace(/\\/$/,'');`)
     .replace("const token=localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';", "const token=sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';");
   timeAttendanceHtml = timeAttendanceHtml
+    .replace(/\s*<script src="\/assets\/time-attendance-employee-identity\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-blocked-attempts\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-admin-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-location-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-geofence\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
-    .replace('</body>', '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-office-grid-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-office-grid-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-office-grid-1"></script>\n</body>');
+    .replace('</body>', '  <script src="/assets/time-attendance-employee-identity.js?v=20260806-employee-name-1"></script>\n  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-employee-name-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-employee-name-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-employee-name-1"></script>\n</body>');
   await writeFile(timeAttendancePath, timeAttendanceHtml, 'utf8');
   const cleanRouteDirectory = path.join(outputDirectory, 'time-attendance');
   await mkdir(cleanRouteDirectory, { recursive: true });
@@ -88,4 +89,4 @@ try {
 } catch (error) { if (error?.code !== 'ENOENT') throw error; }
 
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with the dense admin workforce grid, default Office location, shared authentication, and GPS controls.');
+console.log('Static website prepared with authenticated employee names, the dense admin workforce grid, default Office location, and GPS controls.');
