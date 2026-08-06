@@ -5,10 +5,12 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bootstrapPath = path.join(root, 'api/src/onboarding-bootstrap.ts');
 const careersImport = "import { registerCareersRoutes } from './careers-routes.js';";
+const ownerImport = "import { registerOwnerAuthorityRoutes } from './owner-authority-routes.js';";
 const geofenceImport = "import { registerTimeAttendanceGeofenceRoutes } from './time-attendance-geofence-routes.js';";
 const exceptionImport = "import { registerTimeAttendanceExceptionRoutes } from './time-attendance-exception-routes.js';";
 const locationImport = "import { registerTimeAttendanceLocationSchedulerRoutes } from './time-attendance-location-scheduler-routes.js';";
 const attendanceImport = "import { registerTimeAttendanceRoutes } from './time-attendance-routes.js';";
+const ownerRegister = 'registerOwnerAuthorityRoutes({ app, prisma, authOf });';
 const geofenceRegister = 'registerTimeAttendanceGeofenceRoutes({ app, prisma, authOf, requireRoles });';
 const exceptionRegister = 'registerTimeAttendanceExceptionRoutes({ app, prisma, authOf, requireRoles });';
 const locationRegister = 'registerTimeAttendanceLocationSchedulerRoutes({ app, prisma, authOf, requireRoles });';
@@ -17,15 +19,16 @@ const careersRegister = 'registerCareersRoutes(app, prisma, { authOf, requireRol
 
 let bootstrap = await readFile(bootstrapPath, 'utf8');
 if (!bootstrap.includes(careersImport)) throw new Error('Unable to locate careers route import anchor');
-if (!bootstrap.includes(geofenceImport)) bootstrap = bootstrap.replace(careersImport, `${careersImport}\n${geofenceImport}`);
+if (!bootstrap.includes(ownerImport)) bootstrap = bootstrap.replace(careersImport, `${careersImport}\n${ownerImport}`);
+if (!bootstrap.includes(geofenceImport)) bootstrap = bootstrap.replace(ownerImport, `${ownerImport}\n${geofenceImport}`);
 if (!bootstrap.includes(exceptionImport)) bootstrap = bootstrap.replace(geofenceImport, `${geofenceImport}\n${exceptionImport}`);
 if (!bootstrap.includes(locationImport)) bootstrap = bootstrap.replace(exceptionImport, `${exceptionImport}\n${locationImport}`);
 if (!bootstrap.includes(attendanceImport)) bootstrap = bootstrap.replace(locationImport, `${locationImport}\n${attendanceImport}`);
 if (!bootstrap.includes(careersRegister)) throw new Error('Unable to locate careers route registration anchor');
-for (const line of [geofenceRegister, exceptionRegister, locationRegister, attendanceRegister]) {
+for (const line of [ownerRegister, geofenceRegister, exceptionRegister, locationRegister, attendanceRegister]) {
   bootstrap = bootstrap.replace(new RegExp(`\\n?${line.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\n?`, 'g'), '\n');
 }
-bootstrap = bootstrap.replace(careersRegister, `${geofenceRegister}\n${exceptionRegister}\n${locationRegister}\n${attendanceRegister}\n\n${careersRegister}`);
+bootstrap = bootstrap.replace(careersRegister, `${ownerRegister}\n${geofenceRegister}\n${exceptionRegister}\n${locationRegister}\n${attendanceRegister}\n\n${careersRegister}`);
 await writeFile(bootstrapPath, bootstrap, 'utf8');
 
 const staticBase = 'https://www.sulandrahealth.com';
@@ -59,4 +62,4 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-console.log('Time and Attendance routes, location-based workforce scheduler, GPS geofencing, blocked-attempt flags, manual punch review, and static portal navigation are installed.');
+console.log('Enterprise owner authority, Time and Attendance routes, location-based workforce scheduler, GPS geofencing, blocked-attempt flags, manual punch review, and static portal navigation are installed.');
