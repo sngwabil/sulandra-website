@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
@@ -38,5 +38,8 @@ jobs:
       - name: Build static frontend
         run: npm run build:web
 
-      - name: Verify Employee 360 generated output
+      - name: Verify Employee 360 permissions
         run: node scripts/verify-employee-360-permissions.mjs
+
+      - name: Verify Employee 360 compliance engine
+        run: node scripts/verify-employee-compliance.mjs
