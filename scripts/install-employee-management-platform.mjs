@@ -17,6 +17,7 @@ const assetsAccessImport = "import { registerEmployeeAssetsAccessRoutes } from '
 const analyticsImport = "import { registerEmployeeAnalyticsReportsRoutes } from './employee-analytics-reports-routes.js';";
 const documentsImport = "import { registerEmployeeDocumentsESignRoutes } from './employee-documents-esign-routes.js';";
 const bulkDataImport = "import { registerEmployeeBulkDataRoutes } from './employee-bulk-data-routes.js';";
+const workflowImport = "import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflow-automation-routes.js';";
 const careersRegister = 'registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
 const permissionsRegister = 'registerEmployee360Permissions({ app, prisma, authOf, requireRoles, audit });';
 const employeeRegister = 'registerEmployeeManagementRoutes({ app, prisma, authOf, requireRoles, audit });';
@@ -30,16 +31,17 @@ const assetsAccessRegister = 'registerEmployeeAssetsAccessRoutes({ app, prisma, 
 const analyticsRegister = 'registerEmployeeAnalyticsReportsRoutes({ app, prisma, authOf, requireRoles, audit });';
 const documentsRegister = 'registerEmployeeDocumentsESignRoutes({ app, prisma, authOf, requireRoles, audit });';
 const bulkDataRegister = 'registerEmployeeBulkDataRoutes({ app, prisma, authOf, requireRoles, audit });';
+const workflowRegister = 'registerEmployeeWorkflowAutomationRoutes({ app, prisma, authOf, requireRoles, audit });';
 
 let bootstrap = await readFile(bootstrapPath, 'utf8');
 if (!bootstrap.includes(careersImport)) throw new Error('Unable to locate the careers import anchor for Employee 360');
-for (const importLine of [permissionsImport, employeeImport, selfServiceImport, complianceImport, collaborationImport, performanceImport, compensationImport, leaveOffboardingImport, assetsAccessImport, analyticsImport, documentsImport, bulkDataImport]) {
+for (const importLine of [permissionsImport, employeeImport, selfServiceImport, complianceImport, collaborationImport, performanceImport, compensationImport, leaveOffboardingImport, assetsAccessImport, analyticsImport, documentsImport, bulkDataImport, workflowImport]) {
   if (!bootstrap.includes(importLine)) bootstrap = bootstrap.replace(careersImport, `${careersImport}\n${importLine}`);
 }
-for (const registerLine of [permissionsRegister, employeeRegister, selfServiceRegister, complianceRegister, collaborationRegister, performanceRegister, compensationRegister, leaveOffboardingRegister, assetsAccessRegister, analyticsRegister, documentsRegister, bulkDataRegister]) {
+for (const registerLine of [permissionsRegister, employeeRegister, selfServiceRegister, complianceRegister, collaborationRegister, performanceRegister, compensationRegister, leaveOffboardingRegister, assetsAccessRegister, analyticsRegister, documentsRegister, bulkDataRegister, workflowRegister]) {
   bootstrap = bootstrap.replace(new RegExp(`\\n?${registerLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`, 'g'), '\n');
 }
 if (!bootstrap.includes(careersRegister)) throw new Error('Unable to locate the careers registration anchor for Employee 360');
-bootstrap = bootstrap.replace(careersRegister, `${permissionsRegister}\n${employeeRegister}\n${selfServiceRegister}\n${complianceRegister}\n${collaborationRegister}\n${performanceRegister}\n${compensationRegister}\n${leaveOffboardingRegister}\n${assetsAccessRegister}\n${analyticsRegister}\n${documentsRegister}\n${bulkDataRegister}\n\n${careersRegister}`);
+bootstrap = bootstrap.replace(careersRegister, `${permissionsRegister}\n${employeeRegister}\n${selfServiceRegister}\n${complianceRegister}\n${collaborationRegister}\n${performanceRegister}\n${compensationRegister}\n${leaveOffboardingRegister}\n${assetsAccessRegister}\n${analyticsRegister}\n${documentsRegister}\n${bulkDataRegister}\n${workflowRegister}\n\n${careersRegister}`);
 await writeFile(bootstrapPath, bootstrap, 'utf8');
-console.log('Employee 360 permissions, management, self-service, compliance, collaboration, performance, compensation, payroll, benefits, leave, offboarding, assets, access, analytics, reporting, documents, policies, e-signatures, bulk import, export, and data quality routes are installed.');
+console.log('Employee 360 permissions, management, self-service, compliance, collaboration, performance, compensation, payroll, benefits, leave, offboarding, assets, access, analytics, reporting, documents, policies, e-signatures, bulk import, export, data quality, workflow automation, and task orchestration routes are installed.');
