@@ -43,3 +43,6 @@ jobs:
 
       - name: Verify Employee 360 compliance engine
         run: node scripts/verify-employee-compliance.mjs
+
+      - name: Verify Employee 360 collaboration workflows
+        run: node scripts/verify-employee-collaboration.mjs
