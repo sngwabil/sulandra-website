@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Employee 360 now maintains a centralized compliance requirement catalog, automatically determines which employees are subject to each requirement, reconciles approved evidence, calculates due and renewal dates, sends reminders, escalates overdue items, and exposes self-service actions to employees.
+Employee 360 maintains a centralized compliance requirement catalog, automatically determines which employees are subject to each requirement, reconciles approved evidence, calculates due and renewal dates, sends reminders, escalates overdue items, and exposes self-service actions to employees.
 
 The backend is authoritative. Browser controls improve usability but do not grant access.
 
@@ -23,7 +23,7 @@ A document requirement can define:
 - Employee upload permission.
 - Reminder and escalation schedule.
 
-Employee-submitted compliance documents enter `PENDING` review status. Human Resources or an authorized Administrator must approve or reject the document before it becomes accepted compliance evidence.
+Employee-submitted compliance documents enter `PENDING` review status. Human Resources or an authorized Administrator must approve or reject the document before it becomes accepted compliance evidence. The backend verifies the reviewer’s employee and location scope before changing the document.
 
 ### Education
 
@@ -65,6 +65,8 @@ Requirements are evaluated only for employees in the configured employment statu
 
 Location-scoped managers see only employees within the service-location scope already enforced by Employee 360 permissions.
 
+Creating or updating a requirement immediately runs a reconciliation without sending notifications. Applicable assignments therefore appear without waiting for the next daily scheduled run.
+
 ## Compliance statuses
 
 | Status | Meaning |
@@ -72,11 +74,13 @@ Location-scoped managers see only employees within the service-location scope al
 | `NOT_STARTED` | Applicable requirement exists but no completion activity has started |
 | `MISSING` | Required evidence is absent and the item is not yet overdue |
 | `IN_PROGRESS` | Education is in progress or an employee-submitted document is awaiting review |
-| `DUE_SOON` | Due or expiration date is within the configured warning window |
+| `DUE_SOON` | Approved evidence is still current but its due or expiration date is within the warning window |
 | `OVERDUE` | Due or expiration date has passed |
-| `COMPLIANT` | Approved evidence is current |
+| `COMPLIANT` | Approved evidence is current and outside the warning window |
 | `EXEMPT` | Authorized exemption is active |
 | `NOT_APPLICABLE` | Requirement no longer applies to that employee |
+
+`DUE_SOON` remains part of the current compliance percentage while still being surfaced as an action and renewal warning.
 
 ## Evidence reconciliation
 
@@ -88,6 +92,7 @@ The engine finds the newest active document matching the required category and o
 - `REJECTED` documents are not accepted as evidence.
 - `APPROVED` documents are evaluated by their expiration date or configured renewal interval.
 - Approved documents without an expiration or renewal interval remain compliant.
+- Approval or rejection triggers an immediate organization reconciliation without sending reminder emails.
 
 ### Education
 
@@ -97,6 +102,8 @@ The engine checks for:
 2. Its explicit expiration date or the requirement renewal interval.
 3. An open assigned or in-progress course if no current completion exists.
 4. Automatic course assignment when configured.
+
+Scheduled education assignments use the actual administrator when a manual reconciliation is started and remain system-created when a scheduled run has no human actor.
 
 ### Attestations
 
@@ -151,6 +158,8 @@ Employee 360 can notify:
 
 Reminder emails are sent from **Sulandra Health Human Resources Department** and include professional action links to the Employee Portal and Learning Center.
 
+Automatic communications are recorded using the Enterprise Owner, an HR Manager, or an Administrator as the system communication actor rather than attributing the email to the employee receiving it.
+
 ## Duplicate prevention and retries
 
 Every reminder has a database-enforced deduplication key containing:
@@ -178,7 +187,7 @@ Each organization configures:
 - Employee Portal action URL.
 - Sender display name.
 
-The engine runs once per configured local calendar day. PostgreSQL advisory locks prevent two Railway instances from processing the same organization simultaneously.
+The engine runs once per configured local calendar day. A database-backed `EmployeeComplianceLease` allows only one Railway instance to process an organization at a time. The lease has a six-hour crash-recovery expiration and is released only by the run holding the matching token. This avoids connection-pool problems associated with session-level advisory locks.
 
 A startup reconciliation also runs after the API initializes. Reminder deduplication prevents restart-related duplicate emails.
 
@@ -199,10 +208,10 @@ A manual run:
 
 ## Compliance Center
 
-The Admin Employee 360 workspace now includes a Compliance Center with:
+The Admin Employee 360 workspace includes a Compliance Center with:
 
 - Organization compliance rate.
-- Overdue, due-soon, missing, incomplete, compliant, and exempt counts.
+- Overdue, due-soon, missing, incomplete, currently compliant, and exempt counts.
 - Assignment search and filters.
 - Requirement builder and editor.
 - Role, department, job-title, location, and employment-status applicability.
@@ -247,6 +256,8 @@ Limited to:
 
 Program Managers, House Managers, and Delegating Nurses see only employees in their authorized service locations. House Managers are limited to homes where they are designated as manager.
 
+Document review first retrieves the employee owner of the document, verifies the reviewer’s scope, and only then performs the approval or rejection update.
+
 ### Read-only auditing
 
 Auditors can view compliance records and logs but cannot create requirements, change settings, approve documents, apply exemptions, or send reminders.
@@ -279,6 +290,7 @@ The system records:
 - `EmployeeComplianceAttestation`
 - `EmployeeComplianceReminder`
 - `EmployeeComplianceRun`
+- `EmployeeComplianceLease`
 
 Employee documents also include:
 
