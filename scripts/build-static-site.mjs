@@ -28,11 +28,12 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260806-employee360-direct-1';
+  const version = '20260806-employee360-permissions-1';
   adminHtml = adminHtml
     .replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/admin-service-home-management(?:-v2)?\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(/\s*<script src="\/assets\/admin-employee-permissions\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/admin-employee-management\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/<a\s+data-module=["']time["']\s*>\s*Time\s*&(?:amp;)?\s*Attendance\s*<\/a>/gi, `<a href="${attendanceAdminTarget}" id="adminTimeAttendanceTopLink">Time &amp; Attendance</a>`)
     .replace(/<button([^>]*?)data-module=["']time["']([^>]*)>\s*Time\s*&(?:amp;)?\s*Attendance([\s\S]*?)<\/button>/gi, `<button$1id="adminTimeAttendanceSideLink"$2 type="button">Time &amp; Attendance$3</button>`);
@@ -42,7 +43,7 @@ try {
         <!-- Employee 360 Module -->
         <section class="card module" id="module-employees" aria-label="Employee management workspace">
           <h1>Employees</h1>
-          <p class="sub">Loading employee directory, compliance records, education, timekeeping, communications, and account tools…</p>
+          <p class="sub">Loading employee directory, scoped permissions, confidential-record controls, compliance, education, timekeeping, communications, and account tools…</p>
         </section>
 
 `;
@@ -73,7 +74,7 @@ try {
 })();
 </script>`;
   adminHtml = adminHtml.replace(/\s*<script id="admin-time-attendance-hard-route">[\s\S]*?<\/script>\s*/g, '\n');
-  adminHtml = adminHtml.replace('</body>', `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n  <script src="/assets/admin-service-home-management-v2.js?v=${version}"></script>\n  <script src="/assets/admin-employee-management.js?v=${version}"></script>\n  ${directNavigation}\n</body>`);
+  adminHtml = adminHtml.replace('</body>', `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n  <script src="/assets/admin-service-home-management-v2.js?v=${version}"></script>\n  <script src="/assets/admin-employee-permissions.js?v=${version}"></script>\n  <script src="/assets/admin-employee-management.js?v=${version}"></script>\n  ${directNavigation}\n</body>`);
   await writeFile(adminPath, adminHtml, 'utf8');
 
   const employeeAssetPath = path.join(outputDirectory, 'assets', 'admin-employee-management.js');
@@ -137,4 +138,4 @@ async function injectOwnerAsset(directory) {
 await injectOwnerAsset(outputDirectory);
 
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with Service Homes, Employee 360, structured addresses, GPS mapping, assignments, schedules, clocking, and enterprise-owner identity.');
+console.log('Static website prepared with Service Homes, scoped Employee 360 permissions, confidential-record separation, structured addresses, GPS mapping, schedules, clocking, and enterprise-owner identity.');
