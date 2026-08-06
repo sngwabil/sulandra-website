@@ -157,6 +157,16 @@ CREATE TABLE IF NOT EXISTS "EmployeeComplianceRun" (
 CREATE INDEX IF NOT EXISTS "EmployeeComplianceRun_org_idx"
   ON "EmployeeComplianceRun"("organizationId","startedAt" DESC);
 
+CREATE TABLE IF NOT EXISTS "EmployeeComplianceLease" (
+  "organizationId" TEXT PRIMARY KEY,
+  "token" TEXT NOT NULL,
+  "lockedUntil" TIMESTAMPTZ NOT NULL,
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS "EmployeeComplianceLease_expiration_idx"
+  ON "EmployeeComplianceLease"("lockedUntil");
+
 DO $$
 BEGIN
   IF to_regclass('public."EmployeeDocument"') IS NOT NULL THEN
