@@ -28,7 +28,7 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260806-enterprise-owner-1';
+  const version = '20260806-scheduler-timezone-1';
   adminHtml = adminHtml
     .replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
@@ -80,7 +80,7 @@ try {
     .replace(/\s*<script src="\/assets\/time-attendance-admin-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-location-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-geofence\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
-    .replace('</body>', '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-owner-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-owner-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-owner-1"></script>\n</body>');
+    .replace('</body>', '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260806-scheduler-timezone-1"></script>\n  <script src="/assets/time-attendance-location-scheduler.js?v=20260806-scheduler-timezone-1"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260806-scheduler-timezone-1"></script>\n</body>');
   await writeFile(timeAttendancePath, timeAttendanceHtml, 'utf8');
   const cleanRouteDirectory = path.join(outputDirectory, 'time-attendance');
   await mkdir(cleanRouteDirectory, { recursive: true });
@@ -102,4 +102,4 @@ async function injectOwnerAsset(directory) {
 await injectOwnerAsset(outputDirectory);
 
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with enterprise-owner identity and role management, restored Time and Attendance admin scheduler, shared authentication, and GPS controls.');
+console.log('Static website prepared with local-time schedule persistence, right-click edit/delete controls, enterprise-owner identity, GPS controls, and shared authentication.');
