@@ -47,7 +47,7 @@ if (await exists(migrationPath)) {
 
 const installer = await read('scripts/install-employee-management-platform.mjs');
 expect('compliance routes wired into backend', installer.includes('registerEmployeeComplianceRoutes'));
-expect('compliance registration occurs before careers', installer.includes('${selfServiceRegister}\\n${complianceRegister}\\n\\n${careersRegister}'));
+expect('compliance registration occurs before careers', installer.includes('${selfServiceRegister}\\n${complianceRegister}\\n${collaborationRegister}\\n\\n${careersRegister}'));
 
 const hardeningScript = await read('scripts/fix-employee-compliance-engine.mjs');
 expect('compliance hardening build step exists', hardeningScript.includes('EmployeeComplianceLease') && hardeningScript.includes('currentRows'));
