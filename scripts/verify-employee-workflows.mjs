@@ -7,7 +7,7 @@ const read=async file=>readFile(path.join(root,file),'utf8');
 const checks=[];
 const expect=(name,condition)=>{checks.push({name,condition});if(!condition)throw new Error(`Employee workflow verification failed: ${name}`)};
 
-const backend=await read('api/src/employee-workflow-automation-routes.ts');
+const backend=await read('api/src/employee-workflows-automation-routes.ts');
 expect('backend route exists',backend.includes('registerEmployeeWorkflowAutomationRoutes'));
 expect('workflow definitions supported',backend.includes('EmployeeWorkflowDefinition'));
 expect('workflow instances supported',backend.includes('EmployeeWorkflowInstance'));
@@ -40,7 +40,8 @@ expect('migration status constraints',migration.includes('EmployeeWorkflowStep_s
 expect('migration unique step order',migration.includes('EmployeeWorkflowStep_order_unique'));
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
-expect('workflow import installed',installer.includes('registerEmployeeWorkflowAutomationRoutes'));
+expect('workflow import installed',installer.includes("./employee-workflows-automation-routes.js"));
+expect('obsolete workflow import absent',!installer.includes("./employee-workflow-automation-routes.js"));
 expect('workflow registered before careers',installer.indexOf('registerEmployeeWorkflowAutomationRoutes({ app, prisma')<installer.indexOf('registerCareersRoutes(app, prisma'));
 
 const admin=await read('assets/admin-employee-workflows.js');
