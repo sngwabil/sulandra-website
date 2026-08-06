@@ -23,42 +23,74 @@
     }
     return '';
   };
+
   const session = readSession();
   const employeeName = valueAt(session, [
-    'displayName','fullName','name','employeeName','user.displayName','user.fullName','user.name','employee.displayName','employee.fullName','profile.displayName','profile.fullName'
+    'displayName','fullName','name','employeeName','user.displayName','user.fullName','user.name',
+    'employee.displayName','employee.fullName','profile.displayName','profile.fullName'
   ]);
   const employeeId = String(session.userId || session.employeeId || session.user?.id || session.employee?.id || '');
   const email = String(session.email || session.user?.email || session.employee?.email || '').toLowerCase();
 
   window.SulandraEmployeeIdentity = { employeeName, employeeId, email };
 
+  let applying = false;
+  const setTextIfChanged = (node, value) => {
+    if (node && node.textContent !== value) node.textContent = value;
+  };
+
   const apply = () => {
-    if (!employeeName) return;
-    const navigatorName = document.getElementById('employeeName');
-    if (navigatorName && (!navigatorName.textContent.trim() || navigatorName.textContent.includes('@') || navigatorName.textContent === 'Employee')) {
-      navigatorName.textContent = employeeName;
-    }
-    const userLabel = document.getElementById('userLabel');
-    if (userLabel) {
-      const suffix = userLabel.textContent.includes('·') ? ` · ${userLabel.textContent.split('·').slice(1).join('·').trim()}` : '';
-      userLabel.textContent = employeeName + suffix;
-    }
-    document.querySelectorAll('#locationScheduleGrid tbody tr').forEach(row => {
-      const heading = row.querySelector('th');
-      if (!heading) return;
-      const rowEmployeeId = row.querySelector('[data-employee]')?.dataset.employee || '';
-      const headingText = heading.textContent.toLowerCase();
-      if ((employeeId && rowEmployeeId === employeeId) || (email && headingText.includes(email))) {
-        heading.replaceChildren(document.createTextNode(employeeName));
-      } else {
-        heading.querySelectorAll('small').forEach(node => node.remove());
+    if (applying || !employeeName) return;
+    applying = true;
+    try {
+      const navigatorName = document.getElementById('employeeName');
+      if (navigatorName && (!navigatorName.textContent.trim() || navigatorName.textContent.includes('@') || navigatorName.textContent === 'Employee')) {
+        setTextIfChanged(navigatorName, employeeName);
       }
-    });
+
+      const userLabel = document.getElementById('userLabel');
+      if (userLabel) {
+        const current = userLabel.textContent || '';
+        const suffix = current.includes('·') ? ` · ${current.split('·').slice(1).join('·').trim()}` : '';
+        setTextIfChanged(userLabel, employeeName + suffix);
+      }
+
+      document.querySelectorAll('#locationScheduleGrid tbody tr').forEach(row => {
+        const heading = row.querySelector('th');
+        if (!heading) return;
+        const rowEmployeeId = row.querySelector('[data-employee]')?.dataset.employee || '';
+        const headingText = heading.textContent.toLowerCase();
+        const isCurrentEmployee = (employeeId && rowEmployeeId === employeeId) || (email && headingText.includes(email));
+        if (isCurrentEmployee) {
+          if (heading.textContent.trim() !== employeeName || heading.children.length) {
+            heading.replaceChildren(document.createTextNode(employeeName));
+          }
+        } else {
+          heading.querySelectorAll('small').forEach(node => node.remove());
+        }
+      });
+    } finally {
+      applying = false;
+    }
   };
 
   const style = document.createElement('style');
   style.textContent = '#locationScheduleGrid tbody th small{display:none!important}';
   document.head.appendChild(style);
+
+  let queued = false;
+  const queueApply = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      apply();
+    });
+  };
+
   apply();
-  new MutationObserver(apply).observe(document.documentElement, { childList:true, subtree:true, characterData:true });
+  const observer = new MutationObserver((mutations) => {
+    if (mutations.some(mutation => mutation.addedNodes.length || mutation.removedNodes.length)) queueApply();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 })();
