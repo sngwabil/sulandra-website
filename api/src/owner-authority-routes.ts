@@ -41,11 +41,22 @@ export function registerOwnerAuthorityRoutes({ app, prisma, authOf }: Dependenci
       END;
       $$ LANGUAGE plpgsql;
     `);
-    await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS protect_sulandra_enterprise_owner_trigger ON "User"`);
     await prisma.$executeRawUnsafe(`
-      CREATE TRIGGER protect_sulandra_enterprise_owner_trigger
-      BEFORE UPDATE OR DELETE ON "User"
-      FOR EACH ROW EXECUTE FUNCTION protect_sulandra_enterprise_owner()
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_trigger
+          WHERE tgname = 'protect_sulandra_enterprise_owner_trigger'
+            AND tgrelid = '"User"'::regclass
+            AND NOT tgisinternal
+        ) THEN
+          CREATE TRIGGER protect_sulandra_enterprise_owner_trigger
+          BEFORE UPDATE OR DELETE ON "User"
+          FOR EACH ROW EXECUTE FUNCTION protect_sulandra_enterprise_owner();
+        END IF;
+      END
+      $$;
     `);
   })().catch((error) => {
     readyPromise = null;
