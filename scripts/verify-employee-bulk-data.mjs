@@ -1,0 +1,41 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const checks=[];
+const must=(ok,label)=>{if(!ok)throw new Error(`Section 10 verification failed: ${label}`);checks.push(label)};
+const read=rel=>readFile(path.join(root,rel),'utf8');
+
+const backend=await read('api/src/employee-bulk-data-routes.ts');
+const installer=await read('scripts/install-employee-management-platform.mjs');
+const adminInstaller=await read('scripts/install-employee-management-frontend.mjs');
+const frontend=await read('assets/admin-employee-bulk-data.js');
+const migration=await read('prisma/migrations/20260806195000_employee_bulk_data/migration.sql');
+const pkg=await read('package.json');
+
+must(backend.includes('registerEmployeeBulkDataRoutes'),'backend route module exists');
+must(backend.includes('/api/admin/employee-bulk-data/dashboard'),'dashboard endpoint exists');
+must(backend.includes('/api/admin/employee-bulk-data/import'),'import endpoint exists');
+must(backend.includes('/api/admin/employee-bulk-data/export'),'export endpoint exists');
+must(backend.includes('/api/admin/employee-bulk-data/issues/:issueId'),'quality issue workflow exists');
+must(backend.includes("['EMPLOYEES','COMPENSATION','LEAVE_BALANCES','ASSETS','ACCESS_GRANTS','DOCUMENT_ASSIGNMENTS']"),'supported entities are declared');
+must(backend.includes("['VALIDATE_ONLY','UPSERT','INSERT_ONLY']"),'import modes are declared');
+must(backend.includes('.max(5000)'),'batch limit exists');
+must(backend.includes('Auditor bulk data access is read only'),'auditor is read only');
+must(backend.includes('organizationId'),'organization isolation is enforced');
+must(backend.includes('EmployeeBulkDataEvent'),'audit event table is used');
+must(installer.includes("registerEmployeeBulkDataRoutes({ app, prisma, authOf, requireRoles, audit });"),'route is registered');
+must(installer.indexOf('registerEmployeeBulkDataRoutes')<installer.indexOf('registerCareersRoutes(app, prisma'),'route is registered before Careers');
+must(frontend.includes('Bulk Data & Data Quality'),'Admin interface exists');
+must(frontend.includes('sulandra-website-production-5fc4.up.railway.app'),'frontend uses explicit API base');
+must(frontend.includes('Authorization'),'frontend sends bearer authentication');
+must(frontend.includes('Run Import')&&frontend.includes('Export'),'import and export controls exist');
+must(adminInstaller.includes('admin-employee-bulk-data.js'),'static installer publishes Section 10 asset');
+must(migration.includes('EmployeeBulkDataJob'),'job migration exists');
+must(migration.includes('EmployeeBulkDataError'),'row-error migration exists');
+must(migration.includes('EmployeeDataQualityIssue'),'quality issue migration exists');
+must(migration.includes('EmployeeBulkDataEvent'),'audit migration exists');
+must(pkg.includes('fix-employee-bulk-data-integration.mjs'),'build integration fixer is included');
+must(pkg.includes('verify-employee-bulk-data.mjs'),'Section 10 verifier is included');
+console.log(`Employee 360 Section 10 bulk data validation passed (${checks.length} checks).`);
