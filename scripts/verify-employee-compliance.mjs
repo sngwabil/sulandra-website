@@ -20,7 +20,7 @@ if (await exists(backendPath)) {
   expect('employee attestation evidence', source.includes('EmployeeComplianceAttestation') && source.includes('/attest'));
   expect('employee secure document submission', source.includes('/upload') && source.includes('MAX_DOCUMENT_BYTES') && source.includes("'PENDING'"));
   expect('daily timezone scheduler', source.includes('runScheduledOrganizations') && source.includes('localClock') && source.includes('scanHour'));
-  expect('multi-instance advisory lock', source.includes('pg_try_advisory_lock') && source.includes('pg_advisory_unlock'));
+  expect('crash-safe distributed run lease', source.includes('EmployeeComplianceLease') && source.includes("INTERVAL '6 hours'") && !source.includes('pg_try_advisory_lock'));
   expect('reminder deduplication', source.includes('dedupeKey') && source.includes('EmployeeComplianceReminder_dedupe_unique'));
   expect('retry limit', source.includes('attempts') && source.includes('>= 3'));
   expect('employee manager and HR escalation', ['SUPERVISOR','LOCATION_MANAGER','HR'].every(value => source.includes(value)));
@@ -29,21 +29,28 @@ if (await exists(backendPath)) {
   expect('owner HR admin requirement control', source.includes('requireRequirementManager') && source.includes('OWNER_EMAIL'));
   expect('manual run and audit history endpoints', source.includes('/engine/run') && source.includes('/runs') && source.includes('/reminders'));
   expect('manual exemptions and overrides', source.includes('CLEAR_EXEMPTION') && source.includes('MARK_COMPLETE') && source.includes('CHANGE_DUE_DATE'));
+  expect('document scope checked before review mutation', source.indexOf('await requireEmployeeScope(auth, currentRows[0].employeeId)') < source.indexOf('UPDATE "EmployeeDocument" SET "reviewStatus"'));
+  expect('requirement changes reconcile immediately', source.includes("CREATE_COMPLIANCE_REQUIREMENT', 'EmployeeComplianceRequirement', id") && source.includes("await runEngine(auth.organizationId, 'MANUAL', auth.userId, false)"));
+  expect('due-soon current evidence counts as compliant', source.includes("['COMPLIANT', 'DUE_SOON', 'EXEMPT']"));
 }
 
 const migrationPath = 'prisma/migrations/20260806131500_employee_compliance_engine/migration.sql';
 expect('compliance migration exists', await exists(migrationPath));
 if (await exists(migrationPath)) {
   const migration = await read(migrationPath);
-  expect('all compliance tables migrated', ['EmployeeComplianceSettings','EmployeeComplianceRequirement','EmployeeComplianceAssignment','EmployeeComplianceAttestation','EmployeeComplianceReminder','EmployeeComplianceRun'].every(value => migration.includes(value)));
+  expect('all compliance tables migrated', ['EmployeeComplianceSettings','EmployeeComplianceRequirement','EmployeeComplianceAssignment','EmployeeComplianceAttestation','EmployeeComplianceReminder','EmployeeComplianceRun','EmployeeComplianceLease'].every(value => migration.includes(value)));
   expect('database reminder dedupe index', migration.includes('EmployeeComplianceReminder_dedupe_unique'));
   expect('document review workflow columns', migration.includes('reviewStatus') && migration.includes('PENDING') && migration.includes('APPROVED') && migration.includes('REJECTED'));
   expect('fresh database document guard', migration.includes("to_regclass('public.\"EmployeeDocument\"')"));
+  expect('distributed lease expiration index', migration.includes('EmployeeComplianceLease_expiration_idx'));
 }
 
 const installer = await read('scripts/install-employee-management-platform.mjs');
 expect('compliance routes wired into backend', installer.includes('registerEmployeeComplianceRoutes'));
 expect('compliance registration occurs before careers', installer.includes('${selfServiceRegister}\\n${complianceRegister}\\n\\n${careersRegister}'));
+
+const hardeningScript = await read('scripts/fix-employee-compliance-engine.mjs');
+expect('compliance hardening build step exists', hardeningScript.includes('EmployeeComplianceLease') && hardeningScript.includes('currentRows'));
 
 const adminAsset = await read('assets/admin-employee-compliance.js');
 expect('admin compliance center exists', adminAsset.includes('Employee Compliance Center') && adminAsset.includes('Run Compliance Engine'));
@@ -57,11 +64,16 @@ expect('employee compliance dashboard exists', selfAsset.includes('My Compliance
 expect('employee upload action exists', selfAsset.includes('Submit for HR Review') && selfAsset.includes('/upload'));
 expect('employee attestation action exists', selfAsset.includes('Sign and Attest') && selfAsset.includes('/attest'));
 expect('employee education action exists', selfAsset.includes('Open Learning Center'));
+expect('employee dashboard uses current compliance', selfAsset.includes('currentlyCompliant'));
 
 const adminInstaller = await read('scripts/install-employee-management-frontend.mjs');
 expect('admin compliance asset published', adminInstaller.includes('/assets/admin-employee-compliance.js'));
 const selfInstaller = await read('scripts/install-employee-self-service-frontend.mjs');
 expect('employee compliance asset published', selfInstaller.includes('/assets/employee-compliance-self-service.js'));
+
+const packageJson = await read('package.json');
+expect('hardening runs before backend compilation', packageJson.includes('install-employee-management-platform.mjs && node scripts/fix-employee-compliance-engine.mjs'));
+expect('frontend semantic repair runs before static build', packageJson.includes('fix-employee-compliance-frontend.mjs'));
 
 const distAdminPath = 'dist-web/admin.html';
 if (await exists(distAdminPath)) {
