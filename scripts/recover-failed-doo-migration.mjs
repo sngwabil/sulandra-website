@@ -1,25 +1,31 @@
 import { spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 
-const migrationName = '20260804064500_update_employee_application_role_check_for_doo';
+const migrationNames = [
+  '20260804064500_update_employee_application_role_check_for_doo',
+  '20260806203500_employee_workflow_automation',
+];
 const prisma = new PrismaClient();
 
 try {
-  const rows = await prisma.$queryRawUnsafe(
-    `SELECT "finished_at", "rolled_back_at"
-       FROM "_prisma_migrations"
-      WHERE "migration_name" = $1
-      ORDER BY "started_at" DESC
-      LIMIT 1`,
-    migrationName,
-  );
+  for (const migrationName of migrationNames) {
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT "finished_at", "rolled_back_at"
+         FROM "_prisma_migrations"
+        WHERE "migration_name" = $1
+        ORDER BY "started_at" DESC
+        LIMIT 1`,
+      migrationName,
+    );
 
-  const latest = rows[0];
-  const isFailed = latest && !latest.finished_at && !latest.rolled_back_at;
+    const latest = rows[0];
+    const isFailed = latest && !latest.finished_at && !latest.rolled_back_at;
 
-  if (!isFailed) {
-    console.log('No failed DOO migration state requires recovery.');
-  } else {
+    if (!isFailed) {
+      console.log(`No failed migration state requires recovery for ${migrationName}.`);
+      continue;
+    }
+
     console.log(`Marking failed migration ${migrationName} as rolled back before retry.`);
     const result = spawnSync(
       process.platform === 'win32' ? 'npx.cmd' : 'npx',
