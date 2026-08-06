@@ -1,0 +1,16 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const target=path.join(root,'api/src/onboarding-bootstrap.ts');
+let source=await readFile(target,'utf8');
+const careersImport="import { registerCareersRoutes } from './careers-routes.js';";
+const scopeImport="import { registerEmployee360ScopeEnforcement } from './employee360-scope-enforcement.js';";
+const careersRegister='registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
+const scopeRegister='registerEmployee360ScopeEnforcement({ app, prisma, authOf });';
+if(!source.includes(scopeImport))source=source.replace(careersImport,`${careersImport}\n${scopeImport}`);
+source=source.replace(new RegExp(`\\n?${scopeRegister.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\n?`,'g'),'\n');
+if(!source.includes(careersRegister))throw new Error('Careers registration anchor is missing');
+source=source.replace(careersRegister,`${scopeRegister}\n${careersRegister}`);
+await writeFile(target,source,'utf8');
+console.log('Program, service-home, scheduler, clinical, auditor, and confidential-area Employee 360 scope enforcement is installed before Employee 360 routes.');
