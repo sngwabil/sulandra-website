@@ -62,23 +62,25 @@ CREATE INDEX IF NOT EXISTS "Employee360AccessEvent_actor_idx"
 CREATE INDEX IF NOT EXISTS "Employee360AccessEvent_decision_idx"
   ON "Employee360AccessEvent"("organizationId","decision","createdAt" DESC);
 
-ALTER TABLE "EmployeeDocument"
-  ADD COLUMN IF NOT EXISTS "sensitivity" TEXT NOT NULL DEFAULT 'GENERAL';
-ALTER TABLE "EmployeeDocument"
-  ADD COLUMN IF NOT EXISTS "employeeVisible" BOOLEAN NOT NULL DEFAULT FALSE;
-
 DO $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname='EmployeeDocument_sensitivity_check'
-  ) THEN
+  IF to_regclass('public."EmployeeDocument"') IS NOT NULL THEN
     ALTER TABLE "EmployeeDocument"
-      ADD CONSTRAINT "EmployeeDocument_sensitivity_check"
-      CHECK ("sensitivity" IN ('GENERAL','HR_CONFIDENTIAL','MEDICAL','BACKGROUND','DISCIPLINARY','IDENTITY','COMPENSATION'));
+      ADD COLUMN IF NOT EXISTS "sensitivity" TEXT NOT NULL DEFAULT 'GENERAL';
+    ALTER TABLE "EmployeeDocument"
+      ADD COLUMN IF NOT EXISTS "employeeVisible" BOOLEAN NOT NULL DEFAULT FALSE;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname='EmployeeDocument_sensitivity_check'
+    ) THEN
+      ALTER TABLE "EmployeeDocument"
+        ADD CONSTRAINT "EmployeeDocument_sensitivity_check"
+        CHECK ("sensitivity" IN ('GENERAL','HR_CONFIDENTIAL','MEDICAL','BACKGROUND','DISCIPLINARY','IDENTITY','COMPENSATION'));
+    END IF;
+
+    CREATE INDEX IF NOT EXISTS "EmployeeDocument_sensitivity_idx"
+      ON "EmployeeDocument"("organizationId","employeeId","sensitivity","status");
+    CREATE INDEX IF NOT EXISTS "EmployeeDocument_employee_visible_idx"
+      ON "EmployeeDocument"("organizationId","employeeId","employeeVisible","status");
   END IF;
 END $$;
-
-CREATE INDEX IF NOT EXISTS "EmployeeDocument_sensitivity_idx"
-  ON "EmployeeDocument"("organizationId","employeeId","sensitivity","status");
-CREATE INDEX IF NOT EXISTS "EmployeeDocument_employee_visible_idx"
-  ON "EmployeeDocument"("organizationId","employeeId","employeeVisible","status");
