@@ -13,4 +13,5 @@ source=source.replace(new RegExp(`\\n?${scopeRegister.replace(/[.*+?^${}()|[\]\\
 if(!source.includes(careersRegister))throw new Error('Careers registration anchor is missing');
 source=source.replace(careersRegister,`${scopeRegister}\n${careersRegister}`);
 await writeFile(target,source,'utf8');
-console.log('Program, service-home, scheduler, clinical, auditor, and confidential-area Employee 360 scope enforcement is installed before Employee 360 routes.');
+await import('./fix-careers-secure-object-storage.mjs');
+console.log('Program, service-home, scheduler, clinical, auditor, and confidential-area Employee 360 scope enforcement is installed before Employee 360 routes, and new Careers uploads use secure object storage.');
