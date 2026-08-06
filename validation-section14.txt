@@ -1,0 +1,1 @@
+Section 14 validation trigger. Implementation lives on feature/spire-ehr-platform; this branch is validation-only and must not be merged.
