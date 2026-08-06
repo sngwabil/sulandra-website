@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 110
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
@@ -88,3 +88,17 @@ jobs:
 
       - name: Verify Employee 360 enterprise gap controls
         run: node scripts/verify-employee360-enterprise-gaps.mjs
+
+      - name: Verify secure storage authentication and first-class source
+        run: node scripts/verify-employee360-enterprise-completion.mjs
+
+      - name: Run API and database integration test contract
+        run: node --test tests/employee360-enterprise.integration.test.mjs
+
+      - name: Install Playwright test runtime
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run Employee 360 browser and mobile tests
+        run: npx playwright test --config=playwright.config.mjs
