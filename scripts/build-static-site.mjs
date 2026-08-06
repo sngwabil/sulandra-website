@@ -7,77 +7,32 @@ const repositoryRoot = path.resolve(
   '..',
 );
 
-const outputDirectory = path.join(
-  repositoryRoot,
-  'dist-web',
-);
+const outputDirectory = path.join(repositoryRoot, 'dist-web');
 
-const publicDirectories = [
-  'assets',
-  'courses',
-  'education',
-  'services',
-];
-
+const publicDirectories = ['assets', 'courses', 'education', 'services'];
 const publicExtensions = new Set([
-  '.css',
-  '.html',
-  '.ico',
-  '.js',
-  '.png',
-  '.svg',
-  '.txt',
-  '.webmanifest',
-  '.xml',
+  '.css', '.html', '.ico', '.js', '.png', '.svg', '.txt', '.webmanifest', '.xml',
 ]);
-
-const publicRootFiles = new Set([
-  'CNAME',
-  'vercel.json',
-]);
+const publicRootFiles = new Set(['CNAME', 'vercel.json']);
 
 const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app';
+const staticBase = 'https://www.sulandrahealth.com';
+const attendanceAdminTarget = `${staticBase}/time-attendance.html#admin`;
 
-await rm(outputDirectory, {
-  recursive: true,
-  force: true,
-});
+await rm(outputDirectory, { recursive: true, force: true });
+await mkdir(outputDirectory, { recursive: true });
 
-await mkdir(outputDirectory, {
-  recursive: true,
-});
-
-const entries = await readdir(repositoryRoot, {
-  withFileTypes: true,
-});
-
+const entries = await readdir(repositoryRoot, { withFileTypes: true });
 for (const entry of entries) {
-  if (!entry.isFile()) {
-    continue;
-  }
-
+  if (!entry.isFile()) continue;
   const extension = path.extname(entry.name).toLowerCase();
-
-  if (
-    !publicRootFiles.has(entry.name) &&
-    !publicExtensions.has(extension)
-  ) {
-    continue;
-  }
-
-  await cp(
-    path.join(repositoryRoot, entry.name),
-    path.join(outputDirectory, entry.name),
-  );
+  if (!publicRootFiles.has(entry.name) && !publicExtensions.has(extension)) continue;
+  await cp(path.join(repositoryRoot, entry.name), path.join(outputDirectory, entry.name));
 }
 
 for (const directory of publicDirectories) {
   try {
-    await cp(
-      path.join(repositoryRoot, directory),
-      path.join(outputDirectory, directory),
-      { recursive: true },
-    );
+    await cp(path.join(repositoryRoot, directory), path.join(outputDirectory, directory), { recursive: true });
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
   }
@@ -86,13 +41,64 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260805-applicant-lifecycle-filter-1';
-  adminHtml = adminHtml.replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
-  adminHtml = adminHtml.replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+  const version = '20260805-time-attendance-direct-4';
+
+  adminHtml = adminHtml
+    .replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(
+      /<a\s+data-module=["']time["']\s*>\s*Time\s*&(?:amp;)?\s*Attendance\s*<\/a>/gi,
+      `<a href="${attendanceAdminTarget}" id="adminTimeAttendanceTopLink">Time &amp; Attendance</a>`,
+    )
+    .replace(
+      /<button([^>]*?)data-module=["']time["']([^>]*)>\s*Time\s*&(?:amp;)?\s*Attendance([\s\S]*?)<\/button>/gi,
+      `<button$1id="adminTimeAttendanceSideLink"$2 type="button">Time &amp; Attendance$3</button>`,
+    );
+
+  const directNavigation = `
+<script id="admin-time-attendance-hard-route">
+(() => {
+  const target = '${attendanceAdminTarget}';
+  const redirect = (event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
+    window.location.href = target;
+  };
+  const wire = () => {
+    const top = document.getElementById('adminTimeAttendanceTopLink');
+    const side = document.getElementById('adminTimeAttendanceSideLink');
+    if (top) {
+      top.href = target;
+      top.removeAttribute('data-module');
+      top.onclick = redirect;
+    }
+    if (side) {
+      side.removeAttribute('data-module');
+      side.onclick = redirect;
+    }
+  };
+  wire();
+  document.addEventListener('DOMContentLoaded', wire);
+  window.addEventListener('load', wire);
+  document.addEventListener('click', (event) => {
+    const control = event.target.closest('#adminTimeAttendanceTopLink,#adminTimeAttendanceSideLink');
+    if (control) redirect(event);
+  }, true);
+})();
+</script>`;
+
+  adminHtml = adminHtml.replace(/\s*<script id="admin-time-attendance-hard-route">[\s\S]*?<\/script>\s*/g, '\n');
   adminHtml = adminHtml.replace(
     '</body>',
-    `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n</body>`,
+    `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n  ${directNavigation}\n</body>`,
   );
+
+  if (!adminHtml.includes('id="adminTimeAttendanceTopLink"') || !adminHtml.includes('id="adminTimeAttendanceSideLink"')) {
+    throw new Error('Static admin Time & Attendance controls were not converted to direct navigation.');
+  }
   await writeFile(adminPath, adminHtml, 'utf8');
 } catch (error) {
   if (error?.code !== 'ENOENT') throw error;
@@ -129,8 +135,17 @@ try {
     "const API=(localStorage.getItem('sulandra_api_url')||window.SULANDRA_API_URL||'').replace(/\\/$/,'');",
     `const API=(localStorage.getItem('sulandra_api_url')||window.SULANDRA_API_URL||'${railwayApiBase}').replace(/\\/$/,'');`,
   );
-  await writeFile(timeAttendancePath, timeAttendanceHtml, 'utf8');
 
+  timeAttendanceHtml = timeAttendanceHtml
+    .replace(/\s*<script src="\/assets\/time-attendance-blocked-attempts\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(/\s*<script src="\/assets\/time-attendance-admin-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(/\s*<script src="\/assets\/time-attendance-geofence\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(
+      '</body>',
+      '  <script src="/assets/time-attendance-blocked-attempts.js?v=20260805-static-4"></script>\n  <script src="/assets/time-attendance-admin-scheduler.js?v=20260805-static-4"></script>\n  <script src="/assets/time-attendance-geofence.js?v=20260805-static-4"></script>\n</body>',
+    );
+
+  await writeFile(timeAttendancePath, timeAttendanceHtml, 'utf8');
   const cleanRouteDirectory = path.join(outputDirectory, 'time-attendance');
   await mkdir(cleanRouteDirectory, { recursive: true });
   await writeFile(path.join(cleanRouteDirectory, 'index.html'), timeAttendanceHtml, 'utf8');
@@ -141,5 +156,5 @@ try {
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
 
 console.log(
-  'Static website prepared with shared employee authentication, corrected applicant lifecycle lists, and Time and Attendance frontend routing.',
+  'Static website prepared with direct Admin Time and Attendance navigation, shared authentication, and complete Time and Attendance assets.',
 );
