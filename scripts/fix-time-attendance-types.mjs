@@ -1,7 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const filePath = path.join(process.cwd(), 'api/src/time-attendance-routes.ts');
+const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(scriptDirectory, '..');
+const filePath = path.join(repositoryRoot, 'api', 'src', 'time-attendance-routes.ts');
 let source = await readFile(filePath, 'utf8');
 
 const oldText = "const input=shiftSchema.partial().parse(req.body);";
