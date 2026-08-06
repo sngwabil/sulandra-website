@@ -4,7 +4,9 @@
   const links = [
     ['Intranet Portal', '/intranet.html'],
     ['Employee Portal', '/employee-portal.html?stay=1'],
+    ['Employee 360', '/employee360.html'],
     ['Education Portal', '/education-portal.html'],
+    ['Time & Attendance', '/time-attendance.html#admin'],
     ['Spire EHR', '/spire.html'],
     ['Transportation', '/transportation.html'],
     ['Home Health Services', '/home-health.html'],
