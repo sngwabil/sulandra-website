@@ -45,4 +45,5 @@ if(!source.includes('validateEmployeeSession(prisma'))throw new Error('Failed to
 if(!source.includes('verifyEmployeeLoginMfa(prisma'))throw new Error('Failed to install MFA login verification');
 await writeFile(bootstrapPath,source,'utf8');
 await import('./install-employee360-scope-enforcement.mjs');
-console.log('Employee authentication now uses revocable server-side sessions, portal controls, MFA verification, login history, and global Employee 360 scope enforcement.');
+await import('./install-employee-auth-admin-routes.mjs');
+console.log('Employee authentication now uses revocable server-side sessions, portal controls, MFA verification, login history, global Employee 360 scope enforcement, and full auth administration routes.');
