@@ -136,6 +136,7 @@ async function injectOwnerAsset(directory) {
   }
 }
 await injectOwnerAsset(outputDirectory);
+await import('./install-employee-self-service-frontend.mjs');
 
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with Service Homes, scoped Employee 360 permissions, confidential-record separation, structured addresses, GPS mapping, schedules, clocking, and enterprise-owner identity.');
+console.log('Static website prepared with Service Homes, scoped Employee 360 permissions, confidential-record separation, approved employee self-service records, structured addresses, GPS mapping, schedules, clocking, and enterprise-owner identity.');
