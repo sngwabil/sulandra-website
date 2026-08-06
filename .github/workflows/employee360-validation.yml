@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 85
+    timeout-minutes: 90
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
@@ -85,3 +85,6 @@ jobs:
 
       - name: Verify Employee 360 health safety and wellness
         run: node scripts/verify-employee-health-safety.mjs
+
+      - name: Verify Employee 360 enterprise gap controls
+        run: node scripts/verify-employee360-enterprise-gaps.mjs
