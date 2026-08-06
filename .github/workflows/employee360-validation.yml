@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
@@ -46,3 +46,6 @@ jobs:
 
       - name: Verify Employee 360 collaboration workflows
         run: node scripts/verify-employee-collaboration.mjs
+
+      - name: Verify Employee 360 performance management
+        run: node scripts/verify-employee-performance.mjs
