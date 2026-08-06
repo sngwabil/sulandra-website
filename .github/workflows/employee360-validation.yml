@@ -15,7 +15,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 70
+    timeout-minutes: 75
     steps:
       - name: Checkout tested commit
         uses: actions/checkout@v4
@@ -76,3 +76,6 @@ jobs:
 
       - name: Verify Employee 360 communications and notifications
         run: node scripts/verify-employee-communications.mjs
+
+      - name: Verify Employee 360 engagement surveys and recognition
+        run: node scripts/verify-employee-engagement.mjs
