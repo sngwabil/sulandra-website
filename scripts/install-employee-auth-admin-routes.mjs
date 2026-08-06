@@ -13,4 +13,5 @@ source=source.replace(new RegExp(`\\n?${routeRegister.replace(/[.*+?^${}()|[\]\\
 if(!source.includes(careersRegister))throw new Error('Careers registration anchor is missing');
 source=source.replace(careersRegister,`${routeRegister}\n${careersRegister}`);
 await writeFile(target,source,'utf8');
-console.log('Employee session, MFA, login-history, and per-portal administration routes are installed.');
+await import('./install-employee-compliance-production-worker.mjs');
+console.log('Employee session, MFA, login-history, per-portal administration, and production compliance escalation routes are installed.');
