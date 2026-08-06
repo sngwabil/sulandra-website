@@ -22,6 +22,7 @@ const communicationsImport = "import { registerEmployeeCommunicationsNotificatio
 const engagementImport = "import { registerEmployeeEngagementFeedbackRoutes } from './employee-engagement-feedback-routes.js';";
 const learningImport = "import { registerEmployeeLearningDevelopmentRoutes } from './employee-learning-development-routes.js';";
 const healthSafetyImport = "import { registerEmployeeHealthSafetyWellnessRoutes } from './employee-health-safety-wellness-routes.js';";
+const enterpriseGapImport = "import { registerEmployee360EnterpriseGapRoutes } from './employee360-enterprise-gap-routes.js';";
 const obsoleteWorkflowImport = "import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflow-automation-routes.js';";
 const careersRegister = 'registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
 const permissionsRegister = 'registerEmployee360Permissions({ app, prisma, authOf, requireRoles, audit });';
@@ -41,17 +42,18 @@ const communicationsRegister = 'registerEmployeeCommunicationsNotificationsRoute
 const engagementRegister = 'registerEmployeeEngagementFeedbackRoutes({ app, prisma, authOf, requireRoles, audit });';
 const learningRegister = 'registerEmployeeLearningDevelopmentRoutes({ app, prisma, authOf, requireRoles, audit });';
 const healthSafetyRegister = 'registerEmployeeHealthSafetyWellnessRoutes({ app, prisma, authOf, requireRoles, audit });';
+const enterpriseGapRegister = 'registerEmployee360EnterpriseGapRoutes({ app, prisma, authOf, requireRoles, audit });';
 
 let bootstrap = await readFile(bootstrapPath, 'utf8');
 bootstrap = bootstrap.replaceAll(obsoleteWorkflowImport, workflowImport);
 if (!bootstrap.includes(careersImport)) throw new Error('Unable to locate the careers import anchor for Employee 360');
-for (const importLine of [permissionsImport, employeeImport, selfServiceImport, complianceImport, collaborationImport, performanceImport, compensationImport, leaveOffboardingImport, assetsAccessImport, analyticsImport, documentsImport, bulkDataImport, workflowImport, communicationsImport, engagementImport, learningImport, healthSafetyImport]) {
+for (const importLine of [permissionsImport, employeeImport, selfServiceImport, complianceImport, collaborationImport, performanceImport, compensationImport, leaveOffboardingImport, assetsAccessImport, analyticsImport, documentsImport, bulkDataImport, workflowImport, communicationsImport, engagementImport, learningImport, healthSafetyImport, enterpriseGapImport]) {
   if (!bootstrap.includes(importLine)) bootstrap = bootstrap.replace(careersImport, `${careersImport}\n${importLine}`);
 }
-for (const registerLine of [permissionsRegister, employeeRegister, selfServiceRegister, complianceRegister, collaborationRegister, performanceRegister, compensationRegister, leaveOffboardingRegister, assetsAccessRegister, analyticsRegister, documentsRegister, bulkDataRegister, workflowRegister, communicationsRegister, engagementRegister, learningRegister, healthSafetyRegister]) {
+for (const registerLine of [permissionsRegister, employeeRegister, selfServiceRegister, complianceRegister, collaborationRegister, performanceRegister, compensationRegister, leaveOffboardingRegister, assetsAccessRegister, analyticsRegister, documentsRegister, bulkDataRegister, workflowRegister, communicationsRegister, engagementRegister, learningRegister, healthSafetyRegister, enterpriseGapRegister]) {
   bootstrap = bootstrap.replace(new RegExp(`\\n?${registerLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`, 'g'), '\n');
 }
 if (!bootstrap.includes(careersRegister)) throw new Error('Unable to locate the careers registration anchor for Employee 360');
-bootstrap = bootstrap.replace(careersRegister, `${permissionsRegister}\n${employeeRegister}\n${selfServiceRegister}\n${complianceRegister}\n${collaborationRegister}\n${performanceRegister}\n${compensationRegister}\n${leaveOffboardingRegister}\n${assetsAccessRegister}\n${analyticsRegister}\n${documentsRegister}\n${bulkDataRegister}\n${workflowRegister}\n${communicationsRegister}\n${engagementRegister}\n${learningRegister}\n${healthSafetyRegister}\n\n${careersRegister}`);
+bootstrap = bootstrap.replace(careersRegister, `${permissionsRegister}\n${employeeRegister}\n${selfServiceRegister}\n${complianceRegister}\n${collaborationRegister}\n${performanceRegister}\n${compensationRegister}\n${leaveOffboardingRegister}\n${assetsAccessRegister}\n${analyticsRegister}\n${documentsRegister}\n${bulkDataRegister}\n${workflowRegister}\n${communicationsRegister}\n${engagementRegister}\n${learningRegister}\n${healthSafetyRegister}\n${enterpriseGapRegister}\n\n${careersRegister}`);
 await writeFile(bootstrapPath, bootstrap, 'utf8');
-console.log('Employee 360 permissions, management, self-service, compliance, collaboration, performance, compensation, payroll, benefits, leave, offboarding, assets, access, analytics, reporting, documents, policies, e-signatures, bulk import, export, data quality, workflow automation, task orchestration, communications, announcements, notifications, engagement, surveys, feedback, recognition, learning, training, development, health, safety, incident prevention, and wellness routes are installed.');
+console.log('Employee 360 permissions, management, self-service, compliance, collaboration, performance, compensation, payroll, benefits, leave, offboarding, assets, access, analytics, reporting, documents, policies, e-signatures, bulk import, export, data quality, workflow automation, task orchestration, communications, announcements, notifications, engagement, surveys, feedback, recognition, learning, training, development, health, safety, incident prevention, wellness, enterprise assignments, time corrections, payroll signoff, unified communications, account security, and tamper-evident audit routes are installed.');
