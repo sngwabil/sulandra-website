@@ -43,7 +43,9 @@ if (await exists(migrationPath)) {
 
 const installer = await read('scripts/install-employee-management-platform.mjs');
 expect('compliance routes wired into backend', installer.includes('registerEmployeeComplianceRoutes'));
-expect('compliance registration occurs before careers', installer.indexOf('registerEmployeeComplianceRoutes({') < installer.indexOf('registerCareersRoutes(app'));
+const generatedRegistration = 'registerEmployeeComplianceRoutes({ app, prisma, authOf, requireRoles, audit });';
+const generatedCareers = 'registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
+expect('compliance registration occurs before careers', installer.lastIndexOf(generatedRegistration) >= 0 && installer.lastIndexOf(generatedRegistration) < installer.lastIndexOf(generatedCareers));
 
 const adminAsset = await read('assets/admin-employee-compliance.js');
 expect('admin compliance center exists', adminAsset.includes('Employee Compliance Center') && adminAsset.includes('Run Compliance Engine'));
