@@ -1,0 +1,25 @@
+import type { Express, RequestHandler, Response } from 'express';
+import { PrismaClient, UserRole } from '@prisma/client';
+import { z } from 'zod';
+import { ensureEmployeeAuthSecuritySchema } from './employee-auth-security.js';
+
+type AuthContext={userId:string;organizationId:string;role:UserRole;email?:string};
+type Dependencies={app:Express;prisma:PrismaClient;authOf:(response:Response)=>AuthContext;requireRoles:(...roles:UserRole[])=>RequestHandler};
+const OWNER_EMAIL='admin@sulandrahealth.com';
+const portalSchema=z.object({employeeId:z.string().trim().min(1),portal:z.enum(['EMPLOYEE','ADMIN','EDUCATION','TIME_ATTENDANCE','SPIRE']),enabled:z.boolean(),reason:z.string().trim().min(3).max(2000)});
+const resetSchema=z.object({employeeId:z.string().trim().min(1),reason:z.string().trim().min(3).max(2000)});
+const normalize=(v:unknown)=>String(v??'').trim().toLowerCase();
+
+export function registerEmployeeAuthAdminRoutes({app,prisma,authOf,requireRoles}:Dependencies){
+  const gate=requireRoles(UserRole.ADMINISTRATOR,UserRole.HR_MANAGER,UserRole.CEO,UserRole.COO,UserRole.AUDITOR);
+  const writeGate=requireRoles(UserRole.ADMINISTRATOR,UserRole.HR_MANAGER,UserRole.CEO,UserRole.COO);
+  const protectOwner=async(auth:AuthContext,employeeId:string)=>{const rows=await prisma.$queryRawUnsafe<Array<{email:string|null}>>(`SELECT "email" FROM "User" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,auth.organizationId,employeeId);const actor=await prisma.$queryRawUnsafe<Array<{email:string|null}>>(`SELECT "email" FROM "User" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,auth.organizationId,auth.userId);if(normalize(rows[0]?.email)===OWNER_EMAIL&&normalize(actor[0]?.email||auth.email)!==OWNER_EMAIL)throw Object.assign(new Error('The Enterprise Owner security profile cannot be changed by another user'),{status:403})};
+  app.get('/api/admin/auth/security/employees/:employeeId',gate,async(req,res,next)=>{try{await ensureEmployeeAuthSecuritySchema(prisma);const auth=authOf(res);const employeeId=String(req.params.employeeId);const [sessions,mfa,portals,logins]=await Promise.all([
+    prisma.$queryRawUnsafe<any[]>(`SELECT "id","issuedAt","expiresAt","revokedAt","revokedById","revocationReason","ipAddress","userAgent","lastSeenAt" FROM "EmployeeAuthSession" WHERE "organizationId"=$1 AND "userId"=$2 ORDER BY "issuedAt" DESC LIMIT 250`,auth.organizationId,employeeId),
+    prisma.$queryRawUnsafe<any[]>(`SELECT "required","verified","enrolledAt","lastVerifiedAt","updatedAt" FROM "EmployeeMfaProfile" WHERE "organizationId"=$1 AND "userId"=$2 LIMIT 1`,auth.organizationId,employeeId),
+    prisma.$queryRawUnsafe<any[]>(`SELECT "portal","enabled","reason","updatedById","updatedAt" FROM "EmployeePortalAccessControl" WHERE "organizationId"=$1 AND "userId"=$2 ORDER BY "portal"`,auth.organizationId,employeeId),
+    prisma.$queryRawUnsafe<any[]>(`SELECT "decision","reason","ipAddress","userAgent","sessionId","createdAt" FROM "EmployeeLoginEvent" WHERE "organizationId"=$1 AND "userId"=$2 ORDER BY "createdAt" DESC LIMIT 250`,auth.organizationId,employeeId)
+  ]);res.json({data:{employeeId,sessions,mfa:mfa[0]||{required:false,verified:false},portals,logins}})}catch(error){next(error)}});
+  app.put('/api/admin/auth/security/portal',writeGate,async(req,res,next)=>{try{await ensureEmployeeAuthSecuritySchema(prisma);const auth=authOf(res);const input=portalSchema.parse(req.body);await protectOwner(auth,input.employeeId);await prisma.$executeRawUnsafe(`INSERT INTO "EmployeePortalAccessControl" ("organizationId","userId","portal","enabled","reason","updatedById") VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT ("organizationId","userId","portal") DO UPDATE SET "enabled"=EXCLUDED."enabled","reason"=EXCLUDED."reason","updatedById"=EXCLUDED."updatedById","updatedAt"=NOW()`,auth.organizationId,input.employeeId,input.portal,input.enabled,input.reason,auth.userId);if(!input.enabled)await prisma.$executeRawUnsafe(`UPDATE "EmployeeAuthSession" SET "revokedAt"=NOW(),"revokedById"=$1,"revocationReason"=$2 WHERE "organizationId"=$3 AND "userId"=$4 AND "revokedAt" IS NULL`,auth.userId,`Portal disabled: ${input.reason}`,auth.organizationId,input.employeeId);res.json({data:{...input}})}catch(error){next(error)}});
+  app.post('/api/admin/auth/security/mfa/reset',writeGate,async(req,res,next)=>{try{await ensureEmployeeAuthSecuritySchema(prisma);const auth=authOf(res);const input=resetSchema.parse(req.body);await protectOwner(auth,input.employeeId);await prisma.$executeRawUnsafe(`UPDATE "EmployeeMfaProfile" SET "encryptedSecret"=NULL,"verified"=FALSE,"enrolledAt"=NULL,"lastVerifiedAt"=NULL,"updatedAt"=NOW() WHERE "organizationId"=$1 AND "userId"=$2`,auth.organizationId,input.employeeId);await prisma.$executeRawUnsafe(`UPDATE "EmployeeAuthSession" SET "revokedAt"=NOW(),"revokedById"=$1,"revocationReason"=$2 WHERE "organizationId"=$3 AND "userId"=$4 AND "revokedAt" IS NULL`,auth.userId,`MFA reset: ${input.reason}`,auth.organizationId,input.employeeId);res.json({data:{reset:true}})}catch(error){next(error)}});
+}
