@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/spire-ehr-platform
+  pull_request:
+    branches:
+      - feature/spire-ehr-platform
   workflow_dispatch:
 
 permissions:
@@ -14,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout feature branch
+      - name: Checkout tested commit
         uses: actions/checkout@v4
 
       - name: Use Node.js 22
