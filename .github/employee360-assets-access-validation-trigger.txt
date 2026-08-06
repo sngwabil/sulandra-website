@@ -1,0 +1,2 @@
+Employee 360 Section 7 validation marker.
+Tests inventory, assignments, returns, acknowledgments, facilities, maintenance, access grants, revocation, incidents, owner protection, auditor restrictions, static frontend deployment, backend typecheck/build, Careers routing regression, and all Employee 360 validation suites.
