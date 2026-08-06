@@ -1,0 +1,28 @@
+name: Employee 360 Production Smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+env:
+  EMPLOYEE360_SMOKE_STATIC_BASE: https://www.sulandrahealth.com
+  EMPLOYEE360_SMOKE_API_BASE: https://sulandra-website-production-5fc4.up.railway.app
+  EMPLOYEE360_SMOKE_REQUIRE_AUTH: 'true'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run authenticated deployment and rendering smoke tests
+        env:
+          EMPLOYEE360_SMOKE_TOKEN: ${{ secrets.EMPLOYEE360_SMOKE_TOKEN }}
+        run: node scripts/smoke-employee360-production.mjs
