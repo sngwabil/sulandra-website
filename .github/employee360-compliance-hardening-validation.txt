@@ -1,0 +1,1 @@
+Validate distributed compliance leases, scope-before-mutation document review, immediate reconciliation, current-compliance semantics, backend builds, static builds, and regression checks.
