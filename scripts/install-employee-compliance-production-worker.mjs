@@ -1,0 +1,16 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const target=path.join(root,'api/src/onboarding-bootstrap.ts');
+let source=await readFile(target,'utf8');
+const careersImport="import { registerCareersRoutes } from './careers-routes.js';";
+const workerImport="import { registerEmployeeComplianceProductionWorker } from './employee-compliance-production-worker.js';";
+const careersRegister='registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
+const workerRegister='registerEmployeeComplianceProductionWorker({ app, prisma });';
+if(!source.includes(workerImport))source=source.replace(careersImport,`${careersImport}\n${workerImport}`);
+source=source.replace(new RegExp(`\\n?${workerRegister.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\n?`,'g'),'\n');
+if(!source.includes(careersRegister))throw new Error('Careers registration anchor is missing');
+source=source.replace(careersRegister,`${workerRegister}\n${careersRegister}`);
+await writeFile(target,source,'utf8');
+console.log('Production credential reminders, management escalation, delivery deduplication, advisory locking, and unified communication history are installed.');
