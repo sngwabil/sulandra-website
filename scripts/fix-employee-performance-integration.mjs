@@ -28,4 +28,9 @@ await replaceIn('scripts/verify-employee-collaboration.mjs', [[
   "installer.includes('${complianceRegister}\\\\n${collaborationRegister}\\\\n${performanceRegister}\\\\n\\\\n${careersRegister}')",
 ]]);
 
-console.log('Employee 360 compliance and collaboration validation recognizes performance-route registration.');
+await replaceIn('api/src/employee-performance-routes.ts', [[
+  "  improvementAreas: string;\n  createdAt: Date | string;",
+  "  improvementAreas: string;\n  acknowledgmentComments: string;\n  createdAt: Date | string;",
+]]);
+
+console.log('Employee 360 performance TypeScript shape and prior-section validation integration are build-safe.');
