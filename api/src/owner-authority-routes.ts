@@ -52,6 +52,8 @@ export function registerOwnerAuthorityRoutes({ app, prisma, authOf }: Dependenci
     throw error;
   });
 
+  void ensureReady().catch((error) => console.error('Enterprise owner authority initialization failed', error));
+
   const requireOwner = async (res: Response) => {
     await ensureReady();
     const auth = authOf(res);
