@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 
+// Install the shared authenticated-session cache after dist-web exists and before
+// final route verification. This gives every internal module the same login
+// session without an extra /api/session round trip on each page transition.
+await import('./install-sulandra-sso-session.mjs');
+
 const routeMap = new Map([
   ['/policies', '/policies.html'],
   ['/documents', '/policies.html'],
