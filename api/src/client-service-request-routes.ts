@@ -20,7 +20,7 @@ const requestSchema=z.object({
   preferredContact:z.enum(['EMAIL','PHONE','TEXT']).default('EMAIL'),
   streetAddress:z.string().trim().max(300).default(''),
   city:z.string().trim().max(120).default(''),
-  state:z.string().trim().max(2).default('OH'),
+  state:z.string().trim().max(40).default('OH'),
   zipCode:z.string().trim().max(10).default(''),
   county:z.string().trim().max(120).default(''),
   fundingSource:z.string().trim().max(160).default(''),
@@ -47,7 +47,7 @@ export function registerClientServiceRequestRoutes({app,prisma,authOf,requireRol
   const resolveOrganizationId=async()=>{
     const configured=String(process.env.SULANDRA_ORGANIZATION_ID||'').trim();
     if(configured)return configured;
-    const rows=await prisma.$queryRawUnsafe<Array<{id:string}>>(`SELECT "id" FROM "Organization" ORDER BY "createdAt" ASC NULLS LAST LIMIT 1`);
+    const rows=await prisma.$queryRawUnsafe<Array<{id:string}>>(`SELECT "id" FROM "Organization" LIMIT 1`);
     if(!rows[0]?.id)throw Object.assign(new Error('Sulandra organization is not configured for service requests'),{status:503});
     return rows[0].id;
   };
