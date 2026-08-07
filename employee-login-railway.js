@@ -18,6 +18,24 @@
     message.className = "msg";
   }
 
+  function saveAuthenticatedSession(token, session) {
+    const encoded = JSON.stringify(session);
+    window.sessionStorage.setItem(TOKEN_KEY, token);
+    window.sessionStorage.setItem(SESSION_KEY, encoded);
+    // localStorage keeps the same authenticated session available when the user
+    // opens another Sulandra module or a new tab. The backend still authorizes
+    // every protected API request using this token and the user's role.
+    window.localStorage.setItem(TOKEN_KEY, token);
+    window.localStorage.setItem(SESSION_KEY, encoded);
+  }
+
+  function clearAuthenticatedSession() {
+    window.sessionStorage.removeItem(TOKEN_KEY);
+    window.sessionStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(SESSION_KEY);
+  }
+
   function safeReturnTarget() {
     const requested = new URLSearchParams(window.location.search).get("returnTo");
     if (!requested) return "";
@@ -50,21 +68,13 @@
     try {
       const response = await fetch(API_BASE + path, {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        },
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || "Unable to process the recovery request.");
-      }
+      if (!response.ok) throw new Error(payload.error || "Unable to process the recovery request.");
       closeRecoveryPanels();
-      showMessage(
-        payload.message || "If the information matches an active employee account, recovery instructions have been sent.",
-        "success"
-      );
+      showMessage(payload.message || "If the information matches an active employee account, recovery instructions have been sent.", "success");
     } catch (error) {
       showMessage(error.message || "Unable to process the recovery request.", "error");
     } finally {
@@ -73,104 +83,59 @@
     }
   }
 
-  document.getElementById("demo").addEventListener("click", () => {
-    window.location.assign("spire-demo.html");
-  });
-
+  document.getElementById("demo").addEventListener("click", () => window.location.assign("spire-demo.html"));
   document.getElementById("clear").addEventListener("click", () => {
     document.getElementById("email").value = "";
     document.getElementById("password").value = "";
     document.getElementById("recoveryEmail").value = "";
     document.getElementById("recoveryUsername").value = "";
-    closeRecoveryPanels();
-    clearMessage();
+    closeRecoveryPanels(); clearMessage();
   });
-
   document.getElementById("forgotUsername").addEventListener("click", () => {
     const loginEmail = document.getElementById("email").value.trim();
     if (loginEmail) document.getElementById("recoveryEmail").value = loginEmail;
     openRecoveryPanel(usernamePanel);
   });
-
   document.getElementById("forgotPassword").addEventListener("click", () => {
     const loginEmail = document.getElementById("email").value.trim();
     if (loginEmail) document.getElementById("recoveryUsername").value = loginEmail;
     openRecoveryPanel(passwordPanel);
   });
-
-  document.querySelectorAll("[data-close-recovery]").forEach((button) => {
-    button.addEventListener("click", closeRecoveryPanels);
-  });
-
+  document.querySelectorAll("[data-close-recovery]").forEach((button) => button.addEventListener("click", closeRecoveryPanels));
   document.getElementById("sendUsernameRecovery").addEventListener("click", () => {
     const email = document.getElementById("recoveryEmail").value.trim().toLowerCase();
-    if (!email) {
-      showMessage("Enter the email connected to your employee account.", "error");
-      return;
-    }
-    recoveryRequest(
-      "/api/auth/forgot-username",
-      { email },
-      document.getElementById("sendUsernameRecovery")
-    );
+    if (!email) return showMessage("Enter the email connected to your employee account.", "error");
+    recoveryRequest("/api/auth/forgot-username", { email }, document.getElementById("sendUsernameRecovery"));
   });
-
   document.getElementById("sendPasswordRecovery").addEventListener("click", () => {
     const username = document.getElementById("recoveryUsername").value.trim().toLowerCase();
-    if (!username) {
-      showMessage("Enter your Sulandra employee username or email.", "error");
-      return;
-    }
-    recoveryRequest(
-      "/api/auth/forgot-password",
-      { username },
-      document.getElementById("sendPasswordRecovery")
-    );
+    if (!username) return showMessage("Enter your Sulandra employee username or email.", "error");
+    recoveryRequest("/api/auth/forgot-password", { username }, document.getElementById("sendPasswordRecovery"));
   });
 
   document.getElementById("form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    clearMessage();
-    closeRecoveryPanels();
-
+    event.preventDefault(); clearMessage(); closeRecoveryPanels();
     const email = document.getElementById("email").value.trim().toLowerCase();
     const password = document.getElementById("password").value;
-    if (!email || !password) {
-      showMessage("Enter your employee email and password.", "error");
-      return;
-    }
-
+    if (!email || !password) return showMessage("Enter your employee email and password.", "error");
     const submitButton = event.submitter;
     if (submitButton) submitButton.disabled = true;
-
     try {
       const response = await fetch(API_BASE + "/api/auth/login", {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json"
-        },
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || "Unable to sign in.");
-      }
-
+      if (!response.ok) throw new Error(payload.error || "Unable to sign in.");
       const session = payload.session || payload.data || payload;
       const token = session.accessToken || session.bearerToken || session.token;
       if (!token) throw new Error("The server did not return an access token.");
-
-      window.sessionStorage.setItem(TOKEN_KEY, token);
-      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
+      saveAuthenticatedSession(token, session);
       const requestedTarget = safeReturnTarget();
-      window.location.assign(
-        requestedTarget || (session.role === "ADMINISTRATOR" ? "admin.html" : "employee-portal.html")
-      );
+      window.location.assign(requestedTarget || (session.role === "ADMINISTRATOR" ? "admin.html" : "employee-portal.html"));
     } catch (error) {
-      window.sessionStorage.removeItem(TOKEN_KEY);
-      window.sessionStorage.removeItem(SESSION_KEY);
+      clearAuthenticatedSession();
       showMessage(error.message || "Unable to sign in.", "error");
     } finally {
       if (submitButton) submitButton.disabled = false;
