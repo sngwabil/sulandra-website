@@ -29,7 +29,7 @@ source=source.replace("  password: z.string().min(1).max(1_024),","  password: z
 source=source.replace('const buildSessionPayload = (account: LoginAccount) => {','const buildSessionPayload = async (account: LoginAccount) => {');
 source=source.replace("  const token = jwt.sign(\n    {\n      organizationId: account.organizationId,\n      role: account.role,\n    },", "  const sessionId = randomUUID();\n  const token = jwt.sign(\n    {\n      organizationId: account.organizationId,\n      role: account.role,\n    },");
 source=source.replace("      subject: account.userId,\n      expiresIn: '8h',", "      subject: account.userId,\n      jwtid: sessionId,\n      expiresIn: '8h',");
-source=source.replace("  return {\n    ...session,\n    session,\n    data: session,\n  };\n};\n\napp.disable", "  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt) });\n  return {\n    ...session,\n    sessionId,\n    session: { ...session, sessionId },\n    data: { ...session, sessionId },\n  };\n};\n\napp.disable");
+source=source.replace("  return {\n    ...session,\n    session,\n    data: session,\n  };\n};\n\napp.disable", "  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt), sessionId });\n  return {\n    ...session,\n    sessionId,\n    session: { ...session, sessionId },\n    data: { ...session, sessionId },\n  };\n};\n\napp.disable");
 source=source.replace("    res.json(buildSessionPayload(account));",`    const mfa = await verifyEmployeeLoginMfa(prisma, account.organizationId, account.userId, credentials.mfaCode);
     if (!mfa.verified) {
       await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: mfa.reason || 'MFA required', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
@@ -43,7 +43,8 @@ source=source.replace("app.use((req, res, next) => {\n  if (req.path.startsWith(
 source=source.replace('  const auth = internalAuth(req) ?? tokenAuth(req);','  const auth = internalAuth(req) ?? await tokenAuth(req);');
 if(!source.includes('validateEmployeeSession(prisma'))throw new Error('Failed to install revocable session validation');
 if(!source.includes('verifyEmployeeLoginMfa(prisma'))throw new Error('Failed to install MFA login verification');
+if(!source.includes('expiresAt: new Date(expiresAt), sessionId'))throw new Error('Failed to persist JWT jti as the server-side session id');
 await writeFile(bootstrapPath,source,'utf8');
 await import('./install-employee360-scope-enforcement.mjs');
 await import('./install-employee-auth-admin-routes.mjs');
-console.log('Employee authentication now uses revocable server-side sessions, portal controls, MFA verification, login history, global Employee 360 scope enforcement, and full auth administration routes.');
+console.log('Employee authentication now uses matching JWT/server session IDs, revocable server-side sessions, portal controls, MFA verification, login history, global Employee 360 scope enforcement, and full auth administration routes.');
