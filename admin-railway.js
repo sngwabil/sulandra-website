@@ -1,11 +1,12 @@
 (function () {
   "use strict";
 
-  const API_BASE = "https://sulandra-website-production.up.railway.app";
+  const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
   const SETTINGS_KEY = "sulandra:admin:company-settings";
   const TASKBAR_KEY = "sulandra:admin:taskbar-open";
+  const ACTIVE_MODULE_KEY = "sulandra:admin:active-module";
   const $ = (id) => document.getElementById(id);
   let applications = [];
   let jobOpenings = [];
@@ -20,6 +21,7 @@
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SESSION_KEY);
     location.replace("employee-login.html");
   }
 
@@ -39,7 +41,6 @@
       headers: { Accept: "application/json", Authorization: "Bearer " + token(), ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers || {}) }
     });
     const payload = await response.json().catch(() => ({}));
-    if (response.status === 401) signOut();
     if (!response.ok) throw new Error(payload.error || payload.message || `Request failed (${response.status}).`);
     return payload.data !== undefined ? payload.data : payload;
   }
@@ -54,10 +55,14 @@
     document.head.appendChild(script);
   }
 
-  function activateModule(key) {
+  function activateModule(key, persist = true) {
+    if (!document.getElementById(`module-${key}`)) key = "dashboard";
     document.querySelectorAll("#topModuleNav [data-module], #sideModuleNav [data-module]").forEach((n) => n.classList.toggle("active", n.dataset.module === key));
-    document.querySelectorAll(".module").forEach((n) => n.classList.remove("active"));
-    $(`module-${key}`)?.classList.add("active");
+    document.querySelectorAll(".module").forEach((n) => n.classList.toggle("active", n.id === `module-${key}`));
+    if (persist) {
+      localStorage.setItem(ACTIVE_MODULE_KEY, key);
+      if (location.hash !== `#${key}`) history.replaceState(null, "", `${location.pathname}${location.search}#${key}`);
+    }
     if (window.innerWidth <= 980) setTaskbarOpen(false);
   }
 
@@ -76,8 +81,8 @@
     style.id = "operationsTaskbarStyles";
     style.textContent = `
       .grid{transition:grid-template-columns .28s ease,gap .28s ease}.sidebar{position:relative;transition:transform .28s ease,opacity .22s ease}
-      .taskbar-toggle{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:1850;width:46px;height:52px;border:0;border-radius:0 14px 14px 0;background:var(--primary);color:#fff;box-shadow:0 8px 24px rgba(0,75,141,.28);cursor:pointer;font-size:22px;font-weight:900;display:grid;place-items:center;transition:left .28s ease,background .2s ease}
-      .taskbar-toggle:hover{background:var(--secondary)}.taskbar-toggle span{transition:transform .28s ease}body.taskbar-open .taskbar-toggle{left:max(14px,calc((100vw - 1200px)/2 + 280px))}body.taskbar-open .taskbar-toggle span{transform:rotate(180deg)}body.taskbar-closed .grid{grid-template-columns:0 minmax(0,1fr);gap:0}body.taskbar-closed .sidebar{transform:translateX(-115%);opacity:0;pointer-events:none;overflow:hidden}.taskbar-scrim{display:none}
+      .taskbar-toggle{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:1850;width:42px;height:58px;border:0;border-radius:0 14px 14px 0;background:var(--primary);color:#fff;box-shadow:0 8px 24px rgba(0,75,141,.28);cursor:pointer;font-size:22px;font-weight:900;display:grid;place-items:center;transition:left .28s ease,background .2s ease}
+      .taskbar-toggle:hover{background:var(--secondary)}.taskbar-toggle span{transition:transform .28s ease}body.taskbar-open .taskbar-toggle{left:max(0px,calc((100vw - 1200px)/2 + 280px))}body.taskbar-open .taskbar-toggle span{transform:rotate(180deg)}body.taskbar-closed .grid{grid-template-columns:0 minmax(0,1fr);gap:0}body.taskbar-closed .sidebar{transform:translateX(-115%);opacity:0;pointer-events:none;overflow:hidden}.taskbar-scrim{display:none}
       @media(max-width:980px){.grid{display:block}.sidebar{position:fixed;top:0;left:0;bottom:0;z-index:1800;width:min(320px,86vw);overflow-y:auto;border-radius:0 16px 16px 0;padding-top:28px;transform:translateX(-110%);opacity:1}body.taskbar-open .sidebar{transform:translateX(0)}body.taskbar-closed .sidebar{transform:translateX(-110%);opacity:1}body.taskbar-open .taskbar-toggle{left:min(320px,86vw)}.taskbar-scrim{position:fixed;inset:0;z-index:1750;background:rgba(15,23,42,.48)}body.taskbar-open .taskbar-scrim{display:block}}
     `;
     document.head.appendChild(style);
@@ -168,7 +173,7 @@
     $("jobOpeningForm")?.reset();
     if ($("openingId")) $("openingId").value = "";
     if ($("openingLocation")) $("openingLocation").value = "Dayton, OH";
-    if ($("openingPath")) $("openingPath").value = "/applycoo.html";
+    if ($("openingPath")) $("openingPath").value = "/applydoo.html";
     if ($("openingStatus")) $("openingStatus").value = "PUBLISHED";
     if ($("openingFormTitle")) $("openingFormTitle").textContent = "Create Job Opening";
     if ($("cancelOpeningEdit")) $("cancelOpeningEdit").hidden = true;
@@ -296,6 +301,7 @@
     $("exportBtn")?.addEventListener("click", exportApplications);
     $("closeModalBtn")?.addEventListener("click", () => { $("detailsModal").style.display = "none"; $("modalBody")?.replaceChildren(); });
     $("detailsModal")?.addEventListener("click", (e) => { if (e.target === $("detailsModal")) $("closeModalBtn")?.click(); });
+    window.addEventListener("hashchange", () => activateModule(location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard", false));
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
       if ($("detailsModal")?.style.display === "block") $("closeModalBtn")?.click();
@@ -319,10 +325,12 @@
     loadInterviewSchedulerScript();
     bindEvents();
     loadSettings();
+    const requestedModule = location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard";
+    activateModule(requestedModule, false);
     try {
       const session = await api("/api/session");
       const role = String(session?.role || "").toUpperCase();
-      if (!session || !["ADMINISTRATOR", "DOO", "COO"].includes(role)) { location.replace("employee-portal.html"); return; }
+      if (!session || !["ADMINISTRATOR", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }
       if ($("adminEmailPill")) $("adminEmailPill").textContent = session.email || session.username || title(role);
       await Promise.all([loadApplications(), loadOpenings(), loadDashboard()]);
     } catch (error) { if ($("livePill")) $("livePill").textContent = "Railway: error"; toast("Admin portal unavailable", error.message); }
