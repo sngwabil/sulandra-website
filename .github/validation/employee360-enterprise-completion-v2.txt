@@ -1,0 +1,1 @@
+Validation-only marker for secure object storage, malware scanning, lifecycle retention, onboarding linkage, compliance reminders, role/location scopes, revocable sessions, MFA, first-class frontend source, API integration, browser E2E, mobile checks, and production smoke test wiring.
