@@ -1,22 +1,33 @@
 (function () {
   "use strict";
 
-  const API_BASE = "https://sulandra-website-production.up.railway.app";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
   const $ = (id) => document.getElementById(id);
 
   function readStoredSession() {
     try {
-      return JSON.parse(window.sessionStorage.getItem(SESSION_KEY) || "null");
+      return JSON.parse(
+        window.sessionStorage.getItem(SESSION_KEY)
+        || window.localStorage.getItem(SESSION_KEY)
+        || "null"
+      );
     } catch {
       return null;
     }
   }
 
+  function readToken() {
+    return window.sessionStorage.getItem(TOKEN_KEY)
+      || window.localStorage.getItem(TOKEN_KEY)
+      || "";
+  }
+
   function signOut() {
     window.sessionStorage.removeItem(TOKEN_KEY);
     window.sessionStorage.removeItem(SESSION_KEY);
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(SESSION_KEY);
     window.location.replace("employee-login.html");
   }
 
@@ -30,56 +41,36 @@
     else element.classList.add("blue");
   }
 
-  async function authenticate() {
-    const token = window.sessionStorage.getItem(TOKEN_KEY);
-    if (!token) {
+  function loadAuthenticatedIdentity() {
+    const token = readToken();
+    const session = readStoredSession();
+    if (!token || !session) {
       signOut();
       return;
     }
-
-    try {
-      const response = await fetch(API_BASE + "/api/session", {
-        cache: "no-store",
-        headers: {
-          Accept: "application/json",
-          Authorization: "Bearer " + token
-        }
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (response.status === 401) {
-        signOut();
-        return;
-      }
-      if (!response.ok) {
-        throw new Error(payload.error || "The employee session could not be verified.");
-      }
-
-      const storedSession = readStoredSession() || {};
-      const session = { ...storedSession, ...(payload.data || {}) };
-      if (session.role === "ADMINISTRATOR") {
-        window.location.replace("admin.html");
-        return;
-      }
-
-      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      $("empName").textContent =
-        session.displayName
-        || session.fullName
-        || session.name
-        || session.email
-        || session.username
-        || "Employee";
-      $("empRole").textContent = String(session.role || "Employee")
-        .toLowerCase()
-        .replaceAll("_", " ")
-        .replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
-      setStatusBadge("Active");
-    } catch (error) {
-      console.error("Failed to load employee session:", error);
-      $("empName").textContent = "Employee portal unavailable";
-      $("empRole").textContent = error.message;
-      setStatusBadge("Unavailable");
+    if (session.expiresAt && Date.parse(session.expiresAt) <= Date.now()) {
+      signOut();
+      return;
     }
+    // No extra /api/session round trip here. Login established the session once.
+    // Protected business API calls still carry the bearer token and the backend
+    // enforces the user's role, scope and revocation status invisibly.
+    if (session.role === "ADMINISTRATOR") {
+      window.location.replace("admin.html");
+      return;
+    }
+    $("empName").textContent =
+      session.displayName
+      || session.fullName
+      || session.name
+      || session.email
+      || session.username
+      || "Employee";
+    $("empRole").textContent = String(session.role || "Employee")
+      .toLowerCase()
+      .replaceAll("_", " ")
+      .replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+    setStatusBadge("Active");
   }
 
   $("btnSignOut").addEventListener("click", (event) => {
@@ -87,5 +78,5 @@
     signOut();
   });
 
-  authenticate();
+  loadAuthenticatedIdentity();
 })();
