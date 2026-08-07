@@ -1,5 +1,10 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Legacy-compatible clinical foundation.
+-- This migration may run against databases where older Spire tables already exist
+-- with clientId-oriented schemas. Every index-bearing pre-existing table is normalized
+-- before its indexes are created so Prisma migrate deploy can safely retry.
+
 CREATE TABLE IF NOT EXISTS "SpirePatient" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "organizationId" text NOT NULL,
@@ -44,6 +49,13 @@ CREATE TABLE IF NOT EXISTS "SpirePatientIdentifier" (
   "active" boolean NOT NULL DEFAULT true,
   "createdAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePatientIdentifier" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientIdentifier" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientIdentifier" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "SpirePatientIdentifier" ADD COLUMN IF NOT EXISTS "value" text;
+ALTER TABLE "SpirePatientIdentifier" ADD COLUMN IF NOT EXISTS "issuer" text;
+ALTER TABLE "SpirePatientIdentifier" ADD COLUMN IF NOT EXISTS "active" boolean NOT NULL DEFAULT true;
+ALTER TABLE "SpirePatientIdentifier" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
 CREATE UNIQUE INDEX IF NOT EXISTS "SpirePatientIdentifier_org_type_value_key" ON "SpirePatientIdentifier"("organizationId","type","value");
 
 CREATE TABLE IF NOT EXISTS "SpirePatientContact" (
@@ -56,6 +68,13 @@ CREATE TABLE IF NOT EXISTS "SpirePatientContact" (
   "verifiedAt" timestamptz,
   "createdAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePatientContact" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientContact" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientContact" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "SpirePatientContact" ADD COLUMN IF NOT EXISTS "value" text;
+ALTER TABLE "SpirePatientContact" ADD COLUMN IF NOT EXISTS "preferred" boolean NOT NULL DEFAULT false;
+ALTER TABLE "SpirePatientContact" ADD COLUMN IF NOT EXISTS "verifiedAt" timestamptz;
+ALTER TABLE "SpirePatientContact" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpirePatientContact_patient_idx" ON "SpirePatientContact"("organizationId","patientId");
 
 CREATE TABLE IF NOT EXISTS "SpireEmergencyContact" (
@@ -80,6 +99,13 @@ CREATE TABLE IF NOT EXISTS "SpirePatientProgramEnrollment" (
   "status" text NOT NULL DEFAULT 'ACTIVE',
   "createdAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePatientProgramEnrollment" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientProgramEnrollment" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientProgramEnrollment" ADD COLUMN IF NOT EXISTS "programId" text;
+ALTER TABLE "SpirePatientProgramEnrollment" ADD COLUMN IF NOT EXISTS "startsAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePatientProgramEnrollment" ADD COLUMN IF NOT EXISTS "endsAt" timestamptz;
+ALTER TABLE "SpirePatientProgramEnrollment" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "SpirePatientProgramEnrollment" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireProgramEnrollment_patient_idx" ON "SpirePatientProgramEnrollment"("organizationId","patientId","status");
 
 CREATE TABLE IF NOT EXISTS "SpirePatientHomeAssignment" (
@@ -92,6 +118,13 @@ CREATE TABLE IF NOT EXISTS "SpirePatientHomeAssignment" (
   "endsAt" timestamptz,
   "createdAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePatientHomeAssignment" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientHomeAssignment" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientHomeAssignment" ADD COLUMN IF NOT EXISTS "homeId" text;
+ALTER TABLE "SpirePatientHomeAssignment" ADD COLUMN IF NOT EXISTS "primary" boolean NOT NULL DEFAULT true;
+ALTER TABLE "SpirePatientHomeAssignment" ADD COLUMN IF NOT EXISTS "startsAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePatientHomeAssignment" ADD COLUMN IF NOT EXISTS "endsAt" timestamptz;
+ALTER TABLE "SpirePatientHomeAssignment" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpirePatientHome_patient_idx" ON "SpirePatientHomeAssignment"("organizationId","patientId");
 
 CREATE TABLE IF NOT EXISTS "SpirePatientCareTeam" (
@@ -105,6 +138,14 @@ CREATE TABLE IF NOT EXISTS "SpirePatientCareTeam" (
   "endsAt" timestamptz,
   "createdAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "roleLabel" text;
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "primary" boolean NOT NULL DEFAULT false;
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "startsAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "endsAt" timestamptz;
+ALTER TABLE "SpirePatientCareTeam" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpirePatientCareTeam_patient_idx" ON "SpirePatientCareTeam"("organizationId","patientId");
 
 CREATE TABLE IF NOT EXISTS "SpirePatientFlag" (
@@ -120,6 +161,16 @@ CREATE TABLE IF NOT EXISTS "SpirePatientFlag" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "resolvedAt" timestamptz
 );
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "type" text;
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "label" text;
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "severity" text NOT NULL DEFAULT 'INFO';
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "details" text;
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "active" boolean NOT NULL DEFAULT true;
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePatientFlag" ADD COLUMN IF NOT EXISTS "resolvedAt" timestamptz;
 CREATE INDEX IF NOT EXISTS "SpirePatientFlag_patient_idx" ON "SpirePatientFlag"("organizationId","patientId","active");
 
 CREATE TABLE IF NOT EXISTS "SpirePatientAllergy" (
@@ -135,6 +186,16 @@ CREATE TABLE IF NOT EXISTS "SpirePatientAllergy" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "substance" text;
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "reaction" text;
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "severity" text;
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "verifiedAt" timestamptz;
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "verifiedById" text;
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePatientAllergy" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpirePatientAllergy_patient_idx" ON "SpirePatientAllergy"("organizationId","patientId","status");
 
 CREATE TABLE IF NOT EXISTS "SpirePatientDiagnosis" (
@@ -150,6 +211,16 @@ CREATE TABLE IF NOT EXISTS "SpirePatientDiagnosis" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "codeSystem" text;
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "code" text;
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "display" text;
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "onsetDate" date;
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "resolvedDate" date;
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePatientDiagnosis" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpirePatientDiagnosis_patient_idx" ON "SpirePatientDiagnosis"("organizationId","patientId","status");
 
 CREATE TABLE IF NOT EXISTS "SpirePatientProblem" (
@@ -180,6 +251,18 @@ CREATE TABLE IF NOT EXISTS "SpireAppointment" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "providerUserId" text;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "locationId" text;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "appointmentType" text NOT NULL DEFAULT 'VISIT';
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'SCHEDULED';
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "startsAt" timestamptz;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "endsAt" timestamptz;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "reason" text;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "notes" text;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireAppointment_schedule_idx" ON "SpireAppointment"("organizationId","startsAt","status");
 CREATE INDEX IF NOT EXISTS "SpireAppointment_patient_idx" ON "SpireAppointment"("organizationId","patientId","startsAt");
 
@@ -200,6 +283,20 @@ CREATE TABLE IF NOT EXISTS "SpireEncounter" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "appointmentId" text;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "encounterType" text NOT NULL DEFAULT 'OFFICE_VISIT';
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'OPEN';
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "startedAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "endedAt" timestamptz;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "signedAt" timestamptz;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "signedById" text;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "chiefComplaint" text;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "serviceLevel" text;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireEncounter" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireEncounter_patient_idx" ON "SpireEncounter"("organizationId","patientId","startedAt");
 
 CREATE TABLE IF NOT EXISTS "SpireEncounterParticipant" (
@@ -248,6 +345,18 @@ CREATE TABLE IF NOT EXISTS "SpireClinicalNote" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "encounterId" text;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "noteType" text NOT NULL DEFAULT 'PROGRESS_NOTE';
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'DRAFT';
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "currentVersion" integer NOT NULL DEFAULT 1;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "authorUserId" text;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "signedAt" timestamptz;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "signedById" text;
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireClinicalNote" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireClinicalNote_patient_idx" ON "SpireClinicalNote"("organizationId","patientId","createdAt");
 
 CREATE TABLE IF NOT EXISTS "SpireClinicalNoteVersion" (
@@ -285,6 +394,15 @@ CREATE TABLE IF NOT EXISTS "SpireSmartPhrase" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "ownerUserId" text;
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "description" text;
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "body" text;
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "active" boolean NOT NULL DEFAULT true;
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "sharedOrganizationWide" boolean NOT NULL DEFAULT false;
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireSmartPhrase" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE UNIQUE INDEX IF NOT EXISTS "SpireSmartPhrase_owner_name_key" ON "SpireSmartPhrase"("organizationId","ownerUserId","name");
 
 CREATE TABLE IF NOT EXISTS "SpireSmartPhraseShare" (
@@ -352,6 +470,16 @@ CREATE TABLE IF NOT EXISTS "SpireResult" (
   "rawData" jsonb NOT NULL DEFAULT '{}'::jsonb,
   "createdAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "encounterId" text;
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "category" text;
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "testName" text;
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'FINAL';
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "resultedAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "source" text;
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "rawData" jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE "SpireResult" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireResult_patient_resulted_idx" ON "SpireResult"("organizationId","patientId","resultedAt");
 
 CREATE TABLE IF NOT EXISTS "SpireResultComponent" (
@@ -466,6 +594,21 @@ CREATE TABLE IF NOT EXISTS "SpireMedicationOrder" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "encounterId" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "dose" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "route" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "frequency" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "dueTimes" text[] NOT NULL DEFAULT ARRAY[]::text[];
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "instructions" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "startDate" date;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "endDate" date;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "orderedById" text;
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireMedicationOrder" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireMedicationOrder_patient_idx" ON "SpireMedicationOrder"("organizationId","patientId","status");
 
 CREATE TABLE IF NOT EXISTS "SpireMedicationOrderVersion" (
@@ -523,6 +666,19 @@ CREATE TABLE IF NOT EXISTS "SpireOrder" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "encounterId" text;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "orderType" text;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "instructions" text;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "priority" text NOT NULL DEFAULT 'ROUTINE';
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'PENDING';
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "orderedById" text;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "orderedAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "completedAt" timestamptz;
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireOrder" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireOrder_patient_idx" ON "SpireOrder"("organizationId","patientId","status");
 
 CREATE TABLE IF NOT EXISTS "SpireOrderStatusHistory" (
@@ -804,6 +960,20 @@ CREATE TABLE IF NOT EXISTS "SpireInBasketItem" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "assignedToUserId" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "patientId" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "encounterId" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "category" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "title" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "details" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "priority" text NOT NULL DEFAULT 'NORMAL';
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'OPEN';
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "sourceType" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "sourceId" text;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "dueAt" timestamptz;
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireInBasketItem" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE INDEX IF NOT EXISTS "SpireInBasket_user_idx" ON "SpireInBasketItem"("organizationId","assignedToUserId","status","createdAt");
 
 CREATE TABLE IF NOT EXISTS "SpireClinicalTask" (
