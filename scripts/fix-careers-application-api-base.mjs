@@ -16,6 +16,10 @@ for (const page of pages) {
 
   if (page === 'applydoo.html') {
     source = source.replace(
+      `function refs(){return [1,2].map(i=>({name:$(\`[name="ref\${i}Name"]\`)?.value||'',relationship:$(\`[name="ref\${i}Relationship"]\`)?.value||'',phone:$(\`[name="ref\${i}Phone"]\`)?.value||'',email:$(\`[name="ref\${i}Email"]\`)?.value||''}));}`,
+      `function refs(){return [1,2].map(i=>({name:document.querySelector(\`[name="ref\${i}Name"]\`)?.value||'',relationship:document.querySelector(\`[name="ref\${i}Relationship"]\`)?.value||'',phone:document.querySelector(\`[name="ref\${i}Phone"]\`)?.value||'',email:document.querySelector(\`[name="ref\${i}Email"]\`)?.value||''}));}`
+    );
+    source = source.replace(
       /throw new Error\(payload\.error \|\| payload\.message \|\| ['"]Application submission failed\.['"]\);/g,
       `const details = Array.isArray(payload.details) ? payload.details : [];
         const detailText = details.map((issue) => {
@@ -24,9 +28,13 @@ for (const page of pages) {
         }).join('\\n');
         throw new Error(detailText ? (payload.error || 'Validation failed') + '\\n' + detailText : (payload.error || payload.message || 'Application submission failed.'));`
     );
+    if (!source.includes('document.querySelector(`\[name="ref${i}Name"\]`)') && source.includes('function refs(){')) {
+      // The current first-class DOO page must use selector lookup for dynamically generated reference fields.
+      source = source.replace(/function refs\(\)\{[^\n]*\}/, `function refs(){return [1,2].map(i=>({name:document.querySelector(\`[name="ref\${i}Name"]\`)?.value||'',relationship:document.querySelector(\`[name="ref\${i}Relationship"]\`)?.value||'',phone:document.querySelector(\`[name="ref\${i}Phone"]\`)?.value||'',email:document.querySelector(\`[name="ref\${i}Email"]\`)?.value||''}));}`);
+    }
   }
 
   if (source !== original) await writeFile(target, source, 'utf8');
 }
 
-console.log('Careers application pages use the canonical Railway API and the Director of Operations application surfaces validation details.');
+console.log('Careers application pages use the canonical Railway API and the Director of Operations application has hardened validation and reference collection.');
