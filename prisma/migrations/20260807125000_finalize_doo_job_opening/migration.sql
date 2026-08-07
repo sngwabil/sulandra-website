@@ -1,6 +1,24 @@
--- Keep the production job-opening catalog aligned with the Director of Operations role.
--- Historical migrations are intentionally not rewritten because deployed Prisma migration
--- checksums must remain immutable.
+-- Keep current production data aligned with the Director of Operations role.
+-- Historical deployed migration files remain immutable so Prisma checksums stay valid.
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema=current_schema()
+       AND table_name='EmployeeApplication'
+       AND column_name='appliedRole'
+  ) THEN
+    EXECUTE 'UPDATE "EmployeeApplication" SET "appliedRole"=''DOO'' WHERE "appliedRole"::text=''COO''';
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema=current_schema()
+       AND table_name='EmployeeApplication'
+       AND column_name='role'
+  ) THEN
+    EXECUTE 'UPDATE "EmployeeApplication" SET "role"=''DOO'' WHERE "role"::text=''COO''';
+  END IF;
+END $$;
 
 UPDATE "JobOpening"
    SET "title" = 'Director of Operations (DOO)'
