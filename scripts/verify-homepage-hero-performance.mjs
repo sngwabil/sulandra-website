@@ -12,12 +12,18 @@ if (!source.includes(`rel="preload" as="image" href="${first}" fetchpriority="hi
 if (!source.includes('rel="preconnect" href="https://images.unsplash.com"')) {
   throw new Error('Homepage is missing the Unsplash preconnect hint.');
 }
-if (!source.includes(`background:#555 url('${first}') center/cover no-repeat`)) {
-  throw new Error('Homepage hero does not use the first image as its immediate CSS background.');
+if (!source.includes('data:image/svg+xml,')) {
+  throw new Error('Homepage hero is missing the inline instant-paint image placeholder.');
+}
+if (!source.includes(`class="hero-slide-image" src="${first}"`) || !source.includes('fetchpriority="high" loading="eager"')) {
+  throw new Error('Homepage first hero photograph is not rendered as an eager high-priority image.');
+}
+if (source.includes('background:#555')) {
+  throw new Error('Homepage still contains the retired dark hero fallback.');
 }
 const eagerBackgrounds = [...source.matchAll(/class="hero-slide(?: active)?" style="background-image:/g)];
-if (eagerBackgrounds.length > 1) {
-  throw new Error(`Homepage eagerly requests ${eagerBackgrounds.length} slideshow images; only the first may compete with initial rendering.`);
+if (eagerBackgrounds.length > 0) {
+  throw new Error(`Homepage still eagerly requests ${eagerBackgrounds.length} slideshow background image(s); hero photographs must use the prioritized first image plus deferred data-bg slides.`);
 }
 if (!source.includes('data-bg="https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8')) {
   throw new Error('Homepage second slide is not deferred.');
@@ -26,4 +32,4 @@ if (!source.includes('warmRemainingHeroSlides')) {
   throw new Error('Homepage deferred slideshow warmup logic is missing.');
 }
 
-console.log('Homepage hero performance verified: first image is prioritized and later slides do not block initial rendering.');
+console.log('Homepage hero performance verified: an inline image paints immediately, the first photograph is high priority, and later slides are deferred.');
