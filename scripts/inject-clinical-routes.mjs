@@ -12,6 +12,7 @@ const callMarker = 'registerCareersRoutes(app, prisma, { authOf, requireRoles, a
 const imports = [
   "import { registerClinicalRoutes } from './clinical-routes.js';",
   "import { registerSpireFoundationRoutes } from './spire-foundation-routes.js';",
+  "import { registerSpireChartRoutes } from './spire-chart-routes.js';",
   "import { registerOfferProgressRoute } from './offer-progress-route.js';",
   "import { registerOfferSendRoute } from './offer-send-route.js';",
   "import { registerOfferAcceptancePdfRoute } from './offer-acceptance-pdf-route.js';",
@@ -22,6 +23,7 @@ const imports = [
 const calls = [
   'registerClinicalRoutes(app, prisma, { authOf });',
   'registerSpireFoundationRoutes(app, prisma, { authOf });',
+  'registerSpireChartRoutes(app, prisma, { authOf });',
   'registerOfferProgressRoute(app, prisma, { authOf, requireRoles });',
   'registerOfferSendRoute(app, prisma, { authOf, requireRoles, audit });',
   'registerOfferAcceptancePdfRoute(app, prisma, { audit });',
@@ -41,4 +43,4 @@ for (const statement of calls) {
 }
 
 await writeFile(target, source, 'utf8');
-console.log(`Registered Spire clinical foundation, clinical, offer, signed-offer PDF, structured onboarding, and signed W-4 routes in ${target}.`);
+console.log(`Registered Spire chart/storyboard, Spire clinical foundation, clinical, offer, signed-offer PDF, structured onboarding, and signed W-4 routes in ${target}.`);
