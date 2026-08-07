@@ -12,11 +12,12 @@ const requiredFiles = [
   'services/home-health/index.html','services/transportation/index.html','services/respite-care/index.html','services/rehab/index.html','services/behavioral-health/index.html','services/companion-care/index.html',
   'assets/intranet-live-integration.js','assets/intranet-content-app.js','assets/intranet-control-app.js','assets/employee-portal-deep-integration.js',
   'assets/policies-app.js','assets/news-app.js','assets/feedback-app.js','assets/payroll-app.js','assets/benefits-app.js','assets/employee-directory-app.js','assets/support-app.js','assets/health-safety-app.js',
-  'assets/client-service-request-app.js','assets/admin-client-service-requests.js','assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js'
+  'assets/client-service-request-app.js','assets/admin-client-service-requests.js','assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js','assets/sulandra-sso-session.js'
 ];
 const cleanRoutes = ['policies','documents','news','feedback','payroll','benefits','employee-directory','leadership','support','it-request','time-attendance','scheduling','incident-reporting','health-safety','service-request','resources'];
 const forbiddenBackendHtml = /href=["']https:\/\/sulandra-website-production-5fc4\.up\.railway\.app\/(?!api\/|public\/)/i;
 const knownDeadRoutes = ['/policies','/documents','/news','/feedback','/payroll','/benefits','/employee-directory','/leadership','/support','/it-request','/scheduling','/time-attendance','/incident-reporting','/health-safety','/caregiver-resources','/about','/services/community-living','/services/waiver'];
+const ssoPages=['admin.html','employee-portal.html','employee360.html','intranet.html','education-portal.html','time-attendance.html','policies.html','payroll.html','benefits.html','support.html','spire.html'];
 
 const failures = [];
 for (const relative of requiredFiles) {
@@ -44,6 +45,9 @@ for (const file of await walk(dist)) {
     if(new RegExp(`href=(['"])${escaped}\\1`).test(html)) failures.push(`${rel} still contains unresolved route ${route}`);
   }
 }
+for(const relative of ssoPages){
+  try{const html=await readFile(path.join(dist,relative),'utf8');if(!html.includes('/assets/sulandra-sso-session.js'))failures.push(`${relative} does not load the shared SSO session cache`)}catch{}
+}
 
 try {
   const employeePortal=await readFile(path.join(dist,'employee-portal.html'),'utf8');
@@ -67,4 +71,4 @@ if (failures.length) {
   console.error('Platform integration verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('Platform integration verified: public services and intake, Spire hub, live Employee Portal routes, clean routes, static navigation, and frontend/backend ownership are coherent.');
+console.log('Platform integration verified: single sign-on, public services and intake, Spire hub, live Employee Portal routes, clean routes, static navigation, and frontend/backend ownership are coherent.');
