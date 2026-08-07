@@ -19,7 +19,8 @@ const routeMap = new Map([
   ['/it-request', '/support.html'],
   ['/time-attendance', '/time-attendance.html'],
   ['/scheduling', '/time-attendance.html'],
-  ['/incident-reporting', '/employee-portal.html?stay=1#health-safety'],
+  ['/incident-reporting', '/health-safety.html'],
+  ['/health-safety', '/health-safety.html'],
   ['/caregiver-resources', '/education-portal.html'],
   ['/about', '/index.html#about'],
   ['/services/community-living', '/services/community-living/index.html'],
@@ -40,6 +41,8 @@ const cleanRoutePages = new Map([
   ['it-request', 'support.html'],
   ['time-attendance', 'time-attendance.html'],
   ['scheduling', 'time-attendance.html'],
+  ['incident-reporting', 'health-safety.html'],
+  ['health-safety', 'health-safety.html'],
 ]);
 
 async function walk(directory) {
