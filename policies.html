@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Policies | Sulandra Health</title>
+  <meta name="robots" content="noindex,nofollow">
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.shell{max-width:1400px;margin:auto;padding:24px}.top{display:flex;gap:12px;align-items:center;margin-bottom:18px}.top a{padding:10px 14px;border-radius:9px;background:#edf4fb;color:#174e8f;text-decoration:none;font-weight:700}.top .spacer{flex:1}.hero,.panel{background:#fff;border:1px solid #dce3ec;border-radius:14px;box-shadow:0 4px 20px rgba(31,64,104,.06)}.hero{padding:22px}.hero h1{margin:0 0 8px}.muted{color:#637083}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.metric{background:#fff;border:1px solid #dce3ec;border-radius:12px;padding:15px}.metric strong{display:block;font-size:1.6rem}.toolbar{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin:16px 0}.toolbar input,.toolbar select{padding:11px;border:1px solid #cdd7e4;border-radius:8px;font:inherit}.panel{padding:18px}.policy{border-bottom:1px solid #e5eaf0;padding:16px 0}.policy:last-child{border-bottom:0}.policy h3{margin:0 0 6px}.badges{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef1f4;font-size:.8rem;font-weight:700}.badge.pending{background:#fff4ce;color:#7b5b00}.badge.complete{background:#e8f6ee;color:#166534}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{border:0;border-radius:8px;padding:9px 12px;background:#174e8f;color:#fff;font-weight:700;cursor:pointer}.actions button.secondary{background:#edf4fb;color:#174e8f}.notice{padding:12px;border-radius:9px;margin:12px 0;background:#fff7db;border:1px solid #eed58d}.hidden{display:none!important}@media(max-width:760px){.shell{padding:14px}.metrics{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr}.top{flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="top"><a href="/intranet.html">Intranet</a><a href="/employee-portal.html?stay=1">Employee Portal</a><a href="/education-portal.html">Education</a><span class="spacer"></span><button id="logout">Sign out</button></div>
+  <section class="hero"><h1>Policies & Acknowledgements</h1><p class="muted">Current employee-facing policies and policy acknowledgements from the Sulandra document system.</p></section>
+  <div id="notice" class="notice hidden"></div>
+  <div class="metrics"><div class="metric"><span>Assigned policies</span><strong id="mAssigned">—</strong></div><div class="metric"><span>Pending</span><strong id="mPending">—</strong></div><div class="metric"><span>Completed</span><strong id="mCompleted">—</strong></div></div>
+  <div class="toolbar"><input id="search" type="search" placeholder="Search policies"><select id="status"><option value="ALL">All statuses</option><option value="PENDING">Pending</option><option value="COMPLETED">Completed</option></select></div>
+  <section class="panel"><div id="policies">Loading policies…</div></section>
+</div>
+<script src="/assets/policies-app.js?v=20260806-integration-1"></script>
+</body>
+</html>
