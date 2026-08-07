@@ -1,0 +1,17 @@
+(()=>{
+  'use strict';
+  const API='https://sulandra-website-production-5fc4.up.railway.app';
+  const token=()=>sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const date=v=>v?new Date(v).toLocaleString():'—';
+  async function api(path,options={}){const response=await fetch(`${API}${path}`,{...options,headers:{'content-type':'application/json',authorization:`Bearer ${token()}`,...(options.headers||{})}});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||`Request failed (${response.status})`);return payload.data??payload}
+  function showError(message){const node=$('error');node.textContent=message;node.hidden=false}
+  function priorityClass(p){return String(p||'').toLowerCase()}
+  async function acknowledge(id){try{await api(`/api/employee/me/communications/announcements/${encodeURIComponent(id)}/acknowledge`,{method:'POST',body:'{}'});await load()}catch(e){showError(e.message)}}
+  async function updateNotification(id,action){try{await api(`/api/employee/me/communications/notifications/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify(action)});await load()}catch(e){showError(e.message)}}
+  function renderAnnouncements(rows){$('announcements').innerHTML=rows.length?rows.map(row=>`<article class="announcement"><div class="meta">${date(row.createdAt)} · <span class="badge ${priorityClass(row.priority)}">${esc(row.priority||'NORMAL')}</span></div><h3>${esc(row.title)}</h3><p>${esc(row.message)}</p>${row.requiresAcknowledgment&&!row.acknowledgedAt?`<div class="actions"><button data-ack="${esc(row.id)}">Acknowledge</button></div>`:row.acknowledgedAt?'<div class="meta">Acknowledged</div>':''}</article>`).join(''):'<p class="empty">No active announcements.</p>';document.querySelectorAll('[data-ack]').forEach(b=>b.addEventListener('click',()=>acknowledge(b.dataset.ack)))}
+  function renderNotifications(rows){$('notifications').innerHTML=rows.length?rows.map(row=>`<article class="notification"><div class="meta">${date(row.createdAt)} · ${esc(row.category)}</div><strong>${esc(row.title)}</strong><p>${esc(row.message)}</p><div class="actions">${!row.readAt?`<button data-read="${esc(row.id)}">Mark read</button>`:''}${row.actionUrl?`<a class="btn" href="${esc(row.actionUrl)}">Open</a>`:''}<button class="secondary" data-dismiss="${esc(row.id)}">Dismiss</button></div></article>`).join(''):'<p class="empty">No active notifications.</p>';document.querySelectorAll('[data-read]').forEach(b=>b.addEventListener('click',()=>updateNotification(b.dataset.read,{read:true})));document.querySelectorAll('[data-dismiss]').forEach(b=>b.addEventListener('click',()=>updateNotification(b.dataset.dismiss,{dismiss:true})))}
+  async function load(){if(!token()){location.href='/employee-login.html';return}try{const data=await api('/api/employee/me/communications');$('unread').textContent=data.metrics?.unreadNotifications??0;$('pending').textContent=data.metrics?.pendingAcknowledgments??0;renderAnnouncements(data.announcements||[]);renderNotifications(data.notifications||[])}catch(e){showError(e.message)}}
+  load();
+})();
