@@ -17,13 +17,16 @@ const liveJs = await mustRead('assets/admin-live-dashboard.js');
 
 if (!adminHtml.includes('/assets/admin-live-dashboard.js?v=20260807-admin-command-center-v3')) failures.push('Admin page is not loading the current cache-busted dashboard asset');
 if (!adminHtml.includes('http-equiv="Cache-Control"') || !adminHtml.includes('no-cache, no-store, must-revalidate')) failures.push('Admin HTML does not disable stale browser caching');
+if (!adminHtml.includes('id="admin-fullscreen-layout"')) failures.push('Admin full-viewport layout override is missing');
+if (!adminHtml.includes('.top-nav,.nav-links,.container{width:100%!important;max-width:none!important')) failures.push('Admin shell still contains a fixed-width viewport wrapper');
+if (!adminHtml.includes('html,body{width:100%!important;max-width:none!important')) failures.push('Admin document root is not forced to full viewport width');
 if (!adminJs.includes('sulandra:admin:active-module')) failures.push('Admin module persistence key is missing');
 if (!adminJs.includes('history.replaceState')) failures.push('Admin module URL/hash persistence is missing');
 if (!adminJs.includes('https://sulandra-website-production-5fc4.up.railway.app')) failures.push('Admin runtime is not using canonical Railway API');
 if (adminJs.includes('https://sulandra-website-production.up.railway.app')) failures.push('Admin runtime still contains the retired Railway API hostname');
 for (const marker of [
   'Sulandra Health Command Center', 'api.open-meteo.com', '/api/admin/dashboard',
-  'edge-toggle', 'width:28px;height:40px', 'edge-drawer left', 'edge-drawer right',
+  'edge-toggle', 'width:24px;height:104px', '.edge-toggle.left{left:-18px', '.edge-toggle.right{right:-18px', 'edge-drawer left', 'edge-drawer right',
   "id:'weather'", "id:'people'", "type:'clock'", "type:'appointments'", "type:'reminders'", "type:'alarms'",
   'card-drag-handle', 'pointerdown', 'contextmenu', 'Edit Dashboard Widget',
   'dashboard-slide', 'dashboardPageDots', 'ACTIVE_MODULE_KEY', 'hashchange',
@@ -39,4 +42,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: current cache-busted interactive widget dashboard, compact independently scrolling edge drawers, live weather, combined workforce/hiring, movable and editable cards, live clock, appointments, reminders, alarms, multi-section scrolling, persistent module refresh, and canonical Railway data are published.');
+console.log('Admin command center verified: full-viewport responsive shell, near-flush long edge handles, current cache-busted interactive widget dashboard, independently scrolling drawers, live weather, combined workforce/hiring, movable and editable cards, live clock, appointments, reminders, alarms, multi-section scrolling, persistent module refresh, and canonical Railway data are published.');
