@@ -28,7 +28,10 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260807-live-admin-command-center-1';
+  const version = '20260807-admin-command-center-v3';
+  if (!adminHtml.includes('http-equiv="Cache-Control"')) {
+    adminHtml = adminHtml.replace('<head>', '<head>\n  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n  <meta http-equiv="Pragma" content="no-cache">\n  <meta http-equiv="Expires" content="0">');
+  }
   adminHtml = adminHtml
     .replace(/\s*<script src="admin-restored-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="admin-applicant-lifecycle-filter\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
