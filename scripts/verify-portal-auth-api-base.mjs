@@ -13,7 +13,10 @@ for(const relative of files){
     const source=await readFile(path.join(dist,relative),'utf8');
     if(source.includes(stale))failures.push(`${relative} still references the retired Railway API hostname`);
     if(!source.includes(canonical))failures.push(`${relative} does not reference the canonical Railway API hostname`);
+    if(relative==='admin-railway.js' && /response\.status\s*===\s*401\)\s*signOut\(/.test(source)) {
+      failures.push('admin-railway.js still clears the global login when one protected feature endpoint returns 401');
+    }
   }catch(error){failures.push(`Missing published authentication asset: ${relative}`)}
 }
 if(failures.length){console.error('Portal authentication verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('Portal authentication verified: login, Employee Portal, and Admin use the same canonical Railway API host.');
+console.log('Portal authentication verified: canonical API host is consistent and Admin preserves the global login across module-level authorization failures.');
