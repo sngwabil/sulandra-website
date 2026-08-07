@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const allowedExtensions = new Set(['.html', '.js', '.css']);
-const skipDirectories = new Set(['.git', 'node_modules', 'api', 'prisma', 'scripts', 'dist-web']);
+const skipDirectories = new Set(['.git', 'node_modules', 'api', 'prisma', 'scripts']);
 let updated = 0;
 
 function revise(source) {
