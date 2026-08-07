@@ -12,11 +12,17 @@ if (!source.includes(`rel="preload" as="image" href="${first}" fetchpriority="hi
 if (!source.includes('rel="preconnect" href="https://images.unsplash.com"')) {
   throw new Error('Homepage is missing the Unsplash preconnect hint.');
 }
-if (!source.includes('data:image/svg+xml,')) {
-  throw new Error('Homepage hero is missing the inline instant-paint image placeholder.');
+if (!source.includes('data:image/svg+xml;base64,')) {
+  throw new Error('Homepage hero is missing the Safari-safe embedded first-paint image.');
 }
 if (!source.includes(`class="hero-slide-image" src="${first}"`) || !source.includes('fetchpriority="high" loading="eager"')) {
   throw new Error('Homepage first hero photograph is not rendered as an eager high-priority image.');
+}
+if (!source.includes('.hero.hero-image-ready .hero-overlay{background:rgba(0,0,0,.46)}')) {
+  throw new Error('Homepage does not keep the initial placeholder brighter until the real image is ready.');
+}
+if (!source.includes("hero?.classList.add('hero-image-ready')")) {
+  throw new Error('Homepage does not promote the full hero photograph after it loads.');
 }
 if (source.includes('background:#555')) {
   throw new Error('Homepage still contains the retired dark hero fallback.');
@@ -32,4 +38,4 @@ if (!source.includes('warmRemainingHeroSlides')) {
   throw new Error('Homepage deferred slideshow warmup logic is missing.');
 }
 
-console.log('Homepage hero performance verified: an inline image paints immediately, the first photograph is high priority, and later slides are deferred.');
+console.log('Homepage hero performance verified: Safari-safe embedded scene paints immediately, full image fades in when ready, and later slides are deferred.');
