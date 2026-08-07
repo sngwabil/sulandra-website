@@ -8,13 +8,13 @@ const dist = path.join(root, 'dist-web');
 const requiredFiles = [
   'index.html','intranet.html','employee-login.html','employee-portal.html','admin.html','employee360.html',
   'education-portal.html','time-attendance.html','policies.html','news.html','feedback.html','payroll.html',
-  'benefits.html','employee-directory.html','leadership.html','support.html','services/community-living/index.html',
+  'benefits.html','employee-directory.html','leadership.html','support.html','health-safety.html','services/community-living/index.html',
   'assets/intranet-live-integration.js','assets/policies-app.js','assets/news-app.js','assets/feedback-app.js',
-  'assets/payroll-app.js','assets/benefits-app.js','assets/employee-directory-app.js','assets/support-app.js'
+  'assets/payroll-app.js','assets/benefits-app.js','assets/employee-directory-app.js','assets/support-app.js','assets/health-safety-app.js'
 ];
-const cleanRoutes = ['policies','documents','news','feedback','payroll','benefits','employee-directory','leadership','support','it-request','time-attendance','scheduling'];
+const cleanRoutes = ['policies','documents','news','feedback','payroll','benefits','employee-directory','leadership','support','it-request','time-attendance','scheduling','incident-reporting','health-safety'];
 const forbiddenBackendHtml = /href=["']https:\/\/sulandra-website-production-5fc4\.up\.railway\.app\/(?!api\/|public\/)/i;
-const knownDeadRoutes = ['/policies','/documents','/news','/feedback','/payroll','/benefits','/employee-directory','/leadership','/support','/it-request','/scheduling','/time-attendance','/caregiver-resources','/about','/services/community-living','/services/waiver'];
+const knownDeadRoutes = ['/policies','/documents','/news','/feedback','/payroll','/benefits','/employee-directory','/leadership','/support','/it-request','/scheduling','/time-attendance','/incident-reporting','/health-safety','/caregiver-resources','/about','/services/community-living','/services/waiver'];
 
 const failures = [];
 for (const relative of requiredFiles) {
