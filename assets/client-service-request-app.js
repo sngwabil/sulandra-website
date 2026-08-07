@@ -4,6 +4,13 @@
   const $=id=>document.getElementById(id);
   const status=(message,error=false)=>{const node=$('status');node.textContent=message;node.className='status show'+(error?' error':'');};
   const value=id=>String($(id)?.value||'').trim();
+  const params=new URLSearchParams(location.search);
+  const aliases={community:'SHARED_LIVING','community-living':'SHARED_LIVING','shared-living':'SHARED_LIVING','personal-care':'HOMEMAKER_PERSONAL_CARE','hpc':'HOMEMAKER_PERSONAL_CARE',respite:'RESPITE',transportation:'TRANSPORTATION',nursing:'NURSING','home-health':'HOME_HEALTH',rehab:'OTHER','behavioral-health':'OTHER','companion-care':'OTHER','community-integration':'COMMUNITY_INTEGRATION'};
+  const requested=String(params.get('service')||'').trim().toLowerCase();
+  const requestedType=aliases[requested]||'';
+  if(requestedType){const box=document.querySelector(`#services input[value="${requestedType}"]`);if(box)box.checked=true;}
+  const source=String(params.get('source')||'').trim();
+  if(requested&&$('notes')&&!$('notes').value)$('notes').value=`Service page interest: ${requested.replaceAll('-',' ')}${source?` (source: ${source})`:''}.`;
   $('requestForm').addEventListener('submit',async event=>{
     event.preventDefault();
     const serviceTypes=[...document.querySelectorAll('#services input:checked')].map(input=>input.value);
