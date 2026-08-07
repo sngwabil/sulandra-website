@@ -22,9 +22,6 @@
     const encoded = JSON.stringify(session);
     window.sessionStorage.setItem(TOKEN_KEY, token);
     window.sessionStorage.setItem(SESSION_KEY, encoded);
-    // localStorage keeps the same authenticated session available when the user
-    // opens another Sulandra module or a new tab. The backend still authorizes
-    // every protected API request using this token and the user's role.
     window.localStorage.setItem(TOKEN_KEY, token);
     window.localStorage.setItem(SESSION_KEY, encoded);
   }
@@ -83,7 +80,6 @@
     }
   }
 
-  document.getElementById("demo").addEventListener("click", () => window.location.assign("spire-demo.html"));
   document.getElementById("clear").addEventListener("click", () => {
     document.getElementById("email").value = "";
     document.getElementById("password").value = "";
