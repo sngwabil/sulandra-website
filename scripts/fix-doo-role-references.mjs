@@ -1,7 +1,8 @@
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = path.resolve('api/src');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'api', 'src');
 let updated = 0;
 
 async function walk(directory) {
@@ -17,7 +18,13 @@ async function walk(directory) {
     const revised = original
       .replaceAll('UserRole.COO', 'UserRole.DOO')
       .replaceAll("'COO'", "'DOO'")
-      .replaceAll('"COO"', '"DOO"');
+      .replaceAll('"COO"', '"DOO"')
+      .replaceAll('Chief Operating Officer', 'Director of Operations')
+      .replaceAll('chief operating officer', 'director of operations')
+      .replaceAll('chief-operating-officer-coo', 'director-of-operations-doo')
+      .replaceAll('/applycoo.html', '/applydoo.html')
+      .replaceAll('applycoo.html', 'applydoo.html')
+      .replaceAll('\\bcoo\\b', '\\bdoo\\b');
 
     if (revised !== original) {
       await writeFile(fullPath, revised, 'utf8');
@@ -27,4 +34,4 @@ async function walk(directory) {
 }
 
 await walk(root);
-console.log(`DOO role compatibility repair applied to ${updated} TypeScript file(s).`);
+console.log(`Director of Operations role enforcement applied to ${updated} TypeScript file(s).`);
