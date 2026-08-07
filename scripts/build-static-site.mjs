@@ -99,12 +99,14 @@ try {
 const spirePath = path.join(outputDirectory, 'spire.html');
 try {
   let spireHtml = await readFile(spirePath, 'utf8');
-  const spireWorkflowVersion = '20260807-spire-workflow-1';
+  const spireWorkflowVersion = '20260807-spire-workflow-2';
   spireHtml = spireHtml
     .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-workflow\.css(?:\?v=[^"']+)?">\s*/g, '')
-    .replace(/\s*<script src="\/assets\/spire-workflow\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
-  spireHtml = spireHtml.replace('</head>', `<link rel="stylesheet" href="/assets/spire-workflow.css?v=${spireWorkflowVersion}"></head>`);
-  spireHtml = spireHtml.replace('</body>', `<script src="/assets/spire-workflow.js?v=${spireWorkflowVersion}"></script></body>`);
+    .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-results-workspace\.css(?:\?v=[^"']+)?">\s*/g, '')
+    .replace(/\s*<script src="\/assets\/spire-workflow\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
+    .replace(/\s*<script src="\/assets\/spire-results-workspace\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
+  spireHtml = spireHtml.replace('</head>', `<link rel="stylesheet" href="/assets/spire-workflow.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-results-workspace.css?v=${spireWorkflowVersion}"></head>`);
+  spireHtml = spireHtml.replace('</body>', `<script src="/assets/spire-workflow.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-results-workspace.js?v=${spireWorkflowVersion}"></script></body>`);
   await writeFile(spirePath, spireHtml, 'utf8');
 } catch (error) { if (error?.code !== 'ENOENT') throw error; }
 
@@ -158,4 +160,4 @@ await import('./install-employee-self-service-frontend.mjs');
 await import('./install-employee-management-frontend.mjs');
 
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with live Admin command center, persistent module navigation, slim vertical edge rails, dual slide-out operations panels, Service Homes, scoped Employee 360 permissions, compliance, employee self-service, Team Hub collaboration, approval workflows, feedback, recognition, notifications, schedules, clocking, Spire encounter documentation workflows, and enterprise-owner identity.');
+console.log('Static website prepared with live Admin command center, persistent module navigation, slim vertical edge rails, dual slide-out operations panels, Service Homes, scoped Employee 360 permissions, compliance, employee self-service, Team Hub collaboration, approval workflows, feedback, recognition, notifications, schedules, clocking, Spire encounter documentation, personalized chart tabs and advanced results review workflows, and enterprise-owner identity.');
