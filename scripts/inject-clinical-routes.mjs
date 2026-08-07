@@ -14,6 +14,7 @@ const imports = [
   "import { registerSpireFoundationRoutes } from './spire-foundation-routes.js';",
   "import { registerSpireChartRoutes } from './spire-chart-routes.js';",
   "import { registerSpireOrderComposerRoutes } from './spire-order-composer-routes.js';",
+  "import { registerSpireEmarRoutes } from './spire-emar-routes.js';",
   "import { registerOfferProgressRoute } from './offer-progress-route.js';",
   "import { registerOfferSendRoute } from './offer-send-route.js';",
   "import { registerOfferAcceptancePdfRoute } from './offer-acceptance-pdf-route.js';",
@@ -26,6 +27,7 @@ const calls = [
   'registerSpireFoundationRoutes(app, prisma, { authOf });',
   'registerSpireChartRoutes(app, prisma, { authOf });',
   'registerSpireOrderComposerRoutes(app, prisma, { authOf });',
+  'registerSpireEmarRoutes(app, prisma, { authOf });',
   'registerOfferProgressRoute(app, prisma, { authOf, requireRoles });',
   'registerOfferSendRoute(app, prisma, { authOf, requireRoles, audit });',
   'registerOfferAcceptancePdfRoute(app, prisma, { audit });',
@@ -34,15 +36,8 @@ const calls = [
   'registerW4Routes(app, prisma, { authOf, requireRoles, audit });',
 ];
 
-if (!source.includes(importMarker) || !source.includes(callMarker)) {
-  throw new Error(`Route injection markers not found in ${target}`);
-}
-for (const statement of imports) {
-  if (!source.includes(statement)) source = source.replace(importMarker, `${importMarker}\n${statement}`);
-}
-for (const statement of calls) {
-  if (!source.includes(statement)) source = source.replace(callMarker, `${statement}\n${callMarker}`);
-}
-
+if (!source.includes(importMarker) || !source.includes(callMarker)) throw new Error(`Route injection markers not found in ${target}`);
+for (const statement of imports) if (!source.includes(statement)) source = source.replace(importMarker, `${importMarker}\n${statement}`);
+for (const statement of calls) if (!source.includes(statement)) source = source.replace(callMarker, `${statement}\n${callMarker}`);
 await writeFile(target, source, 'utf8');
-console.log(`Registered Spire chart/storyboard, CPOE order composer, Spire clinical foundation, clinical, offer, signed-offer PDF, structured onboarding, and signed W-4 routes in ${target}.`);
+console.log(`Registered Spire chart/storyboard, CPOE order composer, eMAR, Spire clinical foundation, clinical, offer, signed-offer PDF, structured onboarding, and signed W-4 routes in ${target}.`);
