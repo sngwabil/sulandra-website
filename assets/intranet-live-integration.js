@@ -1,0 +1,29 @@
+(()=>{
+  'use strict';
+  const API='https://sulandra-website-production-5fc4.up.railway.app';
+  const token=()=>sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';
+  const routeMap={
+    '/policies':'/policies.html',
+    '/documents':'/policies.html',
+    '/time-attendance':'/time-attendance.html',
+    '/scheduling':'/time-attendance.html',
+    '/payroll':'/employee-portal.html?stay=1#payroll',
+    '/benefits':'/employee-portal.html?stay=1#benefits',
+    '/incident-reporting':'/employee-portal.html?stay=1#health-safety',
+    '/feedback':'/employee-portal.html?stay=1#engagement',
+    '/employee-directory':'/employee-portal.html?stay=1#directory',
+    '/leadership':'/employee-portal.html?stay=1#directory',
+    '/support':'/employee-portal.html?stay=1#security',
+    '/it-request':'/employee-portal.html?stay=1#security',
+    '/news':'/intranet.html#live-announcements',
+    '/contact':'/employee-portal.html?stay=1#directory',
+    '/logout':'/employee-login.html'
+  };
+  function normalizeLinks(){document.querySelectorAll('a[href]').forEach(link=>{const href=link.getAttribute('href');if(routeMap[href])link.setAttribute('href',routeMap[href]);});}
+  const headers=()=>({authorization:`Bearer ${token()}`});
+  async function get(path){const response=await fetch(`${API}${path}`,{headers:headers()});if(!response.ok)throw new Error(`Request failed (${response.status})`);return response.json()}
+  function ensureLiveArea(){let host=document.getElementById('live-announcements');if(host)return host;const main=document.querySelector('main.content');if(!main)return null;host=document.createElement('section');host.id='live-announcements';host.className='card';host.style.marginTop='24px';host.innerHTML='<div class="section-head"><h2>Live Employee Actions</h2><a href="/employee-portal.html?stay=1">Open Employee Portal</a></div><div id="intranetLiveCards" class="quick-grid"></div>';main.appendChild(host);return host;}
+  function card(icon,title,value,href,copy){return `<a class="quick-card" href="${href}"><div class="quick-icon">${icon}</div><h3>${title}</h3><p><strong>${value}</strong> ${copy}</p></a>`}
+  async function loadLive(){if(!token())return;const host=ensureLiveArea();if(!host)return;try{const [documents,learning,communications]=await Promise.allSettled([get('/api/employee/me/documents'),get('/api/employee/me/learning'),get('/api/employee/me/communications')]);const docData=documents.status==='fulfilled'?documents.value.data||{}:{};const learnData=learning.status==='fulfilled'?learning.value.data||{}:{};const commData=communications.status==='fulfilled'?communications.value.data||{}:{};const pendingPolicies=(docData.envelopes||[]).filter(row=>['PENDING','IN_PROGRESS'].includes(row.status)).length;const learningAssignments=learnData.assignments||[];const requiredTraining=learningAssignments.filter(row=>row.required&& !['COMPLETED','EXEMPT'].includes(row.status)).length;const unread=(commData.notifications||commData.items||commData.communications||[]).filter(row=>!row.readAt&&!row.dismissedAt).length;const cards=document.getElementById('intranetLiveCards');if(cards)cards.innerHTML=[card('📘','Policies & Documents',pendingPolicies,'/policies.html','awaiting your action'),card('🎓','Training',requiredTraining,'/education-portal.html','required assignments open'),card('💬','Notifications',unread,'/employee-portal.html?stay=1#communications','unread items'),card('🕒','Time & Attendance','Open','/time-attendance.html','schedule, punches and leave')].join('');}catch(error){console.warn('[intranet] live integration unavailable',error)}}
+  normalizeLinks();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{normalizeLinks();loadLive()},{once:true});else loadLive();
+})();
