@@ -15,7 +15,8 @@ const adminHtml = await mustRead('admin.html');
 const adminJs = await mustRead('admin-railway.js');
 const liveJs = await mustRead('assets/admin-live-dashboard.js');
 
-if (!adminHtml.includes('/assets/admin-live-dashboard.js')) failures.push('Admin page does not load the live dashboard asset');
+if (!adminHtml.includes('/assets/admin-live-dashboard.js?v=20260807-admin-command-center-v3')) failures.push('Admin page is not loading the current cache-busted dashboard asset');
+if (!adminHtml.includes('http-equiv="Cache-Control"') || !adminHtml.includes('no-cache, no-store, must-revalidate')) failures.push('Admin HTML does not disable stale browser caching');
 if (!adminJs.includes('sulandra:admin:active-module')) failures.push('Admin module persistence key is missing');
 if (!adminJs.includes('history.replaceState')) failures.push('Admin module URL/hash persistence is missing');
 if (!adminJs.includes('https://sulandra-website-production-5fc4.up.railway.app')) failures.push('Admin runtime is not using canonical Railway API');
@@ -38,4 +39,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: compact flush independently scrolling edge drawers, live weather, combined workforce/hiring, movable and editable colored widgets, live clock, appointments, reminders, alarms, multi-section scrolling, persistent module refresh, and canonical Railway data are published.');
+console.log('Admin command center verified: current cache-busted interactive widget dashboard, compact independently scrolling edge drawers, live weather, combined workforce/hiring, movable and editable cards, live clock, appointments, reminders, alarms, multi-section scrolling, persistent module refresh, and canonical Railway data are published.');
