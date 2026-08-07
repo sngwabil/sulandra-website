@@ -28,7 +28,7 @@ for (const directory of publicDirectories) {
 const adminPath = path.join(outputDirectory, 'admin.html');
 try {
   let adminHtml = await readFile(adminPath, 'utf8');
-  const version = '20260807-admin-command-center-v3';
+  const version = '20260807-admin-command-center-v4-edge-rails';
   if (!adminHtml.includes('http-equiv="Cache-Control"')) {
     adminHtml = adminHtml.replace('<head>', '<head>\n  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n  <meta http-equiv="Pragma" content="no-cache">\n  <meta http-equiv="Expires" content="0">');
   }
@@ -39,6 +39,7 @@ try {
     .replace(/\s*<script src="\/assets\/admin-employee-permissions\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/admin-employee-management\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/admin-live-dashboard\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace(/\s*<link rel="stylesheet" href="\/assets\/admin-edge-tabs\.css(?:\?v=[^"']+)?">\s*/g, '\n')
     .replace(/<a\s+data-module=["']time["']\s*>\s*Time\s*&(?:amp;)?\s*Attendance\s*<\/a>/gi, `<a href="${attendanceAdminTarget}" id="adminTimeAttendanceTopLink">Time &amp; Attendance</a>`)
     .replace(/<button([^>]*?)data-module=["']time["']([^>]*)>\s*Time\s*&(?:amp;)?\s*Attendance([\s\S]*?)<\/button>/gi, `<button$1id="adminTimeAttendanceSideLink"$2 type="button">Time &amp; Attendance$3</button>`);
 
@@ -78,6 +79,7 @@ try {
 })();
 </script>`;
   adminHtml = adminHtml.replace(/\s*<script id="admin-time-attendance-hard-route">[\s\S]*?<\/script>\s*/g, '\n');
+  adminHtml = adminHtml.replace('</head>', `  <link rel="stylesheet" href="/assets/admin-edge-tabs.css?v=${version}">\n</head>`);
   adminHtml = adminHtml.replace('</body>', `  <script src="admin-restored-navigation.js?v=${version}"></script>\n  <script src="admin-applicant-lifecycle-filter.js?v=${version}"></script>\n  <script src="/assets/admin-service-home-management-v2.js?v=${version}"></script>\n  <script src="/assets/admin-employee-permissions.js?v=${version}"></script>\n  <script src="/assets/admin-employee-management.js?v=${version}"></script>\n  <script src="/assets/admin-live-dashboard.js?v=${version}"></script>\n  ${directNavigation}\n</body>`);
   await writeFile(adminPath, adminHtml, 'utf8');
 
@@ -144,4 +146,4 @@ await import('./install-employee-self-service-frontend.mjs');
 await import('./install-employee-management-frontend.mjs');
 
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with live Admin command center, persistent module navigation, dual slide-out operations panels, Service Homes, scoped Employee 360 permissions, compliance, employee self-service, Team Hub collaboration, approval workflows, feedback, recognition, notifications, schedules, clocking, and enterprise-owner identity.');
+console.log('Static website prepared with live Admin command center, persistent module navigation, slim vertical edge rails, dual slide-out operations panels, Service Homes, scoped Employee 360 permissions, compliance, employee self-service, Team Hub collaboration, approval workflows, feedback, recognition, notifications, schedules, clocking, and enterprise-owner identity.');
