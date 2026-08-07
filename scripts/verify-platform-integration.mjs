@@ -6,11 +6,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 
 const requiredFiles = [
-  'index.html','intranet.html','employee-login.html','employee-portal.html','admin.html','employee360.html',
+  'index.html','intranet.html','employee-login.html','employee-portal.html','admin.html','employee360.html','spire.html',
   'education-portal.html','time-attendance.html','policies.html','news.html','feedback.html','payroll.html',
-  'benefits.html','employee-directory.html','leadership.html','support.html','health-safety.html','services/community-living/index.html',
-  'assets/intranet-live-integration.js','assets/policies-app.js','assets/news-app.js','assets/feedback-app.js',
-  'assets/payroll-app.js','assets/benefits-app.js','assets/employee-directory-app.js','assets/support-app.js','assets/health-safety-app.js'
+  'benefits.html','employee-directory.html','leadership.html','support.html','health-safety.html','intranet-control.html','services/community-living/index.html',
+  'assets/intranet-live-integration.js','assets/intranet-content-app.js','assets/intranet-control-app.js','assets/employee-portal-deep-integration.js',
+  'assets/policies-app.js','assets/news-app.js','assets/feedback-app.js','assets/payroll-app.js','assets/benefits-app.js','assets/employee-directory-app.js','assets/support-app.js','assets/health-safety-app.js'
 ];
 const cleanRoutes = ['policies','documents','news','feedback','payroll','benefits','employee-directory','leadership','support','it-request','time-attendance','scheduling','incident-reporting','health-safety'];
 const forbiddenBackendHtml = /href=["']https:\/\/sulandra-website-production-5fc4\.up\.railway\.app\/(?!api\/|public\/)/i;
@@ -43,8 +43,17 @@ for (const file of await walk(dist)) {
   }
 }
 
+try {
+  const employeePortal=await readFile(path.join(dist,'employee-portal.html'),'utf8');
+  if(!employeePortal.includes('/assets/employee-portal-deep-integration.js')) failures.push('Employee Portal does not load the live-module integration bridge');
+} catch {}
+try {
+  const spire=await readFile(path.join(dist,'spire.html'),'utf8');
+  for(const marker of ['/time-attendance.html','/employee360.html','/education-portal.html','/health-safety.html']) if(!spire.includes(marker)) failures.push(`Spire hub is missing live module destination ${marker}`);
+} catch {}
+
 if (failures.length) {
   console.error('Platform integration verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('Platform integration verified: core pages, clean routes, static navigation, and frontend/backend ownership are coherent.');
+console.log('Platform integration verified: core pages, Spire hub, live Employee Portal routes, clean routes, static navigation, and frontend/backend ownership are coherent.');
