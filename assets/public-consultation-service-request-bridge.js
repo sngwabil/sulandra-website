@@ -2,6 +2,8 @@
   'use strict';
   const API='https://sulandra-website-production-5fc4.up.railway.app';
   const serviceMap={'Community Living':'SHARED_LIVING','Personal Care':'HOMEMAKER_PERSONAL_CARE','Respite':'RESPITE','Transportation':'TRANSPORTATION','Caregiver Support':'OTHER','Other':'OTHER'};
+  document.querySelectorAll('a[href="#reviews"]').forEach(link=>{link.textContent='How It Works';link.href='#about';});
+  document.querySelectorAll('a[href="#resources"]').forEach(link=>{link.href='/resources.html';});
   const form=document.getElementById('consultation-form');
   if(!form)return;
   form.addEventListener('submit',async event=>{
