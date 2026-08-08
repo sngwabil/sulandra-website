@@ -78,6 +78,30 @@ for (const [route, source] of cleanRoutePages) {
   await cp(sourcePath, path.join(routeDir, 'index.html'));
 }
 
+// The public Services page predates the unified router and still had literal #
+// placeholders in its navigation. Resolve those in the published HTML so the
+// page remains useful even before its enhancement script executes.
+const servicesPath = path.join(dist, 'services.html');
+try {
+  let html = await readFile(servicesPath, 'utf8');
+  const links = new Map([
+    ['Reviews', '/reviews.html'],
+    ['Resources', '/resources.html'],
+    ['Free Consultation', '/consultation.html'],
+    ['About Us', '/about.html'],
+    ['Careers', '/careers.html'],
+    ['Contact', '/contact.html'],
+    ['View All Services', '/services.html'],
+  ]);
+  for (const [label, target] of links) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    html = html.replace(new RegExp(`<a href="#"([^>]*)>${escaped}<\\/a>`, 'g'), `<a href="${target}"$1>${label}</a>`);
+  }
+  await writeFile(servicesPath, html, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
 const timePath = path.join(dist, 'time-attendance.html');
 try {
   let html = await readFile(timePath, 'utf8');
@@ -105,4 +129,4 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; Time & Attendance and Employee 360 deep links are restored to their live applications.');
+console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; Services placeholders, Time & Attendance and Employee 360 deep links are restored to live applications.');
