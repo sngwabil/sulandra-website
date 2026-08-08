@@ -50,7 +50,10 @@ if(await exists(migration)){
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('compensation route registered',installer.includes('registerEmployeeCompensationRoutes'));
-expect('compensation route registered before careers',installer.includes('${performanceRegister}\\n${compensationRegister}\\n\\n${careersRegister}'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const compensationAt=bootstrap.indexOf('registerEmployeeCompensationRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('compensation route registered before careers',compensationAt>=0&&careersAt>compensationAt);
 
 const employeeAsset=await read('assets/employee-compensation-self-service.js');
 expect('My Pay and Benefits frontend',employeeAsset.includes('My Pay & Benefits')&&employeeAsset.includes('/api/employee/me/compensation'));
