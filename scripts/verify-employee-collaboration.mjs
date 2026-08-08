@@ -53,7 +53,10 @@ if (await exists(migrationPath)) {
 
 const installer = await read('scripts/install-employee-management-platform.mjs');
 expect('collaboration routes wired into backend', installer.includes('registerEmployeeCollaborationRoutes'));
-expect('collaboration registered before careers', installer.includes('${complianceRegister}\\n${collaborationRegister}\\n\\n${careersRegister}'));
+const bootstrap = await read('api/src/onboarding-bootstrap.ts');
+const collaborationAt = bootstrap.indexOf('registerEmployeeCollaborationRoutes({ app, prisma');
+const careersAt = bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('collaboration registered before careers', collaborationAt >= 0 && careersAt > collaborationAt);
 
 const employeeAsset = await read('assets/employee-collaboration-self-service.js');
 expect('employee My Workplace frontend', employeeAsset.includes('My Workplace') && employeeAsset.includes('/api/employee/me/collaboration'));
@@ -87,8 +90,8 @@ if (await exists(distAdminPath)) {
   const html = await read(distAdminPath);
   const managementAt = html.indexOf('/assets/admin-employee-management.js');
   const complianceAt = html.indexOf('/assets/admin-employee-compliance.js');
-  const collaborationAt = html.indexOf('/assets/admin-employee-collaboration.js');
-  expect('generated admin collaboration script order', managementAt >= 0 && complianceAt > managementAt && collaborationAt > complianceAt);
+  const collaborationAtInHtml = html.indexOf('/assets/admin-employee-collaboration.js');
+  expect('generated admin collaboration script order', managementAt >= 0 && complianceAt > managementAt && collaborationAtInHtml > complianceAt);
 }
 const distEmployeePath = 'dist-web/employee-portal.html';
 if (await exists(distEmployeePath)) {
