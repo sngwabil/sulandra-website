@@ -4,7 +4,10 @@ WORKDIR /app
 
 COPY . .
 
-RUN node scripts/build-static-site.mjs
+# DEVELOPMENT_WORKFLOW.md defines npm run build:web as the authoritative
+# Sulandra Static Website build. Running build-static-site.mjs directly skipped
+# the pre/post integration chain and silently published placeholder/legacy pages.
+RUN npm run build:web
 
 ENV NODE_ENV=production
 ENV PORT=8080
