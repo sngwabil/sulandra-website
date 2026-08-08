@@ -47,7 +47,10 @@ if(await exists(migration)){
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('assets route registered',installer.includes('registerEmployeeAssetsAccessRoutes'));
-expect('assets route before careers',installer.includes('${leaveOffboardingRegister}\\n${assetsAccessRegister}\\n\\n${careersRegister}'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const assetsAt=bootstrap.indexOf('registerEmployeeAssetsAccessRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('assets route before careers',assetsAt>=0&&careersAt>assetsAt);
 
 const employeeAsset=await read('assets/employee-assets-self-service.js');
 expect('employee My Assets frontend',employeeAsset.includes('My Assets & Access')&&employeeAsset.includes('/api/employee/me/assets-access'));
