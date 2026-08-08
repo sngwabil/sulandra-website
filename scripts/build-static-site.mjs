@@ -126,13 +126,21 @@ await import('./restore-modern-admin-portal.mjs');
 await import('./finalize-admin-fullscreen-layout.mjs');
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
 
-const publishedAdmin = await readFile(path.join(outputDirectory, 'admin.html'), 'utf8');
+const publishedAdminPath = path.join(outputDirectory, 'admin.html');
+let publishedAdmin = await readFile(publishedAdminPath, 'utf8');
+const achievedArchiveScript = '<script src="/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1"></script>';
+if (!publishedAdmin.includes('/assets/admin-achieved-archive-fix.js')) {
+  publishedAdmin = publishedAdmin.replace('</body>', `${achievedArchiveScript}</body>`);
+  await writeFile(publishedAdminPath, publishedAdmin, 'utf8');
+}
+
 for (const marker of [
   'sulandra-platform-bar',
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4',
   '/assets/sulandra-enterprise-owner.js?v=20260808-admin-command-center-v4',
   '/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4',
   '/assets/admin-platform-routing.js?v=20260808-admin-command-center-v4',
+  '/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1',
   'id="admin-fullscreen-layout"',
 ]) {
   if (!publishedAdmin.includes(marker)) throw new Error(`Modern Admin publication failed; missing ${marker}`);
@@ -145,12 +153,12 @@ const requiredPublishedFiles = [
   'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',
   'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
   'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
-  'assets/admin-service-home-management-v2.js', 'spire.html', 'spire-admin.html',
-  'services',
+  'assets/admin-service-home-management-v2.js', 'assets/admin-achieved-archive-fix.js',
+  'spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
   try { await stat(path.join(outputDirectory, relative)); }
   catch { throw new Error(`Static publication regression: missing ${relative}`); }
 }
 
-console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, live Service Homes, Time and Attendance, Scheduling, Employee 360, Education, Intranet, Careers and all Spire clinical modules.');
+console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, live Service Homes, Time and Attendance, Scheduling, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
