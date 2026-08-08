@@ -65,7 +65,6 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-// Spire remains additive: it is a clinical application inside Sulandra Health.
 const spirePath = path.join(outputDirectory, 'spire.html');
 try {
   let spireHtml = await readFile(spirePath, 'utf8');
@@ -147,7 +146,7 @@ const requiredPublishedFiles = [
   'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
   'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
   'assets/admin-service-home-management-v2.js', 'spire.html', 'spire-admin.html',
-  'courses', 'education', 'services',
+  'services',
 ];
 for (const relative of requiredPublishedFiles) {
   try { await stat(path.join(outputDirectory, relative)); }
