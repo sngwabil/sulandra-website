@@ -21,4 +21,25 @@ source=source.replace(
 
 if(!source.includes("body: encrypted.body as any"))throw new Error('Secure object upload BodyInit typing was not repaired');
 await writeFile(target,source,'utf8');
-console.log('Secure object storage upload body is compatible with Node fetch typing without copying file bytes.');
+
+// Spire's administrator shortcut must accept the full UserRole enum. A literal
+// array passed to Array.includes() narrows the parameter to only the three array
+// members and fails tsc when a.role is typed as UserRole. Use Set<UserRole>
+// instead so all role values type-check while retaining the exact same runtime rule.
+const roleTargets=[
+  'api/src/spire-documents-external-records-routes.ts',
+  'api/src/spire-communications-inbasket-routes.ts',
+  'api/src/spire-authorizations-evv-routes.ts',
+];
+const oldAdmin="const admin=(a:A)=>[UserRole.ADMINISTRATOR,UserRole.CEO,UserRole.DOO].includes(a.role)||String(a.email||'').toLowerCase()==='admin@sulandrahealth.com';";
+const newAdmin="const admin=(a:A)=>new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.CEO,UserRole.DOO]).has(a.role)||String(a.email||'').toLowerCase()==='admin@sulandrahealth.com';";
+for(const relative of roleTargets){
+  const file=path.join(root,relative);
+  let body;
+  try{body=await readFile(file,'utf8')}catch(error){if(error?.code==='ENOENT')continue;throw error}
+  if(body.includes(oldAdmin))body=body.replace(oldAdmin,newAdmin);
+  if(body.includes('[UserRole.ADMINISTRATOR,UserRole.CEO,UserRole.DOO].includes(a.role)'))throw new Error(`Spire UserRole typing was not repaired in ${relative}`);
+  await writeFile(file,body,'utf8');
+}
+
+console.log('Secure object storage BodyInit and Spire administrator UserRole typing are build-safe.');
