@@ -40,9 +40,10 @@ expect('migration status constraints',migration.includes('EmployeeWorkflowStep_s
 expect('migration unique step order',migration.includes('EmployeeWorkflowStep_order_unique'));
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
-expect('workflow import installed',installer.includes("./employee-workflows-automation-routes.js"));
-expect('obsolete workflow import absent',!installer.includes("./employee-workflow-automation-routes.js"));
+expect('installer knows correct workflow module',installer.includes("./employee-workflows-automation-routes.js"));
 const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+expect('generated backend uses correct workflow import',bootstrap.includes("import { registerEmployeeWorkflowAutomationRoutes } from './employee-workflows-automation-routes.js';"));
+expect('generated backend obsolete workflow import absent',!bootstrap.includes("from './employee-workflow-automation-routes.js';"));
 const workflowAt=bootstrap.indexOf('registerEmployeeWorkflowAutomationRoutes({ app, prisma');
 const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
 expect('workflow registered before careers',workflowAt>=0&&careersAt>workflowAt);
