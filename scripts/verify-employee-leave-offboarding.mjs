@@ -43,7 +43,10 @@ if(await exists(migration)){
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('leave routes registered',installer.includes('registerEmployeeLeaveOffboardingRoutes'));
-expect('leave routes registered before careers',installer.includes('${compensationRegister}\\n${leaveOffboardingRegister}\\n\\n${careersRegister}'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const leaveAt=bootstrap.indexOf('registerEmployeeLeaveOffboardingRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('leave routes registered before careers',leaveAt>=0&&careersAt>leaveAt);
 
 const employeeAsset=await read('assets/employee-leave-self-service.js');
 expect('My Leave employee frontend',employeeAsset.includes('My Leave')&&employeeAsset.includes('/api/employee/me/leave'));
