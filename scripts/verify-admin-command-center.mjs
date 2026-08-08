@@ -23,7 +23,7 @@ for (const marker of [
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4',
   '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
   '/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4',
-  '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v1',
+  '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2',
   '/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1',
 ]) if (!adminHtml.includes(marker)) failures.push(`Admin page is not loading ${marker}`);
 
