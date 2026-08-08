@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Spire Clinical Administration | Sulandra Health</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Segoe UI,Arial,sans-serif;background:#eef4f8;color:#15324a}
+    .top{display:flex;align-items:center;gap:16px;padding:16px 22px;background:#fff;border-bottom:1px solid #d9e4ec}.top img{width:230px;max-width:48vw}.top .spacer{flex:1}.top a{color:#075985;font-weight:800;text-decoration:none}
+    main{min-height:calc(100vh - 92px);display:grid;place-items:center;padding:24px}.card{width:min(760px,100%);background:#fff;border:1px solid #d4e1ea;border-radius:22px;box-shadow:0 20px 60px rgba(15,55,85,.13);padding:32px}.eyebrow{font-size:12px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#0b75ad}.card h1{font-size:34px;margin:8px 0;color:#0b4265}.card p{font-size:16px;line-height:1.65;color:#5e7180}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border-radius:10px;text-decoration:none;font-weight:900;border:1px solid #0b6ea8}.primary{background:#0b6ea8;color:#fff}.secondary{background:#fff;color:#0b6ea8}.status{margin-top:18px;padding:12px 14px;border-radius:10px;background:#edf7fc;color:#31566d;font-weight:700}
+  </style>
+</head>
+<body>
+<header class="top"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span class="spacer"></span><a href="/admin.html#dashboard">Admin Console</a><a href="/employee-portal.html">Employee Portal</a></header>
+<main><section class="card"><div class="eyebrow">Sulandra Health Clinical Application</div><h1>Spire Administration</h1><p>Spire is the Sulandra Health clinical record application. It remains inside the Sulandra Health platform and uses your existing authenticated employee session and role permissions.</p><div class="actions"><a class="btn primary" id="openSpire" href="/spire.html">Open Spire Clinical</a><a class="btn secondary" href="/admin.html#dashboard">Return to Admin Console</a></div><div class="status" id="status">Checking your existing Sulandra Health session…</div></section></main>
+<script>
+(() => {
+  const keys=['sulandra:employee:access-token','sulandra_token','token','accessToken'];
+  const token=keys.map(k=>sessionStorage.getItem(k)||localStorage.getItem(k)).find(Boolean)||'';
+  const status=document.getElementById('status');
+  if(!token){
+    status.textContent='Your Sulandra Health session is not available. Sign in once to continue.';
+    document.getElementById('openSpire').href='/employee-login.html?return=%2Fspire.html';
+    return;
+  }
+  status.textContent='Authenticated Sulandra Health session found. Spire will use your assigned role and chart permissions.';
+})();
+</script>
+</body>
+</html>
