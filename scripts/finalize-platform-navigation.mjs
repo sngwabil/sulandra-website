@@ -4,10 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
+const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
 
-// Install the shared authenticated-session cache after dist-web exists and before
-// final route verification. This gives every internal module the same login
-// session without an extra /api/session round trip on each page transition.
 await import('./install-sulandra-sso-session.mjs');
 
 const routeMap = new Map([
@@ -23,7 +21,7 @@ const routeMap = new Map([
   ['/support', '/support.html'],
   ['/it-request', '/support.html'],
   ['/time-attendance', '/time-attendance.html'],
-  ['/scheduling', '/time-attendance.html'],
+  ['/scheduling', '/time-attendance.html#schedule'],
   ['/incident-reporting', '/health-safety.html'],
   ['/health-safety', '/health-safety.html'],
   ['/caregiver-resources', '/education-portal.html'],
@@ -80,4 +78,33 @@ for (const [route, source] of cleanRoutePages) {
   await cp(sourcePath, path.join(routeDir, 'index.html'));
 }
 
-console.log('Static platform navigation normalized across public, intranet, employee, and admin entry points.');
+// Restore the standalone Time & Attendance application as the authoritative
+// scheduling/timekeeping workspace. It must call Railway explicitly and honor
+// #schedule/#admin deep links from the Admin console.
+const timePath = path.join(dist, 'time-attendance.html');
+try {
+  let html = await readFile(timePath, 'utf8');
+  html = html
+    .replace(/const API=\(localStorage\.getItem\('sulandra_api_url'\)\|\|window\.SULANDRA_API_URL\|\|'[^']*'\)\.replace\(\/\\\/$\/,''\);/, `const API='${canonicalApi}';`)
+    .replace(/const token=localStorage\.getItem\('sulandra_token'\)\|\|localStorage\.getItem\('token'\)\|\|localStorage\.getItem\('accessToken'\)\|\|'';/, "const token=sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';")
+    .replace(/\s*<script src="\/assets\/time-attendance-route-restore\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace('</body>', '  <script src="/assets/time-attendance-route-restore.js?v=20260808-platform-restore-1"></script>\n</body>');
+  await writeFile(timePath, html, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
+// Preserve Employee 360 as the authoritative secure personnel workspace and
+// allow Admin Documents/Reports to land on the requested live tab.
+const employee360Path = path.join(dist, 'employee360.html');
+try {
+  let html = await readFile(employee360Path, 'utf8');
+  html = html
+    .replace(/\s*<script src="\/assets\/employee360-hash-routing\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+    .replace('</body>', '  <script src="/assets/employee360-hash-routing.js?v=20260808-platform-restore-1"></script>\n</body>');
+  await writeFile(employee360Path, html, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
+console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; Time & Attendance and Employee 360 deep links are restored to their live applications.');
