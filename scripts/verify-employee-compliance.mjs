@@ -48,9 +48,12 @@ if (await exists(migrationPath)) {
 const installer = await read('scripts/install-employee-management-platform.mjs');
 expect('compliance routes wired into backend', installer.includes('registerEmployeeComplianceRoutes'));
 const bootstrap = await read('api/src/onboarding-bootstrap.ts');
-const complianceRegister = 'registerEmployeeComplianceRoutes({ app, prisma, authOf, requireRoles, audit });';
-const careersRegister = 'registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
-expect('compliance registration occurs before careers', bootstrap.indexOf(complianceRegister) >= 0 && bootstrap.indexOf(careersRegister) > bootstrap.indexOf(complianceRegister));
+// Deliberately use partial registration signatures here. Several legacy build
+// repair scripts scan files for the complete Careers registration statement and
+// mutate any file containing it; a verifier must never look like a route injector.
+const complianceAt = bootstrap.indexOf('registerEmployeeComplianceRoutes({ app, prisma');
+const careersAt = bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('compliance registration occurs before careers', complianceAt >= 0 && careersAt > complianceAt);
 
 const hardeningScript = await read('scripts/fix-employee-compliance-engine.mjs');
 expect('compliance hardening build step exists', hardeningScript.includes('EmployeeComplianceLease') && hardeningScript.includes('currentRows'));
@@ -82,8 +85,8 @@ const distAdminPath = 'dist-web/admin.html';
 if (await exists(distAdminPath)) {
   const html = await read(distAdminPath);
   const managementAt = html.indexOf('/assets/admin-employee-management.js');
-  const complianceAt = html.indexOf('/assets/admin-employee-compliance.js');
-  expect('generated admin loads compliance after Employee 360 management', managementAt >= 0 && complianceAt > managementAt);
+  const complianceAtInHtml = html.indexOf('/assets/admin-employee-compliance.js');
+  expect('generated admin loads compliance after Employee 360 management', managementAt >= 0 && complianceAtInHtml > managementAt);
 }
 const distEmployeePath = 'dist-web/employee-portal.html';
 if (await exists(distEmployeePath)) {
