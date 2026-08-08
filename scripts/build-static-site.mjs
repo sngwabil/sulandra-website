@@ -10,9 +10,6 @@ const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app'
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
 
-// Preserve the complete pre-Spire static surface. The earlier stable builder copied
-// every public root HTML/JS/image file plus the site directories. Restricting this
-// to a short allow-list removed working portals, runtime bridges, logos and routes.
 const publicExtensions = new Set([
   '.css', '.html', '.ico', '.js', '.png', '.jpg', '.jpeg', '.webp', '.svg',
   '.txt', '.webmanifest', '.xml', '.pdf',
@@ -68,8 +65,7 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-// Keep every Spire module additive. Spire is an application inside Sulandra Health,
-// never the owner of the rest of the website.
+// Spire remains additive: it is a clinical application inside Sulandra Health.
 const spirePath = path.join(outputDirectory, 'spire.html');
 try {
   let spireHtml = await readFile(spirePath, 'utf8');
@@ -134,22 +130,23 @@ await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
 const publishedAdmin = await readFile(path.join(outputDirectory, 'admin.html'), 'utf8');
 for (const marker of [
   'sulandra-platform-bar',
-  '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v3',
-  '/assets/sulandra-enterprise-owner.js?v=20260808-admin-command-center-v3',
+  '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4',
+  '/assets/sulandra-enterprise-owner.js?v=20260808-admin-command-center-v4',
+  '/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4',
+  '/assets/admin-platform-routing.js?v=20260808-admin-command-center-v4',
   'id="admin-fullscreen-layout"',
 ]) {
   if (!publishedAdmin.includes(marker)) throw new Error(`Modern Admin publication failed; missing ${marker}`);
 }
 
-// Regression guard: these files existed before the Spire expansion and must never
-// disappear from the static deployment again.
 const requiredPublishedFiles = [
   'admin.html', 'admin-railway.js', 'employee-login.html', 'employee-portal.html',
   'employee360.html', 'education-portal.html', 'time-attendance.html', 'intranet.html',
   'intranet.HTML', 'policies.html', 'news.html', 'feedback.html', 'payroll.html',
   'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',
   'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
-  'favicon-48x48.png', 'assets/mainlogo.png', 'spire.html', 'spire-admin.html',
+  'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
+  'assets/admin-service-home-management-v2.js', 'spire.html', 'spire-admin.html',
   'courses', 'education', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
@@ -157,4 +154,4 @@ for (const relative of requiredPublishedFiles) {
   catch { throw new Error(`Static publication regression: missing ${relative}`); }
 }
 
-console.log('Static website restored to the complete pre-Spire publication surface while preserving the modern Admin command center, Employee 360, Time and Attendance, Education, Intranet, Careers and all Spire clinical modules.');
+console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, live Service Homes, Time and Attendance, Scheduling, Employee 360, Education, Intranet, Careers and all Spire clinical modules.');
