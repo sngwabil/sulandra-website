@@ -16,11 +16,11 @@ if(await exists(backend)){
   expect('asset lifecycle statuses', ['AVAILABLE','ASSIGNED','IN_REPAIR','LOST','STOLEN','RETIRED','DISPOSED'].every(v=>source.includes(v)));
   expect('asset assignment workflow', source.includes('EmployeeAssetAssignment')&&source.includes('/assign')&&source.includes('/return'));
   expect('employee acknowledgment workflow', source.includes('/acknowledge')&&source.includes('acknowledgmentRequired')&&source.includes('acknowledgedAt'));
-  expect('access grants and revocation', source.includes('EmployeeAccessGrant')&&source.includes('/access-grants')&&source.includes('/revoke'));
+  expect('access grants and revocation', source.includes("'/api/admin/employees/:employeeId/access-grants'")&&source.includes("'/api/admin/employee-access-grants/:grantId'")&&source.includes("'REVOKED'"));
   expect('least privilege justification', source.includes('leastPrivilegeJustification'));
   expect('maintenance and inspections', source.includes('EmployeeAssetMaintenance')&&source.includes('/maintenance'));
-  expect('facility management', source.includes('EmployeeFacility')&&source.includes('/facilities'));
-  expect('asset and security incidents', source.includes('EmployeeAssetIncident')&&source.includes('/incidents'));
+  expect('facility management', source.includes('EmployeeFacility')&&source.includes("'/api/admin/employee-facilities'"));
+  expect('asset and security incidents', source.includes('EmployeeAssetIncident')&&source.includes("'/api/admin/employee-asset-incidents'"));
   expect('employee self service endpoint', source.includes('/api/employee/me/assets-access'));
   expect('admin dashboard endpoint', source.includes('/api/admin/employee-assets/dashboard'));
   expect('per employee endpoint', source.includes('/api/admin/employees/:employeeId/assets-access'));
