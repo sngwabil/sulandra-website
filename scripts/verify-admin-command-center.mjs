@@ -32,7 +32,12 @@ for (const marker of [
 if (!adminHtml.includes('http-equiv="Cache-Control"') || !adminHtml.includes('no-cache, no-store, must-revalidate')) failures.push('Admin HTML does not disable stale browser caching');
 if (!adminHtml.includes('id="admin-fullscreen-layout"')) failures.push('Admin full-viewport layout override is missing');
 if (!adminHtml.includes('.top-nav,.nav-links,.container{width:100%!important;max-width:none!important')) failures.push('Admin shell still contains a fixed-width viewport wrapper');
-if (!adminHtml.includes('html,body{width:100%!important;max-width:none;margin:0;padding:0;overflow-x:hidden')) failures.push('Admin document root is not forced to full viewport width');
+for (const marker of [
+  'html,body{width:100%!important',
+  'max-width:none!important',
+  'min-width:0!important',
+  'overflow-x:hidden!important',
+]) if (!adminHtml.includes(marker)) failures.push(`Admin document root full-width CSS is missing ${marker}`);
 
 // The former platform button row is intentionally replaced by a continuously updating
 // Dayton/Miami Valley local-news ticker. The Live status pulses and the weather card
