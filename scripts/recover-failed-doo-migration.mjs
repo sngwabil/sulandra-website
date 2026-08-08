@@ -6,6 +6,15 @@ const migrationNames = [
   '20260806203500_employee_workflow_automation',
   '20260807125000_finalize_doo_job_opening',
   '20260807220000_spire_clinical_foundation',
+  '20260807232000_spire_order_composer',
+  '20260807233000_spire_emar_foundation',
+  '20260807234500_spire_care_plan_isp',
+  '20260807235000_spire_incident_management',
+  '20260808001000_spire_assessments_flowsheets',
+  '20260808002000_spire_scheduling_cadence',
+  '20260808004000_spire_authorizations_evv',
+  '20260808005000_spire_documents_external_records',
+  '20260808006000_spire_communications_inbasket',
 ];
 const prisma = new PrismaClient();
 
