@@ -22,10 +22,9 @@ source=source.replace(
 if(!source.includes("body: encrypted.body as any"))throw new Error('Secure object upload BodyInit typing was not repaired');
 await writeFile(target,source,'utf8');
 
-// Spire's administrator shortcut must accept the full UserRole enum. A literal
-// array passed to Array.includes() narrows the parameter to only the three array
-// members and fails tsc when a.role is typed as UserRole. Use Set<UserRole>
-// instead so all role values type-check while retaining the exact same runtime rule.
+// Spire administrator shortcuts must accept the full UserRole enum. Literal
+// arrays passed to Array.includes() narrow the accepted parameter and make tsc
+// reject valid UserRole values that are not members of the literal tuple.
 const roleTargets=[
   'api/src/spire-documents-external-records-routes.ts',
   'api/src/spire-communications-inbasket-routes.ts',
@@ -42,4 +41,14 @@ for(const relative of roleTargets){
   await writeFile(file,body,'utf8');
 }
 
-console.log('Secure object storage BodyInit and Spire administrator UserRole typing are build-safe.');
+const emarFile=path.join(root,'api/src/spire-emar-routes.ts');
+try{
+  let emar=await readFile(emarFile,'utf8');
+  const oldEmar="const isAdmin=(a:AuthContext)=>[UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.CEO,UserRole.DOO].includes(a.role)||String(a.email||'').toLowerCase()==='admin@sulandrahealth.com';";
+  const newEmar="const isAdmin=(a:AuthContext)=>new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.CEO,UserRole.DOO]).has(a.role)||String(a.email||'').toLowerCase()==='admin@sulandrahealth.com';";
+  if(emar.includes(oldEmar))emar=emar.replace(oldEmar,newEmar);
+  if(emar.includes('[UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.CEO,UserRole.DOO].includes(a.role)'))throw new Error('Spire eMAR UserRole typing was not repaired');
+  await writeFile(emarFile,emar,'utf8');
+}catch(error){if(error?.code!=='ENOENT')throw error}
+
+console.log('Secure object storage BodyInit and Spire administrator/eMAR UserRole typing are build-safe.');
