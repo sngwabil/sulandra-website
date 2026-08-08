@@ -15,6 +15,7 @@ const imports = [
   "import { registerSpireChartRoutes } from './spire-chart-routes.js';",
   "import { registerSpireOrderComposerRoutes } from './spire-order-composer-routes.js';",
   "import { registerSpireEmarRoutes } from './spire-emar-routes.js';",
+  "import { registerSpireCarePlanRoutes } from './spire-care-plan-routes.js';",
   "import { registerOfferProgressRoute } from './offer-progress-route.js';",
   "import { registerOfferSendRoute } from './offer-send-route.js';",
   "import { registerOfferAcceptancePdfRoute } from './offer-acceptance-pdf-route.js';",
@@ -28,6 +29,7 @@ const calls = [
   'registerSpireChartRoutes(app, prisma, { authOf });',
   'registerSpireOrderComposerRoutes(app, prisma, { authOf });',
   'registerSpireEmarRoutes(app, prisma, { authOf });',
+  'registerSpireCarePlanRoutes(app, prisma, { authOf });',
   'registerOfferProgressRoute(app, prisma, { authOf, requireRoles });',
   'registerOfferSendRoute(app, prisma, { authOf, requireRoles, audit });',
   'registerOfferAcceptancePdfRoute(app, prisma, { audit });',
@@ -40,4 +42,4 @@ if (!source.includes(importMarker) || !source.includes(callMarker)) throw new Er
 for (const statement of imports) if (!source.includes(statement)) source = source.replace(importMarker, `${importMarker}\n${statement}`);
 for (const statement of calls) if (!source.includes(statement)) source = source.replace(callMarker, `${statement}\n${callMarker}`);
 await writeFile(target, source, 'utf8');
-console.log(`Registered Spire chart/storyboard, CPOE order composer, eMAR, Spire clinical foundation, clinical, offer, signed-offer PDF, structured onboarding, and signed W-4 routes in ${target}.`);
+console.log(`Registered Spire chart/storyboard, CPOE order composer, eMAR, Care Plan/ISP, Spire clinical foundation, clinical, offer, signed-offer PDF, structured onboarding, and signed W-4 routes in ${target}.`);
