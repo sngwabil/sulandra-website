@@ -78,24 +78,22 @@ for (const [route, source] of cleanRoutePages) {
   await cp(sourcePath, path.join(routeDir, 'index.html'));
 }
 
-// Restore the standalone Time & Attendance application as the authoritative
-// scheduling/timekeeping workspace. It must call Railway explicitly and honor
-// #schedule/#admin deep links from the Admin console.
 const timePath = path.join(dist, 'time-attendance.html');
 try {
   let html = await readFile(timePath, 'utf8');
+  const oldApi = "const API=(localStorage.getItem('sulandra_api_url')||window.SULANDRA_API_URL||'').replace(/\\/$/,'');";
+  const oldToken = "const token=localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';";
+  if (html.includes(oldApi)) html = html.replace(oldApi, `const API='${canonicalApi}';`);
+  if (html.includes(oldToken)) html = html.replace(oldToken, "const token=sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';");
   html = html
-    .replace(/const API=\(localStorage\.getItem\('sulandra_api_url'\)\|\|window\.SULANDRA_API_URL\|\|'[^']*'\)\.replace\(\/\\\/$\/,''\);/, `const API='${canonicalApi}';`)
-    .replace(/const token=localStorage\.getItem\('sulandra_token'\)\|\|localStorage\.getItem\('token'\)\|\|localStorage\.getItem\('accessToken'\)\|\|'';/, "const token=sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';")
     .replace(/\s*<script src="\/assets\/time-attendance-route-restore\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace('</body>', '  <script src="/assets/time-attendance-route-restore.js?v=20260808-platform-restore-1"></script>\n</body>');
+  if (!html.includes(canonicalApi)) throw new Error('Time & Attendance is not connected to the canonical Railway API');
   await writeFile(timePath, html, 'utf8');
 } catch (error) {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-// Preserve Employee 360 as the authoritative secure personnel workspace and
-// allow Admin Documents/Reports to land on the requested live tab.
 const employee360Path = path.join(dist, 'employee360.html');
 try {
   let html = await readFile(employee360Path, 'utf8');
