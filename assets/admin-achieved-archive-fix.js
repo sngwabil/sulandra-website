@@ -96,6 +96,51 @@
     await Promise.all([refreshArchivedApplicants(), refreshArchivedJobs()]);
   }
 
+  function setArchiveFolder(folder, clickedButton) {
+    const selected = folder === 'jobs' ? 'jobs' : 'applicants';
+    const applicants = document.getElementById('archiveFolderApplicants');
+    const jobs = document.getElementById('archiveFolderJobs');
+    if (!applicants || !jobs) return;
+
+    applicants.style.display = selected === 'applicants' ? 'block' : 'none';
+    jobs.style.display = selected === 'jobs' ? 'block' : 'none';
+
+    const tabs = Array.from(document.querySelectorAll('.archive-subtab'));
+    tabs.forEach((button, index) => {
+      const tabFolder = button.dataset.archiveFolder || (/job/i.test(button.textContent || '') || index > 0 ? 'jobs' : 'applicants');
+      button.dataset.archiveFolder = tabFolder;
+      const active = tabFolder === selected;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+      button.setAttribute('role', 'tab');
+      button.disabled = false;
+      button.style.pointerEvents = 'auto';
+      button.style.cursor = 'pointer';
+      button.tabIndex = active ? 0 : -1;
+    });
+
+    if (selected === 'jobs') refreshArchivedJobs();
+    else refreshArchivedApplicants();
+  }
+
+  function installArchiveTabs() {
+    const tabs = Array.from(document.querySelectorAll('.archive-subtab'));
+    if (!tabs.length) return;
+    tabs.forEach((button, index) => {
+      const folder = /job/i.test(button.textContent || '') || index > 0 ? 'jobs' : 'applicants';
+      button.dataset.archiveFolder = folder;
+      button.disabled = false;
+      button.style.pointerEvents = 'auto';
+      button.style.cursor = 'pointer';
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setArchiveFolder(folder, button);
+      });
+    });
+    setArchiveFolder('applicants', tabs[0]);
+  }
+
   function isArchiveNavigation(target) {
     return Boolean(
       target.closest('[data-onboarding-panel="archived"]') ||
@@ -111,8 +156,10 @@
   });
 
   document.addEventListener('DOMContentLoaded', () => {
+    installArchiveTabs();
     refreshAchievedHub();
   });
 
+  window.switchArchiveFolder = setArchiveFolder;
   window.SulandraRefreshAchievedHub = refreshAchievedHub;
 })();
