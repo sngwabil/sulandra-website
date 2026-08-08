@@ -18,6 +18,8 @@ const routingJs = await mustRead('assets/admin-platform-routing.js');
 const homesJs = await mustRead('assets/admin-service-home-management-v2.js');
 const cleanupJs = await mustRead('assets/admin-dashboard-cleanup.js');
 const schedulingHtml = await mustRead('scheduling.html');
+const schedulingJs = await mustRead('assets/time-attendance-location-scheduler.js');
+const timeAttendanceHtml = await mustRead('time-attendance.html');
 
 for (const marker of [
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4',
@@ -63,10 +65,37 @@ for (const marker of ['/api/admin/service-homes','/api/admin/service-homes/direc
   if (!homesJs.includes(marker)) failures.push(`Service Homes live manager is missing capability: ${marker}`);
 }
 for (const marker of ['sulandraOwnerConsoleButton','/^[123]\\s*\\/\\s*3$/']) if (!cleanupJs.includes(marker)) failures.push(`Admin cleanup is missing ${marker}`);
-for (const marker of ['Daily Scheduling & Live Staffing Board','/api/admin/time-attendance/day-board','Clock-In Source / Location','Next Handoff','Time & Attendance remains the punch/timecard system of record']) if (!schedulingHtml.includes(marker)) failures.push(`Scheduling board is missing ${marker}`);
+
+// Scheduling is intentionally separate from Time & Attendance. The Scheduling page
+// hosts the administrator workforce scheduler; Time & Attendance remains the punch,
+// timecard, GPS and exception-management application.
+for (const marker of [
+  '<title>Sulandra Health | Scheduling</title>',
+  'Workforce Schedule Control',
+  'id="schedulerHost"',
+  '/assets/time-attendance-location-scheduler.js',
+  'Scheduling is separate from Time & Attendance',
+]) if (!schedulingHtml.includes(marker)) failures.push(`Dedicated Scheduling page is missing ${marker}`);
+
+for (const marker of [
+  "if (!/\\/scheduling(?:\\.html|\\/)?$/i.test(location.pathname)) return;",
+  "document.getElementById('schedulerHost')",
+  '/api/admin/time-attendance/locations',
+  '/api/admin/time-attendance/location-grid',
+  '/api/admin/time-attendance/copy-schedule',
+  'Save & Publish',
+  'Search employee',
+  'Next 12 months',
+]) if (!schedulingJs.includes(marker)) failures.push(`Dedicated Scheduling runtime is missing ${marker}`);
+
+if (timeAttendanceHtml.includes('/assets/time-attendance-location-scheduler.js')) {
+  failures.push('Time & Attendance still loads the workforce Scheduling runtime');
+}
+if (!routingJs.includes("scheduling: '/scheduling.html'")) failures.push('Scheduling is not hard-routed to its dedicated application');
+if (!routingJs.includes("time: '/time-attendance.html#admin'")) failures.push('Time & Attendance is not preserved as a separate application');
 
 if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: full-viewport dashboard, page counters removed, Enterprise Owner status moved out of the floating UI, live Service Homes, dedicated daily Scheduling, preserved Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
+console.log('Admin command center verified: full-viewport dashboard, live Service Homes, dedicated workforce Scheduling, separate Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
