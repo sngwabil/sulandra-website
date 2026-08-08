@@ -16,12 +16,15 @@ const adminJs = await mustRead('admin-railway.js');
 const liveJs = await mustRead('assets/admin-live-dashboard.js');
 const routingJs = await mustRead('assets/admin-platform-routing.js');
 const homesJs = await mustRead('assets/admin-service-home-management-v2.js');
+const cleanupJs = await mustRead('assets/admin-dashboard-cleanup.js');
+const schedulingHtml = await mustRead('scheduling.html');
 
 for (const marker of [
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4',
-  '/assets/sulandra-enterprise-owner.js?v=20260808-admin-command-center-v4',
+  '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
   '/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4',
-  '/assets/admin-platform-routing.js?v=20260808-admin-command-center-v4',
+  '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v1',
+  '/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1',
 ]) if (!adminHtml.includes(marker)) failures.push(`Admin page is not loading ${marker}`);
 
 if (!adminHtml.includes('http-equiv="Cache-Control"') || !adminHtml.includes('no-cache, no-store, must-revalidate')) failures.push('Admin HTML does not disable stale browser caching');
@@ -48,7 +51,7 @@ if (weatherIndex < 0 || peopleIndex < weatherIndex) failures.push('Combined Peop
 if (!liveJs.includes('grid-template-columns:minmax(0,1fr)!important') || !liveJs.includes('.sidebar{display:none!important}')) failures.push('Side drawers still reserve or obstruct main workspace width');
 
 for (const [key, target] of Object.entries({
-  scheduling: '/time-attendance.html#schedule',
+  scheduling: '/scheduling.html',
   time: '/time-attendance.html#admin',
   documents: '/employee360.html#files',
   reports: '/employee360.html#audit',
@@ -59,9 +62,11 @@ if (!routingJs.includes("'/spire-admin.html'")) failures.push('Admin Spire entry
 for (const marker of ['/api/admin/service-homes','/api/admin/service-homes/directory/employees','/api/admin/service-homes/directory/clients','Create Service Home','Open Schedule']) {
   if (!homesJs.includes(marker)) failures.push(`Service Homes live manager is missing capability: ${marker}`);
 }
+for (const marker of ['sulandraOwnerConsoleButton','/^[123]\\s*\\/\\s*3$/']) if (!cleanupJs.includes(marker)) failures.push(`Admin cleanup is missing ${marker}`);
+for (const marker of ['Daily Scheduling & Live Staffing Board','/api/admin/time-attendance/day-board','Clock-In Source / Location','Next Handoff','Time & Attendance remains the punch/timecard system of record']) if (!schedulingHtml.includes(marker)) failures.push(`Scheduling board is missing ${marker}`);
 
 if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: full-viewport dashboard, independent edge drawers, live Service Homes management, live Scheduling/Time routing, Employee 360 Documents/Audit routing, Spire launcher, live weather, hiring, clock, appointments, reminders, alarms and canonical Railway data are published.');
+console.log('Admin command center verified: full-viewport dashboard, page counters removed, Enterprise Owner status moved out of the floating UI, live Service Homes, dedicated daily Scheduling, preserved Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
