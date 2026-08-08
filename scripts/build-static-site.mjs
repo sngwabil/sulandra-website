@@ -137,7 +137,7 @@ if (!publishedAdmin.includes('/assets/admin-achieved-archive-fix.js')) {
 for (const marker of [
   'sulandra-platform-bar',
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5',
-  '/assets/admin-analog-clock.js?v=20260808-analog-clock-v1',
+  '/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1',
   '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
   '/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4',
   '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2',
