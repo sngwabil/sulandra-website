@@ -53,7 +53,11 @@ for (const file of await walk(dist)) {
 
 try {
   const admin=await readFile(path.join(dist,'admin.html'),'utf8');
-  for(const marker of ['/assets/admin-service-home-management-v2.js','/assets/admin-platform-routing.js','/employee360.html','/spire.html']) if(!admin.includes(marker)) failures.push(`Admin is missing restored integration ${marker}`);
+  for(const marker of ['/assets/admin-service-home-management-v2.js','/assets/admin-platform-routing.js']) if(!admin.includes(marker)) failures.push(`Admin is missing restored integration ${marker}`);
+  const adminLive=await readFile(path.join(dist,'assets/admin-live-dashboard.js'),'utf8');
+  for(const marker of ['/intranet.html','/employee-portal.html','/employee360.html','/education-portal.html','/spire.html']) {
+    if(!adminLive.includes(marker)) failures.push(`Admin right drawer is missing platform portal ${marker}`);
+  }
 } catch {}
 try {
   const employeePortal=await readFile(path.join(dist,'employee-portal.html'),'utf8');
@@ -118,4 +122,4 @@ if (failures.length) {
   console.error('Platform integration verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('Platform integration verified: the complete pre-Spire website surface is published, logos are present, Admin live workspaces route correctly, Spire remains an additive clinical application, and public/employee/clinical services retain correct frontend/backend ownership.');
+console.log('Platform integration verified: the complete pre-Spire website surface is published, Admin portal destinations are preserved in the right slide-out drawer, Spire remains an additive clinical application, and public/employee/clinical services retain correct frontend/backend ownership.');
