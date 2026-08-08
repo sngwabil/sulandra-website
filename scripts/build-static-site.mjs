@@ -33,7 +33,7 @@ try {
 const spirePath = path.join(outputDirectory, 'spire.html');
 try {
   let spireHtml = await readFile(spirePath, 'utf8');
-  const spireWorkflowVersion = '20260807-spire-workflow-6';
+  const spireWorkflowVersion = '20260807-spire-workflow-7';
   spireHtml = spireHtml
     .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-workflow\.css(?:\?v=[^"']+)?">\s*/g, '')
     .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-results-workspace\.css(?:\?v=[^"']+)?">\s*/g, '')
@@ -41,14 +41,16 @@ try {
     .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-order-composer\.css(?:\?v=[^"']+)?">\s*/g, '')
     .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-emar\.css(?:\?v=[^"']+)?">\s*/g, '')
     .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-care-plan\.css(?:\?v=[^"']+)?">\s*/g, '')
+    .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-incidents\.css(?:\?v=[^"']+)?">\s*/g, '')
     .replace(/\s*<script src="\/assets\/spire-workflow\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
     .replace(/\s*<script src="\/assets\/spire-results-workspace\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
     .replace(/\s*<script src="\/assets\/spire-chart-review-v2\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
     .replace(/\s*<script src="\/assets\/spire-order-composer\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
     .replace(/\s*<script src="\/assets\/spire-emar\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
-    .replace(/\s*<script src="\/assets\/spire-care-plan\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
-  spireHtml = spireHtml.replace('</head>', `<link rel="stylesheet" href="/assets/spire-workflow.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-results-workspace.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-chart-review-v2.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-order-composer.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-emar.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-care-plan.css?v=${spireWorkflowVersion}"></head>`);
-  spireHtml = spireHtml.replace('</body>', `<script src="/assets/spire-workflow.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-results-workspace.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-chart-review-v2.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-order-composer.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-emar.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-care-plan.js?v=${spireWorkflowVersion}"></script></body>`);
+    .replace(/\s*<script src="\/assets\/spire-care-plan\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
+    .replace(/\s*<script src="\/assets\/spire-incidents\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
+  spireHtml = spireHtml.replace('</head>', `<link rel="stylesheet" href="/assets/spire-workflow.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-results-workspace.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-chart-review-v2.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-order-composer.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-emar.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-care-plan.css?v=${spireWorkflowVersion}"><link rel="stylesheet" href="/assets/spire-incidents.css?v=${spireWorkflowVersion}"></head>`);
+  spireHtml = spireHtml.replace('</body>', `<script src="/assets/spire-workflow.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-results-workspace.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-chart-review-v2.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-order-composer.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-emar.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-care-plan.js?v=${spireWorkflowVersion}"></script><script src="/assets/spire-incidents.js?v=${spireWorkflowVersion}"></script></body>`);
   await writeFile(spirePath, spireHtml, 'utf8');
 } catch (error) { if (error?.code !== 'ENOENT') throw error; }
 
@@ -76,4 +78,4 @@ try {
 await import('./install-employee-self-service-frontend.mjs');
 await import('./install-employee-management-frontend.mjs');
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
-console.log('Static website prepared with live Admin command center, persistent module navigation, Service Homes, Employee 360, Time and Attendance, Spire encounter documentation, personalized Results Review, Chart Review 2.0, CPOE Order Composer, eMAR medication management, Care Plan / ISP workflows, and enterprise-owner identity.');
+console.log('Static website prepared with live Admin command center, persistent module navigation, Service Homes, Employee 360, Time and Attendance, Spire encounter documentation, personalized Results Review, Chart Review 2.0, CPOE Order Composer, eMAR medication management, Care Plan / ISP workflows, Incident Management, and enterprise-owner identity.');
