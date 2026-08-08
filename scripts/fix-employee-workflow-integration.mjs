@@ -3,13 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const workflowRegister='${workflowRegister}';
-const careersRegister='${careersRegister}';
-const files=[
-  'scripts/verify-employee-bulk-data.mjs','scripts/verify-employee-documents.mjs','scripts/verify-employee-analytics.mjs','scripts/verify-employee-assets-access.mjs','scripts/verify-employee-leave-offboarding.mjs','scripts/verify-employee-compensation.mjs','scripts/verify-employee-performance.mjs','scripts/verify-employee-collaboration.mjs','scripts/verify-employee-compliance.mjs'
-];
-for(const file of files){const target=path.join(root,file);let source=await readFile(target,'utf8');if(source.includes(workflowRegister))continue;const marker=`${careersRegister}`;if(source.includes(marker)){source=source.replace(marker,`${workflowRegister}\\n\\n${careersRegister}`);await writeFile(target,source,'utf8')}}
 
+// Verification source is immutable during builds. Historical versions inserted
+// synthetic registration anchors into prior verifier files, which made a clean
+// checkout validate differently after typecheck/build had mutated it.
 const routePath=path.join(root,'api/src/employee-workflows-automation-routes.ts');
 await access(routePath);
 let routeSource=await readFile(routePath,'utf8');
@@ -33,5 +30,6 @@ if(bootstrap.includes(obsoleteImport)){
   console.log('Employee workflow backend import path repaired.');
 }
 if(!bootstrap.includes(correctImport))throw new Error('Employee workflow backend import is missing or points to the wrong module');
+if(!bootstrap.includes('registerEmployeeWorkflowAutomationRoutes({ app, prisma')) throw new Error('Employee workflow routes are not registered in the backend bootstrap');
 
-console.log('Employee 360 workflow route syntax, module path, and prior-section validation integration are build-safe.');
+console.log('Employee 360 workflow route syntax and module path are build-safe; verifier source is no longer rewritten during compilation.');
