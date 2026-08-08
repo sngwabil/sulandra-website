@@ -36,7 +36,10 @@ expect('migration partial-table hardening',migration.includes('ADD COLUMN IF NOT
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('communications import installed',installer.includes('registerEmployeeCommunicationsNotificationsRoutes'));
-expect('communications registered before careers',installer.indexOf('registerEmployeeCommunicationsNotificationsRoutes({ app, prisma')<installer.indexOf('registerCareersRoutes(app, prisma'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const communicationsAt=bootstrap.indexOf('registerEmployeeCommunicationsNotificationsRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('communications registered before careers',communicationsAt>=0&&careersAt>communicationsAt);
 
 const admin=await read('assets/admin-employee-communications.js');
 expect('admin explicit API base',admin.includes('sulandra-website-production-5fc4.up.railway.app'));
