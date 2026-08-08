@@ -47,7 +47,7 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
 <script src="/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1"></script>
 <script src="/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4"></script>
 <script src="/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4"></script>
-<script src="/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v1"></script>
+<script src="/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2"></script>
 <script src="/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1"></script>
 <!-- modern-admin-shell:end -->`;
 
