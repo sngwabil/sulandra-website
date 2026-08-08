@@ -10,6 +10,10 @@ html = html.replace(/\s*<!-- modern-admin-shell:start -->[\s\S]*?<!-- modern-adm
 html = html.replace(/\s*<script[^>]+src=["']\/assets\/admin-live-dashboard\.js[^>]*><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script[^>]+src=["']\/assets\/sulandra-enterprise-owner\.js[^>]*><\/script>\s*/g, '\n');
 
+if (!/http-equiv=["']Cache-Control["']/i.test(html)) {
+  html = html.replace('</head>', '  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">\n  <meta http-equiv="Pragma" content="no-cache">\n  <meta http-equiv="Expires" content="0">\n</head>');
+}
+
 const shell = `
 <!-- modern-admin-shell:start -->
 <style id="modern-admin-shell-styles">
@@ -27,16 +31,16 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
     const bar=document.createElement('nav');
     bar.className='sulandra-platform-bar';
     bar.setAttribute('aria-label','Sulandra Health platform navigation');
-    bar.innerHTML='<span class="sulandra-platform-title">Sulandra Health Platform</span><a class="sulandra-platform-link" href="/intranet.html">Intranet Portal</a><a class="sulandra-platform-link" href="/employee-portal.html">Employee Portal</a><a class="sulandra-platform-link" href="/employee360.html">Employee 360</a><a class="sulandra-platform-link" href="/education-portal.html">Education Portal</a><a class="sulandra-platform-link" href="/spire.html">Spire Clinical</a>';
+    bar.innerHTML='<span class="sulandra-platform-title">Sulandra Health Platform</span><a class="sulandra-platform-link" href="/intranet.html">Intranet Portal</a><a class="sulandra-platform-link" href="/employee-portal.html">Employee Portal</a><a class="sulandra-platform-link" href="/admin.html#employees">Employee 360</a><a class="sulandra-platform-link" href="/education-portal.html">Education Portal</a><a class="sulandra-platform-link" href="/spire.html">Spire Clinical</a>';
     document.body.insertBefore(bar,document.body.firstChild);
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
 })();
 </script>
-<script src="/assets/sulandra-enterprise-owner.js?v=20260808-admin-modern-1"></script>
-<script src="/assets/admin-live-dashboard.js?v=20260808-admin-modern-1"></script>
+<script src="/assets/sulandra-enterprise-owner.js?v=20260808-admin-command-center-v3"></script>
+<script src="/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v3"></script>
 <!-- modern-admin-shell:end -->`;
 
 html = html.replace('</body>', `${shell}\n</body>`);
 await writeFile(adminPath, html, 'utf8');
-console.log('Modern Sulandra admin shell restored with platform navigation, live command-center dashboard, enterprise-owner controls, and full-width layout.');
+console.log('Modern Sulandra Admin is canonical in dist-web: platform navigation, command center, enterprise-owner controls, no-cache shell, and full-width layout are restored.');
