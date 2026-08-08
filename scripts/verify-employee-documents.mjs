@@ -35,7 +35,10 @@ if(await exists(migration)){
 }
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('documents routes registered',installer.includes('registerEmployeeDocumentsESignRoutes'));
-expect('documents routes before careers',installer.includes('${analyticsRegister}\\n${documentsRegister}\\n\\n${careersRegister}'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const documentsAt=bootstrap.indexOf('registerEmployeeDocumentsESignRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('documents routes before careers',documentsAt>=0&&careersAt>documentsAt);
 const employeeAsset=await read('assets/employee-documents-self-service.js');
 expect('My Documents employee frontend',employeeAsset.includes('My Documents')&&employeeAsset.includes('/api/employee/me/documents'));
 expect('employee signing UI',employeeAsset.includes('Sign document')&&employeeAsset.includes('electronic signature'));
