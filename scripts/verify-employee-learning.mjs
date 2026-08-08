@@ -44,7 +44,10 @@ expect('goal status constraint',migration.includes('EmployeeDevelopmentGoal_stat
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('learning import installed',installer.includes('registerEmployeeLearningDevelopmentRoutes'));
-expect('learning registered before careers',installer.indexOf('registerEmployeeLearningDevelopmentRoutes({ app, prisma')<installer.indexOf('registerCareersRoutes(app, prisma'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const learningAt=bootstrap.indexOf('registerEmployeeLearningDevelopmentRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('learning registered before careers',learningAt>=0&&careersAt>learningAt);
 
 const admin=await read('assets/admin-employee-learning.js');
 expect('admin explicit API base',admin.includes('sulandra-website-production-5fc4.up.railway.app'));
