@@ -71,6 +71,29 @@
     document.querySelectorAll(".onboarding-panel").forEach((n) => n.classList.toggle("active", n.id === `onboarding-${key}`));
   }
 
+  function activateArchiveFolder(folder, clickedButton = null) {
+    const selected = folder === "jobs" ? "jobs" : "applicants";
+    const applicants = $("archiveFolderApplicants");
+    const jobs = $("archiveFolderJobs");
+    if (!applicants || !jobs) return;
+
+    applicants.style.display = selected === "applicants" ? "block" : "none";
+    jobs.style.display = selected === "jobs" ? "block" : "none";
+
+    document.querySelectorAll(".archive-subtab").forEach((button, index) => {
+      const buttonFolder = button.dataset.archiveFolder || (button === clickedButton ? selected : (/job/i.test(button.textContent || "") ? "jobs" : index === 0 ? "applicants" : "jobs"));
+      const active = buttonFolder === selected;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.setAttribute("role", "tab");
+      button.tabIndex = active ? 0 : -1;
+    });
+  }
+
+  window.switchArchiveFolder = function (folder, button) {
+    activateArchiveFolder(folder, button || null);
+  };
+
   function installSlidingTaskbar() {
     const sidebar = document.querySelector(".sidebar");
     const grid = document.querySelector(".grid");
@@ -295,6 +318,20 @@
   function bindEvents() {
     document.querySelectorAll("#topModuleNav [data-module], #sideModuleNav [data-module]").forEach((n) => n.addEventListener("click", () => activateModule(n.dataset.module)));
     document.querySelectorAll("[data-onboarding-panel]").forEach((n) => n.addEventListener("click", () => activatePanel(n.dataset.onboardingPanel)));
+    document.querySelectorAll(".archive-subtab").forEach((button, index) => {
+      const folder = /job/i.test(button.textContent || "") || index > 0 ? "jobs" : "applicants";
+      button.dataset.archiveFolder = folder;
+      button.addEventListener("click", () => activateArchiveFolder(folder, button));
+      button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        const next = folder === "jobs" ? "applicants" : "jobs";
+        const nextButton = Array.from(document.querySelectorAll(".archive-subtab")).find((item) => item.dataset.archiveFolder === next);
+        activateArchiveFolder(next, nextButton || null);
+        nextButton?.focus();
+      });
+    });
+    activateArchiveFolder("applicants", document.querySelector('.archive-subtab[data-archive-folder="applicants"]'));
     $("btnAdminSignOut")?.addEventListener("click", signOut);
     $("signOutBtn")?.addEventListener("click", signOut);
     $("refreshBtn")?.addEventListener("click", async () => { try { await Promise.all([loadApplications(), loadOpenings(), loadDashboard()]); toast("Admin portal refreshed", "The latest Railway data is displayed."); } catch (e) { toast("Refresh incomplete", e.message); } });
