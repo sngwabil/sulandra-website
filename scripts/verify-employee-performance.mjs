@@ -60,7 +60,10 @@ if (await exists(migrationPath)) {
 
 const installer = await read('scripts/install-employee-management-platform.mjs');
 expect('performance route registered', installer.includes('registerEmployeePerformanceRoutes'));
-expect('performance route registered before careers', installer.includes('${collaborationRegister}\\n${performanceRegister}\\n\\n${careersRegister}'));
+const bootstrap = await read('api/src/onboarding-bootstrap.ts');
+const performanceAt = bootstrap.indexOf('registerEmployeePerformanceRoutes({ app, prisma');
+const careersAt = bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('performance route registered before careers', performanceAt >= 0 && careersAt > performanceAt);
 
 const employeeAsset = await read('assets/employee-performance-self-service.js');
 expect('My Performance employee frontend', employeeAsset.includes('My Performance') && employeeAsset.includes('/api/employee/me/performance'));
@@ -98,15 +101,15 @@ const distAdminPath = 'dist-web/admin.html';
 if (await exists(distAdminPath)) {
   const html = await read(distAdminPath);
   const collaborationAt = html.indexOf('/assets/admin-employee-collaboration.js');
-  const performanceAt = html.indexOf('/assets/admin-employee-performance.js');
-  expect('generated admin loads performance after collaboration', collaborationAt >= 0 && performanceAt > collaborationAt);
+  const performanceAtInHtml = html.indexOf('/assets/admin-employee-performance.js');
+  expect('generated admin loads performance after collaboration', collaborationAt >= 0 && performanceAtInHtml > collaborationAt);
 }
 const distEmployeePath = 'dist-web/employee-portal.html';
 if (await exists(distEmployeePath)) {
   const html = await read(distEmployeePath);
   const collaborationAt = html.indexOf('/assets/employee-collaboration-self-service.js');
-  const performanceAt = html.indexOf('/assets/employee-performance-self-service.js');
-  expect('generated employee portal loads performance after collaboration', collaborationAt >= 0 && performanceAt > collaborationAt);
+  const performanceAtInHtml = html.indexOf('/assets/employee-performance-self-service.js');
+  expect('generated employee portal loads performance after collaboration', collaborationAt >= 0 && performanceAtInHtml > collaborationAt);
 }
 
 if (failures.length) {
