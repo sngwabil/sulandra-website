@@ -14,6 +14,7 @@ async function mustRead(relative) {
 const adminHtml = await mustRead('admin.html');
 const adminJs = await mustRead('admin-railway.js');
 const liveJs = await mustRead('assets/admin-live-dashboard.js');
+const analogClockJs = await mustRead('assets/admin-analog-clock.js');
 const routingJs = await mustRead('assets/admin-platform-routing.js');
 const homesJs = await mustRead('assets/admin-service-home-management-v2.js');
 const cleanupJs = await mustRead('assets/admin-dashboard-cleanup.js');
@@ -22,7 +23,8 @@ const schedulingJs = await mustRead('assets/time-attendance-location-scheduler.j
 const timeAttendanceHtml = await mustRead('time-attendance.html');
 
 for (const marker of [
-  '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4',
+  '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5',
+  '/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1',
   '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
   '/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4',
   '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2',
@@ -39,9 +41,6 @@ for (const marker of [
   'overflow-x:hidden!important',
 ]) if (!adminHtml.includes(marker)) failures.push(`Admin document root full-width CSS is missing ${marker}`);
 
-// The former platform button row is intentionally replaced by a continuously updating
-// Dayton/Miami Valley local-news ticker. The Live status pulses and the weather card
-// carries a local America/New_York clock beside the weather icon.
 for (const marker of [
   'class="sulandra-news-label">Local News',
   'id="sulandraNewsTrack"',
@@ -54,6 +53,16 @@ for (const marker of [
   "timeZone:'America/New_York'",
 ]) if (!adminHtml.includes(marker)) failures.push(`Admin live header enhancement is missing ${marker}`);
 if (adminHtml.includes('class="sulandra-platform-link"')) failures.push('Top platform bar still contains the retired portal buttons instead of the local-news ticker');
+
+for (const marker of [
+  'wall-clock-face',
+  'wall-clock-hour',
+  'wall-clock-minute',
+  'wall-clock-second',
+  'data-sulandra-analog-clock',
+  'setInterval(tick, 1000)',
+  "const TIME_ZONE = 'America/New_York'",
+]) if (!analogClockJs.includes(marker)) failures.push(`Analog wall clock runtime is missing ${marker}`);
 
 if (!adminJs.includes('sulandra:admin:active-module')) failures.push('Admin module persistence key is missing');
 if (!adminJs.includes('history.replaceState')) failures.push('Admin module URL/hash persistence is missing');
@@ -87,9 +96,6 @@ for (const marker of ['/api/admin/service-homes','/api/admin/service-homes/direc
 }
 for (const marker of ['sulandraOwnerConsoleButton','/^[123]\\s*\\/\\s*3$/']) if (!cleanupJs.includes(marker)) failures.push(`Admin cleanup is missing ${marker}`);
 
-// Scheduling is intentionally separate from Time & Attendance. The Scheduling page
-// hosts the administrator workforce scheduler; Time & Attendance remains the punch,
-// timecard, GPS and exception-management application.
 for (const marker of [
   '<title>Sulandra Health | Scheduling</title>',
   'Workforce Schedule Control',
@@ -119,4 +125,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: full-viewport dashboard, blinking Live status, continuously updating Dayton local-news ticker, weather-card local clock, live Service Homes, dedicated workforce Scheduling, separate Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
+console.log('Admin command center verified: full-viewport dashboard, fail-safe ticking analog wall clock, blinking Live status, continuously updating Dayton local-news ticker, weather-card local clock, live Service Homes, dedicated workforce Scheduling, separate Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
