@@ -39,7 +39,10 @@ expect('migration recognition constraints',migration.includes('EmployeeRecogniti
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('engagement import installed',installer.includes('registerEmployeeEngagementFeedbackRoutes'));
-expect('engagement registered before careers',installer.indexOf('registerEmployeeEngagementFeedbackRoutes({ app, prisma')<installer.indexOf('registerCareersRoutes(app, prisma'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const engagementAt=bootstrap.indexOf('registerEmployeeEngagementFeedbackRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('engagement registered before careers',engagementAt>=0&&careersAt>engagementAt);
 
 const admin=await read('assets/admin-employee-engagement.js');
 expect('admin explicit API base',admin.includes('sulandra-website-production-5fc4.up.railway.app'));
