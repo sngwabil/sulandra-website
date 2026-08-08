@@ -45,7 +45,7 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
     {title:'Live local headlines for Dayton and the Miami Valley are loading…',link:'/news.html',source:'Sulandra News'},
     {title:'News ticker refreshes automatically as local headlines update.',link:'/news.html',source:'Live News'}
   ];
-  const escapeHtml=(value)=>String(value||'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escapeHtml=(value)=>String(value||'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const normalizeSource=(item)=>item.author||item.source||String(item.title||'').split(' - ').slice(-1)[0]||'Local News';
   const normalizeTitle=(item)=>{
     const raw=String(item.title||'Local news update').trim();
@@ -78,10 +78,16 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
       let clock=weather.querySelector('.weather-mini-clock');
       if(!clock){clock=document.createElement('div');clock.className='weather-mini-clock';clock.innerHTML='<strong>--:--</strong><span>Local time</span>';weather.appendChild(clock)}
       const value=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date());
-      clock.querySelector('strong').textContent=value;
+      const valueNode=clock.querySelector('strong');
+      if(valueNode&&valueNode.textContent!==value)valueNode.textContent=value;
     };
-    attach();setInterval(attach,1000);
-    new MutationObserver(attach).observe(document.documentElement,{childList:true,subtree:true});
+    // Do not observe DOM mutations here. Updating the clock text itself is a DOM
+    // mutation; observing the entire document caused a self-triggering microtask
+    // loop on Safari/iPad and could freeze Admin at "Live: connecting…".
+    attach();
+    setTimeout(attach,250);
+    setTimeout(attach,750);
+    setInterval(attach,1000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
 })();
@@ -95,4 +101,4 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
 
 html = html.replace('</body>', `${shell}\n</body>`);
 await writeFile(adminPath, html, 'utf8');
-console.log('Modern Sulandra Admin is canonical in dist-web with live Command Center, blinking Live status, continuously updating Dayton local-news ticker, weather-card local clock, Service Homes, dedicated Scheduling, Time & Attendance, Employee 360 Documents/Audit routing and Spire entry.');
+console.log('Modern Sulandra Admin is canonical in dist-web with live Command Center, blinking Live status, continuously updating Dayton local-news ticker, non-blocking weather-card local clock, Service Homes, dedicated Scheduling, Time & Attendance, Employee 360 Documents/Audit routing and Spire entry.');
