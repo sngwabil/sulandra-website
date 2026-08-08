@@ -12,6 +12,7 @@ for (const asset of [
   'sulandra-enterprise-owner',
   'admin-service-home-management-v2',
   'admin-platform-routing',
+  'admin-dashboard-cleanup',
 ]) {
   html = html.replace(new RegExp(`\\s*<script[^>]+src=["']\\/assets\\/${asset}\\.js[^>]*><\\/script>\\s*`, 'g'), '\n');
 }
@@ -43,12 +44,13 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
 })();
 </script>
-<script src="/assets/sulandra-enterprise-owner.js?v=20260808-admin-command-center-v4"></script>
+<script src="/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1"></script>
 <script src="/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v4"></script>
 <script src="/assets/admin-service-home-management-v2.js?v=20260808-admin-command-center-v4"></script>
-<script src="/assets/admin-platform-routing.js?v=20260808-admin-command-center-v4"></script>
+<script src="/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v1"></script>
+<script src="/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1"></script>
 <!-- modern-admin-shell:end -->`;
 
 html = html.replace('</body>', `${shell}\n</body>`);
 await writeFile(adminPath, html, 'utf8');
-console.log('Modern Sulandra Admin is canonical in dist-web with the live Command Center, Service Homes manager, external Scheduling/Time modules, Employee 360 Documents/Audit routing, Spire entry, enterprise-owner controls, no-cache shell, and full-width layout.');
+console.log('Modern Sulandra Admin is canonical in dist-web with the live Command Center, Service Homes manager, dedicated daily Scheduling board, Time & Attendance, Employee 360 Documents/Audit routing, Spire entry, profile-based enterprise-owner status, no-cache shell, and full-width layout.');
