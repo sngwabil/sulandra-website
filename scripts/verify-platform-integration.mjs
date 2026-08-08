@@ -6,15 +6,17 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 
 const requiredFiles = [
-  'index.html','services.html','resources.html','service-request.html','intranet.html','employee-login.html','employee-portal.html','admin.html','employee360.html','spire.html','applicant-portal.html',
+  'index.html','services.html','resources.html','service-request.html','intranet.html','employee-login.html','employee-portal.html','admin.html','employee360.html','spire.html','spire-admin.html','applicant-portal.html',
   'education-portal.html','time-attendance.html','policies.html','news.html','feedback.html','payroll.html',
-  'benefits.html','employee-directory.html','leadership.html','support.html','health-safety.html','intranet-control.html','services/community-living/index.html',
-  'services/community-living/admin-dashboard.html','services/community-living/profile.html',
+  'benefits.html','employee-directory.html','leadership.html','support.html','health-safety.html','intranet-control.html','favicon-48x48.png','assets/mainlogo.png',
+  'services/community-living/index.html','services/community-living/admin-dashboard.html','services/community-living/profile.html',
   'services/home-health/index.html','services/transportation/index.html','services/respite-care/index.html','services/rehab/index.html','services/behavioral-health/index.html','services/companion-care/index.html',
   'assets/intranet-live-integration.js','assets/intranet-content-app.js','assets/intranet-control-app.js','assets/employee-portal-deep-integration.js',
   'assets/policies-app.js','assets/news-app.js','assets/feedback-app.js','assets/payroll-app.js','assets/benefits-app.js','assets/employee-directory-app.js','assets/support-app.js','assets/health-safety-app.js',
-  'assets/client-service-request-app.js','assets/admin-client-service-requests.js','assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js'
+  'assets/client-service-request-app.js','assets/admin-client-service-requests.js','assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js',
+  'assets/admin-service-home-management-v2.js','assets/admin-platform-routing.js','assets/time-attendance-route-restore.js','assets/employee360-hash-routing.js'
 ];
+const requiredDirectories=['courses','education','services'];
 const cleanRoutes = ['policies','documents','news','feedback','payroll','benefits','employee-directory','leadership','support','it-request','time-attendance','scheduling','incident-reporting','health-safety','service-request','resources'];
 const forbiddenBackendHtml = /href=["']https:\/\/sulandra-website-production-5fc4\.up\.railway\.app\/(?!api\/|public\/)/i;
 const knownDeadRoutes = ['/policies','/documents','/news','/feedback','/payroll','/benefits','/employee-directory','/leadership','/support','/it-request','/scheduling','/time-attendance','/incident-reporting','/health-safety','/caregiver-resources','/about','/services/community-living','/services/waiver'];
@@ -25,6 +27,7 @@ const failures = [];
 for (const relative of requiredFiles) {
   try { await stat(path.join(dist, relative)); } catch { failures.push(`Missing published file: ${relative}`); }
 }
+for(const relative of requiredDirectories){try{const s=await stat(path.join(dist,relative));if(!s.isDirectory())failures.push(`Published path is not a directory: ${relative}`)}catch{failures.push(`Missing published directory: ${relative}`)}}
 for (const route of cleanRoutes) {
   try { await stat(path.join(dist, route, 'index.html')); } catch { failures.push(`Missing clean-route fallback: /${route}`); }
 }
@@ -49,12 +52,34 @@ for (const file of await walk(dist)) {
 }
 
 try {
+  const admin=await readFile(path.join(dist,'admin.html'),'utf8');
+  for(const marker of ['/assets/admin-service-home-management-v2.js','/assets/admin-platform-routing.js','/employee360.html','/spire.html']) if(!admin.includes(marker)) failures.push(`Admin is missing restored integration ${marker}`);
+} catch {}
+try {
   const employeePortal=await readFile(path.join(dist,'employee-portal.html'),'utf8');
   if(!employeePortal.includes('/assets/employee-portal-deep-integration.js')) failures.push('Employee Portal does not load the live-module integration bridge');
 } catch {}
 try {
   const spire=await readFile(path.join(dist,'spire.html'),'utf8');
   for(const marker of ['/time-attendance.html','/employee360.html','/education-portal.html','/health-safety.html']) if(!spire.includes(marker)) failures.push(`Spire hub is missing live module destination ${marker}`);
+} catch {}
+try {
+  const spireAdmin=await readFile(path.join(dist,'spire-admin.html'),'utf8');
+  if(!spireAdmin.includes('/spire.html')||!spireAdmin.includes('/admin.html#dashboard')) failures.push('Spire Admin does not preserve the Sulandra platform boundary');
+  if(spireAdmin.includes(staleApi)||spiresDemo(spireAdmin)) failures.push('Spire Admin contains stale API or demo fallback behavior');
+} catch {}
+try {
+  const education=await readFile(path.join(dist,'education-portal.html'),'utf8');
+  if(!education.includes('/assets/mainlogo.png')) failures.push('Education Portal does not publish the Sulandra Health logo');
+} catch {}
+try {
+  const time=await readFile(path.join(dist,'time-attendance.html'),'utf8');
+  if(!time.includes(canonicalApi)) failures.push('Time & Attendance is not using the canonical Railway API');
+  if(!time.includes('/assets/time-attendance-route-restore.js')) failures.push('Time & Attendance deep-link restoration is missing');
+} catch {}
+try {
+  const employee360=await readFile(path.join(dist,'employee360.html'),'utf8');
+  if(!employee360.includes('/assets/employee360-hash-routing.js')) failures.push('Employee 360 deep-link routing is missing');
 } catch {}
 try {
   const index=await readFile(path.join(dist,'index.html'),'utf8');
@@ -81,8 +106,10 @@ try {
   if(legacyProfile.includes("alert('Profile Found!")) failures.push('Legacy Community Living candidate profile still contains demo authentication');
 } catch {}
 
+function spiresDemo(source){return source.includes('Demo Employee')||source.includes('Demo Client')||source.includes('Endpoint pending')}
+
 if (failures.length) {
   console.error('Platform integration verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('Platform integration verified: public services and intake, Applicant Portal, legacy Community Living redirects, Spire hub, live Employee Portal routes, clean routes, static navigation, and frontend/backend ownership are coherent.');
+console.log('Platform integration verified: the complete pre-Spire website surface is published, logos are present, Admin live workspaces route correctly, Spire remains additive, and public/employee/clinical services retain correct frontend/backend ownership.');
