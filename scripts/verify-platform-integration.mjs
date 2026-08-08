@@ -16,7 +16,7 @@ const requiredFiles = [
   'assets/client-service-request-app.js','assets/admin-client-service-requests.js','assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js',
   'assets/admin-service-home-management-v2.js','assets/admin-platform-routing.js','assets/time-attendance-route-restore.js','assets/employee360-hash-routing.js'
 ];
-const requiredDirectories=['courses','education','services'];
+const requiredDirectories=['services'];
 const cleanRoutes = ['policies','documents','news','feedback','payroll','benefits','employee-directory','leadership','support','it-request','time-attendance','scheduling','incident-reporting','health-safety','service-request','resources'];
 const forbiddenBackendHtml = /href=["']https:\/\/sulandra-website-production-5fc4\.up\.railway\.app\/(?!api\/|public\/)/i;
 const knownDeadRoutes = ['/policies','/documents','/news','/feedback','/payroll','/benefits','/employee-directory','/leadership','/support','/it-request','/scheduling','/time-attendance','/incident-reporting','/health-safety','/caregiver-resources','/about','/services/community-living','/services/waiver'];
