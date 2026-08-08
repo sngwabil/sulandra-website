@@ -3,7 +3,7 @@
   if (!/\/admin\.html$/i.test(location.pathname)) return;
 
   const routes = {
-    scheduling: '/time-attendance.html#schedule',
+    scheduling: '/scheduling.html',
     time: '/time-attendance.html#admin',
     documents: '/employee360.html#files',
     reports: '/employee360.html#audit',
