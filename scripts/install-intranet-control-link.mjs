@@ -55,7 +55,7 @@ if (!liveDashboard.includes(oldRightDrawer)) {
 }
 liveDashboard = liveDashboard.replace(oldRightDrawer, newRightDrawer);
 for (const portal of ['/intranet.html','/employee-portal.html','/employee360.html','/education-portal.html','/spire.html']) {
-  if (!liveDashboard.includes(`href=\\\"${portal}\\\"`)) throw new Error(`Right drawer is missing portal ${portal}`);
+  if (!liveDashboard.includes(`href="${portal}"`)) throw new Error(`Right drawer is missing portal ${portal}`);
 }
 await writeFile(liveDashboardPath, liveDashboard, 'utf8');
 
