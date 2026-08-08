@@ -37,7 +37,10 @@ expect('partial table hardening',migration.includes('ADD COLUMN IF NOT EXISTS "r
 
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('route import installed',installer.includes('registerEmployeeHealthSafetyWellnessRoutes'));
-expect('route registered before careers',installer.indexOf('registerEmployeeHealthSafetyWellnessRoutes({ app, prisma')<installer.indexOf('registerCareersRoutes(app, prisma'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const healthAt=bootstrap.indexOf('registerEmployeeHealthSafetyWellnessRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('route registered before careers',healthAt>=0&&careersAt>healthAt);
 
 const admin=await read('assets/admin-employee-health-safety.js');
 expect('admin explicit API base',admin.includes('sulandra-website-production-5fc4.up.railway.app'));
