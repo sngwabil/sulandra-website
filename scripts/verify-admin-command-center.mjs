@@ -32,8 +32,24 @@ for (const marker of [
 if (!adminHtml.includes('http-equiv="Cache-Control"') || !adminHtml.includes('no-cache, no-store, must-revalidate')) failures.push('Admin HTML does not disable stale browser caching');
 if (!adminHtml.includes('id="admin-fullscreen-layout"')) failures.push('Admin full-viewport layout override is missing');
 if (!adminHtml.includes('.top-nav,.nav-links,.container{width:100%!important;max-width:none!important')) failures.push('Admin shell still contains a fixed-width viewport wrapper');
-if (!adminHtml.includes('html,body{width:100%!important;max-width:none!important')) failures.push('Admin document root is not forced to full viewport width');
-if (!adminHtml.includes('href="/employee360.html"')) failures.push('Platform bar does not route Employee 360 to its live application');
+if (!adminHtml.includes('html,body{width:100%!important;max-width:none;margin:0;padding:0;overflow-x:hidden')) failures.push('Admin document root is not forced to full viewport width');
+
+// The former platform button row is intentionally replaced by a continuously updating
+// Dayton/Miami Valley local-news ticker. The Live status pulses and the weather card
+// carries a local America/New_York clock beside the weather icon.
+for (const marker of [
+  'class="sulandra-news-label">Local News',
+  'id="sulandraNewsTrack"',
+  'Dayton%20Ohio%20when%3A1d',
+  'NEWS_REFRESH_MS=10*60*1000',
+  '@keyframes sulandraNewsTicker',
+  '@keyframes sulandraLiveBlink',
+  '.pulse-dot{animation:sulandraLiveBlink',
+  'weather-mini-clock',
+  "timeZone:'America/New_York'",
+]) if (!adminHtml.includes(marker)) failures.push(`Admin live header enhancement is missing ${marker}`);
+if (adminHtml.includes('class="sulandra-platform-link"')) failures.push('Top platform bar still contains the retired portal buttons instead of the local-news ticker');
+
 if (!adminJs.includes('sulandra:admin:active-module')) failures.push('Admin module persistence key is missing');
 if (!adminJs.includes('history.replaceState')) failures.push('Admin module URL/hash persistence is missing');
 if (!adminJs.includes('https://sulandra-website-production-5fc4.up.railway.app')) failures.push('Admin runtime is not using canonical Railway API');
@@ -98,4 +114,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: full-viewport dashboard, live Service Homes, dedicated workforce Scheduling, separate Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
+console.log('Admin command center verified: full-viewport dashboard, blinking Live status, continuously updating Dayton local-news ticker, weather-card local clock, live Service Homes, dedicated workforce Scheduling, separate Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
