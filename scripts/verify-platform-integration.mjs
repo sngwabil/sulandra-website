@@ -61,7 +61,13 @@ try {
 } catch {}
 try {
   const spire=await readFile(path.join(dist,'spire.html'),'utf8');
-  for(const marker of ['/time-attendance.html','/employee360.html','/education-portal.html','/health-safety.html']) if(!spire.includes(marker)) failures.push(`Spire hub is missing live module destination ${marker}`);
+  // Spire is the clinical record application, not the Sulandra platform shell.
+  // It must publish its real clinical runtime and remain separate from workforce
+  // applications such as Time & Attendance and Employee 360.
+  for(const marker of ['id="spireApp"','/assets/spire-app-v2.js','/assets/spire-workflow.js','/assets/spire-care-plan.js','/assets/spire-emar.js']) {
+    if(!spire.includes(marker)) failures.push(`Spire clinical application is missing ${marker}`);
+  }
+  if(spire.includes('S.P.I.R.E. Employee Access')||spiresDemo(spire)) failures.push('Spire has replaced the Sulandra employee platform or contains demo fallback behavior');
 } catch {}
 try {
   const spireAdmin=await readFile(path.join(dist,'spire-admin.html'),'utf8');
@@ -88,7 +94,7 @@ try {
 try {
   const services=await readFile(path.join(dist,'services.html'),'utf8');
   if(!services.includes('/assets/public-services-navigation.js')) failures.push('Services page does not load live public navigation');
-  for(const label of ['Free Consultation','Careers','Contact']) if(new RegExp(`<a href="#"[^>]*>${label}<\\/a>`).test(services)) failures.push(`Services page still has placeholder link: ${label}`);
+  for(const label of ['Reviews','Resources','Free Consultation','About Us','Careers','Contact','View All Services']) if(new RegExp(`<a href="#"[^>]*>${label}<\\/a>`).test(services)) failures.push(`Services page still has placeholder link: ${label}`);
 } catch {}
 try {
   const applicant=await readFile(path.join(dist,'applicant-portal.html'),'utf8');
@@ -112,4 +118,4 @@ if (failures.length) {
   console.error('Platform integration verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('Platform integration verified: the complete pre-Spire website surface is published, logos are present, Admin live workspaces route correctly, Spire remains additive, and public/employee/clinical services retain correct frontend/backend ownership.');
+console.log('Platform integration verified: the complete pre-Spire website surface is published, logos are present, Admin live workspaces route correctly, Spire remains an additive clinical application, and public/employee/clinical services retain correct frontend/backend ownership.');
