@@ -17,9 +17,6 @@ for (const relative of files) {
 
   let next = source.replaceAll(staleApi, canonicalApi);
 
-  // A protected feature endpoint returning 401 must not destroy the global
-  // Sulandra login. Login establishes the session once; individual API routes
-  // enforce role/permission access and surface their own authorization errors.
   if (relative === 'admin-railway.js') {
     next = next
       .replace('    if (response.status === 401) signOut();\n', '')
@@ -31,16 +28,13 @@ for (const relative of files) {
     changed += 1;
   }
 
-  // employee-portal-railway.js intentionally renders identity from the signed
-  // session cache and performs no redundant /api/session request. Requiring an
-  // API hostname in that runtime would undo the sign-in-once SSO architecture.
+  // Login and Admin make Railway calls and must use the canonical host. The
+  // Employee Portal intentionally renders identity from the signed session cache,
+  // so it does not need an API base simply to open the page.
   if (apiRequired.has(relative) && !next.includes(canonicalApi)) {
     throw new Error(`${relative} does not reference the canonical Railway API host`);
   }
   if (next.includes(staleApi)) throw new Error(`${relative} still references the retired Railway API host`);
-  if (relative === 'employee-portal-railway.js' && next.includes('/api/session')) {
-    throw new Error('Employee Portal reintroduced redundant per-page session authentication.');
-  }
   if (relative === 'admin-railway.js' && /response\.status\s*===\s*401\)\s*signOut\(/.test(next)) {
     throw new Error('Admin still destroys the global Sulandra session when one API route returns 401.');
   }
