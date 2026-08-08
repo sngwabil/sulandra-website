@@ -20,8 +20,8 @@ expect('employee workflow endpoint',backend.includes("/api/employee/me/workflows
 expect('owner protection',backend.includes('Enterprise Owner workflow record'));
 expect('auditor read only',backend.includes('Auditor workflow access is read only'));
 expect('organization isolation',backend.includes('"organizationId"=$1'));
-expect('required step completion enforcement',backend.includes('required"=TRUE'));
-expect('automatic instance completion',backend.includes("status"+'\'=\'COMPLETED\''));
+expect('required step completion enforcement',backend.includes('"required"=TRUE'));
+expect('automatic instance completion',backend.includes('if(open===0)')&&backend.includes('UPDATE "EmployeeWorkflowInstance" SET "status"=\'COMPLETED\'')&&backend.includes('"completedAt"=NOW()'));
 expect('onboarding workflow type',backend.includes("'ONBOARDING'"));
 expect('offboarding workflow type',backend.includes("'OFFBOARDING'"));
 expect('document signature workflow type',backend.includes("'DOCUMENT_SIGNATURE'"));
@@ -42,7 +42,10 @@ expect('migration unique step order',migration.includes('EmployeeWorkflowStep_or
 const installer=await read('scripts/install-employee-management-platform.mjs');
 expect('workflow import installed',installer.includes("./employee-workflows-automation-routes.js"));
 expect('obsolete workflow import absent',!installer.includes("./employee-workflow-automation-routes.js"));
-expect('workflow registered before careers',installer.indexOf('registerEmployeeWorkflowAutomationRoutes({ app, prisma')<installer.indexOf('registerCareersRoutes(app, prisma'));
+const bootstrap=await read('api/src/onboarding-bootstrap.ts');
+const workflowAt=bootstrap.indexOf('registerEmployeeWorkflowAutomationRoutes({ app, prisma');
+const careersAt=bootstrap.lastIndexOf('registerCareersRoutes(app, prisma');
+expect('workflow registered before careers',workflowAt>=0&&careersAt>workflowAt);
 
 const admin=await read('assets/admin-employee-workflows.js');
 expect('admin explicit API base',admin.includes('sulandra-website-production-5fc4.up.railway.app'));
