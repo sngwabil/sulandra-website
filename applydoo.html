@@ -165,7 +165,62 @@
     $('appForm').addEventListener('change',updateCompletion);
     $('saveBtn').addEventListener('click',()=>saveDraft(false));
     $('clearBtn').addEventListener('click',()=>{if(confirm('Clear the saved DOO application draft?')){localStorage.removeItem(DRAFT_KEY);$('appForm').reset();$('signatureDate').value=new Date().toISOString().slice(0,10);$('draftState').textContent='Draft cleared';updateCompletion()}});
-    $('appForm').addEventListener('submit',async e=>{e.preventDefault();if(!validate()){toast('Fix required fields','Please complete the highlighted fields before submitting.');return}try{$('submitBtn').disabled=true;setProgress(10,'Submitting…','Preparing application and documents.');const base=collect();const assessment=scoreAssessment();base.assessment=assessment;const files=[$('resume').files[0]?fileToDocument($('resume').files[0],'RESUME','Executive Resume'):null,$('coverLetter').files[0]?fileToDocument($('coverLetter').files[0],'COVER_LETTER','Cover Letter'):null,$('dooDoc').files[0]?fileToDocument($('dooDoc').files[0],'OTHER','Director of Operations Documentation'):null,...[...$('otherDocs').files].map((f,i)=>fileToDocument(f,'OTHER',`Professional Document ${i+1}`))].filter(Boolean);const documents=await Promise.all(files);setProgress(45,'Submitting…','Finding the active Director of Operations opening.');const openings=await api(await fetch(`${API_BASE}/public/careers/openings`,{headers:{accept:'application/json'}}));const rows=Array.isArray(openings.data)?openings.data:[];const requested=(new URLSearchParams(location.search).get('opening')||'').trim();const opening=requested?rows.find(x=>String(x.slug)===requested||String(x.id)===requested):rows.find(x=>String(x.slug)==='director-of-operations-doo'||/director of operations|\bdoo\b/i.test(`${x.title||''} ${x.department||''}`));if(!opening)throw new Error('No active Director of Operations job opening was found. Please confirm the DOO opening is published in Onboarding.');setProgress(65,'Submitting…','Sending your application securely.');const payload={sourceExternalId:submissionId(),jobOpeningId:opening.id,jobSlug:opening.slug,firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),email:$('email').value.trim(),phone:$('phone').value.trim(),appliedRole:'DOO',preferredCommunication:'EMAIL',applicationData:base,assessmentAnswers:base,documents,...(base.why?{notes:base.why}:{})};const result=await api(await fetch(`${API_BASE}/public/careers/applications`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}));setProgress(100,'Application received','Your Director of Operations application was submitted successfully.');localStorage.removeItem(DRAFT_KEY);localStorage.removeItem(SUBMISSION_KEY);toast('Application received',`Reference ${result.data?.referenceNumber||'created'}. Portal access information will be sent by email.`)}catch(error){console.error(error);setProgress(0,'Submission failed',error.message||'Please review and try again.');toast('Submission error',error.message||'Application submission failed.')}finally{$('submitBtn').disabled=false}});
+    $('appForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      if(!validate()){
+        toast('Fix required fields','Please complete the highlighted fields before submitting.');
+        return;
+      }
+      try{
+        $('submitBtn').disabled=true;
+        setProgress(10,'Submitting…','Preparing application and documents.');
+        const base=collect();
+        const assessment=scoreAssessment();
+        base.assessment=assessment;
+        const files=[
+          $('resume').files[0]?fileToDocument($('resume').files[0],'RESUME','Executive Resume'):null,
+          $('coverLetter').files[0]?fileToDocument($('coverLetter').files[0],'COVER_LETTER','Cover Letter'):null,
+          $('dooDoc').files[0]?fileToDocument($('dooDoc').files[0],'OTHER','Director of Operations Documentation'):null,
+          ...[...$('otherDocs').files].map((f,i)=>fileToDocument(f,'OTHER',`Professional Document ${i+1}`))
+        ].filter(Boolean);
+        const documents=await Promise.all(files);
+        const params=new URLSearchParams(location.search);
+        const companyCode=String(params.get('company')||'SULANDRA_HEALTH').trim().toUpperCase();
+        setProgress(45,'Submitting…','Finding the active Director of Operations opening.');
+        const openings=await api(await fetch(
+          `${API_BASE}/public/careers/openings?company=${encodeURIComponent(companyCode)}`,
+          {headers:{accept:'application/json'}}
+        ));
+        const rows=Array.isArray(openings.data)?openings.data:[];
+        const requested=(params.get('opening')||'').trim();
+        const opening=requested
+          ? rows.find(x=>String(x.slug)===requested||String(x.id)===requested)
+          : rows.find(x=>String(x.slug)==='director-of-operations-doo'||/director of operations|\bdoo\b/i.test(`${x.title||''} ${x.department||''}`));
+        if(!opening)throw new Error('No active Director of Operations job opening was found for the selected company. Please confirm the DOO opening is published in Onboarding.');
+        setProgress(65,'Submitting…','Sending your application securely.');
+        const payload={
+          sourceExternalId:submissionId(),jobOpeningId:opening.id,jobSlug:opening.slug,
+          legalEntityCode:opening.legalEntityCode||companyCode,
+          firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),
+          email:$('email').value.trim(),phone:$('phone').value.trim(),appliedRole:'DOO',
+          preferredCommunication:'EMAIL',applicationData:base,assessmentAnswers:base,documents,
+          ...(base.why?{notes:base.why}:{})
+        };
+        const result=await api(await fetch(`${API_BASE}/public/careers/applications`,{
+          method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)
+        }));
+        setProgress(100,'Application received','Your Director of Operations application was submitted successfully.');
+        localStorage.removeItem(DRAFT_KEY);
+        localStorage.removeItem(SUBMISSION_KEY);
+        toast('Application received',`Reference ${result.data?.referenceNumber||'created'}. Portal access information will be sent by email.`);
+      }catch(error){
+        console.error(error);
+        setProgress(0,'Submission failed',error.message||'Please review and try again.');
+        toast('Submission error',error.message||'Application submission failed.');
+      }finally{
+        $('submitBtn').disabled=false;
+      }
+    });
 
     renderReferences();renderAssessment();$('signatureDate').value=new Date().toISOString().slice(0,10);loadDraft();updateCompletion();
   </script>

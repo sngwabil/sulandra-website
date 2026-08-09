@@ -41,10 +41,11 @@
     const API_BASE='https://sulandra-website-production-5fc4.up.railway.app';
     const params=new URLSearchParams(location.search);
     const openingSlug=params.get('opening')||'';
+    const companyCode=String(params.get('company')||'SCLS').trim().toUpperCase();
     let opening=null;
     const $=id=>document.getElementById(id);
     async function loadOpening(){
-      const response=await fetch(`${API_BASE}/public/careers/openings`);
+      const response=await fetch(`${API_BASE}/public/careers/openings?company=${encodeURIComponent(companyCode)}`);
       const body=await response.json();
       opening=(body.data||[]).find(item=>item.slug===openingSlug)||null;
       if(opening){$('jobTitle').textContent=opening.title;$('jobSummary').textContent=opening.summary||'Apply to join Sulandra Health.';document.title=`Apply for ${opening.title} | Sulandra Health`}
@@ -67,7 +68,7 @@
           fileDocument($('references'),'REFERENCES','References')
         ])).filter(Boolean);
         const response=await fetch(`${API_BASE}/public/careers/applications`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
-          jobOpeningId:opening?.id,jobSlug:openingSlug||undefined,firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),email,phone,
+          jobOpeningId:opening?.id,jobSlug:openingSlug||undefined,legalEntityCode:opening?.legalEntityCode||companyCode,firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),email,phone,
           preferredCommunication:preferred,appliedRole:'GENERAL',notes:$('experience').value.trim(),
           applicationData:{position:opening?.title||'General application',availability:$('availability').value,experience:$('experience').value.trim()},documents:docs
         })});

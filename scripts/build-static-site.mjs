@@ -143,7 +143,7 @@ for (const marker of [
   '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2',
   '/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1',
   '/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1',
-  '/assets/admin-company-context.js?v=20260808-admin-company-context-1',
+  '/assets/admin-company-context.js?v=20260809-admin-company-context-2',
   'id="admin-fullscreen-layout"',
 ]) {
   if (!publishedAdmin.includes(marker)) throw new Error(`Modern Admin publication failed; missing ${marker}`);
@@ -151,6 +151,7 @@ for (const marker of [
 
 const requiredPublishedFiles = [
   'admin.html', 'admin-railway.js', 'employee-login.html', 'employee-portal.html',
+  'careers.html', 'applygeneral.html', 'applydsp.html', 'applylpn.html', 'applydoo.html',
   'employee360.html', 'education-portal.html', 'time-attendance.html', 'scheduling.html', 'intranet.html',
   'intranet.HTML', 'policies.html', 'news.html', 'feedback.html', 'payroll.html',
   'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',

@@ -1436,10 +1436,12 @@
     }
 
     async function applySelectedOpeningBranding(){
-      const openingSlug = new URLSearchParams(window.location.search).get("opening");
+      const params = new URLSearchParams(window.location.search);
+      const openingSlug = params.get("opening");
+      const companyCode = String(params.get("company") || "SCLS").trim().toUpperCase();
       if(!openingSlug) return;
       try{
-        const response = await fetch(`${API_BASE}/public/careers/openings`, {
+        const response = await fetch(`${API_BASE}/public/careers/openings?company=${encodeURIComponent(companyCode)}`, {
           headers: { accept: "application/json" }
         });
         if(!response.ok) return;
@@ -2245,7 +2247,8 @@
       setProgress(55, 'Submitting…', 'Creating your secure applicant profile');
       const params = new URLSearchParams(window.location.search);
       const requestedOpening = (params.get('opening') || '').trim();
-      const openingsResponse = await fetch(`${API_BASE}/public/careers/openings`, {
+      const companyCode = String(params.get('company') || 'SCLS').trim().toUpperCase();
+      const openingsResponse = await fetch(`${API_BASE}/public/careers/openings?company=${encodeURIComponent(companyCode)}`, {
         headers: { accept: 'application/json' }
       });
       const openingsResult = await readApiResponse(openingsResponse);
@@ -2278,6 +2281,7 @@
           sourceExternalId: getDspSubmissionId(),
           jobOpeningId: opening.id,
           jobSlug: opening.slug,
+          legalEntityCode: opening.legalEntityCode || companyCode,
           firstName: $('firstName').value.trim(),
           middleName: $('middleName')?.value.trim() || undefined,
           lastName: $('lastName').value.trim(),

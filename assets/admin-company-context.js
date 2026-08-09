@@ -70,12 +70,14 @@
 
   function publishSelection(previousEntity, notify) {
     const status = selectedEntity?.status || 'ERROR';
+    const operationsStatus = selectedEntity?.metadata?.serviceOperationsStatus || status;
+    const licensingStatus = selectedEntity?.metadata?.licensingStatus || 'UNKNOWN';
     const state = document.getElementById('adminCompanyState');
     if (state) {
       state.dataset.status = status;
       state.textContent = status;
       state.title = status === 'ACTIVE'
-        ? 'This company is active and available for gradual module conversion.'
+        ? `Company workspace active • Operations: ${operationsStatus} • Licensing: ${licensingStatus}`
         : 'This company is planned and cannot be managed until it is legally and operationally activated.';
     }
     if (selectedEntity) {
@@ -125,8 +127,8 @@
     select.disabled = false;
     selectEntity(preferredEntity()?.id || '', false);
     select.title = activeEntityCount < 2
-      ? 'SCLS is the only active company. Planned companies will unlock after activation and backend conversion.'
-      : 'Select the company to manage';
+      ? 'SCLS is the only active company.'
+      : 'Select a company. Pre-launch companies allow recruiting and training while unapproved operating modules remain blocked.';
   }
 
   async function loadContext() {

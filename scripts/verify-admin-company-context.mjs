@@ -13,13 +13,13 @@ const [sourceAdmin, publishedAdmin, contextAsset, adminRuntime, buildScript] = a
 ]);
 const failures = [];
 const expect = (condition, message) => { if (!condition) failures.push(message); };
-const scriptMarker = '/assets/admin-company-context.js?v=20260808-admin-company-context-1';
+const scriptMarker = '/assets/admin-company-context.js?v=20260809-admin-company-context-2';
 
 expect(sourceAdmin.includes(scriptMarker), 'Source Admin does not load the company-context asset');
 expect(publishedAdmin.includes(scriptMarker), 'Published Admin does not load the company-context asset');
 expect(sourceAdmin.indexOf(scriptMarker) < sourceAdmin.indexOf('<script src="admin-railway.js'), 'Company context must load before the main Admin runtime');
 expect(contextAsset.includes('/api/entity-context'), 'Company selector does not load authorized entity context');
-expect(contextAsset.includes("entity.code === 'SCLS'"), 'Company selector does not default current operations to SCLS');
+expect(contextAsset.includes("entity.code === 'SCLS'"), 'Company selector does not preserve SCLS as the safe default');
 expect(contextAsset.includes("entity.status === 'ACTIVE'"), 'Company selector does not distinguish active and planned companies');
 expect(contextAsset.includes("active ? '' : 'disabled'"), 'Planned companies are not protected from premature selection');
 expect(contextAsset.includes("'X-Legal-Entity-Id'"), 'Selected company is not exposed to Admin API requests');
@@ -34,4 +34,4 @@ if (failures.length) {
   console.error(`Admin company-context verification failed:\n- ${failures.join('\n- ')}`);
   process.exit(1);
 }
-console.log('Admin company context verified: authenticated entity memberships render in one persistent selector, SCLS is the safe active default, planned companies remain locked, and Admin requests carry the selected entity ID.');
+console.log('Admin company context verified: authenticated entity memberships render in one persistent selector, SCLS remains the safe default, active pre-launch companies expose lifecycle status, and Admin requests carry the selected entity ID.');

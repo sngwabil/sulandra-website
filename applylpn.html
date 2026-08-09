@@ -886,10 +886,12 @@
     }
 
     async function applySelectedNursingOpeningBranding(){
-      const openingSlug = new URLSearchParams(window.location.search).get("opening");
+      const params = new URLSearchParams(window.location.search);
+      const openingSlug = params.get("opening");
+      const companyCode = String(params.get("company") || "SCLS").trim().toUpperCase();
       if(!openingSlug) return;
       try{
-        const response = await fetch(`${API_BASE}/public/careers/openings`, {
+        const response = await fetch(`${API_BASE}/public/careers/openings?company=${encodeURIComponent(companyCode)}`, {
           headers: { accept: "application/json" }
         });
         if(!response.ok) return;
@@ -1769,13 +1771,14 @@
       }
 
       const params = new URLSearchParams(window.location.search);
+      const companyCode = String(params.get("company") || "SCLS").trim().toUpperCase();
       const requestedRole = String(params.get("role") || "LPN").toUpperCase();
       let appliedRole = ["LPN", "RN", "DELEGATING_NURSE"].includes(requestedRole) ? requestedRole : "LPN";
       const draft = collectDraft(true);
 
       setProgress(22, "Submitting…", "Confirming the selected nursing opening…");
       const requestedOpening = (params.get("opening") || "").trim();
-      const openingsResponse = await fetch(`${API_BASE}/public/careers/openings`, {
+      const openingsResponse = await fetch(`${API_BASE}/public/careers/openings?company=${encodeURIComponent(companyCode)}`, {
         headers: { accept: "application/json" }
       });
       const openingsResult = await readApiResponse(openingsResponse);
@@ -1816,6 +1819,7 @@
         body: JSON.stringify({
           jobOpeningId: opening.id,
           jobSlug: opening.slug,
+          legalEntityCode: opening.legalEntityCode || companyCode,
           firstName: $("firstName").value.trim(),
           middleName: $("middleName")?.value.trim() || undefined,
           lastName: $("lastName").value.trim(),

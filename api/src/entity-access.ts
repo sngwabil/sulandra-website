@@ -12,6 +12,21 @@ export type BaseAuthContext = {
 
 export type EntityAccessLevel = 'READ' | 'WRITE' | 'MANAGE';
 
+export type EntityCapability =
+  | 'CAREERS'
+  | 'ONBOARDING'
+  | 'EMPLOYEE_360'
+  | 'TIME_ATTENDANCE'
+  | 'COMPLIANCE'
+  | 'EDUCATION'
+  | 'INTRANET'
+  | 'CLIENT_INTAKE'
+  | 'SPIRE'
+  | 'BILLING'
+  | 'SCLS_OPERATIONS'
+  | 'HOME_HEALTH_OPERATIONS'
+  | 'NMT_OPERATIONS';
+
 export type EntityAccessContext = {
   legalEntityId: string;
   legalEntityCode: string;
@@ -22,6 +37,7 @@ export type EntityAccessContext = {
   departmentName: string | null;
   allowedDepartmentIds: string[];
   accessLevel: EntityAccessLevel;
+  capabilities: EntityCapability[];
   enterpriseOwner: boolean;
   operational: boolean;
   enterpriseSharedRequest: boolean;
@@ -52,6 +68,7 @@ type EntityRow = {
   hasPrimaryEmployment: boolean;
   hasGrant: boolean;
   grantRank: number;
+  metadata: Record<string, unknown> | null;
 };
 
 type DepartmentRow = {
@@ -75,6 +92,12 @@ type GrantRow = {
 
 const OWNER_EMAIL = 'admin@sulandrahealth.com';
 const accessRank: Record<EntityAccessLevel, number> = { READ: 1, WRITE: 2, MANAGE: 3 };
+const allCapabilities: EntityCapability[] = [
+  'CAREERS', 'ONBOARDING', 'EMPLOYEE_360', 'TIME_ATTENDANCE', 'COMPLIANCE',
+  'EDUCATION', 'INTRANET', 'CLIENT_INTAKE', 'SPIRE', 'BILLING',
+  'SCLS_OPERATIONS', 'HOME_HEALTH_OPERATIONS', 'NMT_OPERATIONS',
+];
+const capabilitySet = new Set<string>(allCapabilities);
 const rankAccess = (rank: number): EntityAccessLevel => rank >= 3 ? 'MANAGE' : rank >= 2 ? 'WRITE' : 'READ';
 const httpError = (status: number, message: string) => Object.assign(new Error(message), { status });
 
@@ -87,6 +110,32 @@ const enterpriseSharedPrefixes = [
 
 const isEnterpriseSharedPath = (path: string) =>
   enterpriseSharedPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+
+const enabledCapabilities = (entity: EntityRow): EntityCapability[] => {
+  const configured = Array.isArray(entity.metadata?.enabledModules)
+    ? entity.metadata.enabledModules.filter((value): value is string => typeof value === 'string')
+    : [];
+  const capabilities = configured.filter((value): value is EntityCapability => capabilitySet.has(value));
+  return capabilities.length || entity.code !== 'SCLS' ? capabilities : allCapabilities;
+};
+
+const requiredCapability = (path: string): EntityCapability | null => {
+  if (isEnterpriseSharedPath(path)) return null;
+  if (
+    path.startsWith('/api/admin/job-openings')
+    || path.startsWith('/api/admin/applications')
+    || path.startsWith('/api/admin/interview-slots')
+    || path.startsWith('/api/admin/company-settings')
+  ) return 'CAREERS';
+  if (path.startsWith('/api/admin/employee360')) return 'EMPLOYEE_360';
+  if (path.startsWith('/api/admin/employees') || path.startsWith('/api/employee-management')) return 'EMPLOYEE_360';
+  if (path.startsWith('/api/admin/time-attendance') || path.startsWith('/api/time-attendance')) return 'TIME_ATTENDANCE';
+  if (path.startsWith('/api/admin/service-homes')) return 'SCLS_OPERATIONS';
+  if (path.startsWith('/api/admin/client-service-requests')) return 'CLIENT_INTAKE';
+  if (path.startsWith('/api/spire')) return 'SPIRE';
+  if (path.startsWith('/api/admin/billing')) return 'BILLING';
+  return null;
+};
 
 const requestedHeader = (request: Request, name: string) => {
   const value = request.header(name)?.trim();
@@ -117,7 +166,7 @@ const entityCandidates = async (
   organizationId: string,
   userId: string,
 ) => prisma.$queryRawUnsafe<EntityRow[]>(
-  `SELECT entity."id",entity."code",entity."displayName",entity."status",
+  `SELECT entity."id",entity."code",entity."displayName",entity."status",entity."metadata",
           EXISTS (
             SELECT 1 FROM "Employment" employment
             WHERE employment."organizationId"=entity."organizationId" AND employment."userId"=$2
@@ -265,6 +314,7 @@ export async function resolveEntityAccess(
     departmentName: department?.name ?? null,
     allowedDepartmentIds,
     accessLevel: identity.enterpriseOwner ? 'MANAGE' : rankAccess(Math.max(entityGrantRank, entity.hasEmployment ? 1 : 0)),
+    capabilities: enabledCapabilities(entity),
     enterpriseOwner: identity.enterpriseOwner,
     operational: entity.status === 'ACTIVE',
     enterpriseSharedRequest: isEnterpriseSharedPath(request.path),
@@ -319,6 +369,13 @@ export const createEntityAccessMiddleware = ({ prisma }: { prisma: PrismaClient 
       }
       if (!auth) throw httpError(401, 'Authentication required');
       const { identity, access } = await resolveEntityAccess(prisma, auth, request);
+      const capability = requiredCapability(request.path);
+      if (capability && !access.capabilities.includes(capability)) {
+        throw httpError(
+          409,
+          `${capability.replaceAll('_', ' ')} is not enabled for ${access.legalEntityName} during pre-launch`,
+        );
+      }
       response.locals.entityAccess = access;
       response.locals.auth = {
         ...auth,

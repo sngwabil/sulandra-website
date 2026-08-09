@@ -146,7 +146,7 @@ export async function getUserEntityContext(prisma: PrismaClient, auth: AuthConte
   const identity = await actualIdentity(prisma, auth);
   const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
     `SELECT entity."id",entity."code",entity."legalName",entity."displayName",entity."entityType",entity."status",
-            entity."parentLegalEntityId",entity."isEmployer",entity."isProvider",entity."branding",entity."contact",
+            entity."parentLegalEntityId",entity."isEmployer",entity."isProvider",entity."branding",entity."contact",entity."metadata",
             COALESCE((
               SELECT jsonb_agg(jsonb_build_object(
                 'id',employment."id",'departmentId',employment."departmentId",'departmentCode',department."code",
