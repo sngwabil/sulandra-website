@@ -19,6 +19,7 @@ const ensureWrite = (auth:AuthContext) => { ensureClinical(auth); if(!chartWrite
 const isAdmin = (auth:AuthContext) => adminRoles.has(auth.role) || String(auth.email||'').toLowerCase()==='admin@sulandrahealth.com';
 const selectedEntity = (auth:AuthContext) => { if(!auth.legalEntityId) throw Object.assign(new Error('Select a Sulandra company before using SPIRE'),{status:409}); return auth.legalEntityId; };
 const text = (value:unknown,max=10000) => typeof value==='string' ? value.trim().slice(0,max) : '';
+const safeDownloadName=(value:string)=>value.replace(/[\r\n"]/g,'_').replace(/[\\/]/g,'_').slice(0,300)||'intake-document';
 
 async function patientAllowed(prisma:PrismaClient,auth:AuthContext,patientId:string){
   if(isAdmin(auth)||auth.role===UserRole.AUDITOR) return true;
@@ -99,6 +100,23 @@ export const registerSpireFoundationRoutes = (app:express.Express,prisma:PrismaC
   app.get('/api/spire/patients/:patientId/notes',async(req,res,next)=>{try{
     const auth=authOf(res); await requirePatient(prisma,auth,req.params.patientId); await logAccess(prisma,auth,req.params.patientId,'VIEW_NOTES','NOTE');
     const rows=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT n."id",n."legalEntityId",n."noteType",n."title",n."status",n."authorUserId" AS author,n."createdAt",n."signedAt",v."body" FROM "SpireClinicalNote" n LEFT JOIN LATERAL (SELECT "body" FROM "SpireClinicalNoteVersion" v WHERE v."noteId"=n."id" ORDER BY v."version" DESC LIMIT 1) v ON TRUE WHERE n."organizationId"=$1 AND n."patientId"=$2 ORDER BY n."createdAt" DESC LIMIT 250`,auth.organizationId,req.params.patientId); res.json({data:{items:rows}});
+  }catch(e){next(e);}});
+
+  app.get('/api/spire/patients/:patientId/admission-history',async(req,res,next)=>{try{
+    const auth=authOf(res),patientId=req.params.patientId; await requirePatient(prisma,auth,patientId);
+    const cases=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT intake."id",intake."legalEntityId",entity."code" AS "companyCode",entity."displayName" AS "companyName",intake."serviceType",intake."programCode",intake."referralSource",intake."referralDate",intake."approvedAt",intake."approvedById",intake."reviewNotes",intake."createdAt" FROM "ClientIntakeCase" intake JOIN "LegalEntity" entity ON entity."organizationId"=intake."organizationId" AND entity."id"=intake."legalEntityId" WHERE intake."organizationId"=$1 AND intake."patientId"=$2 AND intake."status"='APPROVED' ORDER BY intake."approvedAt" DESC NULLS LAST,intake."createdAt" DESC`,auth.organizationId,patientId);
+    const admissions=[]; for(const c of cases){const caseId=String(c.id);const[sections,attachments,signatures]=await Promise.all([
+      prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "sectionKey","sectionTitle","sectionGroup","status","payload","completedAt","reviewState","reviewComment","updatedAt" FROM "ClientIntakeSection" WHERE "organizationId"=$1 AND "intakeCaseId"=$2 AND "status" IN ('COMPLETE','NOT_APPLICABLE') ORDER BY "createdAt","sectionKey"`,auth.organizationId,caseId),
+      prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "id","sectionKey","documentType","title","originalFileName","mimeType","sizeBytes","sha256","expirationDate","notes","createdAt" FROM "ClientIntakeAttachment" WHERE "organizationId"=$1 AND "intakeCaseId"=$2 AND "status"='ACTIVE' ORDER BY "createdAt" DESC`,auth.organizationId,caseId),
+      prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "signatureType","signerName","signerRelationship","signatureMethod","attestation","signedAt" FROM "ClientIntakeSignature" WHERE "organizationId"=$1 AND "intakeCaseId"=$2 AND "revokedAt" IS NULL ORDER BY "signedAt" DESC`,auth.organizationId,caseId)
+    ]);admissions.push({...c,sections,attachments,signatures});}
+    await logAccess(prisma,auth,patientId,'VIEW_ADMISSION_HISTORY','ADMISSION_HISTORY'); res.json({data:{patientId,selectedLegalEntityId:selectedEntity(auth),admissions}});
+  }catch(e){next(e);}});
+
+  app.get('/api/spire/patients/:patientId/admission-history/:caseId/attachments/:attachmentId/download',async(req,res,next)=>{try{
+    const auth=authOf(res),patientId=req.params.patientId; await requirePatient(prisma,auth,patientId);
+    const rows=await prisma.$queryRawUnsafe<Array<{id:string;originalFileName:string;mimeType:string;sizeBytes:number;sha256:string;content:Buffer;sourceLegalEntityId:string}>>(`SELECT attachment."id",attachment."originalFileName",attachment."mimeType",attachment."sizeBytes",attachment."sha256",attachment."content",intake."legalEntityId" AS "sourceLegalEntityId" FROM "ClientIntakeAttachment" attachment JOIN "ClientIntakeCase" intake ON intake."id"=attachment."intakeCaseId" AND intake."organizationId"=attachment."organizationId" WHERE attachment."organizationId"=$1 AND intake."patientId"=$2 AND intake."id"=$3 AND attachment."id"=$4 AND intake."status"='APPROVED' AND attachment."status"='ACTIVE' LIMIT 1`,auth.organizationId,patientId,req.params.caseId,req.params.attachmentId);const x=rows[0];if(!x)throw Object.assign(new Error('Approved intake document was not found'),{status:404});
+    await logAccess(prisma,auth,patientId,'DOWNLOAD_ADMISSION_DOCUMENT','ADMISSION_DOCUMENT',x.id);res.setHeader('Content-Type',x.mimeType||'application/octet-stream');res.setHeader('Content-Length',String(x.sizeBytes));res.setHeader('Content-Disposition',`attachment; filename="${safeDownloadName(x.originalFileName)}"`);res.setHeader('X-Sulandra-Source-Entity',x.sourceLegalEntityId);res.setHeader('Cache-Control','private, no-store');res.send(x.content);
   }catch(e){next(e);}});
 
   app.post('/api/spire/patients/:patientId/encounters',async(req,res,next)=>{try{
