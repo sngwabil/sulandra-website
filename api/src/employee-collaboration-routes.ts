@@ -71,7 +71,7 @@ type WorkflowStep = {
 type WorkflowRequestRow = {
   id: string;
   organizationId: string;
-  legalEntityId: string | null;
+  legalEntityId: string;
   employeeId: string;
   requestType: RequestType;
   title: string;
@@ -112,7 +112,7 @@ const managerRoles = [
   UserRole.AUDITOR,
   UserRole.DELEGATING_NURSE,
   UserRole.CEO,
-  UserRole.COO,
+  UserRole.DOO,
 ] as const;
 
 const globalManagerRoles = new Set<UserRole>([
@@ -120,7 +120,7 @@ const globalManagerRoles = new Set<UserRole>([
   UserRole.HR_MANAGER,
   UserRole.AUDITOR,
   UserRole.CEO,
-  UserRole.COO,
+  UserRole.DOO,
 ]);
 
 const locationManagerRoles = new Set<UserRole>([
@@ -138,7 +138,7 @@ const decisionRoles = new Set<UserRole>([
   UserRole.SCHEDULER,
   UserRole.DELEGATING_NURSE,
   UserRole.CEO,
-  UserRole.COO,
+  UserRole.DOO,
 ]);
 
 const workflowManagerRoles = new Set<UserRole>([
@@ -153,7 +153,7 @@ const feedbackRoles = new Set<UserRole>([
   UserRole.HOUSE_MANAGER,
   UserRole.DELEGATING_NURSE,
   UserRole.CEO,
-  UserRole.COO,
+  UserRole.DOO,
 ]);
 
 const requestSchema = z.object({
@@ -279,12 +279,18 @@ const escapeHtml = (value: unknown) => String(value ?? '')
   .replaceAll("'", '&#39;');
 
 export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requireRoles, audit }: Dependencies) {
+  const selectedEntityId = (auth: Pick<AuthContext, 'legalEntityId'>) => {
+    if (!auth.legalEntityId) throw Object.assign(new Error('Company access context is required'), { status: 500 });
+    return auth.legalEntityId;
+  };
+
   let readyPromise: Promise<void> | null = null;
 
   const ready = () => readyPromise ??= (async () => {
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeWorkflowDefinition" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT,
       "requestType" TEXT NOT NULL,
       "name" TEXT NOT NULL,
       "description" TEXT,
@@ -296,11 +302,19 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
-    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "EmployeeWorkflowDefinition_type_unique" ON "EmployeeWorkflowDefinition"("organizationId","requestType")`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeWorkflowDefinition" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
+    await prisma.$executeRawUnsafe(`DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='EmployeeWorkflowDefinition_type_unique' AND indexdef NOT LIKE '%"legalEntityId"%') THEN
+        DROP INDEX "EmployeeWorkflowDefinition_type_unique";
+      END IF;
+    END $$`);
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "EmployeeWorkflowDefinition_type_unique"
+      ON "EmployeeWorkflowDefinition"("organizationId","legalEntityId","requestType") WHERE "requestType" IS NOT NULL`);
 
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeWorkflowRequest" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT NOT NULL,
       "employeeId" TEXT NOT NULL,
       "requestType" TEXT NOT NULL,
       "title" TEXT NOT NULL,
@@ -324,6 +338,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeWorkflowApproval" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT NOT NULL,
       "requestId" TEXT NOT NULL,
       "sequence" INTEGER NOT NULL,
       "approvalMode" TEXT NOT NULL DEFAULT 'ANY',
@@ -336,34 +351,40 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeWorkflowApproval" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowApproval_actor_idx" ON "EmployeeWorkflowApproval"("organizationId","approverUserId","status","sequence")`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowApproval_request_idx" ON "EmployeeWorkflowApproval"("organizationId","requestId","sequence","status")`);
 
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeWorkflowComment" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT NOT NULL,
       "requestId" TEXT NOT NULL,
       "authorUserId" TEXT NOT NULL,
       "visibility" TEXT NOT NULL DEFAULT 'EMPLOYEE_VISIBLE',
       "body" TEXT NOT NULL,
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeWorkflowComment" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowComment_request_idx" ON "EmployeeWorkflowComment"("organizationId","requestId","createdAt")`);
 
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeWorkflowEvent" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT,
       "requestId" TEXT NOT NULL,
       "actorUserId" TEXT,
       "eventType" TEXT NOT NULL,
       "details" JSONB NOT NULL DEFAULT '{}'::jsonb,
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeWorkflowEvent" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowEvent_request_idx" ON "EmployeeWorkflowEvent"("organizationId","requestId","createdAt")`);
 
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeTeamFeedback" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT NOT NULL,
       "employeeId" TEXT NOT NULL,
       "authorUserId" TEXT NOT NULL,
       "kind" TEXT NOT NULL,
@@ -378,12 +399,14 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeTeamFeedback" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeTeamFeedback_employee_idx" ON "EmployeeTeamFeedback"("organizationId","employeeId","status","createdAt" DESC)`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeTeamFeedback_followup_idx" ON "EmployeeTeamFeedback"("organizationId","followUpDate","status")`);
 
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeRecognition" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT,
       "employeeId" TEXT NOT NULL,
       "nominatorUserId" TEXT NOT NULL,
       "category" TEXT NOT NULL,
@@ -396,11 +419,13 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeRecognition" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeRecognition_employee_idx" ON "EmployeeRecognition"("organizationId","employeeId","status","awardDate" DESC)`);
 
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeNotification" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT,
       "userId" TEXT NOT NULL,
       "notificationType" TEXT NOT NULL,
       "title" TEXT NOT NULL,
@@ -417,8 +442,32 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeNotification" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
     await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "EmployeeNotification_dedupe_unique" ON "EmployeeNotification"("organizationId","userId","dedupeKey")`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeNotification_user_idx" ON "EmployeeNotification"("organizationId","userId","status","createdAt" DESC)`);
+
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowDefinition_entity_enabled_idx"
+      ON "EmployeeWorkflowDefinition"("organizationId","legalEntityId","enabled","employeeCanSubmit")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowRequest_entity_employee_idx"
+      ON "EmployeeWorkflowRequest"("organizationId","legalEntityId","employeeId","createdAt" DESC)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowRequest_entity_status_idx"
+      ON "EmployeeWorkflowRequest"("organizationId","legalEntityId","status","currentSequence","createdAt")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowApproval_entity_actor_idx"
+      ON "EmployeeWorkflowApproval"("organizationId","legalEntityId","approverUserId","status","sequence")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowApproval_entity_request_idx"
+      ON "EmployeeWorkflowApproval"("organizationId","legalEntityId","requestId","sequence","status")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowComment_entity_request_idx"
+      ON "EmployeeWorkflowComment"("organizationId","legalEntityId","requestId","createdAt")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowEvent_entity_request_idx"
+      ON "EmployeeWorkflowEvent"("organizationId","legalEntityId","requestId","createdAt")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeTeamFeedback_entity_employee_idx"
+      ON "EmployeeTeamFeedback"("organizationId","legalEntityId","employeeId","status","createdAt" DESC)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeTeamFeedback_entity_followup_idx"
+      ON "EmployeeTeamFeedback"("organizationId","legalEntityId","followUpDate","status")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeRecognition_entity_employee_idx"
+      ON "EmployeeRecognition"("organizationId","legalEntityId","employeeId","status","awardDate" DESC)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeNotification_entity_user_idx"
+      ON "EmployeeNotification"("organizationId","legalEntityId","userId","status","createdAt" DESC)`);
   })().catch((error) => {
     readyPromise = null;
     throw error;
@@ -443,21 +492,40 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     return { email, isOwner: email === OWNER_EMAIL, role: String(rows[0]?.role || auth.role) };
   };
 
-  const employeeById = async (organizationId: string, employeeId: string): Promise<EmployeeRow> => {
+  const actorHasSelectedEmployment = async (auth: AuthContext) => {
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT "id" FROM "Employment"
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "userId"=$3
+         AND "status" IN ('ACTIVE','LEAVE') AND "startsAt"<=CURRENT_DATE
+         AND ("endsAt" IS NULL OR "endsAt">=CURRENT_DATE) LIMIT 1`,
+      auth.organizationId,
+      selectedEntityId(auth),
+      auth.userId,
+    );
+    return Boolean(rows[0]);
+  };
+
+  const employeeById = async (auth: Pick<AuthContext, 'organizationId' | 'legalEntityId'>, employeeId: string): Promise<EmployeeRow> => {
     const hasAssignments = await tableExists('TimeAttendanceLocationAssignment');
     const locationProjection = hasAssignments
-      ? `ARRAY(SELECT x."locationId" FROM "TimeAttendanceLocationAssignment" x WHERE x."organizationId"=u."organizationId" AND x."employeeId"=u."id" AND x."active"=TRUE) AS "locationIds"`
+      ? `ARRAY(SELECT x."locationId" FROM "TimeAttendanceLocationAssignment" x WHERE x."organizationId"=u."organizationId" AND x."legalEntityId"=$2 AND x."employeeId"=u."id" AND x."active"=TRUE) AS "locationIds"`
       : `ARRAY[]::text[] AS "locationIds"`;
     const rows = await prisma.$queryRawUnsafe<EmployeeRow[]>(
       `SELECT u."id",u."email",u."role"::text AS "role",
               COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email",u."id") AS "displayName",
-              p."department",p."jobTitle",COALESCE(p."employmentStatus",'ACTIVE') AS "employmentStatus",
-              p."hireDate",p."supervisorId",${locationProjection}
-       FROM "User" u
+              COALESCE(department."name",p."department") AS "department",COALESCE(employment."jobTitle",p."jobTitle") AS "jobTitle",
+              employment."status" AS "employmentStatus",employment."startsAt" AS "hireDate",employment."supervisorId",${locationProjection}
+       FROM "Employment" employment
+       JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+       LEFT JOIN "Department" department
+         ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+        AND department."id"=employment."departmentId"
        LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
        LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-       WHERE u."organizationId"=$1 AND u."id"=$2 LIMIT 1`,
-      organizationId,
+       WHERE u."organizationId"=$1 AND employment."legalEntityId"=$2 AND u."id"=$3
+       ORDER BY CASE WHEN employment."status"='TERMINATED' THEN 1 ELSE 0 END,employment."startsAt" DESC LIMIT 1`,
+      auth.organizationId,
+      selectedEntityId(auth),
       employeeId,
     );
     const employee = rows[0];
@@ -467,22 +535,32 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     return employee;
   };
 
-  const allEmployees = async (organizationId: string): Promise<EmployeeRow[]> => {
+  const allEmployees = async (auth: AuthContext): Promise<EmployeeRow[]> => {
     const hasAssignments = await tableExists('TimeAttendanceLocationAssignment');
     const locationProjection = hasAssignments
-      ? `ARRAY(SELECT x."locationId" FROM "TimeAttendanceLocationAssignment" x WHERE x."organizationId"=u."organizationId" AND x."employeeId"=u."id" AND x."active"=TRUE) AS "locationIds"`
+      ? `ARRAY(SELECT x."locationId" FROM "TimeAttendanceLocationAssignment" x WHERE x."organizationId"=u."organizationId" AND x."legalEntityId"=$2 AND x."employeeId"=u."id" AND x."active"=TRUE) AS "locationIds"`
       : `ARRAY[]::text[] AS "locationIds"`;
     const rows = await prisma.$queryRawUnsafe<EmployeeRow[]>(
-      `SELECT u."id",u."email",u."role"::text AS "role",
+      `WITH selected_employment AS (
+         SELECT DISTINCT ON ("userId") * FROM "Employment"
+         WHERE "organizationId"=$1 AND "legalEntityId"=$2
+         ORDER BY "userId",CASE WHEN "status"='TERMINATED' THEN 1 ELSE 0 END,"startsAt" DESC
+       )
+       SELECT u."id",u."email",u."role"::text AS "role",
               COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email",u."id") AS "displayName",
-              p."department",p."jobTitle",COALESCE(p."employmentStatus",'ACTIVE') AS "employmentStatus",
-              p."hireDate",p."supervisorId",${locationProjection}
-       FROM "User" u
+              COALESCE(department."name",p."department") AS "department",COALESCE(employment."jobTitle",p."jobTitle") AS "jobTitle",
+              employment."status" AS "employmentStatus",employment."startsAt" AS "hireDate",employment."supervisorId",${locationProjection}
+       FROM selected_employment employment
+       JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+       LEFT JOIN "Department" department
+         ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+        AND department."id"=employment."departmentId"
        LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
        LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-       WHERE u."organizationId"=$1 AND LOWER(COALESCE(u."email",'')) NOT LIKE '%@demo.spire.local'
+       WHERE LOWER(COALESCE(u."email",'')) NOT LIKE '%@demo.spire.local'
        ORDER BY COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email",u."id")`,
-      organizationId,
+      auth.organizationId,
+      selectedEntityId(auth),
     );
     return rows.map((employee) => ({
       ...employee,
@@ -493,10 +571,22 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
 
   const scopedEmployeeIds = async (auth: AuthContext): Promise<string[]> => {
     const identity = await actorIdentity(auth);
-    if (identity.isOwner || globalManagerRoles.has(auth.role)) {
+    if (identity.isOwner) {
       const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT "id" FROM "User" WHERE "organizationId"=$1`,
+        `SELECT DISTINCT "userId" AS "id" FROM "Employment" WHERE "organizationId"=$1 AND "legalEntityId"=$2`,
         auth.organizationId,
+        selectedEntityId(auth),
+      );
+      return rows.map((row) => String(row.id));
+    }
+    if (!(await actorHasSelectedEmployment(auth))) {
+      throw Object.assign(new Error('An active employment record in the selected company is required'), { status: 403 });
+    }
+    if (globalManagerRoles.has(auth.role)) {
+      const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT DISTINCT "userId" AS "id" FROM "Employment" WHERE "organizationId"=$1 AND "legalEntityId"=$2`,
+        auth.organizationId,
+        selectedEntityId(auth),
       );
       return rows.map((row) => String(row.id));
     }
@@ -506,10 +596,12 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       `SELECT DISTINCT target."employeeId"
        FROM "TimeAttendanceLocationAssignment" actor
        JOIN "TimeAttendanceLocationAssignment" target
-         ON target."organizationId"=actor."organizationId" AND target."locationId"=actor."locationId" AND target."active"=TRUE
-       WHERE actor."organizationId"=$1 AND actor."employeeId"=$2 AND actor."active"=TRUE
-         AND ($3::boolean=FALSE OR actor."isManager"=TRUE)`,
+         ON target."organizationId"=actor."organizationId" AND target."legalEntityId"=actor."legalEntityId"
+        AND target."locationId"=actor."locationId" AND target."active"=TRUE
+       WHERE actor."organizationId"=$1 AND actor."legalEntityId"=$2 AND actor."employeeId"=$3 AND actor."active"=TRUE
+         AND ($4::boolean=FALSE OR actor."isManager"=TRUE)`,
       auth.organizationId,
+      selectedEntityId(auth),
       auth.userId,
       managerOnly,
     );
@@ -523,7 +615,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
 
   const requireWorkflowManager = async (auth: AuthContext) => {
     const identity = await actorIdentity(auth);
-    if (!identity.isOwner && !workflowManagerRoles.has(auth.role)) {
+    if (!identity.isOwner && (!(await actorHasSelectedEmployment(auth)) || !workflowManagerRoles.has(auth.role))) {
       throw Object.assign(new Error('Only the Enterprise Owner, Human Resources, or an Administrator may configure approval workflows'), { status: 403 });
     }
     return identity;
@@ -533,12 +625,13 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     if (auth.role === UserRole.AUDITOR) throw Object.assign(new Error('Auditor access is read only'), { status: 403 });
   };
 
-  const logEvent = async (organizationId: string, requestId: string, actorUserId: string | null, eventType: string, details: object = {}) => {
+  const logEvent = async (organizationId: string, legalEntityId: string, requestId: string, actorUserId: string | null, eventType: string, details: object = {}) => {
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "EmployeeWorkflowEvent" ("id","organizationId","requestId","actorUserId","eventType","details")
-       VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
+      `INSERT INTO "EmployeeWorkflowEvent" ("id","organizationId","legalEntityId","requestId","actorUserId","eventType","details")
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
       randomUUID(),
       organizationId,
+      legalEntityId,
       requestId,
       actorUserId,
       eventType,
@@ -560,6 +653,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
 
   const createNotification = async (input: {
     organizationId: string;
+    legalEntityId: string;
     userId: string;
     notificationType: string;
     title: string;
@@ -573,12 +667,13 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     const id = randomUUID();
     const inserted = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
       `INSERT INTO "EmployeeNotification"
-        ("id","organizationId","userId","notificationType","title","message","actionUrl","relatedType","relatedId","dedupeKey","emailStatus")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        ("id","organizationId","legalEntityId","userId","notificationType","title","message","actionUrl","relatedType","relatedId","dedupeKey","emailStatus")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        ON CONFLICT ("organizationId","userId","dedupeKey") DO NOTHING
        RETURNING "id"`,
       id,
       input.organizationId,
+      input.legalEntityId,
       input.userId,
       input.notificationType,
       input.title,
@@ -689,21 +784,23 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     },
   ];
 
-  const ensureDefaults = async (organizationId: string, actorUserId: string) => {
+  const ensureDefaults = async (auth: AuthContext) => {
     await ready();
+    const legalEntityId = selectedEntityId(auth);
     for (const definition of defaultDefinitions) {
       await prisma.$executeRawUnsafe(
         `INSERT INTO "EmployeeWorkflowDefinition"
-          ("id","organizationId","requestType","name","description","steps","enabled","employeeCanSubmit","createdById","updatedById")
-         VALUES ($1,$2,$3,$4,$5,$6::jsonb,TRUE,TRUE,$7,$7)
-         ON CONFLICT ("organizationId","requestType") DO NOTHING`,
+          ("id","organizationId","legalEntityId","requestType","name","description","steps","enabled","employeeCanSubmit","createdById","updatedById")
+         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,TRUE,TRUE,$8,$8)
+         ON CONFLICT ("organizationId","legalEntityId","requestType") WHERE "requestType" IS NOT NULL DO NOTHING`,
         randomUUID(),
-        organizationId,
+        auth.organizationId,
+        legalEntityId,
         definition.requestType,
         definition.name,
         definition.description,
         JSON.stringify(definition.steps),
-        actorUserId,
+        auth.userId,
       );
     }
   };
@@ -716,18 +813,26 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     return payload;
   };
 
-  const resolveApprovers = async (organizationId: string, employee: EmployeeRow, step: WorkflowStep): Promise<string[]> => {
+  const resolveApprovers = async (organizationId: string, legalEntityId: string, employee: EmployeeRow, step: WorkflowStep): Promise<string[]> => {
     let rows: Array<{ id: string }> = [];
     if (step.approverType === 'SPECIFIC_USER' && step.userId) {
       rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT "id" FROM "User" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,
+        `SELECT u."id" FROM "Employment" employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+         WHERE u."organizationId"=$1 AND employment."legalEntityId"=$2 AND u."id"=$3
+           AND employment."status" IN ('ACTIVE','LEAVE') LIMIT 1`,
         organizationId,
+        legalEntityId,
         step.userId,
       );
     } else if (step.approverType === 'SUPERVISOR' && employee.supervisorId) {
       rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT "id" FROM "User" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,
+        `SELECT u."id" FROM "Employment" employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+         WHERE u."organizationId"=$1 AND employment."legalEntityId"=$2 AND u."id"=$3
+           AND employment."status" IN ('ACTIVE','LEAVE') LIMIT 1`,
         organizationId,
+        legalEntityId,
         employee.supervisorId,
       );
     } else if (step.approverType === 'LOCATION_MANAGER' && employee.locationIds.length && await tableExists('TimeAttendanceLocationAssignment')) {
@@ -736,24 +841,32 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
          FROM "TimeAttendanceLocationAssignment" x
          JOIN "User" u ON u."id"=x."employeeId" AND u."organizationId"=x."organizationId"
          LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE x."organizationId"=$1 AND x."locationId"=ANY($2::text[]) AND x."active"=TRUE AND x."isManager"=TRUE
-           AND COALESCE(p."employmentStatus",'ACTIVE')<>'TERMINATED'`,
+         JOIN "Employment" employment
+           ON employment."organizationId"=x."organizationId" AND employment."legalEntityId"=x."legalEntityId"
+          AND employment."userId"=x."employeeId" AND employment."status" IN ('ACTIVE','LEAVE')
+         WHERE x."organizationId"=$1 AND x."legalEntityId"=$2 AND x."locationId"=ANY($3::text[])
+           AND x."active"=TRUE AND x."isManager"=TRUE`,
         organizationId,
+        legalEntityId,
         employee.locationIds,
       );
     } else if (step.approverType === 'HR') {
       rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT u."id" FROM "User" u
-         LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE u."organizationId"=$1 AND u."role"::text='HR_MANAGER' AND COALESCE(p."employmentStatus",'ACTIVE')<>'TERMINATED'`,
+        `SELECT u."id" FROM "Employment" employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+         WHERE u."organizationId"=$1 AND employment."legalEntityId"=$2 AND u."role"::text='HR_MANAGER'
+           AND employment."status" IN ('ACTIVE','LEAVE')`,
         organizationId,
+        legalEntityId,
       );
     } else if (step.approverType === 'ADMINISTRATOR') {
       rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT u."id" FROM "User" u
-         LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE u."organizationId"=$1 AND u."role"::text='ADMINISTRATOR' AND COALESCE(p."employmentStatus",'ACTIVE')<>'TERMINATED'`,
+        `SELECT u."id" FROM "Employment" employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+         WHERE u."organizationId"=$1 AND employment."legalEntityId"=$2 AND u."role"::text='ADMINISTRATOR'
+           AND employment."status" IN ('ACTIVE','LEAVE')`,
         organizationId,
+        legalEntityId,
       );
     } else if (step.approverType === 'OWNER') {
       rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
@@ -765,8 +878,12 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
 
     if (!rows.length && step.approverType === 'LOCATION_MANAGER' && employee.supervisorId) {
       rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-        `SELECT "id" FROM "User" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,
+        `SELECT u."id" FROM "Employment" employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+         WHERE u."organizationId"=$1 AND employment."legalEntityId"=$2 AND u."id"=$3
+           AND employment."status" IN ('ACTIVE','LEAVE') LIMIT 1`,
         organizationId,
+        legalEntityId,
         employee.supervisorId,
       );
     }
@@ -780,10 +897,11 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     return [...new Set(rows.map((row) => String(row.id)).filter(Boolean))];
   };
 
-  const requestById = async (organizationId: string, requestId: string): Promise<WorkflowRequestRow> => {
+  const requestById = async (organizationId: string, legalEntityId: string, requestId: string): Promise<WorkflowRequestRow> => {
     const rows = await prisma.$queryRawUnsafe<WorkflowRequestRow[]>(
-      `SELECT * FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,
+      `SELECT * FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`,
       organizationId,
+      legalEntityId,
       requestId,
     );
     if (!rows[0]) throw Object.assign(new Error('Employee request was not found'), { status: 404 });
@@ -794,15 +912,18 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
   const notifyCurrentApprovers = async (request: WorkflowRequestRow, employee: EmployeeRow) => {
     const approvals = await prisma.$queryRawUnsafe<Array<{ approverUserId: string; sequence: number; label: string | null }>>(
       `SELECT "approverUserId","sequence","label" FROM "EmployeeWorkflowApproval"
-       WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'
-         AND "sequence"=(SELECT MIN("sequence") FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING')`,
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='PENDING'
+         AND "sequence"=(SELECT MIN("sequence") FROM "EmployeeWorkflowApproval"
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='PENDING')`,
       request.organizationId,
+      request.legalEntityId,
       request.id,
     );
     for (const approval of approvals) {
       if (!approval.approverUserId) continue;
       await createNotification({
         organizationId: request.organizationId,
+        legalEntityId: request.legalEntityId,
         userId: approval.approverUserId,
         notificationType: 'APPROVAL_REQUIRED',
         title: `Approval required: ${request.title}`,
@@ -819,6 +940,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
   const notifyEmployee = async (request: WorkflowRequestRow, employee: EmployeeRow, title: string, message: string, key: string) => {
     await createNotification({
       organizationId: request.organizationId,
+      legalEntityId: request.legalEntityId,
       userId: employee.id,
       notificationType: 'REQUEST_UPDATE',
       title,
@@ -833,7 +955,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
 
   const applyApprovedRequest = async (request: WorkflowRequestRow, actorUserId: string) => {
     const payload = asObject(request.payload);
-    const employee = await employeeById(request.organizationId, request.employeeId);
+    const employee = await employeeById(request, request.employeeId);
     if (request.requestType === 'PROFILE_CHANGE') {
       if (isOwnerEmail(employee.email) && actorUserId !== employee.id) {
         throw Object.assign(new Error('The Enterprise Owner profile cannot be changed by another user'), { status: 403 });
@@ -895,9 +1017,12 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
           actorUserId,
         );
         await prisma.$executeRawUnsafe(
-          `UPDATE "EmployeeWorkflowRequest" SET "linkedResourceType"='TimeAttendanceRequest',"linkedResourceId"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
+          `UPDATE "EmployeeWorkflowRequest" SET "linkedResourceType"='TimeAttendanceRequest',"linkedResourceId"=$1,"updatedAt"=NOW()
+           WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
           linkedId,
           request.id,
+          request.organizationId,
+          request.legalEntityId,
         );
       }
     } else if (request.requestType === 'DOCUMENT_CORRECTION' && await tableExists('EmployeeDocument')) {
@@ -926,70 +1051,88 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       );
       if (!rows[0]) throw Object.assign(new Error('The requested employee document was not found'), { status: 404 });
       await prisma.$executeRawUnsafe(
-        `UPDATE "EmployeeWorkflowRequest" SET "linkedResourceType"='EmployeeDocument',"linkedResourceId"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
+        `UPDATE "EmployeeWorkflowRequest" SET "linkedResourceType"='EmployeeDocument',"linkedResourceId"=$1,"updatedAt"=NOW()
+         WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
         input.documentId,
         request.id,
+        request.organizationId,
+        request.legalEntityId,
       );
     }
-    await logEvent(request.organizationId, request.id, actorUserId, 'APPROVED_REQUEST_APPLIED', { requestType: request.requestType });
+    await logEvent(request.organizationId, request.legalEntityId, request.id, actorUserId, 'APPROVED_REQUEST_APPLIED', { requestType: request.requestType });
   };
 
-  const advanceRequest = async (organizationId: string, requestId: string, actorUserId: string) => {
-    let request = await requestById(organizationId, requestId);
+  const advanceRequest = async (organizationId: string, legalEntityId: string, requestId: string, actorUserId: string) => {
+    let request = await requestById(organizationId, legalEntityId, requestId);
     const rejected = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-      `SELECT "id" FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='REJECTED' LIMIT 1`,
+      `SELECT "id" FROM "EmployeeWorkflowApproval"
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='REJECTED' LIMIT 1`,
       organizationId,
+      legalEntityId,
       requestId,
     );
-    const employee = await employeeById(organizationId, request.employeeId);
+    const employee = await employeeById(request, request.employeeId);
     if (rejected[0]) {
       await prisma.$executeRawUnsafe(
-        `UPDATE "EmployeeWorkflowApproval" SET "status"='SKIPPED',"updatedAt"=NOW() WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'`,
+        `UPDATE "EmployeeWorkflowApproval" SET "status"='SKIPPED',"updatedAt"=NOW()
+         WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='PENDING'`,
         organizationId,
+        legalEntityId,
         requestId,
       );
       await prisma.$executeRawUnsafe(
-        `UPDATE "EmployeeWorkflowRequest" SET "status"='REJECTED',"currentSequence"=NULL,"resolvedAt"=NOW(),"resolvedById"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
+        `UPDATE "EmployeeWorkflowRequest" SET "status"='REJECTED',"currentSequence"=NULL,"resolvedAt"=NOW(),"resolvedById"=$1,"updatedAt"=NOW()
+         WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
         actorUserId,
         requestId,
+        organizationId,
+        legalEntityId,
       );
-      request = await requestById(organizationId, requestId);
+      request = await requestById(organizationId, legalEntityId, requestId);
       await notifyEmployee(request, employee, `Request not approved: ${request.title}`, 'Your request was reviewed and was not approved. Open My Workplace to view the decision and comments.', 'request-rejected');
       return request;
     }
 
     const pending = await prisma.$queryRawUnsafe<Array<{ sequence: number }>>(
-      `SELECT MIN("sequence")::int AS "sequence" FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'`,
+      `SELECT MIN("sequence")::int AS "sequence" FROM "EmployeeWorkflowApproval"
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='PENDING'`,
       organizationId,
+      legalEntityId,
       requestId,
     );
     const nextSequence = pending[0]?.sequence ?? null;
     if (nextSequence != null) {
       await prisma.$executeRawUnsafe(
-        `UPDATE "EmployeeWorkflowRequest" SET "status"='IN_REVIEW',"currentSequence"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
+        `UPDATE "EmployeeWorkflowRequest" SET "status"='IN_REVIEW',"currentSequence"=$1,"updatedAt"=NOW()
+         WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
         nextSequence,
         requestId,
+        organizationId,
+        legalEntityId,
       );
-      request = await requestById(organizationId, requestId);
+      request = await requestById(organizationId, legalEntityId, requestId);
       await notifyCurrentApprovers(request, employee);
       return request;
     }
 
     await prisma.$executeRawUnsafe(
-      `UPDATE "EmployeeWorkflowRequest" SET "status"='APPROVED',"currentSequence"=NULL,"resolvedAt"=NOW(),"resolvedById"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
+      `UPDATE "EmployeeWorkflowRequest" SET "status"='APPROVED',"currentSequence"=NULL,"resolvedAt"=NOW(),"resolvedById"=$1,"updatedAt"=NOW()
+       WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
       actorUserId,
       requestId,
+      organizationId,
+      legalEntityId,
     );
-    request = await requestById(organizationId, requestId);
+    request = await requestById(organizationId, legalEntityId, requestId);
     await applyApprovedRequest(request, actorUserId);
-    request = await requestById(organizationId, requestId);
+    request = await requestById(organizationId, legalEntityId, requestId);
     await notifyEmployee(request, employee, `Request approved: ${request.title}`, 'Your request completed the approval workflow. Open My Workplace to review the final status.', 'request-approved');
     return request;
   };
 
   const createWorkflowRequest = async (auth: AuthContext, rawInput: unknown) => {
-    await ensureDefaults(auth.organizationId, auth.userId);
-    if (!auth.legalEntityId) throw Object.assign(new Error('Company access context is required'), { status: 409 });
+    await ensureDefaults(auth);
+    const legalEntityId = selectedEntityId(auth);
     const input = requestSchema.parse(rawInput);
     const payload = validatePayload(input.requestType, input.payload);
     const definitions = await prisma.$queryRawUnsafe<Array<{
@@ -999,14 +1142,15 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       steps: unknown;
     }>>(
       `SELECT "id","enabled","employeeCanSubmit","steps" FROM "EmployeeWorkflowDefinition"
-       WHERE "organizationId"=$1 AND "requestType"=$2 LIMIT 1`,
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestType"=$3 LIMIT 1`,
       auth.organizationId,
+      legalEntityId,
       input.requestType,
     );
     const definition = definitions[0];
     if (!definition?.enabled) throw Object.assign(new Error('This employee request workflow is currently disabled'), { status: 409 });
     if (!definition.employeeCanSubmit) throw Object.assign(new Error('Employees cannot submit this request type directly'), { status: 403 });
-    const employee = await employeeById(auth.organizationId, auth.userId);
+    const employee = await employeeById(auth, auth.userId);
     let steps = asSteps(definition.steps);
     if (isOwnerEmail(employee.email)) steps = [{ sequence: 1, approverType: 'OWNER', approvalMode: 'ANY', label: 'Enterprise Owner self-approval' }];
     const requestId = randomUUID();
@@ -1018,7 +1162,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,'SUBMITTED',NOW())`,
         requestId,
         auth.organizationId,
-        auth.legalEntityId,
+        legalEntityId,
         auth.userId,
         input.requestType,
         input.title,
@@ -1027,55 +1171,60 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
         input.priority,
       );
       for (const step of steps) {
-        const approverIds = await resolveApprovers(auth.organizationId, employee, step);
+        const approverIds = await resolveApprovers(auth.organizationId, legalEntityId, employee, step);
         if (!approverIds.length) {
           await tx.$executeRawUnsafe(
             `INSERT INTO "EmployeeWorkflowApproval"
-              ("id","organizationId","requestId","sequence","approvalMode","approverType","approverUserId","label","status","decisionNotes")
-             VALUES ($1,$2,$3,$4,$5,$6,NULL,$7,'SKIPPED','No eligible approver was available')`,
-            randomUUID(), auth.organizationId, requestId, step.sequence, step.approvalMode, step.approverType, step.label || null,
+              ("id","organizationId","legalEntityId","requestId","sequence","approvalMode","approverType","approverUserId","label","status","decisionNotes")
+             VALUES ($1,$2,$3,$4,$5,$6,$7,NULL,$8,'SKIPPED','No eligible approver was available')`,
+            randomUUID(), auth.organizationId, legalEntityId, requestId, step.sequence, step.approvalMode, step.approverType, step.label || null,
           );
           continue;
         }
         for (const approverId of approverIds) {
           await tx.$executeRawUnsafe(
             `INSERT INTO "EmployeeWorkflowApproval"
-              ("id","organizationId","requestId","sequence","approvalMode","approverType","approverUserId","label","status")
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'PENDING')`,
-            randomUUID(), auth.organizationId, requestId, step.sequence, step.approvalMode, step.approverType, approverId, step.label || null,
+              ("id","organizationId","legalEntityId","requestId","sequence","approvalMode","approverType","approverUserId","label","status")
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'PENDING')`,
+            randomUUID(), auth.organizationId, legalEntityId, requestId, step.sequence, step.approvalMode, step.approverType, approverId, step.label || null,
           );
         }
       }
       await tx.$executeRawUnsafe(
-        `INSERT INTO "EmployeeWorkflowEvent" ("id","organizationId","requestId","actorUserId","eventType","details")
-         VALUES ($1,$2,$3,$4,'REQUEST_SUBMITTED',$5::jsonb)`,
-        randomUUID(), auth.organizationId, requestId, auth.userId, JSON.stringify({ requestType: input.requestType, priority: input.priority }),
+        `INSERT INTO "EmployeeWorkflowEvent" ("id","organizationId","legalEntityId","requestId","actorUserId","eventType","details")
+         VALUES ($1,$2,$3,$4,$5,'REQUEST_SUBMITTED',$6::jsonb)`,
+        randomUUID(), auth.organizationId, legalEntityId, requestId, auth.userId, JSON.stringify({ requestType: input.requestType, priority: input.priority }),
       );
     });
 
-    let request = await requestById(auth.organizationId, requestId);
+    let request = await requestById(auth.organizationId, legalEntityId, requestId);
     const pending = await prisma.$queryRawUnsafe<Array<{ sequence: number }>>(
-      `SELECT MIN("sequence")::int AS "sequence" FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'`,
+      `SELECT MIN("sequence")::int AS "sequence" FROM "EmployeeWorkflowApproval"
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='PENDING'`,
       auth.organizationId,
+      legalEntityId,
       requestId,
     );
     const firstSequence = pending[0]?.sequence ?? null;
     if (firstSequence == null) {
-      request = await advanceRequest(auth.organizationId, requestId, auth.userId);
+      request = await advanceRequest(auth.organizationId, legalEntityId, requestId, auth.userId);
     } else {
       await prisma.$executeRawUnsafe(
-        `UPDATE "EmployeeWorkflowRequest" SET "status"='IN_REVIEW',"currentSequence"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
+        `UPDATE "EmployeeWorkflowRequest" SET "status"='IN_REVIEW',"currentSequence"=$1,"updatedAt"=NOW()
+         WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
         firstSequence,
         requestId,
+        auth.organizationId,
+        legalEntityId,
       );
-      request = await requestById(auth.organizationId, requestId);
+      request = await requestById(auth.organizationId, legalEntityId, requestId);
       await notifyCurrentApprovers(request, employee);
     }
-    await audit?.(auth, 'SUBMIT_EMPLOYEE_WORKFLOW_REQUEST', 'EmployeeWorkflowRequest', requestId, { requestType: input.requestType, priority: input.priority });
+    await audit?.(auth, 'SUBMIT_EMPLOYEE_WORKFLOW_REQUEST', 'EmployeeWorkflowRequest', requestId, { requestType: input.requestType, priority: input.priority, legalEntityId });
     return request;
   };
 
-  const commentsForRequest = async (organizationId: string, requestId: string, includeManagement: boolean, includeHr: boolean) => {
+  const commentsForRequest = async (organizationId: string, legalEntityId: string, requestId: string, includeManagement: boolean, includeHr: boolean) => {
     const allowed: CommentVisibility[] = ['EMPLOYEE_VISIBLE'];
     if (includeManagement) allowed.push('MANAGEMENT_ONLY');
     if (includeHr) allowed.push('HR_CONFIDENTIAL');
@@ -1086,16 +1235,18 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
        LEFT JOIN "User" u ON u."id"=c."authorUserId"
        LEFT JOIN "EmployeePortalCredential" pc ON pc."userId"=u."id"
        LEFT JOIN "EmployeeManagementProfile" pp ON pp."userId"=u."id" AND pp."organizationId"=u."organizationId"
-       WHERE c."organizationId"=$1 AND c."requestId"=$2 AND c."visibility"=ANY($3::text[])
+       WHERE c."organizationId"=$1 AND c."legalEntityId"=$2 AND c."requestId"=$3 AND c."visibility"=ANY($4::text[])
        ORDER BY c."createdAt"`,
       organizationId,
+      legalEntityId,
       requestId,
       allowed,
     );
   };
 
   const requestDetails = async (auth: AuthContext, requestId: string, employeeView = false) => {
-    const request = await requestById(auth.organizationId, requestId);
+    const legalEntityId = selectedEntityId(auth);
+    const request = await requestById(auth.organizationId, legalEntityId, requestId);
     if (employeeView) {
       if (request.employeeId !== auth.userId) throw Object.assign(new Error('Employee request was not found'), { status: 404 });
     } else {
@@ -1110,24 +1261,29 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
          LEFT JOIN "User" u ON u."id"=a."approverUserId"
          LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
          LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE a."organizationId"=$1 AND a."requestId"=$2 ORDER BY a."sequence",a."createdAt"`,
+         WHERE a."organizationId"=$1 AND a."legalEntityId"=$2 AND a."requestId"=$3 ORDER BY a."sequence",a."createdAt"`,
         auth.organizationId,
+        legalEntityId,
         request.id,
       ),
-      commentsForRequest(auth.organizationId, request.id, !employeeView, includeHr),
+      commentsForRequest(auth.organizationId, legalEntityId, request.id, !employeeView, includeHr),
       prisma.$queryRawUnsafe<any[]>(
         `SELECT "id","actorUserId","eventType","details","createdAt" FROM "EmployeeWorkflowEvent"
-         WHERE "organizationId"=$1 AND "requestId"=$2 ORDER BY "createdAt"`,
+         WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 ORDER BY "createdAt"`,
         auth.organizationId,
+        legalEntityId,
         request.id,
       ),
-      employeeById(auth.organizationId, request.employeeId),
+      employeeById(auth, request.employeeId),
     ]);
     return { request, employee, approvals, comments, events };
   };
 
   const managerPermissions = async (auth: AuthContext) => {
     const actor = await actorIdentity(auth);
+    if (!actor.isOwner && !(await actorHasSelectedEmployment(auth))) {
+      throw Object.assign(new Error('An active employment record in the selected company is required'), { status: 403 });
+    }
     return {
       actorIsOwner: actor.isOwner,
       readOnly: auth.role === UserRole.AUDITOR,
@@ -1143,33 +1299,38 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
-      await ensureDefaults(auth.organizationId, auth.userId);
-      const employee = await employeeById(auth.organizationId, auth.userId);
+      const legalEntityId = selectedEntityId(auth);
+      await ensureDefaults(auth);
+      const employee = await employeeById(auth, auth.userId);
       const [definitions, requests, approvals, comments, feedback, recognition, notifications, managerRows] = await Promise.all([
         prisma.$queryRawUnsafe<any[]>(
           `SELECT "requestType","name","description" FROM "EmployeeWorkflowDefinition"
-           WHERE "organizationId"=$1 AND "enabled"=TRUE AND "employeeCanSubmit"=TRUE ORDER BY "name"`,
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "enabled"=TRUE AND "employeeCanSubmit"=TRUE ORDER BY "name"`,
           auth.organizationId,
+          legalEntityId,
         ),
         prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "employeeId"=$2 ORDER BY "createdAt" DESC LIMIT 250`,
+          `SELECT * FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3 ORDER BY "createdAt" DESC LIMIT 250`,
           auth.organizationId,
+          legalEntityId,
           auth.userId,
         ),
         prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","requestId","sequence","approvalMode","approverType","label","status","decisionNotes","decidedAt","createdAt"
-           FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "requestId" IN
-             (SELECT "id" FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "employeeId"=$2)
+           FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId" IN
+             (SELECT "id" FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3)
            ORDER BY "sequence","createdAt"`,
           auth.organizationId,
+          legalEntityId,
           auth.userId,
         ),
         prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","requestId","authorUserId","visibility","body","createdAt" FROM "EmployeeWorkflowComment"
-           WHERE "organizationId"=$1 AND "visibility"='EMPLOYEE_VISIBLE' AND "requestId" IN
-             (SELECT "id" FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "employeeId"=$2)
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "visibility"='EMPLOYEE_VISIBLE' AND "requestId" IN
+             (SELECT "id" FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3)
            ORDER BY "createdAt"`,
           auth.organizationId,
+          legalEntityId,
           auth.userId,
         ),
         prisma.$queryRawUnsafe<any[]>(
@@ -1178,9 +1339,11 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
            LEFT JOIN "User" u ON u."id"=f."authorUserId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE f."organizationId"=$1 AND f."employeeId"=$2 AND f."status"='ACTIVE' AND f."visibility"='EMPLOYEE_VISIBLE'
+           WHERE f."organizationId"=$1 AND f."legalEntityId"=$2 AND f."employeeId"=$3
+             AND f."status"='ACTIVE' AND f."visibility"='EMPLOYEE_VISIBLE'
            ORDER BY f."createdAt" DESC LIMIT 250`,
           auth.organizationId,
+          legalEntityId,
           auth.userId,
         ),
         prisma.$queryRawUnsafe<any[]>(
@@ -1189,24 +1352,33 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
            LEFT JOIN "User" u ON u."id"=r."nominatorUserId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE r."organizationId"=$1 AND r."employeeId"=$2 AND r."status"='ACTIVE' AND r."visibility"<>'MANAGEMENT_ONLY'
+           WHERE r."organizationId"=$1 AND (r."legalEntityId"=$2 OR (r."legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$1 AND entity."id"=$2 AND entity."code"='SCLS'
+           ))) AND r."employeeId"=$3 AND r."status"='ACTIVE' AND r."visibility"<>'MANAGEMENT_ONLY'
            ORDER BY r."awardDate" DESC,r."createdAt" DESC LIMIT 250`,
           auth.organizationId,
+          legalEntityId,
           auth.userId,
         ),
         prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "EmployeeNotification" WHERE "organizationId"=$1 AND "userId"=$2 AND "status"<>'ARCHIVED'
+          `SELECT * FROM "EmployeeNotification" WHERE "organizationId"=$1 AND ("legalEntityId"=$2 OR ("legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$1 AND entity."id"=$2 AND entity."code"='SCLS'
+           ))) AND "userId"=$3 AND "status"<>'ARCHIVED'
            ORDER BY CASE WHEN "status"='UNREAD' THEN 0 ELSE 1 END,"createdAt" DESC LIMIT 300`,
           auth.organizationId,
+          legalEntityId,
           auth.userId,
         ),
         employee.supervisorId
           ? prisma.$queryRawUnsafe<any[]>(
             `SELECT u."id",u."email",COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "displayName"
-             FROM "User" u LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
+             FROM "Employment" employment
+             JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+             LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
              LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-             WHERE u."organizationId"=$1 AND u."id"=$2 LIMIT 1`,
+             WHERE u."organizationId"=$1 AND employment."legalEntityId"=$2 AND u."id"=$3 LIMIT 1`,
             auth.organizationId,
+            legalEntityId,
             employee.supervisorId,
           )
           : Promise.resolve([]),
@@ -1253,18 +1425,19 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
-      const request = await requestById(auth.organizationId, req.params.requestId);
+      const legalEntityId = selectedEntityId(auth);
+      const request = await requestById(auth.organizationId, legalEntityId, req.params.requestId);
       if (request.employeeId !== auth.userId) return void res.status(404).json({ error: 'Employee request was not found' });
       const input = commentSchema.parse({ ...req.body, visibility: 'EMPLOYEE_VISIBLE' });
       const id = randomUUID();
       await prisma.$executeRawUnsafe(
-        `INSERT INTO "EmployeeWorkflowComment" ("id","organizationId","requestId","authorUserId","visibility","body")
-         VALUES ($1,$2,$3,$4,'EMPLOYEE_VISIBLE',$5)`,
-        id, auth.organizationId, request.id, auth.userId, input.body,
+        `INSERT INTO "EmployeeWorkflowComment" ("id","organizationId","legalEntityId","requestId","authorUserId","visibility","body")
+         VALUES ($1,$2,$3,$4,$5,'EMPLOYEE_VISIBLE',$6)`,
+        id, auth.organizationId, legalEntityId, request.id, auth.userId, input.body,
       );
-      await logEvent(auth.organizationId, request.id, auth.userId, 'EMPLOYEE_COMMENT_ADDED', { commentId: id });
-      await notifyCurrentApprovers(request, await employeeById(auth.organizationId, auth.userId));
-      await audit?.(auth, 'ADD_EMPLOYEE_REQUEST_COMMENT', 'EmployeeWorkflowRequest', request.id, { commentId: id });
+      await logEvent(auth.organizationId, legalEntityId, request.id, auth.userId, 'EMPLOYEE_COMMENT_ADDED', { commentId: id });
+      await notifyCurrentApprovers(request, await employeeById(auth, auth.userId));
+      await audit?.(auth, 'ADD_EMPLOYEE_REQUEST_COMMENT', 'EmployeeWorkflowRequest', request.id, { commentId: id, legalEntityId });
       res.status(201).json({ data: { id } });
     } catch (error) { next(error); }
   });
@@ -1273,23 +1446,28 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
-      const request = await requestById(auth.organizationId, req.params.requestId);
+      const legalEntityId = selectedEntityId(auth);
+      const request = await requestById(auth.organizationId, legalEntityId, req.params.requestId);
       if (request.employeeId !== auth.userId) return void res.status(404).json({ error: 'Employee request was not found' });
       if (!['SUBMITTED', 'IN_REVIEW'].includes(request.status)) return void res.status(409).json({ error: 'Only an open request can be cancelled' });
       await prisma.$executeRawUnsafe(
-        `UPDATE "EmployeeWorkflowRequest" SET "status"='CANCELLED',"currentSequence"=NULL,"resolvedAt"=NOW(),"resolvedById"=$1,"updatedAt"=NOW() WHERE "id"=$2`,
+        `UPDATE "EmployeeWorkflowRequest" SET "status"='CANCELLED',"currentSequence"=NULL,"resolvedAt"=NOW(),"resolvedById"=$1,"updatedAt"=NOW()
+         WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
         auth.userId,
         request.id,
+        auth.organizationId,
+        legalEntityId,
       );
       await prisma.$executeRawUnsafe(
         `UPDATE "EmployeeWorkflowApproval" SET "status"='SKIPPED',"decisionNotes"='Request cancelled by employee',"updatedAt"=NOW()
-         WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'`,
+         WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='PENDING'`,
         auth.organizationId,
+        legalEntityId,
         request.id,
       );
-      await logEvent(auth.organizationId, request.id, auth.userId, 'REQUEST_CANCELLED', {});
-      await audit?.(auth, 'CANCEL_EMPLOYEE_WORKFLOW_REQUEST', 'EmployeeWorkflowRequest', request.id);
-      res.json({ data: await requestById(auth.organizationId, request.id) });
+      await logEvent(auth.organizationId, legalEntityId, request.id, auth.userId, 'REQUEST_CANCELLED', {});
+      await audit?.(auth, 'CANCEL_EMPLOYEE_WORKFLOW_REQUEST', 'EmployeeWorkflowRequest', request.id, { legalEntityId });
+      res.json({ data: await requestById(auth.organizationId, legalEntityId, request.id) });
     } catch (error) { next(error); }
   });
 
@@ -1297,13 +1475,16 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
+      const legalEntityId = selectedEntityId(auth);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `UPDATE "EmployeeTeamFeedback" SET "acknowledgedAt"=NOW(),"acknowledgedById"=$1,"updatedAt"=NOW()
-         WHERE "id"=$2 AND "organizationId"=$3 AND "employeeId"=$1 AND "status"='ACTIVE' AND "visibility"='EMPLOYEE_VISIBLE'
+         WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4 AND "employeeId"=$1
+           AND "status"='ACTIVE' AND "visibility"='EMPLOYEE_VISIBLE'
          RETURNING "id","acknowledgedAt"`,
         auth.userId,
         req.params.feedbackId,
         auth.organizationId,
+        legalEntityId,
       );
       if (!rows[0]) return void res.status(404).json({ error: 'Feedback record was not found' });
       await audit?.(auth, 'ACKNOWLEDGE_EMPLOYEE_FEEDBACK', 'EmployeeTeamFeedback', req.params.feedbackId);
@@ -1315,12 +1496,17 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
+      const legalEntityId = selectedEntityId(auth);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `UPDATE "EmployeeNotification" SET "status"='READ',"readAt"=COALESCE("readAt",NOW()),"updatedAt"=NOW()
-         WHERE "id"=$1 AND "organizationId"=$2 AND "userId"=$3 RETURNING "id","status","readAt"`,
+         WHERE "id"=$1 AND "organizationId"=$2 AND "userId"=$3
+           AND ("legalEntityId"=$4 OR ("legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$2 AND entity."id"=$4 AND entity."code"='SCLS'
+           ))) RETURNING "id","status","readAt"`,
         req.params.notificationId,
         auth.organizationId,
         auth.userId,
+        legalEntityId,
       );
       if (!rows[0]) return void res.status(404).json({ error: 'Notification was not found' });
       res.json({ data: rows[0] });
@@ -1331,11 +1517,16 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
+      const legalEntityId = selectedEntityId(auth);
       const count = await prisma.$executeRawUnsafe(
         `UPDATE "EmployeeNotification" SET "status"='READ',"readAt"=COALESCE("readAt",NOW()),"updatedAt"=NOW()
-         WHERE "organizationId"=$1 AND "userId"=$2 AND "status"='UNREAD'`,
+         WHERE "organizationId"=$1 AND "userId"=$2 AND "status"='UNREAD'
+           AND ("legalEntityId"=$3 OR ("legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$1 AND entity."id"=$3 AND entity."code"='SCLS'
+           )))`,
         auth.organizationId,
         auth.userId,
+        legalEntityId,
       );
       res.json({ data: { updated: count } });
     } catch (error) { next(error); }
@@ -1345,29 +1536,30 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
-      await ensureDefaults(auth.organizationId, auth.userId);
+      const legalEntityId = selectedEntityId(auth);
+      await ensureDefaults(auth);
       const allowedIds = await scopedEmployeeIds(auth);
-      const employees = (await allEmployees(auth.organizationId)).filter((employee) => allowedIds.includes(employee.id));
+      const employees = (await allEmployees(auth)).filter((employee) => allowedIds.includes(employee.id));
       const permissions = await managerPermissions(auth);
-      const approvalWhere = permissions.actorIsOwner || globalManagerRoles.has(auth.role)
-        ? `a."organizationId"=$1 AND a."status"='PENDING'`
-        : `a."organizationId"=$1 AND a."status"='PENDING' AND a."approverUserId"=$2`;
-      const approvalArgs = permissions.actorIsOwner || globalManagerRoles.has(auth.role)
-        ? [auth.organizationId]
-        : [auth.organizationId, auth.userId];
+      const canReviewAll = permissions.actorIsOwner || globalManagerRoles.has(auth.role);
       const [pendingApprovals, recentRequests, recentRecognition, followUps, notifications] = await Promise.all([
         prisma.$queryRawUnsafe<any[]>(
           `SELECT a."id" AS "approvalId",a."requestId",a."sequence",a."approvalMode",a."approverType",a."label",
                   r."employeeId",r."requestType",r."title",r."description",r."priority",r."status",r."createdAt",
                   COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email",r."employeeId") AS "employeeName"
            FROM "EmployeeWorkflowApproval" a
-           JOIN "EmployeeWorkflowRequest" r ON r."id"=a."requestId" AND r."organizationId"=a."organizationId"
+           JOIN "EmployeeWorkflowRequest" r
+             ON r."id"=a."requestId" AND r."organizationId"=a."organizationId" AND r."legalEntityId"=a."legalEntityId"
            JOIN "User" u ON u."id"=r."employeeId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE ${approvalWhere} AND r."employeeId"=ANY($${approvalArgs.length + 1}::text[])
+           WHERE a."organizationId"=$1 AND a."legalEntityId"=$2 AND a."status"='PENDING'
+             AND ($3::boolean=TRUE OR a."approverUserId"=$4) AND r."employeeId"=ANY($5::text[])
            ORDER BY CASE r."priority" WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END,r."createdAt" LIMIT 500`,
-          ...approvalArgs,
+          auth.organizationId,
+          legalEntityId,
+          canReviewAll,
+          auth.userId,
           allowedIds,
         ),
         prisma.$queryRawUnsafe<any[]>(
@@ -1375,9 +1567,10 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
            FROM "EmployeeWorkflowRequest" r JOIN "User" u ON u."id"=r."employeeId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE r."organizationId"=$1 AND r."employeeId"=ANY($2::text[])
+           WHERE r."organizationId"=$1 AND r."legalEntityId"=$2 AND r."employeeId"=ANY($3::text[])
            ORDER BY r."createdAt" DESC LIMIT 500`,
           auth.organizationId,
+          legalEntityId,
           allowedIds,
         ),
         prisma.$queryRawUnsafe<any[]>(
@@ -1385,9 +1578,12 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
            FROM "EmployeeRecognition" r JOIN "User" u ON u."id"=r."employeeId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE r."organizationId"=$1 AND r."employeeId"=ANY($2::text[]) AND r."status"='ACTIVE'
+           WHERE r."organizationId"=$1 AND (r."legalEntityId"=$2 OR (r."legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$1 AND entity."id"=$2 AND entity."code"='SCLS'
+           ))) AND r."employeeId"=ANY($3::text[]) AND r."status"='ACTIVE'
            ORDER BY r."awardDate" DESC,r."createdAt" DESC LIMIT 100`,
           auth.organizationId,
+          legalEntityId,
           allowedIds,
         ),
         prisma.$queryRawUnsafe<any[]>(
@@ -1395,16 +1591,20 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
            FROM "EmployeeTeamFeedback" f JOIN "User" u ON u."id"=f."employeeId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE f."organizationId"=$1 AND f."employeeId"=ANY($2::text[]) AND f."status"='ACTIVE'
+           WHERE f."organizationId"=$1 AND f."legalEntityId"=$2 AND f."employeeId"=ANY($3::text[]) AND f."status"='ACTIVE'
              AND f."followUpDate" IS NOT NULL AND f."followUpDate"<=CURRENT_DATE+30
            ORDER BY f."followUpDate",f."createdAt" DESC LIMIT 200`,
           auth.organizationId,
+          legalEntityId,
           allowedIds,
         ),
         prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "EmployeeNotification" WHERE "organizationId"=$1 AND "userId"=$2 AND "status"<>'ARCHIVED'
+          `SELECT * FROM "EmployeeNotification" WHERE "organizationId"=$1 AND ("legalEntityId"=$2 OR ("legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$1 AND entity."id"=$2 AND entity."code"='SCLS'
+           ))) AND "userId"=$3 AND "status"<>'ARCHIVED'
            ORDER BY CASE WHEN "status"='UNREAD' THEN 0 ELSE 1 END,"createdAt" DESC LIMIT 200`,
           auth.organizationId,
+          legalEntityId,
           auth.userId,
         ),
       ]);
@@ -1416,18 +1616,22 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       const teamRows = await Promise.all(employees.filter((employee) => employee.id !== auth.userId).map(async (employee) => {
         const [openRequestRows, complianceRows, educationRows, documentRows, shiftRows] = await Promise.all([
           prisma.$queryRawUnsafe<Array<{ count: number }>>(
-            `SELECT COUNT(*)::int AS "count" FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status" IN ('SUBMITTED','IN_REVIEW')`,
-            auth.organizationId, employee.id,
+            `SELECT COUNT(*)::int AS "count" FROM "EmployeeWorkflowRequest"
+             WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3 AND "status" IN ('SUBMITTED','IN_REVIEW')`,
+            auth.organizationId, legalEntityId, employee.id,
           ),
           hasCompliance ? prisma.$queryRawUnsafe<Array<{ overdue: number; dueSoon: number }>>(
             `SELECT COUNT(*) FILTER (WHERE "status"='OVERDUE')::int AS "overdue",COUNT(*) FILTER (WHERE "status"='DUE_SOON')::int AS "dueSoon"
-             FROM "EmployeeComplianceAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2`,
-            auth.organizationId, employee.id,
+             FROM "EmployeeComplianceAssignment" WHERE "organizationId"=$1
+               AND ("legalEntityId"=$2 OR ("legalEntityId" IS NULL AND EXISTS (
+                 SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$1 AND entity."id"=$2 AND entity."code"='SCLS'
+               ))) AND "employeeId"=$3`,
+            auth.organizationId, legalEntityId, employee.id,
           ) : Promise.resolve([{ overdue: 0, dueSoon: 0 }]),
           hasEducation ? prisma.$queryRawUnsafe<Array<{ overdue: number }>>(
             `SELECT COUNT(*) FILTER (WHERE "status"<>'COMPLETED' AND "dueDate"<NOW())::int AS "overdue"
-             FROM "EducationAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2`,
-            auth.organizationId, employee.id,
+             FROM "EducationAssignment" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3`,
+            auth.organizationId, legalEntityId, employee.id,
           ) : Promise.resolve([{ overdue: 0 }]),
           hasDocuments ? prisma.$queryRawUnsafe<Array<{ expiring: number; expired: number }>>(
             `SELECT COUNT(*) FILTER (WHERE "status"='ACTIVE' AND "expirationDate"<CURRENT_DATE)::int AS "expired",
@@ -1436,8 +1640,10 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
             auth.organizationId, employee.id,
           ) : Promise.resolve([{ expiring: 0, expired: 0 }]),
           hasShifts ? prisma.$queryRawUnsafe<Array<{ count: number }>>(
-            `SELECT COUNT(*)::int AS "count" FROM "TimeAttendanceShift" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "startTime">NOW() AND "startTime"<=NOW()+INTERVAL '14 days'`,
-            auth.organizationId, employee.id,
+            `SELECT COUNT(*)::int AS "count" FROM "TimeAttendanceShift"
+             WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+               AND "startTime">NOW() AND "startTime"<=NOW()+INTERVAL '14 days'`,
+            auth.organizationId, legalEntityId, employee.id,
           ) : Promise.resolve([{ count: 0 }]),
         ]);
         return {
@@ -1491,23 +1697,26 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       await requireWritableManager(auth);
       const identity = await actorIdentity(auth);
       if (!identity.isOwner && !decisionRoles.has(auth.role)) return void res.status(403).json({ error: 'You are not authorized to approve employee requests' });
-      const request = await requestById(auth.organizationId, req.params.requestId);
+      const legalEntityId = selectedEntityId(auth);
+      const request = await requestById(auth.organizationId, legalEntityId, req.params.requestId);
       await assertEmployeeScope(auth, request.employeeId);
       if (!['SUBMITTED', 'IN_REVIEW'].includes(request.status)) return void res.status(409).json({ error: 'This request is no longer awaiting approval' });
       const input = decisionSchema.parse(req.body);
       const assigned = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'
-         AND "sequence"=$3 AND "approverUserId"=$4 ORDER BY "createdAt" LIMIT 1`,
+        `SELECT * FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3
+         AND "status"='PENDING' AND "sequence"=$4 AND "approverUserId"=$5 ORDER BY "createdAt" LIMIT 1`,
         auth.organizationId,
+        legalEntityId,
         request.id,
         request.currentSequence,
         auth.userId,
       );
       const canOverride = identity.isOwner || auth.role === UserRole.HR_MANAGER || auth.role === UserRole.ADMINISTRATOR;
       const approval = assigned[0] || (canOverride ? (await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'
-         AND "sequence"=$3 ORDER BY "createdAt" LIMIT 1`,
+        `SELECT * FROM "EmployeeWorkflowApproval" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3
+         AND "status"='PENDING' AND "sequence"=$4 ORDER BY "createdAt" LIMIT 1`,
         auth.organizationId,
+        legalEntityId,
         request.id,
         request.currentSequence,
       ))[0] : null);
@@ -1515,16 +1724,20 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
 
       const nextStatus = input.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
       await prisma.$executeRawUnsafe(
-        `UPDATE "EmployeeWorkflowApproval" SET "status"=$1,"decisionNotes"=$2,"decidedAt"=NOW(),"updatedAt"=NOW() WHERE "id"=$3`,
+        `UPDATE "EmployeeWorkflowApproval" SET "status"=$1,"decisionNotes"=$2,"decidedAt"=NOW(),"updatedAt"=NOW()
+         WHERE "id"=$3 AND "organizationId"=$4 AND "legalEntityId"=$5`,
         nextStatus,
         input.notes,
         approval.id,
+        auth.organizationId,
+        legalEntityId,
       );
       if (input.decision === 'APPROVE' && approval.approvalMode === 'ANY') {
         await prisma.$executeRawUnsafe(
           `UPDATE "EmployeeWorkflowApproval" SET "status"='SKIPPED',"decisionNotes"='Approval completed by another authorized approver',"updatedAt"=NOW()
-           WHERE "organizationId"=$1 AND "requestId"=$2 AND "sequence"=$3 AND "status"='PENDING'`,
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "sequence"=$4 AND "status"='PENDING'`,
           auth.organizationId,
+          legalEntityId,
           request.id,
           approval.sequence,
         );
@@ -1532,14 +1745,15 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       if (input.decision === 'REJECT') {
         await prisma.$executeRawUnsafe(
           `UPDATE "EmployeeWorkflowApproval" SET "status"='SKIPPED',"decisionNotes"='Workflow stopped after rejection',"updatedAt"=NOW()
-           WHERE "organizationId"=$1 AND "requestId"=$2 AND "status"='PENDING'`,
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "requestId"=$3 AND "status"='PENDING'`,
           auth.organizationId,
+          legalEntityId,
           request.id,
         );
       }
-      await logEvent(auth.organizationId, request.id, auth.userId, `REQUEST_${nextStatus}`, { approvalId: approval.id, sequence: approval.sequence, notes: input.notes });
-      const updated = await advanceRequest(auth.organizationId, request.id, auth.userId);
-      await audit?.(auth, `EMPLOYEE_REQUEST_${nextStatus}`, 'EmployeeWorkflowRequest', request.id, { approvalId: approval.id, notes: input.notes });
+      await logEvent(auth.organizationId, legalEntityId, request.id, auth.userId, `REQUEST_${nextStatus}`, { approvalId: approval.id, sequence: approval.sequence, notes: input.notes });
+      const updated = await advanceRequest(auth.organizationId, legalEntityId, request.id, auth.userId);
+      await audit?.(auth, `EMPLOYEE_REQUEST_${nextStatus}`, 'EmployeeWorkflowRequest', request.id, { approvalId: approval.id, notes: input.notes, legalEntityId });
       res.json({ data: updated });
     } catch (error) { next(error); }
   });
@@ -1549,7 +1763,8 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       await ready();
       const auth = authOf(res);
       await requireWritableManager(auth);
-      const request = await requestById(auth.organizationId, req.params.requestId);
+      const legalEntityId = selectedEntityId(auth);
+      const request = await requestById(auth.organizationId, legalEntityId, req.params.requestId);
       await assertEmployeeScope(auth, request.employeeId);
       const input = commentSchema.parse(req.body);
       const identity = await actorIdentity(auth);
@@ -1558,15 +1773,16 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       }
       const id = randomUUID();
       await prisma.$executeRawUnsafe(
-        `INSERT INTO "EmployeeWorkflowComment" ("id","organizationId","requestId","authorUserId","visibility","body") VALUES ($1,$2,$3,$4,$5,$6)`,
-        id, auth.organizationId, request.id, auth.userId, input.visibility, input.body,
+        `INSERT INTO "EmployeeWorkflowComment" ("id","organizationId","legalEntityId","requestId","authorUserId","visibility","body")
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        id, auth.organizationId, legalEntityId, request.id, auth.userId, input.visibility, input.body,
       );
-      await logEvent(auth.organizationId, request.id, auth.userId, 'MANAGER_COMMENT_ADDED', { commentId: id, visibility: input.visibility });
+      await logEvent(auth.organizationId, legalEntityId, request.id, auth.userId, 'MANAGER_COMMENT_ADDED', { commentId: id, visibility: input.visibility });
       if (input.visibility === 'EMPLOYEE_VISIBLE') {
-        const employee = await employeeById(auth.organizationId, request.employeeId);
+        const employee = await employeeById(auth, request.employeeId);
         await notifyEmployee(request, employee, `New comment on: ${request.title}`, 'A manager added a comment to your Employee 360 request.', `request-comment:${id}`);
       }
-      await audit?.(auth, 'ADD_MANAGER_REQUEST_COMMENT', 'EmployeeWorkflowRequest', request.id, { commentId: id, visibility: input.visibility });
+      await audit?.(auth, 'ADD_MANAGER_REQUEST_COMMENT', 'EmployeeWorkflowRequest', request.id, { commentId: id, visibility: input.visibility, legalEntityId });
       res.status(201).json({ data: { id } });
     } catch (error) { next(error); }
   });
@@ -1575,15 +1791,18 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
+      const legalEntityId = selectedEntityId(auth);
       await assertEmployeeScope(auth, req.params.employeeId);
-      const employee = await employeeById(auth.organizationId, req.params.employeeId);
+      const employee = await employeeById(auth, req.params.employeeId);
       const permissions = await managerPermissions(auth);
       const feedbackVisibility: FeedbackVisibility[] = ['EMPLOYEE_VISIBLE', 'MANAGEMENT_ONLY'];
       if (permissions.canViewHrConfidential) feedbackVisibility.push('HR_CONFIDENTIAL');
       const [requests, feedback, recognition] = await Promise.all([
         prisma.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "employeeId"=$2 ORDER BY "createdAt" DESC LIMIT 250`,
+          `SELECT * FROM "EmployeeWorkflowRequest" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+           ORDER BY "createdAt" DESC LIMIT 250`,
           auth.organizationId,
+          legalEntityId,
           employee.id,
         ),
         prisma.$queryRawUnsafe<any[]>(
@@ -1592,9 +1811,11 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
            LEFT JOIN "User" u ON u."id"=f."authorUserId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE f."organizationId"=$1 AND f."employeeId"=$2 AND f."status"='ACTIVE' AND f."visibility"=ANY($3::text[])
+           WHERE f."organizationId"=$1 AND f."legalEntityId"=$2 AND f."employeeId"=$3
+             AND f."status"='ACTIVE' AND f."visibility"=ANY($4::text[])
            ORDER BY f."createdAt" DESC LIMIT 300`,
           auth.organizationId,
+          legalEntityId,
           employee.id,
           feedbackVisibility,
         ),
@@ -1604,9 +1825,12 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
            LEFT JOIN "User" u ON u."id"=r."nominatorUserId"
            LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-           WHERE r."organizationId"=$1 AND r."employeeId"=$2 AND r."status"='ACTIVE'
+           WHERE r."organizationId"=$1 AND (r."legalEntityId"=$2 OR (r."legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$1 AND entity."id"=$2 AND entity."code"='SCLS'
+           ))) AND r."employeeId"=$3 AND r."status"='ACTIVE'
            ORDER BY r."awardDate" DESC,r."createdAt" DESC LIMIT 300`,
           auth.organizationId,
+          legalEntityId,
           employee.id,
         ),
       ]);
@@ -1621,6 +1845,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       await requireWritableManager(auth);
       const identity = await actorIdentity(auth);
       if (!identity.isOwner && !feedbackRoles.has(auth.role)) return void res.status(403).json({ error: 'You are not authorized to add employee feedback' });
+      const legalEntityId = selectedEntityId(auth);
       await assertEmployeeScope(auth, req.params.employeeId);
       const input = feedbackSchema.parse(req.body);
       if (input.visibility === 'HR_CONFIDENTIAL' && !identity.isOwner && auth.role !== UserRole.HR_MANAGER && auth.role !== UserRole.ADMINISTRATOR) {
@@ -1629,14 +1854,15 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       const id = randomUUID();
       await prisma.$executeRawUnsafe(
         `INSERT INTO "EmployeeTeamFeedback"
-          ("id","organizationId","employeeId","authorUserId","kind","subject","body","visibility","requiresAcknowledgment","followUpDate")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        id, auth.organizationId, req.params.employeeId, auth.userId, input.kind, input.subject, input.body, input.visibility,
+          ("id","organizationId","legalEntityId","employeeId","authorUserId","kind","subject","body","visibility","requiresAcknowledgment","followUpDate")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        id, auth.organizationId, legalEntityId, req.params.employeeId, auth.userId, input.kind, input.subject, input.body, input.visibility,
         input.requiresAcknowledgment, input.followUpDate ?? null,
       );
       if (input.visibility === 'EMPLOYEE_VISIBLE') {
         await createNotification({
           organizationId: auth.organizationId,
+          legalEntityId,
           userId: req.params.employeeId,
           notificationType: 'FEEDBACK',
           title: input.subject,
@@ -1648,7 +1874,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
           email: true,
         });
       }
-      await audit?.(auth, 'CREATE_EMPLOYEE_FEEDBACK', 'EmployeeTeamFeedback', id, { employeeId: req.params.employeeId, kind: input.kind, visibility: input.visibility });
+      await audit?.(auth, 'CREATE_EMPLOYEE_FEEDBACK', 'EmployeeTeamFeedback', id, { employeeId: req.params.employeeId, kind: input.kind, visibility: input.visibility, legalEntityId });
       res.status(201).json({ data: { id } });
     } catch (error) { next(error); }
   });
@@ -1658,14 +1884,15 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       await ready();
       const auth = authOf(res);
       await requireWritableManager(auth);
+      const legalEntityId = selectedEntityId(auth);
       await assertEmployeeScope(auth, req.params.employeeId);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `UPDATE "EmployeeTeamFeedback" SET "status"='ARCHIVED',"updatedAt"=NOW()
-         WHERE "id"=$1 AND "organizationId"=$2 AND "employeeId"=$3 RETURNING "id"`,
-        req.params.feedbackId, auth.organizationId, req.params.employeeId,
+         WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3 AND "employeeId"=$4 RETURNING "id"`,
+        req.params.feedbackId, auth.organizationId, legalEntityId, req.params.employeeId,
       );
       if (!rows[0]) return void res.status(404).json({ error: 'Feedback record was not found' });
-      await audit?.(auth, 'ARCHIVE_EMPLOYEE_FEEDBACK', 'EmployeeTeamFeedback', req.params.feedbackId, { employeeId: req.params.employeeId });
+      await audit?.(auth, 'ARCHIVE_EMPLOYEE_FEEDBACK', 'EmployeeTeamFeedback', req.params.feedbackId, { employeeId: req.params.employeeId, legalEntityId });
       res.json({ data: rows[0] });
     } catch (error) { next(error); }
   });
@@ -1677,18 +1904,20 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       await requireWritableManager(auth);
       const identity = await actorIdentity(auth);
       if (!identity.isOwner && !feedbackRoles.has(auth.role)) return void res.status(403).json({ error: 'You are not authorized to recognize employees' });
+      const legalEntityId = selectedEntityId(auth);
       await assertEmployeeScope(auth, req.params.employeeId);
       const input = recognitionSchema.parse(req.body);
       const id = randomUUID();
       await prisma.$executeRawUnsafe(
         `INSERT INTO "EmployeeRecognition"
-          ("id","organizationId","employeeId","nominatorUserId","category","title","message","visibility","points","awardDate")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        id, auth.organizationId, req.params.employeeId, auth.userId, input.category, input.title, input.message, input.visibility, input.points, input.awardDate,
+          ("id","organizationId","legalEntityId","employeeId","nominatorUserId","category","title","message","visibility","points","awardDate")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        id, auth.organizationId, legalEntityId, req.params.employeeId, auth.userId, input.category, input.title, input.message, input.visibility, input.points, input.awardDate,
       );
       if (input.visibility !== 'MANAGEMENT_ONLY') {
         await createNotification({
           organizationId: auth.organizationId,
+          legalEntityId,
           userId: req.params.employeeId,
           notificationType: 'RECOGNITION',
           title: `Recognition: ${input.title}`,
@@ -1700,7 +1929,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
           email: true,
         });
       }
-      await audit?.(auth, 'CREATE_EMPLOYEE_RECOGNITION', 'EmployeeRecognition', id, { employeeId: req.params.employeeId, category: input.category, visibility: input.visibility, points: input.points });
+      await audit?.(auth, 'CREATE_EMPLOYEE_RECOGNITION', 'EmployeeRecognition', id, { employeeId: req.params.employeeId, category: input.category, visibility: input.visibility, points: input.points, legalEntityId });
       res.status(201).json({ data: { id } });
     } catch (error) { next(error); }
   });
@@ -1710,14 +1939,18 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       await ready();
       const auth = authOf(res);
       await requireWritableManager(auth);
+      const legalEntityId = selectedEntityId(auth);
       await assertEmployeeScope(auth, req.params.employeeId);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `UPDATE "EmployeeRecognition" SET "status"='ARCHIVED',"updatedAt"=NOW()
-         WHERE "id"=$1 AND "organizationId"=$2 AND "employeeId"=$3 RETURNING "id"`,
-        req.params.recognitionId, auth.organizationId, req.params.employeeId,
+         WHERE "id"=$1 AND "organizationId"=$2 AND "employeeId"=$3
+           AND ("legalEntityId"=$4 OR ("legalEntityId" IS NULL AND EXISTS (
+             SELECT 1 FROM "LegalEntity" entity WHERE entity."organizationId"=$2 AND entity."id"=$4 AND entity."code"='SCLS'
+           ))) RETURNING "id"`,
+        req.params.recognitionId, auth.organizationId, req.params.employeeId, legalEntityId,
       );
       if (!rows[0]) return void res.status(404).json({ error: 'Recognition record was not found' });
-      await audit?.(auth, 'ARCHIVE_EMPLOYEE_RECOGNITION', 'EmployeeRecognition', req.params.recognitionId, { employeeId: req.params.employeeId });
+      await audit?.(auth, 'ARCHIVE_EMPLOYEE_RECOGNITION', 'EmployeeRecognition', req.params.recognitionId, { employeeId: req.params.employeeId, legalEntityId });
       res.json({ data: rows[0] });
     } catch (error) { next(error); }
   });
@@ -1726,11 +1959,13 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     try {
       await ready();
       const auth = authOf(res);
-      await ensureDefaults(auth.organizationId, auth.userId);
+      const legalEntityId = selectedEntityId(auth);
+      await ensureDefaults(auth);
       const permissions = await managerPermissions(auth);
       const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "EmployeeWorkflowDefinition" WHERE "organizationId"=$1 ORDER BY "name"`,
+        `SELECT * FROM "EmployeeWorkflowDefinition" WHERE "organizationId"=$1 AND "legalEntityId"=$2 ORDER BY "name"`,
         auth.organizationId,
+        legalEntityId,
       );
       res.json({ data: { permissions, workflows: rows.map((row) => ({ ...row, steps: asSteps(row.steps) })) } });
     } catch (error) { next(error); }
@@ -1742,19 +1977,21 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       const auth = authOf(res);
       await requireWritableManager(auth);
       await requireWorkflowManager(auth);
+      const legalEntityId = selectedEntityId(auth);
       const requestType = z.enum(REQUEST_TYPES as [RequestType, ...RequestType[]]).parse(req.params.requestType);
       const input = workflowDefinitionSchema.parse(req.body);
       const id = randomUUID();
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `INSERT INTO "EmployeeWorkflowDefinition"
-          ("id","organizationId","requestType","name","description","steps","enabled","employeeCanSubmit","createdById","updatedById")
-         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$9)
-         ON CONFLICT ("organizationId","requestType") DO UPDATE SET
+          ("id","organizationId","legalEntityId","requestType","name","description","steps","enabled","employeeCanSubmit","createdById","updatedById")
+         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$10)
+         ON CONFLICT ("organizationId","legalEntityId","requestType") WHERE "requestType" IS NOT NULL DO UPDATE SET
           "name"=EXCLUDED."name","description"=EXCLUDED."description","steps"=EXCLUDED."steps",
           "enabled"=EXCLUDED."enabled","employeeCanSubmit"=EXCLUDED."employeeCanSubmit","updatedById"=EXCLUDED."updatedById","updatedAt"=NOW()
          RETURNING *`,
         id,
         auth.organizationId,
+        legalEntityId,
         requestType,
         input.name,
         input.description ?? null,
@@ -1763,7 +2000,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
         input.employeeCanSubmit,
         auth.userId,
       );
-      await audit?.(auth, 'UPSERT_EMPLOYEE_WORKFLOW_DEFINITION', 'EmployeeWorkflowDefinition', rows[0]?.id, { requestType, steps: input.steps });
+      await audit?.(auth, 'UPSERT_EMPLOYEE_WORKFLOW_DEFINITION', 'EmployeeWorkflowDefinition', rows[0]?.id, { requestType, steps: input.steps, legalEntityId });
       res.json({ data: { ...rows[0], steps: asSteps(rows[0]?.steps) } });
     } catch (error) { next(error); }
   });
@@ -1774,19 +2011,21 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       const auth = authOf(res);
       await requireWritableManager(auth);
       await requireWorkflowManager(auth);
+      const legalEntityId = selectedEntityId(auth);
       for (const definition of defaultDefinitions) {
         await prisma.$executeRawUnsafe(
           `UPDATE "EmployeeWorkflowDefinition" SET "name"=$1,"description"=$2,"steps"=$3::jsonb,"enabled"=TRUE,"employeeCanSubmit"=TRUE,"updatedById"=$4,"updatedAt"=NOW()
-           WHERE "organizationId"=$5 AND "requestType"=$6`,
+           WHERE "organizationId"=$5 AND "legalEntityId"=$6 AND "requestType"=$7`,
           definition.name,
           definition.description,
           JSON.stringify(definition.steps),
           auth.userId,
           auth.organizationId,
+          legalEntityId,
           definition.requestType,
         );
       }
-      await audit?.(auth, 'RESET_EMPLOYEE_WORKFLOW_DEFAULTS', 'EmployeeWorkflowDefinition');
+      await audit?.(auth, 'RESET_EMPLOYEE_WORKFLOW_DEFAULTS', 'EmployeeWorkflowDefinition', undefined, { legalEntityId });
       res.json({ data: { reset: true } });
     } catch (error) { next(error); }
   });
