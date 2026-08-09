@@ -12,9 +12,9 @@ await mkdir(outputDirectory, { recursive: true });
 
 const publicExtensions = new Set([
   '.css', '.html', '.ico', '.js', '.png', '.jpg', '.jpeg', '.webp', '.svg',
-  '.txt', '.webmanifest', '.xml', '.pdf', '.json',
+  '.txt', '.webmanifest', '.xml', '.pdf',
 ]);
-const publicRootFiles = new Set(['CNAME', 'vercel.json']);
+const publicRootFiles = new Set(['CNAME', 'vercel.json', 'education-catalog.json']);
 const publicDirectories = ['assets', 'public', 'courses', 'education', 'services'];
 
 for (const entry of await readdir(repositoryRoot, { withFileTypes: true })) {

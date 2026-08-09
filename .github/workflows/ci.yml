@@ -68,8 +68,13 @@ jobs:
           test -f dist-web/employee-login-railway.js
           test -f dist-web/employee-portal-railway.js
           test ! -e dist-web/package.json
+          test ! -e dist-web/package-lock.json
+          test ! -e dist-web/railway.json
+          test ! -e dist-web/railway.frontend.json
           test ! -e dist-web/api
           test ! -e dist-web/prisma
+          unexpected_json="$(find dist-web -maxdepth 1 -type f -name '*.json' ! -name 'education-catalog.json' ! -name 'vercel.json' -print -quit)"
+          test -z "$unexpected_json"
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
