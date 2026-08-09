@@ -1,0 +1,411 @@
+{
+  "catalogVersion": "2026.08",
+  "publishedAt": "2026-08-09",
+  "passingScorePercent": 80,
+  "classification": "INTERNAL_ORIENTATION",
+  "disclaimer": "These courses document Sulandra internal orientation only. They do not replace company policy review, supervisor instruction, hands-on competency validation, professional licensure, certified training, payer enrollment, provider approval, or any training required by a regulator or contract.",
+  "packages": {
+    "ENTERPRISE_INITIAL": ["SUL-ORIENTATION", "SUL-HIPAA", "SUL-WORKPLACE-SAFETY", "SUL-HARASSMENT-PREVENTION", "SUL-CYBERSECURITY", "SUL-MULTI-COMPANY"],
+    "SCLS_INITIAL": ["SCLS-PERSON-CENTERED", "SCLS-MUI-UI-REPORTING", "SCLS-RIGHTS", "CARE-INFECTION-CONTROL"],
+    "HOME_HEALTH_INITIAL": ["HH-INFECTION-CONTROL", "HH-PATIENT-RIGHTS", "HH-EMERGENCY", "CLINICAL-MEDICATION-SAFETY", "CLINICAL-DELEGATION"],
+    "NMT_INITIAL": ["NMT-DEFENSIVE-DRIVING", "NMT-PASSENGER-SAFETY", "NMT-VEHICLE-INSPECTION"]
+  },
+  "courses": [
+    {
+      "code": "SUL-ORIENTATION",
+      "title": "Sulandra Health Employee Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Enterprise",
+      "description": "Introduces Sulandra's employment, safety, reporting, and pre-launch operating boundaries.",
+      "estimatedMinutes": 18,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SUL-ORIENTATION",
+      "objectives": ["Know where to find company policies and support", "Separate employment readiness from provider authorization", "Escalate safety and compliance concerns promptly"],
+      "modules": [
+        {"id": "foundation", "title": "Employment and operating boundaries", "body": "Your employee account, onboarding, and training may begin while a company is still completing licensing, payer, contracting, or other approvals. Being hired does not by itself authorize you to deliver a regulated service, accept a referral, document a client encounter, transport a passenger, or submit billing. Begin provider work only after written authorization, role-specific training, and any required competency or credential checks.", "keyPoints": ["Use the company workspace shown in the portal", "Follow your written job description and supervisor direction", "Do not treat a training certificate as a license or provider approval"]},
+        {"id": "practice", "title": "Safe work and reporting", "body": "Review the policies, emergency procedures, reporting contacts, and job-specific expectations supplied by your employing company. Report hazards, suspected abuse or neglect, privacy incidents, harassment, record errors, and scope-of-practice concerns immediately through the designated channel. In an immediate emergency, protect life first and call emergency services when appropriate.", "keyPoints": ["Ask before acting when authority is unclear", "Never retaliate against a good-faith report", "Keep records in approved systems only"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "When may an employee begin regulated provider work for a pre-launch company?", "choices": ["As soon as a portal account exists", "After written authorization and required role-specific readiness checks", "As soon as this orientation is completed"]},
+        {"id": "q2", "prompt": "Where should company-specific records be created?", "choices": ["In any Sulandra company workspace", "On a personal device until operations begin", "Only in the correct selected-company workspace and approved system"]},
+        {"id": "q3", "prompt": "What is the first priority during an immediate safety emergency?", "choices": ["Protect life and follow emergency procedures", "Finish routine documentation", "Wait until the next staff meeting"]}
+      ],
+      "sources": [{"label": "Sulandra employee policies", "url": "/policies.html"}]
+    },
+    {
+      "code": "SUL-HIPAA",
+      "title": "Privacy, HIPAA, and Secure Information Handling",
+      "version": "2026.08",
+      "active": true,
+      "category": "Privacy and Compliance",
+      "description": "Internal privacy and security orientation for protected and confidential information.",
+      "estimatedMinutes": 22,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SUL-HIPAA",
+      "objectives": ["Apply minimum-necessary access", "Use only approved communication and storage", "Report suspected privacy or security events promptly"],
+      "modules": [
+        {"id": "foundation", "title": "Privacy and minimum necessary", "body": "Access confidential information only when your assigned work requires it and limit use or disclosure to the minimum necessary. Verify recipients before sharing. Never look up a person out of curiosity, discuss protected information in public areas, or reuse information across legal companies without an authorized business purpose.", "keyPoints": ["Need-to-know access", "Verify identity and recipient", "Respect each company's record boundary"]},
+        {"id": "practice", "title": "Secure handling and incident response", "body": "Use approved devices, accounts, messaging, and storage. Do not send protected information to personal email, place it in unapproved cloud storage, or share credentials. Lock screens and protect printed records. Report suspected misdirection, phishing, lost devices, unauthorized access, or disclosure immediately; do not investigate or delete evidence on your own.", "keyPoints": ["Use approved channels", "Report quickly", "Preserve evidence and follow privacy-team direction"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What access rule should guide use of protected information?", "choices": ["Access only what is needed for assigned work", "Access any record in the organization", "Access records when a coworker is curious"]},
+        {"id": "q2", "prompt": "May protected information be sent to a personal email account for convenience?", "choices": ["Yes, if deleted later", "Yes, if the employee owns the device", "No; use only approved secure channels"]},
+        {"id": "q3", "prompt": "What should you do after a suspected privacy incident?", "choices": ["Wait to see whether anyone notices", "Report it immediately through the designated process", "Delete the related messages"]}
+      ],
+      "sources": [{"label": "HHS HIPAA training resources", "url": "https://www.hhs.gov/hipaa/for-professionals/training/index.html"}, {"label": "HHS Security Rule summary", "url": "https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations/index.html"}]
+    },
+    {
+      "code": "SUL-WORKPLACE-SAFETY",
+      "title": "Workplace Safety and Emergency Readiness",
+      "version": "2026.08",
+      "active": true,
+      "category": "Safety",
+      "description": "Introduces hazard reporting, emergency action plans, and role-specific safety limits.",
+      "estimatedMinutes": 18,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SUL-WORKPLACE-SAFETY",
+      "objectives": ["Recognize and report hazards", "Follow local emergency plans", "Use training and protective equipment required for a task"],
+      "modules": [
+        {"id": "foundation", "title": "Everyday hazard prevention", "body": "Keep work areas clear, use equipment only as trained, follow lifting and exposure-control procedures, and wear required protective equipment. Stop and ask for help when a task, environment, vehicle, device, or supply appears unsafe. Report injuries, near misses, and hazards promptly so corrective action can occur.", "keyPoints": ["Do not improvise around unsafe equipment", "Report near misses", "Follow role-specific procedures"]},
+        {"id": "practice", "title": "Emergency action", "body": "Learn the emergency action plan for each work location, including alarms, evacuation routes, assembly points, communication methods, and people assigned to assist. Follow instructions from emergency personnel. Plans must be reviewed when you are assigned, when duties change, and when the plan changes.", "keyPoints": ["Know exits and alerts", "Do not block evacuation routes", "Call 911 for immediate threats when appropriate"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What should you follow during a workplace emergency?", "choices": ["A coworker's guess", "The location's emergency action plan and official instructions", "Your normal routine"]},
+        {"id": "q2", "prompt": "What should you do with a newly observed hazard or near miss?", "choices": ["Report it promptly", "Ignore it unless someone is hurt", "Post it publicly"]},
+        {"id": "q3", "prompt": "When should protective equipment be used?", "choices": ["Only during an inspection", "Only if it is comfortable", "Whenever the task, policy, or training requires it"]}
+      ],
+      "sources": [{"label": "OSHA Emergency Action Plans", "url": "https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.38"}, {"label": "OSHA emergency planning guidance", "url": "https://www.osha.gov/etools/evacuation-plans-procedures/eap/develop-implement"}]
+    },
+    {
+      "code": "SUL-HARASSMENT-PREVENTION",
+      "title": "Respectful Workplace and Harassment Prevention",
+      "version": "2026.08",
+      "active": true,
+      "category": "Workplace Conduct",
+      "description": "Explains respectful conduct, accessible reporting, and anti-retaliation expectations.",
+      "estimatedMinutes": 20,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SUL-HARASSMENT-PREVENTION",
+      "objectives": ["Recognize unwelcome and discriminatory conduct", "Use reporting options", "Prevent retaliation"],
+      "modules": [
+        {"id": "foundation", "title": "Respect and prohibited conduct", "body": "Sulandra expects respectful, professional conduct. Harassment can include unwelcome verbal, visual, electronic, or physical conduct related to a protected characteristic, as well as other conduct prohibited by policy. A person may report conduct experienced directly or witnessed. Supervisors must elevate concerns through the designated process rather than attempting an informal private fix.", "keyPoints": ["Intent does not erase impact", "Electronic conduct is covered", "Managers have added reporting responsibilities"]},
+        {"id": "practice", "title": "Reporting and non-retaliation", "body": "Employees may use the reporting options in company policy and should report promptly. Receive concerns respectfully, avoid promises of secrecy, preserve relevant information, and contact the designated reviewer. Retaliation against a person who raises a good-faith concern, participates in a review, or requests help is prohibited and should be reported immediately.", "keyPoints": ["Multiple reporting channels", "No retaliation", "Maintain appropriate confidentiality"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "Which conduct may violate harassment policy?", "choices": ["Only physical conduct", "Only conduct by a supervisor", "Unwelcome verbal, visual, electronic, or physical conduct covered by law or policy"]},
+        {"id": "q2", "prompt": "What should a supervisor do after receiving a harassment concern?", "choices": ["Investigate secretly without reporting", "Listen, protect against retaliation, and elevate through the designated process", "Tell the employee to solve it alone"]},
+        {"id": "q3", "prompt": "How should suspected retaliation be handled?", "choices": ["Report it promptly", "Ignore it if subtle", "Wait until an annual review"]}
+      ],
+      "sources": [{"label": "EEOC harassment guidance", "url": "https://www.eeoc.gov/harassment"}, {"label": "EEOC employer prevention checklist", "url": "https://www.eeoc.gov/checklists-employers-2"}]
+    },
+    {
+      "code": "SCLS-PERSON-CENTERED",
+      "title": "Person-Centered Support Fundamentals",
+      "version": "2026.08",
+      "active": true,
+      "category": "SCLS Orientation",
+      "description": "Orientation to dignity, choice, communication, and individual-plan boundaries.",
+      "estimatedMinutes": 22,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SCLS-PERSON-CENTERED",
+      "objectives": ["Support informed choice and dignity", "Follow the authorized individual plan", "Document objectively and escalate changes"],
+      "modules": [
+        {"id": "foundation", "title": "The person leads the support", "body": "Person-centered support begins with the individual's goals, preferences, culture, communication, strengths, and rights. Offer meaningful choices, explain options in an understandable way, and respect privacy and dignity. Do not use convenience, assumptions, or staff preference to override the person or the authorized plan.", "keyPoints": ["Ask, listen, and communicate accessibly", "Promote independence", "Respect privacy and relationships"]},
+        {"id": "practice", "title": "Plan-based support and documentation", "body": "Provide only supports you are trained and authorized to deliver. Follow the current individual service plan and approved protocols. Document facts, the person's response, and required follow-up without labels or judgment. Report significant changes, risk, suspected abuse or neglect, or plan conflicts immediately.", "keyPoints": ["Current plan controls", "Objective documentation", "Escalate changes and risks"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What should guide person-centered support?", "choices": ["Staff convenience", "The person's goals, choices, rights, and authorized plan", "A standard routine for everyone"]},
+        {"id": "q2", "prompt": "How should support notes be written?", "choices": ["Objectively, with facts and the person's response", "With assumptions about motivation", "Only when something goes wrong"]},
+        {"id": "q3", "prompt": "What should an employee do when asked to provide an untrained support?", "choices": ["Try it once", "Ask another untrained employee", "Pause and obtain authorized direction and training"]}
+      ],
+      "sources": [{"label": "Ohio DODD Bill of Rights", "url": "https://dodd.ohio.gov/about-us/resources/bill_of_rights"}, {"label": "Ohio DODD training resources", "url": "https://dodd.ohio.gov/training"}]
+    },
+    {
+      "code": "SCLS-MUI-UI-REPORTING",
+      "title": "Ohio UI and MUI Recognition and Reporting Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "SCLS Compliance",
+      "description": "Awareness-level orientation to recognize, protect, preserve, and report incidents under current Ohio processes.",
+      "estimatedMinutes": 25,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SCLS-MUI-UI-REPORTING",
+      "objectives": ["Recognize that routine and serious incidents require different processes", "Protect health and welfare first", "Report immediately without conducting an unauthorized investigation"],
+      "modules": [
+        {"id": "foundation", "title": "Recognition and immediate protection", "body": "An unusual incident is an event inconsistent with routine operations, policies, or the person's care or service. A major unusual incident is an alleged, suspected, or actual occurrence defined by Ohio's current rule and guidance. Categories, timelines, and reporting paths can change; use the current DODD rule, company policy, and supervisor or MUI contact. First address urgent medical and safety needs and call emergency services when appropriate.", "keyPoints": ["Do not delay protection while classifying", "Alleged and suspected events may be reportable", "Use current rule and policy"]},
+        {"id": "practice", "title": "Report and preserve", "body": "Notify the designated contact immediately and within the strictest applicable timeframe. Record objective facts: who, what, when, where, observed condition, protective action, and notifications. Preserve evidence and confidentiality. Do not lead witnesses, promise a result, confront an alleged perpetrator, or conduct an independent investigation unless formally assigned and trained.", "keyPoints": ["Immediate notification", "Objective facts", "Preserve evidence and avoid interference"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What comes first after discovering a possible UI or MUI?", "choices": ["Complete routine paperwork", "Decide the final legal category alone", "Protect health and welfare and obtain emergency help when needed"]},
+        {"id": "q2", "prompt": "How should an employee determine reporting requirements?", "choices": ["Use an old memory of the rule", "Use current DODD requirements, company policy, and designated contacts", "Wait for the next shift"]},
+        {"id": "q3", "prompt": "What should an unassigned employee do about an investigation?", "choices": ["Preserve facts and report without conducting an unauthorized investigation", "Interview everyone independently", "Delete uncertain notes"]}
+      ],
+      "sources": [{"label": "Ohio DODD UI and MUI resources", "url": "https://dodd.ohio.gov/health-and-welfare/ui-mui"}, {"label": "Ohio DODD 2025 MUI rule resources", "url": "https://dodd.ohio.gov/health-and-welfare/toolkit/2025-mui-new-rule"}]
+    },
+    {
+      "code": "SCLS-RIGHTS",
+      "title": "Rights of People with Developmental Disabilities",
+      "version": "2026.08",
+      "active": true,
+      "category": "SCLS Orientation",
+      "description": "Introduces Ohio rights, dignity, choice, privacy, and reporting responsibilities.",
+      "estimatedMinutes": 20,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SCLS-RIGHTS",
+      "objectives": ["Identify core rights", "Support choice and privacy", "Report suspected rights restrictions or abuse"],
+      "modules": [
+        {"id": "foundation", "title": "Rights belong to the person", "body": "People with developmental disabilities have rights including respect, privacy, communication, relationships, possessions, choices, participation, and freedom from abuse and unnecessary restriction. Services must not make rights dependent on compliance, convenience, diagnosis, or staff preference.", "keyPoints": ["Treat every person with respect", "Support communication and informed choice", "Protect privacy and personal property"]},
+        {"id": "practice", "title": "Restrictions and reporting", "body": "Follow the current authorized plan and due process for any restriction; employees may not create informal restrictions. Use the least restrictive, approved response and seek guidance when rights and safety appear to conflict. Report suspected abuse, neglect, exploitation, retaliation, or unauthorized restriction immediately.", "keyPoints": ["No informal restrictions", "Least restrictive authorized action", "Report suspected violations"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "Who holds the rights described in this course?", "choices": ["The person receiving support", "The provider", "The employee on duty"]},
+        {"id": "q2", "prompt": "May an employee create an informal restriction for convenience?", "choices": ["Yes, during a busy shift", "Yes, with coworker agreement", "No; restrictions require current authorization and due process"]},
+        {"id": "q3", "prompt": "What should happen after a suspected rights violation?", "choices": ["Wait for proof beyond doubt", "Protect the person and report through the required process", "Discuss it publicly"]}
+      ],
+      "sources": [{"label": "Ohio DODD Bill of Rights", "url": "https://dodd.ohio.gov/about-us/resources/bill_of_rights"}]
+    },
+    {
+      "code": "HH-INFECTION-CONTROL",
+      "title": "Home Health Infection Prevention Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Home Health Orientation",
+      "description": "Pre-launch awareness of standard precautions, home-specific risk assessment, and exposure reporting.",
+      "estimatedMinutes": 24,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=HH-INFECTION-CONTROL",
+      "objectives": ["Use standard precautions", "Assess the home environment", "Report exposures and supply problems"],
+      "modules": [
+        {"id": "foundation", "title": "Standard precautions in the home", "body": "Treat blood, body fluids, non-intact skin, and mucous membranes according to standard precautions. Perform hand hygiene at required moments and select gloves, gown, mask, and eye protection based on anticipated exposure. Gloves do not replace hand hygiene. Follow current clinical policy for sharps, waste, cleaning, respiratory hygiene, and transmission-based precautions.", "keyPoints": ["Hand hygiene before and after care as required", "PPE follows anticipated exposure", "Safe sharps and waste handling"]},
+        {"id": "practice", "title": "Home environment and escalation", "body": "Before care, assess pets, smoke, clutter, pests, utilities, ventilation, clean-supply storage, and other environmental risks. Keep clean and contaminated items separated. Stop and contact supervision when required supplies or protective equipment are missing or when the environment prevents safe care. Report exposures promptly and follow occupational-health instructions.", "keyPoints": ["Assess every environment", "Do not proceed without required controls", "Report exposures immediately"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "Do gloves replace hand hygiene?", "choices": ["Yes, for brief care", "No", "Only in a private home"]},
+        {"id": "q2", "prompt": "How should PPE be selected?", "choices": ["Based on anticipated exposure and current policy", "By personal preference", "Only after an exposure"]},
+        {"id": "q3", "prompt": "What should happen when required protective supplies are unavailable?", "choices": ["Continue and be careful", "Buy an unapproved substitute", "Pause unsafe care and contact supervision"]}
+      ],
+      "sources": [{"label": "CDC Standard Precautions", "url": "https://www.cdc.gov/infection-control/hcp/basics/standard-precautions.html"}, {"label": "CMS Home Health Conditions of Participation", "url": "https://www.cms.gov/medicare/health-safety-standards/conditions-coverage-participation/home-health"}]
+    },
+    {
+      "code": "HH-PATIENT-RIGHTS",
+      "title": "Home Health Patient Rights Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Home Health Orientation",
+      "description": "Pre-launch orientation to dignity, participation, privacy, complaints, and non-retaliation.",
+      "estimatedMinutes": 20,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=HH-PATIENT-RIGHTS",
+      "objectives": ["Respect patient participation and choice", "Protect privacy and property", "Escalate complaints without retaliation"],
+      "modules": [
+        {"id": "foundation", "title": "Rights in home health", "body": "Patients must be treated with dignity, respect, and consideration and receive information in an understandable manner. They participate in care planning, may voice concerns, and retain privacy and control in their homes. Follow the current admission materials, plan of care, patient-rights notice, and applicable CMS and state requirements.", "keyPoints": ["Communicate understandably", "Support participation and informed choice", "Respect the home, property, and privacy"]},
+        {"id": "practice", "title": "Concerns and boundaries", "body": "Listen respectfully to complaints, address urgent safety needs, and route the concern through the designated process. Do not retaliate, argue, promise a specific outcome, alter documentation, or discourage a complaint. Provide only authorized care within your role and immediately report suspected abuse, neglect, exploitation, or rights violations.", "keyPoints": ["Accessible complaint process", "No retaliation", "Stay within role and plan"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "How should patient information be communicated?", "choices": ["Only in technical language", "Only to family", "In an understandable manner using required supports"]},
+        {"id": "q2", "prompt": "What is the correct response to a complaint?", "choices": ["Listen, protect safety, and route it through the designated process", "Discourage it", "Promise a specific result"]},
+        {"id": "q3", "prompt": "May an employee retaliate after a patient raises a concern?", "choices": ["Yes, if the concern is inconvenient", "No", "Only by changing the visit schedule"]}
+      ],
+      "sources": [{"label": "CMS Home Health Agencies", "url": "https://www.cms.gov/medicare/health-safety-standards/conditions-coverage-participation/home-health"}, {"label": "CMS home health beneficiary protections", "url": "https://www.cms.gov/newsroom/press-releases/cms-finalizes-new-medicare-and-medicaid-home-health-care-rules-and-beneficiary-protections"}]
+    },
+    {
+      "code": "HH-EMERGENCY",
+      "title": "Home Health Emergency Preparedness Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Home Health Orientation",
+      "description": "Introduces emergency recognition, communication, continuity, and documentation in home settings.",
+      "estimatedMinutes": 20,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=HH-EMERGENCY",
+      "objectives": ["Protect life during an emergency", "Follow the patient and agency emergency plan", "Communicate and document after stabilization"],
+      "modules": [
+        {"id": "foundation", "title": "Recognize and respond", "body": "Know the emergency instructions in the authorized care plan and agency policy. For immediate threats, protect yourself and the patient, call 911 when indicated, provide only assistance you are trained and authorized to provide, and notify the required contacts. Do not exceed your scope or delay emergency care to complete routine tasks.", "keyPoints": ["Life safety first", "Call emergency services when indicated", "Stay within training and scope"]},
+        {"id": "practice", "title": "Continuity and follow-up", "body": "Be familiar with communication failures, severe weather, evacuation, utility loss, medication and equipment dependencies, backup contacts, and missed-visit escalation. After immediate needs are controlled, notify supervision, document objective facts and actions, and complete required incident reporting.", "keyPoints": ["Know backup communication", "Protect essential care continuity", "Document and report after stabilization"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What takes priority during an immediate home health emergency?", "choices": ["Life safety and appropriate emergency response", "Routine charting", "The normal visit schedule"]},
+        {"id": "q2", "prompt": "What should guide emergency actions for a patient?", "choices": ["A social media post", "A coworker's old routine", "The current care plan, agency policy, and emergency instructions"]},
+        {"id": "q3", "prompt": "When should objective documentation and required reporting occur?", "choices": ["Instead of calling 911", "After immediate safety needs are addressed", "Only if requested months later"]}
+      ],
+      "sources": [{"label": "CMS Home Health Agencies", "url": "https://www.cms.gov/medicare/health-safety-standards/conditions-coverage-participation/home-health"}, {"label": "OSHA emergency planning guidance", "url": "https://www.osha.gov/emergency-preparedness/getting-started"}]
+    },
+    {
+      "code": "NMT-DEFENSIVE-DRIVING",
+      "title": "Defensive Driving Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Transportation Orientation",
+      "description": "Pre-launch orientation to distraction prevention, space management, and stop-work authority.",
+      "estimatedMinutes": 22,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=NMT-DEFENSIVE-DRIVING",
+      "objectives": ["Eliminate distracted driving", "Adjust to road and weather conditions", "Stop when a vehicle or trip is unsafe"],
+      "modules": [
+        {"id": "foundation", "title": "Defensive driving habits", "body": "Drive only when authorized, qualified, rested, and fit for duty. Obey traffic law, wear a seat belt, require passenger restraints, maintain space, scan for hazards, and adjust speed to visibility, traffic, road, and weather conditions. Never text or handle a phone while driving; pull over safely before addressing a device or distraction.", "keyPoints": ["Seat belts every trip", "No handheld device use", "Space and speed match conditions"]},
+        {"id": "practice", "title": "Trip decisions and incidents", "body": "Use approved routes and dispatch procedures. Do not rush to recover schedule delays. Stop in a safe place and contact dispatch when weather, fatigue, passenger condition, vehicle warning, or another risk makes continuation unsafe. After a crash or incident, protect the scene, call emergency services when appropriate, notify dispatch, and follow reporting procedures without admitting fault or altering records.", "keyPoints": ["Schedule never overrides safety", "Stop and communicate", "Preserve facts after an incident"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What should a driver do before interacting with a phone?", "choices": ["Slow down", "Pull over and stop in a safe place", "Ask a passenger to hold the wheel"]},
+        {"id": "q2", "prompt": "What should determine speed and following space?", "choices": ["The appointment schedule", "The fastest nearby driver", "Law plus current road, traffic, weather, and visibility conditions"]},
+        {"id": "q3", "prompt": "What should a driver do when continuation becomes unsafe?", "choices": ["Stop safely and contact dispatch", "Continue to avoid being late", "Ignore vehicle warnings"]}
+      ],
+      "sources": [{"label": "NHTSA safe driving tips", "url": "https://www.nhtsa.gov/ten-tips-for-safe-driving"}, {"label": "NHTSA seat belt safety", "url": "https://www.nhtsa.gov/vehicle-safety/seat-belts"}]
+    },
+    {
+      "code": "NMT-PASSENGER-SAFETY",
+      "title": "Passenger Safety and Dignity Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Transportation Orientation",
+      "description": "Pre-launch orientation to secure boarding, restraints, dignity, and trip communication.",
+      "estimatedMinutes": 22,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=NMT-PASSENGER-SAFETY",
+      "objectives": ["Verify trip and passenger before movement", "Use approved restraints and assistance", "Protect dignity and confidentiality"],
+      "modules": [
+        {"id": "foundation", "title": "Boarding and secure transport", "body": "Verify the passenger, destination, trip authorization, and required accommodations. Park and load only in a safe location. Use approved boarding assistance and secure mobility devices and occupants exactly as trained and as equipment instructions require. Confirm doors, lifts, equipment, and restraints before the vehicle moves.", "keyPoints": ["Verify before boarding", "Use trained securement methods", "No vehicle movement until everyone is secure"]},
+        {"id": "practice", "title": "Dignity, supervision, and communication", "body": "Use respectful, person-centered communication and protect trip and health information. Do not leave a passenger unattended unless the authorized trip plan permits it. Contact dispatch when a passenger's condition, behavior, accommodation, destination acceptance, or supervision plan creates uncertainty. Never use an unapproved restraint or convenience-based restriction.", "keyPoints": ["Respect and confidentiality", "Follow the authorized supervision plan", "Escalate uncertainty before proceeding"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "When may the vehicle move after boarding?", "choices": ["After passengers and equipment are secured as trained", "While a lift is operating", "Before the driver checks doors"]},
+        {"id": "q2", "prompt": "What should happen when a required accommodation is unclear?", "choices": ["Improvise", "Pause and contact dispatch or supervision", "Ignore it"]},
+        {"id": "q3", "prompt": "How should trip and health information be handled?", "choices": ["Shared publicly for convenience", "Discussed with any rider", "Protected and shared only through approved need-to-know channels"]}
+      ],
+      "sources": [{"label": "NHTSA seat belt safety", "url": "https://www.nhtsa.gov/vehicle-safety/seat-belts"}, {"label": "NHTSA passenger van safety", "url": "https://www.nhtsa.gov/vehicle-safety/15-passenger-vans"}]
+    },
+    {
+      "code": "NMT-VEHICLE-INSPECTION",
+      "title": "Pre-Trip Vehicle Inspection Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Transportation Orientation",
+      "description": "Pre-launch orientation to documented pre-trip checks and removing unsafe vehicles from service.",
+      "estimatedMinutes": 18,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=NMT-VEHICLE-INSPECTION",
+      "objectives": ["Complete the approved inspection before service", "Recognize safety-critical defects", "Document and escalate defects"],
+      "modules": [
+        {"id": "foundation", "title": "Complete the approved check", "body": "Before service, use the current company checklist to examine required items such as tires, lights, mirrors, glass, fluids or leaks, brakes and indicators, horn, doors, seat belts, emergency equipment, cleanliness, fuel or charge, lift or ramp, and mobility-device securement equipment. The checklist and vehicle instructions control; this orientation is not the inspection itself.", "keyPoints": ["Inspect before passenger service", "Use the current checklist", "Test specialized equipment as trained"]},
+        {"id": "practice", "title": "Defects and release to service", "body": "Document defects accurately. Do not operate or release a vehicle when a defect could affect safe operation, occupant protection, accessibility equipment, or legal compliance. Mark or isolate the vehicle according to policy, notify dispatch or maintenance, and wait for authorized clearance. Never erase or falsify an inspection record.", "keyPoints": ["Unsafe means out of service", "Notify and document", "Only authorized clearance returns a vehicle to service"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What defines the required pre-trip inspection?", "choices": ["A driver's memory", "A generic online list", "The current company checklist, vehicle instructions, and applicable requirements"]},
+        {"id": "q2", "prompt": "What should happen to a vehicle with a safety-critical defect?", "choices": ["Remove it from service and notify the designated contact", "Use it for one more trip", "Hide the warning"]},
+        {"id": "q3", "prompt": "Who may return a defected vehicle to service?", "choices": ["Any available driver", "Only an authorized person after required correction or clearance", "A passenger"]}
+      ],
+      "sources": [{"label": "NHTSA passenger van safety", "url": "https://www.nhtsa.gov/vehicle-safety/15-passenger-vans"}, {"label": "NHTSA vehicle safety resources", "url": "https://www.nhtsa.gov/vehicle-safety"}]
+    },
+    {
+      "code": "SUL-CYBERSECURITY",
+      "title": "Cybersecurity and Phishing Awareness",
+      "version": "2026.08",
+      "active": true,
+      "category": "Security",
+      "description": "Protects employee accounts, devices, company records, and protected health information.",
+      "estimatedMinutes": 20,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SUL-CYBERSECURITY",
+      "objectives": ["Recognize phishing and social engineering", "Use strong unique credentials and MFA", "Report suspicious activity quickly"],
+      "modules": [
+        {"id": "foundation", "title": "Accounts and devices", "body": "Use a unique password or passphrase for Sulandra systems and multi-factor authentication when offered. Never share a password, one-time code, badge, or logged-in device. Lock screens, install approved updates, and use only authorized applications and storage for company information. Contact support through a known channel rather than a link supplied by an unexpected message.", "keyPoints": ["Unique credentials", "MFA", "Approved and updated devices"]},
+        {"id": "practice", "title": "Recognize, stop, and report", "body": "Phishing may create urgency, request credentials or money, change payment instructions, imitate leadership, or use an unexpected attachment or login page. Pause and verify through an independently known contact. Report suspected phishing, credential disclosure, malware, lost devices, or unusual account activity immediately. Do not forward suspicious content broadly or attempt your own forensic investigation.", "keyPoints": ["Pause before clicking", "Verify using a separate channel", "Report immediately"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "How should an unexpected urgent request for credentials be handled?", "choices": ["Comply quickly", "Pause and verify through an independently known channel", "Forward it to coworkers"]},
+        {"id": "q2", "prompt": "What is the correct credential practice?", "choices": ["Use unique credentials and MFA and never share codes", "Reuse one password everywhere", "Share a supervisor account"]},
+        {"id": "q3", "prompt": "What should happen after a suspected account compromise?", "choices": ["Wait for visible damage", "Delete all messages", "Report immediately and follow security-team instructions"]}
+      ],
+      "sources": [{"label": "HHS healthcare cybersecurity guidance", "url": "https://www.hhs.gov/hipaa/for-professionals/security/guidance/index.html"}, {"label": "CISA Secure Our World", "url": "https://www.cisa.gov/secure-our-world"}]
+    },
+    {
+      "code": "SUL-MULTI-COMPANY",
+      "title": "Multi-Company Records and Access Boundaries",
+      "version": "2026.08",
+      "active": true,
+      "category": "Enterprise Compliance",
+      "description": "Explains how to work safely across separate Sulandra legal employers and provider entities.",
+      "estimatedMinutes": 18,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=SUL-MULTI-COMPANY",
+      "objectives": ["Confirm the selected company before acting", "Avoid copying records across companies", "Escalate ambiguous authority"],
+      "modules": [
+        {"id": "foundation", "title": "Separate company workspaces", "body": "Sulandra companies are separate legal employers or operating entities even when they share branding and enterprise tools. Confirm the selected company before reviewing applicants, assigning training, recording employment, handling a client request, or creating an operational record. Access to one company does not automatically authorize work in another.", "keyPoints": ["Check the company selector", "One employment or grant does not imply every-company authority", "The record belongs to the company that performed or employed the work"]},
+        {"id": "practice", "title": "Correct errors and escalate ambiguity", "body": "Do not solve a company-selection mistake by copying confidential records into another workspace. Stop, preserve the original record, and contact an authorized administrator for correction and audit documentation. When a person has roles in multiple companies, use the company tied to the specific employment, assignment, client enrollment, authorization, or transaction.", "keyPoints": ["Do not duplicate to fix", "Preserve audit history", "Ask when ownership is unclear"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What should you confirm before creating a company record?", "choices": ["The page color", "The last company a coworker used", "The selected legal company and your authority for that work"]},
+        {"id": "q2", "prompt": "How should a record created under the wrong company be handled?", "choices": ["Copy it everywhere", "Stop and request an authorized correction that preserves audit history", "Delete it secretly"]},
+        {"id": "q3", "prompt": "Does access to one Sulandra company automatically authorize work for all companies?", "choices": ["No", "Yes", "Only after completing this course"]}
+      ],
+      "sources": [{"label": "Sulandra employee policies", "url": "/policies.html"}]
+    },
+    {
+      "code": "CARE-INFECTION-CONTROL",
+      "title": "Care Team Standard Precautions Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Care Safety",
+      "description": "Awareness-level orientation to hand hygiene, PPE, sharps, cleaning, and exposure response.",
+      "estimatedMinutes": 22,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=CARE-INFECTION-CONTROL",
+      "objectives": ["Apply standard precautions", "Select PPE for anticipated exposure", "Respond to exposure safely"],
+      "modules": [
+        {"id": "foundation", "title": "Standard precautions", "body": "Perform hand hygiene at required moments and use PPE based on anticipated contact with blood, body fluids, non-intact skin, mucous membranes, contaminated items, or respiratory hazards. Handle sharps and contaminated equipment according to current policy. Clean and disinfect reusable equipment as required before reuse.", "keyPoints": ["Hand hygiene", "Risk-based PPE", "Safe sharps and equipment handling"]},
+        {"id": "practice", "title": "Exposure response", "body": "If an exposure occurs, stop safely, wash or flush the affected area as directed, obtain urgent medical assistance when needed, and notify the designated supervisor or occupational-health contact immediately. Follow the exposure-control process and document facts. Do not conceal the exposure or make your own determination that follow-up is unnecessary.", "keyPoints": ["Immediate first aid", "Prompt reporting", "Required medical follow-up"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What determines selection of PPE?", "choices": ["The anticipated exposure and current policy", "The employee's job title alone", "Whether a supervisor is watching"]},
+        {"id": "q2", "prompt": "When should reusable care equipment be cleaned or disinfected?", "choices": ["Only monthly", "Only if visibly broken", "As required before reuse and under current procedure"]},
+        {"id": "q3", "prompt": "What should happen after an occupational exposure?", "choices": ["Hide it", "Perform required first aid and report immediately", "Wait until annual training"]}
+      ],
+      "sources": [{"label": "CDC Standard Precautions", "url": "https://www.cdc.gov/infection-control/hcp/basics/standard-precautions.html"}, {"label": "CDC Core Infection Prevention Practices", "url": "https://www.cdc.gov/infection-control/hcp/core-practices/index.html"}]
+    },
+    {
+      "code": "CLINICAL-MEDICATION-SAFETY",
+      "title": "Medication Safety Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Clinical Safety",
+      "description": "Awareness-level medication safety boundaries; not medication-administration certification or competency validation.",
+      "estimatedMinutes": 24,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=CLINICAL-MEDICATION-SAFETY",
+      "objectives": ["Work only within authorization and scope", "Use the current order and medication process", "Stop and escalate discrepancies or adverse events"],
+      "modules": [
+        {"id": "foundation", "title": "Authorization and verification", "body": "Only receive, prepare, administer, assist with, document, dispose of, or otherwise handle medications when your license, certification, delegation, competency validation, company authorization, and the care setting permit it. Follow the current order, medication record, pharmacy label, and approved procedure. This orientation grants no medication authority.", "keyPoints": ["No authority from this certificate", "Verify current records and authorization", "Use approved storage and security"]},
+        {"id": "practice", "title": "Stop points and reporting", "body": "Pause before acting when the person, medication, dose, route, time, order, label, record, condition, allergy, supply, or instruction is unclear or inconsistent. Protect the person, contact the authorized nurse, prescriber, pharmacist, supervisor, or emergency service as the situation requires, and complete required documentation and incident reporting. Never conceal an error or alter a record to make it appear correct.", "keyPoints": ["Stop on discrepancy", "Escalate through the clinical chain", "Accurate and timely documentation"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "Does this course authorize medication administration?", "choices": ["Yes, for routine medications", "No", "Only during staff shortages"]},
+        {"id": "q2", "prompt": "What should happen when the order, label, and record do not agree?", "choices": ["Pause and contact the authorized clinical resource", "Choose the most familiar instruction", "Ask the patient to decide"]},
+        {"id": "q3", "prompt": "How should a suspected medication error be handled?", "choices": ["Conceal it", "Rewrite the record", "Protect the person and report and document through the required process"]}
+      ],
+      "sources": [{"label": "Ohio Board of Nursing RN and LPN FAQs", "url": "https://nursing.ohio.gov/education-and-practice/rn-and-lpn-faqs"}, {"label": "Ohio Board of Nursing laws and rules", "url": "https://nursing.ohio.gov/laws-rules"}]
+    },
+    {
+      "code": "CLINICAL-DELEGATION",
+      "title": "Clinical Delegation Boundaries Orientation",
+      "version": "2026.08",
+      "active": true,
+      "category": "Clinical Safety",
+      "description": "Awareness-level orientation to accepting, supervising, and documenting delegated clinical work.",
+      "estimatedMinutes": 22,
+      "certificateValidityMonths": 12,
+      "launchPath": "/course-player.html?code=CLINICAL-DELEGATION",
+      "objectives": ["Recognize that delegation is task-, person-, setting-, and worker-specific", "Decline work outside authorization or competency", "Escalate changes and communicate outcomes"],
+      "modules": [
+        {"id": "foundation", "title": "Delegation is specific", "body": "Delegation does not transfer professional accountability or create general authority. It depends on the current law and rule, care setting, patient or person, task, delegating professional, worker qualifications, training, competency, instructions, supervision, and documentation. A direction from an unauthorized person or an old assignment is not a valid delegation.", "keyPoints": ["Specific task and person", "Current authorization and competency", "Professional oversight remains"]},
+        {"id": "practice", "title": "Accept, perform, and report safely", "body": "Before accepting a delegated task, confirm the instruction, limits, expected outcome, stop conditions, reporting path, and availability of supervision. Decline and escalate when you are not trained, competent, comfortable, authorized, or able to perform safely. Report condition changes, unexpected outcomes, missed tasks, errors, and questions immediately and document under the approved process.", "keyPoints": ["Ask before accepting", "Stop at limits", "Communicate changes and outcomes"]}
+      ],
+      "questions": [
+        {"id": "q1", "prompt": "What makes a clinical delegation valid?", "choices": ["A general job title", "A coworker's verbal request", "Current lawful task-specific authorization, training, competency, and oversight"]},
+        {"id": "q2", "prompt": "What should a worker do when not competent or authorized for a delegated task?", "choices": ["Attempt it carefully", "Decline, protect the person, and escalate", "Trade tasks without notice"]},
+        {"id": "q3", "prompt": "What should happen after an unexpected outcome?", "choices": ["Report promptly and follow required documentation and clinical direction", "Wait for the next annual review", "Alter the instructions"]}
+      ],
+      "sources": [{"label": "Ohio Board of Nursing RN and LPN FAQs", "url": "https://nursing.ohio.gov/education-and-practice/rn-and-lpn-faqs"}, {"label": "Ohio Board of Nursing laws and rules", "url": "https://nursing.ohio.gov/laws-rules"}]
+    }
+  ]
+}

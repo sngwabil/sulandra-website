@@ -11,6 +11,7 @@ import {
   type CareerEntity,
 } from './careers-entity.js';
 import { registerEducationRoutes } from './education-routes.js';
+import { registerHiringProvisioningRoutes } from './hiring-provisioning-routes.js';
 import { entityAccessOf, requireEntityManageAccess } from './entity-access.js';
 import {
   applicantUsernameFor,
@@ -152,6 +153,7 @@ export function registerCareersRoutes(
   const { authOf, requireRoles, audit } = helpers;
 
   registerEducationRoutes(app, prisma, helpers);
+  registerHiringProvisioningRoutes(app, prisma, helpers);
 
   let cachedCareersOrganizationId: string | null = null;
   let careersOrganizationLookup: Promise<string | null> | null = null;

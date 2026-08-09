@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sulandra Education Course</title>
+  <link rel="icon" href="/favicon-48x48.png">
+  <link rel="stylesheet" href="/assets/education-course.css?v=20260809-training-delivery-1">
+  <script src="/assets/education-runtime.js?v=20260809-training-delivery-1"></script>
+</head>
+<body>
+  <div class="topbar">Sulandra Health secure employee education • Internal orientation record</div>
+  <header class="mast"><div class="mastin">
+    <a class="brand" href="/education-portal.html"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span><strong>Sulandra Health</strong>Education and Training</span></a>
+    <div class="company-control"><label for="companySelect">Training company</label><select id="companySelect"><option>Loading company…</option></select></div>
+  </div></header>
+  <section class="hero"><div class="heroin">
+    <div class="eyebrow" id="courseCode">Course</div>
+    <h1 id="courseTitle">Loading approved course…</h1>
+    <p id="courseDescription">Verifying your employee session and selected company.</p>
+    <div class="meta"><span class="pill" id="courseCategory">Education</span><span class="pill" id="courseMinutes">— minutes</span><span class="pill">Passing score: 80%</span><span class="pill" id="companyPill">Selected company</span></div>
+  </div></section>
+  <main class="shell">
+    <section id="courseHost"><div class="card loading">Loading learning activities…</div></section>
+    <aside class="sidebar">
+      <div class="card"><h3>Your training record</h3><div id="recordStatus" class="notice">Checking assignment and completion status…</div></div>
+      <div class="card"><h3>Important boundary</h3><p class="notice" id="catalogDisclaimer">This is internal orientation and does not grant a license, certification, clinical authority, or provider approval.</p></div>
+      <div class="card"><h3>Official resources</h3><div class="source-list" id="sourceList"></div></div>
+      <div class="card"><a href="/education-portal.html">← Return to Education Portal</a></div>
+    </aside>
+  </main>
+  <script>
+  (()=>{
+    'use strict';
+    const runtime=window.SulandraEducationRuntime;
+    const code=new URLSearchParams(location.search).get('code')||'';
+    const host=document.getElementById('courseHost');
+    const safe=runtime.escapeHtml;
+    let catalog=null,course=null,session=null,openAssignment=null,currentCompletion=null,submitting=false;
+
+    function redirectToLogin(){location.replace('/employee-login.html?returnTo='+encodeURIComponent(location.pathname+location.search))}
+    function formatDate(value){if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?String(value):date.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})}
+    function isCurrent(completion){return completion&&(!completion.expiresAt||new Date(completion.expiresAt).getTime()>Date.now())}
+
+    function renderCourse(){
+      document.title=course.title+' | Sulandra Education';
+      document.getElementById('courseCode').textContent=course.code+' • Version '+course.version;
+      document.getElementById('courseTitle').textContent=course.title;
+      document.getElementById('courseDescription').textContent=course.description;
+      document.getElementById('courseCategory').textContent=course.category;
+      document.getElementById('courseMinutes').textContent=course.estimatedMinutes+' minutes';
+      document.getElementById('catalogDisclaimer').textContent=catalog.disclaimer;
+      document.getElementById('sourceList').innerHTML=(course.sources||[]).map(source=>`<a href="${safe(source.url)}" target="${String(source.url).startsWith('http')?'_blank':'_self'}" rel="noopener noreferrer">${safe(source.label)} ↗</a>`).join('')||'No external resources listed.';
+      host.innerHTML=`
+        <section class="card"><h2>Learning objectives</h2><ul class="keypoints">${(course.objectives||[]).map(item=>`<li>${safe(item)}</li>`).join('')}</ul></section>
+        ${(course.modules||[]).map((module,index)=>`<section class="card module"><div class="eyebrow">Module ${index+1} of ${course.modules.length}</div><h2>${safe(module.title)}</h2><p>${safe(module.body)}</p><ul class="keypoints">${(module.keyPoints||[]).map(item=>`<li>${safe(item)}</li>`).join('')}</ul><label class="module-ack"><input type="checkbox" data-module-ack="${safe(module.id)}"><span>I reviewed this module and understand that I must follow current company policy, instructions, and role limits.</span></label></section>`).join('')}
+        <form class="card" id="assessmentForm"><h2>Knowledge assessment</h2><p>Answer every question. A score of ${safe(catalog.passingScorePercent)}% or higher is required.</p>
+          ${(course.questions||[]).map((question,index)=>`<fieldset class="question"><legend>${index+1}. ${safe(question.prompt)}</legend>${question.choices.map((choice,choiceIndex)=>`<label class="choice"><input type="radio" name="${safe(question.id)}" value="${choiceIndex}"><span>${safe(choice)}</span></label>`).join('')}</fieldset>`).join('')}
+          <label class="attestation"><input type="checkbox" id="attested"><span>I attest that I personally reviewed the learning activities and completed this assessment. I understand this completion records internal orientation only and does not replace required policy review, competency validation, licensure, certified training, or regulatory approval.</span></label>
+          <div id="assessmentResult"></div><div class="actions"><button class="button primary" id="submitAssessment" type="submit">Submit assessment</button><a class="button" href="/education-portal.html">Save and return</a></div>
+        </form>`;
+      document.getElementById('assessmentForm').addEventListener('submit',submitAssessment);
+    }
+
+    async function loadRecordState(){
+      const [sessionPayload,assignmentsPayload,completionsPayload]=await Promise.all([
+        runtime.request('/api/session'),runtime.request('/api/education/my-assignments'),runtime.request('/api/education/my-completions')
+      ]);
+      session=sessionPayload.data||{};
+      openAssignment=(assignmentsPayload.data||[]).find(item=>item.courseCode===code)||null;
+      currentCompletion=(completionsPayload.data||[]).find(item=>item.courseCode===code)||null;
+      const entity=runtime.currentEntity();
+      document.getElementById('companyPill').textContent=entity?.displayName||session.entityAccess?.legalEntityName||'Selected company';
+      const status=document.getElementById('recordStatus');
+      const submit=document.getElementById('submitAssessment');
+      if(openAssignment){status.innerHTML=`<strong>${safe(openAssignment.status||'ASSIGNED')}</strong><br>Due: ${safe(formatDate(openAssignment.dueDate))}${openAssignment.attemptCount?`<br>Attempts: ${safe(openAssignment.attemptCount)}`:''}`;if(submit){submit.disabled=false;submit.textContent='Submit assessment'}}
+      else if(isCurrent(currentCompletion)){status.innerHTML=`<strong>Current completion</strong><br>Completed: ${safe(formatDate(currentCompletion.completedAt))}<br>Score: ${safe(currentCompletion.scorePercent)}%<br>Expires: ${safe(formatDate(currentCompletion.expiresAt))}<br><a href="/education-certificate.html?code=${encodeURIComponent(code)}">View certificate</a>`;if(submit){submit.disabled=true;submit.textContent='Current certificate active'}}
+      else if(currentCompletion){status.innerHTML=`<strong>Renewal available</strong><br>Previous certificate expired ${safe(formatDate(currentCompletion.expiresAt))}`;if(submit){submit.disabled=false;submit.textContent='Submit renewal assessment'}}
+      else{status.innerHTML='<strong>Self-enrollment available</strong><br>Completion will be recorded under the selected company.';if(submit){submit.disabled=false;submit.textContent='Submit assessment'}}
+    }
+
+    async function submitAssessment(event){
+      event.preventDefault();if(submitting)return;
+      const result=document.getElementById('assessmentResult');
+      const moduleAcknowledgements=[...document.querySelectorAll('[data-module-ack]:checked')].map(input=>input.dataset.moduleAck);
+      if(moduleAcknowledgements.length!==(course.modules||[]).length){result.className='result error';result.textContent='Review and acknowledge every learning module before submitting.';return}
+      const answers=[];
+      for(const question of course.questions||[]){const selected=document.querySelector(`input[name="${CSS.escape(question.id)}"]:checked`);if(!selected){result.className='result error';result.textContent='Answer every assessment question before submitting.';return}answers.push({questionId:question.id,choiceIndex:Number(selected.value)})}
+      if(!document.getElementById('attested').checked){result.className='result error';result.textContent='Confirm the completion attestation before submitting.';return}
+      const button=document.getElementById('submitAssessment');submitting=true;button.disabled=true;button.textContent='Grading and recording…';result.className='';result.textContent='';
+      try{
+        const payload=await runtime.request('/api/education/completions',{method:'POST',body:JSON.stringify({courseCode:course.code,courseVersion:course.version,moduleAcknowledgements,answers,attested:true})});
+        const completion=payload.data;result.className='result';result.innerHTML=`<strong>Assessment passed — ${safe(completion.scorePercent)}%.</strong><br>Certificate ${safe(completion.certificateNumber)} was recorded for ${safe(completion.legalEntityName)}.<div class="actions" style="margin-top:10px"><a class="button primary" href="/education-certificate.html?code=${encodeURIComponent(code)}">View / print certificate</a><a class="button" href="/education-portal.html">Return to portal</a></div>`;
+        await loadRecordState();result.scrollIntoView({behavior:'smooth',block:'center'});
+      }catch(error){
+        const data=error.payload?.data||{};result.className='result error';result.innerHTML=`<strong>${safe(error.message)}</strong>${data.scorePercent!==undefined?`<br>Recorded score: ${safe(data.scorePercent)}% • Attempt ${safe(data.attemptCount)}`:''}`;button.disabled=false;button.textContent='Review and try again';result.scrollIntoView({behavior:'smooth',block:'center'});
+      }finally{submitting=false}
+    }
+
+    async function start(){
+      if(!runtime?.token())return redirectToLogin();
+      try{
+        const response=await fetch('/education-catalog.json',{cache:'no-store'});if(!response.ok)throw Error('Approved course catalog is unavailable.');catalog=await response.json();course=(catalog.courses||[]).find(item=>item.active===true&&item.code===code);if(!course)throw Error('The requested approved course was not found.');
+        await runtime.mountSelector(document.getElementById('companySelect'),async()=>{await loadRecordState()});renderCourse();await loadRecordState();
+      }catch(error){if(error.status===401)return redirectToLogin();host.innerHTML=`<div class="card result error"><strong>Course unavailable.</strong><br>${safe(error.message||error)}</div>`}
+    }
+    start();
+  })();
+  </script>
+</body>
+</html>

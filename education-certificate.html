@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sulandra Education Certificate</title>
+  <link rel="icon" href="/favicon-48x48.png">
+  <link rel="stylesheet" href="/assets/education-course.css?v=20260809-training-delivery-1">
+  <script src="/assets/education-runtime.js?v=20260809-training-delivery-1"></script>
+</head>
+<body>
+  <div class="topbar">Sulandra Health secure employee education • Verified completion record</div>
+  <header class="mast"><div class="mastin">
+    <a class="brand" href="/education-portal.html"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span><strong>Sulandra Health</strong>Education and Training</span></a>
+    <div class="company-control"><label for="companySelect">Certificate company</label><select id="companySelect"><option>Loading company…</option></select></div>
+  </div></header>
+  <section class="hero"><div class="heroin"><div class="eyebrow">Verified employee record</div><h1>Certificate of Completion</h1><p>Generated from the authenticated, company-scoped Sulandra education record.</p></div></section>
+  <main class="shell"><section id="certificateHost"><div class="card loading">Verifying completion…</div></section><aside class="sidebar">
+    <div class="card"><h3>Verification boundary</h3><p class="notice">This document confirms internal Sulandra orientation only. It is not a professional license, regulatory certificate, provider approval, payer enrollment, or hands-on competency validation.</p></div>
+    <div class="card"><a href="/education-portal.html">← Return to Education Portal</a></div>
+  </aside></main>
+  <div class="print-actions hidden" id="printActions"><button class="button primary" onclick="window.print()">Print certificate</button> <a class="button" id="courseLink">Review course</a></div>
+  <script>
+  (()=>{
+    'use strict';
+    const runtime=window.SulandraEducationRuntime,code=new URLSearchParams(location.search).get('code')||'',host=document.getElementById('certificateHost'),safe=runtime.escapeHtml;
+    let course=null;
+    const formatDate=value=>{if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?String(value):date.toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'})};
+    const redirectToLogin=()=>location.replace('/employee-login.html?returnTo='+encodeURIComponent(location.pathname+location.search));
+    async function renderCertificate(){
+      const [sessionPayload,completionPayload]=await Promise.all([runtime.request('/api/session'),runtime.request('/api/education/my-completions')]);
+      const session=sessionPayload.data||{},completion=(completionPayload.data||[]).find(item=>item.courseCode===code);
+      if(!completion)throw Error('No completed course record was found for this course in the selected company.');
+      const name=session.displayName||session.fullName||session.name||session.email||'Sulandra Employee';
+      const entityName=completion.legalEntityName||runtime.currentEntity()?.displayName||session.entityAccess?.legalEntityName||'Sulandra Health';
+      const version=completion.completionEvidence?.courseVersion||course.version;
+      host.innerHTML=`<article class="certificate"><div class="seal">SH</div><div class="eyebrow">${safe(entityName)}</div><h1>Certificate of Completion</h1><p>This certifies that</p><div class="recipient">${safe(name)}</div><p>successfully completed the internal orientation course</p><div class="course-title">${safe(course.title)}</div><div class="cert-grid"><div class="cert-field"><strong>Course code</strong>${safe(course.code)}</div><div class="cert-field"><strong>Course version</strong>${safe(version)}</div><div class="cert-field"><strong>Assessment score</strong>${safe(completion.scorePercent)}%</div><div class="cert-field"><strong>Completed</strong>${safe(formatDate(completion.completedAt))}</div><div class="cert-field"><strong>Valid through</strong>${safe(formatDate(completion.expiresAt))}</div><div class="cert-field"><strong>Certificate number</strong>${safe(completion.certificateNumber||'Not issued')}</div></div><p class="certificate-disclaimer">Authenticated company-scoped record. This certificate documents Sulandra internal orientation only; it does not replace policy review, supervisor instruction, hands-on competency validation, professional licensure, certified training, payer enrollment, provider approval, or any regulator-required education.</p></article>`;
+      document.getElementById('printActions').classList.remove('hidden');document.getElementById('courseLink').href='/course-player.html?code='+encodeURIComponent(code);document.title=course.title+' Certificate | Sulandra Education';
+    }
+    async function start(){
+      if(!runtime?.token())return redirectToLogin();
+      try{const response=await fetch('/education-catalog.json',{cache:'no-store'});if(!response.ok)throw Error('Approved course catalog is unavailable.');const catalog=await response.json();course=(catalog.courses||[]).find(item=>item.code===code);if(!course)throw Error('The requested course was not found.');await runtime.mountSelector(document.getElementById('companySelect'),renderCertificate);await renderCertificate()}
+      catch(error){if(error.status===401)return redirectToLogin();host.innerHTML=`<div class="card result error"><strong>Certificate unavailable.</strong><br>${safe(error.message||error)}</div>`}
+    }
+    start();
+  })();
+  </script>
+</body>
+</html>

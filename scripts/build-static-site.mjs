@@ -12,7 +12,7 @@ await mkdir(outputDirectory, { recursive: true });
 
 const publicExtensions = new Set([
   '.css', '.html', '.ico', '.js', '.png', '.jpg', '.jpeg', '.webp', '.svg',
-  '.txt', '.webmanifest', '.xml', '.pdf',
+  '.txt', '.webmanifest', '.xml', '.pdf', '.json',
 ]);
 const publicRootFiles = new Set(['CNAME', 'vercel.json']);
 const publicDirectories = ['assets', 'public', 'courses', 'education', 'services'];
@@ -144,6 +144,7 @@ for (const marker of [
   '/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1',
   '/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1',
   '/assets/admin-company-context.js?v=20260809-admin-company-context-2',
+  'careers-admin-workflow.js?v=20260809-hiring-provisioning-2',
   'id="admin-fullscreen-layout"',
 ]) {
   if (!publishedAdmin.includes(marker)) throw new Error(`Modern Admin publication failed; missing ${marker}`);
@@ -153,6 +154,7 @@ const requiredPublishedFiles = [
   'admin.html', 'admin-railway.js', 'employee-login.html', 'employee-portal.html',
   'careers.html', 'applygeneral.html', 'applydsp.html', 'applylpn.html', 'applydoo.html',
   'employee360.html', 'education-portal.html', 'time-attendance.html', 'scheduling.html', 'intranet.html',
+  'course-player.html', 'education-certificate.html', 'education-catalog.json',
   'intranet.HTML', 'policies.html', 'news.html', 'feedback.html', 'payroll.html',
   'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',
   'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
@@ -160,6 +162,7 @@ const requiredPublishedFiles = [
   'assets/admin-live-dashboard.js', 'assets/admin-analog-clock.js',
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
   'assets/admin-company-context.js',
+  'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
