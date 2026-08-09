@@ -35,20 +35,22 @@ export function buildSignedOfferPdf(offer: any, acceptedBy: string, signature: s
   const lines: Array<{ text: string; bold?: boolean }> = [];
   const add = (text = '', bold = false) => lines.push({ text: cleanPdfText(text), bold });
   const paragraph = (text: string) => { for (const line of wrap(text)) add(line); add(''); };
-  add('SULANDRA HEALTH', true); add('Sulandra Community Living Services', true); add('A Division of Sulandra Health'); add(''); add('OFFER OF EMPLOYMENT', true); add('');
+  const companyName = cleanPdfText(offer.legalEntityName || 'Sulandra Health');
+  const companyContext = companyName === 'Sulandra Health' ? '' : 'A Sulandra Health company';
+  add('SULANDRA HEALTH', true); add(companyName, true); if (companyContext) add(companyContext); add(''); add('OFFER OF EMPLOYMENT', true); add('');
   add(`Applicant: ${offer.firstName || ''} ${offer.lastName || ''}`); add(`Position: ${offer.positionTitle || 'As stated in the offer'}`); add(`Department: ${offer.department || 'As assigned'}`);
   add(`Employment type: ${String(offer.employmentType || '').replaceAll('_', ' ')}`); add(`Compensation: ${money(offer.payAmount, offer.compensationType)}`); add(`Expected shift: ${offer.shift || 'As scheduled'}`);
   add(`Supervisor: ${offer.supervisorName || 'To be assigned'}`); add(`Work location: ${offer.workLocation || 'To be confirmed'}`); add(`Anticipated start date: ${dateText(offer.startDate)}`);
   add(`Orientation date: ${dateText(offer.orientationDate)}`); add(`Introductory period: ${offer.probationDays ?? 90} days`); add(`PTO eligibility: ${offer.ptoEligible ? 'Eligible' : 'Not currently eligible'}`);
   add(`Benefits eligibility: ${offer.benefitsEligible ? 'Eligible' : 'Not currently eligible'}`); if (offer.bonusAmount) add(`Bonus: ${money(offer.bonusAmount, 'ONE_TIME')}`); add('');
-  paragraph('Sulandra Community Living Services is pleased to offer you employment in the position identified above. By accepting this offer, you agree to perform the responsibilities of the position safely, professionally, honestly, and in accordance with applicable laws, company policies, training requirements, client rights, confidentiality requirements, attendance expectations, and supervisor direction.');
-  paragraph('Sulandra Community Living Services agrees to provide the compensation and employment terms stated in this offer, appropriate orientation and training, access to applicable policies and procedures, reasonable supervision and support, a professional work environment, and resources reasonably required to perform assigned duties, subject to business needs and applicable law.');
+  paragraph(`${companyName} is pleased to offer you employment in the position identified above. By accepting this offer, you agree to perform the responsibilities of the position safely, professionally, honestly, and in accordance with applicable laws, company policies, training requirements, client rights, confidentiality requirements, attendance expectations, and supervisor direction.`);
+  paragraph(`${companyName} agrees to provide the compensation and employment terms stated in this offer, appropriate orientation and training, access to applicable policies and procedures, reasonable supervision and support, a professional work environment, and resources reasonably required to perform assigned duties, subject to business needs and applicable law.`);
   if (offer.notes) paragraph(`Additional job terms: ${offer.notes}`);
   paragraph('This offer remains conditional upon satisfactory completion of applicable job requirements, background screening, drug testing where required, identity and employment-eligibility verification, credential and reference verification, exclusion-list screening, driving-record review when job-related, and final approval by the Sulandra Health Human Resources Department. The anticipated start date may change until final clearance is issued.');
   paragraph('This offer does not create employment for a guaranteed duration and does not alter at-will employment where applicable. Only an authorized written agreement may modify these terms.');
   add('ELECTRONIC ACCEPTANCE', true); add(`Accepted by: ${acceptedBy}`); add(`Electronic signature: ${signature}`); add(`Accepted on: ${acceptedAt.toLocaleString('en-US')}`); add('');
   paragraph('The signer confirms that they reviewed the employment terms, understand the expectations of the position and the company, and accept this Offer of Employment subject to the conditions stated above.');
-  add('Sulandra Health Human Resources Department', true); add('Sulandra Community Living Services'); add('A Division of Sulandra Health');
+  add('Sulandra Health Human Resources Department', true); add(companyName); if (companyContext) add(companyContext);
   const pages: Array<Array<{ text: string; bold?: boolean }>> = []; for (let i = 0; i < lines.length; i += 43) pages.push(lines.slice(i, i + 43));
   const objects: string[] = []; objects[1] = '<< /Type /Catalog /Pages 2 0 R >>'; objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'; objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
   const pageObjectIds: number[] = []; let nextId = 5;
@@ -60,7 +62,7 @@ export function buildSignedOfferPdf(offer: any, acceptedBy: string, signature: s
 
 async function offerByToken(prisma: PrismaClient, rawToken: string) {
   const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId",a."workflowStatus" AS "applicationWorkflowStatus" FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId" WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW() LIMIT 1`, tokenHash);
+  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId",a."workflowStatus" AS "applicationWorkflowStatus",entity."displayName" AS "legalEntityName" FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId" AND a."legalEntityId"=o."legalEntityId" JOIN "LegalEntity" entity ON entity."organizationId"=o."organizationId" AND entity."id"=o."legalEntityId" WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW() LIMIT 1`, tokenHash);
   return rows[0] || null;
 }
 
@@ -93,7 +95,7 @@ export function registerOfferAcceptancePdfRoute(app: express.Express, prisma: Pr
         await tx.$executeRawUnsafe(`DELETE FROM "ApplicantDocument" WHERE "applicationId"=$1 AND "label"='Signed Offer of Employment'`,offer.applicationId);
         await tx.$executeRawUnsafe(`INSERT INTO "ApplicantDocument" ("id","applicationId","category","label","status","fileName","mimeType","sizeBytes","fileData","contentSha256","uploadedByType","uploadedAt","createdAt","updatedAt") VALUES ($1,$2,'OTHER'::"ApplicantDocumentCategory",'Signed Offer of Employment','RECEIVED'::"ApplicantDocumentStatus",$3,'application/pdf',$4,$5,$6,'APPLICANT',NOW(),NOW(),NOW())`,documentId,offer.applicationId,fileName,pdf.length,pdf,pdfHash);
       });
-      await helpers.audit({ organizationId: offer.organizationId },'ACCEPT_EMPLOYMENT_OFFER','EmploymentOffer',offer.id,{applicationId:offer.applicationId,signedOfferDocumentId:documentId,acceptedByName:acceptedBy});
+      await helpers.audit({ organizationId: offer.organizationId },'ACCEPT_EMPLOYMENT_OFFER','EmploymentOffer',offer.id,{applicationId:offer.applicationId,legalEntityId:offer.legalEntityId,departmentId:offer.departmentId,signedOfferDocumentId:documentId,acceptedByName:acceptedBy});
       res.json({data:{status:'OFFER_ACCEPTED',signedOfferDocumentId:documentId,message:'Your signed Offer of Employment has been received by the Sulandra Health Human Resources Department.'}});
     } catch(error){next(error);}
   });

@@ -8,6 +8,7 @@ import {
   careersPortalUrl,
   recordAndDeliver,
 } from './applicant-workflow.js';
+import { entityAccessOf, requireEntityManageAccess } from './entity-access.js';
 
 type AuthContext = { userId: string; organizationId: string; role: UserRole };
 type Helpers = {
@@ -121,14 +122,22 @@ function reschedulePolicy(startsAt: unknown, timeZone: string, now = new Date())
   return { allowed: true, reason: null };
 }
 
-async function companySettings(prisma: PrismaClient, organizationId: string) {
+async function companySettings(prisma: PrismaClient, organizationId: string, legalEntityId: string) {
   const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT * FROM "CompanySetting" WHERE "organizationId"=$1 LIMIT 1`,
+    `SELECT setting.*,entity."displayName" AS "entityDisplayName"
+       FROM "LegalEntity" entity
+       LEFT JOIN "CompanySetting" setting
+         ON setting."organizationId"=entity."organizationId" AND setting."legalEntityId"=entity."id"
+      WHERE entity."organizationId"=$1 AND entity."id"=$2
+      LIMIT 1`,
     organizationId,
+    legalEntityId,
   );
-  return rows[0] || {
+  const row = rows[0];
+  return row?.organizationId ? row : {
     organizationId,
-    companyName: 'Sulandra Health',
+    legalEntityId,
+    companyName: row?.entityDisplayName || 'Sulandra Health',
     addressLine1: '822 Dalewood Pl',
     addressLine2: 'Suite A',
     city: 'Dayton',
@@ -145,8 +154,8 @@ async function invitationByToken(prisma: PrismaClient, token: string) {
             a."preferredCommunication",a."referenceNumber",a."workflowStatus",a."applicantUsername",
             j."title" AS "jobTitle"
        FROM "InterviewInvitation" i
-       JOIN "EmployeeApplication" a ON a."id"=i."applicationId"
-       LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
+       JOIN "EmployeeApplication" a ON a."id"=i."applicationId" AND a."legalEntityId"=i."legalEntityId"
+       LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId" AND j."legalEntityId"=a."legalEntityId"
       WHERE i."tokenHash"=$1
       LIMIT 1`,
     hashToken(token),
@@ -154,7 +163,7 @@ async function invitationByToken(prisma: PrismaClient, token: string) {
   return rows[0] || null;
 }
 
-function interviewInvitationMessage(application: any, url: string, deadline: Date, note: string | undefined, timeZone: string) {
+function interviewInvitationMessage(application: any, url: string, deadline: Date, note: string | undefined, timeZone: string, companyName: string) {
   return [
     `Dear ${application.firstName},`,
     '',
@@ -174,11 +183,11 @@ function interviewInvitationMessage(application: any, url: string, deadline: Dat
     '',
     'Sincerely,',
     careersHrDisplayName,
-    'Sulandra Health',
+    companyName,
   ].filter((line) => line !== undefined && line !== null).join('\n');
 }
 
-function interviewConfirmationMessage(application: any, slot: any, url: string, timeZone: string, changed: boolean) {
+function interviewConfirmationMessage(application: any, slot: any, url: string, timeZone: string, changed: boolean, companyName: string) {
   return [
     `Dear ${application.firstName},`,
     '',
@@ -197,7 +206,7 @@ function interviewConfirmationMessage(application: any, slot: any, url: string, 
     '',
     'Sincerely,',
     careersHrDisplayName,
-    'Sulandra Health',
+    companyName,
   ].join('\n');
 }
 
@@ -214,7 +223,8 @@ export function registerInterviewSchedulingRoutes(
     async (_req, res, next) => {
       try {
         const auth = authOf(res);
-        res.json({ data: await companySettings(prisma, auth.organizationId) });
+        const access = entityAccessOf(res);
+        res.json({ data: await companySettings(prisma, auth.organizationId, access.legalEntityId) });
       } catch (error) { next(error); }
     },
   );
@@ -225,22 +235,24 @@ export function registerInterviewSchedulingRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
+        requireEntityManageAccess(access);
         const input = companySettingsSchema.parse(req.body);
         await prisma.$executeRawUnsafe(
           `INSERT INTO "CompanySetting"
-            ("organizationId","companyName","addressLine1","addressLine2","city","state","postalCode","emailDisplayName","timeZone","updatedById","createdAt","updatedAt")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())
-           ON CONFLICT ("organizationId") DO UPDATE SET
+            ("organizationId","legalEntityId","companyName","addressLine1","addressLine2","city","state","postalCode","emailDisplayName","timeZone","updatedById","createdAt","updatedAt")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())
+           ON CONFLICT ("organizationId","legalEntityId") DO UPDATE SET
              "companyName"=EXCLUDED."companyName","addressLine1"=EXCLUDED."addressLine1",
              "addressLine2"=EXCLUDED."addressLine2","city"=EXCLUDED."city",
              "state"=EXCLUDED."state","postalCode"=EXCLUDED."postalCode",
              "emailDisplayName"=EXCLUDED."emailDisplayName","timeZone"=EXCLUDED."timeZone",
              "updatedById"=EXCLUDED."updatedById","updatedAt"=NOW()`,
-          auth.organizationId, input.companyName, input.addressLine1, input.addressLine2,
+          auth.organizationId, access.legalEntityId, input.companyName, input.addressLine1, input.addressLine2,
           input.city, input.state, input.postalCode, careersHrDisplayName, input.timeZone, auth.userId,
         );
-        await audit(auth, 'UPDATE_COMPANY_SETTINGS', 'CompanySetting', auth.organizationId);
-        res.json({ data: await companySettings(prisma, auth.organizationId) });
+        await audit(auth, 'UPDATE_COMPANY_SETTINGS', 'CompanySetting', access.legalEntityId, { legalEntityId: access.legalEntityId });
+        res.json({ data: await companySettings(prisma, auth.organizationId, access.legalEntityId) });
       } catch (error) { next(error); }
     },
   );
@@ -251,6 +263,7 @@ export function registerInterviewSchedulingRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
         const applicationId = String(req.query.applicationId || '');
         const slots = await prisma.$queryRawUnsafe<any[]>(
           `SELECT s.*,a."firstName" AS "bookedFirstName",a."lastName" AS "bookedLastName",
@@ -261,12 +274,14 @@ export function registerInterviewSchedulingRoutes(
                   ) AS "invitedToCurrentApplication"
              FROM "InterviewSlot" s
              LEFT JOIN "EmployeeApplication" a ON a."id"=s."bookedApplicationId"
-            WHERE s."organizationId"=$1 AND s."startsAt">NOW()
+            WHERE s."organizationId"=$1 AND s."legalEntityId"=$3
+              AND ($4::text IS NULL OR s."departmentId"=$4)
+              AND s."startsAt">NOW()
             ORDER BY s."startsAt"
             LIMIT 500`,
-          auth.organizationId, applicationId,
+          auth.organizationId, applicationId, access.legalEntityId, access.departmentId,
         );
-        const settings = await companySettings(prisma, auth.organizationId);
+        const settings = await companySettings(prisma, auth.organizationId, access.legalEntityId);
         res.json({ data: { slots, companyDetails: { ...settings, formattedAddress: formattedAddress(settings) } } });
       } catch (error) { next(error); }
     },
@@ -278,10 +293,13 @@ export function registerInterviewSchedulingRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
+        requireEntityManageAccess(access);
         const changed = await prisma.$executeRawUnsafe(
           `UPDATE "InterviewSlot" SET "status"='CANCELLED',"updatedAt"=NOW()
-            WHERE "id"=$1 AND "organizationId"=$2 AND "status"='AVAILABLE'`,
-          String(req.params.slotId), auth.organizationId,
+            WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3
+              AND ($4::text IS NULL OR "departmentId"=$4) AND "status"='AVAILABLE'`,
+          String(req.params.slotId), auth.organizationId, access.legalEntityId, access.departmentId,
         );
         if (!changed) return res.status(409).json({ error: 'Only an unbooked interview time can be cancelled.' });
         await audit(auth, 'CANCEL_INTERVIEW_SLOT', 'InterviewSlot', String(req.params.slotId));
@@ -296,20 +314,23 @@ export function registerInterviewSchedulingRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
+        requireEntityManageAccess(access);
         const applicationId = String(req.params.id);
         const input = invitationSchema.parse(req.body);
         const applicationRows = await prisma.$queryRawUnsafe<any[]>(
           `SELECT a.*,j."title" AS "jobTitle"
              FROM "EmployeeApplication" a
              LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1 AND a."organizationId"=$2`,
-          applicationId, auth.organizationId,
+            WHERE a."id"=$1 AND a."organizationId"=$2 AND a."legalEntityId"=$3
+              AND ($4::text IS NULL OR a."departmentId"=$4)`,
+          applicationId, auth.organizationId, access.legalEntityId, access.departmentId,
         );
         const application = applicationRows[0];
         if (!application) return res.status(404).json({ error: 'Application not found.' });
         if (!application.email) return res.status(400).json({ error: 'An applicant email address is required to send an interview invitation.' });
 
-        const settings = await companySettings(prisma, auth.organizationId);
+        const settings = await companySettings(prisma, auth.organizationId, access.legalEntityId);
         const defaultLocation = input.locationOrLink || formattedAddress(settings);
         const uniqueStarts = [...new Map(input.startsAt.map((date) => [date.toISOString(), date])).values()];
         const now = Date.now();
@@ -329,11 +350,12 @@ export function registerInterviewSchedulingRoutes(
             const endsAt = new Date(startsAt.getTime() + input.durationMinutes * 60_000);
             const inserted = await tx.$queryRawUnsafe<any[]>(
               `INSERT INTO "InterviewSlot"
-                ("id","organizationId","startsAt","endsAt","mode","locationOrLink","status","createdById","createdAt","updatedAt")
-               VALUES ($1,$2,$3,$4,$5,$6,'AVAILABLE',$7,NOW(),NOW())
-               ON CONFLICT ("organizationId","startsAt") DO UPDATE SET "updatedAt"=NOW()
+                ("id","organizationId","legalEntityId","departmentId","startsAt","endsAt","mode","locationOrLink","status","createdById","createdAt","updatedAt")
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'AVAILABLE',$9,NOW(),NOW())
+               ON CONFLICT ("organizationId","legalEntityId","startsAt") DO UPDATE SET "updatedAt"=NOW()
                RETURNING "id"`,
-              randomUUID(), auth.organizationId, startsAt, endsAt, input.mode, defaultLocation, auth.userId,
+              randomUUID(), auth.organizationId, access.legalEntityId, application.departmentId,
+              startsAt, endsAt, input.mode, defaultLocation, auth.userId,
             );
             if (inserted[0]?.id) selected.add(inserted[0].id);
           }
@@ -343,8 +365,8 @@ export function registerInterviewSchedulingRoutes(
             const rows = await tx.$queryRawUnsafe<any[]>(
               `SELECT "id","status","bookedApplicationId","startsAt"
                  FROM "InterviewSlot"
-                WHERE "id"=$1 AND "organizationId"=$2`,
-              slotId, auth.organizationId,
+                WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3`,
+              slotId, auth.organizationId, access.legalEntityId,
             );
             const slot = rows[0];
             if (!slot) throw requestError(409, 'One of the selected interview times no longer exists.');
@@ -368,14 +390,15 @@ export function registerInterviewSchedulingRoutes(
 
           await tx.$executeRawUnsafe(
             `UPDATE "InterviewInvitation" SET "status"='CLOSED',"updatedAt"=NOW()
-              WHERE "applicationId"=$1 AND "status"='ACTIVE'`,
-            applicationId,
+              WHERE "applicationId"=$1 AND "legalEntityId"=$2 AND "status"='ACTIVE'`,
+            applicationId, access.legalEntityId,
           );
           await tx.$executeRawUnsafe(
             `INSERT INTO "InterviewInvitation"
-              ("id","organizationId","applicationId","tokenHash","expiresAt","status","note","createdById","createdAt","updatedAt")
-             VALUES ($1,$2,$3,$4,$5,'ACTIVE',$6,$7,NOW(),NOW())`,
-            invitationId, auth.organizationId, applicationId, hashToken(rawToken), effectiveExpiresAt, input.note || null, auth.userId,
+              ("id","organizationId","legalEntityId","departmentId","applicationId","tokenHash","expiresAt","status","note","createdById","createdAt","updatedAt")
+             VALUES ($1,$2,$3,$4,$5,$6,$7,'ACTIVE',$8,$9,NOW(),NOW())`,
+            invitationId, auth.organizationId, access.legalEntityId, application.departmentId,
+            applicationId, hashToken(rawToken), effectiveExpiresAt, input.note || null, auth.userId,
           );
           for (const slot of available) {
             await tx.$executeRawUnsafe(
@@ -403,12 +426,13 @@ export function registerInterviewSchedulingRoutes(
           prisma,
           { ...application, preferredCommunication: 'EMAIL' },
           'INTERVIEW_INVITATION',
-          `Select your Sulandra Health interview appointment — ${application.referenceNumber}`,
-          interviewInvitationMessage(application, url, scheduling.expiresAt, input.note, settings.timeZone || DEFAULT_TIME_ZONE),
+          `Select your ${settings.companyName} interview appointment — ${application.referenceNumber}`,
+          interviewInvitationMessage(application, url, scheduling.expiresAt, input.note, settings.timeZone || DEFAULT_TIME_ZONE, settings.companyName),
           auth.userId,
         );
         await audit(auth, 'SEND_INTERVIEW_INVITATION', 'InterviewInvitation', invitationId, {
-          applicationId, slotCount: scheduling.slotIds.length, deliveryStatus, expiresAt: scheduling.expiresAt,
+          applicationId, legalEntityId: access.legalEntityId, departmentId: application.departmentId,
+          slotCount: scheduling.slotIds.length, deliveryStatus, expiresAt: scheduling.expiresAt,
         });
         res.status(201).json({ data: { invitationId, slotIds: scheduling.slotIds, expiresAt: scheduling.expiresAt, deliveryStatus } });
       } catch (error) { next(error); }
@@ -419,7 +443,7 @@ export function registerInterviewSchedulingRoutes(
     try {
       const invitation = await invitationByToken(prisma, String(req.params.token));
       if (!invitation) return res.status(404).json({ error: 'Interview invitation not found.' });
-      const settings = await companySettings(prisma, invitation.organizationId);
+      const settings = await companySettings(prisma, invitation.organizationId, invitation.legalEntityId);
       const slots = await prisma.$queryRawUnsafe<any[]>(
         `SELECT s."id",s."startsAt",s."endsAt",s."mode",s."locationOrLink",s."status",
                 s."bookedApplicationId",
@@ -427,13 +451,13 @@ export function registerInterviewSchedulingRoutes(
                 (s."status"<>'AVAILABLE' AND NOT (s."bookedApplicationId"=$2 AND s."status"='BOOKED')) AS "unavailable"
            FROM "InterviewInvitationSlot" x
            JOIN "InterviewSlot" s ON s."id"=x."slotId"
-          WHERE x."invitationId"=$1
+          WHERE x."invitationId"=$1 AND s."legalEntityId"=$3
           ORDER BY s."startsAt"`,
-        invitation.id, invitation.applicationId,
+        invitation.id, invitation.applicationId, invitation.legalEntityId,
       );
       const currentRows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "InterviewSlot" WHERE "bookedApplicationId"=$1 AND "status"='BOOKED' ORDER BY "startsAt" LIMIT 1`,
-        invitation.applicationId,
+        `SELECT * FROM "InterviewSlot" WHERE "bookedApplicationId"=$1 AND "legalEntityId"=$2 AND "status"='BOOKED' ORDER BY "startsAt" LIMIT 1`,
+        invitation.applicationId, invitation.legalEntityId,
       );
       const current = currentRows[0] || null;
       if (current && !slots.some((slot) => slot.id === current.id)) {
@@ -473,19 +497,19 @@ export function registerInterviewSchedulingRoutes(
       if (invitation.status !== 'ACTIVE' || new Date(invitation.expiresAt).getTime() <= Date.now()) {
         return res.status(410).json({ error: 'This interview scheduling link has expired. Contact Human Resources for assistance.' });
       }
-      const settings = await companySettings(prisma, invitation.organizationId);
+      const settings = await companySettings(prisma, invitation.organizationId, invitation.legalEntityId);
       const result = await prisma.$transaction(async (tx) => {
         const permitted = await tx.$queryRawUnsafe<any[]>(
           `SELECT s.* FROM "InterviewInvitationSlot" x
              JOIN "InterviewSlot" s ON s."id"=x."slotId"
-            WHERE x."invitationId"=$1 AND x."slotId"=$2`,
-          invitation.id, input.slotId,
+            WHERE x."invitationId"=$1 AND x."slotId"=$2 AND s."legalEntityId"=$3`,
+          invitation.id, input.slotId, invitation.legalEntityId,
         );
         const target = permitted[0];
         if (!target) throw requestError(400, 'That appointment is not part of this interview invitation.');
         const currentRows = await tx.$queryRawUnsafe<any[]>(
-          `SELECT * FROM "InterviewSlot" WHERE "bookedApplicationId"=$1 AND "status"='BOOKED' ORDER BY "startsAt" LIMIT 1`,
-          invitation.applicationId,
+          `SELECT * FROM "InterviewSlot" WHERE "bookedApplicationId"=$1 AND "legalEntityId"=$2 AND "status"='BOOKED' ORDER BY "startsAt" LIMIT 1`,
+          invitation.applicationId, invitation.legalEntityId,
         );
         const current = currentRows[0] || null;
         if (current?.id === target.id) return { slot: current, changed: false, alreadySelected: true };
@@ -499,10 +523,10 @@ export function registerInterviewSchedulingRoutes(
         const locked = await tx.$queryRawUnsafe<any[]>(
           `UPDATE "InterviewSlot"
               SET "status"='BOOKED',"bookedApplicationId"=$1,"bookedAt"=NOW(),"updatedAt"=NOW()
-            WHERE "id"=$2 AND "organizationId"=$3 AND "status"='AVAILABLE'
+            WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4 AND "status"='AVAILABLE'
               AND "bookedApplicationId" IS NULL AND "startsAt">NOW()
             RETURNING *`,
-          invitation.applicationId, target.id, invitation.organizationId,
+          invitation.applicationId, target.id, invitation.organizationId, invitation.legalEntityId,
         );
         if (!locked[0]) throw requestError(409, 'That appointment was just selected by another applicant. Please choose another available time.');
         if (current) {
@@ -510,8 +534,8 @@ export function registerInterviewSchedulingRoutes(
             `UPDATE "InterviewSlot"
                 SET "status"='AVAILABLE',"bookedApplicationId"=NULL,"bookedAt"=NULL,
                     "reminderSentAt"=NULL,"updatedAt"=NOW()
-              WHERE "id"=$1 AND "bookedApplicationId"=$2`,
-            current.id, invitation.applicationId,
+              WHERE "id"=$1 AND "bookedApplicationId"=$2 AND "legalEntityId"=$3`,
+            current.id, invitation.applicationId, invitation.legalEntityId,
           );
         }
         const note = `${current ? 'Interview rescheduled' : 'Interview scheduled'} for ${dateTimeText(locked[0].startsAt, settings.timeZone || DEFAULT_TIME_ZONE)}.`;
@@ -531,7 +555,7 @@ export function registerInterviewSchedulingRoutes(
           { ...invitation, id: invitation.applicationId, preferredCommunication: 'EMAIL' },
           'INTERVIEW_INVITATION',
           `${result.changed ? 'Updated' : 'Confirmed'} interview appointment — ${invitation.referenceNumber}`,
-          interviewConfirmationMessage(invitation, result.slot, url, settings.timeZone || DEFAULT_TIME_ZONE, result.changed),
+          interviewConfirmationMessage(invitation, result.slot, url, settings.timeZone || DEFAULT_TIME_ZONE, result.changed, settings.companyName),
           null,
         );
         await audit(
@@ -539,7 +563,7 @@ export function registerInterviewSchedulingRoutes(
           result.changed ? 'RESCHEDULE_INTERVIEW' : 'BOOK_INTERVIEW',
           'InterviewSlot',
           result.slot.id,
-          { applicationId: invitation.applicationId },
+          { applicationId: invitation.applicationId, legalEntityId: invitation.legalEntityId },
         );
       }
       res.json({ data: { selectedSlot: result.slot, changed: result.changed } });

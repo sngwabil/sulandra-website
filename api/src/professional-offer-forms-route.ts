@@ -15,9 +15,11 @@ const completionSchema = z.object({
 async function offerByToken(prisma: PrismaClient, rawToken: string) {
   const tokenHash = createHash('sha256').update(rawToken).digest('hex');
   const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT o.*,a."firstName",a."middleName",a."lastName",a."email",a."referenceNumber"
+    `SELECT o.*,a."firstName",a."middleName",a."lastName",a."email",a."referenceNumber",
+            entity."displayName" AS "legalEntityName"
        FROM "EmploymentOffer" o
-       JOIN "EmployeeApplication" a ON a."id"=o."applicationId"
+       JOIN "EmployeeApplication" a ON a."id"=o."applicationId" AND a."legalEntityId"=o."legalEntityId"
+       JOIN "LegalEntity" entity ON entity."organizationId"=o."organizationId" AND entity."id"=o."legalEntityId"
       WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW()
       LIMIT 1`,
     tokenHash,
@@ -57,6 +59,8 @@ function createOfferLetterPdf(offer: any, signerName: string, signature: string)
     ? new Date(offer.orientationDate).toLocaleDateString('en-US')
     : 'To be confirmed';
   const applicantName = [offer.firstName, offer.middleName, offer.lastName].filter(Boolean).join(' ');
+  const companyName = offer.legalEntityName || 'Sulandra Health';
+  const companyContext = companyName === 'Sulandra Health' ? '' : 'a Sulandra Health company';
   const paragraphs = [
     `Date: ${date}`,
     `To: ${applicantName}`,
@@ -64,7 +68,7 @@ function createOfferLetterPdf(offer: any, signerName: string, signature: string)
     '',
     `Dear ${offer.firstName},`,
     '',
-    `Sulandra Community Living Services, a division of Sulandra Health, is pleased to offer you employment as ${offer.positionTitle}. We believe your experience and commitment to person-centered service will be valuable to our organization and the individuals we support.`,
+    `${companyName}${companyContext ? `, ${companyContext},` : ''} is pleased to offer you employment as ${offer.positionTitle}. We believe your experience and commitment to person-centered service will be valuable to our organization and the individuals we support.`,
     '',
     `Your anticipated employment terms are as follows:`,
     `Position: ${offer.positionTitle}`,
@@ -89,12 +93,12 @@ function createOfferLetterPdf(offer: any, signerName: string, signature: string)
     '',
     `Please complete and electronically sign the required onboarding packet within 14 days. Your employee account and final onboarding access will be issued after Human Resources verifies the completed requirements.`,
     '',
-    `We are pleased to welcome you to Sulandra Community Living Services and look forward to the contribution you can make to our mission.`,
+    `We are pleased to welcome you to ${companyName} and look forward to the contribution you can make to our mission.`,
     '',
     `Sincerely,`,
     `Sulandra Health Human Resources Department`,
-    `Sulandra Community Living Services`,
-    `A Division of Sulandra Health`,
+    companyName,
+    companyContext ? 'A Sulandra Health company' : '',
     '',
     `ACCEPTANCE`,
     `I, ${signerName}, accept this offer of employment and acknowledge that I reviewed and understand the terms stated above.`,

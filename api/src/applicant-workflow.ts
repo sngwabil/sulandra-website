@@ -10,6 +10,7 @@ import {
 } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { z } from 'zod';
+import { entityAccessOf, requireEntityManageAccess } from './entity-access.js';
 
 type AuthContext = {
   userId: string;
@@ -1213,14 +1214,19 @@ export function registerApplicantWorkflowRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
+        requireEntityManageAccess(access);
         const applicationId = String(req.params.id);
         const rows = await prisma.$queryRawUnsafe<any[]>(
           `SELECT a.*,j."title" AS "jobTitle"
              FROM "EmployeeApplication" a
              LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1 AND a."organizationId"=$2`,
+            WHERE a."id"=$1 AND a."organizationId"=$2 AND a."legalEntityId"=$3
+              AND ($4::text IS NULL OR a."departmentId"=$4)`,
           applicationId,
           auth.organizationId,
+          access.legalEntityId,
+          access.departmentId,
         );
         const application = rows[0];
         if (!application) return res.status(404).json({ error: 'Application not found.' });
@@ -1283,6 +1289,8 @@ export function registerApplicantWorkflowRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
+        requireEntityManageAccess(access);
         const applicationId = String(req.params.id);
         const input = z.object({
           status: applicationStatus,
@@ -1294,9 +1302,12 @@ export function registerApplicantWorkflowRoutes(
           `SELECT a.*,j."title" AS "jobTitle"
              FROM "EmployeeApplication" a
              LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-            WHERE a."id"=$1 AND a."organizationId"=$2`,
+            WHERE a."id"=$1 AND a."organizationId"=$2 AND a."legalEntityId"=$3
+              AND ($4::text IS NULL OR a."departmentId"=$4)`,
           applicationId,
           auth.organizationId,
+          access.legalEntityId,
+          access.departmentId,
         );
         const application = applications[0];
         if (!application) return res.status(404).json({ error: 'Application not found.' });
@@ -1355,6 +1366,8 @@ export function registerApplicantWorkflowRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
+        requireEntityManageAccess(access);
         const applicationId = String(req.params.id);
         const documentId = String(req.params.documentId);
         const input = z.object({
@@ -1366,10 +1379,13 @@ export function registerApplicantWorkflowRoutes(
           `SELECT d.*,a."firstName",a."email",a."phone",a."preferredCommunication",a."referenceNumber",a."applicantUsername"
              FROM "ApplicantDocument" d
              JOIN "EmployeeApplication" a ON a."id"=d."applicationId"
-            WHERE d."id"=$1 AND d."applicationId"=$2 AND a."organizationId"=$3`,
+            WHERE d."id"=$1 AND d."applicationId"=$2 AND a."organizationId"=$3 AND a."legalEntityId"=$4
+              AND ($5::text IS NULL OR a."departmentId"=$5)`,
           documentId,
           applicationId,
           auth.organizationId,
+          access.legalEntityId,
+          access.departmentId,
         );
         const document = rows[0];
         if (!document) return res.status(404).json({ error: 'Document not found.' });
@@ -1415,14 +1431,18 @@ export function registerApplicantWorkflowRoutes(
     async (req, res, next) => {
       try {
         const auth = authOf(res);
+        const access = entityAccessOf(res);
         const rows = await prisma.$queryRawUnsafe<any[]>(
           `SELECT d."fileData",d."fileName",d."mimeType"
              FROM "ApplicantDocument" d
              JOIN "EmployeeApplication" a ON a."id"=d."applicationId"
-            WHERE d."id"=$1 AND d."applicationId"=$2 AND a."organizationId"=$3`,
+            WHERE d."id"=$1 AND d."applicationId"=$2 AND a."organizationId"=$3 AND a."legalEntityId"=$4
+              AND ($5::text IS NULL OR a."departmentId"=$5)`,
           String(req.params.documentId),
           String(req.params.id),
           auth.organizationId,
+          access.legalEntityId,
+          access.departmentId,
         );
         const document = rows[0];
         if (!document?.fileData) return res.status(404).json({ error: 'Document file is not available.' });

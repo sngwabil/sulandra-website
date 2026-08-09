@@ -1,8 +1,17 @@
 import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import {
+  careerEntityById,
+  careersReferenceNumber,
+  publicCareerDepartment,
+  publicCareerEntity,
+  resolveCareerDepartment,
+  type CareerEntity,
+} from './careers-entity.js';
 import { registerEducationRoutes } from './education-routes.js';
+import { entityAccessOf, requireEntityManageAccess } from './entity-access.js';
 import {
   applicantUsernameFor,
   careersHrDisplayName,
@@ -45,6 +54,7 @@ const documentCategory = z.enum([
 const openingSchema = z.object({
   title: z.string().trim().min(2).max(160),
   slug: z.string().trim().regex(/^[a-z0-9-]+$/).max(120),
+  departmentId: z.string().trim().max(100).optional(),
   department: z.string().trim().max(120).optional(),
   employmentType: z.string().trim().max(120).optional(),
   locationText: z.string().trim().max(180).optional(),
@@ -73,6 +83,7 @@ const documentSchema = z.object({
 const publicApplicationSchema = z.object({
   jobOpeningId: z.string().optional(),
   jobSlug: z.string().optional(),
+  legalEntityCode: z.string().trim().toUpperCase().regex(/^[A-Z][A-Z0-9_]*$/).max(80).optional(),
   sourceExternalId: z.string().trim().max(200).optional(),
   firstName: z.string().trim().min(1).max(80),
   middleName: z.string().trim().max(80).optional(),
@@ -99,10 +110,6 @@ const publicApplicationSchema = z.object({
 type ApplicantRole = z.infer<typeof applicantRole>;
 type ApplicantDocument = z.infer<typeof documentSchema>;
 type DocumentCategory = z.infer<typeof documentCategory>;
-
-function referenceNumber() {
-  return `SCLS-APP-${new Date().getFullYear()}-${randomBytes(4).toString('hex').toUpperCase()}`;
-}
 
 function requiredCategories(role: ApplicantRole): DocumentCategory[] {
   if (role === 'RN' || role === 'DELEGATING_NURSE') {
@@ -177,29 +184,36 @@ export function registerCareersRoutes(
     return careersOrganizationLookup;
   }
 
-  app.get('/public/careers/openings', async (_req, res, next) => {
+  app.get('/public/careers/openings', async (req, res, next) => {
     try {
       const organizationId = await resolveCareersOrganizationId();
       if (!organizationId) {
         res.status(503).json({ error: 'Careers intake is not configured.' });
         return;
       }
+      const requestedCompany = typeof req.query.company === 'string' ? req.query.company : null;
+      const entity = await publicCareerEntity(prisma, organizationId, requestedCompany);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT "id","title","slug","department","employmentType","locationText","payRange",
-                "summary","description","requirements","benefits","applicationPath","opensAt","closesAt"
+                "summary","description","requirements","benefits","applicationPath","opensAt","closesAt",
+                "legalEntityId","departmentId",$3::text AS "legalEntityCode",$4::text AS "legalEntityName"
            FROM "JobOpening"
-          WHERE "organizationId"=$1
+          WHERE "organizationId"=$1 AND "legalEntityId"=$2
             AND "status"='PUBLISHED'
             AND ("opensAt" IS NULL OR "opensAt"<=NOW())
             AND ("closesAt" IS NULL OR "closesAt">NOW())
           ORDER BY "publishedAt" DESC NULLS LAST, "createdAt" DESC`,
         organizationId,
+        entity.id,
+        entity.code,
+        entity.displayName,
       );
       res.json({
         data: rows.map((row) => ({
           ...row,
           appliedRole: roleForOpening(row.title, row.department),
           applicationPath: applicationPathForOpening(row),
+          company: { code: entity.code, displayName: entity.displayName },
         })),
       });
     } catch (error) {
@@ -217,35 +231,68 @@ export function registerCareersRoutes(
         return;
       }
 
-      let opening: { id: string; title: string; department?: string | null } | null = null;
+      let opening: {
+        id: string;
+        title: string;
+        department?: string | null;
+        departmentId: string | null;
+        legalEntityId: string;
+        legalEntityCode: string;
+        legalEntityName: string;
+        legalEntityLegalName: string;
+      } | null = null;
+      let entity: CareerEntity;
       if (input.jobOpeningId) {
         [opening] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id","title","department" FROM "JobOpening"
-            WHERE "id"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'`,
+          `SELECT opening."id",opening."title",opening."department",opening."departmentId",opening."legalEntityId",
+                  entity."code" AS "legalEntityCode",entity."displayName" AS "legalEntityName",entity."legalName" AS "legalEntityLegalName"
+             FROM "JobOpening" opening
+             JOIN "LegalEntity" entity ON entity."organizationId"=opening."organizationId" AND entity."id"=opening."legalEntityId"
+            WHERE opening."id"=$1 AND opening."organizationId"=$2 AND opening."status"='PUBLISHED'
+              AND entity."status"='ACTIVE' AND entity."isEmployer"=true
+              AND ($3::text IS NULL OR entity."code"=$3)`,
           input.jobOpeningId,
           organizationId,
+          input.legalEntityCode ?? null,
         );
       } else if (input.jobSlug) {
+        entity = await publicCareerEntity(prisma, organizationId, input.legalEntityCode);
         [opening] = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id","title","department" FROM "JobOpening"
-            WHERE "slug"=$1 AND "organizationId"=$2 AND "status"='PUBLISHED'
-            ORDER BY "publishedAt" DESC LIMIT 1`,
+          `SELECT opening."id",opening."title",opening."department",opening."departmentId",opening."legalEntityId",
+                  entity."code" AS "legalEntityCode",entity."displayName" AS "legalEntityName",entity."legalName" AS "legalEntityLegalName"
+             FROM "JobOpening" opening
+             JOIN "LegalEntity" entity ON entity."organizationId"=opening."organizationId" AND entity."id"=opening."legalEntityId"
+            WHERE opening."slug"=$1 AND opening."organizationId"=$2 AND opening."legalEntityId"=$3
+              AND opening."status"='PUBLISHED' AND entity."status"='ACTIVE' AND entity."isEmployer"=true
+            ORDER BY opening."publishedAt" DESC LIMIT 1`,
           input.jobSlug,
           organizationId,
+          entity.id,
         );
       }
       if ((input.jobOpeningId || input.jobSlug) && !opening) {
         res.status(404).json({ error: 'Published job opening not found.' });
         return;
       }
+      entity = opening
+        ? {
+          id: opening.legalEntityId,
+          code: opening.legalEntityCode,
+          legalName: opening.legalEntityLegalName,
+          displayName: opening.legalEntityName,
+          status: 'ACTIVE',
+          isEmployer: true,
+        }
+        : await publicCareerEntity(prisma, organizationId, input.legalEntityCode);
 
       if (input.sourceExternalId) {
         const existing = await prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","referenceNumber","workflowStatus" AS "status"
              FROM "EmployeeApplication"
-            WHERE "sourceExternalId"=$1 AND "organizationId"=$2 LIMIT 1`,
+            WHERE "sourceExternalId"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3 LIMIT 1`,
           input.sourceExternalId,
           organizationId,
+          entity.id,
         );
         if (existing[0]) {
           res.json({ data: existing[0], duplicate: true });
@@ -254,7 +301,7 @@ export function registerCareersRoutes(
       }
 
       const id = randomUUID();
-      const ref = referenceNumber();
+      const ref = careersReferenceNumber(entity.code);
       const email = input.email?.trim().toLowerCase() || null;
       const phone = input.phone?.trim() || null;
       const derivedRole = opening
@@ -262,16 +309,21 @@ export function registerCareersRoutes(
         : input.appliedRole;
       const appliedRole = input.appliedRole === 'GENERAL' ? derivedRole : input.appliedRole;
       const jobTitle = opening?.title || String(input.applicationData.position || appliedRole);
+      const applicationDepartment = opening?.departmentId
+        ? { id: opening.departmentId }
+        : await publicCareerDepartment(prisma, organizationId, entity.id, appliedRole);
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO "EmployeeApplication"
-          ("id","organizationId","jobOpeningId","firstName","middleName","lastName","email","phone",
+          ("id","organizationId","legalEntityId","departmentId","jobOpeningId","firstName","middleName","lastName","email","phone",
            "appliedRole","notes","source","sourceExternalId","referenceNumber","folderCreatedAt",
            "workflowStatus","preferredCommunication","applicationData","submittedAt","createdAt","updatedAt")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::"UserRole",$10,'CAREERS',$11,$12,NOW(),
-                 'RECEIVED',$13,$14::jsonb,NOW(),NOW(),NOW())`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::"UserRole",$12,'CAREERS',$13,$14,NOW(),
+                 'RECEIVED',$15,$16::jsonb,NOW(),NOW(),NOW())`,
         id,
         organizationId,
+        entity.id,
+        applicationDepartment.id,
         opening?.id ?? null,
         input.firstName,
         input.middleName ?? null,
@@ -283,7 +335,11 @@ export function registerCareersRoutes(
         input.sourceExternalId ?? null,
         ref,
         input.preferredCommunication,
-        JSON.stringify(input.applicationData),
+        JSON.stringify({
+          ...input.applicationData,
+          legalEntityCode: entity.code,
+          legalEntityName: entity.displayName,
+        }),
       );
       createdApplicationId = id;
 
@@ -370,6 +426,8 @@ export function registerCareersRoutes(
             ...input.applicationData,
             jobTitle,
             appliedRole,
+            legalEntityCode: entity.code,
+            legalEntityName: entity.displayName,
           },
           assessmentAnswers: input.assessmentAnswers,
         });
@@ -393,6 +451,7 @@ export function registerCareersRoutes(
           assessment: workflow?.assessment ?? null,
           workflowSetupPending,
           applicantPortalUrl: careersPortalUrl,
+          company: { code: entity.code, displayName: entity.displayName },
         },
       });
     } catch (error) {
@@ -419,14 +478,18 @@ export function registerCareersRoutes(
   app.get('/api/admin/job-openings', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (_req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT j.*, COUNT(a."id")::int AS "applicantCount"
            FROM "JobOpening" j
-           LEFT JOIN "EmployeeApplication" a ON a."jobOpeningId"=j."id"
-          WHERE j."organizationId"=$1
+           LEFT JOIN "EmployeeApplication" a ON a."jobOpeningId"=j."id" AND a."legalEntityId"=j."legalEntityId"
+          WHERE j."organizationId"=$1 AND j."legalEntityId"=$2
+            AND ($3::text IS NULL OR j."departmentId"=$3)
           GROUP BY j."id"
           ORDER BY j."createdAt" DESC`,
         auth.organizationId,
+        access.legalEntityId,
+        access.departmentId,
       );
       res.json({ data: rows });
     } catch (error) {
@@ -437,7 +500,18 @@ export function registerCareersRoutes(
   app.post('/api/admin/job-openings', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = openingSchema.parse(req.body);
+      const hiringCompany = await careerEntityById(prisma, auth.organizationId, access.legalEntityId);
+      if (input.status === 'PUBLISHED' && (!access.operational || !hiringCompany.isEmployer)) {
+        return res.status(409).json({ error: 'Job openings cannot be published until this company is an active employer.' });
+      }
+      const department = await resolveCareerDepartment(prisma, auth.organizationId, access, {
+        departmentId: input.departmentId,
+        departmentLabel: input.department,
+        roleOrTitle: input.title,
+      });
       const id = randomUUID();
       const [identity] = await prisma.$queryRawUnsafe<Array<{
         organizationExists: boolean;
@@ -458,16 +532,18 @@ export function registerCareersRoutes(
       const createdById = identity.userExists ? auth.userId : null;
       await prisma.$executeRawUnsafe(
         `INSERT INTO "JobOpening"
-          ("id","organizationId","title","slug","department","employmentType","locationText","payRange",
+          ("id","organizationId","legalEntityId","departmentId","title","slug","department","employmentType","locationText","payRange",
            "summary","description","requirements","benefits","applicationPath","status","opensAt","closesAt",
            "publishedAt","createdById","createdAt","updatedAt")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::"JobOpeningStatus",$15,$16,
-                 CASE WHEN $14='PUBLISHED' THEN NOW() ELSE NULL END,$17,NOW(),NOW())`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::"JobOpeningStatus",$17,$18,
+                 CASE WHEN $16='PUBLISHED' THEN NOW() ELSE NULL END,$19,NOW(),NOW())`,
         id,
         auth.organizationId,
+        access.legalEntityId,
+        department.id,
         input.title,
         input.slug,
-        input.department ?? null,
+        department.name,
         input.employmentType ?? null,
         input.locationText ?? null,
         input.payRange ?? null,
@@ -486,9 +562,9 @@ export function registerCareersRoutes(
         'CREATE_JOB_OPENING',
         'JobOpening',
         id,
-        { status: input.status, title: input.title },
+        { status: input.status, title: input.title, legalEntityId: access.legalEntityId, departmentId: department.id },
       );
-      res.status(201).json({ data: { id, ...input } });
+      res.status(201).json({ data: { id, ...input, legalEntityId: access.legalEntityId, departmentId: department.id, department: department.name } });
     } catch (error) {
       next(error);
     }
@@ -497,25 +573,42 @@ export function registerCareersRoutes(
   app.patch('/api/admin/job-openings/:id', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const id = String(req.params.id);
       const input = openingSchema.partial().parse(req.body);
       const [current] = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "JobOpening" WHERE "id"=$1 AND "organizationId"=$2`,
+        `SELECT * FROM "JobOpening" WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3
+          AND ($4::text IS NULL OR "departmentId"=$4)`,
         id,
         auth.organizationId,
+        access.legalEntityId,
+        access.departmentId,
       );
       if (!current) return res.status(404).json({ error: 'Opening not found' });
-      const merged = { ...current, ...input };
+      const department = input.departmentId || input.department || input.title
+        ? await resolveCareerDepartment(prisma, auth.organizationId, access, {
+          departmentId: input.departmentId ?? current.departmentId,
+          departmentLabel: input.department ?? current.department,
+          roleOrTitle: input.title ?? current.title,
+        })
+        : { id: current.departmentId, name: current.department };
+      const merged = { ...current, ...input, departmentId: department.id, department: department.name };
+      const hiringCompany = await careerEntityById(prisma, auth.organizationId, access.legalEntityId);
+      if (merged.status === 'PUBLISHED' && (!access.operational || !hiringCompany.isEmployer)) {
+        return res.status(409).json({ error: 'Job openings cannot be published until this company is an active employer.' });
+      }
       await prisma.$executeRawUnsafe(
         `UPDATE "JobOpening" SET
-           "title"=$1,"slug"=$2,"department"=$3,"employmentType"=$4,"locationText"=$5,"payRange"=$6,
-           "summary"=$7,"description"=$8,"requirements"=$9,"benefits"=$10,"applicationPath"=$11,
-           "status"=$12::"JobOpeningStatus","opensAt"=$13,"closesAt"=$14,
-           "publishedAt"=CASE WHEN $12='PUBLISHED' AND "publishedAt" IS NULL THEN NOW() ELSE "publishedAt" END,
+           "title"=$1,"slug"=$2,"departmentId"=$3,"department"=$4,"employmentType"=$5,"locationText"=$6,"payRange"=$7,
+           "summary"=$8,"description"=$9,"requirements"=$10,"benefits"=$11,"applicationPath"=$12,
+           "status"=$13::"JobOpeningStatus","opensAt"=$14,"closesAt"=$15,
+           "publishedAt"=CASE WHEN $13='PUBLISHED' AND "publishedAt" IS NULL THEN NOW() ELSE "publishedAt" END,
            "updatedAt"=NOW()
-         WHERE "id"=$15 AND "organizationId"=$16`,
+         WHERE "id"=$16 AND "organizationId"=$17 AND "legalEntityId"=$18`,
         merged.title,
         merged.slug,
+        merged.departmentId,
         merged.department,
         merged.employmentType,
         merged.locationText,
@@ -530,6 +623,7 @@ export function registerCareersRoutes(
         merged.closesAt,
         id,
         auth.organizationId,
+        access.legalEntityId,
       );
       await audit(auth, 'UPDATE_JOB_OPENING', 'JobOpening', id, { status: merged.status });
       res.json({ data: { id, ...merged } });
@@ -541,6 +635,7 @@ export function registerCareersRoutes(
   app.get('/api/admin/applications', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
       const query = z.object({
         q: z.string().trim().max(160).optional(),
         status: z.string().trim().max(60).optional(),
@@ -565,7 +660,8 @@ export function registerCareersRoutes(
              AS "outstandingDocumentCount"
          FROM "EmployeeApplication" a
          LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-         WHERE a."organizationId"=$1
+         WHERE a."organizationId"=$1 AND a."legalEntityId"=$7
+           AND ($8::text IS NULL OR a."departmentId"=$8)
            AND (($5::boolean=TRUE AND a."archivedAt" IS NOT NULL)
              OR ($5::boolean=FALSE AND a."archivedAt" IS NULL))
            AND ($2::text IS NULL OR CONCAT_WS(' ',a."firstName",a."middleName",a."lastName",
@@ -580,6 +676,8 @@ export function registerCareersRoutes(
         query.jobOpeningId || null,
         archived,
         query.limit,
+        access.legalEntityId,
+        access.departmentId,
       );
       res.json({ data: rows, archived, statuses: [
         'RECEIVED', 'REVIEWING', 'DOCUMENTS_NEEDED', 'INTERVIEW', 'OFFER_PENDING',
@@ -593,14 +691,18 @@ export function registerCareersRoutes(
   app.get('/api/admin/applications/:id/folder', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
       const id = String(req.params.id);
       const applications = await prisma.$queryRawUnsafe<any[]>(
         `SELECT a.*,a."workflowStatus" AS "status",j."title" AS "jobTitle"
            FROM "EmployeeApplication" a
            LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId"
-          WHERE a."id"=$1 AND a."organizationId"=$2`,
+          WHERE a."id"=$1 AND a."organizationId"=$2 AND a."legalEntityId"=$3
+            AND ($4::text IS NULL OR a."departmentId"=$4)`,
         id,
         auth.organizationId,
+        access.legalEntityId,
+        access.departmentId,
       );
       if (!applications[0]) return res.status(404).json({ error: 'Application not found' });
       const [documents, messages, history] = await Promise.all([
@@ -637,6 +739,8 @@ export function registerCareersRoutes(
   app.post('/api/admin/applications/:id/request-document', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const id = String(req.params.id);
       const input = z.object({
         category: documentCategory,
@@ -644,9 +748,12 @@ export function registerCareersRoutes(
         message: z.string().max(4000).optional(),
       }).parse(req.body);
       const [application] = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`,
+        `SELECT * FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3
+          AND ($4::text IS NULL OR "departmentId"=$4)`,
         id,
         auth.organizationId,
+        access.legalEntityId,
+        access.departmentId,
       );
       if (!application) return res.status(404).json({ error: 'Application not found' });
       await prisma.$transaction(async (tx) => {

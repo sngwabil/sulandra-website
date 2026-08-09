@@ -2,6 +2,7 @@ import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
 import { buildSignedOfferPdf } from './offer-acceptance-pdf-route.js';
+import { entityAccessOf } from './entity-access.js';
 
 type AuthContext = { userId: string; organizationId: string; role: UserRole };
 type Helpers = { authOf: (response: express.Response) => AuthContext; requireRoles: (...roles: UserRole[]) => express.RequestHandler };
@@ -11,14 +12,15 @@ export function registerOfferProgressRoute(app: express.Express, prisma: PrismaC
   app.get('/api/admin/applications/:id/offer-progress', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res) => {
     try {
       const auth = authOf(res); const applicationId = String(req.params.id);
-      const offers = await prisma.$queryRawUnsafe<any[]>(`SELECT o.*,a."workflowStatus" AS "applicationWorkflowStatus",a."firstName",a."lastName" FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId" WHERE o."applicationId"=$1 AND o."organizationId"=$2 ORDER BY o."createdAt" DESC LIMIT 1`,applicationId,auth.organizationId);
+      const access = entityAccessOf(res);
+      const offers = await prisma.$queryRawUnsafe<any[]>(`SELECT o.*,a."workflowStatus" AS "applicationWorkflowStatus",a."firstName",a."lastName",entity."displayName" AS "legalEntityName" FROM "EmploymentOffer" o JOIN "EmployeeApplication" a ON a."id"=o."applicationId" AND a."legalEntityId"=o."legalEntityId" JOIN "LegalEntity" entity ON entity."organizationId"=o."organizationId" AND entity."id"=o."legalEntityId" WHERE o."applicationId"=$1 AND o."organizationId"=$2 AND o."legalEntityId"=$3 AND ($4::text IS NULL OR o."departmentId"=$4) ORDER BY o."createdAt" DESC LIMIT 1`,applicationId,auth.organizationId,access.legalEntityId,access.departmentId);
       const offer=offers[0]; if(!offer){res.json({data:{offer:null,progress:null}});return;}
 
       if ((offer.status === 'OFFER_ACCEPTED' || offer.acceptedAt) && offer.applicationWorkflowStatus !== 'OFFER_ACCEPTED') {
-        await prisma.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_ACCEPTED',"updatedAt"=NOW() WHERE "id"=$1`, applicationId);
+        await prisma.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_ACCEPTED',"updatedAt"=NOW() WHERE "id"=$1 AND "legalEntityId"=$2`, applicationId, access.legalEntityId);
         offer.applicationWorkflowStatus = 'OFFER_ACCEPTED';
       } else if (offer.status !== 'OFFER_ACCEPTED' && !offer.acceptedAt && offer.applicationWorkflowStatus !== 'OFFER_PENDING') {
-        await prisma.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_PENDING',"updatedAt"=NOW() WHERE "id"=$1`, applicationId);
+        await prisma.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_PENDING',"updatedAt"=NOW() WHERE "id"=$1 AND "legalEntityId"=$2`, applicationId, access.legalEntityId);
         offer.applicationWorkflowStatus = 'OFFER_PENDING';
       }
 

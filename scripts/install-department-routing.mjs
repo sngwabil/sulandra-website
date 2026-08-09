@@ -9,6 +9,17 @@ if (source.includes(marker)) {
   process.exit(0);
 }
 
+// The multi-company careers model supersedes the legacy brand-name routing
+// block. A normalized Department row now owns routing and is persisted through
+// departmentId, while legalEntityId identifies the employing company.
+if (
+  source.includes('const applicationDepartment = opening?.departmentId')
+  && source.includes('"organizationId","legalEntityId","departmentId","jobOpeningId"')
+) {
+  console.log('Normalized company and department routing is already installed.');
+  process.exit(0);
+}
+
 const jobTitleAnchor = `      const jobTitle = opening?.title || String(input.applicationData.position || appliedRole);`;
 if (!source.includes(jobTitleAnchor)) {
   throw new Error('Careers job-title anchor was not found.');

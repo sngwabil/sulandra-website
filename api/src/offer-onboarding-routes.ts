@@ -3,6 +3,8 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
+import { careerEntityById } from './careers-entity.js';
+import { entityAccessOf, requireEntityManageAccess } from './entity-access.js';
 
 const require = createRequire(import.meta.url);
 const nodemailer = require('nodemailer') as typeof import('nodemailer');
@@ -89,9 +91,11 @@ async function documentProgress(prisma: PrismaClient, offerId: string) {
 async function offerByToken(prisma: PrismaClient, rawToken: string) {
   const tokenHash = createHash('sha256').update(rawToken).digest('hex');
   const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId"
+    `SELECT o.*,a."firstName",a."lastName",a."email",a."phone",a."appliedRole",a."organizationId",
+            entity."displayName" AS "legalEntityName"
        FROM "EmploymentOffer" o
-       JOIN "EmployeeApplication" a ON a."id"=o."applicationId"
+       JOIN "EmployeeApplication" a ON a."id"=o."applicationId" AND a."legalEntityId"=o."legalEntityId"
+       JOIN "LegalEntity" entity ON entity."organizationId"=o."organizationId" AND entity."id"=o."legalEntityId"
       WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW()
       LIMIT 1`,
     tokenHash,
@@ -105,15 +109,32 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
   app.post('/api/admin/applications/:id/offers', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const applicationId = String(req.params.id);
       const input = offerSchema.parse(req.body);
       const [application] = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`,
+        `SELECT application.*,department."name" AS "hiringDepartment"
+           FROM "EmployeeApplication" application
+           LEFT JOIN "Department" department
+             ON department."organizationId"=application."organizationId"
+            AND department."legalEntityId"=application."legalEntityId"
+            AND department."id"=application."departmentId"
+          WHERE application."id"=$1 AND application."organizationId"=$2 AND application."legalEntityId"=$3
+            AND ($4::text IS NULL OR application."departmentId"=$4)`,
         applicationId,
         auth.organizationId,
+        access.legalEntityId,
+        access.departmentId,
       );
       if (!application) return res.status(404).json({ error: 'Application not found.' });
       if (!application.email) return res.status(400).json({ error: 'Applicant email is required before sending an offer.' });
+      const hiringCompany = await careerEntityById(prisma, auth.organizationId, access.legalEntityId);
+      if (hiringCompany.status !== 'ACTIVE' || !hiringCompany.isEmployer) {
+        return res.status(409).json({ error: 'Employment offers cannot be sent until this company is an active employer.' });
+      }
+      const companyName = hiringCompany.displayName;
+      const companyContext = companyName === 'Sulandra Health' ? '' : 'A Sulandra Health company';
 
       const offerId = randomUUID();
       const rawToken = randomBytes(32).toString('base64url');
@@ -125,13 +146,14 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
       await prisma.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(
           `INSERT INTO "EmploymentOffer"
-            ("id","organizationId","applicationId","status","positionTitle","department","supervisorName",
+            ("id","organizationId","legalEntityId","departmentId","applicationId","status","positionTitle","department","supervisorName",
              "employmentType","compensationType","payAmount","shift","startDate","orientationDate","workLocation",
              "ptoEligible","benefitsEligible","probationDays","bonusAmount","notes","requiredDocuments","tokenHash",
              "tokenExpiresAt","createdById","createdAt","updatedAt")
-           VALUES ($1,$2,$3,'OFFER_SENT',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,$20,
-                   NOW()+INTERVAL '14 days',$21,NOW(),NOW())`,
-          offerId, auth.organizationId, applicationId, input.positionTitle, input.department ?? null,
+           VALUES ($1,$2,$3,$4,$5,'OFFER_SENT',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21::jsonb,$22,
+                   NOW()+INTERVAL '14 days',$23,NOW(),NOW())`,
+          offerId, auth.organizationId, access.legalEntityId, application.departmentId, applicationId,
+          input.positionTitle, application.hiringDepartment ?? input.department ?? null,
           input.supervisorName ?? null, input.employmentType, input.compensationType, input.payAmount,
           input.shift ?? null, input.startDate, input.orientationDate ?? null, input.workLocation ?? null,
           input.ptoEligible, input.benefitsEligible, input.probationDays, input.bonusAmount ?? null,
@@ -144,16 +166,16 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
       });
 
       const logoUrl = 'https://www.sulandrahealth.com/assets/mainlogo.png';
-      const emailHtml = `<div style="margin:0;background:#f3f7fb;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#102448"><div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #dbe6f2;border-radius:18px;overflow:hidden"><div style="padding:30px;background:linear-gradient(135deg,#dceffc,#8ec4e8)"><img src="${logoUrl}" alt="Sulandra Health" style="width:230px;max-width:75%;height:auto;display:block"><p style="margin:22px 0 4px;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">Sulandra Community Living Services</p><h1 style="margin:8px 0;font-size:34px;line-height:1.15">Offer of Employment</h1><p style="margin:0;font-size:17px">A Division of Sulandra Health</p></div><div style="padding:34px"><p>Dear ${application.firstName},</p><p>We are pleased to offer you employment with <strong>Sulandra Community Living Services</strong> in the position of <strong>${input.positionTitle}</strong>. We appreciate the time you invested in our selection process and believe your experience, professionalism, and commitment to person-centered care will be valuable to our organization and the individuals we serve.</p><p>Your complete job terms, responsibilities, company commitments, and conditions of the offer are available through the secure link below.</p><p style="margin:28px 0"><a href="${offerUrl}" style="display:inline-block;padding:14px 22px;background:#075985;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:800">Review and Sign Offer of Employment</a></p><p>This link is personal to you. Please do not forward or share it. No tax, banking, identity-verification, or onboarding paperwork is requested during this offer stage.</p><p>After you accept the offer and the Sulandra Health Human Resources Department creates your employee profile, you will receive a separate welcome message with secure employee-portal access and onboarding instructions.</p><p style="margin-top:30px"><strong>Sulandra Health Human Resources Department</strong><br>Sulandra Community Living Services<br>A Division of Sulandra Health</p><p style="font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:16px">This offer remains subject to satisfactory completion of applicable job requirements, background screening, drug testing, credential verification, and other lawful pre-employment conditions.</p></div></div></div>`;
+      const emailHtml = `<div style="margin:0;background:#f3f7fb;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#102448"><div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #dbe6f2;border-radius:18px;overflow:hidden"><div style="padding:30px;background:linear-gradient(135deg,#dceffc,#8ec4e8)"><img src="${logoUrl}" alt="Sulandra Health" style="width:230px;max-width:75%;height:auto;display:block"><p style="margin:22px 0 4px;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase">${companyName}</p><h1 style="margin:8px 0;font-size:34px;line-height:1.15">Offer of Employment</h1>${companyContext ? `<p style="margin:0;font-size:17px">${companyContext}</p>` : ''}</div><div style="padding:34px"><p>Dear ${application.firstName},</p><p>We are pleased to offer you employment with <strong>${companyName}</strong> in the position of <strong>${input.positionTitle}</strong>. We appreciate the time you invested in our selection process and believe your experience, professionalism, and commitment to person-centered care will be valuable to our organization and the individuals we serve.</p><p>Your complete job terms, responsibilities, company commitments, and conditions of the offer are available through the secure link below.</p><p style="margin:28px 0"><a href="${offerUrl}" style="display:inline-block;padding:14px 22px;background:#075985;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:800">Review and Sign Offer of Employment</a></p><p>This link is personal to you. Please do not forward or share it. No tax, banking, identity-verification, or onboarding paperwork is requested during this offer stage.</p><p>After you accept the offer and the Sulandra Health Human Resources Department creates your employee profile, you will receive a separate welcome message with secure employee-portal access and onboarding instructions.</p><p style="margin-top:30px"><strong>Sulandra Health Human Resources Department</strong><br>${companyName}${companyContext ? `<br>${companyContext}` : ''}</p><p style="font-size:12px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:16px">This offer remains subject to satisfactory completion of applicable job requirements, background screening, drug testing, credential verification, and other lawful pre-employment conditions.</p></div></div></div>`;
 
       await sendMail(
         application.email,
         `Offer of Employment — ${input.positionTitle}`,
         emailHtml,
-        `Sulandra Health Human Resources Department is pleased to offer you the position of ${input.positionTitle}. Review and sign your offer here: ${offerUrl}`,
+        `${companyName} is pleased to offer you the position of ${input.positionTitle}. Review and sign your offer here: ${offerUrl}`,
       );
 
-      await audit(auth, 'SEND_EMPLOYMENT_OFFER', 'EmploymentOffer', offerId, { applicationId, positionTitle: input.positionTitle, payAmount: input.payAmount });
+      await audit(auth, 'SEND_EMPLOYMENT_OFFER', 'EmploymentOffer', offerId, { applicationId, legalEntityId: access.legalEntityId, departmentId: application.departmentId, positionTitle: input.positionTitle, payAmount: input.payAmount });
       res.status(201).json({ data: { offerId, status: 'OFFER_PENDING', applicationStatus: 'OFFER_PENDING', offerUrl, requiredDocuments } });
     } catch (error) { next(error); }
   });
@@ -180,7 +202,7 @@ export function registerOfferOnboardingRoutes(app: express.Express, prisma: Pris
         await tx.$executeRawUnsafe(`UPDATE "EmployeeApplication" SET "workflowStatus"='OFFER_ACCEPTED',"updatedAt"=NOW() WHERE "id"=$1`, offer.applicationId);
       });
 
-      await audit({}, 'ACCEPT_EMPLOYMENT_OFFER', 'EmploymentOffer', offer.id, { applicationId: offer.applicationId, acceptedByName: input.fullLegalName });
+      await audit({}, 'ACCEPT_EMPLOYMENT_OFFER', 'EmploymentOffer', offer.id, { applicationId: offer.applicationId, legalEntityId: offer.legalEntityId, departmentId: offer.departmentId, acceptedByName: input.fullLegalName });
       res.json({ data: { status: 'OFFER_ACCEPTED', applicationStatus: 'OFFER_ACCEPTED', message: 'Your signed offer of employment has been received. The Sulandra Health Human Resources Department will review it and contact you with the next steps.' } });
     } catch (error) { next(error); }
   });

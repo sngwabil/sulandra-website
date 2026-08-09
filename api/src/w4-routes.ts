@@ -2,6 +2,7 @@ import type express from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { entityAccessOf } from './entity-access.js';
 
 type AuthContext = { userId: string; organizationId: string; role: UserRole };
 type Helpers = {
@@ -45,9 +46,11 @@ const submitSchema = z.object({
 async function offerByToken(prisma: PrismaClient, rawToken: string) {
   const tokenHash = createHash('sha256').update(rawToken).digest('hex');
   const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT o.*,a."firstName",a."middleName",a."lastName",a."email",a."applicationData"
+    `SELECT o.*,a."firstName",a."middleName",a."lastName",a."email",a."applicationData",
+            entity."legalName" AS "employerLegalName"
        FROM "EmploymentOffer" o
-       JOIN "EmployeeApplication" a ON a."id"=o."applicationId"
+       JOIN "EmployeeApplication" a ON a."id"=o."applicationId" AND a."legalEntityId"=o."legalEntityId"
+       JOIN "LegalEntity" entity ON entity."organizationId"=o."organizationId" AND entity."id"=o."legalEntityId"
       WHERE o."tokenHash"=$1 AND o."tokenExpiresAt">NOW()
       LIMIT 1`,
     tokenHash,
@@ -92,7 +95,7 @@ export function registerW4Routes(app: express.Express, prisma: PrismaClient, hel
           cityStateZip: applicationData.cityStateZip || '',
         },
         employer: {
-          name: process.env.ORGANIZATION_LEGAL_NAME || 'Sulandra Community Living Services',
+          name: offer.employerLegalName,
           address: process.env.ORGANIZATION_ADDRESS || 'Dayton, Ohio',
           ein: process.env.EMPLOYER_EIN || '',
           firstDateOfEmployment: offer.startDate,
@@ -143,13 +146,16 @@ export function registerW4Routes(app: express.Express, prisma: PrismaClient, hel
   app.get('/api/admin/applications/:id/w4/download', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT d."generatedPdf",d."fileName",d."mimeType"
            FROM "EmploymentOfferDocument" d
            JOIN "EmploymentOffer" o ON o."id"=d."offerId"
-          WHERE o."applicationId"=$1 AND o."organizationId"=$2 AND d."name"='Form W-4' AND d."generatedPdf" IS NOT NULL
+          WHERE o."applicationId"=$1 AND o."organizationId"=$2 AND o."legalEntityId"=$3
+            AND ($4::text IS NULL OR o."departmentId"=$4)
+            AND d."name"='Form W-4' AND d."generatedPdf" IS NOT NULL
           ORDER BY d."completedAt" DESC LIMIT 1`,
-        String(req.params.id), auth.organizationId,
+        String(req.params.id), auth.organizationId, access.legalEntityId, access.departmentId,
       );
       const row = rows[0];
       if (!row) return res.status(404).json({ error: 'A completed Form W-4 was not found.' });

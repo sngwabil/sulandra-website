@@ -3,6 +3,7 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import { z } from 'zod';
+import { entityAccessOf, requireEntityManageAccess } from './entity-access.js';
 
 type AuthContext = {
   userId: string;
@@ -243,10 +244,10 @@ async function sendEmail(to: string, subject: string, text: string) {
   return { status: 'SENT', providerMessageId: response.headers.get('request-id') };
 }
 
-async function applicationForAction(prisma: PrismaClient, applicationId: string, organizationId: string) {
+async function applicationForAction(prisma: PrismaClient, applicationId: string, organizationId: string, legalEntityId: string, departmentId: string | null) {
   const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT a.*,j."title" AS "jobTitle" FROM "EmployeeApplication" a LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId" WHERE a."id"=$1 AND a."organizationId"=$2`,
-    applicationId, organizationId,
+    `SELECT a.*,j."title" AS "jobTitle" FROM "EmployeeApplication" a LEFT JOIN "JobOpening" j ON j."id"=a."jobOpeningId" WHERE a."id"=$1 AND a."organizationId"=$2 AND a."legalEntityId"=$3 AND ($4::text IS NULL OR a."departmentId"=$4)`,
+    applicationId, organizationId, legalEntityId, departmentId,
   );
   return rows[0] ?? null;
 }
@@ -278,9 +279,11 @@ export function registerApplicantTerminalRoutes(app: express.Express, prisma: Pr
   app.post('/api/admin/applications/:id/reject', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = terminalActionInput.parse(req.body);
       const applicationId = String(req.params.id);
-      const application = await applicationForAction(prisma, applicationId, auth.organizationId);
+      const application = await applicationForAction(prisma, applicationId, auth.organizationId, access.legalEntityId, access.departmentId);
       if (!application) return res.status(404).json({ error: 'Application not found.' });
       if (!application.email) return res.status(400).json({ error: 'This applicant has no email address. The record was not deleted.' });
       const delivery = await sendEmail(String(application.email).trim().toLowerCase(), `Update regarding your employment application — ${application.referenceNumber}`, notSelectedText(application, input.note));
@@ -290,7 +293,7 @@ export function registerApplicantTerminalRoutes(app: express.Express, prisma: Pr
         position: positionFor(application), deliveryStatus: delivery.status,
       });
       await invalidatePortalAccess(prisma, applicationId);
-      await prisma.$executeRawUnsafe(`DELETE FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2`, applicationId, auth.organizationId);
+      await prisma.$executeRawUnsafe(`DELETE FROM "EmployeeApplication" WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3`, applicationId, auth.organizationId, access.legalEntityId);
       res.json({ data: { deleted: true, deliveryStatus: delivery.status } });
     } catch (error) { next(error); }
   });
@@ -298,9 +301,11 @@ export function registerApplicantTerminalRoutes(app: express.Express, prisma: Pr
   app.post('/api/admin/applications/:id/archive', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = terminalActionInput.parse(req.body);
       const applicationId = String(req.params.id);
-      const application = await applicationForAction(prisma, applicationId, auth.organizationId);
+      const application = await applicationForAction(prisma, applicationId, auth.organizationId, access.legalEntityId, access.departmentId);
       if (!application) return res.status(404).json({ error: 'Application not found.' });
       if (application.workflowStatus === 'POSITION_FILLED') return res.status(409).json({ error: 'This application is already archived.' });
       if (!application.email) return res.status(400).json({ error: 'This applicant has no email address. The application was not archived.' });
@@ -312,8 +317,8 @@ export function registerApplicantTerminalRoutes(app: express.Express, prisma: Pr
         );
         await tx.$executeRawUnsafe(`UPDATE "ApplicantPasswordReset" SET "usedAt"=COALESCE("usedAt",NOW()) WHERE "accountId" IN (SELECT "id" FROM "ApplicantPortalAccount" WHERE "applicationId"=$1)`, applicationId);
         await tx.$executeRawUnsafe(
-          `UPDATE "EmployeeApplication" SET "workflowStatus"='POSITION_FILLED',"archivedAt"=NULL,"archivedById"=$1,"archiveReason"='POSITION_FILLED',"updatedAt"=NOW() WHERE "id"=$2 AND "organizationId"=$3`,
-          auth.userId, applicationId, auth.organizationId,
+          `UPDATE "EmployeeApplication" SET "workflowStatus"='POSITION_FILLED',"archivedAt"=NULL,"archivedById"=$1,"archiveReason"='POSITION_FILLED',"updatedAt"=NOW() WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4`,
+          auth.userId, applicationId, auth.organizationId, access.legalEntityId,
         );
         await tx.$executeRawUnsafe(
           `INSERT INTO "ApplicantStatusHistory" ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt") VALUES ($1,$2,$3,'POSITION_FILLED',$4,FALSE,$5,NOW())`,
@@ -330,9 +335,11 @@ export function registerApplicantTerminalRoutes(app: express.Express, prisma: Pr
   app.post('/api/admin/applications/:id/restore', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = restoreInput.parse(req.body ?? {});
       const applicationId = String(req.params.id);
-      const application = await applicationForAction(prisma, applicationId, auth.organizationId);
+      const application = await applicationForAction(prisma, applicationId, auth.organizationId, access.legalEntityId, access.departmentId);
       if (!application) return res.status(404).json({ error: 'Application not found.' });
       if (application.workflowStatus !== 'POSITION_FILLED' && !application.archivedAt) {
         return res.status(409).json({ error: 'This applicant is already active.' });
@@ -352,8 +359,8 @@ export function registerApplicantTerminalRoutes(app: express.Express, prisma: Pr
           hashPassword(temporaryPassword), applicationId,
         );
         await tx.$executeRawUnsafe(
-          `UPDATE "EmployeeApplication" SET "workflowStatus"='REVIEWING',"archivedAt"=NULL,"archivedById"=NULL,"archiveReason"=NULL,"updatedAt"=NOW() WHERE "id"=$1 AND "organizationId"=$2`,
-          applicationId, auth.organizationId,
+          `UPDATE "EmployeeApplication" SET "workflowStatus"='REVIEWING',"archivedAt"=NULL,"archivedById"=NULL,"archiveReason"=NULL,"updatedAt"=NOW() WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3`,
+          applicationId, auth.organizationId, access.legalEntityId,
         );
         await tx.$executeRawUnsafe(
           `INSERT INTO "ApplicantStatusHistory" ("id","applicationId","fromStatus","toStatus","note","visibleToApplicant","changedById","createdAt") VALUES ($1,$2,'POSITION_FILLED','REVIEWING','Applicant returned to active review.',TRUE,$3,NOW())`,
