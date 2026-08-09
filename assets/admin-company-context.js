@@ -39,6 +39,9 @@
   function installWorkspaceLinks() {
     const top = document.getElementById('topModuleNav');
     if (top && !document.getElementById('adminCompanyFilesTopLink')) {
+      const intakeItem = document.createElement('li');
+      intakeItem.id = 'adminClientIntakeTopLink';
+      intakeItem.innerHTML = '<a class="sulandra-workspace-link" href="/client-intake.html">Client Intake</a>';
       const filesItem = document.createElement('li');
       filesItem.id = 'adminCompanyFilesTopLink';
       filesItem.innerHTML = '<a class="sulandra-workspace-link" href="/company-documents.html">Company Files</a>';
@@ -47,13 +50,20 @@
       trainingItem.innerHTML = '<a class="sulandra-workspace-link" href="/spire-training.html">SPIRE Training</a>';
       const adminSpireItem = Array.from(top.children).find((item) => /Admin Spire/i.test(item.textContent || ''));
       if (adminSpireItem) {
+        top.insertBefore(intakeItem, adminSpireItem);
         top.insertBefore(filesItem, adminSpireItem);
         top.insertBefore(trainingItem, adminSpireItem);
-      } else top.append(filesItem, trainingItem);
+      } else top.append(intakeItem, filesItem, trainingItem);
     }
 
     const side = document.getElementById('sideModuleNav');
     if (side && !document.getElementById('adminCompanyFilesSideLink')) {
+      const intakeButton = document.createElement('button');
+      intakeButton.id = 'adminClientIntakeSideLink';
+      intakeButton.className = 'side-btn';
+      intakeButton.type = 'button';
+      intakeButton.innerHTML = 'Client Intake <small>Admission Packet</small>';
+      intakeButton.addEventListener('click', () => { window.location.href = '/client-intake.html'; });
       const filesButton = document.createElement('button');
       filesButton.id = 'adminCompanyFilesSideLink';
       filesButton.className = 'side-btn';
@@ -68,9 +78,10 @@
       trainingButton.addEventListener('click', () => { window.location.href = '/spire-training.html'; });
       const adminSpireButton = Array.from(side.children).find((node) => /Admin Spire/i.test(node.textContent || ''));
       if (adminSpireButton) {
+        side.insertBefore(intakeButton, adminSpireButton);
         side.insertBefore(filesButton, adminSpireButton);
         side.insertBefore(trainingButton, adminSpireButton);
-      } else side.append(filesButton, trainingButton);
+      } else side.append(intakeButton, filesButton, trainingButton);
     }
   }
 
