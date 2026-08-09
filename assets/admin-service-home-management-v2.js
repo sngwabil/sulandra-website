@@ -6,16 +6,19 @@
   const states = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'];
   const token = () => sessionStorage.getItem('sulandra:employee:access-token') || localStorage.getItem('sulandra:employee:access-token') || localStorage.getItem('sulandra_token') || localStorage.getItem('token') || localStorage.getItem('accessToken') || '';
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const companyId = () => window.SulandraCompanyContext?.current?.()?.id || '';
   const api = async (path, options = {}) => {
+    await window.SulandraCompanyContext?.initialize?.();
     const t = token();
     if (!t) throw new Error('Admin session unavailable. Sign in again.');
-    const response = await fetch(API + path, { ...options, cache:'no-store', headers:{ Accept:'application/json', Authorization:`Bearer ${t}`, ...(options.body ? {'Content-Type':'application/json'} : {}), ...(options.headers || {}) } });
+    const companyHeaders = window.SulandraCompanyContext?.headers?.() || {};
+    const response = await fetch(API + path, { ...options, cache:'no-store', headers:{ Accept:'application/json', Authorization:`Bearer ${t}`, ...companyHeaders, ...(options.body ? {'Content-Type':'application/json'} : {}), ...(options.headers || {}) } });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || 'Request failed');
     return body.data ?? body;
   };
 
-  let homes = [], employees = [], clients = [], current = null, installing = false;
+  let homes = [], employees = [], clients = [], current = null, installing = false, loadingSequence = 0;
 
   function host() {
     const heading = [...document.querySelectorAll('h1,h2,h3')].find(n => n.textContent.trim() === 'Service Homes' && n.getClientRects().length);
@@ -57,11 +60,14 @@
   }
 
   async function load() {
+    const sequence = ++loadingSequence;
     try {
       status('Loading service homes…');
-      [homes, employees, clients] = await Promise.all([api('/api/admin/service-homes'), api('/api/admin/service-homes/directory/employees').catch(()=>[]), api('/api/admin/service-homes/directory/clients').catch(()=>[])]);
+      const loaded = await Promise.all([api('/api/admin/service-homes'), api('/api/admin/service-homes/directory/employees').catch(()=>[]), api('/api/admin/service-homes/directory/clients').catch(()=>[])]);
+      if (sequence !== loadingSequence) return;
+      [homes, employees, clients] = loaded;
       render(); status('');
-    } catch (e) { status(e.message, true); }
+    } catch (e) { if (sequence === loadingSequence) status(e.message, true); }
   }
 
   function render() {
@@ -104,17 +110,23 @@
     const a=address(); if(!shName.value.trim() || !valid(a)) return status('Complete the home name and address.',true);
     if(!shLat.value || !shLng.value) return status('Find GPS from Address or use Current GPS first.',true);
     const body={name:shName.value.trim(),...a,latitude:Number(shLat.value),longitude:Number(shLng.value),geofenceRadiusMeters:Number(shRadius.value)||250};
-    try { status('Saving home everywhere…'); current = current ? await api(`/api/admin/service-homes/${current.id}`,{method:'PATCH',body:JSON.stringify(body)}) : await api('/api/admin/service-homes',{method:'POST',body:JSON.stringify(body)}); await load(); await edit(homes.find(h=>h.id===current.id)||current); status('Service home saved everywhere.'); } catch(e){status(e.message,true);}
+    try { const selectedCompanyId=companyId();status('Saving home everywhere…');const saved=current ? await api(`/api/admin/service-homes/${current.id}`,{method:'PATCH',body:JSON.stringify(body)}) : await api('/api/admin/service-homes',{method:'POST',body:JSON.stringify(body)});if(companyId()!==selectedCompanyId)return;current=saved;await load();await edit(homes.find(h=>h.id===current.id)||current);status('Service home saved everywhere.'); } catch(e){status(e.message,true);}
   }
 
-  async function deactivate(){if(!current||!confirm(`Deactivate ${current.name}?`))return;try{await api(`/api/admin/service-homes/${current.id}`,{method:'DELETE'});close();await load();}catch(e){status(e.message,true);}}
-  async function assignments(){try{showAssignments(await api(`/api/admin/service-homes/${current.id}/assignments`));}catch(e){status(e.message,true);}}
+  async function deactivate(){if(!current||!confirm(`Deactivate ${current.name}?`))return;const selectedCompanyId=companyId();try{await api(`/api/admin/service-homes/${current.id}`,{method:'DELETE'});if(companyId()!==selectedCompanyId)return;close();await load();}catch(e){status(e.message,true);}}
+  async function assignments(){const homeId=current?.id;if(!homeId)return;const sequence=loadingSequence;try{const data=await api(`/api/admin/service-homes/${homeId}/assignments`);if(sequence===loadingSequence&&current?.id===homeId)showAssignments(data);}catch(e){if(sequence===loadingSequence)status(e.message,true);}}
   function showAssignments(data){shEmployees.innerHTML=(data.employees||[]).map(e=>`<div class="sh-row"><div><strong>${esc(e.displayName||e.email)}</strong><small>${e.isManager?'Home Manager':'Employee'}</small></div><button class="sh-btn danger" data-re="${e.id}">Remove</button></div>`).join('')||'<div class="sh-row">No employees assigned.</div>';shClients.innerHTML=(data.clients||[]).map(c=>`<div class="sh-row"><strong>${esc(c.displayName||c.name||c.id)}</strong><button class="sh-btn danger" data-rc="${c.id}">Remove</button></div>`).join('')||'<div class="sh-row">No clients assigned.</div>';document.querySelectorAll('[data-re]').forEach(b=>b.onclick=()=>removeEmployee(b.dataset.re));document.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>removeClient(b.dataset.rc));}
-  async function assignEmployee(){if(!current||!shEmployeePick.value)return;try{await api(`/api/admin/service-homes/${current.id}/employees`,{method:'POST',body:JSON.stringify({employeeId:shEmployeePick.value,isManager:shManager.checked})});await assignments();await load();}catch(e){status(e.message,true);}}
-  async function removeEmployee(id){if(!confirm('Remove this employee from the home?'))return;try{await api(`/api/admin/service-homes/${current.id}/employees/${id}`,{method:'DELETE'});await assignments();await load();}catch(e){status(e.message,true);}}
-  async function assignClient(){if(!current||!shClientPick.value)return;try{await api(`/api/admin/service-homes/${current.id}/clients`,{method:'POST',body:JSON.stringify({clientId:shClientPick.value})});await assignments();await load();}catch(e){status(e.message,true);}}
-  async function removeClient(id){if(!confirm('Remove this client from the home?'))return;try{await api(`/api/admin/service-homes/${current.id}/clients/${id}`,{method:'DELETE'});await assignments();await load();}catch(e){status(e.message,true);}}
+  async function assignEmployee(){if(!current||!shEmployeePick.value)return;const selectedCompanyId=companyId();try{await api(`/api/admin/service-homes/${current.id}/employees`,{method:'POST',body:JSON.stringify({employeeId:shEmployeePick.value,isManager:shManager.checked})});if(companyId()!==selectedCompanyId)return;await assignments();await load();}catch(e){status(e.message,true);}}
+  async function removeEmployee(id){if(!confirm('Remove this employee from the home?'))return;const selectedCompanyId=companyId();try{await api(`/api/admin/service-homes/${current.id}/employees/${id}`,{method:'DELETE'});if(companyId()!==selectedCompanyId)return;await assignments();await load();}catch(e){status(e.message,true);}}
+  async function assignClient(){if(!current||!shClientPick.value)return;const selectedCompanyId=companyId();try{await api(`/api/admin/service-homes/${current.id}/clients`,{method:'POST',body:JSON.stringify({clientId:shClientPick.value})});if(companyId()!==selectedCompanyId)return;await assignments();await load();}catch(e){status(e.message,true);}}
+  async function removeClient(id){if(!confirm('Remove this client from the home?'))return;const selectedCompanyId=companyId();try{await api(`/api/admin/service-homes/${current.id}/clients/${id}`,{method:'DELETE'});if(companyId()!==selectedCompanyId)return;await assignments();await load();}catch(e){status(e.message,true);}}
 
+  window.addEventListener('sulandra:company-change', () => {
+    loadingSequence += 1;
+    homes = []; employees = []; clients = []; current = null;
+    document.getElementById('shEditor')?.classList.remove('open');
+    if (document.getElementById('shCards')) { render(); load(); }
+  });
   const retry = () => { install(); setTimeout(retry, 1000); };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', retry, {once:true}) : retry();
 })();

@@ -8,6 +8,7 @@ type AuthContext = {
   userId: string;
   organizationId: string;
   role: UserRole;
+  legalEntityId?: string;
   email?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -70,6 +71,7 @@ type WorkflowStep = {
 type WorkflowRequestRow = {
   id: string;
   organizationId: string;
+  legalEntityId: string | null;
   employeeId: string;
   requestType: RequestType;
   title: string;
@@ -317,6 +319,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     )`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowRequest_employee_idx" ON "EmployeeWorkflowRequest"("organizationId","employeeId","createdAt" DESC)`);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeWorkflowRequest_status_idx" ON "EmployeeWorkflowRequest"("organizationId","status","currentSequence","createdAt")`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeWorkflowRequest" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
 
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "EmployeeWorkflowApproval" (
       "id" TEXT PRIMARY KEY,
@@ -874,12 +877,16 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
       if (!request.linkedResourceId) {
         const input = timeRequestPayloadSchema.parse(payload);
         const linkedId = randomUUID();
+        if (!request.legalEntityId) {
+          throw Object.assign(new Error('The employee request is not assigned to a company'), { status: 409 });
+        }
         await prisma.$executeRawUnsafe(
           `INSERT INTO "TimeAttendanceRequest"
-            ("id","organizationId","employeeId","type","startAt","endAt","reason","status","reviewedById","reviewedAt","reviewNotes")
-           VALUES ($1,$2,$3,$4,$5,$6,$7,'APPROVED',$8,NOW(),'Approved through Employee 360 workflow')`,
+            ("id","organizationId","legalEntityId","employeeId","type","startAt","endAt","reason","status","reviewedById","reviewedAt","reviewNotes")
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'APPROVED',$9,NOW(),'Approved through Employee 360 workflow')`,
           linkedId,
           request.organizationId,
+          request.legalEntityId,
           employee.id,
           request.requestType === 'TIME_OFF' ? 'TIME_OFF' : 'AVAILABILITY',
           input.startAt,
@@ -982,6 +989,7 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
 
   const createWorkflowRequest = async (auth: AuthContext, rawInput: unknown) => {
     await ensureDefaults(auth.organizationId, auth.userId);
+    if (!auth.legalEntityId) throw Object.assign(new Error('Company access context is required'), { status: 409 });
     const input = requestSchema.parse(rawInput);
     const payload = validatePayload(input.requestType, input.payload);
     const definitions = await prisma.$queryRawUnsafe<Array<{
@@ -1006,10 +1014,11 @@ export function registerEmployeeCollaborationRoutes({ app, prisma, authOf, requi
     await prisma.$transaction(async (tx: any) => {
       await tx.$executeRawUnsafe(
         `INSERT INTO "EmployeeWorkflowRequest"
-          ("id","organizationId","employeeId","requestType","title","description","payload","priority","status","submittedAt")
-         VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,'SUBMITTED',NOW())`,
+          ("id","organizationId","legalEntityId","employeeId","requestType","title","description","payload","priority","status","submittedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,'SUBMITTED',NOW())`,
         requestId,
         auth.organizationId,
+        auth.legalEntityId,
         auth.userId,
         input.requestType,
         input.title,
