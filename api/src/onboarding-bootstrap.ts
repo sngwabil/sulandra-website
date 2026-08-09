@@ -779,6 +779,7 @@ const audit = async (
     const knownValues = new Map<string, { value: unknown; cast?: string }>([
       ['id', { value: randomUUID() }],
       ['organizationId', { value: organizationId }],
+      ['legalEntityId', { value: auth.legalEntityId ?? null }],
       ['userId', { value: userId }],
       ['actorId', { value: userId }],
       ['actorUserId', { value: userId }],

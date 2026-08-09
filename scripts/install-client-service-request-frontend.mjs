@@ -10,7 +10,7 @@ try{
   let html=await readFile(adminPath,'utf8');
   html=html.replace(/\s*<script src="\/assets\/admin-client-service-requests\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
   if(!html.includes('</body>'))throw new Error('Unable to install Client Service Requests Admin asset');
-  html=html.replace('</body>','  <script src="/assets/admin-client-service-requests.js?v=20260807-intake-2"></script>\n</body>');
+  html=html.replace('</body>','  <script src="/assets/admin-client-service-requests.js?v=20260809-company-intake-3"></script>\n</body>');
   await writeFile(adminPath,html,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error;}
 
@@ -19,7 +19,7 @@ try{
   let html=await readFile(indexPath,'utf8');
   html=html.replace(/\s*<script src="\/assets\/public-consultation-service-request-bridge\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
   if(!html.includes('</body>'))throw new Error('Unable to connect homepage consultation form to Client Service Requests');
-  html=html.replace('</body>','  <script src="/assets/public-consultation-service-request-bridge.js?v=20260807-intake-2"></script>\n</body>');
+  html=html.replace('</body>','  <script src="/assets/public-consultation-service-request-bridge.js?v=20260809-company-intake-3"></script>\n</body>');
   await writeFile(indexPath,html,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error;}
 

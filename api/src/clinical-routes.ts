@@ -3,6 +3,7 @@ import type express from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 import { z } from 'zod';
+import { entityAccessOf, requireEntityManageAccess } from './entity-access.js';
 
 type AuthContext = {
   userId: string;
@@ -11,6 +12,7 @@ type AuthContext = {
   email?: string;
   ipAddress?: string;
   userAgent?: string;
+  legalEntityId?: string;
 };
 
 type ClinicalRouteDependencies = {
@@ -80,11 +82,12 @@ const clinicalAudit = async (
 ) => {
   await prisma.$executeRawUnsafe(
     `INSERT INTO "SpireClinicalAuditEvent"
-       ("id","organizationId","actorUserId","actorEmail","clientId","action",
+       ("id","organizationId","legalEntityId","actorUserId","actorEmail","clientId","action",
         "resourceType","resourceId","beforeValue","afterValue","ipAddress","userAgent","createdAt")
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$12,NOW())`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,$13,NOW())`,
     randomUUID(),
     auth.organizationId,
+    auth.legalEntityId ?? null,
     auth.userId,
     auth.email ?? null,
     clientId ?? null,
@@ -588,12 +591,12 @@ export const registerClinicalRoutes = (
 
   app.post('/api/admin/spire/intake-imports', async (req, res, next) => {
     try {
-      const auth = authOf(res); ensureAdministrator(auth); const input = intakeSchema.parse(req.body); const id = randomUUID();
+      const auth = authOf(res); ensureAdministrator(auth); const access = entityAccessOf(res); requireEntityManageAccess(access); const input = intakeSchema.parse(req.body); const id = randomUUID();
       const status = Object.keys(input.extractedData).length ? 'REVIEW_REQUIRED' : 'QUEUED';
       await prisma.$executeRawUnsafe(
-        `INSERT INTO "SpireIntakeImport" ("id","organizationId","clientId","fileName","mimeType","storageKey","status","extractionProvider","extractedData","submittedByUserId","createdAt","updatedAt")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,NOW(),NOW())`,
-        id, auth.organizationId, input.clientId ?? null, input.fileName ?? null, input.mimeType ?? null,
+        `INSERT INTO "SpireIntakeImport" ("id","organizationId","legalEntityId","clientId","fileName","mimeType","storageKey","status","extractionProvider","extractedData","submittedByUserId","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,NOW(),NOW())`,
+        id, auth.organizationId, access.legalEntityId, input.clientId ?? null, input.fileName ?? null, input.mimeType ?? null,
         input.storageKey ?? null, status, input.extractionProvider ?? null, JSON.stringify(input.extractedData), auth.userId,
       );
       await clinicalAudit(prisma, auth, 'INTAKE_IMPORT_CREATED', 'SpireIntakeImport', id, input.clientId, undefined, { status, fileName: input.fileName });
@@ -603,30 +606,38 @@ export const registerClinicalRoutes = (
 
   app.patch('/api/admin/spire/intake-imports/:importId/review', async (req, res, next) => {
     try {
-      const auth = authOf(res); ensureAdministrator(auth); const input = intakeReviewSchema.parse(req.body);
+      const auth = authOf(res); ensureAdministrator(auth); const access = entityAccessOf(res); requireEntityManageAccess(access); const input = intakeReviewSchema.parse(req.body);
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT * FROM "SpireIntakeImport" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`, auth.organizationId, req.params.importId,
+        `SELECT * FROM "SpireIntakeImport" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`, auth.organizationId, access.legalEntityId, req.params.importId,
       );
       const prior = rows[0]; if (!prior) throw Object.assign(new Error('Intake import was not found'), { status: 404 });
       const extracted = input.extractedData ?? jsonObject(prior.extractedData);
       const clientId = input.clientId ?? String(prior.clientId || extracted.clientId || randomUUID());
       await prisma.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(
-          `UPDATE "SpireIntakeImport" SET "status"=$1,"clientId"=$2,"extractedData"=$3::jsonb,"reviewNotes"=$4,"reviewedByUserId"=$5,"reviewedAt"=NOW(),"updatedAt"=NOW() WHERE "id"=$6`,
-          input.status, clientId, JSON.stringify(extracted), input.reviewNotes ?? null, auth.userId, req.params.importId,
+          `UPDATE "SpireIntakeImport" SET "status"=$1,"clientId"=$2,"extractedData"=$3::jsonb,"reviewNotes"=$4,"reviewedByUserId"=$5,"reviewedAt"=NOW(),"updatedAt"=NOW() WHERE "organizationId"=$6 AND "legalEntityId"=$7 AND "id"=$8`,
+          input.status, clientId, JSON.stringify(extracted), input.reviewNotes ?? null, auth.userId, auth.organizationId, access.legalEntityId, req.params.importId,
         );
         if (input.status === 'APPROVED') {
           const displayName = String(extracted.displayName || extracted.fullName || extracted.name || 'New Client');
+          const existingProfiles = await tx.$queryRawUnsafe<Array<{ legalEntityId: string }>>(
+            `SELECT "legalEntityId" FROM "SpireClientProfile" WHERE "organizationId"=$1 AND "clientId"=$2 LIMIT 1`,
+            auth.organizationId,
+            clientId,
+          );
+          if (existingProfiles[0] && existingProfiles[0].legalEntityId !== access.legalEntityId) {
+            throw Object.assign(new Error('The client profile belongs to a different company enrollment'), { status: 409 });
+          }
           await tx.$executeRawUnsafe(
-            `INSERT INTO "SpireClientProfile" ("id","organizationId","clientId","homeId","displayName","dateOfBirth","allergies","diagnoses","medicalHistory","emergencyContacts","guardians","providers","risks","diet","mobility","communication","behavioralSupports","sourceIntakeImportId","verifiedAt","verifiedByUserId","createdAt","updatedAt")
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14::jsonb,$15::jsonb,$16::jsonb,$17::jsonb,$18,NOW(),$19,NOW(),NOW())
+            `INSERT INTO "SpireClientProfile" ("id","organizationId","legalEntityId","clientId","homeId","displayName","dateOfBirth","allergies","diagnoses","medicalHistory","emergencyContacts","guardians","providers","risks","diet","mobility","communication","behavioralSupports","sourceIntakeImportId","verifiedAt","verifiedByUserId","createdAt","updatedAt")
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14::jsonb,$15::jsonb,$16::jsonb,$17::jsonb,$18::jsonb,$19,NOW(),$20,NOW(),NOW())
              ON CONFLICT ("organizationId","clientId") DO UPDATE SET
-               "homeId"=EXCLUDED."homeId","displayName"=EXCLUDED."displayName","dateOfBirth"=EXCLUDED."dateOfBirth","allergies"=EXCLUDED."allergies",
+               "legalEntityId"=EXCLUDED."legalEntityId","homeId"=EXCLUDED."homeId","displayName"=EXCLUDED."displayName","dateOfBirth"=EXCLUDED."dateOfBirth","allergies"=EXCLUDED."allergies",
                "diagnoses"=EXCLUDED."diagnoses","medicalHistory"=EXCLUDED."medicalHistory","emergencyContacts"=EXCLUDED."emergencyContacts",
                "guardians"=EXCLUDED."guardians","providers"=EXCLUDED."providers","risks"=EXCLUDED."risks","diet"=EXCLUDED."diet",
                "mobility"=EXCLUDED."mobility","communication"=EXCLUDED."communication","behavioralSupports"=EXCLUDED."behavioralSupports",
                "sourceIntakeImportId"=EXCLUDED."sourceIntakeImportId","verifiedAt"=NOW(),"verifiedByUserId"=EXCLUDED."verifiedByUserId","updatedAt"=NOW()`,
-            randomUUID(), auth.organizationId, clientId, extracted.homeId ?? null, displayName,
+            randomUUID(), auth.organizationId, access.legalEntityId, clientId, extracted.homeId ?? null, displayName,
             extracted.dateOfBirth ?? null, extracted.allergies ?? null,
             JSON.stringify(extracted.diagnoses ?? []), JSON.stringify(extracted.medicalHistory ?? {}),
             JSON.stringify(extracted.emergencyContacts ?? []), JSON.stringify(extracted.guardians ?? []),
@@ -644,11 +655,11 @@ export const registerClinicalRoutes = (
 
   app.get('/api/admin/spire/audit', async (req, res, next) => {
     try {
-      const auth = authOf(res); ensureAdministrator(auth);
+      const auth = authOf(res); ensureAdministrator(auth); const access = entityAccessOf(res);
       const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT * FROM "SpireClinicalAuditEvent" WHERE "organizationId"=$1 ORDER BY "createdAt" DESC LIMIT $2`,
-        auth.organizationId, limit,
+        `SELECT * FROM "SpireClinicalAuditEvent" WHERE "organizationId"=$1 AND "legalEntityId"=$2 ORDER BY "createdAt" DESC LIMIT $3`,
+        auth.organizationId, access.legalEntityId, limit,
       );
       res.json({ data: rows });
     } catch (error) { next(error); }
