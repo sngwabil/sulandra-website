@@ -7,6 +7,7 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { z, ZodError } from 'zod';
 import { registerCareersRoutes } from './careers-routes.js';
+import { getUserEntityContext, registerMultiCompanyRoutes } from './multi-company-routes.js';
 
 type AuthContext = {
   userId: string;
@@ -686,18 +687,24 @@ app.use((req, res, next) => {
 
 const authOf = (response: express.Response) => response.locals.auth as AuthContext;
 
-app.get('/api/session', (_req, res) => {
-  const auth = authOf(res);
-  const authorization = accessForRole(auth.role);
-  res.json({
-    data: {
-      ...auth,
-      permissions: authorization.permissions,
-      access: authorization.access,
-      apps: authorization.apps,
-      landingRoute: authorization.landingRoute,
-    },
-  });
+app.get('/api/session', async (_req, res, next) => {
+  try {
+    const auth = authOf(res);
+    const authorization = accessForRole(auth.role);
+    const entityContext = await getUserEntityContext(prisma, auth);
+    res.json({
+      data: {
+        ...auth,
+        permissions: authorization.permissions,
+        access: authorization.access,
+        apps: authorization.apps,
+        landingRoute: authorization.landingRoute,
+        entityContext,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 const requireRoles = (...roles: UserRole[]): express.RequestHandler => (_req, res, next) => {
@@ -905,6 +912,7 @@ app.post(
   provisionPortalCredential,
 );
 
+registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, audit });
 registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
