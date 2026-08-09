@@ -32,6 +32,16 @@ for (const marker of [
 expect(access.includes('capabilities: EntityCapability[]'), 'Resolved company access does not expose module capabilities');
 expect(access.includes('requiredCapability(request.path)'), 'Pre-launch modules are not server-gated');
 expect(access.includes('is not enabled for ${access.legalEntityName} during pre-launch'), 'Blocked pre-launch modules do not return a clear error');
+for (const [route, capability] of [
+  ["path.startsWith('/api/admin/employee-')", 'EMPLOYEE_360'],
+  ["path.startsWith('/api/employee/me/')", 'EMPLOYEE_360'],
+  ["path.startsWith('/api/admin/compliance')", 'COMPLIANCE'],
+  ["path.startsWith('/api/admin/spire')", 'SPIRE'],
+  ["path.startsWith('/api/admin/clients')", 'SPIRE'],
+  ["path.startsWith('/api/admin/homes')", 'SCLS_OPERATIONS'],
+]) {
+  expect(access.includes(route), `${capability} routes are not covered by the pre-launch capability gate`);
+}
 expect(context.includes('serviceOperationsStatus'), 'Admin company selector does not show operating lifecycle status');
 expect(context.includes('licensingStatus'), 'Admin company selector does not show licensing lifecycle status');
 

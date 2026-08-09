@@ -127,12 +127,27 @@ const requiredCapability = (path: string): EntityCapability | null => {
     || path.startsWith('/api/admin/interview-slots')
     || path.startsWith('/api/admin/company-settings')
   ) return 'CAREERS';
+  if (path.startsWith('/api/admin/intranet') || path.startsWith('/api/employee/intranet')) return 'INTRANET';
+  if (path.startsWith('/api/employee/directory') || path.startsWith('/api/employee/leadership')) return 'INTRANET';
+  if (path.startsWith('/api/admin/education') || path.startsWith('/api/admin/employee-learning')) return 'EDUCATION';
+  if (path.startsWith('/api/employee/me/learning')) return 'EDUCATION';
+  if (path.startsWith('/api/admin/compliance') || path.startsWith('/api/employee/me/compliance')) return 'COMPLIANCE';
   if (path.startsWith('/api/admin/employee360')) return 'EMPLOYEE_360';
-  if (path.startsWith('/api/admin/employees') || path.startsWith('/api/employee-management')) return 'EMPLOYEE_360';
+  if (
+    path.startsWith('/api/admin/employees')
+    || path.startsWith('/api/admin/employee-')
+    || path.startsWith('/api/employee-management')
+    || path.startsWith('/api/employee/me/')
+  ) return 'EMPLOYEE_360';
   if (path.startsWith('/api/admin/time-attendance') || path.startsWith('/api/time-attendance')) return 'TIME_ATTENDANCE';
-  if (path.startsWith('/api/admin/service-homes')) return 'SCLS_OPERATIONS';
+  if (path.startsWith('/api/admin/service-homes') || path.startsWith('/api/admin/homes')) return 'SCLS_OPERATIONS';
   if (path.startsWith('/api/admin/client-service-requests')) return 'CLIENT_INTAKE';
-  if (path.startsWith('/api/spire')) return 'SPIRE';
+  if (
+    path.startsWith('/api/spire')
+    || path.startsWith('/api/admin/spire')
+    || path.startsWith('/api/admin/clients')
+    || path.startsWith('/api/admin/client-enrollments')
+  ) return 'SPIRE';
   if (path.startsWith('/api/admin/billing')) return 'BILLING';
   return null;
 };
