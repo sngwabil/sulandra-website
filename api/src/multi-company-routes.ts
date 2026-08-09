@@ -1,6 +1,13 @@
 import type { Express, RequestHandler, Response } from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { z } from 'zod';
+import {
+  entityAccessOf,
+  requireDepartmentMatch,
+  requireEnterpriseOwner,
+  requireEntityManageAccess,
+  requireEntityMatch,
+} from './entity-access.js';
 
 type AuthContext = {
   userId: string;
@@ -94,6 +101,7 @@ const grantCreateSchema = z.object({
   if (value.scopeType === 'LEGAL_ENTITY' && !value.legalEntityId) context.addIssue({ code: 'custom', path: ['legalEntityId'], message: 'Legal entity is required for this scope' });
   if (value.scopeType === 'DEPARTMENT' && !value.departmentId) context.addIssue({ code: 'custom', path: ['departmentId'], message: 'Department is required for this scope' });
   if (value.scopeType === 'CLIENT' && !value.clientId) context.addIssue({ code: 'custom', path: ['clientId'], message: 'Client is required for this scope' });
+  if (value.scopeType === 'CLIENT' && !value.legalEntityId) context.addIssue({ code: 'custom', path: ['legalEntityId'], message: 'Legal entity is required to bind client access to one company' });
 });
 
 const grantPatchSchema = z.object({
@@ -153,7 +161,7 @@ export async function getUserEntityContext(prisma: PrismaClient, auth: AuthConte
             ),'[]'::jsonb) AS "employments",
             COALESCE((
               SELECT jsonb_agg(jsonb_build_object(
-                'id',grant_row."id",'scopeType',grant_row."scopeType",'departmentId',grant_row."departmentId",
+                'id',grant_row."id",'scopeType',grant_row."scopeType",'legalEntityId',grant_row."legalEntityId",'departmentId',grant_row."departmentId",
                 'clientId',grant_row."clientId",'roleCode',grant_row."roleCode",'permissionKey',grant_row."permissionKey",
                 'accessLevel',grant_row."accessLevel",'effectiveFrom',grant_row."effectiveFrom",'effectiveTo',grant_row."effectiveTo"
               ) ORDER BY grant_row."scopeType",grant_row."permissionKey")
@@ -220,6 +228,7 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
     );
     if (!rows[0]) throw notFound('Department was not found');
     if (legalEntityId && rows[0].legalEntityId !== legalEntityId) throw conflict('Department does not belong to the selected legal entity');
+    return rows[0];
   };
 
   const requireUser = async (auth: AuthContext, userId: string) => {
@@ -240,6 +249,46 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
     if (!rows[0]) throw notFound('Client was not found');
   };
 
+  const requireClientEnrollment = async (auth: AuthContext, clientId: string, legalEntityId: string) => {
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT "id" FROM "ClientEnrollment"
+       WHERE "organizationId"=$1 AND "clientId"=$2 AND "legalEntityId"=$3
+         AND "status" IN ('PENDING','ACTIVE','PAUSED') LIMIT 1`,
+      auth.organizationId,
+      clientId,
+      legalEntityId,
+    );
+    if (!rows[0]) throw conflict('Client is not enrolled with the selected company');
+  };
+
+  const requirePrimaryEmploymentAuthority = async (auth: AuthContext, userId: string, selectedEntityId: string, enterpriseOwner: boolean) => {
+    if (enterpriseOwner) return;
+    const rows = await prisma.$queryRawUnsafe<Array<{ legalEntityId: string }>>(
+      `SELECT "legalEntityId" FROM "Employment"
+       WHERE "organizationId"=$1 AND "userId"=$2 AND "primaryEmployment"=true AND "status"<>'TERMINATED'
+       LIMIT 1`,
+      auth.organizationId,
+      userId,
+    );
+    if (rows[0] && rows[0].legalEntityId !== selectedEntityId) {
+      throw conflict('Only the Enterprise Owner may change primary employment across companies');
+    }
+  };
+
+  const requirePrimaryEnrollmentAuthority = async (auth: AuthContext, clientId: string, selectedEntityId: string, enterpriseOwner: boolean) => {
+    if (enterpriseOwner) return;
+    const rows = await prisma.$queryRawUnsafe<Array<{ legalEntityId: string }>>(
+      `SELECT "legalEntityId" FROM "ClientEnrollment"
+       WHERE "organizationId"=$1 AND "clientId"=$2 AND "primaryEnrollment"=true
+         AND "status" IN ('PENDING','ACTIVE','PAUSED') LIMIT 1`,
+      auth.organizationId,
+      clientId,
+    );
+    if (rows[0] && rows[0].legalEntityId !== selectedEntityId) {
+      throw conflict('Only the Enterprise Owner may change a primary client enrollment across companies');
+    }
+  };
+
   app.get('/api/entity-context', async (_req, res, next) => {
     try {
       res.json({ data: await getUserEntityContext(prisma, authOf(res)) });
@@ -249,13 +298,18 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.get('/api/admin/legal-entities', manager, async (_req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `SELECT entity.*,
                 (SELECT count(*)::int FROM "Department" department WHERE department."legalEntityId"=entity."id" AND department."active"=true) AS "departmentCount",
                 (SELECT count(*)::int FROM "Employment" employment WHERE employment."legalEntityId"=entity."id" AND employment."status"<>'TERMINATED') AS "activeEmploymentCount",
                 (SELECT count(*)::int FROM "ClientEnrollment" enrollment WHERE enrollment."legalEntityId"=entity."id" AND enrollment."status" IN ('PENDING','ACTIVE','PAUSED')) AS "activeClientCount"
-         FROM "LegalEntity" entity WHERE entity."organizationId"=$1 ORDER BY entity."displayName"`,
+         FROM "LegalEntity" entity
+         WHERE entity."organizationId"=$1 AND ($2::boolean=true OR entity."id"=$3)
+         ORDER BY entity."displayName"`,
         auth.organizationId,
+        access.enterpriseOwner,
+        access.legalEntityId,
       );
       res.json({ data: rows });
     } catch (error) { next(error); }
@@ -264,6 +318,7 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.post('/api/admin/legal-entities', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      requireEnterpriseOwner(entityAccessOf(res));
       const input = legalEntityCreateSchema.parse(req.body);
       if (input.parentLegalEntityId) await requireEntity(auth, input.parentLegalEntityId);
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
@@ -280,6 +335,7 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.patch('/api/admin/legal-entities/:entityId', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      requireEnterpriseOwner(entityAccessOf(res));
       const input = legalEntityPatchSchema.parse(req.body);
       await requireEntity(auth, req.params.entityId);
       if (input.parentLegalEntityId) await requireEntity(auth, input.parentLegalEntityId);
@@ -304,12 +360,14 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.get('/api/admin/departments', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
-      const entityId = typeof req.query.legalEntityId === 'string' ? req.query.legalEntityId : null;
+      const access = entityAccessOf(res);
+      const queryEntityId = typeof req.query.legalEntityId === 'string' ? req.query.legalEntityId : null;
+      if (queryEntityId) requireEntityMatch(access, queryEntityId);
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `SELECT department.*,entity."code" AS "legalEntityCode",entity."displayName" AS "legalEntityName"
          FROM "Department" department JOIN "LegalEntity" entity ON entity."id"=department."legalEntityId"
-         WHERE department."organizationId"=$1 AND ($2::text IS NULL OR department."legalEntityId"=$2)
-         ORDER BY entity."displayName",department."name"`, auth.organizationId, entityId,
+         WHERE department."organizationId"=$1 AND department."legalEntityId"=$2
+         ORDER BY entity."displayName",department."name"`, auth.organizationId, access.legalEntityId,
       );
       res.json({ data: rows });
     } catch (error) { next(error); }
@@ -318,7 +376,10 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.post('/api/admin/departments', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = departmentCreateSchema.parse(req.body);
+      requireEntityMatch(access, input.legalEntityId);
       await requireEntity(auth, input.legalEntityId);
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `INSERT INTO "Department" ("organizationId","legalEntityId","code","name","description","sharedEnterprise","active","metadata")
@@ -334,8 +395,12 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.patch('/api/admin/departments/:departmentId', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = departmentPatchSchema.parse(req.body);
-      await requireDepartment(auth, req.params.departmentId);
+      const current = await requireDepartment(auth, req.params.departmentId);
+      requireEntityMatch(access, current.legalEntityId);
+      requireDepartmentMatch(access, current.id);
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `UPDATE "Department" SET "name"=COALESCE($3,"name"),
            "description"=CASE WHEN $4::boolean THEN $5 ELSE "description" END,
@@ -353,7 +418,9 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.get('/api/admin/employments', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
-      const entityId = typeof req.query.legalEntityId === 'string' ? req.query.legalEntityId : null;
+      const access = entityAccessOf(res);
+      const queryEntityId = typeof req.query.legalEntityId === 'string' ? req.query.legalEntityId : null;
+      if (queryEntityId) requireEntityMatch(access, queryEntityId);
       const userId = typeof req.query.userId === 'string' ? req.query.userId : null;
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `SELECT employment.*,user_row."email",entity."code" AS "legalEntityCode",entity."displayName" AS "legalEntityName",
@@ -361,8 +428,8 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
          FROM "Employment" employment JOIN "User" user_row ON user_row."id"=employment."userId" AND user_row."organizationId"=employment."organizationId"
          JOIN "LegalEntity" entity ON entity."id"=employment."legalEntityId"
          LEFT JOIN "Department" department ON department."id"=employment."departmentId"
-         WHERE employment."organizationId"=$1 AND ($2::text IS NULL OR employment."legalEntityId"=$2) AND ($3::text IS NULL OR employment."userId"=$3)
-         ORDER BY entity."displayName",user_row."email",employment."startsAt" DESC`, auth.organizationId, entityId, userId,
+         WHERE employment."organizationId"=$1 AND employment."legalEntityId"=$2 AND ($3::text IS NULL OR employment."userId"=$3)
+         ORDER BY entity."displayName",user_row."email",employment."startsAt" DESC`, auth.organizationId, access.legalEntityId, userId,
       );
       res.json({ data: rows });
     } catch (error) { next(error); }
@@ -371,10 +438,17 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.post('/api/admin/employments', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = employmentCreateSchema.parse(req.body);
+      requireEntityMatch(access, input.legalEntityId);
       await Promise.all([requireUser(auth, input.userId), requireEntity(auth, input.legalEntityId)]);
-      if (input.departmentId) await requireDepartment(auth, input.departmentId, input.legalEntityId);
+      if (input.departmentId) {
+        await requireDepartment(auth, input.departmentId, input.legalEntityId);
+        requireDepartmentMatch(access, input.departmentId);
+      }
       if (input.primaryEmployment) {
+        await requirePrimaryEmploymentAuthority(auth, input.userId, access.legalEntityId, access.enterpriseOwner);
         await prisma.$executeRawUnsafe(`UPDATE "Employment" SET "primaryEmployment"=false,"updatedAt"=now() WHERE "organizationId"=$1 AND "userId"=$2 AND "status"<>'TERMINATED'`, auth.organizationId, input.userId);
       }
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
@@ -392,13 +466,20 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.patch('/api/admin/employments/:employmentId', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = employmentPatchSchema.parse(req.body);
       const current = await prisma.$queryRawUnsafe<Array<{ id: string; userId: string; legalEntityId: string }>>(
         `SELECT "id","userId","legalEntityId" FROM "Employment" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`, auth.organizationId, req.params.employmentId,
       );
       if (!current[0]) throw notFound('Employment was not found');
-      if (input.departmentId) await requireDepartment(auth, input.departmentId, current[0].legalEntityId);
+      requireEntityMatch(access, current[0].legalEntityId);
+      if (input.departmentId) {
+        await requireDepartment(auth, input.departmentId, current[0].legalEntityId);
+        requireDepartmentMatch(access, input.departmentId);
+      }
       if (input.primaryEmployment) {
+        await requirePrimaryEmploymentAuthority(auth, current[0].userId, access.legalEntityId, access.enterpriseOwner);
         await prisma.$executeRawUnsafe(`UPDATE "Employment" SET "primaryEmployment"=false,"updatedAt"=now() WHERE "organizationId"=$1 AND "userId"=$2 AND "id"<>$3 AND "status"<>'TERMINATED'`, auth.organizationId, current[0].userId, req.params.employmentId);
       }
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
@@ -426,6 +507,7 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.get('/api/admin/entity-access-grants', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
       const userId = typeof req.query.userId === 'string' ? req.query.userId : null;
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `SELECT grant_row.*,user_row."email",entity."displayName" AS "legalEntityName",department."name" AS "departmentName"
@@ -433,7 +515,19 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
          LEFT JOIN "LegalEntity" entity ON entity."id"=grant_row."legalEntityId"
          LEFT JOIN "Department" department ON department."id"=grant_row."departmentId"
          WHERE grant_row."organizationId"=$1 AND ($2::text IS NULL OR grant_row."userId"=$2)
-         ORDER BY user_row."email",grant_row."scopeType",grant_row."permissionKey"`, auth.organizationId, userId,
+           AND (
+             (grant_row."scopeType"='ENTERPRISE' AND $4::boolean=true)
+             OR grant_row."legalEntityId"=$3
+             OR department."legalEntityId"=$3
+             OR (grant_row."scopeType"='CLIENT' AND EXISTS (
+               SELECT 1 FROM "ClientEnrollment" enrollment
+               WHERE enrollment."organizationId"=grant_row."organizationId"
+                 AND enrollment."clientId"=grant_row."clientId" AND enrollment."legalEntityId"=$3
+                 AND enrollment."status" IN ('PENDING','ACTIVE','PAUSED')
+             ))
+           )
+         ORDER BY user_row."email",grant_row."scopeType",grant_row."permissionKey"`,
+        auth.organizationId, userId, access.legalEntityId, access.enterpriseOwner,
       );
       res.json({ data: rows });
     } catch (error) { next(error); }
@@ -442,11 +536,24 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.post('/api/admin/entity-access-grants', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = grantCreateSchema.parse(req.body);
       await requireUser(auth, input.userId);
-      if (input.legalEntityId) await requireEntity(auth, input.legalEntityId);
-      if (input.departmentId) await requireDepartment(auth, input.departmentId, input.legalEntityId);
-      if (input.clientId) await requireClient(auth, input.clientId);
+      if (input.scopeType === 'ENTERPRISE') requireEnterpriseOwner(access);
+      if (input.legalEntityId) {
+        requireEntityMatch(access, input.legalEntityId);
+        await requireEntity(auth, input.legalEntityId);
+      }
+      if (input.departmentId) {
+        const department = await requireDepartment(auth, input.departmentId, input.legalEntityId);
+        requireEntityMatch(access, department.legalEntityId);
+        requireDepartmentMatch(access, department.id);
+      }
+      if (input.clientId) {
+        await requireClient(auth, input.clientId);
+        await requireClientEnrollment(auth, input.clientId, access.legalEntityId);
+      }
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `INSERT INTO "UserEntityAccessGrant" ("organizationId","userId","scopeType","legalEntityId","departmentId","clientId","roleCode","permissionKey","accessLevel","effectiveFrom","effectiveTo","grantedById","reason","metadata")
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb) RETURNING *`,
@@ -462,7 +569,27 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.patch('/api/admin/entity-access-grants/:grantId', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = grantPatchSchema.parse(req.body);
+      const current = await prisma.$queryRawUnsafe<Array<{ scopeType: string; legalEntityId: string | null; departmentId: string | null; clientId: string | null }>>(
+        `SELECT "scopeType","legalEntityId","departmentId","clientId"
+         FROM "UserEntityAccessGrant" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,
+        auth.organizationId,
+        req.params.grantId,
+      );
+      if (!current[0]) throw notFound('Access grant was not found');
+      if (current[0].scopeType === 'ENTERPRISE') {
+        requireEnterpriseOwner(access);
+      } else if (current[0].legalEntityId) {
+        requireEntityMatch(access, current[0].legalEntityId);
+      } else if (current[0].departmentId) {
+        const department = await requireDepartment(auth, current[0].departmentId);
+        requireEntityMatch(access, department.legalEntityId);
+        requireDepartmentMatch(access, department.id);
+      } else if (current[0].clientId) {
+        await requireClientEnrollment(auth, current[0].clientId, access.legalEntityId);
+      }
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `UPDATE "UserEntityAccessGrant" SET "accessLevel"=COALESCE($3,"accessLevel"),"active"=COALESCE($4,"active"),
            "effectiveTo"=CASE WHEN $5::boolean THEN $6 ELSE "effectiveTo" END,
@@ -481,7 +608,9 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.get('/api/admin/client-enrollments', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
-      const entityId = typeof req.query.legalEntityId === 'string' ? req.query.legalEntityId : null;
+      const access = entityAccessOf(res);
+      const queryEntityId = typeof req.query.legalEntityId === 'string' ? req.query.legalEntityId : null;
+      if (queryEntityId) requireEntityMatch(access, queryEntityId);
       const clientId = typeof req.query.clientId === 'string' ? req.query.clientId : null;
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
         `SELECT enrollment.*,entity."code" AS "legalEntityCode",entity."displayName" AS "legalEntityName",department."name" AS "departmentName",
@@ -489,8 +618,8 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
          FROM "ClientEnrollment" enrollment JOIN "LegalEntity" entity ON entity."id"=enrollment."legalEntityId"
          JOIN "SpirePatient" patient ON patient."id"=enrollment."clientId" AND patient."organizationId"=enrollment."organizationId"
          LEFT JOIN "Department" department ON department."id"=enrollment."departmentId"
-         WHERE enrollment."organizationId"=$1 AND ($2::text IS NULL OR enrollment."legalEntityId"=$2) AND ($3::text IS NULL OR enrollment."clientId"=$3)
-         ORDER BY patient."lastName",patient."firstName",enrollment."startsAt" DESC`, auth.organizationId, entityId, clientId,
+         WHERE enrollment."organizationId"=$1 AND enrollment."legalEntityId"=$2 AND ($3::text IS NULL OR enrollment."clientId"=$3)
+         ORDER BY patient."lastName",patient."firstName",enrollment."startsAt" DESC`, auth.organizationId, access.legalEntityId, clientId,
       );
       res.json({ data: rows });
     } catch (error) { next(error); }
@@ -499,10 +628,17 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.post('/api/admin/client-enrollments', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = enrollmentCreateSchema.parse(req.body);
+      requireEntityMatch(access, input.legalEntityId);
       await Promise.all([requireClient(auth, input.clientId), requireEntity(auth, input.legalEntityId)]);
-      if (input.departmentId) await requireDepartment(auth, input.departmentId, input.legalEntityId);
+      if (input.departmentId) {
+        await requireDepartment(auth, input.departmentId, input.legalEntityId);
+        requireDepartmentMatch(access, input.departmentId);
+      }
       if (input.primaryEnrollment) {
+        await requirePrimaryEnrollmentAuthority(auth, input.clientId, access.legalEntityId, access.enterpriseOwner);
         await prisma.$executeRawUnsafe(`UPDATE "ClientEnrollment" SET "primaryEnrollment"=false,"updatedAt"=now() WHERE "organizationId"=$1 AND "clientId"=$2 AND "status" IN ('PENDING','ACTIVE','PAUSED')`, auth.organizationId, input.clientId);
       }
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
@@ -520,13 +656,20 @@ export function registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, 
   app.patch('/api/admin/client-enrollments/:enrollmentId', manager, async (req, res, next) => {
     try {
       const auth = authOf(res);
+      const access = entityAccessOf(res);
+      requireEntityManageAccess(access);
       const input = enrollmentPatchSchema.parse(req.body);
       const current = await prisma.$queryRawUnsafe<Array<{ id: string; clientId: string; legalEntityId: string }>>(
         `SELECT "id","clientId","legalEntityId" FROM "ClientEnrollment" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`, auth.organizationId, req.params.enrollmentId,
       );
       if (!current[0]) throw notFound('Client enrollment was not found');
-      if (input.departmentId) await requireDepartment(auth, input.departmentId, current[0].legalEntityId);
+      requireEntityMatch(access, current[0].legalEntityId);
+      if (input.departmentId) {
+        await requireDepartment(auth, input.departmentId, current[0].legalEntityId);
+        requireDepartmentMatch(access, input.departmentId);
+      }
       if (input.primaryEnrollment) {
+        await requirePrimaryEnrollmentAuthority(auth, current[0].clientId, access.legalEntityId, access.enterpriseOwner);
         await prisma.$executeRawUnsafe(`UPDATE "ClientEnrollment" SET "primaryEnrollment"=false,"updatedAt"=now() WHERE "organizationId"=$1 AND "clientId"=$2 AND "id"<>$3 AND "status" IN ('PENDING','ACTIVE','PAUSED')`, auth.organizationId, current[0].clientId, req.params.enrollmentId);
       }
       const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(

@@ -7,16 +7,14 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { z, ZodError } from 'zod';
 import { registerCareersRoutes } from './careers-routes.js';
+import {
+  createEntityAccessMiddleware,
+  entityAccessOf,
+  type ScopedAuthContext,
+} from './entity-access.js';
 import { getUserEntityContext, registerMultiCompanyRoutes } from './multi-company-routes.js';
 
-type AuthContext = {
-  userId: string;
-  organizationId: string;
-  role: UserRole;
-  email?: string;
-  ipAddress?: string;
-  userAgent?: string;
-};
+type AuthContext = ScopedAuthContext;
 
 type AuthTokenClaims = JwtPayload & {
   organizationId?: unknown;
@@ -290,7 +288,7 @@ const tokenAuth = (req: express.Request): AuthContext | null => {
       role: claims.role,
       email: typeof claims.email === 'string'
         ? claims.email.trim().toLowerCase()
-        : administratorEmail,
+        : undefined,
     };
   } catch {
     return null;
@@ -685,6 +683,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(createEntityAccessMiddleware({ prisma }));
+
 const authOf = (response: express.Response) => response.locals.auth as AuthContext;
 
 app.get('/api/session', async (_req, res, next) => {
@@ -699,6 +699,7 @@ app.get('/api/session', async (_req, res, next) => {
         access: authorization.access,
         apps: authorization.apps,
         landingRoute: authorization.landingRoute,
+        entityAccess: entityAccessOf(res),
         entityContext,
       },
     });
