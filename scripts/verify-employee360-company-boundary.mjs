@@ -10,11 +10,12 @@ const includesAll = (source, markers, label) => {
   for (const marker of markers) expect(source.includes(marker), `${label} is missing ${marker}`);
 };
 
-const [migration, management, permissions, selfService, packageJson] = await Promise.all([
+const [migration, management, permissions, selfService, scopeEnforcement, packageJson] = await Promise.all([
   read('prisma/migrations/20260809203000_employee360_entity_authorization/migration.sql'),
   read('api/src/employee-management-routes.ts'),
   read('api/src/employee-360-permissions.ts'),
   read('api/src/employee-self-service-routes.ts'),
+  read('api/src/employee360-scope-enforcement.ts'),
   read('package.json'),
 ]);
 
@@ -70,6 +71,20 @@ includesAll(selfService, [
   '("id","organizationId","legalEntityId","actorUserId","targetEmployeeId"',
   'legalEntityId: selectedEntityId(auth)',
 ], 'Employee self-service API');
+
+includesAll(scopeEnforcement, [
+  'legalEntityId?:string',
+  'const selectedEntityId=(auth:AuthContext)',
+  'const actorHasSelectedEmployment=async(auth:AuthContext)',
+  'FROM "TimeAttendanceLocationAssignment"',
+  '"organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3',
+  'JOIN "Employment" employment',
+  'assignment."legalEntityId"=$2',
+  'legalEntityId,locationIds,employeeIds',
+  'UserRole.DOO',
+], 'Employee 360 route-scope middleware');
+expect(!scopeEnforcement.includes('FROM "EmployeeWorkAssignment"'), 'Employee 360 scope middleware still uses legacy organization-wide work assignments');
+expect(!scopeEnforcement.includes('UserRole.COO'), 'Employee 360 scope middleware still grants a retired COO role');
 
 expect(packageJson.includes('node scripts/verify-employee360-company-boundary.mjs'), 'Production web build does not run the Employee 360 company-boundary verifier');
 
