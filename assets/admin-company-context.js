@@ -4,6 +4,7 @@
   const API_BASE = 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEY = 'sulandra:employee:access-token';
   const SELECTED_ENTITY_KEY = 'sulandra:admin:legal-entity-id';
+  const SHARED_SELECTED_ENTITY_KEY = 'sulandra:selected-legal-entity-id';
   let entityContext = null;
   let selectedEntity = null;
   let requestPromise = null;
@@ -28,14 +29,54 @@
       .admin-company-state{display:inline-flex;align-items:center;justify-content:center;min-width:58px;border-radius:999px;padding:5px 7px;font-size:9px;font-weight:950;letter-spacing:.05em;color:#17603a;background:#dff7e9;border:1px solid #a7e2bf}
       .admin-company-state[data-status="PLANNED"]{color:#80560a;background:#fff5d7;border-color:#ead28a}
       .admin-company-state[data-status="ERROR"]{color:#8f1d1d;background:#fee8e8;border-color:#f4b2b2}
+      .sulandra-workspace-link{position:relative}.sulandra-workspace-link::after{content:'NEW';margin-left:6px;padding:2px 5px;border-radius:999px;background:#e2f3fb;color:#075985;font-size:8px;font-weight:950;vertical-align:middle}
       @media(max-width:980px){.admin-company-context{order:10;width:100%;min-width:100%}.admin-company-select{font-size:12px}}
       @media(max-width:680px){.admin-company-context label{display:none}.admin-company-state{min-width:52px}}
     `;
     document.head.appendChild(style);
   }
 
+  function installWorkspaceLinks() {
+    const top = document.getElementById('topModuleNav');
+    if (top && !document.getElementById('adminCompanyFilesTopLink')) {
+      const filesItem = document.createElement('li');
+      filesItem.id = 'adminCompanyFilesTopLink';
+      filesItem.innerHTML = '<a class="sulandra-workspace-link" href="/company-documents.html">Company Files</a>';
+      const trainingItem = document.createElement('li');
+      trainingItem.id = 'adminSpireTrainingTopLink';
+      trainingItem.innerHTML = '<a class="sulandra-workspace-link" href="/spire-training.html">SPIRE Training</a>';
+      const adminSpireItem = Array.from(top.children).find((item) => /Admin Spire/i.test(item.textContent || ''));
+      if (adminSpireItem) {
+        top.insertBefore(filesItem, adminSpireItem);
+        top.insertBefore(trainingItem, adminSpireItem);
+      } else top.append(filesItem, trainingItem);
+    }
+
+    const side = document.getElementById('sideModuleNav');
+    if (side && !document.getElementById('adminCompanyFilesSideLink')) {
+      const filesButton = document.createElement('button');
+      filesButton.id = 'adminCompanyFilesSideLink';
+      filesButton.className = 'side-btn';
+      filesButton.type = 'button';
+      filesButton.innerHTML = 'Company Files <small>Official Records</small>';
+      filesButton.addEventListener('click', () => { window.location.href = '/company-documents.html'; });
+      const trainingButton = document.createElement('button');
+      trainingButton.id = 'adminSpireTrainingSideLink';
+      trainingButton.className = 'side-btn';
+      trainingButton.type = 'button';
+      trainingButton.innerHTML = 'SPIRE Training <small>Practice Charts</small>';
+      trainingButton.addEventListener('click', () => { window.location.href = '/spire-training.html'; });
+      const adminSpireButton = Array.from(side.children).find((node) => /Admin Spire/i.test(node.textContent || ''));
+      if (adminSpireButton) {
+        side.insertBefore(filesButton, adminSpireButton);
+        side.insertBefore(trainingButton, adminSpireButton);
+      } else side.append(filesButton, trainingButton);
+    }
+  }
+
   function mount() {
     installStyles();
+    installWorkspaceLinks();
     let host = document.getElementById('adminCompanyContext');
     if (host) return host;
     const tools = document.querySelector('.header-tools');
@@ -60,7 +101,9 @@
 
   function preferredEntity() {
     const entities = accessibleEntities();
-    const savedId = localStorage.getItem(SELECTED_ENTITY_KEY);
+    const savedId = localStorage.getItem(SELECTED_ENTITY_KEY)
+      || sessionStorage.getItem(SHARED_SELECTED_ENTITY_KEY)
+      || localStorage.getItem(SHARED_SELECTED_ENTITY_KEY);
     return entities.find((entity) => entity.id === savedId && entity.status === 'ACTIVE')
       || entities.find((entity) => entity.id === entityContext?.primaryEntityId && entity.status === 'ACTIVE')
       || entities.find((entity) => entity.code === 'SCLS' && entity.status === 'ACTIVE')
@@ -82,17 +125,25 @@
     }
     if (selectedEntity) {
       localStorage.setItem(SELECTED_ENTITY_KEY, selectedEntity.id);
+      localStorage.setItem(SHARED_SELECTED_ENTITY_KEY, selectedEntity.id);
+      sessionStorage.setItem(SHARED_SELECTED_ENTITY_KEY, selectedEntity.id);
       document.body.dataset.legalEntityId = selectedEntity.id;
       document.body.dataset.legalEntityCode = selectedEntity.code;
     } else {
       localStorage.removeItem(SELECTED_ENTITY_KEY);
+      localStorage.removeItem(SHARED_SELECTED_ENTITY_KEY);
+      sessionStorage.removeItem(SHARED_SELECTED_ENTITY_KEY);
       delete document.body.dataset.legalEntityId;
       delete document.body.dataset.legalEntityCode;
     }
     if (notify && previousEntity?.id !== selectedEntity?.id) {
-      window.dispatchEvent(new CustomEvent('sulandra:company-change', {
-        detail: { previousEntity, entity: selectedEntity },
-      }));
+      const detail = { previousEntity, entity: selectedEntity };
+      window.dispatchEvent(new CustomEvent('sulandra:company-change', { detail }));
+      window.dispatchEvent(new CustomEvent('sulandra:entity-context-changed', { detail: {
+        previousEntity,
+        selectedEntity,
+        selectedEntityId: selectedEntity?.id || '',
+      } }));
     }
   }
 
@@ -108,6 +159,7 @@
 
   function render() {
     mount();
+    installWorkspaceLinks();
     const select = document.getElementById('adminCompanySelect');
     if (!select) return;
     const entities = accessibleEntities();
@@ -170,6 +222,7 @@
     context: () => entityContext,
     headers: () => selectedEntity?.id ? { 'X-Legal-Entity-Id': selectedEntity.id } : {},
     storageKey: SELECTED_ENTITY_KEY,
+    sharedStorageKey: SHARED_SELECTED_ENTITY_KEY,
   });
 
   if (document.readyState === 'loading') {
