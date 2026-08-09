@@ -35,10 +35,11 @@
 
   async function api(path, init = {}) {
     if (!token()) { signOut(); throw new Error("Administrator sign-in is required."); }
+    const entityHeaders = window.SulandraCompanyContext?.headers?.() || {};
     const response = await fetch(API_BASE + path, {
       ...init,
       cache: "no-store",
-      headers: { Accept: "application/json", Authorization: "Bearer " + token(), ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers || {}) }
+      headers: { Accept: "application/json", Authorization: "Bearer " + token(), ...entityHeaders, ...(init.body ? { "Content-Type": "application/json" } : {}), ...(init.headers || {}) }
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || payload.message || `Request failed (${response.status}).`);
@@ -368,6 +369,7 @@
       const session = await api("/api/session");
       const role = String(session?.role || "").toUpperCase();
       if (!session || !["ADMINISTRATOR", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }
+      await window.SulandraCompanyContext?.initialize?.(session.entityContext);
       if ($("adminEmailPill")) $("adminEmailPill").textContent = session.email || session.username || title(role);
       await Promise.all([loadApplications(), loadOpenings(), loadDashboard()]);
     } catch (error) { if ($("livePill")) $("livePill").textContent = "Railway: error"; toast("Admin portal unavailable", error.message); }

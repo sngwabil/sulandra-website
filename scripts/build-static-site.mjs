@@ -143,6 +143,7 @@ for (const marker of [
   '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2',
   '/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1',
   '/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1',
+  '/assets/admin-company-context.js?v=20260808-admin-company-context-1',
   'id="admin-fullscreen-layout"',
 ]) {
   if (!publishedAdmin.includes(marker)) throw new Error(`Modern Admin publication failed; missing ${marker}`);
@@ -157,6 +158,7 @@ const requiredPublishedFiles = [
   'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
   'assets/admin-live-dashboard.js', 'assets/admin-analog-clock.js',
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
+  'assets/admin-company-context.js',
   'spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
