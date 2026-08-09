@@ -8,6 +8,7 @@ type AuthContext = {
   userId: string;
   organizationId: string;
   role: UserRole;
+  legalEntityId?: string;
   email?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -212,6 +213,11 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
     return Boolean(rows[0]?.name);
   };
 
+  const selectedEntityId = (auth: AuthContext) => {
+    if (!auth.legalEntityId) throw Object.assign(new Error('Company access context is required'), { status: 500 });
+    return auth.legalEntityId;
+  };
+
   const actorIdentity = async (auth: AuthContext) => {
     const rows = await prisma.$queryRawUnsafe<Array<{ email: string | null }>>(
       `SELECT "email" FROM "User" WHERE "id"=$1 AND "organizationId"=$2 LIMIT 1`,
@@ -223,20 +229,30 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
   };
 
   const targetUser = async (auth: AuthContext, employeeId: string) => {
+    const legalEntityId = selectedEntityId(auth);
     const rows = await prisma.$queryRawUnsafe<any[]>(
       `SELECT u."id",u."organizationId",u."email",u."role"::text AS "role",
               COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "displayName",
               c."username",c."mustChangePassword",c."failedLoginAttempts",c."lockedUntil",c."lastSignedInAt",
-              p."employeeNumber",p."personalEmail",p."phone",p."alternatePhone",p."department",p."jobTitle",
-              COALESCE(p."employmentStatus",'ACTIVE') AS "employmentStatus",p."hireDate",p."terminationDate",
-              p."supervisorId",p."streetAddress",p."city",p."state",p."zipCode",
+              employment."id" AS "employmentId",employment."legalEntityId",employment."departmentId",employment."primaryEmployment",
+              COALESCE(employment."employeeNumber",p."employeeNumber") AS "employeeNumber",
+              p."personalEmail",p."phone",p."alternatePhone",COALESCE(department."name",p."department") AS "department",
+              COALESCE(employment."jobTitle",p."jobTitle") AS "jobTitle",employment."status" AS "employmentStatus",
+              employment."startsAt" AS "hireDate",employment."endsAt" AS "terminationDate",
+              employment."supervisorId",p."streetAddress",p."city",p."state",p."zipCode",
               p."emergencyContactName",p."emergencyContactPhone",p."notes"
-       FROM "User" u
+       FROM "Employment" employment
+       JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+       LEFT JOIN "Department" department
+         ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+        AND department."id"=employment."departmentId"
        LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
        LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-       WHERE u."id"=$1 AND u."organizationId"=$2 LIMIT 1`,
+       WHERE u."id"=$1 AND u."organizationId"=$2 AND employment."legalEntityId"=$3
+       ORDER BY CASE WHEN employment."status"='TERMINATED' THEN 1 ELSE 0 END,employment."startsAt" DESC LIMIT 1`,
       employeeId,
       auth.organizationId,
+      legalEntityId,
     );
     const row = rows[0];
     if (!row) throw Object.assign(new Error('Employee was not found'), { status: 404 });
@@ -253,6 +269,46 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
     return { actor, target };
   };
 
+  const selectedDepartmentId = async (auth: AuthContext, value: string | null | undefined, currentId: string | null | undefined) => {
+    if (!value) return null;
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT "id" FROM "Department"
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2
+         AND ("id"=$3 OR LOWER("name")=LOWER($3) OR UPPER("code")=UPPER(REPLACE($3,' ','_')))
+         AND ("active"=TRUE OR "id"=$4)
+       ORDER BY CASE WHEN "id"=$4 THEN 0 ELSE 1 END,"name" LIMIT 1`,
+      auth.organizationId,
+      selectedEntityId(auth),
+      value,
+      currentId ?? null,
+    );
+    if (!rows[0]) throw Object.assign(new Error('Select an active department from the current company'), { status: 400 });
+    return rows[0].id;
+  };
+
+  const organizationEmploymentProfile = async (auth: AuthContext, employeeId: string) => {
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT employment."employeeNumber",employment."jobTitle",employment."startsAt" AS "hireDate",
+              employment."endsAt" AS "terminationDate",employment."supervisorId",department."name" AS "department",
+              CASE
+                WHEN BOOL_OR(employment."status"='ACTIVE') OVER () THEN 'ACTIVE'
+                WHEN BOOL_OR(employment."status"='LEAVE') OVER () THEN 'LEAVE'
+                WHEN BOOL_OR(employment."status"='SUSPENDED') OVER () THEN 'SUSPENDED'
+                ELSE 'TERMINATED'
+              END AS "status"
+       FROM "Employment" employment
+       LEFT JOIN "Department" department
+         ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+        AND department."id"=employment."departmentId"
+       WHERE employment."organizationId"=$1 AND employment."userId"=$2
+       ORDER BY CASE employment."status" WHEN 'ACTIVE' THEN 0 WHEN 'LEAVE' THEN 1 WHEN 'SUSPENDED' THEN 2 ELSE 3 END,
+                employment."primaryEmployment" DESC,employment."startsAt" DESC LIMIT 1`,
+      auth.organizationId,
+      employeeId,
+    );
+    return rows[0] || { status: 'TERMINATED' };
+  };
+
   const accountAction = async (auth: AuthContext, employeeId: string, action: string, details: object = {}) => {
     await ready();
     await prisma.$executeRawUnsafe(
@@ -262,10 +318,10 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
       auth.organizationId,
       employeeId,
       action,
-      JSON.stringify(details),
+      JSON.stringify({ legalEntityId: selectedEntityId(auth), ...details }),
       auth.userId,
     );
-    await audit?.(auth, action, 'Employee', employeeId, details);
+    await audit?.(auth, action, 'Employee', employeeId, { legalEntityId: selectedEntityId(auth), ...details });
   };
 
   const mailTransport = () => {
@@ -364,21 +420,34 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
     try {
       await ready();
       const auth = authOf(res);
+      const legalEntityId = selectedEntityId(auth);
       const rows = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT u."id",u."email",u."role"::text AS "role",
+        `WITH selected_employment AS (
+           SELECT DISTINCT ON ("userId") * FROM "Employment"
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2
+           ORDER BY "userId",CASE WHEN "status"='TERMINATED' THEN 1 ELSE 0 END,"startsAt" DESC
+         )
+         SELECT u."id",u."email",u."role"::text AS "role",employment."id" AS "employmentId",
                 COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "displayName",
                 c."username",c."mustChangePassword",c."failedLoginAttempts",c."lockedUntil",c."lastSignedInAt",
-                COALESCE(p."employmentStatus",'ACTIVE') AS "employmentStatus",p."department",p."jobTitle",p."employeeNumber",p."hireDate",
+                employment."status" AS "employmentStatus",COALESCE(department."name",p."department") AS "department",
+                COALESCE(employment."jobTitle",p."jobTitle") AS "jobTitle",COALESCE(employment."employeeNumber",p."employeeNumber") AS "employeeNumber",
+                employment."startsAt" AS "hireDate",employment."endsAt" AS "terminationDate",
                 (SELECT COUNT(*)::int FROM "EmployeeDocument" d WHERE d."organizationId"=u."organizationId" AND d."employeeId"=u."id" AND d."status"='ACTIVE') AS "documentCount",
                 (SELECT COUNT(*)::int FROM "EmployeeDocument" d WHERE d."organizationId"=u."organizationId" AND d."employeeId"=u."id" AND d."status"='ACTIVE' AND d."expirationDate"<CURRENT_DATE) AS "expiredDocumentCount",
                 (SELECT COUNT(*)::int FROM "EmployeeDocument" d WHERE d."organizationId"=u."organizationId" AND d."employeeId"=u."id" AND d."status"='ACTIVE' AND d."expirationDate">=CURRENT_DATE AND d."expirationDate"<=CURRENT_DATE+60) AS "expiringDocumentCount"
-         FROM "User" u
+         FROM selected_employment employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+         LEFT JOIN "Department" department
+           ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+          AND department."id"=employment."departmentId"
          LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
          LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE u."organizationId"=$1 AND LOWER(COALESCE(u."email",'')) NOT LIKE '%@demo.spire.local'
-         ORDER BY CASE WHEN LOWER(COALESCE(u."email",''))=LOWER($2) THEN 0 ELSE 1 END,
+         WHERE LOWER(COALESCE(u."email",'')) NOT LIKE '%@demo.spire.local'
+         ORDER BY CASE WHEN LOWER(COALESCE(u."email",''))=LOWER($3) THEN 0 ELSE 1 END,
                   COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email")`,
         auth.organizationId,
+        legalEntityId,
         OWNER_EMAIL,
       );
       const query = String(req.query.q || '').trim().toLowerCase();
@@ -394,6 +463,7 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
     try {
       await ready();
       const auth = authOf(res);
+      const legalEntityId = selectedEntityId(auth);
       const employee = await targetUser(auth, req.params.id);
       const [documents, communications, actions] = await Promise.all([
         prisma.$queryRawUnsafe<any[]>(
@@ -422,38 +492,45 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
       if (await tableExists('TimeAttendanceLocationAssignment')) {
         homes = await prisma.$queryRawUnsafe<any[]>(
           `SELECT l."id",l."name",l."address",x."isManager"
-           FROM "TimeAttendanceLocationAssignment" x JOIN "TimeAttendanceLocation" l ON l."id"=x."locationId"
-           WHERE x."organizationId"=$1 AND x."employeeId"=$2 AND x."active"=TRUE AND l."active"=TRUE ORDER BY l."name"`,
-          auth.organizationId, employee.id,
+           FROM "TimeAttendanceLocationAssignment" x
+           JOIN "TimeAttendanceLocation" l
+             ON l."organizationId"=x."organizationId" AND l."legalEntityId"=x."legalEntityId" AND l."id"=x."locationId"
+           WHERE x."organizationId"=$1 AND x."legalEntityId"=$2 AND x."employeeId"=$3
+             AND x."active"=TRUE AND l."active"=TRUE ORDER BY l."name"`,
+          auth.organizationId, legalEntityId, employee.id,
         ).catch(() => []);
       }
       if (await tableExists('EducationAssignment')) {
         education = await prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","courseCode","title","packageCode","status","dueDate","assignedAt","startedAt","completedAt","expiresAt","reason"
-           FROM "EducationAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2 ORDER BY COALESCE("dueDate","completedAt","assignedAt") DESC NULLS LAST LIMIT 300`,
-          auth.organizationId, employee.id,
+           FROM "EducationAssignment" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+           ORDER BY COALESCE("dueDate","completedAt","assignedAt") DESC NULLS LAST LIMIT 300`,
+          auth.organizationId, legalEntityId, employee.id,
         ).catch(() => []);
       }
       if (await tableExists('TimeAttendanceShift')) {
         shifts = await prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","startTime","endTime","code","location","status","payCode"
-           FROM "TimeAttendanceShift" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "endTime">=NOW()-INTERVAL '14 days' ORDER BY "startTime" LIMIT 200`,
-          auth.organizationId, employee.id,
+           FROM "TimeAttendanceShift" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+             AND "endTime">=NOW()-INTERVAL '14 days' ORDER BY "startTime" LIMIT 200`,
+          auth.organizationId, legalEntityId, employee.id,
         ).catch(() => []);
       }
       if (await tableExists('TimeAttendanceClockEntry')) {
         timecards = await prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","clockIn","clockOut","source","status","notes",
                   ROUND((EXTRACT(EPOCH FROM (COALESCE("clockOut",NOW())-"clockIn"))/3600)::numeric,2)::float8 AS "hours"
-           FROM "TimeAttendanceClockEntry" WHERE "organizationId"=$1 AND "employeeId"=$2 ORDER BY "clockIn" DESC LIMIT 100`,
-          auth.organizationId, employee.id,
+           FROM "TimeAttendanceClockEntry" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+           ORDER BY "clockIn" DESC LIMIT 100`,
+          auth.organizationId, legalEntityId, employee.id,
         ).catch(() => []);
       }
       if (await tableExists('TimeAttendanceRequest')) {
         requests = await prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","type","startAt","endAt","reason","status","reviewNotes","createdAt"
-           FROM "TimeAttendanceRequest" WHERE "organizationId"=$1 AND "employeeId"=$2 ORDER BY "createdAt" DESC LIMIT 100`,
-          auth.organizationId, employee.id,
+           FROM "TimeAttendanceRequest" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+           ORDER BY "createdAt" DESC LIMIT 100`,
+          auth.organizationId, legalEntityId, employee.id,
         ).catch(() => []);
       }
 
@@ -503,6 +580,20 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
       const auth = authOf(res);
       const { target } = await ensureTargetManageable(auth, req.params.id, true);
       const input = profileSchema.parse(req.body);
+      if (input.supervisorId) await targetUser(auth, input.supervisorId);
+      const departmentId = await selectedDepartmentId(auth, input.department, target.departmentId);
+      const employmentRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        `UPDATE "Employment" SET
+           "employeeNumber"=$1,"jobTitle"=$2,"status"=$3,"startsAt"=COALESCE($4,"startsAt"),
+           "endsAt"=CASE WHEN $3='TERMINATED' THEN COALESCE($5,"endsAt",GREATEST(CURRENT_DATE,COALESCE($4,"startsAt"))) ELSE NULL END,
+           "departmentId"=$6,"supervisorId"=$7,"updatedAt"=NOW()
+         WHERE "id"=$8 AND "organizationId"=$9 AND "legalEntityId"=$10 AND "userId"=$11 RETURNING "id"`,
+        input.employeeNumber ?? null, input.jobTitle ?? null, input.employmentStatus, input.hireDate ?? null,
+        input.terminationDate ?? null, departmentId, input.supervisorId ?? null,
+        target.employmentId, auth.organizationId, selectedEntityId(auth), target.id,
+      );
+      if (!employmentRows[0]) return void res.status(404).json({ error: 'Selected-company employment was not found' });
+      const legacyEmployment = await organizationEmploymentProfile(auth, target.id);
       await prisma.$executeRawUnsafe(
         `INSERT INTO "EmployeeManagementProfile"
           ("userId","organizationId","displayName","employeeNumber","personalEmail","phone","alternatePhone","department","jobTitle","employmentStatus","hireDate","terminationDate","supervisorId","streetAddress","city","state","zipCode","emergencyContactName","emergencyContactPhone","notes","createdAt","updatedAt")
@@ -513,9 +604,9 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
           "employmentStatus"=EXCLUDED."employmentStatus","hireDate"=EXCLUDED."hireDate","terminationDate"=EXCLUDED."terminationDate",
           "supervisorId"=EXCLUDED."supervisorId","streetAddress"=EXCLUDED."streetAddress","city"=EXCLUDED."city","state"=EXCLUDED."state","zipCode"=EXCLUDED."zipCode",
           "emergencyContactName"=EXCLUDED."emergencyContactName","emergencyContactPhone"=EXCLUDED."emergencyContactPhone","notes"=EXCLUDED."notes","updatedAt"=NOW()`,
-        target.id, auth.organizationId, input.displayName, input.employeeNumber ?? null, input.personalEmail ?? null,
-        input.phone ?? null, input.alternatePhone ?? null, input.department ?? null, input.jobTitle ?? null,
-        input.employmentStatus, input.hireDate ?? null, input.terminationDate ?? null, input.supervisorId ?? null,
+        target.id, auth.organizationId, input.displayName, legacyEmployment.employeeNumber ?? null, input.personalEmail ?? null,
+        input.phone ?? null, input.alternatePhone ?? null, legacyEmployment.department ?? null, legacyEmployment.jobTitle ?? null,
+        legacyEmployment.status, legacyEmployment.hireDate ?? null, legacyEmployment.terminationDate ?? null, legacyEmployment.supervisorId ?? null,
         input.streetAddress ?? null, input.city ?? null, input.state ?? null, input.zipCode ?? null,
         input.emergencyContactName ?? null, input.emergencyContactPhone ?? null, input.notes ?? null,
       );
@@ -703,19 +794,34 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
       const auth = authOf(res);
       const { target } = await ensureTargetManageable(auth, req.params.id);
       const input = statusSchema.parse(req.body);
+      const employmentRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        `UPDATE "Employment" SET "status"=$1,
+           "endsAt"=CASE WHEN $1='TERMINATED' THEN COALESCE("endsAt",CURRENT_DATE) ELSE NULL END,"updatedAt"=NOW()
+         WHERE "id"=$2 AND "organizationId"=$3 AND "legalEntityId"=$4 AND "userId"=$5 RETURNING "id"`,
+        input.status, target.employmentId, auth.organizationId, selectedEntityId(auth), target.id,
+      );
+      if (!employmentRows[0]) return void res.status(404).json({ error: 'Selected-company employment was not found' });
+      const legacyEmployment = await organizationEmploymentProfile(auth, target.id);
       await prisma.$executeRawUnsafe(
         `INSERT INTO "EmployeeManagementProfile" ("userId","organizationId","displayName","employmentStatus","createdAt","updatedAt")
          VALUES ($1,$2,$3,$4,NOW(),NOW())
          ON CONFLICT ("userId") DO UPDATE SET "employmentStatus"=EXCLUDED."employmentStatus","updatedAt"=NOW()`,
-        target.id, auth.organizationId, displayNameFor(target), input.status,
+        target.id, auth.organizationId, displayNameFor(target), legacyEmployment.status,
       );
       if (input.status === 'ACTIVE') {
         await prisma.$executeRawUnsafe(`UPDATE "EmployeePortalCredential" SET "lockedUntil"=NULL,"failedLoginAttempts"=0,"updatedAt"=NOW() WHERE "userId"=$1`, target.id);
       } else if (input.status === 'SUSPENDED' || input.status === 'TERMINATED') {
-        await prisma.$executeRawUnsafe(`UPDATE "EmployeePortalCredential" SET "lockedUntil"='9999-12-31'::timestamptz,"updatedAt"=NOW() WHERE "userId"=$1`, target.id);
+        const activeElsewhere = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+          `SELECT "id" FROM "Employment" WHERE "organizationId"=$1 AND "userId"=$2 AND "status" IN ('ACTIVE','LEAVE')
+             AND "startsAt"<=CURRENT_DATE AND ("endsAt" IS NULL OR "endsAt">=CURRENT_DATE) LIMIT 1`,
+          auth.organizationId, target.id,
+        );
+        if (!activeElsewhere[0]) {
+          await prisma.$executeRawUnsafe(`UPDATE "EmployeePortalCredential" SET "lockedUntil"='9999-12-31'::timestamptz,"updatedAt"=NOW() WHERE "userId"=$1`, target.id);
+        }
       }
       await accountAction(auth, target.id, 'CHANGE_EMPLOYMENT_STATUS', { status: input.status });
-      res.json({ data: { employmentStatus: input.status } });
+      res.json({ data: { employmentStatus: input.status, organizationEmploymentStatus: legacyEmployment.status } });
     } catch (error) { next(error); }
   });
 
@@ -729,16 +835,19 @@ export function registerEmployeeManagementRoutes({ app, prisma, authOf, requireR
         return void res.status(503).json({ error: 'The Education service is not initialized yet' });
       }
       const existing = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT "id" FROM "EducationAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "courseCode"=$3 AND "status" IN ('ASSIGNED','IN_PROGRESS') LIMIT 1`,
-        auth.organizationId, employee.id, input.courseCode,
+        `SELECT "id" FROM "EducationAssignment"
+         WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3 AND "courseCode"=$4
+           AND "status" IN ('ASSIGNED','IN_PROGRESS') LIMIT 1`,
+        auth.organizationId, selectedEntityId(auth), employee.id, input.courseCode,
       );
       if (existing[0]) return void res.status(409).json({ error: 'This course is already assigned to the employee' });
       const id = randomUUID();
       await prisma.$executeRawUnsafe(
         `INSERT INTO "EducationAssignment"
-          ("id","organizationId","employeeId","courseCode","title","packageCode","status","dueDate","reason","assignedById","assignedAt","createdAt","updatedAt")
-         VALUES ($1,$2,$3,$4,$5,'CUSTOM','ASSIGNED',$6,$7,$8,NOW(),NOW(),NOW())`,
-        id, auth.organizationId, employee.id, input.courseCode, input.title, input.dueDate ?? null, input.reason, auth.userId,
+          ("id","organizationId","legalEntityId","departmentId","employeeId","courseCode","title","packageCode","status","dueDate","reason","assignedById","assignedAt","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'CUSTOM','ASSIGNED',$8,$9,$10,NOW(),NOW(),NOW())`,
+        id, auth.organizationId, selectedEntityId(auth), employee.departmentId ?? null, employee.id,
+        input.courseCode, input.title, input.dueDate ?? null, input.reason, auth.userId,
       );
       await accountAction(auth, employee.id, 'ASSIGN_EMPLOYEE_EDUCATION', { assignmentId: id, courseCode: input.courseCode, dueDate: input.dueDate ?? null });
       res.status(201).json({ data: { id, status: 'ASSIGNED' } });

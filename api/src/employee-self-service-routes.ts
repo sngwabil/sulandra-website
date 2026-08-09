@@ -6,6 +6,7 @@ type AuthContext = {
   userId: string;
   organizationId: string;
   role: UserRole;
+  legalEntityId?: string;
   email?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -34,25 +35,39 @@ const OWNER_NAME = 'Sulpitius Ndeh Gwabil';
 
 export function registerEmployeeSelfServiceRoutes({ app, prisma, authOf, requireRoles, audit }: Dependencies) {
   const employeeGate = requireRoles(...allRoles);
+  const selectedEntityId = (auth: AuthContext) => {
+    if (!auth.legalEntityId) throw Object.assign(new Error('Company access context is required'), { status: 500 });
+    return auth.legalEntityId;
+  };
 
-  const directoryRows = async (organizationId: string, leadershipOnly = false) => {
+  const directoryRows = async (auth: AuthContext, leadershipOnly = false) => {
     const leadershipClause = leadershipOnly
       ? `AND u."role"::text IN ('CEO','COO','ADMINISTRATOR','HR_MANAGER','PROGRAM_MANAGER','HOUSE_MANAGER','DELEGATING_NURSE')`
       : '';
     const rows = await prisma.$queryRawUnsafe<Array<{
       id:string; email:string|null; role:string; displayName:string|null; jobTitle:string|null; department:string|null; employmentStatus:string|null;
     }>>(
-      `SELECT u."id",u."email",u."role"::text AS "role",
+      `WITH selected_employment AS (
+         SELECT DISTINCT ON ("userId") * FROM "Employment"
+         WHERE "organizationId"=$1 AND "legalEntityId"=$2
+         ORDER BY "userId",CASE WHEN "status"='TERMINATED' THEN 1 ELSE 0 END,"startsAt" DESC
+       )
+       SELECT u."id",u."email",u."role"::text AS "role",
         COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email",u."id") AS "displayName",
-        p."jobTitle",p."department",COALESCE(p."employmentStatus",'ACTIVE') AS "employmentStatus"
-       FROM "User" u
+        COALESCE(employment."jobTitle",p."jobTitle") AS "jobTitle",COALESCE(department."name",p."department") AS "department",
+        employment."status" AS "employmentStatus"
+       FROM selected_employment employment
+       JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+       LEFT JOIN "Department" department
+         ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+        AND department."id"=employment."departmentId"
        LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
        LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-       WHERE u."organizationId"=$1
-         AND COALESCE(p."employmentStatus",'ACTIVE') <> 'TERMINATED'
+       WHERE employment."status" <> 'TERMINATED'
          ${leadershipClause}
        ORDER BY COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email",u."id")`,
-      organizationId,
+      auth.organizationId,
+      selectedEntityId(auth),
     );
     return rows.map((row) => ({
       id: row.id,
@@ -68,8 +83,8 @@ export function registerEmployeeSelfServiceRoutes({ app, prisma, authOf, require
   app.get('/api/employee/directory', employeeGate, async (_req, res, next) => {
     try {
       const auth = authOf(res);
-      const employees = await directoryRows(auth.organizationId, false);
-      await audit?.(auth, 'VIEW_EMPLOYEE_DIRECTORY', 'EmployeeDirectory', auth.organizationId, { count: employees.length });
+      const employees = await directoryRows(auth, false);
+      await audit?.(auth, 'VIEW_EMPLOYEE_DIRECTORY', 'EmployeeDirectory', auth.organizationId, { legalEntityId: selectedEntityId(auth), count: employees.length });
       res.json({ data: { employees } });
     } catch (error) { next(error); }
   });
@@ -77,8 +92,8 @@ export function registerEmployeeSelfServiceRoutes({ app, prisma, authOf, require
   app.get('/api/employee/leadership', employeeGate, async (_req, res, next) => {
     try {
       const auth = authOf(res);
-      const leaders = await directoryRows(auth.organizationId, true);
-      await audit?.(auth, 'VIEW_EMPLOYEE_LEADERSHIP', 'EmployeeDirectory', auth.organizationId, { count: leaders.length });
+      const leaders = await directoryRows(auth, true);
+      await audit?.(auth, 'VIEW_EMPLOYEE_LEADERSHIP', 'EmployeeDirectory', auth.organizationId, { legalEntityId: selectedEntityId(auth), count: leaders.length });
       res.json({ data: { leaders } });
     } catch (error) { next(error); }
   });
@@ -107,17 +122,18 @@ export function registerEmployeeSelfServiceRoutes({ app, prisma, authOf, require
       const buffer = Buffer.from(document.contentBase64, 'base64');
       await prisma.$executeRawUnsafe(
         `INSERT INTO "Employee360AccessEvent"
-          ("id","organizationId","actorUserId","targetEmployeeId","action","resourceType","resourceId","capability","sensitivity","decision","reason","ipAddress","userAgent")
-         VALUES ($1,$2,$3,$3,'SELF_DOWNLOAD','EmployeeDocument',$4,'VIEW_DOCUMENTS',$5,'ALLOW','Employee downloaded an approved self-service document',$6,$7)`,
+          ("id","organizationId","legalEntityId","actorUserId","targetEmployeeId","action","resourceType","resourceId","capability","sensitivity","decision","reason","ipAddress","userAgent")
+         VALUES ($1,$2,$3,$4,$4,'SELF_DOWNLOAD','EmployeeDocument',$5,'VIEW_DOCUMENTS',$6,'ALLOW','Employee downloaded an approved self-service document',$7,$8)`,
         randomUUID(),
         auth.organizationId,
+        selectedEntityId(auth),
         auth.userId,
         document.id,
         document.sensitivity,
         auth.ipAddress || req.ip || null,
         auth.userAgent || req.get('user-agent') || null,
       ).catch(() => undefined);
-      await audit?.(auth, 'EMPLOYEE_SELF_DOCUMENT_DOWNLOAD', 'EmployeeDocument', document.id, { sensitivity: document.sensitivity });
+      await audit?.(auth, 'EMPLOYEE_SELF_DOCUMENT_DOWNLOAD', 'EmployeeDocument', document.id, { legalEntityId: selectedEntityId(auth), sensitivity: document.sensitivity });
       res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
       res.setHeader('Content-Length', String(buffer.length));
       res.setHeader('Content-Disposition', `attachment; filename="${cleanFileName(document.fileName)}"`);

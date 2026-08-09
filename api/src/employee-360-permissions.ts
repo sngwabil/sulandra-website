@@ -7,6 +7,7 @@ type AuthContext = {
   userId: string;
   organizationId: string;
   role: UserRole;
+  legalEntityId?: string;
   email?: string;
   ipAddress?: string;
   userAgent?: string;
@@ -332,11 +333,17 @@ const safeSensitivity = (value: unknown, category?: unknown): Sensitivity => {
 };
 
 export function registerEmployee360Permissions({ app, prisma, authOf, requireRoles, audit }: Dependencies) {
+  const selectedEntityId = (auth: AuthContext) => {
+    if (!auth.legalEntityId) throw Object.assign(new Error('Company access context is required'), { status: 500 });
+    return auth.legalEntityId;
+  };
+
   let schemaPromise: Promise<void> | null = null;
   const ensureSchema = () => schemaPromise ??= (async () => {
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "Employee360AccessGrant" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT NOT NULL,
       "actorUserId" TEXT NOT NULL,
       "profile" TEXT NOT NULL,
       "scopeType" TEXT NOT NULL,
@@ -350,11 +357,25 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       CONSTRAINT "Employee360AccessGrant_scope_check" CHECK ("scopeType" IN ('GLOBAL','LOCATION','EMPLOYEE'))
     )`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessGrant_actor_idx" ON "Employee360AccessGrant"("organizationId","actorUserId","active")`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessGrant_scope_idx" ON "Employee360AccessGrant"("organizationId","scopeType","locationId","employeeId")`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Employee360AccessGrant" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
+    await prisma.$executeRawUnsafe(`UPDATE "Employee360AccessGrant" grant_row
+      SET "legalEntityId"=entity."id" FROM "LegalEntity" entity
+      WHERE entity."organizationId"=grant_row."organizationId" AND entity."code"='SCLS' AND grant_row."legalEntityId" IS NULL`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Employee360AccessGrant" ALTER COLUMN "legalEntityId" SET NOT NULL`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessGrant_entity_actor_idx" ON "Employee360AccessGrant"("organizationId","legalEntityId","actorUserId","active")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessGrant_entity_scope_idx" ON "Employee360AccessGrant"("organizationId","legalEntityId","scopeType","locationId","employeeId")`);
+    await prisma.$executeRawUnsafe(`DO $$ BEGIN
+      IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname='Employee360AccessGrant_active_unique_idx' AND indexdef NOT LIKE '%"legalEntityId"%') THEN
+        DROP INDEX "Employee360AccessGrant_active_unique_idx";
+      END IF;
+    END $$`);
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Employee360AccessGrant_active_unique_idx"
+      ON "Employee360AccessGrant"("organizationId","legalEntityId","actorUserId","profile","scopeType",COALESCE("locationId",''),COALESCE("employeeId",''))
+      WHERE "active"=TRUE`);
     await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "Employee360AccessEvent" (
       "id" TEXT PRIMARY KEY,
       "organizationId" TEXT NOT NULL,
+      "legalEntityId" TEXT NOT NULL,
       "actorUserId" TEXT NOT NULL,
       "targetEmployeeId" TEXT,
       "action" TEXT NOT NULL,
@@ -369,8 +390,14 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       CONSTRAINT "Employee360AccessEvent_decision_check" CHECK ("decision" IN ('ALLOW','DENY'))
     )`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessEvent_target_idx" ON "Employee360AccessEvent"("organizationId","targetEmployeeId","createdAt" DESC)`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessEvent_actor_idx" ON "Employee360AccessEvent"("organizationId","actorUserId","createdAt" DESC)`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Employee360AccessEvent" ADD COLUMN IF NOT EXISTS "legalEntityId" TEXT`);
+    await prisma.$executeRawUnsafe(`UPDATE "Employee360AccessEvent" event_row
+      SET "legalEntityId"=entity."id" FROM "LegalEntity" entity
+      WHERE entity."organizationId"=event_row."organizationId" AND entity."code"='SCLS' AND event_row."legalEntityId" IS NULL`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Employee360AccessEvent" ALTER COLUMN "legalEntityId" SET NOT NULL`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessEvent_entity_target_idx" ON "Employee360AccessEvent"("organizationId","legalEntityId","targetEmployeeId","createdAt" DESC)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessEvent_entity_actor_idx" ON "Employee360AccessEvent"("organizationId","legalEntityId","actorUserId","createdAt" DESC)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Employee360AccessEvent_entity_decision_idx" ON "Employee360AccessEvent"("organizationId","legalEntityId","decision","createdAt" DESC)`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeDocument" ADD COLUMN IF NOT EXISTS "sensitivity" TEXT NOT NULL DEFAULT 'GENERAL'`).catch(() => undefined);
     await prisma.$executeRawUnsafe(`ALTER TABLE "EmployeeDocument" ADD COLUMN IF NOT EXISTS "employeeVisible" BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => undefined);
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "EmployeeDocument_sensitivity_idx" ON "EmployeeDocument"("organizationId","employeeId","sensitivity","status")`).catch(() => undefined);
@@ -413,22 +440,40 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
     const requireManager = auth.role === UserRole.HOUSE_MANAGER;
     const rows = await prisma.$queryRawUnsafe<Array<{ locationId: string }>>(
       `SELECT DISTINCT "locationId" FROM "TimeAttendanceLocationAssignment"
-       WHERE "organizationId"=$1 AND "employeeId"=$2 AND "active"=TRUE ${requireManager ? 'AND "isManager"=TRUE' : ''}`,
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+         AND "active"=TRUE ${requireManager ? 'AND "isManager"=TRUE' : ''}`,
       auth.organizationId,
+      selectedEntityId(auth),
       auth.userId,
     ).catch(() => []);
     return rows.map((row) => row.locationId);
   };
 
+  const actorHasSelectedEmployment = async (auth: AuthContext) => {
+    const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT "id" FROM "Employment"
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "userId"=$3
+         AND "status" IN ('ACTIVE','LEAVE') AND "startsAt"<=CURRENT_DATE
+         AND ("endsAt" IS NULL OR "endsAt">=CURRENT_DATE) LIMIT 1`,
+      auth.organizationId,
+      selectedEntityId(auth),
+      auth.userId,
+    );
+    return Boolean(rows[0]);
+  };
+
   const targetContext = async (auth: AuthContext, employeeId: string): Promise<TargetContext> => {
     const rows = await prisma.$queryRawUnsafe<Array<{ id: string; email: string | null; displayName: string | null }>>(
       `SELECT u."id",u."email",COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "displayName"
-       FROM "User" u
+       FROM "Employment" employment
+       JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
        LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
        LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-       WHERE u."id"=$1 AND u."organizationId"=$2 LIMIT 1`,
+       WHERE u."id"=$1 AND u."organizationId"=$2 AND employment."legalEntityId"=$3
+       ORDER BY CASE WHEN employment."status"='TERMINATED' THEN 1 ELSE 0 END,employment."startsAt" DESC LIMIT 1`,
       employeeId,
       auth.organizationId,
+      selectedEntityId(auth),
     );
     const row = rows[0];
     if (!row) throw Object.assign(new Error('Employee was not found'), { status: 404 });
@@ -436,8 +481,9 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
     if (await tableExists('TimeAttendanceLocationAssignment')) {
       const locationRows = await prisma.$queryRawUnsafe<Array<{ locationId: string }>>(
         `SELECT DISTINCT "locationId" FROM "TimeAttendanceLocationAssignment"
-         WHERE "organizationId"=$1 AND "employeeId"=$2 AND "active"=TRUE`,
+         WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3 AND "active"=TRUE`,
         auth.organizationId,
+        selectedEntityId(auth),
         employeeId,
       ).catch(() => []);
       locationIds = locationRows.map((item) => item.locationId);
@@ -473,7 +519,7 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
 
     const policies: Policy[] = [];
     const baseProfileName = ROLE_PROFILE[auth.role];
-    if (baseProfileName) {
+    if (baseProfileName && await actorHasSelectedEmployment(auth)) {
       const profile = ACCESS_PROFILES[baseProfileName];
       if (GLOBAL_BASE_ROLES.has(auth.role)) {
         policies.push({
@@ -495,9 +541,11 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
     }>>(
       `SELECT "id","profile","scopeType","locationId","employeeId","expiresAt"
        FROM "Employee360AccessGrant"
-       WHERE "organizationId"=$1 AND "actorUserId"=$2 AND "active"=TRUE AND ("expiresAt" IS NULL OR "expiresAt">NOW())
+       WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "actorUserId"=$3
+         AND "active"=TRUE AND ("expiresAt" IS NULL OR "expiresAt">NOW())
        ORDER BY "createdAt"`,
       auth.organizationId,
+      selectedEntityId(auth),
       auth.userId,
     );
     for (const grant of grants) {
@@ -540,9 +588,9 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
     await ensureSchema();
     await prisma.$executeRawUnsafe(
       `INSERT INTO "Employee360AccessEvent"
-        ("id","organizationId","actorUserId","targetEmployeeId","action","resourceType","resourceId","capability","sensitivity","decision","reason","ipAddress","userAgent")
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      randomUUID(), auth.organizationId, auth.userId, targetEmployeeId, action, resourceType, resourceId,
+        ("id","organizationId","legalEntityId","actorUserId","targetEmployeeId","action","resourceType","resourceId","capability","sensitivity","decision","reason","ipAddress","userAgent")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+      randomUUID(), auth.organizationId, selectedEntityId(auth), auth.userId, targetEmployeeId, action, resourceType, resourceId,
       capability, sensitivity, decision, reason, auth.ipAddress || req.ip || null,
       auth.userAgent || req.get('user-agent') || null,
     ).catch(() => undefined);
@@ -598,6 +646,31 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
     );
     if (!rows[0]) throw Object.assign(new Error('Employee document was not found'), { status: 404 });
     return { ...rows[0], sensitivity: safeSensitivity(rows[0].sensitivity, rows[0].category) };
+  };
+
+  const profileSnapshot = async (auth: AuthContext, employeeId: string) => {
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT COALESCE(NULLIF(p."displayName",''),NULLIF(c."displayName",''),u."email") AS "displayName",
+              COALESCE(employment."employeeNumber",p."employeeNumber") AS "employeeNumber",
+              p."personalEmail",p."phone",p."alternatePhone",COALESCE(department."name",p."department") AS "department",
+              COALESCE(employment."jobTitle",p."jobTitle") AS "jobTitle",employment."status" AS "employmentStatus",
+              employment."startsAt" AS "hireDate",employment."endsAt" AS "terminationDate",employment."supervisorId",
+              p."streetAddress",p."city",p."state",p."zipCode",p."emergencyContactName",p."emergencyContactPhone",p."notes"
+       FROM "Employment" employment
+       JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+       LEFT JOIN "Department" department
+         ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+        AND department."id"=employment."departmentId"
+       LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
+       LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
+       WHERE u."id"=$1 AND u."organizationId"=$2 AND employment."legalEntityId"=$3
+       ORDER BY CASE WHEN employment."status"='TERMINATED' THEN 1 ELSE 0 END,employment."startsAt" DESC LIMIT 1`,
+      employeeId,
+      auth.organizationId,
+      selectedEntityId(auth),
+    );
+    if (!rows[0]) throw Object.assign(new Error('Employee profile was not found in the selected company'), { status: 404 });
+    return rows[0];
   };
 
   const maskEmployee = (employee: Record<string, unknown>, capabilities: Record<Capability, boolean>) => {
@@ -720,23 +793,33 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       await ensureSchema();
       const auth = authOf(res);
       const actor = await actorRecord(auth);
-      const mayView = actor.isOwner || auth.role === UserRole.HR_MANAGER || auth.role === UserRole.AUDITOR;
+      const mayView = actor.isOwner || await actorHasSelectedEmployment(auth)
+        && (auth.role === UserRole.HR_MANAGER || auth.role === UserRole.AUDITOR);
       if (!mayView) return void res.status(403).json({ error: 'Employee 360 permission definitions are restricted' });
       let locations: any[] = [];
       if (await tableExists('TimeAttendanceLocation')) {
         locations = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id","name","address" FROM "TimeAttendanceLocation" WHERE "organizationId"=$1 AND "active"=TRUE ORDER BY "name"`,
+          `SELECT "id","name","address" FROM "TimeAttendanceLocation"
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "active"=TRUE ORDER BY "name"`,
           auth.organizationId,
+          selectedEntityId(auth),
         ).catch(() => []);
       }
       const employees = await prisma.$queryRawUnsafe<any[]>(
-        `SELECT u."id",u."email",u."role"::text AS "role",COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "displayName"
-         FROM "User" u
+        `WITH selected_employment AS (
+           SELECT DISTINCT ON ("userId") * FROM "Employment"
+           WHERE "organizationId"=$1 AND "legalEntityId"=$2
+           ORDER BY "userId",CASE WHEN "status"='TERMINATED' THEN 1 ELSE 0 END,"startsAt" DESC
+         )
+         SELECT u."id",u."email",u."role"::text AS "role",COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "displayName"
+         FROM selected_employment employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
          LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
          LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE u."organizationId"=$1 AND LOWER(COALESCE(u."email",'')) NOT LIKE '%@demo.spire.local'
+         WHERE LOWER(COALESCE(u."email",'')) NOT LIKE '%@demo.spire.local'
          ORDER BY COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email")`,
         auth.organizationId,
+        selectedEntityId(auth),
       );
       res.json({
         data: {
@@ -760,7 +843,8 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       await ensureSchema();
       const auth = authOf(res);
       const actor = await actorRecord(auth);
-      if (!actor.isOwner && auth.role !== UserRole.HR_MANAGER && auth.role !== UserRole.AUDITOR) {
+      if (!actor.isOwner && (!await actorHasSelectedEmployment(auth)
+        || auth.role !== UserRole.HR_MANAGER && auth.role !== UserRole.AUDITOR)) {
         return void res.status(403).json({ error: 'Access-grant records are restricted' });
       }
       const target = await targetContext(auth, req.params.employeeId);
@@ -768,12 +852,15 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
         `SELECT g."id",g."profile",g."scopeType",g."locationId",g."employeeId",g."reason",g."active",g."expiresAt",g."createdById",g."createdAt",g."updatedAt",
                 l."name" AS "locationName",COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "employeeName"
          FROM "Employee360AccessGrant" g
-         LEFT JOIN "TimeAttendanceLocation" l ON l."id"=g."locationId"
-         LEFT JOIN "User" u ON u."id"=g."employeeId"
+         LEFT JOIN "TimeAttendanceLocation" l
+           ON l."organizationId"=g."organizationId" AND l."legalEntityId"=g."legalEntityId" AND l."id"=g."locationId"
+         LEFT JOIN "User" u ON u."organizationId"=g."organizationId" AND u."id"=g."employeeId"
          LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
          LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE g."organizationId"=$1 AND g."actorUserId"=$2 ORDER BY g."active" DESC,g."createdAt" DESC`,
+         WHERE g."organizationId"=$1 AND g."legalEntityId"=$2 AND g."actorUserId"=$3
+         ORDER BY g."active" DESC,g."createdAt" DESC`,
         auth.organizationId,
+        selectedEntityId(auth),
         target.id,
       );
       res.json({ data: { target, grants: grants.map((grant) => ({ ...grant, profileLabel: ACCESS_PROFILES[grant.profile]?.label || grant.profile })) } });
@@ -790,9 +877,11 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       if (targetActor.isOwner) return void res.status(409).json({ error: 'The enterprise owner already has unrestricted immutable access' });
       if (input.scopeType === 'LOCATION') {
         const rows = await prisma.$queryRawUnsafe<any[]>(
-          `SELECT "id" FROM "TimeAttendanceLocation" WHERE "id"=$1 AND "organizationId"=$2 AND "active"=TRUE LIMIT 1`,
+          `SELECT "id" FROM "TimeAttendanceLocation"
+           WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3 AND "active"=TRUE LIMIT 1`,
           input.locationId,
           auth.organizationId,
+          selectedEntityId(auth),
         ).catch(() => []);
         if (!rows[0]) return void res.status(404).json({ error: 'The selected service location was not found' });
       }
@@ -800,10 +889,11 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       const id = randomUUID();
       await prisma.$executeRawUnsafe(
         `INSERT INTO "Employee360AccessGrant"
-          ("id","organizationId","actorUserId","profile","scopeType","locationId","employeeId","reason","active","expiresAt","createdById")
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9,$10)`,
+          ("id","organizationId","legalEntityId","actorUserId","profile","scopeType","locationId","employeeId","reason","active","expiresAt","createdById")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,$10,$11)`,
         id,
         auth.organizationId,
+        selectedEntityId(auth),
         input.actorUserId,
         input.profile,
         input.scopeType,
@@ -826,9 +916,10 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       await requireOwner(auth);
       const rows = await prisma.$queryRawUnsafe<Array<{ id: string; actorUserId: string }>>(
         `UPDATE "Employee360AccessGrant" SET "active"=FALSE,"updatedAt"=NOW()
-         WHERE "id"=$1 AND "organizationId"=$2 AND "active"=TRUE RETURNING "id","actorUserId"`,
+         WHERE "id"=$1 AND "organizationId"=$2 AND "legalEntityId"=$3 AND "active"=TRUE RETURNING "id","actorUserId"`,
         req.params.grantId,
         auth.organizationId,
+        selectedEntityId(auth),
       );
       if (!rows[0]) return void res.status(404).json({ error: 'Access grant was not found' });
       await logAccess(auth, req, rows[0].actorUserId, 'REVOKE_ACCESS_GRANT', 'Employee360AccessGrant', rows[0].id, 'MANAGE_ACCESS_GRANTS', null, 'ALLOW', 'Access grant revoked by enterprise owner');
@@ -842,7 +933,8 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       await ensureSchema();
       const auth = authOf(res);
       const actor = await actorRecord(auth);
-      if (!actor.isOwner && auth.role !== UserRole.HR_MANAGER && auth.role !== UserRole.AUDITOR) {
+      if (!actor.isOwner && (!await actorHasSelectedEmployment(auth)
+        || auth.role !== UserRole.HR_MANAGER && auth.role !== UserRole.AUDITOR)) {
         return void res.status(403).json({ error: 'Access-event audit records are restricted' });
       }
       const input = accessEventSchema.parse(req.query);
@@ -853,12 +945,13 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
          LEFT JOIN "EmployeePortalCredential" ac ON ac."userId"=au."id"
          LEFT JOIN "User" tu ON tu."id"=e."targetEmployeeId"
          LEFT JOIN "EmployeePortalCredential" tc ON tc."userId"=tu."id"
-         WHERE e."organizationId"=$1
-           AND ($2::text IS NULL OR e."targetEmployeeId"=$2)
-           AND ($3::text IS NULL OR e."actorUserId"=$3)
-           AND ($4::text IS NULL OR e."decision"=$4)
-         ORDER BY e."createdAt" DESC LIMIT $5`,
+         WHERE e."organizationId"=$1 AND e."legalEntityId"=$2
+           AND ($3::text IS NULL OR e."targetEmployeeId"=$3)
+           AND ($4::text IS NULL OR e."actorUserId"=$4)
+           AND ($5::text IS NULL OR e."decision"=$5)
+         ORDER BY e."createdAt" DESC LIMIT $6`,
         auth.organizationId,
+        selectedEntityId(auth),
         input.employeeId || null,
         input.actorId || null,
         input.decision || null,
@@ -875,14 +968,22 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       const target = await targetContext(auth, auth.userId);
       const employeeRows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT u."id",u."email",u."role"::text AS "role",COALESCE(NULLIF(c."displayName",''),NULLIF(p."displayName",''),u."email") AS "displayName",
-                p."employeeNumber",p."personalEmail",p."phone",p."alternatePhone",p."department",p."jobTitle",COALESCE(p."employmentStatus",'ACTIVE') AS "employmentStatus",
-                p."hireDate",p."streetAddress",p."city",p."state",p."zipCode",p."emergencyContactName",p."emergencyContactPhone"
-         FROM "User" u
+                COALESCE(employment."employeeNumber",p."employeeNumber") AS "employeeNumber",p."personalEmail",p."phone",p."alternatePhone",
+                COALESCE(department."name",p."department") AS "department",COALESCE(employment."jobTitle",p."jobTitle") AS "jobTitle",
+                employment."status" AS "employmentStatus",employment."startsAt" AS "hireDate",employment."endsAt" AS "terminationDate",
+                p."streetAddress",p."city",p."state",p."zipCode",p."emergencyContactName",p."emergencyContactPhone"
+         FROM "Employment" employment
+         JOIN "User" u ON u."organizationId"=employment."organizationId" AND u."id"=employment."userId"
+         LEFT JOIN "Department" department
+           ON department."organizationId"=employment."organizationId" AND department."legalEntityId"=employment."legalEntityId"
+          AND department."id"=employment."departmentId"
          LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
          LEFT JOIN "EmployeeManagementProfile" p ON p."userId"=u."id" AND p."organizationId"=u."organizationId"
-         WHERE u."id"=$1 AND u."organizationId"=$2 LIMIT 1`,
+         WHERE u."id"=$1 AND u."organizationId"=$2 AND employment."legalEntityId"=$3
+         ORDER BY CASE WHEN employment."status"='TERMINATED' THEN 1 ELSE 0 END,employment."startsAt" DESC LIMIT 1`,
         auth.userId,
         auth.organizationId,
+        selectedEntityId(auth),
       );
       const documents = await prisma.$queryRawUnsafe<any[]>(
         `SELECT "id","category","title","fileName","mimeType","fileSizeBytes","issueDate","expirationDate","notes","createdAt",COALESCE("sensitivity",'GENERAL') AS "sensitivity",
@@ -896,8 +997,10 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
       if (await tableExists('EducationAssignment')) {
         education = await prisma.$queryRawUnsafe<any[]>(
           `SELECT "id","courseCode","title","status","dueDate","assignedAt","startedAt","completedAt","expiresAt"
-           FROM "EducationAssignment" WHERE "organizationId"=$1 AND "employeeId"=$2 ORDER BY COALESCE("dueDate","completedAt","assignedAt") DESC NULLS LAST`,
+           FROM "EducationAssignment" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "employeeId"=$3
+           ORDER BY COALESCE("dueDate","completedAt","assignedAt") DESC NULLS LAST`,
           auth.organizationId,
+          selectedEntityId(auth),
           auth.userId,
         ).catch(() => []);
       }
@@ -966,6 +1069,21 @@ export function registerEmployee360Permissions({ app, prisma, authOf, requireRol
         if (Object.prototype.hasOwnProperty.call(req.body || {}, 'notes')) {
           await requireCapability(auth, req, policies, target, 'VIEW_HR_NOTES', { write: true });
         }
+
+        // Preserve fields outside the actor's permission set so a limited edit cannot erase confidential data.
+        const current = await profileSnapshot(auth, target.id);
+        const access = capabilityMap(policies, target);
+        const merged = { ...current, ...(req.body || {}) };
+        if (!access.MANAGE_PRIVATE_PROFILE) {
+          for (const field of sensitiveFields) merged[field] = current[field];
+        }
+        if (!access.MANAGE_EMPLOYMENT) {
+          for (const field of ['employmentStatus', 'hireDate', 'terminationDate', 'supervisorId']) merged[field] = current[field];
+        }
+        if (!access.VIEW_HR_NOTES) merged.notes = current.notes;
+        merged.displayName = merged.displayName || current.displayName;
+        merged.employmentStatus = merged.employmentStatus || current.employmentStatus || 'ACTIVE';
+        req.body = merged;
         return void next();
       }
 
