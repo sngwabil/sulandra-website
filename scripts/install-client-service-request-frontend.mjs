@@ -5,15 +5,9 @@ import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dist=path.join(root,'dist-web');
 
-const adminPath=path.join(dist,'admin.html');
-try{
-  let html=await readFile(adminPath,'utf8');
-  html=html.replace(/\s*<script src="\/assets\/admin-client-service-requests\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
-  if(!html.includes('</body>'))throw new Error('Unable to install Client Service Requests Admin asset');
-  html=html.replace('</body>','  <script src="/assets/admin-client-service-requests.js?v=20260809-company-intake-3"></script>\n</body>');
-  await writeFile(adminPath,html,'utf8');
-}catch(error){if(error?.code!=='ENOENT')throw error;}
-
+// Admin now loads /assets/admin-client-service-requests.js from the canonical
+// Admin bootstrap in assets/admin-company-context.js. This publisher only
+// maintains public-site service-request routes and links.
 const indexPath=path.join(dist,'index.html');
 try{
   let html=await readFile(indexPath,'utf8');
@@ -42,4 +36,4 @@ for(const page of ['service-request','resources']){
   catch(error){if(error?.code!=='ENOENT')throw error;}
 }
 
-console.log('Client Service Requests and public service navigation published: homepage consultations, service detail pages, resources, Admin review, and clean request routes are connected.');
+console.log('Public Client Service Request navigation published; Admin service-request integration is canonical and no longer post-build injected.');
