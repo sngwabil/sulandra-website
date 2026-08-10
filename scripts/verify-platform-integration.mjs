@@ -14,7 +14,7 @@ const requiredFiles = [
   'assets/intranet-live-integration.js','assets/intranet-content-app.js','assets/intranet-control-app.js','assets/employee-portal-deep-integration.js',
   'assets/policies-app.js','assets/news-app.js','assets/feedback-app.js','assets/payroll-app.js','assets/benefits-app.js','assets/employee-directory-app.js','assets/support-app.js','assets/health-safety-app.js',
   'assets/client-service-request-app.js','assets/admin-client-service-requests.js','assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js',
-  'assets/admin-service-home-management-v2.js','assets/admin-platform-routing.js','assets/time-attendance-route-restore.js','assets/employee360-hash-routing.js'
+  'assets/admin-shell.js','assets/admin-shell.css','assets/admin-company-context.js','assets/admin-service-home-management-v2.js','assets/time-attendance-route-restore.js','assets/employee360-hash-routing.js'
 ];
 const requiredDirectories=['services'];
 const cleanRoutes = ['policies','documents','news','feedback','payroll','benefits','employee-directory','leadership','support','it-request','time-attendance','scheduling','incident-reporting','health-safety','service-request','resources'];
@@ -22,7 +22,6 @@ const forbiddenBackendHtml = /href=["']https:\/\/sulandra-website-production-5fc
 const knownDeadRoutes = ['/policies','/documents','/news','/feedback','/payroll','/benefits','/employee-directory','/leadership','/support','/it-request','/scheduling','/time-attendance','/incident-reporting','/health-safety','/caregiver-resources','/about','/services/community-living','/services/waiver'];
 const canonicalApi='https://sulandra-website-production-5fc4.up.railway.app';
 const staleApi='https://sulandra-website-production.up.railway.app';
-
 const failures = [];
 for (const relative of requiredFiles) {
   try { await stat(path.join(dist, relative)); } catch { failures.push(`Missing published file: ${relative}`); }
@@ -31,7 +30,6 @@ for(const relative of requiredDirectories){try{const s=await stat(path.join(dist
 for (const route of cleanRoutes) {
   try { await stat(path.join(dist, route, 'index.html')); } catch { failures.push(`Missing clean-route fallback: /${route}`); }
 }
-
 async function walk(directory) {
   const files=[];
   for (const entry of await readdir(directory,{withFileTypes:true})) {
@@ -53,11 +51,14 @@ for (const file of await walk(dist)) {
 
 try {
   const admin=await readFile(path.join(dist,'admin.html'),'utf8');
-  for(const marker of ['/assets/admin-service-home-management-v2.js','/assets/admin-platform-routing.js']) if(!admin.includes(marker)) failures.push(`Admin is missing restored integration ${marker}`);
-  const adminLive=await readFile(path.join(dist,'assets/admin-live-dashboard.js'),'utf8');
-  for(const marker of ['/intranet.html','/employee-portal.html','/employee360.html','/education-portal.html','/spire.html']) {
-    if(!adminLive.includes(marker)) failures.push(`Admin right drawer is missing platform portal ${marker}`);
-  }
+  const context=await readFile(path.join(dist,'assets/admin-company-context.js'),'utf8');
+  if(!admin.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2')) failures.push('Admin does not load the canonical company/navigation bootstrap');
+  for(const marker of [
+    "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'",
+    "href:'/intranet.html'","href:'/employee-portal.html'","href:'/employee360.html'","href:'/education-portal.html'","href:'/spire.html'",
+    "href:'/scheduling.html'","href:'/time-attendance.html#admin'","href:'/spire-admin.html'",
+  ]) if(!context.includes(marker)) failures.push(`Canonical Admin navigation/bootstrap is missing ${marker}`);
+  if(context.includes('admin-platform-routing.js')) failures.push('Admin still relies on the legacy runtime route patcher');
 } catch {}
 try {
   const employeePortal=await readFile(path.join(dist,'employee-portal.html'),'utf8');
@@ -65,9 +66,6 @@ try {
 } catch {}
 try {
   const spire=await readFile(path.join(dist,'spire.html'),'utf8');
-  // Spire is the clinical record application, not the Sulandra platform shell.
-  // It must publish its real clinical runtime and remain separate from workforce
-  // applications such as Time & Attendance and Employee 360.
   for(const marker of ['id="spireApp"','/assets/spire-app-v2.js','/assets/spire-workflow.js','/assets/spire-care-plan.js','/assets/spire-emar.js']) {
     if(!spire.includes(marker)) failures.push(`Spire clinical application is missing ${marker}`);
   }
@@ -115,11 +113,9 @@ try {
   if(!legacyProfile.includes('/applicant-portal.html')) failures.push('Legacy Community Living candidate profile does not route to the secure Applicant Portal');
   if(legacyProfile.includes("alert('Profile Found!")) failures.push('Legacy Community Living candidate profile still contains demo authentication');
 } catch {}
-
 function spiresDemo(source){return source.includes('Demo Employee')||source.includes('Demo Client')||source.includes('Endpoint pending')}
-
 if (failures.length) {
   console.error('Platform integration verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('Platform integration verified: the complete pre-Spire website surface is published, Admin portal destinations are preserved in the right slide-out drawer, Spire remains an additive clinical application, and public/employee/clinical services retain correct frontend/backend ownership.');
+console.log('Platform integration verified: canonical Admin navigation owns platform destinations, Spire remains additive, and public/employee/clinical services retain correct frontend/backend ownership.');
