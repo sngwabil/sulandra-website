@@ -14,6 +14,8 @@ async function mustRead(relative) {
 const adminHtml = await mustRead('admin.html');
 const adminJs = await mustRead('admin-railway.js');
 const liveJs = await mustRead('assets/admin-live-dashboard.js');
+const enterpriseAppsJs = await mustRead('assets/admin-enterprise-apps-launcher.js');
+const companySettingsJs = await mustRead('assets/admin-company-settings.js');
 const analogClockJs = await mustRead('assets/admin-analog-clock.js');
 const routingJs = await mustRead('assets/admin-platform-routing.js');
 const homesJs = await mustRead('assets/admin-service-home-management-v2.js');
@@ -24,6 +26,8 @@ const timeAttendanceHtml = await mustRead('time-attendance.html');
 
 for (const marker of [
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5',
+  '/assets/admin-enterprise-apps-launcher.js?v=20260810-enterprise-apps-1',
+  '/assets/admin-company-settings.js?v=20260810-company-settings-backend-1',
   '/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1',
   '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
   '/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5',
@@ -69,6 +73,37 @@ if (!adminJs.includes('history.replaceState')) failures.push('Admin module URL/h
 if (!adminJs.includes('https://sulandra-website-production-5fc4.up.railway.app')) failures.push('Admin runtime is not using canonical Railway API');
 if (adminJs.includes('https://sulandra-website-production.up.railway.app')) failures.push('Admin runtime still contains the retired Railway API hostname');
 
+for (const forbidden of [
+  'const SETTINGS_KEY = "sulandra:admin:company-settings"',
+  'localStorage.setItem(SETTINGS_KEY',
+  'localStorage.getItem(SETTINGS_KEY',
+  'saved in this browser',
+]) if (adminJs.includes(forbidden)) failures.push(`Admin Company Settings still depend on browser-local authority: ${forbidden}`);
+for (const forbidden of [
+  'onclick="saveCompanySettings()"',
+  'value="(937) 555-0199"',
+  'All emails, candidate portals, and offer documents dynamically pull from this central setting.',
+]) if (adminHtml.includes(forbidden)) failures.push(`Admin Company Settings still publish legacy behavior/content: ${forbidden}`);
+for (const marker of [
+  "'/api/admin/company-settings'",
+  "method: 'PATCH'",
+  "'X-Legal-Entity-Id'",
+  'localStorage.removeItem(LEGACY_SETTINGS_KEY)',
+  'adminCompanySettingsBackendStatus',
+  'adminCompanySettingsReload',
+  'settingEmploymentDisclaimer',
+  'settingTimezone',
+  'settingSupportEmail',
+  'settingSupportPhone',
+  'settingWebsite',
+  'sulandra:company-change',
+  'sulandra:entity-context-changed',
+  'beforeunload',
+]) if (!companySettingsJs.includes(marker)) failures.push(`Backend Company Settings runtime is missing ${marker}`);
+if (!adminHtml.includes('id="adminCompanySettingsSave"')) failures.push('Admin Company Settings save control is not normalized');
+if (!adminHtml.includes('id="settingEmploymentDisclaimer"')) failures.push('Admin Company Settings disclaimer field is not normalized');
+if (!adminHtml.includes('These company-scoped values are stored centrally in the Sulandra backend')) failures.push('Admin Company Settings does not identify the backend as the source of truth');
+
 for (const marker of [
   'Sulandra Health Command Center', 'api.open-meteo.com', '/api/admin/dashboard',
   'edge-toggle', 'width:24px;height:104px', '.edge-toggle.left{left:-18px', '.edge-toggle.right{right:-18px', 'edge-drawer left', 'edge-drawer right',
@@ -76,6 +111,8 @@ for (const marker of [
   'card-drag-handle', 'pointerdown', 'contextmenu', 'Edit Dashboard Widget',
   'dashboard-slide', 'dashboardPageDots', 'ACTIVE_MODULE_KEY', 'hashchange',
 ]) if (!liveJs.includes(marker)) failures.push(`Live command center is missing required capability: ${marker}`);
+
+for (const marker of ['Enterprise Apps', 'enterprise-apps.html']) if (!enterpriseAppsJs.includes(marker)) failures.push(`Enterprise Apps launcher is missing ${marker}`);
 
 const weatherIndex = liveJs.indexOf("id:'weather'");
 const peopleIndex = liveJs.indexOf("id:'people'");
@@ -115,9 +152,7 @@ for (const marker of [
   'Next 12 months',
 ]) if (!schedulingJs.includes(marker)) failures.push(`Dedicated Scheduling runtime is missing ${marker}`);
 
-if (timeAttendanceHtml.includes('/assets/time-attendance-location-scheduler.js')) {
-  failures.push('Time & Attendance still loads the workforce Scheduling runtime');
-}
+if (timeAttendanceHtml.includes('/assets/time-attendance-location-scheduler.js')) failures.push('Time & Attendance still loads the workforce Scheduling runtime');
 if (!routingJs.includes("scheduling: '/scheduling.html'")) failures.push('Scheduling is not hard-routed to its dedicated application');
 if (!routingJs.includes("time: '/time-attendance.html#admin'")) failures.push('Time & Attendance is not preserved as a separate application');
 
@@ -125,4 +160,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: full-viewport dashboard, fail-safe ticking analog wall clock, blinking Live status, continuously updating Dayton local-news ticker, weather-card local clock, live Service Homes, dedicated workforce Scheduling, separate Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
+console.log('Admin command center verified: full-viewport dashboard, authoritative backend Company Settings, Enterprise Apps, fail-safe ticking analog wall clock, blinking Live status, continuously updating Dayton local-news ticker, weather-card local clock, live Service Homes, dedicated workforce Scheduling, separate Time & Attendance, Employee 360 routing, Spire launcher and canonical Railway data are published.');
