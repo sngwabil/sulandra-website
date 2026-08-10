@@ -1,0 +1,1 @@
+Validation-only branch marker for the corrected Item 5 canonical Admin architecture. Do not merge.
