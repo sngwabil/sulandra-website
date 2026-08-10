@@ -16,7 +16,7 @@
     "verify:spire": "node scripts/verify-spire-foundation.mjs",
     "verify:admin-canonical": "node scripts/verify-admin-canonical-source.mjs",
     "verify:role-uat": "node scripts/verify-production-role-uat.mjs",
-    "verify:business-uat": "node scripts/verify-production-business-uat.mjs",
+    "verify:business-uat": "node scripts/install-business-path-uat-bridges.mjs && node scripts/verify-production-business-uat.mjs && node scripts/verify-published-spire-syntax.mjs",
     "verify:multi-company": "node scripts/verify-multi-company-foundation.mjs",
     "verify:scls-backfill": "node scripts/verify-scls-operational-backfill.mjs",
     "verify:admin-company-context": "node scripts/verify-admin-company-context.mjs",
