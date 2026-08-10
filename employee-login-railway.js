@@ -4,6 +4,7 @@
   const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
+  const ADMIN_LANDING_ROLES = new Set(["ADMINISTRATOR", "CEO", "DOO"]);
   const message = document.getElementById("msg");
   const usernamePanel = document.getElementById("usernameRecoveryPanel");
   const passwordPanel = document.getElementById("passwordRecoveryPanel");
@@ -129,7 +130,8 @@
       if (!token) throw new Error("The server did not return an access token.");
       saveAuthenticatedSession(token, session);
       const requestedTarget = safeReturnTarget();
-      window.location.assign(requestedTarget || (session.role === "ADMINISTRATOR" ? "admin.html" : "employee-portal.html"));
+      const role = String(session.role || "").toUpperCase();
+      window.location.assign(requestedTarget || (ADMIN_LANDING_ROLES.has(role) ? "admin.html" : "employee-portal.html"));
     } catch (error) {
       clearAuthenticatedSession();
       showMessage(error.message || "Unable to sign in.", "error");
