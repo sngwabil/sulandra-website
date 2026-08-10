@@ -107,4 +107,6 @@ try{
   await writeFile(employee360Path,html,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
+await import('./verify-employee-work-center.mjs');
+
 console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; dedicated My Work, Notifications, Scheduling, Time & Attendance and Employee 360 routes are restored to live applications.');
