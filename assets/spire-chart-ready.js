@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const CONTRACT='20260810-spire-chart-ready-1';
+  const CONTRACT='20260810-spire-chart-ready-2';
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   let opening=false;
   let requestedPatientId='';
@@ -37,10 +37,16 @@
   function forceChartActive(){
     const chart=document.getElementById('spireChartWorkspace');
     if(!chart)return false;
-    document.querySelectorAll('.spire-workspace').forEach(node=>node.classList.remove('active'));
-    chart.classList.add('spire-workspace','active');
+    // BUSINESS_UAT_IDEMPOTENT_CHART_ACTIVE: never remove the active class from
+    // the chart merely to add it back. This keeps the MutationObserver from
+    // creating a remove/add feedback loop and makes chart state deterministic.
+    document.querySelectorAll('.spire-workspace').forEach(node=>{
+      if(node===chart){
+        if(!node.classList.contains('active'))node.classList.add('active');
+      }else if(node.classList.contains('active'))node.classList.remove('active');
+    });
     document.querySelectorAll('.spire-global-nav [data-workspace].active').forEach(node=>node.classList.remove('active'));
-    return true;
+    return chart.classList.contains('active');
   }
 
   async function selectTab(tab){
@@ -62,13 +68,24 @@
     if(!patientId)return false;
     requestedPatientId=patientId;
     requestedTab=tab||requestedTab||'';
-    if(opening)return false;
+    if(opening){
+      const started=Date.now();
+      while(Date.now()-started<5000){
+        if(chartIsOpen()){
+          forceChartActive();
+          await selectTab(requestedTab);
+          return true;
+        }
+        await sleep(80);
+      }
+      return false;
+    }
     opening=true;
     try{
       if(!(await waitForShell()))return false;
       for(let attempt=0;attempt<3;attempt++){
         await window.SpireOpenPatient(patientId);
-        for(let probe=0;probe<20;probe++){
+        for(let probe=0;probe<30;probe++){
           if(chartIsOpen()){
             forceChartActive();
             await selectTab(requestedTab);
@@ -87,8 +104,9 @@
   }
 
   function stabilize(){
-    if(!requestedPatientId)return;
-    if(chartIsOpen())forceChartActive();
+    if(!requestedPatientId||!chartIsOpen())return;
+    const chart=document.getElementById('spireChartWorkspace');
+    if(!chart?.classList.contains('active'))forceChartActive();
   }
 
   document.addEventListener('click',event=>{
@@ -99,7 +117,7 @@
     requestedPatientId=patientId;
     requestedTab='';
     setTimeout(()=>ensurePatientChart(patientId).catch(()=>{}),0);
-  });
+  },true);
 
   const observer=new MutationObserver(()=>stabilize());
   observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']});
@@ -109,7 +127,7 @@
     if(initial.patientId)await ensurePatientChart(initial.patientId,initial.tab);
   }
 
-  window.SpireChartReady=Object.freeze({contract:CONTRACT,ensurePatientChart,forceChartActive});
+  window.SpireChartReady=Object.freeze({contract:CONTRACT,ensurePatientChart,forceChartActive,chartIsOpen});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>start().catch(()=>{}),{once:true});
   else start().catch(()=>{});
 })();
