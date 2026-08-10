@@ -5,6 +5,9 @@ const prisma = new PrismaClient();
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const lockNamespace = 1936749168;
 const lockKey = 20260810;
+const lockRetryMs = 1500;
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function runScript(scriptName) {
   console.log(`[db:predeploy] running npm run ${scriptName}`);
@@ -21,11 +24,20 @@ try {
   console.log('[db:predeploy] waiting for Sulandra deployment advisory lock...');
   await prisma.$transaction(
     async (tx) => {
-      await tx.$queryRawUnsafe(
-        'SELECT pg_advisory_xact_lock($1::int, $2::int)',
-        lockNamespace,
-        lockKey,
-      );
+      while (true) {
+        const rows = await tx.$queryRawUnsafe(
+          'SELECT pg_try_advisory_xact_lock($1::int, $2::int) AS "locked"',
+          lockNamespace,
+          lockKey,
+        );
+
+        if (rows[0]?.locked === true) {
+          break;
+        }
+
+        await wait(lockRetryMs);
+      }
+
       console.log('[db:predeploy] acquired deployment advisory lock.');
 
       runScript('db:check-prerequisites');
