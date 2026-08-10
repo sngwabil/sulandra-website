@@ -9,14 +9,16 @@ async function exists(relative){try{await stat(path.join(root,relative));return 
 function requireMarkers(source,markers,label){for(const marker of markers)if(!source.includes(marker))failures.push(`${label} missing ${marker}`)}
 function forbid(source,markers,label){for(const marker of markers)if(source.includes(marker))failures.push(`${label} still contains ${marker}`)}
 
-const [html,completion,stability,polish,results,routes,assigneeGuard,migration,injector,core,workflow,cpoe,finalizer,apiPackage]=await Promise.all([
+const [html,completion,stability,polish,noteCosignerPolish,results,routes,assigneeGuard,noteCosignerGuard,migration,injector,core,workflow,cpoe,finalizer,apiPackage]=await Promise.all([
   read('dist-web/spire.html'),
   read('dist-web/assets/spire-workspace-completion.js'),
   read('dist-web/assets/spire-workspace-stability.js'),
   read('dist-web/assets/spire-workspace-polish.js'),
+  read('dist-web/assets/spire-note-cosigner-polish.js'),
   read('dist-web/assets/spire-results-workspace.js'),
   read('api/src/spire-workspace-completion-routes.ts'),
   read('api/src/spire-workspace-assignee-guard.ts'),
+  read('api/src/spire-note-cosigner-guard.ts'),
   read('prisma/migrations/20260810142500_spire_workspace_completion/migration.sql'),
   read('scripts/inject-clinical-routes.mjs'),
   read('dist-web/assets/spire-app-v2.js'),
@@ -31,6 +33,7 @@ await Promise.all([
   exists('dist-web/assets/spire-workspace-completion.js'),
   exists('dist-web/assets/spire-workspace-stability.js'),
   exists('dist-web/assets/spire-workspace-polish.js'),
+  exists('dist-web/assets/spire-note-cosigner-polish.js'),
   exists('dist-web/assets/spire-results-workspace.js'),
 ]);
 
@@ -38,6 +41,7 @@ for(const [label,source] of [
   ['SPIRE completion frontend',completion],
   ['SPIRE stability guard',stability],
   ['SPIRE workspace polish',polish],
+  ['SPIRE note cosigner polish',noteCosignerPolish],
   ['SPIRE Results workspace',results],
 ]){
   try{new Function(source)}catch(error){failures.push(`${label} has JavaScript syntax error: ${error instanceof Error?error.message:String(error)}`)}
@@ -48,10 +52,12 @@ requireMarkers(html,[
   '/assets/spire-workspace-completion.js?v=20260810-spire-workspaces-1',
   '/assets/spire-workspace-stability.js?v=20260810-spire-workspaces-1',
   '/assets/spire-workspace-polish.js?v=20260810-spire-workspaces-1',
+  '/assets/spire-note-cosigner-polish.js?v=20260810-spire-workspaces-1',
 ],'Published SPIRE HTML');
 if((html.match(/spire-workspace-completion\.js/g)||[]).length!==1)failures.push('Published SPIRE completion runtime is not unique');
 if((html.match(/spire-workspace-stability\.js/g)||[]).length!==1)failures.push('Published SPIRE stability runtime is not unique');
 if((html.match(/spire-workspace-polish\.js/g)||[]).length!==1)failures.push('Published SPIRE workspace polish runtime is not unique');
+if((html.match(/spire-note-cosigner-polish\.js/g)||[]).length!==1)failures.push('Published SPIRE note cosigner polish runtime is not unique');
 
 requireMarkers(migration,[
   '"SpireUserWorkspacePreference"',
@@ -90,6 +96,11 @@ requireMarkers(routes,[
 
 requireMarkers(assigneeGuard,[
   'registerSpireWorkspaceAssigneeGuard',
+  'clinicalAccessRoles',
+  'taskAssigneeRoles',
+  'delegateRoles',
+  'UserRole.AUDITOR',
+  'return void res.json({data:[]})',
   '"Employment"',
   '"UserEntityAccessGrant"',
   '"ClientEnrollment"',
@@ -98,18 +109,40 @@ requireMarkers(assigneeGuard,[
   "'/api/spire/workspaces/task-assignees'",
   "app.post('/api/spire/workspaces/tasks',enforceAssignment)",
   "app.post('/api/spire/workspaces/tasks/:taskId/action'",
-  'The selected employee does not have active access to this Sulandra company',
+  'Only authorized clinical management roles may assign SPIRE tasks to another employee',
+  'not an eligible task assignee with active access to this Sulandra company',
 ],'SPIRE task assignee company guard');
 
+requireMarkers(noteCosignerGuard,[
+  'registerSpireNoteCosignerGuard',
+  'cosignerRoles',
+  'UserRole.DELEGATING_NURSE',
+  'UserRole.RN',
+  "'/api/spire/workspaces/note-cosigners'",
+  "'/api/spire/patients/:patientId/notes/:noteId/sign'",
+  "'/api/spire/patients/:patientId/notes/:noteId/cosign'",
+  'must be an RN or Delegating Nurse with active access to this Sulandra company',
+  'Clinical note cosign requires an RN or Delegating Nurse role',
+  '"Employment"',
+  '"UserEntityAccessGrant"',
+],'SPIRE licensed note cosigner guard');
+
 requireMarkers(injector,[
+  'registerSpireNoteCosignerGuard',
+  'registerSpireNoteCosignerGuard(app, prisma, { authOf });',
+  'registerSpireFoundationRoutes(app, prisma, { authOf });',
   'registerSpireWorkspaceAssigneeGuard',
   'registerSpireWorkspaceAssigneeGuard(app, prisma, { authOf });',
   'registerSpireWorkspaceCompletionRoutes',
   'registerSpireWorkspaceCompletionRoutes(app, prisma, { authOf, audit });',
 ],'SPIRE backend injector');
+const noteGuardIndex=injector.indexOf('registerSpireNoteCosignerGuard(app, prisma, { authOf });');
+const foundationIndex=injector.indexOf('registerSpireFoundationRoutes(app, prisma, { authOf });');
+if(noteGuardIndex<0||foundationIndex<0||noteGuardIndex>foundationIndex)failures.push('SPIRE note cosigner guard must register before foundation note-sign routes');
 const guardIndex=injector.indexOf('registerSpireWorkspaceAssigneeGuard(app, prisma, { authOf });');
 const completionIndex=injector.indexOf('registerSpireWorkspaceCompletionRoutes(app, prisma, { authOf, audit });');
 if(guardIndex<0||completionIndex<0||guardIndex>completionIndex)failures.push('SPIRE task assignee guard must register before workspace completion routes');
+if(noteGuardIndex<0||completionIndex<0||noteGuardIndex>completionIndex)failures.push('SPIRE note cosign-role guard must register before workspace cosign-response routes');
 requireMarkers(apiPackage,['fix-spire-workspace-completion-types.mjs'],'SPIRE API compile contract');
 
 requireMarkers(completion,[
@@ -171,12 +204,26 @@ requireMarkers(stability,[
 
 requireMarkers(polish,[
   "api('/api/spire/workspaces/task-assignees')",
-  'person.displayName||person.email||person.id',
+  'Task Details',
+  'Task History & Comments',
+  'dataPolishTaskReassign',
+  "action:'ASSIGN'",
+  'Reassign Task',
+  'dataPolishTaskReopen',
+  "action:'REOPEN'",
   'Shared chart history · Read only in this company.',
   'selected!==source',
   "panel.querySelectorAll('[data-note-edit],[data-note-sign]')",
   "api(`/api/spire/patients/${encodeURIComponent(patientId)}/notes-workspace`)",
 ],'SPIRE workspace polish');
+
+requireMarkers(noteCosignerPolish,[
+  "COSIGN_ROLES=new Set(['RN','DELEGATING_NURSE'])",
+  "api('/api/spire/workspaces/note-cosigners')",
+  '#spwcNoteCosigner,#spwcSignCosigner',
+  'Eligible cosigners: RN / Delegating Nurse with active access to this company.',
+  "document.querySelectorAll('[data-note-cosign]')",
+],'SPIRE licensed note cosigner UI');
 
 requireMarkers(workflow,[
   '/notes/${encodeURIComponent(data.id)}/sign',
@@ -190,6 +237,7 @@ requireMarkers(finalizer,[
   'will be expanded in its implementation phase',
   'spire-workspace-stability.js',
   'spire-workspace-polish.js',
+  'spire-note-cosigner-polish.js',
   "verify-spire-workspace-completion.mjs",
 ],'SPIRE static finalizer');
 forbid(core,['will be expanded in its implementation phase'],'Published SPIRE core');
@@ -201,4 +249,4 @@ if(completion.includes("localStorage.setItem('spire:tools")||completion.includes
 if(!routes.includes('legalEntityId'))failures.push('SPIRE completion backend lacks legal-entity scoping');
 
 if(failures.length){console.error('SPIRE workspace completion verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('SPIRE workspace completion verified: My Tasks, Orders, Reports, Quick Task, SmartText, SmartPhrases, Speed Buttons, Workspace Tabs, Saved Filters, numeric Results trending, unified Notes/sign/cosign, Plan and Wrap-Up are live, company-scoped, server-backed, boundary-hardened and published.');
+console.log('SPIRE workspace completion verified: My Tasks assignment/history, Orders, Reports, Quick Task, SmartText, SmartPhrases, Speed Buttons, Workspace Tabs, Saved Filters, numeric Results trending, unified Notes with licensed company cosign, Plan and Wrap-Up are live, company-scoped, server-backed, boundary-hardened and published.');
