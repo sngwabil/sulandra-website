@@ -16,6 +16,7 @@ const migrationNames = [
   '20260808005000_spire_documents_external_records',
   '20260808006000_spire_communications_inbasket',
   '20260810011500_nmt_trip_dispatch',
+  '20260810070000_scls_residential_house_operations',
 ];
 const prisma = new PrismaClient();
 
