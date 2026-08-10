@@ -9,12 +9,14 @@ async function exists(relative){try{await stat(path.join(root,relative));return 
 function requireMarkers(source,markers,label){for(const marker of markers)if(!source.includes(marker))failures.push(`${label} missing ${marker}`)}
 function forbid(source,markers,label){for(const marker of markers)if(source.includes(marker))failures.push(`${label} still contains ${marker}`)}
 
-const [html,completion,stability,results,routes,migration,injector,core,workflow,cpoe,finalizer,apiPackage]=await Promise.all([
+const [html,completion,stability,polish,results,routes,assigneeGuard,migration,injector,core,workflow,cpoe,finalizer,apiPackage]=await Promise.all([
   read('dist-web/spire.html'),
   read('dist-web/assets/spire-workspace-completion.js'),
   read('dist-web/assets/spire-workspace-stability.js'),
+  read('dist-web/assets/spire-workspace-polish.js'),
   read('dist-web/assets/spire-results-workspace.js'),
   read('api/src/spire-workspace-completion-routes.ts'),
+  read('api/src/spire-workspace-assignee-guard.ts'),
   read('prisma/migrations/20260810142500_spire_workspace_completion/migration.sql'),
   read('scripts/inject-clinical-routes.mjs'),
   read('dist-web/assets/spire-app-v2.js'),
@@ -28,16 +30,28 @@ await Promise.all([
   exists('dist-web/assets/spire-workspace-completion.css'),
   exists('dist-web/assets/spire-workspace-completion.js'),
   exists('dist-web/assets/spire-workspace-stability.js'),
+  exists('dist-web/assets/spire-workspace-polish.js'),
   exists('dist-web/assets/spire-results-workspace.js'),
 ]);
+
+for(const [label,source] of [
+  ['SPIRE completion frontend',completion],
+  ['SPIRE stability guard',stability],
+  ['SPIRE workspace polish',polish],
+  ['SPIRE Results workspace',results],
+]){
+  try{new Function(source)}catch(error){failures.push(`${label} has JavaScript syntax error: ${error instanceof Error?error.message:String(error)}`)}
+}
 
 requireMarkers(html,[
   '/assets/spire-workspace-completion.css?v=20260810-spire-workspaces-1',
   '/assets/spire-workspace-completion.js?v=20260810-spire-workspaces-1',
   '/assets/spire-workspace-stability.js?v=20260810-spire-workspaces-1',
+  '/assets/spire-workspace-polish.js?v=20260810-spire-workspaces-1',
 ],'Published SPIRE HTML');
 if((html.match(/spire-workspace-completion\.js/g)||[]).length!==1)failures.push('Published SPIRE completion runtime is not unique');
 if((html.match(/spire-workspace-stability\.js/g)||[]).length!==1)failures.push('Published SPIRE stability runtime is not unique');
+if((html.match(/spire-workspace-polish\.js/g)||[]).length!==1)failures.push('Published SPIRE workspace polish runtime is not unique');
 
 requireMarkers(migration,[
   '"SpireUserWorkspacePreference"',
@@ -73,7 +87,29 @@ requireMarkers(routes,[
   'patientAllowed(prisma,a',
   'SpireClinicalAuditEvent',
 ],'SPIRE workspace backend');
-requireMarkers(injector,['registerSpireWorkspaceCompletionRoutes','registerSpireWorkspaceCompletionRoutes(app, prisma, { authOf, audit });'],'SPIRE backend injector');
+
+requireMarkers(assigneeGuard,[
+  'registerSpireWorkspaceAssigneeGuard',
+  '"Employment"',
+  '"UserEntityAccessGrant"',
+  '"ClientEnrollment"',
+  '"effectiveFrom"',
+  '"effectiveTo"',
+  "'/api/spire/workspaces/task-assignees'",
+  "app.post('/api/spire/workspaces/tasks',enforceAssignment)",
+  "app.post('/api/spire/workspaces/tasks/:taskId/action'",
+  'The selected employee does not have active access to this Sulandra company',
+],'SPIRE task assignee company guard');
+
+requireMarkers(injector,[
+  'registerSpireWorkspaceAssigneeGuard',
+  'registerSpireWorkspaceAssigneeGuard(app, prisma, { authOf });',
+  'registerSpireWorkspaceCompletionRoutes',
+  'registerSpireWorkspaceCompletionRoutes(app, prisma, { authOf, audit });',
+],'SPIRE backend injector');
+const guardIndex=injector.indexOf('registerSpireWorkspaceAssigneeGuard(app, prisma, { authOf });');
+const completionIndex=injector.indexOf('registerSpireWorkspaceCompletionRoutes(app, prisma, { authOf, audit });');
+if(guardIndex<0||completionIndex<0||guardIndex>completionIndex)failures.push('SPIRE task assignee guard must register before workspace completion routes');
 requireMarkers(apiPackage,['fix-spire-workspace-completion-types.mjs'],'SPIRE API compile contract');
 
 requireMarkers(completion,[
@@ -133,6 +169,15 @@ requireMarkers(stability,[
   'completion.renderCurrent(true)',
 ],'SPIRE stability guard');
 
+requireMarkers(polish,[
+  "api('/api/spire/workspaces/task-assignees')",
+  'person.displayName||person.email||person.id',
+  'Shared chart history · Read only in this company.',
+  'selected!==source',
+  "panel.querySelectorAll('[data-note-edit],[data-note-sign]')",
+  "api(`/api/spire/patients/${encodeURIComponent(patientId)}/notes-workspace`)",
+],'SPIRE workspace polish');
+
 requireMarkers(workflow,[
   '/notes/${encodeURIComponent(data.id)}/sign',
   '/wrap-up',
@@ -140,14 +185,20 @@ requireMarkers(workflow,[
   'Start Encounter',
 ],'Existing clinical workflow');
 requireMarkers(cpoe,['Order Composer','order-composer/check','Sign & Place Order'],'Existing CPOE safety workflow');
-requireMarkers(finalizer,['finalize-spire-workspace-completion','will be expanded in its implementation phase','spire-workspace-stability.js'],'SPIRE static finalizer');
+requireMarkers(finalizer,[
+  'finalize-spire-workspace-completion',
+  'will be expanded in its implementation phase',
+  'spire-workspace-stability.js',
+  'spire-workspace-polish.js',
+  "verify-spire-workspace-completion.mjs",
+],'SPIRE static finalizer');
 forbid(core,['will be expanded in its implementation phase'],'Published SPIRE core');
 
 for(const table of ['SpireClinicalTask','SpireOrder','SpireMedicationOrder','SpireClinicalNote','SpireCarePlan','SpireResultComponent','SpireVitalSign']){
   if(!routes.includes(`"${table}"`))failures.push(`SPIRE workspace backend is not grounded in ${table}`);
 }
 if(completion.includes("localStorage.setItem('spire:tools")||completion.includes('localStorage.setItem("spire:tools'))failures.push('SPIRE Tools still use browser-local persistence as source of truth');
-if(!completion.includes("'X-Legal-Entity-Id'")&&!routes.includes('legalEntityId'))failures.push('SPIRE completion lacks legal-entity scoping');
+if(!routes.includes('legalEntityId'))failures.push('SPIRE completion backend lacks legal-entity scoping');
 
 if(failures.length){console.error('SPIRE workspace completion verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('SPIRE workspace completion verified: My Tasks, Orders, Reports, Quick Task, SmartText, SmartPhrases, Speed Buttons, Workspace Tabs, Saved Filters, numeric Results trending, unified Notes/sign/cosign, Plan and Wrap-Up are live, company-scoped, server-backed and published.');
+console.log('SPIRE workspace completion verified: My Tasks, Orders, Reports, Quick Task, SmartText, SmartPhrases, Speed Buttons, Workspace Tabs, Saved Filters, numeric Results trending, unified Notes/sign/cosign, Plan and Wrap-Up are live, company-scoped, server-backed, boundary-hardened and published.');
