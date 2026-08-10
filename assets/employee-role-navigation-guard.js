@@ -5,10 +5,12 @@
   const protectedRoutes = new Map([
     ['employeeSchedulingLauncher', '/scheduling.html'],
     ['employeeSchedulingNav', '/scheduling.html'],
+    ['employeeWorkforceLauncher', '/workforce.html'],
+    ['employeeWorkforceNav', '/workforce.html'],
   ]);
 
   window.addEventListener('click', event => {
-    const control = event.target?.closest?.('#employeeSchedulingLauncher,#employeeSchedulingNav');
+    const control = event.target?.closest?.('#employeeSchedulingLauncher,#employeeSchedulingNav,#employeeWorkforceLauncher,#employeeWorkforceNav');
     if (!control) return;
     const target = protectedRoutes.get(control.id);
     if (!target) return;
@@ -19,6 +21,7 @@
 
   window.SulandraEmployeeRoleNavigationGuard = Object.freeze({
     scheduling: '/scheduling.html',
+    workforce: '/workforce.html',
     contract: '20260810-role-uat-1',
   });
 })();
