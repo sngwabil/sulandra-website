@@ -7,6 +7,8 @@ const repositoryRoot = path.resolve(scriptDirectory, '..');
 const outputDirectory = path.join(repositoryRoot, 'dist-web');
 const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app';
 
+await import('./fix-admin-company-settings-backend.mjs');
+
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
 
@@ -138,6 +140,7 @@ for (const marker of [
   'sulandra-platform-bar',
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5',
   '/assets/admin-enterprise-apps-launcher.js?v=20260810-enterprise-apps-1',
+  '/assets/admin-company-settings.js?v=20260810-company-settings-backend-1',
   '/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1',
   '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
   '/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5',
@@ -161,7 +164,7 @@ const requiredPublishedFiles = [
   'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',
   'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
   'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
-  'assets/admin-live-dashboard.js', 'assets/admin-enterprise-apps-launcher.js', 'assets/admin-analog-clock.js',
+  'assets/admin-live-dashboard.js', 'assets/admin-enterprise-apps-launcher.js', 'assets/admin-company-settings.js', 'assets/admin-analog-clock.js',
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
   'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
@@ -173,5 +176,6 @@ for (const relative of requiredPublishedFiles) {
 }
 
 await import('./verify-enterprise-apps-launchpad.mjs');
+await import('./verify-admin-company-settings-backend.mjs');
 
-console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, Enterprise Apps, Employee Work Center, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
+console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, Enterprise Apps, backend Company Settings, Employee Work Center, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
