@@ -1,0 +1,1 @@
+Validation-only trigger after NMT trip schema compatibility repair. Do not merge.
