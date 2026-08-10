@@ -10,14 +10,22 @@ ALTER TABLE IF EXISTS "SpireHome" ADD COLUMN IF NOT EXISTS "emergencyInstruction
 ALTER TABLE IF EXISTS "SpireHome" ADD COLUMN IF NOT EXISTS "houseNotes" text;
 
 UPDATE "SpireHome" home
-SET "legalEntityId" = assignment."legalEntityId"
-FROM LATERAL (
+SET "legalEntityId" = (
   SELECT x."legalEntityId"
   FROM "SpirePatientHomeAssignment" x
-  WHERE x."organizationId"=home."organizationId" AND x."homeId"=home."id" AND x."legalEntityId" IS NOT NULL
+  WHERE x."organizationId" = home."organizationId"
+    AND x."homeId" = home."id"
+    AND x."legalEntityId" IS NOT NULL
   LIMIT 1
-) assignment
-WHERE home."legalEntityId" IS NULL;
+)
+WHERE home."legalEntityId" IS NULL
+  AND EXISTS (
+    SELECT 1
+    FROM "SpirePatientHomeAssignment" x
+    WHERE x."organizationId" = home."organizationId"
+      AND x."homeId" = home."id"
+      AND x."legalEntityId" IS NOT NULL
+  );
 
 UPDATE "SpireHome" home
 SET "legalEntityId" = entity."id"
