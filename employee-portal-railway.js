@@ -93,6 +93,14 @@
     const quick = document.querySelector(".page-hero .quick-actions");
     if (!quick || document.getElementById("employeeSpireTrainingLauncher")) return;
 
+    const workforce = launcher("Workforce", "/workforce.html", "Clock in or out, complete weekly timesheets, and submit employee documents");
+    workforce.id = "employeeWorkforceLauncher";
+    quick.appendChild(workforce);
+
+    const learning = launcher("Learning Center", "/education-portal.html", "Open assigned education, annual renewals, course catalog and certificates");
+    learning.id = "employeeLearningLauncher";
+    quick.appendChild(learning);
+
     const training = launcher("SPIRE Training", "/spire-training.html", "Practice in isolated simulated charts");
     training.id = "employeeSpireTrainingLauncher";
     quick.appendChild(training);
@@ -116,6 +124,23 @@
     }
 
     const nav = document.querySelector(".nav-links");
+    if (nav && !document.getElementById("employeeWorkforceNav")) {
+      const workforceLi = document.createElement("li");
+      const workforceA = document.createElement("a");
+      workforceA.id = "employeeWorkforceNav";
+      workforceA.href = "/workforce.html";
+      workforceA.textContent = "Workforce";
+      workforceLi.appendChild(workforceA);
+      nav.appendChild(workforceLi);
+
+      const learningLi = document.createElement("li");
+      const learningA = document.createElement("a");
+      learningA.id = "employeeLearningNav";
+      learningA.href = "/education-portal.html";
+      learningA.textContent = "Learning";
+      learningLi.appendChild(learningA);
+      nav.appendChild(learningLi);
+    }
     if (nav && !document.getElementById("employeeSpireNav")) {
       const li = document.createElement("li");
       const a = document.createElement("a");
@@ -161,6 +186,19 @@
     }
   }
 
+  function wireLegacyPortalButtons() {
+    const route = (id, href) => { const button = $(id); if (button) button.onclick = () => { window.location.href = href; }; };
+    route("btnLaunchTraining", "/education-portal.html");
+    route("btnViewCertificates", "/education-portal.html#history");
+    route("btnSubmitTimesheet", "/workforce.html#timesheets");
+    route("btnSaveDraftTimesheet", "/workforce.html#timesheets");
+    route("btnSubmitDocs", "/workforce.html#documents");
+    route("btnViewDocStatus", "/workforce.html#documents");
+    route("btnClockIn", "/workforce.html#time");
+    route("btnClockOut", "/workforce.html#time");
+    route("btnBreak", "/workforce.html#time");
+  }
+
   function loadAuthenticatedIdentity() {
     const token = readToken();
     const session = readStoredSession();
@@ -190,6 +228,7 @@
     setStatusBadge("Active");
     installApplicationLaunchers(session);
     installCompanyScopedLaunchers(session);
+    wireLegacyPortalButtons();
   }
 
   $("btnSignOut")?.addEventListener("click", (event) => {
