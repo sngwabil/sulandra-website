@@ -17,6 +17,18 @@
     return parts.length > 1 ? parts.slice(0, -1).join(' - ') : raw;
   };
 
+  function ensureModuleHosts() {
+    if (document.getElementById('module-employees')) return;
+    const onboarding = document.getElementById('module-onboarding');
+    if (!onboarding?.parentElement) return;
+    const employee = document.createElement('section');
+    employee.id = 'module-employees';
+    employee.className = 'card module';
+    employee.setAttribute('aria-label', 'Employee management workspace');
+    employee.innerHTML = '<h1>Employees</h1><p class="sub">Loading Employee 360 directory, permissions, compliance, workforce, documents, learning, payroll, benefits, leave, safety, analytics and audit tools…</p>';
+    onboarding.parentElement.insertBefore(employee, onboarding);
+  }
+
   function tickerMarkup(items) {
     const clean = (items?.length ? items : fallback).slice(0, 12).map(item => ({title:headline(item),link:item.link || '/news.html',source:sourceName(item)}));
     const once = clean.map(item => `<a class="sulandra-news-item" href="${esc(item.link)}" target="_blank" rel="noopener"><span>${esc(item.title)}</span><span class="sulandra-news-source">${esc(item.source)}</span></a>`).join('');
@@ -67,6 +79,7 @@
   }
 
   function mount() {
+    ensureModuleHosts();
     ensurePlatformBar();
     updateWeatherClock();
     window.setTimeout(updateWeatherClock, 250);
