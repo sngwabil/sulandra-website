@@ -1,0 +1,2 @@
+Production business-path UAT validation round ten.
+Base feature head includes stabilized direct SPIRE chart opening, admin-scoped Home Health referral fixtures, real SCLS Task Board readiness, and deterministic Workforce navigation.
