@@ -42,5 +42,11 @@ replaceExact(
   'Home Health Plan of Care review then activation UI path',
 );
 
+replaceExact(
+  "const intakesRail=page.locator('[data-rail=\"intakes\"]');if(await intakesRail.isVisible().catch(()=>false))await intakesRail.click();await clickVisible(page,'[data-open-episode]');await expect.poll(()=>state.episode).toBe(true);",
+  "const intakesRail=page.locator('[data-rail=\"intakes\"]');await expect(intakesRail).toBeVisible();await intakesRail.click();await expect(page.locator('#intakesRail')).toBeVisible();const openEpisodeButton=page.locator('#intakesRail [data-open-episode]').first();await expect(openEpisodeButton).toBeVisible();await openEpisodeButton.click();await expect.poll(()=>state.episode).toBe(true);",
+  'Home Health visible Intakes rail before Open Episode',
+);
+
 await writeFile(target,source,'utf8');
-console.log('Applied round-thirteen business UAT corrections: exact Home Health intake-to-episode route, episode readiness/detail shape, and real Plan of Care DRAFT → REVIEW → ACTIVE lifecycle.');
+console.log('Applied round-thirteen business UAT corrections: exact Home Health intake-to-episode route, episode readiness/detail shape, real Plan of Care DRAFT → REVIEW → ACTIVE lifecycle, and visible Intakes rail activation before Open Episode.');
