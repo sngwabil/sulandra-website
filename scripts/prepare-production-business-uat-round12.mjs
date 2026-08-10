@@ -14,7 +14,7 @@ function replaceExact(from,to,label){
 
 replaceExact(
   "  page.__businessUat={unexpectedLiveMutations,expectedMutations};\n",
-  "  page.__businessUat={unexpectedLiveMutations,expectedMutations};\n  page.on('pageerror',error=>console.error('[BUSINESS-UAT PAGE ERROR]',error.message));\n  page.on('console',message=>{if(message.type()==='error')console.error('[BUSINESS-UAT CONSOLE ERROR]',message.text());});\n",
+  "  page.__businessUat={unexpectedLiveMutations,expectedMutations};\n  page.on('pageerror',error=>console.error('[BUSINESS-UAT PAGE ERROR]',error.stack||error.message));\n  page.on('console',message=>{if(message.type()==='error'){const loc=message.location();console.error('[BUSINESS-UAT CONSOLE ERROR]',message.text(),loc?.url?`${loc.url}:${loc.lineNumber}:${loc.columnNumber}`:'');}});\n  page.on('response',response=>{if(response.status()>=400)console.error('[BUSINESS-UAT HTTP ERROR]',response.status(),response.url());});\n  page.on('requestfailed',request=>console.error('[BUSINESS-UAT REQUEST FAILED]',request.failure()?.errorText||'request failed',request.url()));\n",
   'Browser error diagnostics',
 );
 
@@ -43,4 +43,4 @@ replaceExact(
 );
 
 await writeFile(target,source,'utf8');
-console.log('Applied round-twelve business UAT corrections: browser error diagnostics, deterministic SPIRE chart coordinator readiness for Intake/eMAR/Incident, and scoped Home Health intake approval verification.');
+console.log('Applied round-twelve business UAT corrections: browser error diagnostics with exact source locations, deterministic SPIRE chart coordinator readiness for Intake/eMAR/Incident, and scoped Home Health intake approval verification.');
