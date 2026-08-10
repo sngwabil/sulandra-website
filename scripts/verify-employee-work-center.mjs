@@ -22,12 +22,15 @@ function requireMarkers(label, source, markers) {
   }
 }
 
-const [portal, controller, myWork, notifications, notificationRoutes] = await Promise.all([
+const [portal, controller, myWork, notifications, notificationRoutes, crosslinks, entityContext, platformNavigation] = await Promise.all([
   mustRead('employee-portal.html'),
   mustRead('employee-portal-railway.js'),
   mustRead('my-work.html'),
   mustRead('notifications.html'),
   mustRead('api/src/enterprise-work-notification-routes.ts'),
+  mustRead('assets/employee-work-crosslinks.js'),
+  mustRead('assets/sulandra-entity-context.js'),
+  mustRead('scripts/finalize-platform-navigation.mjs'),
 ]);
 
 requireMarkers('Employee Portal', portal, [
@@ -40,6 +43,7 @@ requireMarkers('Employee Portal', portal, [
   'id="employeeMyWorkCountText"',
   'id="employeeNotificationCountText"',
   'id="employeeUrgentCountText"',
+  'id="employeeWorkBreakdown"',
   'href="/my-work.html"',
   'href="/notifications.html"',
 ]);
@@ -56,6 +60,7 @@ requireMarkers('Employee Portal controller', controller, [
   'x-legal-entity-id',
   'employeeNotificationHeaderCount',
   'employeeMyWorkQuickCount',
+  'employeeUrgentCountText',
   '60000',
 ]);
 
@@ -95,12 +100,38 @@ requireMarkers('Notification backend', notificationRoutes, [
   'audienceRoles',
 ]);
 
+requireMarkers('Employee Work crosslinks', crosslinks, [
+  '/api/work/notifications/summary',
+  '/notifications.html',
+  '/my-work.html',
+  'employee-work-cross-strip',
+  'urgent/critical',
+  '60000',
+]);
+
+requireMarkers('Entity context Work Center loader', entityContext, [
+  'loadEmployeeWorkCrosslinks',
+  '/assets/employee-work-crosslinks.js?v=20260810-work-center-1',
+  '/my-work.html',
+  '/notifications.html',
+]);
+
+requireMarkers('Clean Work Center routes', platformNavigation, [
+  "['/my-work', '/my-work.html']",
+  "['/notifications', '/notifications.html']",
+  "['my-work', 'my-work.html']",
+  "['notifications', 'notifications.html']",
+]);
+
 for (const relative of [
   'employee-portal.html',
   'employee-portal-railway.js',
   'my-work.html',
   'notifications.html',
   'assets/sulandra-entity-context.js',
+  'assets/employee-work-crosslinks.js',
+  'my-work/index.html',
+  'notifications/index.html',
 ]) await mustExistInDist(relative);
 
 const publishedPortal = await readFile(path.join(dist, 'employee-portal.html'), 'utf8');
@@ -108,8 +139,9 @@ requireMarkers('Published Employee Portal', publishedPortal, [
   'employeeMyWorkLauncher',
   'employeeNotificationsLauncher',
   'employeeWorkCenterTitle',
+  'employeeNotificationHeaderCount',
   '/my-work.html',
   '/notifications.html',
 ]);
 
-console.log('Employee Work Center verified: My Work and Notifications are first-class employee navigation with live company-scoped counts, source queues, operational actions, and published static routes.');
+console.log('Employee Work Center verified: My Work and Notifications are first-class employee navigation with live company-scoped counts, crosslinks, clean routes, source queues, operational actions, and published static output.');
