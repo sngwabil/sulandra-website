@@ -7,8 +7,6 @@ const repositoryRoot = path.resolve(scriptDirectory, '..');
 const outputDirectory = path.join(repositoryRoot, 'dist-web');
 const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app';
 
-await import('./fix-admin-company-settings-backend.mjs');
-
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
 
@@ -31,17 +29,6 @@ for (const directory of publicDirectories) {
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
   }
-}
-
-const employeeAssetPath = path.join(outputDirectory, 'assets', 'employee-360.js');
-try {
-  let employeeAsset = await readFile(employeeAssetPath, 'utf8');
-  const before = `  function findHost() {\n    const heading = [...document.querySelectorAll('h1,h2,h3')]`;
-  const after = `  function findHost() {\n    const explicitHost = document.getElementById('module-employees');\n    if (explicitHost) return explicitHost;\n    const heading = [...document.querySelectorAll('h1,h2,h3')]`;
-  if (employeeAsset.includes(before)) employeeAsset = employeeAsset.replace(before, after);
-  await writeFile(employeeAssetPath, employeeAsset, 'utf8');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
 }
 
 const loginPath = path.join(outputDirectory, 'employee-login.html');
@@ -123,35 +110,19 @@ try {
 }
 
 await import('./install-employee-self-service-frontend.mjs');
-await import('./install-employee-management-frontend.mjs');
-await import('./restore-modern-admin-portal.mjs');
-await import('./finalize-admin-fullscreen-layout.mjs');
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
 
+// Admin is deliberately not rewritten after publication. admin.html is copied as-is;
+// assets/admin-company-context.js owns the canonical navigation registry and loads
+// the canonical Admin shell/dashboard modules at runtime.
 const publishedAdminPath = path.join(outputDirectory, 'admin.html');
-let publishedAdmin = await readFile(publishedAdminPath, 'utf8');
-const achievedArchiveScript = '<script src="/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1"></script>';
-if (!publishedAdmin.includes('/assets/admin-achieved-archive-fix.js')) {
-  publishedAdmin = publishedAdmin.replace('</body>', `${achievedArchiveScript}</body>`);
-  await writeFile(publishedAdminPath, publishedAdmin, 'utf8');
-}
-
+const publishedAdmin = await readFile(publishedAdminPath, 'utf8');
 for (const marker of [
-  'sulandra-platform-bar',
-  '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5',
-  '/assets/admin-enterprise-apps-launcher.js?v=20260810-enterprise-apps-1',
-  '/assets/admin-company-settings.js?v=20260810-company-settings-backend-1',
-  '/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1',
-  '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
-  '/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5',
-  '/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2',
-  '/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1',
-  '/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1',
   '/assets/admin-company-context.js?v=20260809-admin-company-context-2',
   'careers-admin-workflow.js?v=20260809-hiring-provisioning-2',
-  'id="admin-fullscreen-layout"',
+  'admin-railway.js?v=20260804-admin-clean-4',
 ]) {
-  if (!publishedAdmin.includes(marker)) throw new Error(`Modern Admin publication failed; missing ${marker}`);
+  if (!publishedAdmin.includes(marker)) throw new Error(`Canonical Admin publication failed; missing ${marker}`);
 }
 
 const requiredPublishedFiles = [
@@ -163,10 +134,11 @@ const requiredPublishedFiles = [
   'intranet.HTML', 'policies.html', 'news.html', 'feedback.html', 'payroll.html',
   'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',
   'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
-  'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
+  'favicon-48x48.png', 'assets/mainlogo.png',
+  'assets/admin-shell.css', 'assets/admin-shell.js',
   'assets/admin-live-dashboard.js', 'assets/admin-enterprise-apps-launcher.js', 'assets/admin-company-settings.js', 'assets/admin-analog-clock.js',
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
-  'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
+  'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'spire.html', 'spire-admin.html', 'services',
 ];
@@ -177,5 +149,6 @@ for (const relative of requiredPublishedFiles) {
 
 await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
+await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, Enterprise Apps, backend Company Settings, Employee Work Center, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
+console.log('Static website published from canonical source files; Admin navigation, modern shell and module loading are no longer manufactured by post-build mutation scripts.');
