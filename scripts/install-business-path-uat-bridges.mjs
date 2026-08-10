@@ -14,7 +14,7 @@ async function update(relative, transform) {
   if (next !== source) await writeFile(target, next, 'utf8');
 }
 
-for (const relative of ['interview-admin-scheduler.js','applicant-portal.html','offer-acceptance.html']) {
+for (const relative of ['applydsp.html','interview-admin-scheduler.js','applicant-portal.html','offer-acceptance.html']) {
   await update(relative, source => {
     const next = source.replaceAll(staleApi, canonicalApi);
     if (!next.includes(canonicalApi) || next.includes(staleApi)) throw new Error(`${relative} is not pinned to the canonical Railway API`);
@@ -47,4 +47,4 @@ await update('employee-portal.html', source => {
   return source.replace('</head>', `<meta name="sulandra-business-uat-contract" content="${contract}">\n</head>`);
 });
 
-console.log('Business-path UAT bridges installed: canonical applicant/interview/offer APIs, SCLS task continuity, payroll-ready export, and exact production contract marker.');
+console.log('Business-path UAT bridges installed: canonical application/applicant/interview/offer APIs, SCLS task continuity, payroll-ready export, and exact production contract marker.');
