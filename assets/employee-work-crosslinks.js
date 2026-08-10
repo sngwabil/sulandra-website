@@ -32,7 +32,13 @@
 
   function topLink(href,label,id){
     const top=document.querySelector('.top');
-    if(!top||document.getElementById(id))return null;
+    if(!top)return null;
+    const existingById=document.getElementById(id);
+    if(existingById)return existingById;
+    const existing=[...top.querySelectorAll('a')].find(a=>{
+      try{return new URL(a.href,location.origin).pathname.toLowerCase().replace(/\/+$/,'')===href.toLowerCase().replace(/\/+$/,'')}catch{return false}
+    });
+    if(existing){existing.id=id;existing.classList.add('employee-work-cross-link');return existing}
     const a=document.createElement('a');a.id=id;a.href=href;a.className='employee-work-cross-link';a.textContent=label;
     const spacer=top.querySelector('.spacer');
     if(spacer&&spacer.nextSibling)top.insertBefore(a,spacer.nextSibling);else top.appendChild(a);
