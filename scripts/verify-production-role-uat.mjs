@@ -9,8 +9,9 @@ const read=async rel=>{try{return await readFile(path.join(root,rel),'utf8')}cat
 const expect=(condition,label)=>{if(!condition)failures.push(label)};
 const contract='20260810-role-uat-1';
 
-const [portal,runtime,loginHtml,loginAsset,loginRoot,nmt,testSource,config,workflow,pkg]=await Promise.all([
-  read('employee-portal.html'),read('employee-portal-railway.js'),read('employee-login.html'),read('assets/employee-login-railway.js'),read('employee-login-railway.js'),
+const [portal,runtime,guard,portalInstaller,loginHtml,loginAsset,loginRoot,adminFixer,nmt,testSource,config,workflow,pkg]=await Promise.all([
+  read('employee-portal.html'),read('employee-portal-railway.js'),read('assets/employee-role-navigation-guard.js'),read('scripts/install-employee-portal-deep-integration.mjs'),
+  read('employee-login.html'),read('assets/employee-login-railway.js'),read('employee-login-railway.js'),read('scripts/fix-admin-session-bounce.mjs'),
   read('api/src/nmt-dispatch-routes.ts'),read('tests/production-role-uat.spec.mjs'),read('playwright.role-uat.config.mjs'),read('.github/workflows/production-role-uat.yml'),read('package.json'),
 ]);
 
@@ -29,11 +30,15 @@ for(const marker of [
   `const UAT_CONTRACT = "${contract}"`,'executiveAdminRoles','companyDocumentRoles','sclsOperationsRoles','homeHealthVisitRoles','nmtDispatchRoles','enterpriseAnalyticsRoles','securityAuditRoles','employee360Roles','schedulingRoles',
   'applyStaticRoleVisibility(session)','selected.code === "NMT" && nmtDispatchRoles.has(role)','document.body.dataset.roleUatReady = "true"','document.body.dataset.authenticatedRole = role','window.SulandraRoleUat',
 ])expect(runtime.includes(marker),`Employee Portal runtime missing UAT behavior: ${marker}`);
+expect(guard.includes(contract)&&guard.includes("['employeeSchedulingLauncher', '/scheduling.html']")&&guard.includes("['employeeSchedulingNav', '/scheduling.html']"),'Protected employee Scheduling navigation guard is incomplete');
+expect(portalInstaller.includes('employee-role-navigation-guard.js?v=20260810-role-uat-1'),'Employee Portal publisher does not install the protected Scheduling navigation guard');
 
 for(const source of [loginAsset,loginRoot]){
   expect(source.includes('ADMIN_LANDING_ROLES'),'Login runtime lacks centralized executive/Admin landing roles');
   for(const role of ['ADMINISTRATOR','CEO','DOO'])expect(source.includes(`"${role}"`),`Login runtime does not route ${role} through the Admin landing contract`);
 }
+expect(adminFixer.includes('!["ADMINISTRATOR", "CEO", "DOO"].includes(role)'),'Admin controller normalization does not authorize the complete Administrator/CEO/DOO landing contract');
+expect(adminFixer.includes('still excludes CEO from the Admin landing'),'Admin controller normalization does not guard against CEO redirect regression');
 expect(loginHtml.includes(contract),'Employee Login does not publish the role-UAT contract marker');
 expect(loginHtml.includes('/assets/employee-login-railway.js?v=20260810-role-uat-1'),'Employee Login is not cache-pinned to the role-UAT runtime');
 expect(nmt.includes('UserRole.SCHEDULER'),'NMT dispatch backend does not authorize the Scheduler dispatcher persona');
@@ -45,12 +50,12 @@ expect(testSource.includes('representative mobile production UAT'),'Production U
 expect(config.includes("https://www.sulandrahealth.com"),'Role UAT Playwright config is not pinned to the live production website');
 expect(config.includes('workers: 1'),'Production UAT is not serialized for deterministic role testing');
 
-for(const marker of [contract,'Wait for exact production role-UAT deployment','https://www.sulandrahealth.com/employee-portal.html','https://www.sulandrahealth.com/assets/employee-login-railway.js','playwright.role-uat.config.mjs'])expect(workflow.includes(marker),`Production Role UAT workflow missing ${marker}`);
+for(const marker of [contract,'Wait for exact production role-UAT deployment','https://www.sulandrahealth.com/employee-portal.html','https://www.sulandrahealth.com/assets/employee-login-railway.js','https://www.sulandrahealth.com/assets/employee-role-navigation-guard.js','https://www.sulandrahealth.com/admin-railway.js','["ADMINISTRATOR", "CEO", "DOO"]','playwright.role-uat.config.mjs'])expect(workflow.includes(marker),`Production Role UAT workflow missing ${marker}`);
 expect(pkg.includes('verify:role-uat'),'package.json does not expose the production role-UAT verifier');
 
-for(const rel of ['employee-portal-railway.js','assets/employee-login-railway.js','employee-login-railway.js','playwright.role-uat.config.mjs','tests/production-role-uat.spec.mjs']){
+for(const rel of ['employee-portal-railway.js','assets/employee-role-navigation-guard.js','assets/employee-login-railway.js','employee-login-railway.js','playwright.role-uat.config.mjs','tests/production-role-uat.spec.mjs']){
   try{await access(path.join(root,rel));const result=spawnSync(process.execPath,['--check',path.join(root,rel)],{encoding:'utf8'});if(result.status!==0)failures.push(`${rel} syntax check failed: ${(result.stderr||result.stdout||'').trim()}`);}catch{}
 }
 
 if(failures.length){console.error('Production role UAT contract verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('Production role UAT verified: 16 requested personas, representative mobile coverage, login-first button-only navigation, role/company gating, mutation blocking, Scheduler dispatcher authorization, and exact live-deployment synchronization are enforced.');
+console.log('Production role UAT verified: 16 requested personas, representative mobile coverage, login-first button-only navigation, role/company gating, mutation blocking, Scheduler route protection, Scheduler dispatcher authorization, CEO Admin landing protection, and exact live-deployment synchronization are enforced.');
