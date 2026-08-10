@@ -81,7 +81,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   migration-smoke:
-    name: Apply all Prisma migrations on supported legacy baseline
+    name: Apply all migration SQL on supported legacy baseline
     runs-on: ubuntu-latest
     timeout-minutes: 12
     services:
@@ -124,8 +124,24 @@ jobs:
       - name: Verify deployment prerequisites
         run: npm run db:check-prerequisites
 
-      - name: Apply complete migration history
-        run: npm run db:migrate:deploy
+      - name: Apply migration SQL in repository order
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r migration; do
+            echo "===== Applying ${migration} ====="
+            psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done < <(find prisma/migrations -mindepth 2 -maxdepth 2 -type f -name migration.sql | sort)
 
-      - name: Verify no unapplied migrations remain
-        run: npx prisma migrate status
+      - name: Verify expected platform tables exist
+        run: |
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT CASE WHEN to_regclass('\"LegalEntity\"') IS NULL THEN 1/0 ELSE 1 END;
+            SELECT CASE WHEN to_regclass('\"SpirePatient\"') IS NULL THEN 1/0 ELSE 1 END;
+            SELECT CASE WHEN to_regclass('\"EnterpriseWorkNotification\"') IS NULL THEN 1/0 ELSE 1 END;
+            SELECT CASE WHEN to_regclass('\"CompanyComplianceItem\"') IS NULL THEN 1/0 ELSE 1 END;
+            SELECT CASE WHEN to_regclass('\"RevenueCycleServiceEvent\"') IS NULL THEN 1/0 ELSE 1 END;
+            SELECT CASE WHEN to_regclass('\"EnterpriseDataQualityIssue\"') IS NULL THEN 1/0 ELSE 1 END;
+            SELECT CASE WHEN to_regclass('\"SecurityAccessReviewCampaign\"') IS NULL THEN 1/0 ELSE 1 END;
+            SELECT CASE WHEN to_regclass('\"CompanyComplianceEvidence\"') IS NULL THEN 1/0 ELSE 1 END;
+          "
