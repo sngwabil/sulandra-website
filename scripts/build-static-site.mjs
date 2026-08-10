@@ -137,6 +137,7 @@ if (!publishedAdmin.includes('/assets/admin-achieved-archive-fix.js')) {
 for (const marker of [
   'sulandra-platform-bar',
   '/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5',
+  '/assets/admin-enterprise-apps-launcher.js?v=20260810-enterprise-apps-1',
   '/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1',
   '/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1',
   '/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5',
@@ -151,7 +152,7 @@ for (const marker of [
 }
 
 const requiredPublishedFiles = [
-  'admin.html', 'admin-railway.js', 'employee-login.html', 'employee-portal.html',
+  'admin.html', 'admin-railway.js', 'enterprise-apps.html', 'employee-login.html', 'employee-portal.html',
   'careers.html', 'applygeneral.html', 'applydsp.html', 'applylpn.html', 'applydoo.html',
   'employee360.html', 'education-portal.html', 'time-attendance.html', 'scheduling.html', 'intranet.html',
   'course-player.html', 'education-certificate.html', 'education-catalog.json',
@@ -159,7 +160,7 @@ const requiredPublishedFiles = [
   'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',
   'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
   'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
-  'assets/admin-live-dashboard.js', 'assets/admin-analog-clock.js',
+  'assets/admin-live-dashboard.js', 'assets/admin-enterprise-apps-launcher.js', 'assets/admin-analog-clock.js',
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
   'assets/admin-company-context.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
@@ -170,4 +171,4 @@ for (const relative of requiredPublishedFiles) {
   catch { throw new Error(`Static publication regression: missing ${relative}`); }
 }
 
-console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
+console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, Enterprise Apps, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
