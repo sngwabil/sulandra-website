@@ -1,0 +1,1 @@
+Validation-only marker for Item 5 after protecting canonical Admin from global SSO and route rewriters. Do not merge.
