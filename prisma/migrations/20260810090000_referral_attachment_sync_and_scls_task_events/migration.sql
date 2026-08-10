@@ -1,0 +1,107 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Ensure SCLS clinical tasks retain company provenance.
+ALTER TABLE IF EXISTS "SpireClinicalTask" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+UPDATE "SpireClinicalTask" task
+SET "legalEntityId" = COALESCE(
+  (SELECT pha."legalEntityId" FROM "SpirePatientHomeAssignment" pha WHERE pha."organizationId"=task."organizationId" AND pha."homeId"=task."homeId" AND pha."legalEntityId" IS NOT NULL LIMIT 1),
+  (SELECT ce."legalEntityId" FROM "ClientEnrollment" ce WHERE ce."organizationId"=task."organizationId" AND ce."clientId"=task."clientId" AND ce."status" IN ('PENDING','ACTIVE','PAUSED') LIMIT 1),
+  (SELECT le."id" FROM "LegalEntity" le WHERE le."organizationId"=task."organizationId" AND le."code"='SCLS' LIMIT 1)
+)
+WHERE task."legalEntityId" IS NULL;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='SpireClinicalTask_entity_fkey') THEN
+    ALTER TABLE "SpireClinicalTask" ADD CONSTRAINT "SpireClinicalTask_entity_fkey"
+      FOREIGN KEY ("organizationId","legalEntityId") REFERENCES "LegalEntity"("organizationId","id") ON DELETE RESTRICT;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS "SpireClinicalTask_entity_status_idx" ON "SpireClinicalTask"("organizationId","legalEntityId","status","dueAt");
+
+CREATE TABLE IF NOT EXISTS "SpireClinicalTaskEvent" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "organizationId" text NOT NULL,
+  "legalEntityId" text NOT NULL,
+  "taskId" text NOT NULL REFERENCES "SpireClinicalTask"("id") ON DELETE CASCADE,
+  "eventType" text NOT NULL,
+  "fromStatus" text,
+  "toStatus" text,
+  "actorUserId" text NOT NULL,
+  "comment" text,
+  "metadata" jsonb NOT NULL DEFAULT '{}'::jsonb,
+  "createdAt" timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT "SpireClinicalTaskEvent_entity_fkey" FOREIGN KEY ("organizationId","legalEntityId") REFERENCES "LegalEntity"("organizationId","id") ON DELETE RESTRICT,
+  CONSTRAINT "SpireClinicalTaskEvent_type_check" CHECK ("eventType" IN ('CREATED','STARTED','COMPLETED','CANCELLED','REOPENED','ASSIGNED','COMMENT'))
+);
+CREATE INDEX IF NOT EXISTS "SpireClinicalTaskEvent_task_idx" ON "SpireClinicalTaskEvent"("organizationId","legalEntityId","taskId","createdAt" DESC);
+
+CREATE OR REPLACE FUNCTION "prevent_spire_clinical_task_event_mutation"()
+RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'SpireClinicalTaskEvent is append-only'; END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS "SpireClinicalTaskEvent_no_update" ON "SpireClinicalTaskEvent";
+CREATE TRIGGER "SpireClinicalTaskEvent_no_update" BEFORE UPDATE ON "SpireClinicalTaskEvent" FOR EACH ROW EXECUTE FUNCTION "prevent_spire_clinical_task_event_mutation"();
+DROP TRIGGER IF EXISTS "SpireClinicalTaskEvent_no_delete" ON "SpireClinicalTaskEvent";
+CREATE TRIGGER "SpireClinicalTaskEvent_no_delete" BEFORE DELETE ON "SpireClinicalTaskEvent" FOR EACH ROW EXECUTE FUNCTION "prevent_spire_clinical_task_event_mutation"();
+
+-- Home Health referral documents automatically follow the referral into the
+-- Client Intake case. This preserves the original referral attachment while
+-- also making it available in the admission packet.
+CREATE OR REPLACE FUNCTION "sync_home_health_referral_attachment_to_intake"()
+RETURNS trigger AS $$
+DECLARE
+  target_case text;
+  source_id text;
+BEGIN
+  SELECT r."intakeCaseId", r."sourceId" INTO target_case, source_id
+  FROM "HomeHealthReferral" r
+  WHERE r."id"=NEW."referralId" AND r."organizationId"=NEW."organizationId";
+
+  IF target_case IS NOT NULL AND NOT EXISTS(
+    SELECT 1 FROM "ClientIntakeAttachment" cia
+    WHERE cia."organizationId"=NEW."organizationId"
+      AND cia."legalEntityId"=NEW."legalEntityId"
+      AND cia."intakeCaseId"=target_case
+      AND cia."sha256"=NEW."sha256"
+      AND cia."status"='ACTIVE'
+  ) THEN
+    INSERT INTO "ClientIntakeAttachment"(
+      "id","organizationId","legalEntityId","intakeCaseId","sectionKey","documentType","title",
+      "originalFileName","mimeType","sizeBytes","sha256","content","notes","uploadedById"
+    ) VALUES(
+      gen_random_uuid()::text,NEW."organizationId",NEW."legalEntityId",target_case,'home_health_referral',
+      NEW."documentType",NEW."title",NEW."originalFileName",NEW."mimeType",NEW."sizeBytes",NEW."sha256",NEW."content",
+      'Automatically synchronized from secure Home Health referral.',concat('REFERRAL_SOURCE:',source_id)
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS "HomeHealthReferralAttachment_sync_intake" ON "HomeHealthReferralAttachment";
+CREATE TRIGGER "HomeHealthReferralAttachment_sync_intake"
+AFTER INSERT ON "HomeHealthReferralAttachment"
+FOR EACH ROW EXECUTE FUNCTION "sync_home_health_referral_attachment_to_intake"();
+
+CREATE OR REPLACE FUNCTION "sync_existing_home_health_referral_attachments_on_intake_link"()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW."intakeCaseId" IS NOT NULL AND (OLD."intakeCaseId" IS DISTINCT FROM NEW."intakeCaseId") THEN
+    INSERT INTO "ClientIntakeAttachment"(
+      "id","organizationId","legalEntityId","intakeCaseId","sectionKey","documentType","title",
+      "originalFileName","mimeType","sizeBytes","sha256","content","notes","uploadedById"
+    )
+    SELECT gen_random_uuid()::text,a."organizationId",a."legalEntityId",NEW."intakeCaseId",'home_health_referral',
+      a."documentType",a."title",a."originalFileName",a."mimeType",a."sizeBytes",a."sha256",a."content",
+      'Automatically synchronized from secure Home Health referral.',concat('REFERRAL_SOURCE:',NEW."sourceId")
+    FROM "HomeHealthReferralAttachment" a
+    WHERE a."organizationId"=NEW."organizationId" AND a."legalEntityId"=NEW."legalEntityId" AND a."referralId"=NEW."id"
+      AND NOT EXISTS(
+        SELECT 1 FROM "ClientIntakeAttachment" cia
+        WHERE cia."organizationId"=a."organizationId" AND cia."legalEntityId"=a."legalEntityId"
+          AND cia."intakeCaseId"=NEW."intakeCaseId" AND cia."sha256"=a."sha256" AND cia."status"='ACTIVE'
+      );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS "HomeHealthReferral_sync_existing_attachments" ON "HomeHealthReferral";
+CREATE TRIGGER "HomeHealthReferral_sync_existing_attachments"
+AFTER UPDATE OF "intakeCaseId" ON "HomeHealthReferral"
+FOR EACH ROW EXECUTE FUNCTION "sync_existing_home_health_referral_attachments_on_intake_link"();
