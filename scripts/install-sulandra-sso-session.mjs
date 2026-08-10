@@ -6,7 +6,8 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dist=path.join(root,'dist-web');
 const marker='/assets/sulandra-sso-session.js?v=20260806-sso-1';
 const internalNames=new Set([
-  'admin.html','employee-portal.html','employee360.html','education.html','education-portal.html','course-player.html','education-certificate.html',
+  // Admin owns SSO from assets/admin-shell.js so its canonical HTML is never rewritten here.
+  'employee-portal.html','employee360.html','education.html','education-portal.html','course-player.html','education-certificate.html',
   'time-attendance.html','intranet.html','intranet-control.html','policies.html','news.html','feedback.html','payroll.html','benefits.html',
   'employee-directory.html','leadership.html','support.html','health-safety.html','spire.html','spire-admin.html','spire-workspace.html'
 ]);
@@ -26,4 +27,4 @@ for(const file of await walk(dist)){
   else continue;
   await writeFile(file,html,'utf8');installed++;
 }
-console.log(`Sulandra single sign-on session cache installed across ${installed} internal page(s).`);
+console.log(`Sulandra single sign-on session cache installed across ${installed} internal page(s); Admin is owned by its canonical shell runtime.`);
