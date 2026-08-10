@@ -19,6 +19,8 @@ const migrationNames = [
   '20260810031500_nmt_trip_operations',
   '20260810070000_scls_residential_house_operations',
   '20260810080000_workforce_corrections_and_compliance',
+  '20260810090000_referral_attachment_sync_and_scls_task_events',
+  '20260810100000_enterprise_work_notifications',
 ];
 const prisma = new PrismaClient();
 
