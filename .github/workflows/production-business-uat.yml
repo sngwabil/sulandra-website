@@ -42,6 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           contract='20260810-business-uat-1'
+          deep_link_generation='20260810-business-uat-3'
           canonical='sulandra-website-production-5fc4.up.railway.app'
           stale='sulandra-website-production.up.railway.app'
           for attempt in $(seq 1 80); do
@@ -53,6 +54,10 @@ jobs:
             scls="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/scls-residential.html || true)"
             workforce="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/workforce-admin.html || true)"
             payroll="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/workforce-payroll-readiness.js || true)"
+            spire="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire.html || true)"
+            deep_link="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-deep-link.js?v=${deep_link_generation}" || true)"
+            hh_referral="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health-referral.html || true)"
+            company_docs="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/company-documents.html || true)"
             if grep -q "$contract" <<<"$portal" \
               && grep -q "$canonical" <<<"$application" && ! grep -q "$stale" <<<"$application" \
               && grep -q "$canonical" <<<"$applicant" && ! grep -q "$stale" <<<"$applicant" \
@@ -61,8 +66,12 @@ jobs:
               && grep -q 'sclsTaskBoardLink' <<<"$scls" \
               && grep -q 'sclsTasksWorkflowLink' <<<"$scls" \
               && grep -q 'workforce-payroll-readiness.js' <<<"$workforce" \
-              && grep -q "$contract" <<<"$payroll"; then
-              echo "Exact business-UAT production contract is live."
+              && grep -q "$contract" <<<"$payroll" \
+              && grep -q "spire-deep-link.js?v=${deep_link_generation}" <<<"$spire" \
+              && grep -q 'waitForAuthorizedPatient' <<<"$deep_link" \
+              && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
+              && grep -q 'companyComplianceLink' <<<"$company_docs"; then
+              echo "Exact business-UAT production contract and cross-module bridges are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
