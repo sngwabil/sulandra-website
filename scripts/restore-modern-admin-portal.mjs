@@ -9,6 +9,7 @@ let html = await readFile(adminPath, 'utf8');
 html = html.replace(/\s*<!-- modern-admin-shell:start -->[\s\S]*?<!-- modern-admin-shell:end -->\s*/g, '\n');
 for (const asset of [
   'admin-live-dashboard',
+  'admin-enterprise-apps-launcher',
   'admin-analog-clock',
   'sulandra-enterprise-owner',
   'admin-service-home-management-v2',
@@ -92,6 +93,7 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
 </script>
 <script src="/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1"></script>
 <script src="/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5"></script>
+<script src="/assets/admin-enterprise-apps-launcher.js?v=20260810-enterprise-apps-1"></script>
 <script src="/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1"></script>
 <script src="/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5"></script>
 <script src="/assets/admin-platform-routing.js?v=20260808-daily-scheduling-v2"></script>
@@ -100,4 +102,4 @@ header,.alert-bar,.main-nav,main,.top-nav,.nav-links,.container{width:100%!impor
 
 html = html.replace('</body>', `${shell}\n</body>`);
 await writeFile(adminPath, html, 'utf8');
-console.log('Modern Sulandra Admin is canonical in dist-web with live Command Center, fail-safe analog wall clock, blinking Live status, continuously updating Dayton local-news ticker, non-blocking weather-card local clock, Service Homes, dedicated Scheduling, Time & Attendance, Employee 360 Documents/Audit routing and Spire entry.');
+console.log('Modern Sulandra Admin is canonical in dist-web with Enterprise Apps, live Command Center, fail-safe analog wall clock, blinking Live status, continuously updating Dayton local-news ticker, non-blocking weather-card local clock, Service Homes, dedicated Scheduling, Time & Attendance, Employee 360 Documents/Audit routing and Spire entry.');
