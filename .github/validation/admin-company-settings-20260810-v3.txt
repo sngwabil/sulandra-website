@@ -1,0 +1,1 @@
+Validation-only marker for final authoritative Admin Company Settings hardening. Do not merge.
