@@ -10,7 +10,7 @@
     a.id='adminEnterpriseAppsTop';a.href=HREF;a.textContent='Enterprise Apps';a.title='Open all Sulandra Health enterprise applications';
     li.appendChild(a);
     const spire=[...nav.querySelectorAll('li')].find(x=>/Admin Spire/i.test(x.textContent||''));
-    spire?.after(li)||nav.appendChild(li);
+    if(spire)spire.after(li);else nav.appendChild(li);
   };
   const addSide=()=>{
     const nav=document.getElementById('sideModuleNav');
@@ -20,14 +20,15 @@
     b.innerHTML='Enterprise Apps <small>All Systems</small>';
     b.addEventListener('click',()=>location.href=HREF);
     const spire=[...nav.children].find(x=>/Admin Spire/i.test(x.textContent||''));
-    spire?.after(b)||nav.appendChild(b);
+    if(spire)spire.after(b);else nav.appendChild(b);
   };
   const addDrawer=()=>{
     const panel=document.getElementById('rightOperationsPanel');
     if(!panel||document.getElementById('adminEnterpriseAppsDrawer'))return;
     const a=document.createElement('a');a.id='adminEnterpriseAppsDrawer';a.className='quick-action';a.href=HREF;
     a.innerHTML='Enterprise Apps<small>Clinical, operations, workforce, compliance, analytics, security, revenue and company apps</small>';
-    const first=panel.querySelector('.quick-action');first?.before(a)||panel.appendChild(a);
+    const first=panel.querySelector('.quick-action');
+    if(first)first.before(a);else panel.appendChild(a);
   };
   const addHero=()=>{
     const hero=document.querySelector('.admin-command-hero');
