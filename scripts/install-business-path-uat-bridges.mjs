@@ -31,6 +31,25 @@ await update('home-health-referral.html', source => {
   return next;
 });
 
+await update('home-health.html', source => {
+  if (source.includes('id="homeHealthReferralInboxLink"')) return source;
+  const marker = '<a href="/home-health-visits.html">My Visits</a>';
+  if (!source.includes(marker)) throw new Error('Home Health header navigation anchor is missing');
+  const next = source.replace(marker, `<a id="homeHealthReferralInboxLink" data-business-uat-contract="${contract}" href="/home-health-referrals.html">Referral Inbox</a>${marker}`);
+  if (!next.includes('href="/home-health-referrals.html"')) throw new Error('Home Health Operations to Referral Inbox workflow bridge was not installed');
+  return next;
+});
+
+await update('assets/spire-app-v2.js', source => {
+  if (source.includes('BUSINESS_UAT_NATIVE_DEEPLINK')) return source;
+  const marker = '      renderMiniPanels();\n      renderHome();\n';
+  if (!source.includes(marker)) throw new Error('SPIRE foundation load anchor is missing');
+  const bridge = `${marker}      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId && state.patients.some(p => String(p.id || p.patientId) === String(deepLinkPatientId))) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
+  const next = source.replace(marker, bridge);
+  if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK') || !next.includes('await openPatient(deepLinkPatientId)')) throw new Error('SPIRE native patient/tab deep-link bridge was not installed');
+  return next;
+});
+
 await update('scls-residential.html', source => {
   let next = source;
   if (!next.includes('id="sclsTaskBoardLink"')) {
@@ -65,4 +84,4 @@ await update('employee-portal.html', source => {
   return source.replace('</head>', `<meta name="sulandra-business-uat-contract" content="${contract}">\n</head>`);
 });
 
-console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
+console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and Referral Inbox continuity, native SPIRE patient/tab deep links, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
