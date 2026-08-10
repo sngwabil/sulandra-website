@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contract = '20260810-business-uat-1';
-const spireAppGeneration = '20260810-business-uat-5';
+const spireAppGeneration = '20260810-business-uat-6';
+const deepLinkGeneration = '20260810-business-uat-4';
 const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
 const staleApi = 'https://sulandra-website-production.up.railway.app';
 const skippedFrontendSources = [];
@@ -62,8 +63,10 @@ await update('employee-portal-railway.js', source => {
 });
 
 await update('spire.html', source => {
-  const next = source.replace(/\/assets\/spire-app-v2\.js\?v=[^"']+/g, `/assets/spire-app-v2.js?v=${spireAppGeneration}`);
+  let next = source.replace(/\/assets\/spire-app-v2\.js\?v=[^"']+/g, `/assets/spire-app-v2.js?v=${spireAppGeneration}`);
+  next = next.replace(/\/assets\/spire-deep-link\.js\?v=[^"']+/g, `/assets/spire-deep-link.js?v=${deepLinkGeneration}`);
   if (!next.includes(`/assets/spire-app-v2.js?v=${spireAppGeneration}`)) throw new Error('SPIRE page is not pinned to the current chart-stabilized application generation');
+  if (!next.includes(`/assets/spire-deep-link.js?v=${deepLinkGeneration}`)) throw new Error('SPIRE page is not pinned to the current deep-link generation');
   return next;
 });
 
@@ -83,12 +86,13 @@ await update('assets/spire-app-v2.js', source => {
   }
   if (!next.includes('window.SpireOpenPatient = openPatient')) throw new Error('SPIRE native patient opener was not exported');
 
-  if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK')) {
+  if (!next.includes('BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH')) {
     const marker = '      renderMiniPanels();\n      renderHome();\n';
     if (!next.includes(marker)) throw new Error('SPIRE foundation load anchor is missing');
-    const bridge = `${marker}      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
+    const bridge = `${marker}      /* BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH */\n      if (['census','search'].includes(state.activeWorkspace)) renderGenericWorkspace(state.activeWorkspace);\n      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
     next = next.replace(marker, bridge);
   }
+  if (!next.includes('BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH')) throw new Error('SPIRE asynchronous patient-list workspace refresh was not installed');
   if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK') || !next.includes('await openPatient(deepLinkPatientId)')) throw new Error('SPIRE native patient/tab deep-link bridge was not installed');
   return next;
 });
@@ -122,13 +126,21 @@ await update('workforce-admin.html', source => {
 });
 
 await update('employee-portal.html', source => {
-  if (source.includes(`name="sulandra-business-uat-contract" content="${contract}"`)) return source;
-  if (!source.includes('</head>')) throw new Error('Employee Portal has no head close');
-  return source.replace('</head>', `<meta name="sulandra-business-uat-contract" content="${contract}">\n</head>`);
+  let next = source;
+  if (!next.includes(`name="sulandra-business-uat-contract" content="${contract}"`)) {
+    if (!next.includes('</head>')) throw new Error('Employee Portal has no head close');
+    next = next.replace('</head>', `<meta name="sulandra-business-uat-contract" content="${contract}">\n</head>`);
+  }
+  if (!next.includes('employee-role-navigation-guard.js')) {
+    if (!next.includes('</body>')) throw new Error('Employee Portal has no body close');
+    next = next.replace('</body>', `<script src="/assets/employee-role-navigation-guard.js?v=${contract}"></script>\n</body>`);
+  }
+  if (!next.includes('employee-role-navigation-guard.js')) throw new Error('Employee Portal navigation guard was not published');
+  return next;
 });
 
 if (skippedFrontendSources.length) {
   console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, pinned chart-stabilized SPIRE application generation, native stabilized SPIRE patient/tab opening, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, pinned SPIRE app/deep-link generations with asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
 }
