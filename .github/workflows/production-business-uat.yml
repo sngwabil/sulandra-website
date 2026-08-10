@@ -74,12 +74,17 @@ jobs:
               && grep -q "spire-deep-link.js?v=${deep_link_generation}" <<<"$spire" \
               && grep -q 'BUSINESS_UAT_NATIVE_DEEPLINK' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_FIRST' <<<"$spire_app" \
+              && grep -q 'BUSINESS_UAT_CHART_STABILIZED' <<<"$spire_app" \
+              && grep -q 'SpireOpenPatient' <<<"$spire_app" \
               && grep -q 'waitForAuthorizedPatient' <<<"$deep_link" \
               && grep -q 'fallbackOpenRequestedChart' <<<"$deep_link" \
+              && grep -q 'directOpenRequestedChart' <<<"$deep_link" \
+              && grep -q 'BUSINESS_UAT_DIRECT_CHART_OPEN' <<<"$deep_link" \
+              && grep -q 'SpireOpenPatient' <<<"$deep_link" \
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and round-eight cross-module bridges are live."
+              echo "Exact business-UAT production contract and round-nine cross-module bridges are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
