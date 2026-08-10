@@ -1,0 +1,71 @@
+name: Production Role UAT
+
+on:
+  push:
+    branches:
+      - feature/spire-ehr-platform
+  pull_request:
+    branches:
+      - feature/spire-ehr-platform
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-role-uat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  role-uat:
+    name: Login-first role-by-role production UAT
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Verify role UAT source contract
+        run: npm run verify:role-uat
+
+      - name: Wait for exact production role-UAT deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          contract='20260810-role-uat-1'
+          for attempt in $(seq 1 60); do
+            portal="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal.html || true)"
+            runtime="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal-railway.js || true)"
+            login="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-login-railway.js || true)"
+            if grep -q "$contract" <<<"$portal" \
+              && grep -q "$contract" <<<"$runtime" \
+              && grep -q 'ADMIN_LANDING_ROLES' <<<"$login" \
+              && grep -q '"CEO"' <<<"$login" \
+              && grep -q '"DOO"' <<<"$login"; then
+              echo "Exact role-UAT production contract is live."
+              exit 0
+            fi
+            echo "Waiting for role-UAT production deployment (${attempt}/60)..."
+            sleep 15
+          done
+          echo "Timed out waiting for the exact production role-UAT deployment." >&2
+          exit 1
+
+      - name: Install Playwright browser runtime
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run live production role-by-role UAT
+        env:
+          UAT_BASE_URL: https://www.sulandrahealth.com
+        run: npx playwright test --config=playwright.role-uat.config.mjs
