@@ -20,20 +20,20 @@ replaceExact(
 
 replaceExact(
   "await clickVisible(page,'a[href*=\"/spire.html?patientId=biz-patient\"]');await expect(page).toHaveURL(/\\/spire\\.html\\?patientId=biz-patient/);await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);",
-  "await clickVisible(page,'a[href*=\"/spire.html?patientId=biz-patient\"]');await expect(page).toHaveURL(/\\/spire\\.html\\?patientId=biz-patient/);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await expect(page.locator('[data-chart-tab=\"care-plan\"]')).toBeVisible();",
-  'Client Intake visible chart UI readiness',
+  "await clickVisible(page,'a[href*=\"/spire.html?patientId=biz-patient\"]');await expect(page).toHaveURL(/\\/spire\\.html\\?patientId=biz-patient/);await expect(page.locator('body[data-spire-chart-ready=\"true\"][data-spire-chart-patient-id=\"biz-patient\"]')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);",
+  'Client Intake chart coordinator readiness',
 );
 
 replaceExact(
   "await page.getByRole('link',{name:/Open eMAR/i}).first().click();await expect(page).toHaveURL(/\\/spire\\.html/);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);const marTab=page.locator('[data-chart-tab=\"mar\"]');",
-  "await page.getByRole('link',{name:/Open eMAR/i}).first().click();await expect(page).toHaveURL(/\\/spire\\.html/);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);const marTab=page.locator('[data-chart-tab=\"mar\"]');",
-  'eMAR visible chart UI readiness',
+  "await page.getByRole('link',{name:/Open eMAR/i}).first().click();await expect(page).toHaveURL(/\\/spire\\.html/);await expect(page.locator(`body[data-spire-chart-ready=\"true\"][data-spire-chart-patient-id=\"${patient.id}\"]`)).toBeVisible();await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);const marTab=page.locator('[data-chart-tab=\"mar\"]');",
+  'eMAR chart coordinator readiness',
 );
 
 replaceExact(
   "await clickVisible(page,`[data-patient-id=\"${patient.id}\"]`);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await clickVisible(page,'[data-chart-tab=\"incidents\"]');",
-  "await clickVisible(page,`[data-patient-id=\"${patient.id}\"]`);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await clickVisible(page,'[data-chart-tab=\"incidents\"]');",
-  'Incident visible chart UI readiness',
+  "await clickVisible(page,`[data-patient-id=\"${patient.id}\"]`);await expect(page.locator(`body[data-spire-chart-ready=\"true\"][data-spire-chart-patient-id=\"${patient.id}\"]`)).toBeVisible();await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await clickVisible(page,'[data-chart-tab=\"incidents\"]');",
+  'Incident chart coordinator readiness',
 );
 
 replaceExact(
@@ -43,4 +43,4 @@ replaceExact(
 );
 
 await writeFile(target,source,'utf8');
-console.log('Applied round-twelve business UAT corrections: browser error diagnostics with page URLs, visible SPIRE chart UI readiness for Intake/eMAR/Incident, and scoped Home Health intake approval verification.');
+console.log('Applied round-twelve business UAT corrections: browser error diagnostics with page URLs, deterministic SPIRE chart coordinator readiness for Intake/eMAR/Incident, and scoped Home Health intake approval verification.');
