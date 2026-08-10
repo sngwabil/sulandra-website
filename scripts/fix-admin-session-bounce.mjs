@@ -22,11 +22,25 @@ for (const relative of files) {
     '    if (response.status === 401) { throw new Error(payload.error || payload.message || "This module could not authorize the current Sulandra session."); }\n',
   );
 
+  // Executive production UAT proved that CEO correctly lands on Admin from the
+  // login shell but the older Admin controller still rejected CEO and bounced
+  // back to Employee Portal. Keep all three executive/Admin entry roles aligned.
+  source = source.replace(
+    '!["ADMINISTRATOR", "DOO"].includes(role)',
+    '!["ADMINISTRATOR", "CEO", "DOO"].includes(role)',
+  );
+
   if (source.includes('if (response.status === 401) signOut();')) {
     throw new Error(`${relative} still destroys the global Sulandra session on a feature-level 401.`);
+  }
+  if (source.includes('!["ADMINISTRATOR", "DOO"].includes(role)')) {
+    throw new Error(`${relative} still excludes CEO from the Admin landing.`);
+  }
+  if (!source.includes('!["ADMINISTRATOR", "CEO", "DOO"].includes(role)')) {
+    throw new Error(`${relative} does not enforce the complete Administrator/CEO/DOO Admin landing contract.`);
   }
   if (!source.includes(canonicalApi)) throw new Error(`${relative} is not using the canonical Railway API.`);
   await writeFile(target, source, 'utf8');
 }
 
-console.log('Admin session bounce removed: feature-level authorization failures no longer clear the authenticated Sulandra login.');
+console.log('Admin session bounce removed and Administrator/CEO/DOO share the canonical Admin landing contract.');
