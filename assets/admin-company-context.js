@@ -238,6 +238,16 @@
     return requestPromise;
   }
 
+  function loadEnterpriseCompletionRuntime() {
+    if (document.querySelector('script[data-sulandra-enterprise-completion]')) return;
+    const script = document.createElement('script');
+    script.src = '/admin-enterprise-completion.js?v=20260809-full-completion-1';
+    script.dataset.sulandraEnterpriseCompletion = 'true';
+    script.async = false;
+    script.onerror = () => console.error('Sulandra enterprise admin completion runtime failed to load.');
+    document.body.appendChild(script);
+  }
+
   window.SulandraCompanyContext = Object.freeze({
     initialize,
     current: () => selectedEntity,
@@ -249,5 +259,10 @@
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => initialize().catch(() => undefined), { once: true });
-  } else initialize().catch(() => undefined);
+    window.addEventListener('load', loadEnterpriseCompletionRuntime, { once: true });
+  } else {
+    initialize().catch(() => undefined);
+    if (document.readyState === 'complete') loadEnterpriseCompletionRuntime();
+    else window.addEventListener('load', loadEnterpriseCompletionRuntime, { once: true });
+  }
 })();
