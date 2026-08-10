@@ -22,6 +22,15 @@ for (const relative of ['applydsp.html','interview-admin-scheduler.js','applican
   });
 }
 
+await update('home-health-referral.html', source => {
+  if (source.includes('home-health-referral-token-bootstrap.js')) return source;
+  const marker = '<script>(()=>';
+  if (!source.includes(marker)) throw new Error('Home Health referral bootstrap anchor is missing');
+  const next = source.replace(marker, `<script src="/assets/home-health-referral-token-bootstrap.js?v=${contract}"></script>${marker}`);
+  if (!next.includes('home-health-referral-token-bootstrap.js')) throw new Error('Home Health secure invitation token bootstrap was not installed');
+  return next;
+});
+
 await update('scls-residential.html', source => {
   let next = source;
   if (!next.includes('id="sclsTaskBoardLink"')) {
@@ -31,6 +40,15 @@ await update('scls-residential.html', source => {
     else throw new Error('SCLS Residential header is missing; cannot expose the Task Board workflow');
   }
   if (!next.includes('id="sclsTaskBoardLink"') || !next.includes('id="sclsTasksWorkflowLink"') || !next.includes('href="/scls-tasks.html"')) throw new Error('SCLS Residential Task Board workflow bridge was not installed');
+  return next;
+});
+
+await update('company-documents.html', source => {
+  if (source.includes('id="companyComplianceLink"')) return source;
+  const marker = '<a href="/employee-portal.html">Employee Portal</a>';
+  if (!source.includes(marker)) throw new Error('Company Documents navigation anchor is missing');
+  const next = source.replace(marker, `<a id="companyComplianceLink" data-business-uat-contract="${contract}" href="/company-compliance.html">Company Compliance</a>${marker}`);
+  if (!next.includes('href="/company-compliance.html"')) throw new Error('Company Documents to Company Compliance workflow bridge was not installed');
   return next;
 });
 
@@ -47,4 +65,4 @@ await update('employee-portal.html', source => {
   return source.replace('</head>', `<meta name="sulandra-business-uat-contract" content="${contract}">\n</head>`);
 });
 
-console.log('Business-path UAT bridges installed: canonical application/applicant/interview/offer APIs, SCLS Task Board continuity, payroll-ready export, and exact production contract marker.');
+console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
