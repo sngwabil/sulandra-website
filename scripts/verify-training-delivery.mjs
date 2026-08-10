@@ -111,7 +111,7 @@ expect(enhancements.includes('selectedPackageCodes()'), 'Bulk education does not
 expect(!enhancements.includes("courses.map(c=>c.code)"), 'Bulk education assigns the entire cross-company catalog');
 
 for (const required of [
-  "'.json'", "'course-player.html'", "'education-certificate.html'", "'education-catalog.json'",
+  'publicRootFiles', "'education-catalog.json'", "'course-player.html'", "'education-certificate.html'",
   "'assets/education-runtime.js'", "'assets/education-course.css'",
 ]) expect(build.includes(required), `Static publication does not require ${required}`);
 
