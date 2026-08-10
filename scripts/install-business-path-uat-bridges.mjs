@@ -6,12 +6,23 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contract = '20260810-business-uat-1';
 const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
 const staleApi = 'https://sulandra-website-production.up.railway.app';
+const skippedFrontendSources = [];
 
 async function update(relative, transform) {
   const target = path.join(root, relative);
-  const source = await readFile(target, 'utf8');
+  let source;
+  try {
+    source = await readFile(target, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      skippedFrontendSources.push(relative);
+      return false;
+    }
+    throw error;
+  }
   const next = transform(source);
   if (next !== source) await writeFile(target, next, 'utf8');
+  return true;
 }
 
 for (const relative of ['applydsp.html','interview-admin-scheduler.js','applicant-portal.html','offer-acceptance.html']) {
@@ -84,4 +95,8 @@ await update('employee-portal.html', source => {
   return source.replace('</head>', `<meta name="sulandra-business-uat-contract" content="${contract}">\n</head>`);
 });
 
-console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and Referral Inbox continuity, native SPIRE patient/tab deep links, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
+if (skippedFrontendSources.length) {
+  console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
+} else {
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and Referral Inbox continuity, native SPIRE patient/tab deep links, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
+}
