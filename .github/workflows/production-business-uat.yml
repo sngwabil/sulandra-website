@@ -43,6 +43,7 @@ jobs:
           set -euo pipefail
           contract='20260810-business-uat-1'
           spire_app_generation='20260810-business-uat-6'
+          chart_ready_generation='20260810-spire-chart-ready-1'
           deep_link_generation='20260810-business-uat-4'
           canonical='sulandra-website-production-5fc4.up.railway.app'
           stale='sulandra-website-production.up.railway.app'
@@ -58,6 +59,7 @@ jobs:
             payroll="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/workforce-payroll-readiness.js || true)"
             spire="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire.html || true)"
             spire_app="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-app-v2.js?v=${spire_app_generation}" || true)"
+            chart_ready="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-chart-ready.js?v=${chart_ready_generation}" || true)"
             deep_link="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-deep-link.js?v=${deep_link_generation}" || true)"
             hh_referral="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health-referral.html || true)"
             home_health="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health.html || true)"
@@ -74,22 +76,28 @@ jobs:
               && grep -q 'workforce-payroll-readiness.js' <<<"$workforce" \
               && grep -q "$contract" <<<"$payroll" \
               && grep -q "spire-app-v2.js?v=${spire_app_generation}" <<<"$spire" \
+              && grep -q "spire-chart-ready.js?v=${chart_ready_generation}" <<<"$spire" \
               && grep -q "spire-deep-link.js?v=${deep_link_generation}" <<<"$spire" \
               && grep -q 'BUSINESS_UAT_NATIVE_DEEPLINK' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_FIRST' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_STABILIZED' <<<"$spire_app" \
               && grep -q 'SpireOpenPatient' <<<"$spire_app" \
+              && grep -q "$chart_ready_generation" <<<"$chart_ready" \
+              && grep -q 'SpireChartReady' <<<"$chart_ready" \
+              && grep -q 'ensurePatientChart' <<<"$chart_ready" \
+              && grep -q 'forceChartActive' <<<"$chart_ready" \
+              && grep -q 'spireChartReady' <<<"$chart_ready" \
               && grep -q 'waitForAuthorizedPatient' <<<"$deep_link" \
               && grep -q 'fallbackOpenRequestedChart' <<<"$deep_link" \
               && grep -q 'directOpenRequestedChart' <<<"$deep_link" \
               && grep -q 'BUSINESS_UAT_DIRECT_CHART_OPEN' <<<"$deep_link" \
               && grep -q 'BUSINESS_UAT_PATIENT_CLICK_RECOVERY' <<<"$deep_link" \
-              && grep -q 'SpireOpenPatient' <<<"$deep_link" \
+              && grep -q 'SpireChartReady' <<<"$deep_link" \
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and round-ten Item 7 bridges are live."
+              echo "Exact business-UAT production contract and round-twelve chart-readiness generation are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
