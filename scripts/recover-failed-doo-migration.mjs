@@ -16,6 +16,7 @@ const migrationNames = [
   '20260808005000_spire_documents_external_records',
   '20260808006000_spire_communications_inbasket',
   '20260810011500_nmt_trip_dispatch',
+  '20260810031500_nmt_trip_operations',
   '20260810070000_scls_residential_house_operations',
   '20260810080000_workforce_corrections_and_compliance',
 ];
