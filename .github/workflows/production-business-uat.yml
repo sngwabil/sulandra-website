@@ -55,8 +55,10 @@ jobs:
             workforce="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/workforce-admin.html || true)"
             payroll="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/workforce-payroll-readiness.js || true)"
             spire="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire.html || true)"
+            spire_app="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/spire-app-v2.js || true)"
             deep_link="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-deep-link.js?v=${deep_link_generation}" || true)"
             hh_referral="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health-referral.html || true)"
+            home_health="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health.html || true)"
             company_docs="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/company-documents.html || true)"
             if grep -q "$contract" <<<"$portal" \
               && grep -q "$canonical" <<<"$application" && ! grep -q "$stale" <<<"$application" \
@@ -68,10 +70,13 @@ jobs:
               && grep -q 'workforce-payroll-readiness.js' <<<"$workforce" \
               && grep -q "$contract" <<<"$payroll" \
               && grep -q "spire-deep-link.js?v=${deep_link_generation}" <<<"$spire" \
+              && grep -q 'BUSINESS_UAT_NATIVE_DEEPLINK' <<<"$spire_app" \
               && grep -q 'waitForAuthorizedPatient' <<<"$deep_link" \
+              && grep -q 'fallbackOpenRequestedChart' <<<"$deep_link" \
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
+              && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and cross-module bridges are live."
+              echo "Exact business-UAT production contract and round-seven cross-module bridges are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
