@@ -1,0 +1,1 @@
+Final validation-only marker for Item 5 canonical Admin navigation/source architecture. Do not merge.
