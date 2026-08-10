@@ -93,23 +93,21 @@ expect('admin mobile performance UI', adminAsset.includes('@media(max-width:780p
 const selfInstaller = await read('scripts/install-employee-self-service-frontend.mjs');
 expect('employee performance asset published', selfInstaller.includes('/assets/employee-performance-self-service.js'));
 const adminInstaller = await read('scripts/install-employee-management-frontend.mjs');
-expect('admin performance asset published', adminInstaller.includes('/assets/admin-employee-performance.js'));
-const staticBuild = await read('scripts/build-static-site.mjs');
-expect('direct static build invokes Employee 360 frontend installers', staticBuild.includes("import('./install-employee-self-service-frontend.mjs')") && staticBuild.includes("import('./install-employee-management-frontend.mjs')"));
+expect('admin performance asset retained as compatibility publisher', adminInstaller.includes('/assets/admin-employee-performance.js'));
 
-const distAdminPath = 'dist-web/admin.html';
-if (await exists(distAdminPath)) {
-  const html = await read(distAdminPath);
-  const collaborationAt = html.indexOf('/assets/admin-employee-collaboration.js');
-  const performanceAtInHtml = html.indexOf('/assets/admin-employee-performance.js');
-  expect('generated admin loads performance after collaboration', collaborationAt >= 0 && performanceAtInHtml > collaborationAt);
-}
+const canonicalBootstrap = await read('assets/admin-company-context.js');
+const managementAt = canonicalBootstrap.indexOf("'admin-employee-management'");
+const collaborationAt = canonicalBootstrap.indexOf("'admin-employee-collaboration'");
+const performanceAtInBootstrap = canonicalBootstrap.indexOf("'admin-employee-performance'");
+expect('canonical Admin bootstrap loads performance after collaboration', managementAt >= 0 && collaborationAt > managementAt && performanceAtInBootstrap > collaborationAt);
+expect('canonical Admin bootstrap lazy-loads Employee 360 suite', canonicalBootstrap.includes('function loadEmployeeSuite()') && canonicalBootstrap.includes('employeeSuitePromise'));
+
 const distEmployeePath = 'dist-web/employee-portal.html';
 if (await exists(distEmployeePath)) {
   const html = await read(distEmployeePath);
-  const collaborationAt = html.indexOf('/assets/employee-collaboration-self-service.js');
-  const performanceAtInHtml = html.indexOf('/assets/employee-performance-self-service.js');
-  expect('generated employee portal loads performance after collaboration', collaborationAt >= 0 && performanceAtInHtml > collaborationAt);
+  const collaborationAtInPortal = html.indexOf('/assets/employee-collaboration-self-service.js');
+  const performanceAtInPortal = html.indexOf('/assets/employee-performance-self-service.js');
+  expect('generated employee portal loads performance after collaboration', collaborationAtInPortal >= 0 && performanceAtInPortal > collaborationAtInPortal);
 }
 
 if (failures.length) {
@@ -117,4 +115,4 @@ if (failures.length) {
   failures.forEach(failure => console.error(` - ${failure}`));
   process.exit(1);
 }
-console.log(`Employee 360 performance verification passed (${checks.length} checks).`);
+console.log(`Employee 360 performance verification passed (${checks.length} checks) using canonical Admin bootstrap ownership.`);
