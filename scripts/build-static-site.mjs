@@ -152,7 +152,8 @@ for (const marker of [
 }
 
 const requiredPublishedFiles = [
-  'admin.html', 'admin-railway.js', 'enterprise-apps.html', 'employee-login.html', 'employee-portal.html',
+  'admin.html', 'admin-railway.js', 'enterprise-apps.html', 'employee-login.html', 'employee-portal.html', 'employee-portal-railway.js',
+  'my-work.html', 'notifications.html',
   'careers.html', 'applygeneral.html', 'applydsp.html', 'applylpn.html', 'applydoo.html',
   'employee360.html', 'education-portal.html', 'time-attendance.html', 'scheduling.html', 'intranet.html',
   'course-player.html', 'education-certificate.html', 'education-catalog.json',
@@ -162,7 +163,7 @@ const requiredPublishedFiles = [
   'favicon-48x48.png', 'assets/mainlogo.png', 'assets/admin-platform-routing.js',
   'assets/admin-live-dashboard.js', 'assets/admin-enterprise-apps-launcher.js', 'assets/admin-analog-clock.js',
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
-  'assets/admin-company-context.js',
+  'assets/admin-company-context.js', 'assets/sulandra-entity-context.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'spire.html', 'spire-admin.html', 'services',
 ];
@@ -172,5 +173,6 @@ for (const relative of requiredPublishedFiles) {
 }
 
 await import('./verify-enterprise-apps-launchpad.mjs');
+await import('./verify-employee-work-center.mjs');
 
-console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, Enterprise Apps, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
+console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, Enterprise Apps, Employee Work Center, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
