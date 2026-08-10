@@ -46,11 +46,15 @@ jobs:
             portal="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal.html || true)"
             runtime="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal-railway.js || true)"
             login="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-login-railway.js || true)"
+            guard="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-role-navigation-guard.js || true)"
+            admin="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/admin-railway.js || true)"
             if grep -q "$contract" <<<"$portal" \
               && grep -q "$contract" <<<"$runtime" \
+              && grep -q "$contract" <<<"$guard" \
               && grep -q 'ADMIN_LANDING_ROLES' <<<"$login" \
               && grep -q '"CEO"' <<<"$login" \
-              && grep -q '"DOO"' <<<"$login"; then
+              && grep -q '"DOO"' <<<"$login" \
+              && grep -Fq '["ADMINISTRATOR", "CEO", "DOO"]' <<<"$admin"; then
               echo "Exact role-UAT production contract is live."
               exit 0
             fi
