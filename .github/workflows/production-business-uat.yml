@@ -47,6 +47,7 @@ jobs:
           stale='sulandra-website-production.up.railway.app'
           for attempt in $(seq 1 80); do
             portal="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal.html || true)"
+            portal_js="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal-railway.js || true)"
             application="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/applydsp.html || true)"
             applicant="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/applicant-portal.html || true)"
             interview="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/interview-admin-scheduler.js || true)"
@@ -61,6 +62,7 @@ jobs:
             home_health="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health.html || true)"
             company_docs="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/company-documents.html || true)"
             if grep -q "$contract" <<<"$portal" \
+              && grep -q 'employeeHomeHealthReferralInboxLauncher' <<<"$portal_js" \
               && grep -q "$canonical" <<<"$application" && ! grep -q "$stale" <<<"$application" \
               && grep -q "$canonical" <<<"$applicant" && ! grep -q "$stale" <<<"$applicant" \
               && grep -q "$canonical" <<<"$interview" && ! grep -q "$stale" <<<"$interview" \
@@ -71,12 +73,13 @@ jobs:
               && grep -q "$contract" <<<"$payroll" \
               && grep -q "spire-deep-link.js?v=${deep_link_generation}" <<<"$spire" \
               && grep -q 'BUSINESS_UAT_NATIVE_DEEPLINK' <<<"$spire_app" \
+              && grep -q 'BUSINESS_UAT_CHART_FIRST' <<<"$spire_app" \
               && grep -q 'waitForAuthorizedPatient' <<<"$deep_link" \
               && grep -q 'fallbackOpenRequestedChart' <<<"$deep_link" \
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and round-seven cross-module bridges are live."
+              echo "Exact business-UAT production contract and round-eight cross-module bridges are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
