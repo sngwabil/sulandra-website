@@ -42,8 +42,8 @@ jobs:
         run: |
           set -euo pipefail
           contract='20260810-business-uat-1'
-          spire_app_generation='20260810-business-uat-5'
-          deep_link_generation='20260810-business-uat-3'
+          spire_app_generation='20260810-business-uat-6'
+          deep_link_generation='20260810-business-uat-4'
           canonical='sulandra-website-production-5fc4.up.railway.app'
           stale='sulandra-website-production.up.railway.app'
           for attempt in $(seq 1 80); do
@@ -63,6 +63,7 @@ jobs:
             home_health="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health.html || true)"
             company_docs="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/company-documents.html || true)"
             if grep -q "$contract" <<<"$portal" \
+              && grep -q 'employee-role-navigation-guard.js' <<<"$portal" \
               && grep -q 'employeeHomeHealthReferralInboxLauncher' <<<"$portal_js" \
               && grep -q "$canonical" <<<"$application" && ! grep -q "$stale" <<<"$application" \
               && grep -q "$canonical" <<<"$applicant" && ! grep -q "$stale" <<<"$applicant" \
@@ -75,6 +76,7 @@ jobs:
               && grep -q "spire-app-v2.js?v=${spire_app_generation}" <<<"$spire" \
               && grep -q "spire-deep-link.js?v=${deep_link_generation}" <<<"$spire" \
               && grep -q 'BUSINESS_UAT_NATIVE_DEEPLINK' <<<"$spire_app" \
+              && grep -q 'BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_FIRST' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_STABILIZED' <<<"$spire_app" \
               && grep -q 'SpireOpenPatient' <<<"$spire_app" \
@@ -82,11 +84,12 @@ jobs:
               && grep -q 'fallbackOpenRequestedChart' <<<"$deep_link" \
               && grep -q 'directOpenRequestedChart' <<<"$deep_link" \
               && grep -q 'BUSINESS_UAT_DIRECT_CHART_OPEN' <<<"$deep_link" \
+              && grep -q 'BUSINESS_UAT_PATIENT_CLICK_RECOVERY' <<<"$deep_link" \
               && grep -q 'SpireOpenPatient' <<<"$deep_link" \
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and pinned round-nine cross-module generation are live."
+              echo "Exact business-UAT production contract and round-ten Item 7 bridges are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
