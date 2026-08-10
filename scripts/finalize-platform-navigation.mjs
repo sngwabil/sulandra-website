@@ -22,6 +22,8 @@ const routeMap = new Map([
   ['/it-request', '/support.html'],
   ['/time-attendance', '/time-attendance.html'],
   ['/scheduling', '/scheduling.html'],
+  ['/my-work', '/my-work.html'],
+  ['/notifications', '/notifications.html'],
   ['/incident-reporting', '/health-safety.html'],
   ['/health-safety', '/health-safety.html'],
   ['/caregiver-resources', '/education-portal.html'],
@@ -44,6 +46,8 @@ const cleanRoutePages = new Map([
   ['it-request', 'support.html'],
   ['time-attendance', 'time-attendance.html'],
   ['scheduling', 'scheduling.html'],
+  ['my-work', 'my-work.html'],
+  ['notifications', 'notifications.html'],
   ['incident-reporting', 'health-safety.html'],
   ['health-safety', 'health-safety.html'],
 ]);
@@ -103,4 +107,4 @@ try{
   await writeFile(employee360Path,html,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
-console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; dedicated Scheduling, Time & Attendance and Employee 360 deep links are restored to live applications.');
+console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; dedicated My Work, Notifications, Scheduling, Time & Attendance and Employee 360 routes are restored to live applications.');
