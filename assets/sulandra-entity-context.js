@@ -130,6 +130,30 @@
     if (host.classList?.contains('spire-top-actions')) host.prepend(wrap); else host.appendChild(wrap);
   }
 
-  const render = () => ready.then(installSwitcher);
+  function installPageDeepLinks() {
+    const pathname = location.pathname.toLowerCase();
+    const hash = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+    if (hash && !hash.includes('=')) {
+      const tab = document.querySelector(`[data-tab="${CSS.escape(hash)}"]`);
+      if (tab instanceof HTMLElement) tab.click();
+    }
+    if (pathname.endsWith('/client-intake.html') || pathname.endsWith('client-intake.html')) {
+      const caseId = new URL(location.href).searchParams.get('caseId');
+      if (!caseId) return;
+      let attempts = 0;
+      const openRequestedCase = () => {
+        attempts += 1;
+        const button = document.querySelector(`[data-case="${CSS.escape(caseId)}"]`);
+        if (button instanceof HTMLElement) {
+          button.click();
+          return;
+        }
+        if (attempts < 80) window.setTimeout(openRequestedCase, 100);
+      };
+      openRequestedCase();
+    }
+  }
+
+  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render, { once: true }); else render();
 })();
