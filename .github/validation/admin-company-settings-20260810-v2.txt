@@ -1,0 +1,1 @@
+Validation-only marker for authoritative Admin Company Settings backend integration v2. Do not merge.
