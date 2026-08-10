@@ -6,7 +6,7 @@
   },
   "deploy": {
     "preDeployCommand": [
-      "npm run db:predeploy"
+      "node scripts/run-db-predeploy.mjs"
     ],
     "startCommand": "npm run start",
     "healthcheckPath": "/health",
