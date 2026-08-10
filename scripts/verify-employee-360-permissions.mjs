@@ -31,7 +31,7 @@ expect('employee scope enforcement', permissions.includes("scopeType === 'EMPLOY
 expect('confidential document classifications', ['HR_CONFIDENTIAL','MEDICAL','BACKGROUND','DISCIPLINARY','IDENTITY','COMPENSATION'].every((value) => permissions.includes(value)));
 expect('owner write protection', permissions.includes('The enterprise owner account cannot be managed by another user'));
 expect('authorization allow and deny logging', permissions.includes('Employee360AccessEvent') && permissions.includes("'ALLOW'") && permissions.includes("'DENY'"));
-expect('approved employee self-service endpoint', permissions.includes("/api/employee/me/360"));
+expect('approved employee self-service endpoint', permissions.includes('/api/employee/me/360'));
 expect('server response masking', permissions.includes('maskEmployee') && permissions.includes('VIEW_PRIVATE_PROFILE') && permissions.includes('VIEW_HR_NOTES'));
 
 const selfServiceRoutes = await read('api/src/employee-self-service-routes.ts');
@@ -68,13 +68,25 @@ if (await exists(path.join(root, migrationPath))) {
   expect('active duplicate grant prevention', migration.includes('Employee360AccessGrant_active_unique_idx'));
 }
 
+const canonicalContext = await read('assets/admin-company-context.js');
+const canonicalShell = await read('assets/admin-shell.js');
+const permissionAssetAt = canonicalContext.indexOf("'admin-employee-permissions'");
+const managementAssetAt = canonicalContext.indexOf("'admin-employee-management'");
+expect('canonical Admin loader owns Employee 360 scripts', canonicalContext.includes('loadEmployeeSuite') && permissionAssetAt >= 0 && managementAssetAt > permissionAssetAt);
+expect('canonical Admin shell creates Employee 360 module', canonicalShell.includes("employee.id = 'module-employees'") && canonicalShell.includes('ensureModuleHosts()'));
+
 const distAdmin = path.join(root, 'dist-web', 'admin.html');
 if (await exists(distAdmin)) {
-  const html = await readFile(distAdmin, 'utf8');
-  const permissionScriptAt = html.indexOf('/assets/admin-employee-permissions.js');
-  const managementScriptAt = html.indexOf('/assets/admin-employee-management.js');
-  expect('dist admin includes Employee 360 module', html.includes('id="module-employees"'));
-  expect('dist permission script loads before management script', permissionScriptAt >= 0 && managementScriptAt > permissionScriptAt);
+  const [html, publishedContext, publishedShell] = await Promise.all([
+    readFile(distAdmin, 'utf8'),
+    read('dist-web/assets/admin-company-context.js'),
+    read('dist-web/assets/admin-shell.js'),
+  ]);
+  const publishedPermissionAt = publishedContext.indexOf("'admin-employee-permissions'");
+  const publishedManagementAt = publishedContext.indexOf("'admin-employee-management'");
+  expect('dist admin loads canonical Admin bootstrap', html.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'));
+  expect('dist canonical shell includes Employee 360 module', publishedShell.includes("employee.id = 'module-employees'"));
+  expect('dist canonical loader loads permission script before management script', publishedPermissionAt >= 0 && publishedManagementAt > publishedPermissionAt);
 }
 
 const distPortal = path.join(root, 'dist-web', 'employee-portal.html');
@@ -89,4 +101,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Employee 360 permission verification passed (${checks.length} checks).`);
+console.log(`Employee 360 permission verification passed (${checks.length} checks) using canonical Admin shell/bootstrap ownership.`);
