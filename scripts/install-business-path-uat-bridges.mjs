@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contract = '20260810-business-uat-1';
-const spireAppGeneration = '20260810-business-uat-7';
+const spireAppGeneration = '20260810-business-uat-8';
 const chartReadyGeneration = '20260810-spire-chart-ready-2';
 const deepLinkGeneration = '20260810-business-uat-5';
 const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
@@ -46,11 +46,18 @@ await update('home-health-referral.html', source => {
 });
 
 await update('home-health.html', source => {
-  if (source.includes('id="homeHealthReferralInboxLink"')) return source;
-  const marker = '<a href="/home-health-visits.html">My Visits</a>';
-  if (!source.includes(marker)) throw new Error('Home Health header navigation anchor is missing');
-  const next = source.replace(marker, `<a id="homeHealthReferralInboxLink" data-business-uat-contract="${contract}" href="/home-health-referrals.html">Referral Inbox</a>${marker}`);
+  let next = source;
+  if (!next.includes('id="homeHealthReferralInboxLink"')) {
+    const marker = '<a href="/home-health-visits.html">My Visits</a>';
+    if (!next.includes(marker)) throw new Error('Home Health header navigation anchor is missing');
+    next = next.replace(marker, `<a id="homeHealthReferralInboxLink" data-business-uat-contract="${contract}" href="/home-health-referrals.html">Referral Inbox</a>${marker}`);
+  }
+  if (!next.includes('home-health-rail-stability.js')) {
+    if (!next.includes('</body>')) throw new Error('Home Health page has no body close');
+    next = next.replace('</body>', `<script src="/assets/home-health-rail-stability.js?v=${contract}"></script>\n</body>`);
+  }
   if (!next.includes('href="/home-health-referrals.html"')) throw new Error('Home Health Operations to Referral Inbox workflow bridge was not installed');
+  if (!next.includes('home-health-rail-stability.js')) throw new Error('Home Health rail stability bridge was not installed');
   return next;
 });
 
@@ -87,7 +94,13 @@ await update('assets/spire-app-v2.js', source => {
     if (!next.includes(exposeAnchor)) throw new Error('SPIRE native patient opener export anchor is missing');
     next = next.replace(exposeAnchor, '\n  window.SpireOpenPatient = openPatient;\n\n  function renderPatientStrip() {');
   }
+  if (!next.includes('window.SpireEnsureShell = installShell')) {
+    const openerAnchor = '  window.SpireOpenPatient = openPatient;';
+    if (!next.includes(openerAnchor)) throw new Error('SPIRE native patient opener export is unavailable for shell hook installation');
+    next = next.replace(openerAnchor, `  /* BUSINESS_UAT_CANONICAL_SHELL_REPAIR */\n  window.SpireEnsureShell = installShell;\n${openerAnchor}`);
+  }
   if (!next.includes('window.SpireOpenPatient = openPatient')) throw new Error('SPIRE native patient opener was not exported');
+  if (!next.includes('window.SpireEnsureShell = installShell') || !next.includes('BUSINESS_UAT_CANONICAL_SHELL_REPAIR')) throw new Error('SPIRE canonical shell repair hook was not exported');
 
   if (!next.includes('BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH')) {
     const marker = '      renderMiniPanels();\n      renderHome();\n';
@@ -117,7 +130,7 @@ await update('company-documents.html', source => {
   const marker = '<a href="/employee-portal.html">Employee Portal</a>';
   if (!source.includes(marker)) throw new Error('Company Documents navigation anchor is missing');
   const next = source.replace(marker, `<a id="companyComplianceLink" data-business-uat-contract="${contract}" href="/company-compliance.html">Company Compliance</a>${marker}`);
-  if (!next.includes('href="/company-compliance.html"')) throw new Error('Company Documents to Company Compliance workflow bridge was not installed');
+  if (!next.includes('href="/company-compliance.html"')) throw new Error('Company Documents to Company Compliance navigation was not installed');
   return next;
 });
 
@@ -145,5 +158,5 @@ await update('employee-portal.html', source => {
 if (skippedFrontendSources.length) {
   console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, pinned SPIRE app/chart-ready/deep-link generations with idempotent chart activation, asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and stable referral rail, pinned SPIRE app/chart-ready/deep-link generations with canonical single-runtime shell repair and idempotent chart activation, asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
 }
