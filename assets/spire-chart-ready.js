@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const CONTRACT='20260810-spire-chart-ready-3';
+  const CONTRACT='20260810-spire-chart-ready-2';
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   let opening=false;
   let requestedPatientId='';
