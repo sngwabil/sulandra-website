@@ -1,0 +1,14 @@
+(() => {
+  'use strict';
+  const API='https://sulandra-website-production-5fc4.up.railway.app';
+  const TOKEN_KEYS=['sulandra:employee:access-token','sulandra_token','token','accessToken'];
+  const targetIds=['userId','filterUser','staffUserId','visitUserId','driverUserId'];
+  const token=()=>TOKEN_KEYS.map(k=>sessionStorage.getItem(k)||localStorage.getItem(k)).find(Boolean)||'';
+  const employeeName=e=>e.fullName||e.displayName||[e.firstName,e.lastName].filter(Boolean).join(' ')||e.email||e.id;
+  async function request(path){const r=await fetch(API+path,{cache:'no-store',headers:{Accept:'application/json',Authorization:`Bearer ${token()}`}});const p=await r.json().catch(()=>({}));if(!r.ok)throw new Error(p.error||p.message||`Employee directory failed (${r.status})`);return p.data??p;}
+  async function loadEmployees(){try{return await request('/api/admin/employees?limit=1000')}catch{return await request('/api/admin/staff?limit=1000')}}
+  function installList(employees){if(!Array.isArray(employees)||!employees.length)return;let list=document.getElementById('sulandraEmployeeDirectory');if(!list){list=document.createElement('datalist');list.id='sulandraEmployeeDirectory';document.body.appendChild(list)}list.innerHTML=employees.map(e=>{const option=document.createElement('option');option.value=String(e.id||e.userId||'');option.label=`${employeeName(e)}${e.email?` — ${e.email}`:''}${e.role?` — ${String(e.role).replaceAll('_',' ')}`:''}`;return option.outerHTML}).join('');const byId=new Map(employees.map(e=>[String(e.id||e.userId||''),e]));for(const id of targetIds){const input=document.getElementById(id);if(!(input instanceof HTMLInputElement))continue;input.setAttribute('list','sulandraEmployeeDirectory');input.setAttribute('autocomplete','off');if(input.dataset.employeeDirectoryEnhanced==='true')continue;input.dataset.employeeDirectoryEnhanced='true';const hint=document.createElement('div');hint.style.cssText='font-size:11px;color:#6d8190;margin-top:4px;min-height:16px';const render=()=>{const e=byId.get(input.value.trim());hint.textContent=e?`${employeeName(e)}${e.email?` · ${e.email}`:''}${e.role?` · ${String(e.role).replaceAll('_',' ')}`:''}`:'Search by employee name in the browser suggestions, then select the matching account.'};input.insertAdjacentElement('afterend',hint);input.addEventListener('input',render);input.addEventListener('change',render);render()}}
+  async function install(){if(!token())return;try{const employees=await loadEmployees();installList(employees)}catch(error){console.warn('[Employee Directory]',error)}}
+  window.SulandraEmployeeDirectory=Object.freeze({reload:install});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
