@@ -154,6 +154,17 @@
     }
   }
 
-  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); });
+  function loadEmployeeDirectoryEnhancer() {
+    const pathname = location.pathname.toLowerCase();
+    const eligible = ['spire-medication-qualifications.html','home-health.html','nmt-dispatch.html'].some((name) => pathname.endsWith(name));
+    if (!eligible || document.querySelector('script[data-sulandra-employee-directory]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/employee-directory-enhancer.js?v=20260810-1';
+    script.dataset.sulandraEmployeeDirectory = 'true';
+    script.async = true;
+    document.body.appendChild(script);
+  }
+
+  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); loadEmployeeDirectoryEnhancer(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render, { once: true }); else render();
 })();
