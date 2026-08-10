@@ -5,7 +5,10 @@
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
   const ENTITY_KEY = "sulandra:selected-legal-entity-id";
+  const UAT_CONTRACT = "20260810-role-uat-1";
   const $ = (id) => document.getElementById(id);
+
+  const executiveAdminRoles = new Set(["ADMINISTRATOR", "CEO", "DOO"]);
   const clinicalRoles = new Set([
     "DSP", "LPN", "RN", "DELEGATING_NURSE", "HOUSE_MANAGER",
     "PROGRAM_MANAGER", "AUDITOR", "CEO", "DOO"
@@ -13,9 +16,30 @@
   const shiftRoles = new Set([
     "DSP", "LPN", "RN", "DELEGATING_NURSE", "HOUSE_MANAGER", "PROGRAM_MANAGER"
   ]);
+  const companyDocumentRoles = new Set([
+    "ADMINISTRATOR", "HR_MANAGER", "PROGRAM_MANAGER", "AUDITOR", "CEO", "DOO"
+  ]);
+  const sclsOperationsRoles = new Set([
+    "HOUSE_MANAGER", "PROGRAM_MANAGER", "DELEGATING_NURSE", "RN", "CEO", "DOO"
+  ]);
+  const homeHealthVisitRoles = new Set([
+    "DSP", "LPN", "RN", "DELEGATING_NURSE", "PROGRAM_MANAGER", "SCHEDULER", "CEO", "DOO"
+  ]);
   const homeHealthManagementRoles = new Set([
     "RN", "DELEGATING_NURSE", "PROGRAM_MANAGER", "SCHEDULER", "CEO", "DOO"
   ]);
+  const nmtDispatchRoles = new Set([
+    "SCHEDULER", "PROGRAM_MANAGER", "CEO", "DOO"
+  ]);
+  const enterpriseAnalyticsRoles = new Set([
+    "PROGRAM_MANAGER", "AUDITOR", "HR_MANAGER", "RN", "DELEGATING_NURSE", "CEO", "DOO"
+  ]);
+  const securityAuditRoles = new Set([
+    "PROGRAM_MANAGER", "AUDITOR", "HR_MANAGER", "CEO", "DOO"
+  ]);
+  const employee360Roles = new Set(["HR_MANAGER"]);
+  const schedulingRoles = new Set(["SCHEDULER", "PROGRAM_MANAGER"]);
+
   let workRefreshTimer = null;
   let workRefreshInFlight = false;
 
@@ -76,6 +100,13 @@
     badge.setAttribute("aria-label", label);
     element.appendChild(badge);
     return badge;
+  }
+
+  function setVisible(id, visible) {
+    const node = $(id);
+    if (!node) return;
+    node.hidden = !visible;
+    node.setAttribute("aria-hidden", visible ? "false" : "true");
   }
 
   async function entityContext() {
@@ -240,18 +271,29 @@
     }
   }
 
-  async function selectNmtEntityAndOpen(event) {
-    event.preventDefault();
+  async function selectCompanyAndOpen(code, href, event) {
+    event?.preventDefault?.();
     try {
       const context = await entityContext();
       const entities = Array.isArray(context.entities) ? context.entities : [];
-      const nmt = entities.find((entity) => entity.code === "NMT" && entity.status === "ACTIVE");
-      if (!nmt) throw new Error("Sulandra NMT Services is not available in your company access yet.");
-      window.sessionStorage.setItem(ENTITY_KEY, nmt.id);
-      window.localStorage.setItem(ENTITY_KEY, nmt.id);
-      window.location.href = "/nmt-driver.html";
+      const target = entities.find((entity) => entity.code === code && entity.status === "ACTIVE");
+      if (!target) throw new Error(`${code === "NMT" ? "Sulandra NMT Services" : "The requested Sulandra company"} is not available in your company access yet.`);
+      window.sessionStorage.setItem(ENTITY_KEY, target.id);
+      window.localStorage.setItem(ENTITY_KEY, target.id);
+      window.location.href = href;
     } catch (error) {
-      window.alert(error.message || "Unable to open NMT trips.");
+      window.alert(error.message || "Unable to open the requested application.");
+    }
+  }
+
+  function applyStaticRoleVisibility(session) {
+    const role = String(session.role || "").toUpperCase();
+    setVisible("employeeStaticMyShift", shiftRoles.has(role));
+    setVisible("employeeStaticSpire", clinicalRoles.has(role));
+    setVisible("employeeStaticNmtDriver", role === "DRIVER");
+    setVisible("employeeStaticCompanyDocuments", companyDocumentRoles.has(role));
+    if (role === "DRIVER") {
+      $("employeeStaticNmtDriver")?.addEventListener("click", (event) => selectCompanyAndOpen("NMT", "/nmt-driver.html", event), { once: true });
     }
   }
 
@@ -310,91 +352,97 @@
     }
   }
 
+  function appendNavLink(id, label, href) {
+    const nav = document.querySelector(".nav-links");
+    if (!nav || document.getElementById(id)) return;
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.id = id;
+    a.href = href;
+    a.textContent = label;
+    li.appendChild(a);
+    nav.appendChild(li);
+  }
+
   function installApplicationLaunchers(session) {
     const quick = document.querySelector(".page-hero .quick-actions");
     if (!quick || document.getElementById("employeeSpireTrainingLauncher")) return;
 
     installPrimaryWorkLaunchers();
-
-    const workforce = launcher("Workforce", "/workforce.html", "Clock in or out, complete weekly timesheets, and submit employee documents", "employeeWorkforceLauncher");
-    quick.appendChild(workforce);
-
-    const learning = launcher("Learning Center", "/education-portal.html", "Open assigned education, annual renewals, course catalog and certificates", "employeeLearningLauncher");
-    quick.appendChild(learning);
-
-    const training = launcher("SPIRE Training", "/spire-training.html", "Practice in isolated simulated charts", "employeeSpireTrainingLauncher");
-    quick.appendChild(training);
-
     const role = String(session.role || "").toUpperCase();
+
+    quick.appendChild(launcher("Workforce", "/workforce.html", "Clock in or out, complete weekly timesheets, and submit employee documents", "employeeWorkforceLauncher"));
+    quick.appendChild(launcher("Learning Center", "/education-portal.html", "Open assigned education, annual renewals, course catalog and certificates", "employeeLearningLauncher"));
+    quick.appendChild(launcher("SPIRE Training", "/spire-training.html", "Practice in isolated simulated charts", "employeeSpireTrainingLauncher"));
+
     if (shiftRoles.has(role)) {
-      const shift = launcher("My Shift", "/spire-shift.html", "Assigned clients, due medications, vitals, weight, temperature and bedside tasks", "employeeMyShiftLauncher");
-      quick.appendChild(shift);
+      quick.appendChild(launcher("My Shift", "/spire-shift.html", "Assigned clients, due medications, vitals, weight, temperature and bedside tasks", "employeeMyShiftLauncher"));
     }
     if (clinicalRoles.has(role)) {
-      const spire = launcher("Open SPIRE", "/spire.html", "Open authorized live client/patient charts", "employeeLiveSpireLauncher");
-      quick.appendChild(spire);
+      quick.appendChild(launcher("Open SPIRE", "/spire.html", "Open authorized live client/patient charts", "employeeLiveSpireLauncher"));
     }
     if (role === "DRIVER") {
       const trips = launcher("My NMT Trips", "/nmt-driver.html", "Open assigned NMT transportation trips", "employeeNmtTripsLauncher");
-      trips.addEventListener("click", selectNmtEntityAndOpen);
+      trips.addEventListener("click", (event) => selectCompanyAndOpen("NMT", "/nmt-driver.html", event));
       quick.appendChild(trips);
     }
-
-    const nav = document.querySelector(".nav-links");
-    if (nav && !document.getElementById("employeeWorkforceNav")) {
-      const workforceLi = document.createElement("li");
-      const workforceA = document.createElement("a");
-      workforceA.id = "employeeWorkforceNav";
-      workforceA.href = "/workforce.html";
-      workforceA.textContent = "Workforce";
-      workforceLi.appendChild(workforceA);
-      nav.appendChild(workforceLi);
-
-      const learningLi = document.createElement("li");
-      const learningA = document.createElement("a");
-      learningA.id = "employeeLearningNav";
-      learningA.href = "/education-portal.html";
-      learningA.textContent = "Learning";
-      learningLi.appendChild(learningA);
-      nav.appendChild(learningLi);
+    if (employee360Roles.has(role)) {
+      quick.appendChild(launcher("Employee 360", "/employee360.html", "Open HR employee records, compliance and workforce management", "employeeHr360Launcher"));
     }
-    if (nav && !document.getElementById("employeeSpireNav")) {
-      const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.id = "employeeSpireNav";
-      a.href = shiftRoles.has(role) ? "/spire-shift.html" : (clinicalRoles.has(role) ? "/spire.html" : "/spire-training.html");
-      a.textContent = shiftRoles.has(role) ? "My Shift" : (clinicalRoles.has(role) ? "SPIRE" : "SPIRE Training");
-      li.appendChild(a);
-      nav.appendChild(li);
+    if (schedulingRoles.has(role)) {
+      quick.appendChild(launcher("Scheduling", "/scheduling.html", "Open workforce scheduling and staffing operations", "employeeSchedulingLauncher"));
     }
+    if (enterpriseAnalyticsRoles.has(role)) {
+      quick.appendChild(launcher("Enterprise Analytics", "/enterprise-analytics.html", "Open company-scoped operational analytics", "employeeAnalyticsLauncher"));
+    }
+    if (securityAuditRoles.has(role)) {
+      quick.appendChild(launcher("Security & Audit", "/security-audit.html", "Open company-scoped audit and access-review evidence", "employeeSecurityAuditLauncher"));
+    }
+    if (companyDocumentRoles.has(role)) {
+      quick.appendChild(launcher("Company Documents", "/company-documents.html", "Open authorized official company records", "employeeCompanyDocumentsLauncher"));
+    }
+
+    appendNavLink("employeeWorkforceNav", "Workforce", "/workforce.html");
+    appendNavLink("employeeLearningNav", "Learning", "/education-portal.html");
+    if (shiftRoles.has(role)) appendNavLink("employeeSpireNav", "My Shift", "/spire-shift.html");
+    else if (clinicalRoles.has(role)) appendNavLink("employeeSpireNav", "SPIRE", "/spire.html");
+    else appendNavLink("employeeSpireNav", "SPIRE Training", "/spire-training.html");
   }
 
   async function installCompanyScopedLaunchers(session) {
-    if (document.getElementById("employeeHomeHealthVisitsLauncher")) return;
     try {
       const context = await entityContext();
       const entities = Array.isArray(context.entities) ? context.entities : [];
       const savedId = window.sessionStorage.getItem(ENTITY_KEY) || window.localStorage.getItem(ENTITY_KEY) || context.primaryEntityId || "";
-      const selected = entities.find((entity) => entity.id === savedId) || entities.find((entity) => entity.id === context.primaryEntityId) || entities[0];
-      if (!selected || selected.code !== "HOME_HEALTH" || selected.status !== "ACTIVE") return;
+      const selected = entities.find((entity) => String(entity.id) === String(savedId)) || entities.find((entity) => String(entity.id) === String(context.primaryEntityId)) || entities[0];
+      if (!selected || selected.status !== "ACTIVE") return;
       const quick = document.querySelector(".page-hero .quick-actions");
       if (!quick) return;
-      const visits = launcher("My Home Health Visits", "/home-health-visits.html", "Open assigned skilled nursing, therapy, respiratory, aide or social-work visits", "employeeHomeHealthVisitsLauncher");
-      quick.appendChild(visits);
       const role = String(session.role || "").toUpperCase();
-      if (homeHealthManagementRoles.has(role)) {
-        const operations = launcher("Home Health Operations", "/home-health.html", "Manage Home Health referrals, episodes, Plan of Care, disciplines, staff and scheduling", "employeeHomeHealthOperationsLauncher");
-        quick.appendChild(operations);
+
+      if (selected.code === "SCLS" && sclsOperationsRoles.has(role)) {
+        setVisible("employeeStaticSclsOperations", true);
+        if (!document.getElementById("employeeSclsOperationsLauncher")) {
+          quick.appendChild(launcher("SCLS Home Operations", "/scls-residential.html", "Open residential homes, residents, assignments, handoffs and house operations", "employeeSclsOperationsLauncher"));
+        }
+        appendNavLink("employeeSclsOperationsNav", "SCLS Operations", "/scls-residential.html");
       }
-      const nav = document.querySelector(".nav-links");
-      if (nav && !document.getElementById("employeeHomeHealthNav")) {
-        const li = document.createElement("li");
-        const a = document.createElement("a");
-        a.id = "employeeHomeHealthNav";
-        a.href = "/home-health-visits.html";
-        a.textContent = "Home Health";
-        li.appendChild(a);
-        nav.appendChild(li);
+
+      if (selected.code === "HOME_HEALTH" && homeHealthVisitRoles.has(role)) {
+        if (!document.getElementById("employeeHomeHealthVisitsLauncher")) {
+          quick.appendChild(launcher("My Home Health Visits", "/home-health-visits.html", "Open assigned skilled nursing, therapy, respiratory, aide or social-work visits", "employeeHomeHealthVisitsLauncher"));
+        }
+        if (homeHealthManagementRoles.has(role) && !document.getElementById("employeeHomeHealthOperationsLauncher")) {
+          quick.appendChild(launcher("Home Health Operations", "/home-health.html", "Manage Home Health referrals, episodes, Plan of Care, disciplines, staff and scheduling", "employeeHomeHealthOperationsLauncher"));
+        }
+        appendNavLink("employeeHomeHealthNav", "Home Health", "/home-health-visits.html");
+      }
+
+      if (selected.code === "NMT" && nmtDispatchRoles.has(role)) {
+        if (!document.getElementById("employeeNmtDispatchLauncher")) {
+          quick.appendChild(launcher("NMT Dispatch", "/nmt-dispatch.html", "Dispatch trips, assign drivers and vehicles, and manage transportation operations", "employeeNmtDispatchLauncher"));
+        }
+        appendNavLink("employeeNmtDispatchNav", "NMT Dispatch", "/nmt-dispatch.html");
       }
     } catch (error) {
       console.warn("Unable to install company-scoped employee launchers", error);
@@ -437,32 +485,36 @@
       signOut();
       return;
     }
-    if (session.role === "ADMINISTRATOR") {
+    const role = String(session.role || "").toUpperCase();
+    if (executiveAdminRoles.has(role)) {
       window.location.replace("admin.html");
       return;
     }
-    $("empName").textContent =
-      session.displayName
-      || session.fullName
-      || session.name
-      || session.email
-      || session.username
-      || "Employee";
-    $("empRole").textContent = String(session.role || "Employee")
-      .toLowerCase()
-      .replaceAll("_", " ")
-      .replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+    $("empName").textContent = session.displayName || session.fullName || session.name || session.email || session.username || "Employee";
+    $("empRole").textContent = role.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
     setStatusBadge("Active");
+    applyStaticRoleVisibility(session);
     installPrimaryWorkLaunchers();
     installApplicationLaunchers(session);
     installCompanyScopedLaunchers(session);
     wireLegacyPortalButtons();
     startWorkCenterRefresh();
+    document.body.dataset.authenticatedRole = role;
+    document.body.dataset.roleUatReady = "true";
   }
 
   $("btnSignOut")?.addEventListener("click", (event) => {
     event.preventDefault();
     signOut();
+  });
+
+  window.SulandraRoleUat = Object.freeze({
+    contract: UAT_CONTRACT,
+    clinicalRoles: [...clinicalRoles],
+    shiftRoles: [...shiftRoles],
+    companyDocumentRoles: [...companyDocumentRoles],
+    nmtDispatchRoles: [...nmtDispatchRoles],
+    executiveAdminRoles: [...executiveAdminRoles],
   });
 
   loadAuthenticatedIdentity();
