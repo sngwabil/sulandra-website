@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const CONTRACT='20260810-spire-chart-ready-2';
+  const CONTRACT='20260810-spire-chart-ready-3';
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   let opening=false;
   let requestedPatientId='';
@@ -32,6 +32,16 @@
     const chart=document.getElementById('spireChartWorkspace');
     const strip=document.getElementById('spirePatientStrip');
     return Boolean(chart&&strip&&!strip.hidden&&chart.querySelector('[data-chart-tab]'));
+  }
+
+  function markChartReady(patientId){
+    patientId=String(patientId||'').trim();
+    if(!patientId||!chartIsOpen())return false;
+    forceChartActive();
+    sessionStorage.setItem('spire:patientId',patientId);
+    document.body.dataset.spireChartReady='true';
+    document.body.dataset.spireChartPatientId=patientId;
+    return true;
   }
 
   function forceChartActive(){
@@ -68,11 +78,18 @@
     if(!patientId)return false;
     requestedPatientId=patientId;
     requestedTab=tab||requestedTab||'';
+
+    if(document.body.dataset.spireChartReady==='true'&&document.body.dataset.spireChartPatientId===patientId&&chartIsOpen()){
+      forceChartActive();
+      await selectTab(requestedTab);
+      return true;
+    }
+
     if(opening){
       const started=Date.now();
       while(Date.now()-started<5000){
         if(chartIsOpen()){
-          forceChartActive();
+          markChartReady(patientId);
           await selectTab(requestedTab);
           return true;
         }
@@ -87,11 +104,8 @@
         await window.SpireOpenPatient(patientId);
         for(let probe=0;probe<30;probe++){
           if(chartIsOpen()){
-            forceChartActive();
+            markChartReady(patientId);
             await selectTab(requestedTab);
-            sessionStorage.setItem('spire:patientId',patientId);
-            document.body.dataset.spireChartReady='true';
-            document.body.dataset.spireChartPatientId=patientId;
             return true;
           }
           await sleep(100);
@@ -105,8 +119,7 @@
 
   function stabilize(){
     if(!requestedPatientId||!chartIsOpen())return;
-    const chart=document.getElementById('spireChartWorkspace');
-    if(!chart?.classList.contains('active'))forceChartActive();
+    markChartReady(requestedPatientId);
   }
 
   document.addEventListener('click',event=>{
@@ -127,7 +140,7 @@
     if(initial.patientId)await ensurePatientChart(initial.patientId,initial.tab);
   }
 
-  window.SpireChartReady=Object.freeze({contract:CONTRACT,ensurePatientChart,forceChartActive,chartIsOpen});
+  window.SpireChartReady=Object.freeze({contract:CONTRACT,ensurePatientChart,forceChartActive,chartIsOpen,markChartReady});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>start().catch(()=>{}),{once:true});
   else start().catch(()=>{});
 })();
