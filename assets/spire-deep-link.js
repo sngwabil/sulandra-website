@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
   function request() {
     const query = new URLSearchParams(location.search);
     const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
@@ -14,7 +16,19 @@
     while (Date.now() - started < timeoutMs) {
       const node = document.querySelector(selector);
       if (node) return node;
-      await new Promise(resolve => setTimeout(resolve, 80));
+      await sleep(80);
+    }
+    return null;
+  }
+
+  async function waitForAuthorizedPatient(census, patientId, timeoutMs = 15000) {
+    const selector = `[data-patient-id="${CSS.escape(patientId)}"]`;
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      census.click();
+      const row = document.querySelector(selector);
+      if (row) return row;
+      await sleep(120);
     }
     return null;
   }
@@ -25,9 +39,7 @@
 
     const census = await waitFor('[data-workspace="census"]');
     if (!census) return;
-    census.click();
-
-    const row = await waitFor(`[data-patient-id="${CSS.escape(patientId)}"]`);
+    const row = await waitForAuthorizedPatient(census, patientId);
     if (!row) return;
     row.click();
 
