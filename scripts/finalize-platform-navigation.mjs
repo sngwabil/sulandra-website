@@ -9,68 +9,41 @@ const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
 await import('./install-sulandra-sso-session.mjs');
 
 const routeMap = new Map([
-  ['/policies', '/policies.html'],
-  ['/documents', '/policies.html'],
-  ['/news', '/news.html'],
-  ['/feedback', '/feedback.html'],
-  ['/payroll', '/payroll.html'],
-  ['/benefits', '/benefits.html'],
-  ['/employee-directory', '/employee-directory.html'],
-  ['/leadership', '/leadership.html'],
-  ['/contact', '/employee-directory.html'],
-  ['/support', '/support.html'],
-  ['/it-request', '/support.html'],
-  ['/time-attendance', '/time-attendance.html'],
-  ['/scheduling', '/scheduling.html'],
-  ['/my-work', '/my-work.html'],
-  ['/notifications', '/notifications.html'],
-  ['/incident-reporting', '/health-safety.html'],
-  ['/health-safety', '/health-safety.html'],
-  ['/caregiver-resources', '/education-portal.html'],
-  ['/about', '/index.html#about'],
-  ['/services/community-living', '/services/community-living/index.html'],
-  ['/services/waiver', '/services/community-living/index.html#services'],
-  ['/logout', '/employee-login.html'],
+  ['/policies','/policies.html'],['/documents','/policies.html'],['/news','/news.html'],['/feedback','/feedback.html'],
+  ['/payroll','/payroll.html'],['/benefits','/benefits.html'],['/employee-directory','/employee-directory.html'],['/leadership','/leadership.html'],
+  ['/contact','/employee-directory.html'],['/support','/support.html'],['/it-request','/support.html'],['/time-attendance','/time-attendance.html'],
+  ['/scheduling','/scheduling.html'],['/my-work','/my-work.html'],['/notifications','/notifications.html'],['/incident-reporting','/health-safety.html'],
+  ['/health-safety','/health-safety.html'],['/caregiver-resources','/education-portal.html'],['/about','/index.html#about'],
+  ['/services/community-living','/services/community-living/index.html'],['/services/waiver','/services/community-living/index.html#services'],['/logout','/employee-login.html'],
 ]);
-
 const cleanRoutePages = new Map([
-  ['policies', 'policies.html'],
-  ['documents', 'policies.html'],
-  ['news', 'news.html'],
-  ['feedback', 'feedback.html'],
-  ['payroll', 'payroll.html'],
-  ['benefits', 'benefits.html'],
-  ['employee-directory', 'employee-directory.html'],
-  ['leadership', 'leadership.html'],
-  ['support', 'support.html'],
-  ['it-request', 'support.html'],
-  ['time-attendance', 'time-attendance.html'],
-  ['scheduling', 'scheduling.html'],
-  ['my-work', 'my-work.html'],
-  ['notifications', 'notifications.html'],
-  ['incident-reporting', 'health-safety.html'],
-  ['health-safety', 'health-safety.html'],
+  ['policies','policies.html'],['documents','policies.html'],['news','news.html'],['feedback','feedback.html'],['payroll','payroll.html'],
+  ['benefits','benefits.html'],['employee-directory','employee-directory.html'],['leadership','leadership.html'],['support','support.html'],
+  ['it-request','support.html'],['time-attendance','time-attendance.html'],['scheduling','scheduling.html'],['my-work','my-work.html'],
+  ['notifications','notifications.html'],['incident-reporting','health-safety.html'],['health-safety','health-safety.html'],
 ]);
 
 async function walk(directory) {
-  const files = [];
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const target = path.join(directory, entry.name);
+  const files=[];
+  for (const entry of await readdir(directory,{withFileTypes:true})) {
+    const target=path.join(directory,entry.name);
     if(entry.isDirectory()) files.push(...await walk(target));
-    else if(entry.isFile() && entry.name.toLowerCase().endsWith('.html')) files.push(target);
+    else if(entry.isFile()&&entry.name.toLowerCase().endsWith('.html')) files.push(target);
   }
   return files;
 }
-
 function replaceExactHref(html, from, to) {
-  const escaped = from.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const escaped=from.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   return html.replace(new RegExp(`href=(['"])${escaped}\\1`,'g'),`href="${to}"`);
 }
 
 for (const file of await walk(dist)) {
-  let html = await readFile(file,'utf8');
-  const original = html;
-  for(const [from,to] of routeMap) html = replaceExactHref(html,from,to);
+  // Admin owns navigation in assets/admin-company-context.js. Generic route
+  // normalization must never rewrite the canonical Admin publication.
+  if (path.basename(file).toLowerCase() === 'admin.html') continue;
+  let html=await readFile(file,'utf8');
+  const original=html;
+  for(const [from,to] of routeMap) html=replaceExactHref(html,from,to);
   if(html!==original) await writeFile(file,html,'utf8');
 }
 
@@ -109,5 +82,4 @@ try{
 
 await import('./finalize-spire-workspace-completion.mjs');
 await import('./verify-employee-work-center.mjs');
-
-console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; dedicated My Work, Notifications, Scheduling, Time & Attendance, Employee 360 routes and complete SPIRE workspaces are restored to live applications.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected from generic post-build rewriting.');
