@@ -16,8 +16,8 @@ test('renders the first-class Employee 360 workspace and opens a profile',async(
   await expect(page.getByRole('button',{name:/Sulpitius Ndeh Gwabil/})).toBeVisible();
   await page.getByRole('button',{name:/Sulpitius Ndeh Gwabil/}).click();
   await expect(page.getByRole('heading',{name:'Sulpitius Ndeh Gwabil'})).toBeVisible();
-  await expect(page.getByText('Enterprise Owner')).toBeVisible();
-  await page.getByRole('button',{name:'Secure Files'}).click();
+  await expect(page.locator('#employeeMeta')).toContainText('Enterprise Owner');
+  await page.locator('#tabs button[data-tab="files"]').click();
   await expect(page.getByText('RN License.pdf')).toBeVisible();
   await expect(page.getByText('SSE-KMS')).toBeVisible();
   await expect(page.getByText('CLEAN')).toBeVisible();
@@ -28,8 +28,8 @@ test('supports mobile navigation without blanking the employee workspace',async(
   await page.goto('/employee360.html');
   await page.getByRole('button',{name:/Sulpitius Ndeh Gwabil/}).click();
   await expect(page.locator('#workspace')).toBeVisible();
-  await page.getByRole('button',{name:'Onboarding'}).click();
+  await page.locator('#tabs button[data-tab="onboarding"]').click();
   await expect(page.getByPlaceholder('Applicant/application ID')).toBeVisible();
-  await page.getByRole('button',{name:'Security'}).click();
+  await page.locator('#tabs button[data-tab="security"]').click();
   await expect(page.locator('#tab-security')).toBeVisible();
 });
