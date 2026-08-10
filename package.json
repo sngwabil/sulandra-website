@@ -36,7 +36,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:check-prerequisites": "node scripts/check-database-prerequisites.mjs",
     "db:verify-careers-schema": "node scripts/verify-careers-schema.mjs",
-    "db:predeploy": "npm run db:check-prerequisites && npm run db:recover-failed-doo-migration && npm run db:migrate:deploy && npm run db:verify-careers-schema"
+    "db:predeploy": "node scripts/run-db-predeploy.mjs"
   },
   "devDependencies": {
     "prisma": "^6.12.0"
