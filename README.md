@@ -3,7 +3,7 @@
 > **STOP: Read [`DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md) before editing this repository.**
 >
 > The permanent primary development branch is `feature/spire-ehr-platform`.
-> The **Sulandra Static Website** is the frontend, while **sulandra-website** is the backend API. Do not mix their routing, deployment, or build responsibilities.
+> The **Sulandra Static Website** is the frontend, while **sulandra-website** is the backend API. Do not mix their routing, deployment, database, or build responsibilities.
 
 This repository contains the public Sulandra website and the production API used by
 the unified Sulandra Employee Portal.
@@ -18,7 +18,7 @@ The product flow is:
 S.P.I.R.E. is the clinical charting application inside the Sulandra desktop. It is
 not a separate employee portal.
 
-## Local API validation
+## Local validation
 
 ```bash
 npm ci
@@ -29,12 +29,18 @@ npm run check
 Copy `.env.example` to `.env` for local development and provide real values. Never
 commit `.env` or production secrets.
 
-## Railway deployment
+## Railway production services
 
-Railway must deploy from the repository root so it can use `Dockerfile`,
-`railway.json`, the root npm workspace, and `prisma/`.
+This repository deploys two different Railway services. Read
+`DEVELOPMENT_WORKFLOW.md` before changing either deployment.
 
-Required variables:
+### Backend API — sulandra-website
+
+The backend service deploys from the repository root using `Dockerfile` and
+`railway.json`. It owns Express, Prisma, authentication, email, database access,
+and all `/api/*` and `/public/*` API routes.
+
+Required variables include:
 
 - `DATABASE_URL`
 - `CLIENT_ORIGIN`
@@ -46,21 +52,44 @@ Required variables:
 `SULANDRA_INTERNAL_API_KEY` is required only for trusted service-to-service calls.
 Use a different secret from `JWT_SECRET`.
 
-The pre-deploy command first verifies the base schema and then runs
-`prisma migrate deploy`. The target database must already contain the base S.P.I.R.E.
-`Organization`, `User`, `EmployeeApplication`, and `AuditEvent` tables before the
-careers and employee-credential migrations are applied. Deployment stops with a
-clear error if any prerequisite is missing.
+The backend database predeploy runs through:
 
-## Vercel deployment
+```bash
+npm run db:predeploy
+```
 
-`vercel.json` runs `npm run build:web` and publishes only `dist-web/`. The static
-build copies the public website files and excludes API source, Prisma files,
-deployment configuration, and environment files.
+That command uses `scripts/run-db-predeploy.mjs` to serialize database deployment
+across competing backend deployments, verify the supported base schema, recover
+only recognized unfinished failed Prisma migration attempts, run
+`prisma migrate deploy`, and perform post-migration schema verification.
+
+The target database must already contain the supported legacy S.P.I.R.E. base
+schema, including the required `Organization`, `User`, `EmployeeApplication`, and
+`AuditEvent` prerequisites. Deployment stops if required prerequisites are missing.
+
+### Frontend — Sulandra Static Website
+
+The static frontend service uses `Dockerfile.frontend` and
+`railway.frontend.json`. It builds with:
+
+```bash
+npm run build:web
+```
+
+Only `dist-web/` is served by the static container. The frontend deployment must
+not run Prisma migrations, database recovery, or the backend predeploy sequence.
 
 The public Employee Portal link opens the static `employee-login.html` page. That
-page authenticates against the Railway API and stores the returned Bearer token
-only for the current browser tab session.
+page authenticates against the Railway backend API and stores the returned Bearer
+token only for the current browser tab session.
+
+## CI and migration validation
+
+GitHub CI validates the API and website build and also runs the ordered Prisma SQL
+migration history against a disposable PostgreSQL 16 database initialized with the
+supported legacy S.P.I.R.E. baseline. Migration changes should not be considered
+ready for deployment until that migration-smoke job reaches the end of the chain
+and verifies the expected platform tables.
 
 ## Employee authentication and routing
 
@@ -110,4 +139,4 @@ instead use `x-sulandra-api-key` and the internal identity headers.
 
 - `GET /live` confirms that the Node process is accepting requests.
 - `GET /health` confirms that the API can connect to PostgreSQL. Railway uses this
-  endpoint before promoting a deployment.
+  endpoint before promoting a backend deployment.
