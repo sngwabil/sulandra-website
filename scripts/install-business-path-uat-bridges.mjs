@@ -63,14 +63,23 @@ await update('employee-portal-railway.js', source => {
 await update('assets/spire-app-v2.js', source => {
   let next = source;
   const oldOrder = '      renderPatientStrip();\n      renderChartWorkspace();';
-  const chartFirst = '      /* BUSINESS_UAT_CHART_FIRST */\n      renderChartWorkspace();\n      renderPatientStrip();';
-  if (next.includes(oldOrder)) next = next.replace(oldOrder, chartFirst);
-  if (!next.includes('BUSINESS_UAT_CHART_FIRST')) throw new Error('SPIRE chart-first patient open hardening was not installed');
+  const priorChartFirst = '      /* BUSINESS_UAT_CHART_FIRST */\n      renderChartWorkspace();\n      renderPatientStrip();';
+  const stabilizedChartOpen = `      /* BUSINESS_UAT_CHART_FIRST */\n      /* BUSINESS_UAT_CHART_STABILIZED */\n      try { renderPatientStrip(); } catch (error) { console.error('[SPIRE patient strip]', error); }\n      renderChartWorkspace();\n      const openedPatientId = String(id);\n      const stabilizeOpenedChart = () => {\n        const currentPatientId = String(state.patient?.id || state.patient?.patientId || '');\n        if (currentPatientId !== openedPatientId) return;\n        const chartWorkspace = $('spireChartWorkspace');\n        if (!chartWorkspace) return;\n        document.querySelectorAll('.spire-workspace').forEach(node => node.classList.remove('active'));\n        chartWorkspace.classList.add('active');\n      };\n      stabilizeOpenedChart();\n      requestAnimationFrame(stabilizeOpenedChart);\n      setTimeout(stabilizeOpenedChart, 120);`;
+  if (next.includes(oldOrder)) next = next.replace(oldOrder, stabilizedChartOpen);
+  else if (next.includes(priorChartFirst)) next = next.replace(priorChartFirst, stabilizedChartOpen);
+  if (!next.includes('BUSINESS_UAT_CHART_FIRST') || !next.includes('BUSINESS_UAT_CHART_STABILIZED')) throw new Error('SPIRE stabilized chart-open hardening was not installed');
+
+  if (!next.includes('window.SpireOpenPatient = openPatient')) {
+    const exposeAnchor = '\n  function renderPatientStrip() {';
+    if (!next.includes(exposeAnchor)) throw new Error('SPIRE native patient opener export anchor is missing');
+    next = next.replace(exposeAnchor, '\n  window.SpireOpenPatient = openPatient;\n\n  function renderPatientStrip() {');
+  }
+  if (!next.includes('window.SpireOpenPatient = openPatient')) throw new Error('SPIRE native patient opener was not exported');
 
   if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK')) {
     const marker = '      renderMiniPanels();\n      renderHome();\n';
     if (!next.includes(marker)) throw new Error('SPIRE foundation load anchor is missing');
-    const bridge = `${marker}      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId && state.patients.some(p => String(p.id || p.patientId) === String(deepLinkPatientId))) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
+    const bridge = `${marker}      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
     next = next.replace(marker, bridge);
   }
   if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK') || !next.includes('await openPatient(deepLinkPatientId)')) throw new Error('SPIRE native patient/tab deep-link bridge was not installed');
@@ -114,5 +123,5 @@ await update('employee-portal.html', source => {
 if (skippedFrontendSources.length) {
   console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, native chart-first SPIRE patient/tab deep links, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, native stabilized SPIRE patient/tab opening, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
 }
