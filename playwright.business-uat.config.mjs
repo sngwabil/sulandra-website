@@ -1,5 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
+await import('./scripts/prepare-production-business-uat-round14.mjs');
+
 export default defineConfig({
   testDir: './tests',
   testMatch: /production-business-path-uat\.spec\.mjs/,
