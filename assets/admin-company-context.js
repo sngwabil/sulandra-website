@@ -29,71 +29,74 @@
       .admin-company-state{display:inline-flex;align-items:center;justify-content:center;min-width:58px;border-radius:999px;padding:5px 7px;font-size:9px;font-weight:950;letter-spacing:.05em;color:#17603a;background:#dff7e9;border:1px solid #a7e2bf}
       .admin-company-state[data-status="PLANNED"]{color:#80560a;background:#fff5d7;border-color:#ead28a}
       .admin-company-state[data-status="ERROR"]{color:#8f1d1d;background:#fee8e8;border-color:#f4b2b2}
-      .sulandra-workspace-link{position:relative}.sulandra-workspace-link::after{content:'NEW';margin-left:6px;padding:2px 5px;border-radius:999px;background:#e2f3fb;color:#075985;font-size:8px;font-weight:950;vertical-align:middle}
+      .sulandra-workspace-link{position:relative}.sulandra-workspace-link::after{content:'LIVE';margin-left:6px;padding:2px 5px;border-radius:999px;background:#e2f3fb;color:#075985;font-size:8px;font-weight:950;vertical-align:middle}
+      [data-company-module][hidden]{display:none!important}
       @media(max-width:980px){.admin-company-context{order:10;width:100%;min-width:100%}.admin-company-select{font-size:12px}}
       @media(max-width:680px){.admin-company-context label{display:none}.admin-company-state{min-width:52px}}
     `;
     document.head.appendChild(style);
   }
 
+  const topLink = (id, label, href, companyCode = '') => {
+    const item = document.createElement('li');
+    item.id = id;
+    if (companyCode) { item.dataset.companyModule = companyCode; item.hidden = true; }
+    item.innerHTML = `<a class="sulandra-workspace-link" href="${href}">${label}</a>`;
+    return item;
+  };
+  const sideButton = (id, label, sub, href, companyCode = '') => {
+    const button = document.createElement('button');
+    button.id = id;
+    button.className = 'side-btn';
+    button.type = 'button';
+    if (companyCode) { button.dataset.companyModule = companyCode; button.hidden = true; }
+    button.innerHTML = `${label} <small>${sub}</small>`;
+    button.addEventListener('click', () => { window.location.href = href; });
+    return button;
+  };
+
   function installWorkspaceLinks() {
     const top = document.getElementById('topModuleNav');
     if (top && !document.getElementById('adminCompanyFilesTopLink')) {
-      const intakeItem = document.createElement('li');
-      intakeItem.id = 'adminClientIntakeTopLink';
-      intakeItem.innerHTML = '<a class="sulandra-workspace-link" href="/client-intake.html">Client Intake</a>';
-      const nmtItem = document.createElement('li');
-      nmtItem.id = 'adminNmtOrdersTopLink';
-      nmtItem.innerHTML = '<a class="sulandra-workspace-link" href="/nmt-orders.html">NMT Orders</a>';
-      const filesItem = document.createElement('li');
-      filesItem.id = 'adminCompanyFilesTopLink';
-      filesItem.innerHTML = '<a class="sulandra-workspace-link" href="/company-documents.html">Company Files</a>';
-      const trainingItem = document.createElement('li');
-      trainingItem.id = 'adminSpireTrainingTopLink';
-      trainingItem.innerHTML = '<a class="sulandra-workspace-link" href="/spire-training.html">SPIRE Training</a>';
-      const adminSpireItem = Array.from(top.children).find((item) => /Admin Spire/i.test(item.textContent || ''));
-      if (adminSpireItem) {
-        top.insertBefore(intakeItem, adminSpireItem);
-        top.insertBefore(nmtItem, adminSpireItem);
-        top.insertBefore(filesItem, adminSpireItem);
-        top.insertBefore(trainingItem, adminSpireItem);
-      } else top.append(intakeItem, nmtItem, filesItem, trainingItem);
+      const links = [
+        topLink('adminClientIntakeTopLink','Client Intake','/client-intake.html'),
+        topLink('adminHomeHealthReferralsTopLink','HH Referrals','/home-health-referrals.html','HOME_HEALTH'),
+        topLink('adminHomeHealthTopLink','Home Health','/home-health.html','HOME_HEALTH'),
+        topLink('adminNmtOrdersTopLink','NMT Orders','/nmt-orders.html','NMT'),
+        topLink('adminNmtDispatchTopLink','NMT Dispatch','/nmt-dispatch.html','NMT'),
+        topLink('adminWorkforceTopLink','Workforce','/workforce-admin.html'),
+        topLink('adminMedicationQualificationsTopLink','Med Qualifications','/spire-medication-qualifications.html'),
+        topLink('adminCompanyFilesTopLink','Company Files','/company-documents.html'),
+        topLink('adminSpireTrainingTopLink','SPIRE Training','/spire-training.html'),
+      ];
+      const anchor = Array.from(top.children).find((item) => /Admin Spire/i.test(item.textContent || ''));
+      for (const item of links) anchor ? top.insertBefore(item, anchor) : top.appendChild(item);
     }
 
     const side = document.getElementById('sideModuleNav');
     if (side && !document.getElementById('adminCompanyFilesSideLink')) {
-      const intakeButton = document.createElement('button');
-      intakeButton.id = 'adminClientIntakeSideLink';
-      intakeButton.className = 'side-btn';
-      intakeButton.type = 'button';
-      intakeButton.innerHTML = 'Client Intake <small>Admission Packet</small>';
-      intakeButton.addEventListener('click', () => { window.location.href = '/client-intake.html'; });
-      const nmtButton = document.createElement('button');
-      nmtButton.id = 'adminNmtOrdersSideLink';
-      nmtButton.className = 'side-btn';
-      nmtButton.type = 'button';
-      nmtButton.innerHTML = 'NMT Orders <small>Facility Referrals</small>';
-      nmtButton.addEventListener('click', () => { window.location.href = '/nmt-orders.html'; });
-      const filesButton = document.createElement('button');
-      filesButton.id = 'adminCompanyFilesSideLink';
-      filesButton.className = 'side-btn';
-      filesButton.type = 'button';
-      filesButton.innerHTML = 'Company Files <small>Official Records</small>';
-      filesButton.addEventListener('click', () => { window.location.href = '/company-documents.html'; });
-      const trainingButton = document.createElement('button');
-      trainingButton.id = 'adminSpireTrainingSideLink';
-      trainingButton.className = 'side-btn';
-      trainingButton.type = 'button';
-      trainingButton.innerHTML = 'SPIRE Training <small>Practice Charts</small>';
-      trainingButton.addEventListener('click', () => { window.location.href = '/spire-training.html'; });
-      const adminSpireButton = Array.from(side.children).find((node) => /Admin Spire/i.test(node.textContent || ''));
-      if (adminSpireButton) {
-        side.insertBefore(intakeButton, adminSpireButton);
-        side.insertBefore(nmtButton, adminSpireButton);
-        side.insertBefore(filesButton, adminSpireButton);
-        side.insertBefore(trainingButton, adminSpireButton);
-      } else side.append(intakeButton, nmtButton, filesButton, trainingButton);
+      const buttons = [
+        sideButton('adminClientIntakeSideLink','Client Intake','Admission Packet','/client-intake.html'),
+        sideButton('adminHomeHealthReferralsSideLink','HH Referrals','Secure Referral Inbox','/home-health-referrals.html','HOME_HEALTH'),
+        sideButton('adminHomeHealthSideLink','Home Health','Episodes & Visits','/home-health.html','HOME_HEALTH'),
+        sideButton('adminNmtOrdersSideLink','NMT Orders','Facility Referrals','/nmt-orders.html','NMT'),
+        sideButton('adminNmtDispatchSideLink','NMT Dispatch','Trips & Drivers','/nmt-dispatch.html','NMT'),
+        sideButton('adminWorkforceSideLink','Workforce','Timesheets & Documents','/workforce-admin.html'),
+        sideButton('adminMedicationQualificationsSideLink','Med Qualifications','Administration Authority','/spire-medication-qualifications.html'),
+        sideButton('adminCompanyFilesSideLink','Company Files','Official Records','/company-documents.html'),
+        sideButton('adminSpireTrainingSideLink','SPIRE Training','Practice Charts','/spire-training.html'),
+      ];
+      const anchor = Array.from(side.children).find((node) => /Admin Spire/i.test(node.textContent || ''));
+      for (const button of buttons) anchor ? side.insertBefore(button, anchor) : side.appendChild(button);
     }
+    updateCompanyModuleVisibility();
+  }
+
+  function updateCompanyModuleVisibility() {
+    const code = selectedEntity?.code || '';
+    document.querySelectorAll('[data-company-module]').forEach((node) => {
+      node.hidden = node.dataset.companyModule !== code;
+    });
   }
 
   function mount() {
@@ -137,11 +140,11 @@
     const status = selectedEntity?.status || 'ERROR';
     const operationsStatus = selectedEntity?.metadata?.serviceOperationsStatus || status;
     const licensingStatus = selectedEntity?.metadata?.licensingStatus || 'UNKNOWN';
-    const state = document.getElementById('adminCompanyState');
-    if (state) {
-      state.dataset.status = status;
-      state.textContent = status;
-      state.title = status === 'ACTIVE'
+    const stateNode = document.getElementById('adminCompanyState');
+    if (stateNode) {
+      stateNode.dataset.status = status;
+      stateNode.textContent = status;
+      stateNode.title = status === 'ACTIVE'
         ? `Company workspace active • Operations: ${operationsStatus} • Licensing: ${licensingStatus}`
         : 'This company is planned and cannot be managed until it is legally and operationally activated.';
     }
@@ -158,6 +161,7 @@
       delete document.body.dataset.legalEntityId;
       delete document.body.dataset.legalEntityCode;
     }
+    updateCompanyModuleVisibility();
     if (notify && previousEntity?.id !== selectedEntity?.id) {
       const detail = { previousEntity, entity: selectedEntity };
       window.dispatchEvent(new CustomEvent('sulandra:company-change', { detail }));
@@ -202,7 +206,7 @@
     selectEntity(preferredEntity()?.id || '', false);
     select.title = activeEntityCount < 2
       ? 'SCLS is the only active company.'
-      : 'Select a company. Pre-launch companies allow recruiting and training while unapproved operating modules remain blocked.';
+      : 'Select a company. Company-specific operating modules follow this selection.';
   }
 
   async function loadContext() {
@@ -229,9 +233,9 @@
       .then((context) => { entityContext = context; render(); return context; })
       .catch((error) => {
         const select = document.getElementById('adminCompanySelect');
-        const state = document.getElementById('adminCompanyState');
+        const stateNode = document.getElementById('adminCompanyState');
         if (select) { select.innerHTML = '<option>Company context unavailable</option>'; select.disabled = true; }
-        if (state) { state.dataset.status = 'ERROR'; state.textContent = 'ERROR'; state.title = error.message; }
+        if (stateNode) { stateNode.dataset.status = 'ERROR'; stateNode.textContent = 'ERROR'; stateNode.title = error.message; }
         throw error;
       })
       .finally(() => { requestPromise = null; });
@@ -241,7 +245,7 @@
   function loadEnterpriseCompletionRuntime() {
     if (document.querySelector('script[data-sulandra-enterprise-completion]')) return;
     const script = document.createElement('script');
-    script.src = '/admin-enterprise-completion.js?v=20260809-full-completion-1';
+    script.src = '/admin-enterprise-completion.js?v=20260810-full-completion-2';
     script.dataset.sulandraEnterpriseCompletion = 'true';
     script.async = false;
     script.onerror = () => console.error('Sulandra enterprise admin completion runtime failed to load.');
