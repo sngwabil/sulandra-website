@@ -74,14 +74,19 @@ expect('admin mobile assets UI',adminAsset.includes('@media(max-width:780px)'));
 const selfInstaller=await read('scripts/install-employee-self-service-frontend.mjs');
 expect('employee assets asset published',selfInstaller.includes('/assets/employee-assets-self-service.js'));
 const adminInstaller=await read('scripts/install-employee-management-frontend.mjs');
-expect('admin assets asset published',adminInstaller.includes('/assets/admin-employee-assets-access.js'));
-const staticBuild=await read('scripts/build-static-site.mjs');
-expect('direct static build runs Employee 360 frontend installers',staticBuild.includes("import('./install-employee-self-service-frontend.mjs')")&&staticBuild.includes("import('./install-employee-management-frontend.mjs')"));
+expect('admin assets asset retained as compatibility publisher',adminInstaller.includes('/assets/admin-employee-assets-access.js'));
 
-const distAdmin='dist-web/admin.html';
-if(await exists(distAdmin)){const html=await read(distAdmin);expect('generated admin loads assets after leave',html.indexOf('/assets/admin-employee-assets-access.js')>html.indexOf('/assets/admin-employee-leave-offboarding.js'))}
+const canonicalBootstrap=await read('assets/admin-company-context.js');
+const leaveAt=canonicalBootstrap.indexOf("'admin-employee-leave-offboarding'");
+const assetsAtInBootstrap=canonicalBootstrap.indexOf("'admin-employee-assets-access'");
+expect('canonical Admin bootstrap loads assets after leave',leaveAt>=0&&assetsAtInBootstrap>leaveAt);
+expect('canonical Admin bootstrap lazy-loads Employee 360 suite',canonicalBootstrap.includes('function loadEmployeeSuite()')&&canonicalBootstrap.includes('employeeSuitePromise'));
+
 const distEmployee='dist-web/employee-portal.html';
-if(await exists(distEmployee)){const html=await read(distEmployee);expect('generated employee portal loads assets after leave',html.indexOf('/assets/employee-assets-self-service.js')>html.indexOf('/assets/employee-leave-self-service.js'))}
+if(await exists(distEmployee)){
+  const html=await read(distEmployee);
+  expect('generated employee portal loads assets after leave',html.indexOf('/assets/employee-assets-self-service.js')>html.indexOf('/assets/employee-leave-self-service.js'));
+}
 
 if(failures.length){console.error(`Employee 360 assets and access verification failed (${failures.length}/${checks.length}):`);failures.forEach(f=>console.error(` - ${f}`));process.exit(1)}
-console.log(`Employee 360 assets and access verification passed (${checks.length} checks).`);
+console.log(`Employee 360 assets and access verification passed (${checks.length} checks) using canonical Admin bootstrap ownership.`);
