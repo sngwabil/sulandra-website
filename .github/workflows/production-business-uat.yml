@@ -114,6 +114,26 @@ jobs:
           echo "Timed out waiting for the exact production business-UAT deployment." >&2
           exit 1
 
+      - name: Validate live SPIRE JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire.html -o /tmp/spire-live.html
+          mapfile -t scripts < <(grep -oE 'src="[^"]+\.js[^"]*"' /tmp/spire-live.html | sed -E 's/^src="//;s/"$//')
+          test "${#scripts[@]}" -gt 0
+          index=0
+          for src in "${scripts[@]}"; do
+            index=$((index+1))
+            if [[ "$src" == http* ]]; then url="$src"; else url="https://www.sulandrahealth.com${src}"; fi
+            target="/tmp/spire-live-${index}.js"
+            curl -fsSL --max-time 20 "$url" -o "$target"
+            if ! node --check "$target"; then
+              echo "Live SPIRE JavaScript syntax failure: $url" >&2
+              exit 1
+            fi
+          done
+          echo "Live SPIRE JavaScript syntax verified across ${#scripts[@]} scripts."
+
       - name: Install Playwright browser runtime
         run: |
           npm install --no-save @playwright/test@1.55.0
