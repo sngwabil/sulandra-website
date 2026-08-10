@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           contract='20260810-business-uat-1'
           spire_app_generation='20260810-business-uat-7'
-          shell_resilience_generation='20260810-spire-shell-resilience-2'
+          shell_resilience_generation='20260810-spire-shell-resilience-3'
           chart_ready_generation='20260810-spire-chart-ready-2'
           deep_link_generation='20260810-business-uat-5'
           chart_recovery_generation='20260810-spire-chart-recovery-1'
@@ -93,6 +93,7 @@ jobs:
               && grep -q "$shell_resilience_generation" <<<"$shell_resilience" \
               && grep -q 'SpireShellResilience' <<<"$shell_resilience" \
               && grep -q 'NON_DESTRUCTIVE_SHELL_RECOVERY' <<<"$shell_resilience" \
+              && grep -q 'SAFE_RUNTIME_REPAIR' <<<"$shell_resilience" \
               && grep -q 'PRESERVE_ACTIVE_PATIENT_CHART' <<<"$shell_resilience" \
               && grep -q "$chart_ready_generation" <<<"$chart_ready" \
               && grep -q 'BUSINESS_UAT_IDEMPOTENT_CHART_ACTIVE' <<<"$chart_ready" \
@@ -112,7 +113,7 @@ jobs:
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and non-destructive Item 7 SPIRE resilience v2 are live."
+              echo "Exact business-UAT production contract and guarded Item 7 SPIRE resilience v3 are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
