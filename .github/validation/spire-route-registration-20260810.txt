@@ -1,0 +1,1 @@
+Validation-only marker after the Employee 360 browser-selector fixes and complete SPIRE route registration. This branch exists only to trigger isolated CI and will not be merged.
