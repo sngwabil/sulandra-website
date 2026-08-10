@@ -1,0 +1,1 @@
+Validation-only marker after repairing enterprise completion TypeScript regressions. This branch exists only to trigger isolated CI and will not be merged.
