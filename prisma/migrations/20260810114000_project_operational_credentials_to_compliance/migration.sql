@@ -92,7 +92,6 @@ END;
 $$ LANGUAGE plpgsql;
 DO $$ BEGIN IF to_regclass('"SpireMedicationAdministrationQualification"') IS NOT NULL THEN EXECUTE 'DROP TRIGGER IF EXISTS "SpireMedicationQualification_compliance_projection" ON "SpireMedicationAdministrationQualification"'; EXECUTE 'CREATE TRIGGER "SpireMedicationQualification_compliance_projection" AFTER INSERT OR UPDATE ON "SpireMedicationAdministrationQualification" FOR EACH ROW EXECUTE FUNCTION "project_medication_qualification_compliance"()'; END IF; END $$;
 
--- Backfill existing operational credential records through their projection triggers.
-DO $$ DECLARE r record; BEGIN
-  IF to_regclass('"HomeHealthStaffProfile"') IS NOT NULL THEN FOR r IN SELECT * FROM "HomeHealthStaffProfile" LOOP PERFORM "project_home_health_staff_compliance"(); END LOOP; END IF;
-EXCEPTION WHEN others THEN NULL; END $$;
+-- Historical projection is intentionally handled by the ordinary-SQL backfill
+-- migration that follows. Trigger functions require NEW/OLD row context and must
+-- never be invoked directly from a DO block during deployment.
