@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const CONTRACT = '20260810-spire-shell-resilience-3';
-  const APP_GENERATION = '20260810-business-uat-7';
+  const CONTRACT = '20260810-spire-shell-resilience-4';
+  const APP_GENERATION = '20260810-business-uat-8';
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   let fallbackLoad = null;
   let recoveryRunning = false;
@@ -53,17 +53,15 @@
     return chart.classList.contains('active');
   }
 
-  async function loadFallbackApp({ allowRuntimeRepair = false } = {}) {
-    // NON_DESTRUCTIVE_SHELL_RECOVERY: never reload the application while a
-    // genuine shell/chart is present. A duplicate runtime can erase an open chart.
-    if (typeof window.SpireOpenPatient === 'function' && !allowRuntimeRepair) return shellReady();
-    if (allowRuntimeRepair && (shellReady() || chartReady())) return true;
+  async function loadFallbackApp() {
+    // NON_DESTRUCTIVE_SHELL_RECOVERY: a fallback application script is allowed
+    // only when the canonical application runtime never loaded at all.
+    if (typeof window.SpireOpenPatient === 'function' || typeof window.SpireEnsureShell === 'function') return shellReady();
     if (fallbackLoad) return fallbackLoad;
     fallbackLoad = new Promise((resolve) => {
       const script = document.createElement('script');
       script.src = `/assets/spire-app-v2.js?v=${APP_GENERATION}&shellRecovery=${CONTRACT}`;
       script.dataset.spireShellRecovery = CONTRACT;
-      script.dataset.spireSafeRuntimeRepair = allowRuntimeRepair ? 'true' : 'false';
       script.async = false;
       script.onload = () => resolve(shellReady() && typeof window.SpireOpenPatient === 'function');
       script.onerror = () => resolve(false);
@@ -75,35 +73,33 @@
   async function ensureShell() {
     if (shellReady() && typeof window.SpireOpenPatient === 'function') return true;
 
-    // Give the canonical synchronous application script and its normal
-    // DOMContentLoaded handler time to initialize. Do not redispatch
-    // DOMContentLoaded; doing so can invoke application initializers twice.
     const firstWait = Date.now();
     while (Date.now() - firstWait < 2500) {
       if (shellReady() && typeof window.SpireOpenPatient === 'function') return true;
       await sleep(60);
     }
 
-    // SAFE_RUNTIME_REPAIR: if the canonical runtime exists but the shell itself
-    // is genuinely absent, one guarded reload is safe because there is no chart
-    // DOM to preserve. This repairs missed/erased shell initialization without
-    // racing or rebuilding an already-open patient chart.
-    if (typeof window.SpireOpenPatient === 'function') {
+    // CANONICAL_SINGLE_RUNTIME_REPAIR: when the runtime exists but its shell is
+    // genuinely absent, invoke that exact runtime's exported installShell hook.
+    // Never load a second app runtime into the same page.
+    if (typeof window.SpireEnsureShell === 'function') {
       const runtimeWait = Date.now();
-      while (Date.now() - runtimeWait < 1800) {
+      while (Date.now() - runtimeWait < 1200) {
         if (shellReady()) return true;
         await sleep(80);
       }
       if (!shellReady() && !chartReady()) {
-        await loadFallbackApp({ allowRuntimeRepair: true });
+        try { window.SpireEnsureShell(); } catch (error) { console.error('[SPIRE canonical shell repair]', error); }
         const repairWait = Date.now();
-        while (Date.now() - repairWait < 3000) {
+        while (Date.now() - repairWait < 3500) {
           if (shellReady() && typeof window.SpireOpenPatient === 'function') return true;
           await sleep(80);
         }
       }
       return shellReady();
     }
+
+    if (typeof window.SpireOpenPatient === 'function') return shellReady();
 
     await loadFallbackApp();
     const fallbackWait = Date.now();
@@ -178,8 +174,7 @@
   }, true);
 
   // PRESERVE_ACTIVE_PATIENT_CHART: if another workspace transition races with
-  // a completed patient open, restore the visible chart rather than rebuilding
-  // the shell or application runtime.
+  // a completed patient open, restore the visible chart without rebuilding it.
   const observer = new MutationObserver(() => {
     if (!requestedPatientId || !chartReady()) return;
     activateChart(requestedPatientId);
