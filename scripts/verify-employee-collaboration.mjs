@@ -79,19 +79,32 @@ expect('admin mobile responsive design', adminAsset.includes('@media(max-width:7
 expect('bounded mutation observer scheduling', adminAsset.includes('requestAnimationFrame') && adminAsset.includes('installScheduled'));
 
 const adminInstaller = await read('scripts/install-employee-management-frontend.mjs');
-expect('admin collaboration asset published', adminInstaller.includes('/assets/admin-employee-collaboration.js'));
+expect('legacy Admin collaboration publisher still references asset for compatibility', adminInstaller.includes('/assets/admin-employee-collaboration.js'));
 const selfInstaller = await read('scripts/install-employee-self-service-frontend.mjs');
 expect('employee collaboration asset published', selfInstaller.includes('/assets/employee-collaboration-self-service.js'));
 const staticBuild = await read('scripts/build-static-site.mjs');
-expect('direct static build runs both Employee 360 installers', staticBuild.includes("import('./install-employee-self-service-frontend.mjs')") && staticBuild.includes("import('./install-employee-management-frontend.mjs')"));
+expect('direct static build publishes employee self-service but protects canonical Admin', staticBuild.includes("import('./install-employee-self-service-frontend.mjs')") && staticBuild.includes('Admin is deliberately not rewritten after publication'));
+
+const canonicalBootstrap = await read('assets/admin-company-context.js');
+const managementAt = canonicalBootstrap.indexOf("'admin-employee-management'");
+const complianceAt = canonicalBootstrap.indexOf("'admin-employee-compliance'");
+const collaborationAtInBootstrap = canonicalBootstrap.indexOf("'admin-employee-collaboration'");
+expect('canonical Admin bootstrap owns Employee 360 collaboration', canonicalBootstrap.includes('function loadEmployeeSuite()') && collaborationAtInBootstrap >= 0);
+expect('canonical Admin collaboration loads after management and compliance', managementAt >= 0 && complianceAt > managementAt && collaborationAtInBootstrap > complianceAt);
 
 const distAdminPath = 'dist-web/admin.html';
 if (await exists(distAdminPath)) {
   const html = await read(distAdminPath);
-  const managementAt = html.indexOf('/assets/admin-employee-management.js');
-  const complianceAt = html.indexOf('/assets/admin-employee-compliance.js');
-  const collaborationAtInHtml = html.indexOf('/assets/admin-employee-collaboration.js');
-  expect('generated admin collaboration script order', managementAt >= 0 && complianceAt > managementAt && collaborationAtInHtml > complianceAt);
+  expect('published Admin uses canonical company bootstrap', html.includes('/assets/admin-company-context.js'));
+  expect('published Admin does not hard-inject collaboration suite', !html.includes('/assets/admin-employee-collaboration.js'));
+}
+const distCanonicalBootstrap = 'dist-web/assets/admin-company-context.js';
+if (await exists(distCanonicalBootstrap)) {
+  const source = await read(distCanonicalBootstrap);
+  const publishedManagementAt = source.indexOf("'admin-employee-management'");
+  const publishedComplianceAt = source.indexOf("'admin-employee-compliance'");
+  const publishedCollaborationAt = source.indexOf("'admin-employee-collaboration'");
+  expect('published canonical bootstrap preserves collaboration order', publishedManagementAt >= 0 && publishedComplianceAt > publishedManagementAt && publishedCollaborationAt > publishedComplianceAt);
 }
 const distEmployeePath = 'dist-web/employee-portal.html';
 if (await exists(distEmployeePath)) {
@@ -104,4 +117,4 @@ if (failures.length) {
   failures.forEach(failure => console.error(` - ${failure}`));
   process.exit(1);
 }
-console.log(`Employee 360 collaboration verification passed (${checks.length} checks).`);
+console.log(`Employee 360 collaboration verification passed (${checks.length} checks) using canonical Admin bootstrap ownership.`);
