@@ -10,6 +10,9 @@
     "DSP", "LPN", "RN", "DELEGATING_NURSE", "HOUSE_MANAGER",
     "PROGRAM_MANAGER", "AUDITOR", "CEO", "DOO"
   ]);
+  const shiftRoles = new Set([
+    "DSP", "LPN", "RN", "DELEGATING_NURSE", "HOUSE_MANAGER", "PROGRAM_MANAGER"
+  ]);
 
   function readStoredSession() {
     try {
@@ -87,6 +90,11 @@
     quick.appendChild(training);
 
     const role = String(session.role || "").toUpperCase();
+    if (shiftRoles.has(role)) {
+      const shift = launcher("My Shift", "/spire-shift.html", "Assigned clients, due medications, vitals, weight, temperature and bedside tasks");
+      shift.id = "employeeMyShiftLauncher";
+      quick.appendChild(shift);
+    }
     if (clinicalRoles.has(role)) {
       const spire = launcher("Open SPIRE", "/spire.html", "Open authorized live client/patient charts");
       spire.id = "employeeLiveSpireLauncher";
@@ -104,8 +112,8 @@
       const li = document.createElement("li");
       const a = document.createElement("a");
       a.id = "employeeSpireNav";
-      a.href = clinicalRoles.has(role) ? "/spire.html" : "/spire-training.html";
-      a.textContent = clinicalRoles.has(role) ? "SPIRE" : "SPIRE Training";
+      a.href = shiftRoles.has(role) ? "/spire-shift.html" : (clinicalRoles.has(role) ? "/spire.html" : "/spire-training.html");
+      a.textContent = shiftRoles.has(role) ? "My Shift" : (clinicalRoles.has(role) ? "SPIRE" : "SPIRE Training");
       li.appendChild(a);
       nav.appendChild(li);
     }
