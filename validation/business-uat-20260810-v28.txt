@@ -1,0 +1,4 @@
+Validation-only round 28 for Item 7.
+Exact feature head: 6893cbf8c4e2016ec2c44060464012b4f4c8b67c
+Scope: canonical single-runtime SPIRE shell recovery (app generation 8 / resilience v4) plus Home Health referral rail stability.
+Do not merge.
