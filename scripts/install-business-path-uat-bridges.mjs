@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contract = '20260810-business-uat-1';
+const spireAppGeneration = '20260810-business-uat-5';
 const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
 const staleApi = 'https://sulandra-website-production.up.railway.app';
 const skippedFrontendSources = [];
@@ -57,6 +58,12 @@ await update('employee-portal-railway.js', source => {
   if (!source.includes(marker)) throw new Error('Employee Portal Home Health management launcher anchor is missing');
   const next = source.replace(marker, `${marker}\n          quick.appendChild(launcher("Home Health Referral Inbox", "/home-health-referrals.html", "Review secure hospital and provider Home Health referrals and create intake cases", "employeeHomeHealthReferralInboxLauncher"));`);
   if (!next.includes('employeeHomeHealthReferralInboxLauncher')) throw new Error('Employee Portal Home Health Referral Inbox launcher was not installed');
+  return next;
+});
+
+await update('spire.html', source => {
+  const next = source.replace(/\/assets\/spire-app-v2\.js\?v=[^"']+/g, `/assets/spire-app-v2.js?v=${spireAppGeneration}`);
+  if (!next.includes(`/assets/spire-app-v2.js?v=${spireAppGeneration}`)) throw new Error('SPIRE page is not pinned to the current chart-stabilized application generation');
   return next;
 });
 
@@ -123,5 +130,5 @@ await update('employee-portal.html', source => {
 if (skippedFrontendSources.length) {
   console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, native stabilized SPIRE patient/tab opening, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, pinned chart-stabilized SPIRE application generation, native stabilized SPIRE patient/tab opening, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
 }
