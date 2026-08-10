@@ -127,6 +127,7 @@ The required sequence is:
 Rules for database work:
 
 - Prefer additive, backward-compatible migrations when existing production tables or data are already in use.
+- Once any shared, staging, or production database has recorded a migration as applied, never edit that migration to repair drift or add omitted SQL. Create a new, later additive repair migration so Prisma history and checksums remain trustworthy.
 - Make retry-sensitive migrations safe against a partially completed prior attempt when practical.
 - Never drop, truncate, overwrite, or recreate existing production data merely to make a migration pass unless the data impact has been explicitly reviewed and approved.
 - Do not mark a migration rolled back unless the recovery script has positively identified an unfinished failed migration record.
