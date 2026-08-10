@@ -1,6 +1,15 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE IF NOT EXISTS "NmtVehicle" (
+-- This migration introduces only pre-launch NMT dispatch objects. If an earlier
+-- attempt failed part-way through, Prisma can mark it rolled back but PostgreSQL
+-- may still contain partial objects. Rebuild only these new dispatch tables so a
+-- retry is deterministic; no operational NMT trips exist before this migration.
+DROP TABLE IF EXISTS "NmtTripEvent" CASCADE;
+DROP TABLE IF EXISTS "NmtTrip" CASCADE;
+DROP TABLE IF EXISTS "NmtDriverProfile" CASCADE;
+DROP TABLE IF EXISTS "NmtVehicle" CASCADE;
+
+CREATE TABLE "NmtVehicle" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "organizationId" text NOT NULL,
   "legalEntityId" text NOT NULL,
@@ -29,9 +38,9 @@ CREATE TABLE IF NOT EXISTS "NmtVehicle" (
   CONSTRAINT "NmtVehicle_number_key" UNIQUE ("organizationId","legalEntityId","vehicleNumber"),
   CONSTRAINT "NmtVehicle_capacity_check" CHECK ("wheelchairCapacity">=0 AND "ambulatoryCapacity">=0)
 );
-CREATE INDEX IF NOT EXISTS "NmtVehicle_entity_active_idx" ON "NmtVehicle"("organizationId","legalEntityId","active","vehicleNumber");
+CREATE INDEX "NmtVehicle_entity_active_idx" ON "NmtVehicle"("organizationId","legalEntityId","active","vehicleNumber");
 
-CREATE TABLE IF NOT EXISTS "NmtDriverProfile" (
+CREATE TABLE "NmtDriverProfile" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "organizationId" text NOT NULL,
   "legalEntityId" text NOT NULL,
@@ -50,10 +59,10 @@ CREATE TABLE IF NOT EXISTS "NmtDriverProfile" (
   "updatedAt" timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT "NmtDriverProfile_entity_fkey" FOREIGN KEY ("organizationId","legalEntityId") REFERENCES "LegalEntity"("organizationId","id") ON DELETE RESTRICT
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "NmtDriverProfile_user_key" ON "NmtDriverProfile"("organizationId","legalEntityId","userId") WHERE "userId" IS NOT NULL;
-CREATE INDEX IF NOT EXISTS "NmtDriverProfile_entity_active_idx" ON "NmtDriverProfile"("organizationId","legalEntityId","active","displayName");
+CREATE UNIQUE INDEX "NmtDriverProfile_user_key" ON "NmtDriverProfile"("organizationId","legalEntityId","userId") WHERE "userId" IS NOT NULL;
+CREATE INDEX "NmtDriverProfile_entity_active_idx" ON "NmtDriverProfile"("organizationId","legalEntityId","active","displayName");
 
-CREATE TABLE IF NOT EXISTS "NmtTrip" (
+CREATE TABLE "NmtTrip" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "organizationId" text NOT NULL,
   "legalEntityId" text NOT NULL,
@@ -87,15 +96,15 @@ CREATE TABLE IF NOT EXISTS "NmtTrip" (
   "updatedAt" timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT "NmtTrip_entity_fkey" FOREIGN KEY ("organizationId","legalEntityId") REFERENCES "LegalEntity"("organizationId","id") ON DELETE RESTRICT,
   CONSTRAINT "NmtTrip_number_key" UNIQUE ("tripNumber"),
-  CONSTRAINT "NmtTrip_order_mode_check" CHECK ("mode" IN ('OPERATIONAL','TRAINING_ONLY')),
+  CONSTRAINT "NmtTrip_mode_check" CHECK ("mode" IN ('OPERATIONAL','TRAINING_ONLY')),
   CONSTRAINT "NmtTrip_status_check" CHECK ("status" IN ('SCHEDULED','DISPATCHED','EN_ROUTE_TO_PICKUP','ARRIVED_PICKUP','RIDER_ON_BOARD','EN_ROUTE_TO_DESTINATION','ARRIVED_DESTINATION','COMPLETED','NO_SHOW','CANCELLED'))
 );
-CREATE INDEX IF NOT EXISTS "NmtTrip_schedule_idx" ON "NmtTrip"("organizationId","legalEntityId","scheduledPickupAt","status");
-CREATE INDEX IF NOT EXISTS "NmtTrip_driver_idx" ON "NmtTrip"("organizationId","legalEntityId","driverId","scheduledPickupAt") WHERE "driverId" IS NOT NULL;
-CREATE INDEX IF NOT EXISTS "NmtTrip_vehicle_idx" ON "NmtTrip"("organizationId","legalEntityId","vehicleId","scheduledPickupAt") WHERE "vehicleId" IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS "NmtTrip_active_order_idx" ON "NmtTrip"("organizationId","legalEntityId","orderId") WHERE "status" NOT IN ('CANCELLED','NO_SHOW');
+CREATE INDEX "NmtTrip_schedule_idx" ON "NmtTrip"("organizationId","legalEntityId","scheduledPickupAt","status");
+CREATE INDEX "NmtTrip_driver_idx" ON "NmtTrip"("organizationId","legalEntityId","driverId","scheduledPickupAt") WHERE "driverId" IS NOT NULL;
+CREATE INDEX "NmtTrip_vehicle_idx" ON "NmtTrip"("organizationId","legalEntityId","vehicleId","scheduledPickupAt") WHERE "vehicleId" IS NOT NULL;
+CREATE UNIQUE INDEX "NmtTrip_active_order_idx" ON "NmtTrip"("organizationId","legalEntityId","orderId") WHERE "status" NOT IN ('CANCELLED','NO_SHOW');
 
-CREATE TABLE IF NOT EXISTS "NmtTripEvent" (
+CREATE TABLE "NmtTripEvent" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "organizationId" text NOT NULL,
   "legalEntityId" text NOT NULL,
@@ -110,10 +119,4 @@ CREATE TABLE IF NOT EXISTS "NmtTripEvent" (
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT "NmtTripEvent_entity_fkey" FOREIGN KEY ("organizationId","legalEntityId") REFERENCES "LegalEntity"("organizationId","id") ON DELETE RESTRICT
 );
-CREATE INDEX IF NOT EXISTS "NmtTripEvent_trip_idx" ON "NmtTripEvent"("organizationId","legalEntityId","tripId","createdAt");
-
-CREATE OR REPLACE FUNCTION "prevent_nmt_trip_event_mutation"() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'NmtTripEvent is append-only'; END; $$ LANGUAGE plpgsql;
-DROP TRIGGER IF EXISTS "NmtTripEvent_no_update" ON "NmtTripEvent";
-CREATE TRIGGER "NmtTripEvent_no_update" BEFORE UPDATE ON "NmtTripEvent" FOR EACH ROW EXECUTE FUNCTION "prevent_nmt_trip_event_mutation"();
-DROP TRIGGER IF EXISTS "NmtTripEvent_no_delete" ON "NmtTripEvent";
-CREATE TRIGGER "NmtTripEvent_no_delete" BEFORE DELETE ON "NmtTripEvent" FOR EACH ROW EXECUTE FUNCTION "prevent_nmt_trip_event_mutation"();
+CREATE INDEX "NmtTripEvent_trip_idx" ON "NmtTripEvent"("organizationId","legalEntityId","tripId","createdAt");
