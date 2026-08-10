@@ -83,7 +83,7 @@ requireMarkers(completion,[
   'data-task-action="START"',
   'data-task-action="COMPLETE"',
   'data-task-save',
-  "api('/api/spire/workspaces/orders",
+  'api(`/api/spire/workspaces/orders?${qs}`)',
   'Open Orders',
   'newOrderFromDashboard',
   'window.SpireOrderComposer?.open?.()',
@@ -134,7 +134,7 @@ requireMarkers(stability,[
 ],'SPIRE stability guard');
 
 requireMarkers(workflow,[
-  '/notes/${encodeURIComponent(id)}/sign',
+  '/notes/${encodeURIComponent(state.patientId)}/notes/${encodeURIComponent(data.id)}/sign',
   '/wrap-up',
   'Record Vitals',
   'Start Encounter',
@@ -143,7 +143,6 @@ requireMarkers(cpoe,['Order Composer','order-composer/check','Sign & Place Order
 requireMarkers(finalizer,['finalize-spire-workspace-completion','will be expanded in its implementation phase','spire-workspace-stability.js'],'SPIRE static finalizer');
 forbid(core,['will be expanded in its implementation phase'],'Published SPIRE core');
 
-// The completed workspaces must be backed by the shared clinical tables, not demo/local-only substitutes.
 for(const table of ['SpireClinicalTask','SpireOrder','SpireMedicationOrder','SpireClinicalNote','SpireCarePlan','SpireResultComponent','SpireVitalSign']){
   if(!routes.includes(`"${table}"`))failures.push(`SPIRE workspace backend is not grounded in ${table}`);
 }
