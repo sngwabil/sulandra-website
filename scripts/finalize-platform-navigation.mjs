@@ -107,6 +107,7 @@ try{
   await writeFile(employee360Path,html,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
+await import('./finalize-spire-workspace-completion.mjs');
 await import('./verify-employee-work-center.mjs');
 
-console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; dedicated My Work, Notifications, Scheduling, Time & Attendance and Employee 360 routes are restored to live applications.');
+console.log('Static platform navigation normalized across public, intranet, employee and admin entry points; dedicated My Work, Notifications, Scheduling, Time & Attendance, Employee 360 routes and complete SPIRE workspaces are restored to live applications.');
