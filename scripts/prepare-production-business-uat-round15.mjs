@@ -14,7 +14,7 @@ function replaceExact(from,to,label){
 
 replaceExact(
   "async function clickVisible(page,matcher){\n  const control=typeof matcher==='string'?page.locator(matcher).first():page.getByRole(matcher.role||'button',{name:matcher.name,exact:matcher.exact??false}).first();\n  await expect(control).toBeVisible();await control.click();return control;\n}",
-  "async function clickVisible(page,matcher){\n  const matches=typeof matcher==='string'?page.locator(matcher):page.getByRole(matcher.role||'button',{name:matcher.name,exact:matcher.exact??false});\n  const count=await matches.count();\n  for(let i=0;i<count;i++){\n    const control=matches.nth(i);\n    if(await control.isVisible().catch(()=>false)){await control.click();return control;}\n  }\n  const control=matches.first();\n  await expect(control).toBeVisible();await control.click();return control;\n}",
+  "async function clickVisible(page,matcher){\n  const resolveMatches=()=>typeof matcher==='string'?page.locator(matcher):page.getByRole(matcher.role||'button',{name:matcher.name,exact:matcher.exact??false});\n  const deadline=Date.now()+12000;\n  while(Date.now()<deadline){\n    const matches=resolveMatches();\n    const count=await matches.count();\n    for(let i=0;i<count;i++){\n      const control=matches.nth(i);\n      if(await control.isVisible().catch(()=>false)){await control.click();return control;}\n    }\n    await page.waitForTimeout(100);\n  }\n  const matches=resolveMatches();\n  const control=matches.first();\n  await expect(control).toBeVisible();await control.click();return control;\n}",
   'visible duplicate-safe control selection',
 );
 
@@ -29,4 +29,4 @@ if(/\{patient,flags:\[\],allergies:\[\],medications:/.test(source)){
 
 const replacements=(before.match(/\{patient,flags:\[\],allergies:\[\],medications:/g)||[]).length;
 await writeFile(target,source,'utf8');
-console.log(`Applied round-fifteen Item 7 corrections: visible duplicate-safe controls and ${replacements} remaining nested SPIRE patient detail fixtures normalized to the live top-level patient contract.`);
+console.log(`Applied round-fifteen Item 7 corrections: visible duplicate-safe controls wait for the actually rendered control, and ${replacements} remaining nested SPIRE patient detail fixtures normalized to the live top-level patient contract.`);
