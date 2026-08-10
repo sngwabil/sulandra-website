@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           contract='20260810-business-uat-1'
           spire_app_generation='20260810-business-uat-7'
-          shell_resilience_generation='20260810-spire-shell-resilience-1'
+          shell_resilience_generation='20260810-spire-shell-resilience-2'
           chart_ready_generation='20260810-spire-chart-ready-2'
           deep_link_generation='20260810-business-uat-5'
           chart_recovery_generation='20260810-spire-chart-recovery-1'
@@ -92,7 +92,8 @@ jobs:
               && grep -q 'SpireOpenPatient' <<<"$spire_app" \
               && grep -q "$shell_resilience_generation" <<<"$shell_resilience" \
               && grep -q 'SpireShellResilience' <<<"$shell_resilience" \
-              && grep -q 'shellRecovery' <<<"$shell_resilience" \
+              && grep -q 'NON_DESTRUCTIVE_SHELL_RECOVERY' <<<"$shell_resilience" \
+              && grep -q 'PRESERVE_ACTIVE_PATIENT_CHART' <<<"$shell_resilience" \
               && grep -q "$chart_ready_generation" <<<"$chart_ready" \
               && grep -q 'BUSINESS_UAT_IDEMPOTENT_CHART_ACTIVE' <<<"$chart_ready" \
               && grep -q 'SpireChartReady' <<<"$chart_ready" \
@@ -111,7 +112,7 @@ jobs:
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and resilient Item 7 SPIRE shell are live."
+              echo "Exact business-UAT production contract and non-destructive Item 7 SPIRE resilience v2 are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
