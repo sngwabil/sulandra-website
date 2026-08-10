@@ -1,0 +1,82 @@
+name: Production Business Path UAT
+
+on:
+  push:
+    branches:
+      - feature/spire-ehr-platform
+  pull_request:
+    branches:
+      - feature/spire-ehr-platform
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-business-uat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  business-uat:
+    name: Complete end-to-end production business-path UAT
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Verify business UAT source contract
+        run: npm run verify:business-uat
+
+      - name: Wait for exact production business-UAT deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          contract='20260810-business-uat-1'
+          canonical='sulandra-website-production-5fc4.up.railway.app'
+          stale='sulandra-website-production.up.railway.app'
+          for attempt in $(seq 1 80); do
+            portal="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal.html || true)"
+            application="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/applydsp.html || true)"
+            applicant="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/applicant-portal.html || true)"
+            interview="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/interview-admin-scheduler.js || true)"
+            offer="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/offer-acceptance.html || true)"
+            scls="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/scls-residential.html || true)"
+            workforce="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/workforce-admin.html || true)"
+            payroll="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/workforce-payroll-readiness.js || true)"
+            if grep -q "$contract" <<<"$portal" \
+              && grep -q "$canonical" <<<"$application" && ! grep -q "$stale" <<<"$application" \
+              && grep -q "$canonical" <<<"$applicant" && ! grep -q "$stale" <<<"$applicant" \
+              && grep -q "$canonical" <<<"$interview" && ! grep -q "$stale" <<<"$interview" \
+              && grep -q "$canonical" <<<"$offer" && ! grep -q "$stale" <<<"$offer" \
+              && grep -q 'sclsTaskBoardLink' <<<"$scls" \
+              && grep -q 'sclsTasksWorkflowLink' <<<"$scls" \
+              && grep -q 'workforce-payroll-readiness.js' <<<"$workforce" \
+              && grep -q "$contract" <<<"$payroll"; then
+              echo "Exact business-UAT production contract is live."
+              exit 0
+            fi
+            echo "Waiting for business-UAT production deployment (${attempt}/80)..."
+            sleep 15
+          done
+          echo "Timed out waiting for the exact production business-UAT deployment." >&2
+          exit 1
+
+      - name: Install Playwright browser runtime
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Run all nine live production business paths
+        env:
+          UAT_BASE_URL: https://www.sulandrahealth.com
+        run: npx playwright test --config=playwright.business-uat.config.mjs
