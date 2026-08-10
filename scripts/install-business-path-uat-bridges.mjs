@@ -25,12 +25,12 @@ for (const relative of ['applydsp.html','interview-admin-scheduler.js','applican
 await update('scls-residential.html', source => {
   let next = source;
   if (!next.includes('id="sclsTaskBoardLink"')) {
-    const link = `<a id="sclsTaskBoardLink" data-business-uat-contract="${contract}" href="/scls-tasks.html">Task Board</a>`;
+    const link = `<a id="sclsTaskBoardLink" data-business-uat-contract="${contract}" href="/scls-tasks.html"><span id="sclsTasksWorkflowLink">Task Board</span></a>`;
     if (next.includes('<span class="spacer"></span>')) next = next.replace('<span class="spacer"></span>', `<span class="spacer"></span>${link}`);
     else if (next.includes('</header>')) next = next.replace('</header>', `${link}</header>`);
     else throw new Error('SCLS Residential header is missing; cannot expose the Task Board workflow');
   }
-  if (!next.includes('id="sclsTaskBoardLink"') || !next.includes('href="/scls-tasks.html"')) throw new Error('SCLS Residential Task Board workflow bridge was not installed');
+  if (!next.includes('id="sclsTaskBoardLink"') || !next.includes('id="sclsTasksWorkflowLink"') || !next.includes('href="/scls-tasks.html"')) throw new Error('SCLS Residential Task Board workflow bridge was not installed');
   return next;
 });
 
