@@ -1,0 +1,2 @@
+Production business-path UAT validation round thirteen.
+Exact feature head includes idempotent SPIRE chart activation, app/chart-ready/deep-link generation pinning, Home Health intake-to-episode routing, episode readiness detail, and Plan of Care DRAFT to REVIEW to ACTIVE lifecycle validation.
