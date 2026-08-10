@@ -171,4 +171,6 @@ for (const relative of requiredPublishedFiles) {
   catch { throw new Error(`Static publication regression: missing ${relative}`); }
 }
 
+await import('./verify-enterprise-apps-launchpad.mjs');
+
 console.log('Static website restored to the complete pre-Spire publication surface while preserving modern Admin, Enterprise Apps, live Service Homes, analog Live Clock, dedicated Scheduling, Time and Attendance, Employee 360, Education, Intranet, Careers, Achieved archives and all Spire clinical modules.');
