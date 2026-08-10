@@ -140,7 +140,7 @@ replaceExact(
   'Company Documents tree and upload API contract',
 );
 replaceExact(
-  "const complianceLink=page.getByRole('link',{name:/Compliance/i});if(await complianceLink.isVisible().catch(()=>false))await complianceLink.click();else{await page.getByRole('link',{name:/Admin Console/i}).click();await clickVisible(page,'#topModuleNav a[href=\"/spire-admin.html\"]');const c=page.locator('a[href=\"/company-compliance.html\"]').first();await expect(c).toBeVisible();await c.click();}",
+  "const complianceLink=page.getByRole('link',{name:/Compliance/i});if(await complianceLink.isVisible().catch(()=>false))await complianceLink.click();else{await page.getByRole('link',{name:/Admin Console/i}).click();await clickVisible(page,'#topModuleNav a[href$=\"spire-admin.html\"]');const c=page.locator('a[href=\"/company-compliance.html\"]').first();await expect(c).toBeVisible();await c.click();}",
   "await clickVisible(page,'#companyComplianceLink');",
   'Company Documents to Company Compliance navigation',
 );
