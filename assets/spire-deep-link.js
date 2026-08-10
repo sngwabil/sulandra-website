@@ -33,26 +33,44 @@
     return null;
   }
 
+  async function openRequestedTab(tab) {
+    if (!tab) return;
+    const tabButton = await waitFor(`[data-chart-tab="${CSS.escape(tab)}"]`);
+    if (tabButton) tabButton.click();
+  }
+
+  async function directOpenRequestedChart() {
+    const { patientId, tab } = request();
+    if (!patientId) return false;
+
+    const started = Date.now();
+    while (Date.now() - started < 12000) {
+      if (typeof window.SpireOpenPatient === 'function') {
+        await window.SpireOpenPatient(patientId);
+        await openRequestedTab(tab);
+        return true;
+      }
+      await sleep(80);
+    }
+    return false;
+  }
+
   async function fallbackOpenRequestedChart() {
     const { patientId, tab } = request();
     if (!patientId) return;
 
-    // Native SPIRE deep-link handling runs after foundation data loads. This
-    // fallback waits long enough for that path to finish and does nothing if
-    // the chart is already open, preventing duplicate patient/storyboard calls.
-    await sleep(2500);
-    if (document.querySelector('[data-chart-tab]')) return;
+    // BUSINESS_UAT_DIRECT_CHART_OPEN: call SPIRE's native chart opener first.
+    // This removes the timing dependency on rendering the census list before a
+    // deep link can open a patient chart. The visible census-row route remains
+    // as a fallback for compatibility if the native opener is unavailable.
+    if (await directOpenRequestedChart()) return;
 
     const census = await waitFor('[data-workspace="census"]');
     if (!census) return;
     const row = await waitForAuthorizedPatient(census, patientId);
     if (!row) return;
     row.click();
-
-    if (tab) {
-      const tabButton = await waitFor(`[data-chart-tab="${CSS.escape(tab)}"]`);
-      if (tabButton) tabButton.click();
-    }
+    await openRequestedTab(tab);
   }
 
   window.addEventListener('DOMContentLoaded', () => fallbackOpenRequestedChart().catch(() => {}), { once: true });
