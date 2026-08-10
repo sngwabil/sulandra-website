@@ -4,7 +4,8 @@ import { UserRole } from '@prisma/client';
 
 type AuthContext={userId:string;organizationId:string;role:UserRole;email?:string;legalEntityId?:string;enterpriseOwner?:boolean};
 type Deps={authOf:(response:express.Response)=>AuthContext};
-const clinicalRoles=new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.AUDITOR,UserRole.DSP,UserRole.DELEGATING_NURSE,UserRole.LPN,UserRole.RN,UserRole.HOUSE_MANAGER,UserRole.CEO,UserRole.DOO]);
+const clinicalAccessRoles=new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.AUDITOR,UserRole.DSP,UserRole.DELEGATING_NURSE,UserRole.LPN,UserRole.RN,UserRole.HOUSE_MANAGER,UserRole.CEO,UserRole.DOO]);
+const taskAssigneeRoles=new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.DSP,UserRole.DELEGATING_NURSE,UserRole.LPN,UserRole.RN,UserRole.HOUSE_MANAGER,UserRole.CEO,UserRole.DOO]);
 const delegateRoles=new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.DELEGATING_NURSE,UserRole.RN,UserRole.CEO,UserRole.DOO]);
 const httpError=(status:number,message:string)=>Object.assign(new Error(message),{status});
 const selectedEntity=(a:AuthContext)=>{if(!a.legalEntityId)throw httpError(409,'Select a Sulandra company before assigning SPIRE work');return a.legalEntityId;};
@@ -43,14 +44,15 @@ async function validAssignee(prisma:PrismaClient,a:AuthContext,userId:string){
               )
           )
         )
-    ) AS allowed`,a.organizationId,selectedEntity(a),userId,[...clinicalRoles].map(String));
+    ) AS allowed`,a.organizationId,selectedEntity(a),userId,[...taskAssigneeRoles].map(String));
   return rows[0]?.allowed===true;
 }
 
 export const registerSpireWorkspaceAssigneeGuard=(app:express.Express,prisma:PrismaClient,deps:Deps)=>{const{authOf}=deps;
   app.get('/api/spire/workspaces/task-assignees',async(_req,res,next)=>{try{
     const a=authOf(res),entity=selectedEntity(a);
-    if(!clinicalRoles.has(a.role)&&!owner(a))throw httpError(403,'SPIRE clinical access is required');
+    if(!clinicalAccessRoles.has(a.role)&&!owner(a))throw httpError(403,'SPIRE clinical access is required');
+    if(a.role===UserRole.AUDITOR&&!owner(a))return void res.json({data:[]});
     const rows=await prisma.$queryRawUnsafe<Array<{id:string;email:string|null;role:string;record:unknown}>>(`
       SELECT u."id",u."email",u."role"::text AS "role",to_jsonb(u) AS record
       FROM "User" u
@@ -66,7 +68,7 @@ export const registerSpireWorkspaceAssigneeGuard=(app:express.Express,prisma:Pri
               AND (g."scopeType"='ENTERPRISE' OR g."legalEntityId"=$2 OR d."legalEntityId"=$2 OR (g."scopeType"='CLIENT' AND EXISTS(SELECT 1 FROM "ClientEnrollment" ce WHERE ce."organizationId"=u."organizationId" AND ce."clientId"=g."clientId" AND ce."legalEntityId"=$2 AND ce."status" IN ('PENDING','ACTIVE','PAUSED')))
           )
         )
-      ORDER BY LOWER(COALESCE(u."email",'')),u."id"`,a.organizationId,entity,[...clinicalRoles].map(String));
+      ORDER BY LOWER(COALESCE(u."email",'')),u."id"`,a.organizationId,entity,[...taskAssigneeRoles].map(String));
     const visibleRows=canDelegate(a)?rows:rows.filter(row=>row.id===a.userId);
     res.json({data:visibleRows.map(row=>{const r=asObject(row.record);return{id:row.id,email:row.email,role:row.role,displayName:clean(r.displayName)||clean(r.fullName)||clean(r.name)||[clean(r.firstName),clean(r.lastName)].filter(Boolean).join(' ')||row.email||row.id};})});
   }catch(e){next(e);}});
@@ -75,7 +77,7 @@ export const registerSpireWorkspaceAssigneeGuard=(app:express.Express,prisma:Pri
     const a=authOf(res),candidate=clean(req.body?.assignedUserId);
     if(!candidate)return next();
     if(candidate!==a.userId&&!canDelegate(a))throw httpError(403,'Only authorized clinical management roles may assign SPIRE tasks to another employee');
-    if(!(await validAssignee(prisma,a,candidate)))throw httpError(403,'The selected employee does not have active access to this Sulandra company');
+    if(!(await validAssignee(prisma,a,candidate)))throw httpError(403,'The selected employee is not an eligible task assignee with active access to this Sulandra company');
     next();
   }catch(e){next(e);}};
   app.post('/api/spire/workspaces/tasks',enforceAssignment);
