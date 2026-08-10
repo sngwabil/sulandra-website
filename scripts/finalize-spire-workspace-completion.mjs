@@ -1,3 +1,4 @@
+// finalize-spire-workspace-completion
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,4 +38,5 @@ if((finalHtml.match(/spire-workspace-completion\.js/g)||[]).length!==1)throw new
 if((finalHtml.match(/spire-workspace-stability\.js/g)||[]).length!==1)throw new Error('SPIRE stability runtime must be published exactly once');
 if(core.includes('will be expanded in its implementation phase'))throw new Error('Legacy unfinished SPIRE workspace copy remains in production output');
 
+await import('./verify-spire-workspace-completion.mjs');
 console.log('Final SPIRE static output pins the complete workspace runtime and stability guard after legacy clinical modules with no unfinished workspace copy.');
