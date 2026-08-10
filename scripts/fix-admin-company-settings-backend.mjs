@@ -31,22 +31,36 @@ if (/const SETTINGS_KEY\s*=/.test(controller)) {
   throw new Error('Legacy company SETTINGS_KEY still exists in admin-railway.js');
 }
 
+function clearInputValue(html, id) {
+  const pattern = new RegExp(`<input(?=[^>]*id=["']${id}["'])[^>]*>`, 'i');
+  return html.replace(pattern, (tag) => {
+    if (/\svalue=["'][^"']*["']/i.test(tag)) return tag.replace(/\svalue=["'][^"']*["']/i, ' value=""');
+    return tag.replace(/>$/, ' value="">');
+  });
+}
+
 admin = admin
   .replace('All emails, candidate portals, and offer documents dynamically pull from this central setting.', 'These company-scoped values are stored centrally in the Sulandra backend and are available to connected administrative workflows.')
   .replace('CAREERS SENDER EMAIL', 'COMPANY / CAREERS CONTACT EMAIL')
-  .replace(/(<input[^>]+id="settingCompanyName"[^>]+) value="[^"]*"/i, '$1 value=""')
-  .replace(/(<input[^>]+id="settingCompanyAddress"[^>]+) value="[^"]*"/i, '$1 value=""')
-  .replace(/(<input[^>]+id="settingCompanyPhone"[^>]+) value="[^"]*"/i, '$1 value=""')
-  .replace(/(<input[^>]+id="settingCompanyEmail"[^>]+) value="[^"]*"/i, '$1 value=""')
-  .replace(/(<input[^>]+id="settingSenderName"[^>]+) value="[^"]*"/i, '$1 value=""')
-  .replace(/(<input[^>]+id="settingUnmonitoredNotice"[^>]+) value="[^"]*"/i, '$1 value=""')
   .replace(/(<label[^>]*>GLOBAL EMPLOYMENT DISCLAIMER<\/label>\s*<textarea)(?![^>]*id=)/i, '$1 id="settingEmploymentDisclaimer"')
   .replace(/<textarea([^>]*id="settingEmploymentDisclaimer"[^>]*)>[\s\S]*?<\/textarea>/i, '<textarea$1></textarea>')
   .replace(/<button class="btn btn-primary" type="button" style="padding:12px;" onclick="saveCompanySettings\(\)">Save Settings<\/button>/i, '<button class="btn btn-primary" id="adminCompanySettingsSave" type="submit" style="padding:12px;">Save Company Settings</button>');
 
+for (const id of [
+  'settingCompanyName',
+  'settingCompanyAddress',
+  'settingCompanyPhone',
+  'settingCompanyEmail',
+  'settingSenderName',
+  'settingUnmonitoredNotice',
+]) {
+  admin = clearInputValue(admin, id);
+}
+
 if (!admin.includes('id="adminCompanySettingsSave"')) throw new Error('Admin Company Settings save control was not normalized');
 if (!admin.includes('id="settingEmploymentDisclaimer"')) throw new Error('Admin Company Settings disclaimer field was not normalized');
 if (/onclick="saveCompanySettings\(\)"/.test(admin)) throw new Error('Legacy inline Company Settings save handler still exists');
+if (/value="\(937\) 555-0199"/.test(admin)) throw new Error('Legacy placeholder company phone still exists in Admin Settings');
 
 await Promise.all([
   writeFile(controllerPath, controller, 'utf8'),
