@@ -134,14 +134,36 @@ jobs:
           done < <(find prisma/migrations -mindepth 2 -maxdepth 2 -type f -name migration.sql | sort)
 
       - name: Verify expected platform tables exist
+        shell: bash
         run: |
-          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
-            SELECT CASE WHEN to_regclass('\"LegalEntity\"') IS NULL THEN 1/0 ELSE 1 END;
-            SELECT CASE WHEN to_regclass('\"SpirePatient\"') IS NULL THEN 1/0 ELSE 1 END;
-            SELECT CASE WHEN to_regclass('\"EnterpriseWorkNotification\"') IS NULL THEN 1/0 ELSE 1 END;
-            SELECT CASE WHEN to_regclass('\"CompanyComplianceItem\"') IS NULL THEN 1/0 ELSE 1 END;
-            SELECT CASE WHEN to_regclass('\"RevenueCycleServiceEvent\"') IS NULL THEN 1/0 ELSE 1 END;
-            SELECT CASE WHEN to_regclass('\"EnterpriseDataQualityIssue\"') IS NULL THEN 1/0 ELSE 1 END;
-            SELECT CASE WHEN to_regclass('\"SecurityAccessReviewCampaign\"') IS NULL THEN 1/0 ELSE 1 END;
-            SELECT CASE WHEN to_regclass('\"CompanyComplianceEvidence\"') IS NULL THEN 1/0 ELSE 1 END;
-          "
+          set -euo pipefail
+          required_tables=(
+            LegalEntity
+            SpirePatient
+            EnterpriseWorkNotification
+            CompanyComplianceItem
+            RevenueCycleServiceEvent
+            EnterpriseDataQualityIssue
+            SecurityAccessReviewCampaign
+            CompanyComplianceEvidence
+          )
+
+          for table in "${required_tables[@]}"; do
+            exists="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+              SELECT EXISTS (
+                SELECT 1
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public'
+                  AND c.relname = '${table}'
+                  AND c.relkind IN ('r', 'p')
+              );
+            ")"
+
+            if [[ "$exists" != "t" ]]; then
+              echo "Missing expected platform table: ${table}" >&2
+              exit 1
+            fi
+
+            echo "Verified platform table: ${table}"
+          done
