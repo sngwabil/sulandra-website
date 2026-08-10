@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contract = '20260810-business-uat-1';
-const spireAppGeneration = '20260810-business-uat-6';
-const deepLinkGeneration = '20260810-business-uat-4';
+const spireAppGeneration = '20260810-business-uat-7';
+const chartReadyGeneration = '20260810-spire-chart-ready-2';
+const deepLinkGeneration = '20260810-business-uat-5';
 const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
 const staleApi = 'https://sulandra-website-production.up.railway.app';
 const skippedFrontendSources = [];
@@ -64,9 +65,11 @@ await update('employee-portal-railway.js', source => {
 
 await update('spire.html', source => {
   let next = source.replace(/\/assets\/spire-app-v2\.js\?v=[^"']+/g, `/assets/spire-app-v2.js?v=${spireAppGeneration}`);
+  next = next.replace(/\/assets\/spire-chart-ready\.js\?v=[^"']+/g, `/assets/spire-chart-ready.js?v=${chartReadyGeneration}`);
   next = next.replace(/\/assets\/spire-deep-link\.js\?v=[^"']+/g, `/assets/spire-deep-link.js?v=${deepLinkGeneration}`);
   if (!next.includes(`/assets/spire-app-v2.js?v=${spireAppGeneration}`)) throw new Error('SPIRE page is not pinned to the current chart-stabilized application generation');
-  if (!next.includes(`/assets/spire-deep-link.js?v=${deepLinkGeneration}`)) throw new Error('SPIRE page is not pinned to the current deep-link generation');
+  if (!next.includes(`/assets/spire-chart-ready.js?v=${chartReadyGeneration}`)) throw new Error('SPIRE page is not pinned to the idempotent chart-readiness generation');
+  if (!next.includes(`/assets/spire-deep-link.js?v=${deepLinkGeneration}`)) throw new Error('SPIRE page is not pinned to the coordinator-aware deep-link generation');
   return next;
 });
 
@@ -74,10 +77,10 @@ await update('assets/spire-app-v2.js', source => {
   let next = source;
   const oldOrder = '      renderPatientStrip();\n      renderChartWorkspace();';
   const priorChartFirst = '      /* BUSINESS_UAT_CHART_FIRST */\n      renderChartWorkspace();\n      renderPatientStrip();';
-  const stabilizedChartOpen = `      /* BUSINESS_UAT_CHART_FIRST */\n      /* BUSINESS_UAT_CHART_STABILIZED */\n      try { renderPatientStrip(); } catch (error) { console.error('[SPIRE patient strip]', error); }\n      renderChartWorkspace();\n      const openedPatientId = String(id);\n      const stabilizeOpenedChart = () => {\n        const currentPatientId = String(state.patient?.id || state.patient?.patientId || '');\n        if (currentPatientId !== openedPatientId) return;\n        const chartWorkspace = $('spireChartWorkspace');\n        if (!chartWorkspace) return;\n        document.querySelectorAll('.spire-workspace').forEach(node => node.classList.remove('active'));\n        chartWorkspace.classList.add('active');\n      };\n      stabilizeOpenedChart();\n      requestAnimationFrame(stabilizeOpenedChart);\n      setTimeout(stabilizeOpenedChart, 120);`;
+  const stabilizedChartOpen = `      /* BUSINESS_UAT_CHART_FIRST */\n      /* BUSINESS_UAT_CHART_STABILIZED */\n      /* BUSINESS_UAT_CHART_WORKSPACE_STATE */\n      state.activeWorkspace = 'chart';\n      try { renderPatientStrip(); } catch (error) { console.error('[SPIRE patient strip]', error); }\n      renderChartWorkspace();\n      const openedPatientId = String(id);\n      const stabilizeOpenedChart = () => {\n        const currentPatientId = String(state.patient?.id || state.patient?.patientId || '');\n        if (currentPatientId !== openedPatientId) return;\n        const chartWorkspace = $('spireChartWorkspace');\n        if (!chartWorkspace) return;\n        document.querySelectorAll('.spire-workspace').forEach(node => {\n          if (node === chartWorkspace) { if (!node.classList.contains('active')) node.classList.add('active'); }\n          else if (node.classList.contains('active')) node.classList.remove('active');\n        });\n      };\n      stabilizeOpenedChart();\n      requestAnimationFrame(stabilizeOpenedChart);\n      setTimeout(stabilizeOpenedChart, 120);`;
   if (next.includes(oldOrder)) next = next.replace(oldOrder, stabilizedChartOpen);
   else if (next.includes(priorChartFirst)) next = next.replace(priorChartFirst, stabilizedChartOpen);
-  if (!next.includes('BUSINESS_UAT_CHART_FIRST') || !next.includes('BUSINESS_UAT_CHART_STABILIZED')) throw new Error('SPIRE stabilized chart-open hardening was not installed');
+  if (!next.includes('BUSINESS_UAT_CHART_FIRST') || !next.includes('BUSINESS_UAT_CHART_STABILIZED') || !next.includes('BUSINESS_UAT_CHART_WORKSPACE_STATE')) throw new Error('SPIRE stabilized chart-open hardening was not installed');
 
   if (!next.includes('window.SpireOpenPatient = openPatient')) {
     const exposeAnchor = '\n  function renderPatientStrip() {';
@@ -142,5 +145,5 @@ await update('employee-portal.html', source => {
 if (skippedFrontendSources.length) {
   console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, pinned SPIRE app/deep-link generations with asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, pinned SPIRE app/chart-ready/deep-link generations with idempotent chart activation, asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
 }
