@@ -81,7 +81,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   migration-smoke:
-    name: Apply all Prisma migrations on clean PostgreSQL
+    name: Apply all Prisma migrations on supported legacy baseline
     runs-on: ubuntu-latest
     timeout-minutes: 12
     services:
@@ -116,6 +116,12 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate
+
+      - name: Bootstrap legacy SPIRE base schema
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/ci-bootstrap-legacy-base.sql
+
+      - name: Verify deployment prerequisites
+        run: npm run db:check-prerequisites
 
       - name: Apply complete migration history
         run: npm run db:migrate:deploy
