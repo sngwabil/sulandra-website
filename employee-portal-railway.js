@@ -13,6 +13,9 @@
   const shiftRoles = new Set([
     "DSP", "LPN", "RN", "DELEGATING_NURSE", "HOUSE_MANAGER", "PROGRAM_MANAGER"
   ]);
+  const homeHealthManagementRoles = new Set([
+    "RN", "DELEGATING_NURSE", "PROGRAM_MANAGER", "SCHEDULER", "CEO", "DOO"
+  ]);
 
   function readStoredSession() {
     try {
@@ -60,17 +63,22 @@
     return a;
   }
 
+  async function entityContext() {
+    const authToken = readToken();
+    const response = await fetch(`${API_BASE}/api/entity-context`, {
+      cache: "no-store",
+      headers: { Accept: "application/json", Authorization: `Bearer ${authToken}` },
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `Company context failed (${response.status})`);
+    return payload.data || {};
+  }
+
   async function selectNmtEntityAndOpen(event) {
     event.preventDefault();
-    const authToken = readToken();
     try {
-      const response = await fetch(`${API_BASE}/api/entity-context`, {
-        cache: "no-store",
-        headers: { Accept: "application/json", Authorization: `Bearer ${authToken}` },
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || `Company context failed (${response.status})`);
-      const entities = Array.isArray(payload.data?.entities) ? payload.data.entities : [];
+      const context = await entityContext();
+      const entities = Array.isArray(context.entities) ? context.entities : [];
       const nmt = entities.find((entity) => entity.code === "NMT" && entity.status === "ACTIVE");
       if (!nmt) throw new Error("Sulandra NMT Services is not available in your company access yet.");
       window.sessionStorage.setItem(ENTITY_KEY, nmt.id);
@@ -119,6 +127,40 @@
     }
   }
 
+  async function installCompanyScopedLaunchers(session) {
+    if (document.getElementById("employeeHomeHealthVisitsLauncher")) return;
+    try {
+      const context = await entityContext();
+      const entities = Array.isArray(context.entities) ? context.entities : [];
+      const savedId = window.sessionStorage.getItem(ENTITY_KEY) || window.localStorage.getItem(ENTITY_KEY) || context.primaryEntityId || "";
+      const selected = entities.find((entity) => entity.id === savedId) || entities.find((entity) => entity.id === context.primaryEntityId) || entities[0];
+      if (!selected || selected.code !== "HOME_HEALTH" || selected.status !== "ACTIVE") return;
+      const quick = document.querySelector(".page-hero .quick-actions");
+      if (!quick) return;
+      const visits = launcher("My Home Health Visits", "/home-health-visits.html", "Open assigned skilled nursing, therapy, respiratory, aide or social-work visits");
+      visits.id = "employeeHomeHealthVisitsLauncher";
+      quick.appendChild(visits);
+      const role = String(session.role || "").toUpperCase();
+      if (homeHealthManagementRoles.has(role)) {
+        const operations = launcher("Home Health Operations", "/home-health.html", "Manage Home Health referrals, episodes, Plan of Care, disciplines, staff and scheduling");
+        operations.id = "employeeHomeHealthOperationsLauncher";
+        quick.appendChild(operations);
+      }
+      const nav = document.querySelector(".nav-links");
+      if (nav && !document.getElementById("employeeHomeHealthNav")) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.id = "employeeHomeHealthNav";
+        a.href = "/home-health-visits.html";
+        a.textContent = "Home Health";
+        li.appendChild(a);
+        nav.appendChild(li);
+      }
+    } catch (error) {
+      console.warn("Unable to install company-scoped employee launchers", error);
+    }
+  }
+
   function loadAuthenticatedIdentity() {
     const token = readToken();
     const session = readStoredSession();
@@ -147,6 +189,7 @@
       .replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
     setStatusBadge("Active");
     installApplicationLaunchers(session);
+    installCompanyScopedLaunchers(session);
   }
 
   $("btnSignOut")?.addEventListener("click", (event) => {
