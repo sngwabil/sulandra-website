@@ -51,12 +51,28 @@ await update('home-health.html', source => {
   return next;
 });
 
+await update('employee-portal-railway.js', source => {
+  if (source.includes('employeeHomeHealthReferralInboxLauncher')) return source;
+  const marker = '          quick.appendChild(launcher("Home Health Operations", "/home-health.html", "Manage Home Health referrals, episodes, Plan of Care, disciplines, staff and scheduling", "employeeHomeHealthOperationsLauncher"));';
+  if (!source.includes(marker)) throw new Error('Employee Portal Home Health management launcher anchor is missing');
+  const next = source.replace(marker, `${marker}\n          quick.appendChild(launcher("Home Health Referral Inbox", "/home-health-referrals.html", "Review secure hospital and provider Home Health referrals and create intake cases", "employeeHomeHealthReferralInboxLauncher"));`);
+  if (!next.includes('employeeHomeHealthReferralInboxLauncher')) throw new Error('Employee Portal Home Health Referral Inbox launcher was not installed');
+  return next;
+});
+
 await update('assets/spire-app-v2.js', source => {
-  if (source.includes('BUSINESS_UAT_NATIVE_DEEPLINK')) return source;
-  const marker = '      renderMiniPanels();\n      renderHome();\n';
-  if (!source.includes(marker)) throw new Error('SPIRE foundation load anchor is missing');
-  const bridge = `${marker}      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId && state.patients.some(p => String(p.id || p.patientId) === String(deepLinkPatientId))) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
-  const next = source.replace(marker, bridge);
+  let next = source;
+  const oldOrder = '      renderPatientStrip();\n      renderChartWorkspace();';
+  const chartFirst = '      /* BUSINESS_UAT_CHART_FIRST */\n      renderChartWorkspace();\n      renderPatientStrip();';
+  if (next.includes(oldOrder)) next = next.replace(oldOrder, chartFirst);
+  if (!next.includes('BUSINESS_UAT_CHART_FIRST')) throw new Error('SPIRE chart-first patient open hardening was not installed');
+
+  if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK')) {
+    const marker = '      renderMiniPanels();\n      renderHome();\n';
+    if (!next.includes(marker)) throw new Error('SPIRE foundation load anchor is missing');
+    const bridge = `${marker}      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId && state.patients.some(p => String(p.id || p.patientId) === String(deepLinkPatientId))) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
+    next = next.replace(marker, bridge);
+  }
   if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK') || !next.includes('await openPatient(deepLinkPatientId)')) throw new Error('SPIRE native patient/tab deep-link bridge was not installed');
   return next;
 });
@@ -98,5 +114,5 @@ await update('employee-portal.html', source => {
 if (skippedFrontendSources.length) {
   console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and Referral Inbox continuity, native SPIRE patient/tab deep links, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and direct Referral Inbox launchers, native chart-first SPIRE patient/tab deep links, SCLS Task Board continuity, Company Documents compliance continuity, payroll-ready export, and exact production contract marker.');
 }
