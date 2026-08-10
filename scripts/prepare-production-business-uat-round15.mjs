@@ -18,18 +18,15 @@ replaceExact(
   'visible duplicate-safe control selection',
 );
 
-const nestedPatient="if(path.startsWith(`/api/spire/patients/${patient.id}`)&&method==='GET')return{data:{data:{patient,flags:[],allergies:[],medications:[]}}};";
-const flatPatient="if(path.startsWith(`/api/spire/patients/${patient.id}`)&&method==='GET')return{data:{data:{...patient,flags:[],allergies:[],medications:[]}}};";
-let replacements=0;
-while(source.includes(nestedPatient)){
-  source=source.replace(nestedPatient,flatPatient);
-  replacements+=1;
+const before=source;
+source=source
+  .replaceAll('{patient,flags:[],allergies:[],medications:[]}','{...patient,flags:[],allergies:[],medications:[]}')
+  .replaceAll('{patient,flags:[],allergies:[],medications:[med]}','{...patient,flags:[],allergies:[],medications:[med]}');
+
+if(/\{patient,flags:\[\],allergies:\[\],medications:/.test(source)){
+  throw new Error('Round-fifteen business UAT still contains a nested SPIRE patient detail fixture');
 }
-if(replacements<2&&!source.includes(flatPatient))throw new Error('Round-fifteen business UAT anchor missing: flattened SPIRE patient detail fixtures');
 
-const nestedMedPatient="if(path.startsWith(`/api/spire/patients/${patient.id}`)&&method==='GET')return{data:{data:{patient,flags:[],allergies:[],medications:[med]}}};";
-const flatMedPatient="if(path.startsWith(`/api/spire/patients/${patient.id}`)&&method==='GET')return{data:{data:{...patient,flags:[],allergies:[],medications:[med]}}};";
-replaceExact(nestedMedPatient,flatMedPatient,'flattened eMAR SPIRE patient detail fixture');
-
+const replacements=(before.match(/\{patient,flags:\[\],allergies:\[\],medications:/g)||[]).length;
 await writeFile(target,source,'utf8');
-console.log(`Applied round-fifteen Item 7 corrections: visible duplicate-safe controls and ${replacements+1} top-level SPIRE patient detail fixtures for Client Intake, eMAR, and Incident paths.`);
+console.log(`Applied round-fifteen Item 7 corrections: visible duplicate-safe controls and ${replacements} remaining nested SPIRE patient detail fixtures normalized to the live top-level patient contract.`);
