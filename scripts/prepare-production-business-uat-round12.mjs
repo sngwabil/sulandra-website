@@ -37,7 +37,7 @@ replaceExact(
 );
 
 replaceExact(
-  "await openIntake.click();await expect(page).toHaveURL(/\\/client-intake\\.html/);await expect(page.getByText(/APPROVED/i).first()).toBeVisible();",
+  "await openIntake.click();await expect(page).toHaveURL(/\\/client-intake\\.html/);await expect(page.locator('.status.APPROVED').first()).toBeVisible();",
   "await openIntake.click();await expect(page).toHaveURL(/\\/client-intake\\.html/);await expect(page.locator('#workspace .status.APPROVED').first()).toBeVisible();",
   'Home Health intake approved status scope',
 );
