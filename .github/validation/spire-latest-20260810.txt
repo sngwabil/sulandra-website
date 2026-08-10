@@ -1,0 +1,1 @@
+Validation-only marker for the current feature/spire-ehr-platform branch. This branch exists only to trigger isolated CI and will not be merged.
