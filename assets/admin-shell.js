@@ -17,6 +17,15 @@
     return parts.length > 1 ? parts.slice(0, -1).join(' - ') : raw;
   };
 
+  function ensureCanonicalSso() {
+    if (window.SulandraSSO || document.querySelector('script[data-canonical-admin-sso]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/sulandra-sso-session.js?v=20260806-sso-1';
+    script.dataset.canonicalAdminSso = 'true';
+    script.async = false;
+    document.head.appendChild(script);
+  }
+
   function ensureModuleHosts() {
     if (document.getElementById('module-employees')) return;
     const onboarding = document.getElementById('module-onboarding');
@@ -79,6 +88,7 @@
   }
 
   function mount() {
+    ensureCanonicalSso();
     ensureModuleHosts();
     ensurePlatformBar();
     updateWeatherClock();
