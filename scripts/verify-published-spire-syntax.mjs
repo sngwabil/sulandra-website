@@ -15,6 +15,7 @@ for(const relative of unique){
   if(result.status!==0)failures.push(`${relative}: ${(result.stderr||result.stdout||'syntax check failed').trim()}`);
 }
 if(!unique.includes('assets/spire-app-v2.js'))failures.push('spire.html does not load assets/spire-app-v2.js');
+if(!unique.includes('assets/spire-shell-resilience.js'))failures.push('spire.html does not load assets/spire-shell-resilience.js');
 if(!unique.includes('assets/spire-chart-ready.js'))failures.push('spire.html does not load assets/spire-chart-ready.js');
 if(!unique.includes('assets/spire-deep-link.js'))failures.push('spire.html does not load assets/spire-deep-link.js');
 if(failures.length){
