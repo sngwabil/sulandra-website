@@ -42,9 +42,9 @@ jobs:
         run: |
           set -euo pipefail
           contract='20260810-business-uat-1'
-          spire_app_generation='20260810-business-uat-6'
-          chart_ready_generation='20260810-spire-chart-ready-1'
-          deep_link_generation='20260810-business-uat-4'
+          spire_app_generation='20260810-business-uat-7'
+          chart_ready_generation='20260810-spire-chart-ready-2'
+          deep_link_generation='20260810-business-uat-5'
           canonical='sulandra-website-production-5fc4.up.railway.app'
           stale='sulandra-website-production.up.railway.app'
           for attempt in $(seq 1 80); do
@@ -82,8 +82,10 @@ jobs:
               && grep -q 'BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_FIRST' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_STABILIZED' <<<"$spire_app" \
+              && grep -q 'BUSINESS_UAT_CHART_WORKSPACE_STATE' <<<"$spire_app" \
               && grep -q 'SpireOpenPatient' <<<"$spire_app" \
               && grep -q "$chart_ready_generation" <<<"$chart_ready" \
+              && grep -q 'BUSINESS_UAT_IDEMPOTENT_CHART_ACTIVE' <<<"$chart_ready" \
               && grep -q 'SpireChartReady' <<<"$chart_ready" \
               && grep -q 'ensurePatientChart' <<<"$chart_ready" \
               && grep -q 'forceChartActive' <<<"$chart_ready" \
@@ -97,7 +99,7 @@ jobs:
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and round-twelve chart-readiness generation are live."
+              echo "Exact business-UAT production contract and round-thirteen Item 7 generation are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
