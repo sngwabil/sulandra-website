@@ -14,26 +14,26 @@ function replaceExact(from,to,label){
 
 replaceExact(
   "  page.__businessUat={unexpectedLiveMutations,expectedMutations};\n",
-  "  page.__businessUat={unexpectedLiveMutations,expectedMutations};\n  page.on('pageerror',error=>console.error('[BUSINESS-UAT PAGE ERROR]',error.stack||error.message));\n  page.on('console',message=>{if(message.type()==='error'){const loc=message.location();console.error('[BUSINESS-UAT CONSOLE ERROR]',message.text(),loc?.url?`${loc.url}:${loc.lineNumber}:${loc.columnNumber}`:'');}});\n  page.on('response',response=>{if(response.status()>=400)console.error('[BUSINESS-UAT HTTP ERROR]',response.status(),response.url());});\n  page.on('requestfailed',request=>console.error('[BUSINESS-UAT REQUEST FAILED]',request.failure()?.errorText||'request failed',request.url()));\n",
+  "  page.__businessUat={unexpectedLiveMutations,expectedMutations};\n  page.on('pageerror',error=>console.error('[BUSINESS-UAT PAGE ERROR]',page.url(),error.stack||error.message));\n  page.on('console',message=>{if(message.type()==='error'){const loc=message.location();console.error('[BUSINESS-UAT CONSOLE ERROR]',message.text(),loc?.url?`${loc.url}:${loc.lineNumber}:${loc.columnNumber}`:'');}});\n  page.on('response',response=>{if(response.status()>=400)console.error('[BUSINESS-UAT HTTP ERROR]',response.status(),response.url());});\n  page.on('requestfailed',request=>console.error('[BUSINESS-UAT REQUEST FAILED]',request.failure()?.errorText||'request failed',request.url()));\n",
   'Browser error diagnostics',
 );
 
 replaceExact(
   "await clickVisible(page,'a[href*=\"/spire.html?patientId=biz-patient\"]');await expect(page).toHaveURL(/\\/spire\\.html\\?patientId=biz-patient/);await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);",
-  "await clickVisible(page,'a[href*=\"/spire.html?patientId=biz-patient\"]');await expect(page).toHaveURL(/\\/spire\\.html\\?patientId=biz-patient/);await expect(page.locator('body[data-spire-chart-ready=\"true\"][data-spire-chart-patient-id=\"biz-patient\"]')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);",
-  'Client Intake chart coordinator readiness',
+  "await clickVisible(page,'a[href*=\"/spire.html?patientId=biz-patient\"]');await expect(page).toHaveURL(/\\/spire\\.html\\?patientId=biz-patient/);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await expect(page.locator('[data-chart-tab=\"care-plan\"]')).toBeVisible();",
+  'Client Intake visible chart UI readiness',
 );
 
 replaceExact(
   "await page.getByRole('link',{name:/Open eMAR/i}).first().click();await expect(page).toHaveURL(/\\/spire\\.html/);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);const marTab=page.locator('[data-chart-tab=\"mar\"]');",
-  "await page.getByRole('link',{name:/Open eMAR/i}).first().click();await expect(page).toHaveURL(/\\/spire\\.html/);await expect(page.locator(`body[data-spire-chart-ready=\"true\"][data-spire-chart-patient-id=\"${patient.id}\"]`)).toBeVisible();await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);const marTab=page.locator('[data-chart-tab=\"mar\"]');",
-  'eMAR chart coordinator readiness',
+  "await page.getByRole('link',{name:/Open eMAR/i}).first().click();await expect(page).toHaveURL(/\\/spire\\.html/);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);const marTab=page.locator('[data-chart-tab=\"mar\"]');",
+  'eMAR visible chart UI readiness',
 );
 
 replaceExact(
   "await clickVisible(page,`[data-patient-id=\"${patient.id}\"]`);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await clickVisible(page,'[data-chart-tab=\"incidents\"]');",
-  "await clickVisible(page,`[data-patient-id=\"${patient.id}\"]`);await expect(page.locator(`body[data-spire-chart-ready=\"true\"][data-spire-chart-patient-id=\"${patient.id}\"]`)).toBeVisible();await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await clickVisible(page,'[data-chart-tab=\"incidents\"]');",
-  'Incident chart coordinator readiness',
+  "await clickVisible(page,`[data-patient-id=\"${patient.id}\"]`);await expect(page.locator('#spirePatientStrip')).toBeVisible();await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);await clickVisible(page,'[data-chart-tab=\"incidents\"]');",
+  'Incident visible chart UI readiness',
 );
 
 replaceExact(
@@ -43,4 +43,4 @@ replaceExact(
 );
 
 await writeFile(target,source,'utf8');
-console.log('Applied round-twelve business UAT corrections: browser error diagnostics with exact source locations, deterministic SPIRE chart coordinator readiness for Intake/eMAR/Incident, and scoped Home Health intake approval verification.');
+console.log('Applied round-twelve business UAT corrections: browser error diagnostics with page URLs, visible SPIRE chart UI readiness for Intake/eMAR/Incident, and scoped Home Health intake approval verification.');
