@@ -165,6 +165,17 @@
     document.body.appendChild(script);
   }
 
-  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); loadEmployeeDirectoryEnhancer(); });
+  function loadEmployeeWorkCrosslinks() {
+    const pathname = location.pathname.toLowerCase().replace(/\/+$/, '');
+    const eligible = ['/my-work.html','/my-work','/notifications.html','/notifications'].some((suffix) => pathname.endsWith(suffix));
+    if (!eligible || document.querySelector('script[data-sulandra-work-crosslinks]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/employee-work-crosslinks.js?v=20260810-work-center-1';
+    script.dataset.sulandraWorkCrosslinks = 'true';
+    script.async = true;
+    document.body.appendChild(script);
+  }
+
+  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); loadEmployeeDirectoryEnhancer(); loadEmployeeWorkCrosslinks(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render, { once: true }); else render();
 })();
