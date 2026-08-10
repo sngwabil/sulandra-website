@@ -25,12 +25,12 @@ for (const relative of ['applydsp.html','interview-admin-scheduler.js','applican
 await update('scls-residential.html', source => {
   let next = source;
   if (!next.includes('id="sclsTaskBoardLink"')) {
-    next = next.replace('<span class="spacer"></span>', '<span class="spacer"></span><a id="sclsTaskBoardLink" data-business-uat-contract="'+contract+'" href="/scls-tasks.html">Task Board</a>');
+    const link = `<a id="sclsTaskBoardLink" data-business-uat-contract="${contract}" href="/scls-tasks.html">Task Board</a>`;
+    if (next.includes('<span class="spacer"></span>')) next = next.replace('<span class="spacer"></span>', `<span class="spacer"></span>${link}`);
+    else if (next.includes('</header>')) next = next.replace('</header>', `${link}</header>`);
+    else throw new Error('SCLS Residential header is missing; cannot expose the Task Board workflow');
   }
-  if (!next.includes('id="sclsTasksWorkflowLink"')) {
-    next = next.replace('<div class="head"><h2>House & Resident Tasks</h2></div>', '<div class="head"><h2>House & Resident Tasks</h2><a id="sclsTasksWorkflowLink" class="btn primary" data-business-uat-contract="'+contract+'" href="/scls-tasks.html">Open Task Board</a></div>');
-  }
-  if (!next.includes('id="sclsTaskBoardLink"') || !next.includes('id="sclsTasksWorkflowLink"')) throw new Error('SCLS Residential task workflow bridge was not installed');
+  if (!next.includes('id="sclsTaskBoardLink"') || !next.includes('href="/scls-tasks.html"')) throw new Error('SCLS Residential Task Board workflow bridge was not installed');
   return next;
 });
 
@@ -47,4 +47,4 @@ await update('employee-portal.html', source => {
   return source.replace('</head>', `<meta name="sulandra-business-uat-contract" content="${contract}">\n</head>`);
 });
 
-console.log('Business-path UAT bridges installed: canonical application/applicant/interview/offer APIs, SCLS task continuity, payroll-ready export, and exact production contract marker.');
+console.log('Business-path UAT bridges installed: canonical application/applicant/interview/offer APIs, SCLS Task Board continuity, payroll-ready export, and exact production contract marker.');
