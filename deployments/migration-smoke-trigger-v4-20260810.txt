@@ -1,0 +1,1 @@
+Validation-only trigger for current supported-baseline migration smoke testing. Do not merge.
