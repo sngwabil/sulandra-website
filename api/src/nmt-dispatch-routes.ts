@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 type AuthContext={userId:string;organizationId:string;role:UserRole;email?:string;legalEntityId?:string;enterpriseOwner?:boolean};
 type Deps={authOf:(response:express.Response)=>AuthContext};
-const adminRoles=new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.ADMINISTRATIVE_ASSISTANT,UserRole.CEO,UserRole.DOO]);
+const adminRoles=new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.ADMINISTRATIVE_ASSISTANT,UserRole.SCHEDULER,UserRole.CEO,UserRole.DOO]);
 const httpError=(status:number,message:string,details?:unknown)=>Object.assign(new Error(message),{status,details});
 const entity=(a:AuthContext)=>{if(!a.legalEntityId)throw httpError(409,'Select Sulandra NMT Services first');return a.legalEntityId;};
 const owner=(a:AuthContext)=>a.enterpriseOwner===true||String(a.email||'').trim().toLowerCase()==='admin@sulandrahealth.com';
