@@ -42,6 +42,9 @@
       const intakeItem = document.createElement('li');
       intakeItem.id = 'adminClientIntakeTopLink';
       intakeItem.innerHTML = '<a class="sulandra-workspace-link" href="/client-intake.html">Client Intake</a>';
+      const nmtItem = document.createElement('li');
+      nmtItem.id = 'adminNmtOrdersTopLink';
+      nmtItem.innerHTML = '<a class="sulandra-workspace-link" href="/nmt-orders.html">NMT Orders</a>';
       const filesItem = document.createElement('li');
       filesItem.id = 'adminCompanyFilesTopLink';
       filesItem.innerHTML = '<a class="sulandra-workspace-link" href="/company-documents.html">Company Files</a>';
@@ -51,9 +54,10 @@
       const adminSpireItem = Array.from(top.children).find((item) => /Admin Spire/i.test(item.textContent || ''));
       if (adminSpireItem) {
         top.insertBefore(intakeItem, adminSpireItem);
+        top.insertBefore(nmtItem, adminSpireItem);
         top.insertBefore(filesItem, adminSpireItem);
         top.insertBefore(trainingItem, adminSpireItem);
-      } else top.append(intakeItem, filesItem, trainingItem);
+      } else top.append(intakeItem, nmtItem, filesItem, trainingItem);
     }
 
     const side = document.getElementById('sideModuleNav');
@@ -64,6 +68,12 @@
       intakeButton.type = 'button';
       intakeButton.innerHTML = 'Client Intake <small>Admission Packet</small>';
       intakeButton.addEventListener('click', () => { window.location.href = '/client-intake.html'; });
+      const nmtButton = document.createElement('button');
+      nmtButton.id = 'adminNmtOrdersSideLink';
+      nmtButton.className = 'side-btn';
+      nmtButton.type = 'button';
+      nmtButton.innerHTML = 'NMT Orders <small>Facility Referrals</small>';
+      nmtButton.addEventListener('click', () => { window.location.href = '/nmt-orders.html'; });
       const filesButton = document.createElement('button');
       filesButton.id = 'adminCompanyFilesSideLink';
       filesButton.className = 'side-btn';
@@ -79,9 +89,10 @@
       const adminSpireButton = Array.from(side.children).find((node) => /Admin Spire/i.test(node.textContent || ''));
       if (adminSpireButton) {
         side.insertBefore(intakeButton, adminSpireButton);
+        side.insertBefore(nmtButton, adminSpireButton);
         side.insertBefore(filesButton, adminSpireButton);
         side.insertBefore(trainingButton, adminSpireButton);
-      } else side.append(intakeButton, filesButton, trainingButton);
+      } else side.append(intakeButton, nmtButton, filesButton, trainingButton);
     }
   }
 
