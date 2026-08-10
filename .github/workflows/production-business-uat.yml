@@ -42,11 +42,12 @@ jobs:
         run: |
           set -euo pipefail
           contract='20260810-business-uat-1'
-          spire_app_generation='20260810-business-uat-7'
-          shell_resilience_generation='20260810-spire-shell-resilience-3'
+          spire_app_generation='20260810-business-uat-8'
+          shell_resilience_generation='20260810-spire-shell-resilience-4'
           chart_ready_generation='20260810-spire-chart-ready-2'
           deep_link_generation='20260810-business-uat-5'
           chart_recovery_generation='20260810-spire-chart-recovery-1'
+          home_health_rail_generation='20260810-home-health-rail-stability-1'
           canonical='sulandra-website-production-5fc4.up.railway.app'
           stale='sulandra-website-production.up.railway.app'
           for attempt in $(seq 1 80); do
@@ -67,6 +68,7 @@ jobs:
             chart_recovery="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-chart-recovery-v1.js?v=${chart_recovery_generation}" || true)"
             hh_referral="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health-referral.html || true)"
             home_health="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-health.html || true)"
+            home_health_rail="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/home-health-rail-stability.js?v=${contract}" || true)"
             company_docs="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/company-documents.html || true)"
             if grep -q "$contract" <<<"$portal" \
               && grep -q 'employee-role-navigation-guard.js' <<<"$portal" \
@@ -89,11 +91,14 @@ jobs:
               && grep -q 'BUSINESS_UAT_CHART_FIRST' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_STABILIZED' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_WORKSPACE_STATE' <<<"$spire_app" \
+              && grep -q 'BUSINESS_UAT_CANONICAL_SHELL_REPAIR' <<<"$spire_app" \
+              && grep -q 'SpireEnsureShell' <<<"$spire_app" \
               && grep -q 'SpireOpenPatient' <<<"$spire_app" \
               && grep -q "$shell_resilience_generation" <<<"$shell_resilience" \
               && grep -q 'SpireShellResilience' <<<"$shell_resilience" \
               && grep -q 'NON_DESTRUCTIVE_SHELL_RECOVERY' <<<"$shell_resilience" \
-              && grep -q 'SAFE_RUNTIME_REPAIR' <<<"$shell_resilience" \
+              && grep -q 'CANONICAL_SINGLE_RUNTIME_REPAIR' <<<"$shell_resilience" \
+              && grep -q 'SpireEnsureShell' <<<"$shell_resilience" \
               && grep -q 'PRESERVE_ACTIVE_PATIENT_CHART' <<<"$shell_resilience" \
               && grep -q "$chart_ready_generation" <<<"$chart_ready" \
               && grep -q 'BUSINESS_UAT_IDEMPOTENT_CHART_ACTIVE' <<<"$chart_ready" \
@@ -112,8 +117,11 @@ jobs:
               && grep -q 'markReady' <<<"$chart_recovery" \
               && grep -q 'home-health-referral-token-bootstrap.js' <<<"$hh_referral" \
               && grep -q 'homeHealthReferralInboxLink' <<<"$home_health" \
+              && grep -q 'home-health-rail-stability.js' <<<"$home_health" \
+              && grep -q "$home_health_rail_generation" <<<"$home_health_rail" \
+              && grep -q 'sulandra:home-health:active-rail' <<<"$home_health_rail" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract and guarded Item 7 SPIRE resilience v3 are live."
+              echo "Exact business-UAT production contract, canonical single-runtime SPIRE resilience v4, and stable Home Health referral rail are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
