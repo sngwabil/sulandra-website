@@ -100,6 +100,7 @@ jobs:
           --health-retries=20
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/spire?schema=public
+      PSQL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/spire
 
     steps:
       - name: Check out repository
@@ -118,7 +119,7 @@ jobs:
         run: npm run db:generate
 
       - name: Bootstrap legacy SPIRE base schema
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/ci-bootstrap-legacy-base.sql
+        run: psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/ci-bootstrap-legacy-base.sql
 
       - name: Verify deployment prerequisites
         run: npm run db:check-prerequisites
