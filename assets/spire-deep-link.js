@@ -45,7 +45,8 @@
 
     const started = Date.now();
     while (Date.now() - started < 12000) {
-      if (typeof window.SpireOpenPatient === 'function') {
+      const shellReady = document.querySelector('#spireChartWorkspace') && document.querySelector('#spirePatientStrip');
+      if (shellReady && typeof window.SpireOpenPatient === 'function') {
         await window.SpireOpenPatient(patientId);
         await openRequestedTab(tab);
         return true;
@@ -59,10 +60,9 @@
     const { patientId, tab } = request();
     if (!patientId) return;
 
-    // BUSINESS_UAT_DIRECT_CHART_OPEN: call SPIRE's native chart opener first.
-    // This removes the timing dependency on rendering the census list before a
-    // deep link can open a patient chart. The visible census-row route remains
-    // as a fallback for compatibility if the native opener is unavailable.
+    // BUSINESS_UAT_DIRECT_CHART_OPEN: wait for the installed SPIRE shell, then
+    // call SPIRE's native chart opener. The visible census-row route remains a
+    // compatibility fallback if the native opener is unavailable.
     if (await directOpenRequestedChart()) return;
 
     const census = await waitFor('[data-workspace="census"]');
@@ -73,6 +73,22 @@
     await openRequestedTab(tab);
   }
 
+  function recoverVisiblePatientClick(event) {
+    const row = event.target?.closest?.('[data-patient-id]');
+    const patientId = row?.dataset?.patientId || '';
+    if (!patientId) return;
+    setTimeout(async () => {
+      const strip = document.querySelector('#spirePatientStrip');
+      const chart = document.querySelector('#spireChartWorkspace');
+      const chartReady = strip && !strip.hidden && chart?.classList.contains('active');
+      if (chartReady || typeof window.SpireOpenPatient !== 'function') return;
+      // BUSINESS_UAT_PATIENT_CLICK_RECOVERY: if another enhancement races the
+      // core row handler, recover by invoking the same native chart opener.
+      await window.SpireOpenPatient(patientId).catch(() => {});
+    }, 180);
+  }
+
+  document.addEventListener('click', recoverVisiblePatientClick, true);
   window.addEventListener('DOMContentLoaded', () => fallbackOpenRequestedChart().catch(() => {}), { once: true });
   if (document.readyState !== 'loading') fallbackOpenRequestedChart().catch(() => {});
 })();
