@@ -134,7 +134,7 @@ requireMarkers(stability,[
 ],'SPIRE stability guard');
 
 requireMarkers(workflow,[
-  '/notes/${encodeURIComponent(state.patientId)}/notes/${encodeURIComponent(data.id)}/sign',
+  '/notes/${encodeURIComponent(data.id)}/sign',
   '/wrap-up',
   'Record Vitals',
   'Start Encounter',
