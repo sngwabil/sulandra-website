@@ -1,0 +1,1 @@
+Validation trigger for canonical Admin single-source navigation strategy after Employee 360 verifier alignment.
