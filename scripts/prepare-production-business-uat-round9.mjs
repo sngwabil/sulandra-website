@@ -55,14 +55,25 @@ replaceAllExact(
   "/api/admin/home-health/referrals'&&method==='GET'",
   'Home Health referral list route',
 );
+replaceExact(
+  "if(path==='/api/admin/home-health/referrals'&&method==='GET')return{data:{data:state.referral?[referral]:[]}};",
+  "if(path==='/api/admin/home-health/referrals'&&method==='GET')return{data:{data:state.referral?[referral]:[]}};\n    if(path==='/api/admin/home-health/referral-sources'&&method==='GET')return{data:{data:[]}};",
+  'Home Health referral sources list fixture',
+);
 
-// Workforce navigation is a real page transition. Wait for it before asserting
-// page initialization so a fast assertion cannot race location assignment.
+// Workforce navigation is protected from the legacy Time & Attendance click
+// interceptor. Wait until that capture-phase guard is installed before clicking
+// the visible Workforce launcher, then prove the actual destination page.
 replaceExact(
   "await clickVisible(page,'#employeeWorkforceLauncher');await expect(page.locator('#company')).not.toContainText(/Loading company/i);",
+  "await expect.poll(async()=>page.evaluate(()=>Boolean(window.SulandraEmployeeRoleNavigationGuard?.workforce))).toBe(true);await clickVisible(page,'#employeeWorkforceLauncher');await expect(page).toHaveURL(/\\/workforce\\.html$/);await expect(page.locator('#company')).not.toContainText(/Loading company/i);",
+  'Workforce guarded employee-page navigation readiness',
+);
+replaceExact(
   "await clickVisible(page,'#employeeWorkforceLauncher');await expect(page).toHaveURL(/\\/workforce\\.html$/);await expect(page.locator('#company')).not.toContainText(/Loading company/i);",
-  'Workforce employee-page navigation readiness',
+  "await expect.poll(async()=>page.evaluate(()=>Boolean(window.SulandraEmployeeRoleNavigationGuard?.workforce))).toBe(true);await clickVisible(page,'#employeeWorkforceLauncher');await expect(page).toHaveURL(/\\/workforce\\.html$/);await expect(page.locator('#company')).not.toContainText(/Loading company/i);",
+  'Previously prepared Workforce guarded navigation readiness',
 );
 
 await writeFile(target, source, 'utf8');
-console.log('Applied round-nine business UAT corrections: Client Intake chart-open readiness, real SCLS Task Board initialization, admin-scoped Home Health referral APIs, and deterministic Workforce navigation.');
+console.log('Applied round-nine business UAT corrections: Client Intake chart-open readiness, real SCLS Task Board initialization, admin-scoped Home Health referral APIs and source list, and deterministic guarded Workforce navigation.');
