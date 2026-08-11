@@ -37,6 +37,39 @@ async function walk(directory) {
 
 await walk(root);
 
+// Admin's Director of Operations job preset historically stored multiline text in
+// ordinary double-quoted JavaScript strings. Browsers reject literal line breaks
+// in those strings (the admin.html:881 Invalid or unexpected token seen in
+// production). Keep the content unchanged but serialize those three values with
+// escaped newlines before static publication.
+const adminPath = path.join(root, 'admin.html');
+let admin = await readFile(adminPath, 'utf8');
+const presetStart = admin.indexOf('const jobPresets = {');
+const dspStart = presetStart >= 0 ? admin.indexOf('      dsp:', presetStart) : -1;
+if (presetStart >= 0 && dspStart > presetStart) {
+  const before = admin.slice(0, presetStart);
+  let firstPreset = admin.slice(presetStart, dspStart);
+  const after = admin.slice(dspStart);
+  firstPreset = firstPreset.replace(
+    /(description:\s*)"([\s\S]*?)"(,\s*\n\s*reqs:)/,
+    (_match, lead, value, tail) => `${lead}${JSON.stringify(value)}${tail}`,
+  );
+  firstPreset = firstPreset.replace(
+    /(reqs:\s*)"([\s\S]*?)"(,\s*\n\s*benefits:)/,
+    (_match, lead, value, tail) => `${lead}${JSON.stringify(value)}${tail}`,
+  );
+  firstPreset = firstPreset.replace(
+    /(benefits:\s*)"([\s\S]*?)"(\s*\n\s*},)/,
+    (_match, lead, value, tail) => `${lead}${JSON.stringify(value)}${tail}`,
+  );
+  const repaired = before + firstPreset + after;
+  if (repaired !== admin) {
+    admin = repaired;
+    await writeFile(adminPath, admin, 'utf8');
+    updated += 1;
+  }
+}
+
 const dooPath = path.join(root, 'applydoo.html');
 const doo = await readFile(dooPath, 'utf8');
 if (!doo.includes('Director of Operations (DOO)')) throw new Error('Director of Operations application is missing its DOO identity.');
@@ -44,4 +77,4 @@ if (!doo.includes("appliedRole:'DOO'")) throw new Error('Director of Operations 
 if (!doo.includes('/public/careers/applications')) throw new Error('Director of Operations application is not connected to Careers intake.');
 if (/Chief Operating Officer|\bCOO\b/.test(doo)) throw new Error('Retired executive-role wording remains in the DOO application.');
 
-console.log(`Director of Operations frontend enforcement updated ${updated} user-facing file(s).`);
+console.log(`Director of Operations frontend enforcement updated ${updated} user-facing file(s), including valid Admin job-preset JavaScript.`);
