@@ -78,4 +78,9 @@ if (!doo.includes("appliedRole:'DOO'")) throw new Error('Director of Operations 
 if (!doo.includes('/public/careers/applications')) throw new Error('Director of Operations application is not connected to Careers intake.');
 if (/Chief Operating Officer|\bCOO\b/.test(doo)) throw new Error('Retired executive-role wording remains in the DOO application.');
 
+// Frontend build compatibility point: run the idempotent Client Intake repair
+// before build-static-site.mjs copies canonical source into dist-web. The repair
+// never mutates dist-web and safely skips backend-only files when absent.
+await import('./fix-client-intake-packet-coverage.mjs');
+
 console.log(`Director of Operations frontend enforcement updated ${updated} canonical user-facing file(s), including valid Admin job-preset JavaScript; generated dist-web is never mutated and repeated passes are idempotent.`);
