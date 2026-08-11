@@ -16,7 +16,7 @@ const failures=[];
 const read=async rel=>{try{return await readFile(path.join(root,rel),'utf8')}catch{failures.push(`Missing ${rel}`);return''}};
 const expect=(condition,label)=>{if(!condition)failures.push(label)};
 const contract='20260810-business-uat-1';
-const spireAppGeneration='20260810-business-uat-8';
+const spireAppGeneration='20260811-business-uat-9';
 const shellResilienceGeneration='20260810-spire-shell-resilience-4';
 const chartReadyGeneration='20260810-spire-chart-ready-2';
 const deepLinkGeneration='20260810-business-uat-5';
