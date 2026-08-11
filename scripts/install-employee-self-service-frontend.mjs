@@ -31,6 +31,28 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
+// Admin Employee 360 must not start before the selected legal-company context is
+// available. admin-company-context.js used to initialize context and load the
+// canonical shell in parallel, which allowed Employee Management to make its
+// first protected request before X-Legal-Entity-Id existed. The failed request
+// left an Authentication required banner even though the administrator session
+// itself was valid. Serialize the startup in the published static asset.
+const adminCompanyContextPath = path.join(root, 'dist-web', 'assets', 'admin-company-context.js');
+try {
+  let source = await readFile(adminCompanyContextPath, 'utf8');
+  const oldStart = `  const start = () => {\n    initialize().catch(() => undefined);\n    loadCanonicalShell().catch(error => console.error('[Canonical Admin Shell]', error));\n  };`;
+  const newStart = `  const start = async () => {\n    try { await initialize(); } catch (_) {}\n    loadCanonicalShell().catch(error => console.error('[Canonical Admin Shell]', error));\n  };`;
+  if (source.includes(oldStart)) {
+    source = source.replace(oldStart, newStart);
+    await writeFile(adminCompanyContextPath, source, 'utf8');
+    console.log('Admin Employee 360 startup now waits for authenticated company context before loading protected modules.');
+  } else if (!source.includes(newStart)) {
+    throw new Error('Unable to verify Admin company-context startup ordering in dist-web');
+  }
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
 // These run during build:web before the API TypeScript build, so the applicant
 // workspace, applicant folder, document routing, interview review, and career
 // application contracts are installed together and deployed as one system.
