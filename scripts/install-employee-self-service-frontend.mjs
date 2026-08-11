@@ -59,6 +59,11 @@ try {
 // header and silently retry only a brief authenticated boot-time 401.
 await import('./fix-admin-employee-auth-flash.mjs');
 
+// Preserve the Employee Directory as the owner of the Employees module. Specialty
+// centers must not replace #module-employees, and all of them must share the same
+// canonical Admin token and selected-company request context.
+await import('./fix-admin-employee-suite-mounting.mjs');
+
 // These run during build:web before the API TypeScript build, so the applicant
 // workspace, applicant folder, document routing, interview review, and career
 // application contracts are installed together and deployed as one system.
