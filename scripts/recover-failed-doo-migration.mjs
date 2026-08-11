@@ -22,6 +22,9 @@ const migrationNames = [
   '20260810090000_referral_attachment_sync_and_scls_task_events',
   '20260810095000_repair_spire_clinical_task_notification_columns',
   '20260810100000_enterprise_work_notifications',
+  // This migration was recorded as failed in Railway before it could finish.
+  // It is retry-safe and may be marked rolled back only while unfinished.
+  '20260811121500_spire_external_connectivity_foundation',
 ];
 const prisma = new PrismaClient();
 
