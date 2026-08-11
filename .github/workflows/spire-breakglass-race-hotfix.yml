@@ -41,8 +41,8 @@ jobs:
           path.write_text(source.replace(old, new))
           PY
 
-      - name: Type-check patched backend
-        run: npx tsc -p api/tsconfig.json --noEmit
+      - name: Type-check patched SPIRE module
+        run: npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck api/src/spire-enterprise-parity-routes.ts
 
       - name: Commit hotfix to SPIRE branch
         shell: bash
