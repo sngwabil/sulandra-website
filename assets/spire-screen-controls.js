@@ -60,7 +60,7 @@
       <button type="button" id="spireFitControl" class="spire-window-control" aria-label="Fit SPIRE to screen" title="Fit / restore to screen" aria-pressed="false">□</button>
       <button type="button" id="spireFullscreenControl" class="spire-window-control" aria-label="Open SPIRE full screen" title="Full screen" aria-pressed="false">⛶</button>`;
 
-    host.appendChild(controls);
+    host.prepend(controls);
     document.getElementById('spireCompactControl')?.addEventListener('click', () => {
       applyFit(false);
       applyCompact(!document.body.classList.contains('spire-compact-mode'));
