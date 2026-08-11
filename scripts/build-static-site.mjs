@@ -85,7 +85,12 @@ try {
   }
   spireHtml = spireHtml
     .replace('</head>', styles.map(asset => `<link rel="stylesheet" href="/assets/${asset}.css?v=${versionFor(asset)}">`).join('') + '</head>')
-    .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${versionFor(asset)}"></script>`).join('') + '</body>');
+    .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${versionFor(asset)}"></script>`).join('') + '</body>')
+    // The business-path installer pins app generation nine. The content of that
+    // runtime is hardened by install-spire-idempotent-shell.mjs after the pinning
+    // step, so publish it under a fresh URL or browsers may reuse the old pre-fix
+    // generation-nine bytes from cache.
+    .replace(/\/assets\/spire-app-v2\.js\?v=20260811-business-uat-9(?:&startup=[^"']+)?/g, '/assets/spire-app-v2.js?v=20260811-business-uat-9&startup=20260811-domready-1');
   await writeFile(spirePath, spireHtml, 'utf8');
 } catch (error) {
   if (error?.code !== 'ENOENT') throw error;
