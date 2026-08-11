@@ -16,7 +16,7 @@ const requireText = (source, needle, message) => { if (!source.includes(needle))
 
 requireText(routes, "import { promoteApprovedIntakeToSpire } from './client-intake-promotion.js';", 'promotion service import is missing from client-intake-routes.ts');
 requireText(routes, 'CLIENT_INTAKE_AUTOMATIC_SPIRE_PROMOTION_V2', 'post-approval promotion marker is missing');
-requireText(routes, "'status'='APPROVED'", 'approval state transition is missing');
+requireText(routes, `"status"='APPROVED'`, 'approval state transition is missing');
 requireText(routes, 'const promotion=await promoteApprovedIntakeToSpire(prisma,a,req.params.caseId,patientId);', 'automatic promotion call is missing after approval');
 
 const approvedIndex = routes.indexOf(`"status"='APPROVED'`);
@@ -38,7 +38,7 @@ for (const table of [
 ]) requireText(promotion, `\"${table}\"`, `${table} mapping is missing from the promotion service`);
 
 requireText(promotion, "['RN', 'LPN', 'DELEGATING_NURSE']", 'licensed medication-review gate is missing');
-requireText(promotion, "if (isLicensedReviewer && med.completeForOrder)", 'active medication orders are not gated on licensed review plus complete data');
+requireText(promotion, 'if (isLicensedReviewer && med.completeForOrder)', 'active medication orders are not gated on licensed review plus complete data');
 if (promotion.includes("'PENDING_VERIFICATION'")) fail('unverified intake medications must remain reconciliation items, not medication orders');
 requireText(promotion, 'units == null || units <= 0', 'service authorization must reject missing/zero units instead of inventing billable authorization');
 requireText(promotion, "status !== 'APPROVED'", 'promotion service must refuse to run before intake approval');
