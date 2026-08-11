@@ -6,6 +6,30 @@
   let activeOpen = null;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // CACHE_SAFE_LEGACY_OBSERVER_QUARANTINE: Chrome may retain an older cached copy
+  // of a recovery script even after a deployment. Block MutationObservers created
+  // by the retired SPIRE recovery runtimes only; all other application observers
+  // continue to use the native implementation.
+  const NativeMutationObserver = window.MutationObserver;
+  if (NativeMutationObserver && !window.__spireLegacyObserverQuarantine) {
+    const legacyObserverPattern = /spire-(?:canonical-bootstrap|shell-resilience|chart-ready|chart-recovery-v1)\.js/i;
+    function GuardedMutationObserver(callback) {
+      const stack = String(new Error().stack || '');
+      if (legacyObserverPattern.test(stack)) {
+        return {
+          observe() {},
+          disconnect() {},
+          takeRecords() { return []; },
+        };
+      }
+      return new NativeMutationObserver(callback);
+    }
+    GuardedMutationObserver.prototype = NativeMutationObserver.prototype;
+    window.MutationObserver = GuardedMutationObserver;
+    window.__spireLegacyObserverQuarantine = true;
+  }
+
   const requestedFromLocation = () => {
     const query = new URLSearchParams(location.search);
     const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
