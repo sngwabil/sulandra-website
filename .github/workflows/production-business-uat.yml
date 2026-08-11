@@ -43,6 +43,7 @@ jobs:
           set -euo pipefail
           contract='20260810-business-uat-1'
           spire_app_generation='20260810-business-uat-8'
+          spire_bootstrap_generation='20260810-spire-canonical-bootstrap-1'
           shell_resilience_generation='20260810-spire-shell-resilience-4'
           chart_ready_generation='20260810-spire-chart-ready-2'
           deep_link_generation='20260810-business-uat-5'
@@ -62,6 +63,7 @@ jobs:
             payroll="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/workforce-payroll-readiness.js || true)"
             spire="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire.html || true)"
             spire_app="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-app-v2.js?v=${spire_app_generation}" || true)"
+            spire_bootstrap="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-canonical-bootstrap.js?v=${spire_bootstrap_generation}" || true)"
             shell_resilience="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-shell-resilience.js?v=${shell_resilience_generation}" || true)"
             chart_ready="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-chart-ready.js?v=${chart_ready_generation}" || true)"
             deep_link="$(curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/spire-deep-link.js?v=${deep_link_generation}" || true)"
@@ -82,10 +84,15 @@ jobs:
               && grep -q 'workforce-payroll-readiness.js' <<<"$workforce" \
               && grep -q "$contract" <<<"$payroll" \
               && grep -q "spire-app-v2.js?v=${spire_app_generation}" <<<"$spire" \
+              && grep -q "spire-canonical-bootstrap.js?v=${spire_bootstrap_generation}" <<<"$spire" \
               && grep -q "spire-shell-resilience.js?v=${shell_resilience_generation}" <<<"$spire" \
               && grep -q "spire-chart-ready.js?v=${chart_ready_generation}" <<<"$spire" \
               && grep -q "spire-deep-link.js?v=${deep_link_generation}" <<<"$spire" \
               && grep -q "spire-chart-recovery-v1.js?v=${chart_recovery_generation}" <<<"$spire" \
+              && grep -q "$spire_bootstrap_generation" <<<"$spire_bootstrap" \
+              && grep -q 'DETERMINISTIC_CANONICAL_SHELL_BOOTSTRAP' <<<"$spire_bootstrap" \
+              && grep -q 'SpireCanonicalBootstrap' <<<"$spire_bootstrap" \
+              && grep -q 'forceChartActive' <<<"$spire_bootstrap" \
               && grep -q 'BUSINESS_UAT_NATIVE_DEEPLINK' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH' <<<"$spire_app" \
               && grep -q 'BUSINESS_UAT_CHART_FIRST' <<<"$spire_app" \
@@ -123,7 +130,7 @@ jobs:
               && grep -q "$home_health_rail_generation" <<<"$home_health_rail" \
               && grep -q 'sulandra:home-health:active-rail' <<<"$home_health_rail" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact business-UAT production contract, idempotent canonical SPIRE shell, resilience v4, and stable Home Health referral rail are live."
+              echo "Exact business-UAT production contract, deterministic canonical SPIRE bootstrap, resilience v4, and stable Home Health referral rail are live."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
