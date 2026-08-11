@@ -12,15 +12,18 @@ const importMarker =
   "import { registerSpireWorkspaceCompletionRoutes } from './spire-workspace-completion-routes.js';";
 const callMarker =
   'registerSpireWorkspaceCompletionRoutes(app, prisma, { authOf, audit });';
+const foundationCallMarker =
+  'registerSpireFoundationRoutes(app, prisma, { authOf });';
 
-if (!source.includes(importMarker) || !source.includes(callMarker)) {
-  throw new Error(`SPIRE reference parity injection markers were not found in ${target}`);
+if (!source.includes(importMarker) || !source.includes(callMarker) || !source.includes(foundationCallMarker)) {
+  throw new Error(`SPIRE parity injection markers were not found in ${target}`);
 }
 
 const desiredImports = [
   "import { registerSpireAcuteCareParityRoutes } from './spire-acute-care-parity-routes.js';",
   "import { registerSpireSpecialtyCareParityRoutes } from './spire-specialty-care-parity-routes.js';",
   "import { registerSpirePatientEngagementParityRoutes } from './spire-patient-engagement-parity-routes.js';",
+  "import { registerSpireBreakGlassGuard, registerSpireEnterpriseParityRoutes } from './spire-enterprise-parity-routes.js';",
   "import { registerSpireEpicReferenceParityRoutes } from './spire-epic-reference-parity-routes.js';",
   "import { registerSpireSpeedButtonParityRoutes } from './spire-speed-button-parity-routes.js';",
   "import { registerSpireSmartPhraseParityRoutes } from './spire-smartphrase-parity-routes.js';",
@@ -34,6 +37,7 @@ const desiredCalls = [
   'registerSpireAcuteCareParityRoutes(app, prisma, { authOf });',
   'registerSpireSpecialtyCareParityRoutes(app, prisma, { authOf });',
   'registerSpirePatientEngagementParityRoutes(app, prisma, { authOf });',
+  'registerSpireEnterpriseParityRoutes(app, prisma, { authOf });',
   'registerSpireEpicReferenceParityRoutes(app, prisma, { authOf });',
 ];
 
@@ -44,6 +48,13 @@ for (const statement of [...desiredImports].reverse()) {
     source = source.replace(importMarker, `${importMarker}\n${statement}`);
   }
 }
+
+// Emergency-access/privacy enforcement must execute before the legacy chart routes.
+const guardCall = 'registerSpireBreakGlassGuard(app, prisma, { authOf });';
+if (!source.includes(guardCall)) {
+  source = source.replace(foundationCallMarker, `${guardCall}\n${foundationCallMarker}`);
+}
+
 for (const statement of [...desiredCalls].reverse()) {
   if (!source.includes(statement)) {
     source = source.replace(callMarker, `${callMarker}\n${statement}`);
@@ -51,4 +62,4 @@ for (const statement of [...desiredCalls].reverse()) {
 }
 
 await writeFile(target, source, 'utf8');
-console.log(`Registered SPIRE Epic-reference parity routes in ${target}.`);
+console.log(`Registered SPIRE Epic/enterprise parity routes and emergency-access guard in ${target}.`);
