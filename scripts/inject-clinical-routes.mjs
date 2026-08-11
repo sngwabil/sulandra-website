@@ -52,7 +52,7 @@ const imports = [
   "import { registerSpireCommunicationsInBasketRoutes } from './spire-communications-inbasket-routes.js';",
   "import { registerSpireWorkspaceAssigneeGuard } from './spire-workspace-assignee-guard.js';",
   "import { registerSpireWorkspaceCompletionRoutes } from './spire-workspace-completion-routes.js';",
-  "import { registerSpireExternalConnectivityRoutes } from './spire-external-connectivity-routes.js';",
+  "import { registerSpireFieldMobileRoutes } from './spire-field-mobile-routes.js';",
   "import { registerOfferProgressRoute } from './offer-progress-route.js';",
   "import { registerOfferSendRoute } from './offer-send-route.js';",
   "import { registerOfferAcceptancePdfRoute } from './offer-acceptance-pdf-route.js';",
@@ -103,7 +103,7 @@ const calls = [
   'registerSpireCommunicationsInBasketRoutes(app, prisma, { authOf });',
   'registerSpireWorkspaceAssigneeGuard(app, prisma, { authOf });',
   'registerSpireWorkspaceCompletionRoutes(app, prisma, { authOf, audit });',
-  'registerSpireExternalConnectivityRoutes(app, prisma, { authOf });',
+  'registerSpireFieldMobileRoutes(app, prisma, { authOf });',
   'registerOfferProgressRoute(app, prisma, { authOf, requireRoles });',
   'registerOfferSendRoute(app, prisma, { authOf, requireRoles, audit });',
   'registerOfferAcceptancePdfRoute(app, prisma, { audit });',
@@ -122,4 +122,4 @@ for (const statement of calls) {
   if (!source.includes(statement)) source = source.replace(callMarker, `${statement}\n${callMarker}`);
 }
 await writeFile(target, source, 'utf8');
-console.log(`Registered the complete SPIRE enterprise route set in ${target}.`);
+console.log(`Registered the complete SPIRE enterprise and field-mobile route set in ${target}.`);
