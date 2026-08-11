@@ -19,6 +19,7 @@ if (!source.includes(importMarker) || !source.includes(callMarker)) {
 
 const desiredImports = [
   "import { registerSpireAcuteCareParityRoutes } from './spire-acute-care-parity-routes.js';",
+  "import { registerSpireSpecialtyCareParityRoutes } from './spire-specialty-care-parity-routes.js';",
   "import { registerSpireEpicReferenceParityRoutes } from './spire-epic-reference-parity-routes.js';",
   "import { registerSpireSpeedButtonParityRoutes } from './spire-speed-button-parity-routes.js';",
   "import { registerSpireSmartPhraseParityRoutes } from './spire-smartphrase-parity-routes.js';",
@@ -30,6 +31,7 @@ const desiredCalls = [
   'registerSpireSmartPhraseParityRoutes(app, prisma, { authOf });',
   'registerSpireSmartTextParityRoutes(app, prisma, { authOf });',
   'registerSpireAcuteCareParityRoutes(app, prisma, { authOf });',
+  'registerSpireSpecialtyCareParityRoutes(app, prisma, { authOf });',
   'registerSpireEpicReferenceParityRoutes(app, prisma, { authOf });',
 ];
 
