@@ -63,6 +63,11 @@ const spirePath = path.join(outputDirectory, 'spire.html');
 try {
   let spireHtml = await readFile(spirePath, 'utf8');
   const version = '20260808-spire-workflow-13';
+  const versionFor = (asset) => {
+    if (asset === 'spire-chart-review-v2') return '20260811-spire-chart-review-v2-2';
+    if (asset === 'spire-screen-controls') return '20260811-spire-screen-controls-3';
+    return version;
+  };
   const styles = [
     'spire-workflow', 'spire-results-workspace', 'spire-chart-review-v2',
     'spire-order-composer', 'spire-emar', 'spire-care-plan', 'spire-incidents',
@@ -79,8 +84,8 @@ try {
     spireHtml = spireHtml.replace(new RegExp(`\\s*<script src="\\/assets\\/${asset}\\.js(?:\\?v=[^"']+)?"><\\/script>\\s*`, 'g'), '');
   }
   spireHtml = spireHtml
-    .replace('</head>', styles.map(asset => `<link rel="stylesheet" href="/assets/${asset}.css?v=${version}">`).join('') + '</head>')
-    .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${version}"></script>`).join('') + '</body>');
+    .replace('</head>', styles.map(asset => `<link rel="stylesheet" href="/assets/${asset}.css?v=${versionFor(asset)}">`).join('') + '</head>')
+    .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${versionFor(asset)}"></script>`).join('') + '</body>');
   await writeFile(spirePath, spireHtml, 'utf8');
 } catch (error) {
   if (error?.code !== 'ENOENT') throw error;
