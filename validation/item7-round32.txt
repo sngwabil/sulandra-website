@@ -1,0 +1,3 @@
+Item 7 round 32 validation only.
+Scope: exact current feature head with SPIRE canonical bootstrap v3 native-open retry and Home Health rail stability v2, both cache-busted and required by the live production gate.
+Do not merge this validation marker.
