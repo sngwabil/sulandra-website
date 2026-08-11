@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const roots = [root, path.join(root, 'dist-web')];
+const dist = path.join(root, 'dist-web');
 const canonicalToken = "const token=()=>sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';";
 const companyHeaders = "...(window.SulandraCompanyContext?.headers?.()||{}),";
 
@@ -44,16 +44,17 @@ const suiteAssets = [
   'admin-employee360-enterprise-controls.js',
 ];
 
-for (const base of roots) {
-  for (const name of suiteAssets) {
-    const file = path.join(base, 'assets', name);
-    if (!(await exists(file))) continue;
-    let source = await readFile(file, 'utf8');
-    source = normalizeAdminAuth(source);
-    if (name === 'admin-employee-communications.js') source = fixCommunicationsMount(source);
-    if (name === 'admin-employee-analytics.js') source = fixAnalyticsSyntax(source);
-    await writeFile(file, source, 'utf8');
-  }
+// Only mutate the static bundle Railway actually serves. Source assets are left
+// untouched here so the repository's source verifiers continue to evaluate the
+// canonical generators rather than a post-build publication patch.
+for (const name of suiteAssets) {
+  const file = path.join(dist, 'assets', name);
+  if (!(await exists(file))) continue;
+  let source = await readFile(file, 'utf8');
+  source = normalizeAdminAuth(source);
+  if (name === 'admin-employee-communications.js') source = fixCommunicationsMount(source);
+  if (name === 'admin-employee-analytics.js') source = fixAnalyticsSyntax(source);
+  await writeFile(file, source, 'utf8');
 }
 
 const badDescription = `        description: "The Chief Operating Officer (COO) serves as the primary operational leader responsible for day-to-day agency operations, clinical administration, regulatory compliance, and fiscal management under Ohio Department of Developmental Disabilities (DODD) OAC 5123 and Ohio Department of Health guidelines.\n\nKey Responsibilities:\n• Direct daily operations of residential community living homes, home health aide services, and NEMT transportation networks.\n• Enforce compliance with DODD rules, Medicaid waiver standards, Electronic Visit Verification (EVV), and Ohio Administrative Code OAC 5123.\n• Oversee Major Unusual Incident (MUI) and Unusual Incident (UI) investigations, reporting, and prevention plans.\n• Manage organizational finances, staffing ratios, line-of-credit compliance, and departmental performance.\n• Lead quality assurance audits, survey readiness, and workforce development across clinical and administrative teams.",`;
@@ -63,8 +64,9 @@ const goodReqs = `        reqs: \`• Bachelor's or Master's Degree in Healthcar
 const badBenefits = `        benefits: "• Competitive Executive Base Salary + Performance Bonus Pool\n• Comprehensive Medical, Dental, and Vision Coverage\n• Paid Time Off (PTO), Paid Holidays, and Executive Professional Development\n• 401(k) Retirement Plan with Company Match\n• Significant leadership autonomy and enterprise growth opportunity"`;
 const goodBenefits = `        benefits: \`• Competitive Executive Base Salary + Performance Bonus Pool\n• Comprehensive Medical, Dental, and Vision Coverage\n• Paid Time Off (PTO), Paid Holidays, and Executive Professional Development\n• 401(k) Retirement Plan with Company Match\n• Significant leadership autonomy and enterprise growth opportunity\``;
 
-for (const base of roots) {
-  const admin = path.join(base, 'admin.html');
+// admin.html itself is source-equality checked by verify-admin-canonical-source.mjs,
+// so apply the same deterministic repair to source and published copies.
+for (const admin of [path.join(root, 'admin.html'), path.join(dist, 'admin.html')]) {
   if (!(await exists(admin))) continue;
   let html = await readFile(admin, 'utf8');
   html = html.replace(badDescription, goodDescription).replace(badReqs, goodReqs).replace(badBenefits, goodBenefits);
@@ -75,4 +77,4 @@ for (const base of roots) {
   await writeFile(admin, html, 'utf8');
 }
 
-console.log('Published Admin runtime repaired in source and dist-web: Employee 360 auth/company scope normalized, Communications no longer replaces the Employees module, Analytics closing brace repaired, Admin job-preset multiline strings repaired, and Admin time-attendance fetch wrapper removed.');
+console.log('Published Admin runtime repaired: Employee 360 auth/company scope normalized in dist-web, Communications no longer replaces Employees, Analytics closing brace repaired, Admin job-preset multiline strings repaired, and Admin time-attendance fetch wrapper removed.');
