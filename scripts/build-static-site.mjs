@@ -7,6 +7,11 @@ const repositoryRoot = path.resolve(scriptDirectory, '..');
 const outputDirectory = path.join(repositoryRoot, 'dist-web');
 const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app';
 
+// The business-path installer exposes the canonical SpireEnsureShell hook before
+// this publication step. Make that same runtime idempotent before dist-web is
+// copied so a later DOM-ready/recovery callback cannot reconstruct an open chart.
+await import('./install-spire-idempotent-shell.mjs');
+
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
 
