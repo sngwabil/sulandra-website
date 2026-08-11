@@ -44,7 +44,8 @@ await walk(root);
 // ordinary double-quoted JavaScript strings. Browsers reject literal line breaks
 // in those strings (the admin.html:881 Invalid or unexpected token seen in
 // production). Keep the content unchanged but serialize those three values with
-// escaped newlines before static publication.
+// escaped newlines before static publication. This repair is deliberately
+// idempotent because build:web invokes this compatibility guard more than once.
 const adminPath = path.join(root, 'admin.html');
 let admin = await readFile(adminPath, 'utf8');
 const presetStart = admin.indexOf('const jobPresets = {');
@@ -53,18 +54,15 @@ if (presetStart >= 0 && dspStart > presetStart) {
   const before = admin.slice(0, presetStart);
   let firstPreset = admin.slice(presetStart, dspStart);
   const after = admin.slice(dspStart);
-  firstPreset = firstPreset.replace(
-    /(description:\s*)"([\s\S]*?)"(,\s*\n\s*reqs:)/,
-    (_match, lead, value, tail) => `${lead}${JSON.stringify(value)}${tail}`,
-  );
-  firstPreset = firstPreset.replace(
-    /(reqs:\s*)"([\s\S]*?)"(,\s*\n\s*benefits:)/,
-    (_match, lead, value, tail) => `${lead}${JSON.stringify(value)}${tail}`,
-  );
-  firstPreset = firstPreset.replace(
-    /(benefits:\s*)"([\s\S]*?)"(\s*\n\s*},)/,
-    (_match, lead, value, tail) => `${lead}${JSON.stringify(value)}${tail}`,
-  );
+  const serializeLiteralMultiline = (pattern) => {
+    firstPreset = firstPreset.replace(pattern, (match, lead, value, tail) => {
+      if (!value.includes('\n')) return match;
+      return `${lead}${JSON.stringify(value)}${tail}`;
+    });
+  };
+  serializeLiteralMultiline(/(description:\s*)"([\s\S]*?)"(,\s*\n\s*reqs:)/);
+  serializeLiteralMultiline(/(reqs:\s*)"([\s\S]*?)"(,\s*\n\s*benefits:)/);
+  serializeLiteralMultiline(/(benefits:\s*)"([\s\S]*?)"(\s*\n\s*},)/);
   const repaired = before + firstPreset + after;
   if (repaired !== admin) {
     admin = repaired;
@@ -80,4 +78,4 @@ if (!doo.includes("appliedRole:'DOO'")) throw new Error('Director of Operations 
 if (!doo.includes('/public/careers/applications')) throw new Error('Director of Operations application is not connected to Careers intake.');
 if (/Chief Operating Officer|\bCOO\b/.test(doo)) throw new Error('Retired executive-role wording remains in the DOO application.');
 
-console.log(`Director of Operations frontend enforcement updated ${updated} canonical user-facing file(s), including valid Admin job-preset JavaScript; generated dist-web is never mutated.`);
+console.log(`Director of Operations frontend enforcement updated ${updated} canonical user-facing file(s), including valid Admin job-preset JavaScript; generated dist-web is never mutated and repeated passes are idempotent.`);
