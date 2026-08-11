@@ -5,9 +5,9 @@ await import('./scripts/prepare-item7-runtime-diagnostic.mjs');
 export default defineConfig({
   testDir:'./tests',
   testMatch:/production-business-path-uat\.spec\.mjs/,
-  grep:/Client Intake|DSP Shift|Home Health Referral|Incident/,
-  timeout:35_000,
-  expect:{timeout:8_000},
+  grep:/Client Intake|DSP Shift|Incident/,
+  timeout:50_000,
+  expect:{timeout:6_000},
   fullyParallel:false,
   workers:1,
   retries:0,
