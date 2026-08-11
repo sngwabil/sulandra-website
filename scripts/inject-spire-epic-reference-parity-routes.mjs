@@ -10,10 +10,12 @@ let source = await readFile(target, 'utf8');
 
 const imports = [
   "import { registerSpireEpicReferenceParityRoutes } from './spire-epic-reference-parity-routes.js';",
+  "import { registerSpireSpeedButtonParityRoutes } from './spire-speed-button-parity-routes.js';",
   "import { registerSpireSmartPhraseParityRoutes } from './spire-smartphrase-parity-routes.js';",
 ];
 const calls = [
   'registerSpireEpicReferenceParityRoutes(app, prisma, { authOf });',
+  'registerSpireSpeedButtonParityRoutes(app, prisma, { authOf });',
   'registerSpireSmartPhraseParityRoutes(app, prisma, { authOf });',
 ];
 
