@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           contract='20260810-business-uat-1'
-          spire_app_generation='20260810-business-uat-8'
+          spire_app_generation='20260811-business-uat-9'
           spire_bootstrap_generation='20260810-spire-canonical-bootstrap-3'
           shell_resilience_generation='20260810-spire-shell-resilience-4'
           chart_ready_generation='20260810-spire-chart-ready-2'
@@ -133,7 +133,7 @@ jobs:
               && grep -q 'DETERMINISTIC_HOME_HEALTH_RAIL_RESTORE' <<<"$home_health_rail" \
               && grep -q 'sulandra:home-health:active-rail' <<<"$home_health_rail" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact Item 7 production contract is live with SPIRE canonical bootstrap v3 and Home Health rail stability v2."
+              echo "Exact Item 7 production contract is live with SPIRE runtime generation nine, canonical bootstrap v3 and Home Health rail stability v2."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
