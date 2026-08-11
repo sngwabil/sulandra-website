@@ -17,25 +17,31 @@ if (!source.includes(importMarker) || !source.includes(callMarker)) {
   throw new Error(`SPIRE reference parity injection markers were not found in ${target}`);
 }
 
-const importBlock = [
+const desiredImports = [
   "import { registerSpireEpicReferenceParityRoutes } from './spire-epic-reference-parity-routes.js';",
   "import { registerSpireSpeedButtonParityRoutes } from './spire-speed-button-parity-routes.js';",
   "import { registerSpireSmartPhraseParityRoutes } from './spire-smartphrase-parity-routes.js';",
-].join('\n');
-
-const callBlock = [
-  // Register this exact static path before /smartphrases/:smartPhraseId so Express
-  // never interprets "speed-buttons" as a SmartPhrase id.
+  "import { registerSpireSmartTextParityRoutes } from './spire-smarttext-parity-routes.js';",
+];
+const desiredCalls = [
+  // The exact speed-buttons path must remain before /smartphrases/:smartPhraseId.
   'registerSpireSpeedButtonParityRoutes(app, prisma, { authOf });',
   'registerSpireSmartPhraseParityRoutes(app, prisma, { authOf });',
+  'registerSpireSmartTextParityRoutes(app, prisma, { authOf });',
   'registerSpireEpicReferenceParityRoutes(app, prisma, { authOf });',
-].join('\n');
+];
 
-if (!source.includes("./spire-epic-reference-parity-routes.js")) {
-  source = source.replace(importMarker, `${importMarker}\n${importBlock}`);
+// Replacing the same marker prepends each statement. Iterate in reverse so the
+// generated Express registration order remains exactly the desired order above.
+for (const statement of [...desiredImports].reverse()) {
+  if (!source.includes(statement)) {
+    source = source.replace(importMarker, `${importMarker}\n${statement}`);
+  }
 }
-if (!source.includes('registerSpireSpeedButtonParityRoutes(app, prisma, { authOf });')) {
-  source = source.replace(callMarker, `${callMarker}\n${callBlock}`);
+for (const statement of [...desiredCalls].reverse()) {
+  if (!source.includes(statement)) {
+    source = source.replace(callMarker, `${callMarker}\n${statement}`);
+  }
 }
 
 await writeFile(target, source, 'utf8');
