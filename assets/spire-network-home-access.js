@@ -38,9 +38,6 @@
     try { return new URL(value, location.origin).pathname; } catch { return ''; }
   };
 
-  // Apply service-home scope before the rest of SPIRE initializes. Entity Context
-  // still adds authentication and company provenance headers; the API treats this
-  // SPIRE-specific home header as the authoritative chart-access context.
   window.fetch = async (input, init = {}) => {
     let target = requestUrl(input);
     const headers = new Headers(input instanceof Request ? input.headers : undefined);
@@ -212,9 +209,12 @@
     const name = sessionStorage.getItem(HOME_NAME_KEY) || 'Selected service home';
     const label = document.createElement('span');
     label.textContent = `Home: ${name}`;
+    label.title = `Current service home: ${name}`;
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = 'Switch';
+    button.textContent = 'Change Home';
+    button.setAttribute('aria-label', 'Go back and select a different service home');
+    button.title = 'Go back to the SPIRE service-home selector';
     button.addEventListener('click', () => {
       const next = new URL(location.href);
       next.searchParams.delete(HOME_QUERY_KEY);
