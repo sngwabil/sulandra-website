@@ -1,11 +1,12 @@
 (() => {
   'use strict';
 
-  const CONTRACT = '20260810-spire-canonical-bootstrap-1';
+  const CONTRACT = '20260810-spire-canonical-bootstrap-2';
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   let activeRun = null;
   let requestedPatientId = '';
   let requestedTab = '';
+  let recoveryTimer = 0;
 
   function requestFromLocation() {
     const query = new URLSearchParams(location.search);
@@ -121,6 +122,22 @@
     finally { activeRun = null; }
   }
 
+  function scheduleRecovery() {
+    if (!requestedPatientId) return;
+    clearTimeout(recoveryTimer);
+    recoveryTimer = setTimeout(() => {
+      if (chartPresent()) {
+        forceChartActive(requestedPatientId);
+        return;
+      }
+      // RECOVER_AFTER_CANONICAL_SHELL_RESET: a later canonical shell install can
+      // legitimately replace the workspace DOM after a patient already opened.
+      // Reopen that same requested patient through the canonical runtime instead
+      // of abandoning recovery when the chart DOM temporarily disappears.
+      stabilize(requestedPatientId, requestedTab).catch(() => {});
+    }, 90);
+  }
+
   // DETERMINISTIC_CANONICAL_SHELL_BOOTSTRAP: install the canonical shell as soon
   // as the application runtime has exported its installer, rather than relying
   // only on DOMContentLoaded ordering during cross-page production navigation.
@@ -138,15 +155,21 @@
   }, true);
 
   const observer = new MutationObserver(() => {
-    if (!requestedPatientId || !chartPresent()) return;
-    forceChartActive(requestedPatientId);
+    if (!requestedPatientId) return;
+    if (chartPresent()) {
+      forceChartActive(requestedPatientId);
+      return;
+    }
+    scheduleRecovery();
   });
   observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden'] });
 
   async function start() {
     await ensureShell();
     const request = requestFromLocation();
-    if (request.patientId) await stabilize(request.patientId, request.tab);
+    requestedPatientId = request.patientId || requestedPatientId;
+    requestedTab = request.tab || requestedTab;
+    if (requestedPatientId) await stabilize(requestedPatientId, requestedTab);
   }
 
   window.SpireCanonicalBootstrap = Object.freeze({ contract: CONTRACT, ensureShell, stabilize, forceChartActive });
