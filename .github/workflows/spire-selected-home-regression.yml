@@ -78,4 +78,4 @@ jobs:
       - name: Run selected-home chart regression
         env:
           UAT_BASE_URL: https://www.sulandrahealth.com
-        run: npx playwright test tests/00-spire-selected-home-regression.spec.mjs --config=playwright.business-uat.config.mjs --workers=1 --retries=0
+        run: npx playwright test tests/00-spire-selected-home-regression.spec.mjs --config=playwright.spire-regression.config.mjs --workers=1 --retries=0
