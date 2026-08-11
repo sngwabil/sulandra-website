@@ -83,4 +83,19 @@ if (/Chief Operating Officer|\bCOO\b/.test(doo)) throw new Error('Retired execut
 // never mutates dist-web and safely skips backend-only files when absent.
 await import('./fix-client-intake-packet-coverage.mjs');
 
-console.log(`Director of Operations frontend enforcement updated ${updated} canonical user-facing file(s), including valid Admin job-preset JavaScript; generated dist-web is never mutated and repeated passes are idempotent.`);
+// Client Intake creation is single-flight. The original form allowed a second
+// submit event while the first POST was still in progress, so a quick double
+// click / Enter+click could create two separate draft cases. Lock the form for
+// the duration of the request and restore it only if the request fails/finishes.
+const intakePath = path.join(root, 'client-intake.html');
+let intake = await readFile(intakePath, 'utf8');
+if (!intake.includes('data-client-intake-single-submit="true"')) {
+  const originalSubmit = `$('newForm').onsubmit=async e=>{e.preventDefault();const error=$('newError');error.classList.remove('show');try{const data=await api('/api/admin/client-intakes',{method:'POST',body:JSON.stringify({firstName:$('newFirst').value,lastName:$('newLast').value,preferredName:$('newPreferred').value||null,dateOfBirth:$('newDob').value||null,serviceType:$('newService').value||null,programCode:$('newProgram').value||null,referralSource:$('newReferral').value||null,referralDate:$('newReferralDate').value||null,phone:$('newPhone').value||null,email:$('newEmail').value||null})});$('newDialog').close();await loadCases();await openCase(data.id);}catch(err){error.textContent=err.message;error.classList.add('show');}};`;
+  const guardedSubmit = `$('newForm').setAttribute('data-client-intake-single-submit','true');$('newForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,error=$('newError'),button=form.querySelector('button[type="submit"]');if(form.dataset.submitting==='true')return;form.dataset.submitting='true';error.classList.remove('show');const originalLabel=button?.textContent||'Create Draft & Open Full Packet';if(button){button.disabled=true;button.textContent='Creating…';}try{const data=await api('/api/admin/client-intakes',{method:'POST',body:JSON.stringify({firstName:$('newFirst').value,lastName:$('newLast').value,preferredName:$('newPreferred').value||null,dateOfBirth:$('newDob').value||null,serviceType:$('newService').value||null,programCode:$('newProgram').value||null,referralSource:$('newReferral').value||null,referralDate:$('newReferralDate').value||null,phone:$('newPhone').value||null,email:$('newEmail').value||null})});$('newDialog').close();await loadCases();await openCase(data.id);}catch(err){error.textContent=err.message;error.classList.add('show');}finally{form.dataset.submitting='false';if(button){button.disabled=false;button.textContent=originalLabel;}}};`;
+  if (!intake.includes(originalSubmit)) throw new Error('Client Intake create-submit handler changed; single-submit guard could not be applied safely.');
+  intake = intake.replace(originalSubmit, guardedSubmit);
+  await writeFile(intakePath, intake, 'utf8');
+  updated += 1;
+}
+
+console.log(`Director of Operations frontend enforcement updated ${updated} canonical user-facing file(s), including valid Admin job-preset JavaScript and single-flight Client Intake creation; generated dist-web is never mutated and repeated passes are idempotent.`);
