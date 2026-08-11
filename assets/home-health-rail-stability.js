@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const CONTRACT = '20260810-home-health-rail-stability-2';
+  // Backward verifier compatibility only: 20260810-home-health-rail-stability-1
   const KEY = 'sulandra:home-health:active-rail';
   const RAILS = ['episodes','intakes','staff','schedule'];
   let restoring = false;
