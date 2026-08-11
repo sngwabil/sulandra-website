@@ -36,6 +36,27 @@ for (const directory of publicDirectories) {
   }
 }
 
+// SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT: the Results workspace observes body child
+// mutations so it can enhance a newly opened Results tab. Its legacy tab-layout
+// pass appendChild()-ed every existing chart tab on every observer callback even
+// when order was already correct. Moving those nodes generated the next child-list
+// mutation and created the chart-opening CPU loop. Patch the final published asset
+// so it mutates tab order only when the actual key order differs.
+const resultsWorkspacePath = path.join(outputDirectory, 'assets', 'spire-results-workspace.js');
+try {
+  let source = await readFile(resultsWorkspacePath, 'utf8');
+  if (!source.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) {
+    const anchor = 'order.forEach(k=>bar.appendChild(byKey.get(k)));buttons.forEach';
+    const replacement = "/* SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT */const currentOrder=buttons.map(b=>b.dataset.chartTab);if(currentOrder.length!==order.length||currentOrder.some((key,index)=>key!==order[index]))order.forEach(k=>bar.appendChild(byKey.get(k)));buttons.forEach";
+    if (!source.includes(anchor)) throw new Error('SPIRE Results tab-layout mutation anchor changed');
+    source = source.replace(anchor, replacement);
+  }
+  if (!source.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) throw new Error('SPIRE Results workspace idempotent tab-layout patch is missing');
+  await writeFile(resultsWorkspacePath, source, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
 const loginPath = path.join(outputDirectory, 'employee-login.html');
 try {
   let loginHtml = await readFile(loginPath, 'utf8');
@@ -64,6 +85,7 @@ try {
   let spireHtml = await readFile(spirePath, 'utf8');
   const version = '20260808-spire-workflow-13';
   const versionFor = (asset) => {
+    if (asset === 'spire-results-workspace') return '20260811-spire-results-workspace-2';
     if (asset === 'spire-chart-review-v2') return '20260811-spire-chart-review-v2-2';
     if (asset === 'spire-screen-controls') return '20260811-spire-screen-controls-3';
     return version;
@@ -158,6 +180,7 @@ const requiredPublishedFiles = [
   'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
+  'assets/spire-results-workspace.js',
   'spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
@@ -165,8 +188,13 @@ for (const relative of requiredPublishedFiles) {
   catch { throw new Error(`Static publication regression: missing ${relative}`); }
 }
 
+const publishedResultsWorkspace = await readFile(path.join(outputDirectory, 'assets', 'spire-results-workspace.js'), 'utf8');
+if (!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) {
+  throw new Error('Static publication regression: SPIRE Results workspace can recreate the chart-tab MutationObserver loop');
+}
+
 await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; Admin navigation, modern shell and module loading are no longer manufactured by post-build mutation scripts.');
+console.log('Static website published from canonical source files; SPIRE Results tab ordering is idempotent and cannot recreate the chart-opening mutation loop.');
