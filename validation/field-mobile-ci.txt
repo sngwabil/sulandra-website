@@ -1,0 +1,1 @@
+Validate scoped OAuth, EVV, care logs, transport, native packaging, APNs/FCM push, and full migration chain after type repair.
