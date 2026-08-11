@@ -20,6 +20,7 @@ if (!source.includes(importMarker) || !source.includes(callMarker) || !source.in
 }
 
 const desiredImports = [
+  "import { registerSpireFieldMobileOperationsRoutes } from './spire-field-mobile-operations-routes.js';",
   "import { registerSpireAcuteCareParityRoutes } from './spire-acute-care-parity-routes.js';",
   "import { registerSpireSpecialtyCareParityRoutes } from './spire-specialty-care-parity-routes.js';",
   "import { registerSpirePatientEngagementParityRoutes } from './spire-patient-engagement-parity-routes.js';",
@@ -35,6 +36,7 @@ const desiredCalls = [
   'registerSpireSpeedButtonParityRoutes(app, prisma, { authOf });',
   'registerSpireSmartPhraseParityRoutes(app, prisma, { authOf });',
   'registerSpireSmartTextParityRoutes(app, prisma, { authOf });',
+  'registerSpireFieldMobileOperationsRoutes(app, prisma, { authOf });',
   'registerSpireAcuteCareParityRoutes(app, prisma, { authOf });',
   'registerSpireSpecialtyCareParityRoutes(app, prisma, { authOf });',
   'registerSpirePatientEngagementParityRoutes(app, prisma, { authOf });',
@@ -64,4 +66,4 @@ for (const statement of [...desiredCalls].reverse()) {
 }
 
 await writeFile(target, source, 'utf8');
-console.log(`Registered SPIRE Epic/enterprise/FHIR parity routes and emergency-access guard in ${target}.`);
+console.log(`Registered SPIRE Epic/enterprise/FHIR parity routes, field-mobile operations, and emergency-access guard in ${target}.`);
