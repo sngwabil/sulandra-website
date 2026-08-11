@@ -19,13 +19,14 @@
   const isSulandraApi = (url) => url.startsWith(API + '/api/') || url.startsWith('/api/') || url.startsWith(`${location.origin}/api/`);
   const isContextRequest = (url) => /\/api\/entity-context(?:\?|$)/.test(url);
 
-  function installCompactWorkspaceHeader() {
+  function sharedWorkspacePath() {
     const pathname = location.pathname.toLowerCase();
-    const compactPages = [
+    const pages = [
       '/spire-admin.html',
       '/spire-medication-qualifications.html',
       '/spire-training.html',
       '/company-documents.html',
+      '/client-intake.html',
       '/home-health.html',
       '/home-health-visits.html',
       '/home-health-referrals.html',
@@ -33,7 +34,30 @@
       '/nmt-dispatch.html',
       '/workforce-admin.html',
     ];
-    if (!compactPages.some((suffix) => pathname.endsWith(suffix)) || document.getElementById('sulandra-compact-workspace-header')) return;
+    return pages.some((suffix) => pathname.endsWith(suffix));
+  }
+
+  function installSignaturePlatformBar() {
+    if (!sharedWorkspacePath() || document.getElementById('sulandraGlobalPlatformBar') || document.querySelector('nav.platform')) return;
+    const style = document.createElement('style');
+    style.id = 'sulandra-signature-platform-style';
+    style.textContent = `
+      #sulandraGlobalPlatformBar{background:#083a67;color:#fff;border-bottom:4px solid #d4a72c;display:flex;gap:10px;align-items:center;padding:12px 24px;overflow:auto;position:relative;z-index:90;font-family:"Segoe UI",Arial,sans-serif}
+      #sulandraGlobalPlatformBar strong{font-size:18px;margin-right:auto;white-space:nowrap}
+      #sulandraGlobalPlatformBar a{color:#fff;text-decoration:none;border:1px solid #ffffff55;padding:8px 13px;border-radius:999px;font-weight:800;white-space:nowrap}
+      #sulandraGlobalPlatformBar a:hover,#sulandraGlobalPlatformBar a:focus-visible{background:#ffffff18;border-color:#ffffff88;outline:none}
+      @media(max-width:900px){#sulandraGlobalPlatformBar{padding:10px 14px}#sulandraGlobalPlatformBar strong{font-size:16px}}
+    `;
+    document.head.appendChild(style);
+    const nav = document.createElement('nav');
+    nav.id = 'sulandraGlobalPlatformBar';
+    nav.setAttribute('aria-label', 'Sulandra Health Platform');
+    nav.innerHTML = '<strong>Sulandra Health Platform</strong><a href="/admin.html#dashboard">Admin Console</a><a href="/intranet.html">Intranet Portal</a><a href="/employee-portal.html">Employee Portal</a><a href="/employee360.html">Employee 360</a><a href="/education-portal.html">Education Portal</a><a href="/spire.html">Spire Clinical</a>';
+    document.body.prepend(nav);
+  }
+
+  function installCompactWorkspaceHeader() {
+    if (!sharedWorkspacePath() || document.getElementById('sulandra-compact-workspace-header')) return;
     const style = document.createElement('style');
     style.id = 'sulandra-compact-workspace-header';
     style.textContent = `
@@ -46,6 +70,7 @@
     `;
     document.head.appendChild(style);
   }
+  installSignaturePlatformBar();
   installCompactWorkspaceHeader();
 
   async function loadContext() {
@@ -188,11 +213,6 @@
     if (!pathname.endsWith('/client-intake.html') || document.documentElement.dataset.sulandraClientIntakeDialogGuard === 'true') return;
     document.documentElement.dataset.sulandraClientIntakeDialogGuard = 'true';
 
-    // Client Intake uses a three-column grid. A late-mounted workspace layer was
-    // winning hit-testing over most of the visible New Intake button at desktop
-    // widths, leaving only a thin edge clickable. Keep the intake sidebar in its
-    // own stacking context above neighboring workspace layers without changing
-    // the visual layout.
     const style = document.createElement('style');
     style.id = 'sulandra-client-intake-hit-area-fix';
     style.textContent = `
@@ -229,9 +249,6 @@
       return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
     };
 
-    // Coordinate-based capture makes the entire visible rectangle authoritative.
-    // Even if an invisible sibling reports itself as event.target, a pointer that
-    // lands inside the visible New Intake button still opens the existing dialog.
     document.addEventListener('pointerdown', (event) => {
       if (!pointInsideNewButton(event)) return;
       event.preventDefault();
