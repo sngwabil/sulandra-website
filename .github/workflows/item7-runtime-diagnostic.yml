@@ -1,0 +1,29 @@
+name: Item 7 Runtime Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - feature/spire-ehr-platform
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Diagnose only unresolved Item 7 paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save @playwright/test@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - name: Run only four unresolved live paths with runtime state logging
+        env:
+          UAT_BASE_URL: https://www.sulandrahealth.com
+        run: npx playwright test --config=playwright.business-uat-diagnostic.config.mjs
