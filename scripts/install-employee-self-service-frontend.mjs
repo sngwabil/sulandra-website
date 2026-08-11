@@ -30,3 +30,7 @@ try {
 } catch (error) {
   if (error?.code !== 'ENOENT') throw error;
 }
+
+// This runs during build:web before the API TypeScript build, so applicant
+// document routing and the public workspace remain one deployable contract.
+await import('./install-applicant-document-upload-v2.mjs');
