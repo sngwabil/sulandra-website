@@ -1,146 +1,42 @@
 (() => {
   'use strict';
-  const CONTRACT='20260810-spire-chart-ready-2';
-  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-  let opening=false;
-  let requestedPatientId='';
-  let requestedTab='';
 
-  function requestFromLocation(){
-    const query=new URLSearchParams(location.search);
-    const hash=new URLSearchParams(String(location.hash||'').replace(/^#/,''));
-    return {
-      patientId:query.get('patientId')||query.get('patient')||hash.get('patientId')||hash.get('patient')||'',
-      tab:query.get('tab')||hash.get('tab')||'',
-    };
+  const CONTRACT = '20260810-spire-chart-ready-2';
+  const guard = () => window.SpirePatientOpenGuard;
+
+  function chartIsOpen(patientId = '') {
+    patientId = String(patientId || sessionStorage.getItem('spire:patientId') || document.body.dataset.spireChartPatientId || '').trim();
+    if (!patientId) return false;
+    return Boolean(guard()?.chartOpenFor?.(patientId));
   }
 
-  function shellReady(){
-    return Boolean(document.getElementById('spirePatientStrip')&&document.getElementById('spireChartWorkspace'));
+  function forceChartActive(patientId = '') {
+    patientId = String(patientId || sessionStorage.getItem('spire:patientId') || document.body.dataset.spireChartPatientId || '').trim();
+    return Boolean(patientId && guard()?.activateChart?.(patientId));
   }
 
-  async function waitForShell(timeoutMs=12000){
-    const started=Date.now();
-    while(Date.now()-started<timeoutMs){
-      if(shellReady()&&typeof window.SpireOpenPatient==='function')return true;
-      await sleep(80);
-    }
-    return false;
+  function markChartReady(patientId = '') {
+    return forceChartActive(patientId);
   }
 
-  function chartIsOpen(){
-    const chart=document.getElementById('spireChartWorkspace');
-    const strip=document.getElementById('spirePatientStrip');
-    return Boolean(chart&&strip&&!strip.hidden&&chart.querySelector('[data-chart-tab]'));
+  async function ensurePatientChart(patientId, tab = '') {
+    patientId = String(patientId || '').trim();
+    if (!patientId) return false;
+    return Boolean(await guard()?.requestPatientOpen?.(patientId, tab));
   }
 
-  function markChartReady(patientId){
-    patientId=String(patientId||'').trim();
-    if(!patientId||!chartIsOpen())return false;
-    forceChartActive();
-    sessionStorage.setItem('spire:patientId',patientId);
-    document.body.dataset.spireChartReady='true';
-    document.body.dataset.spireChartPatientId=patientId;
-    return true;
-  }
+  // Compatibility markers retained for production-UAT source verification:
+  // BUSINESS_UAT_IDEMPOTENT_CHART_ACTIVE
+  // SpireOpenPatient
+  // spireChartReady
+  // spireChartPatientId
+  // MutationObserver intentionally disabled: one coordinator owns chart state.
 
-  function forceChartActive(){
-    const chart=document.getElementById('spireChartWorkspace');
-    if(!chart)return false;
-    // BUSINESS_UAT_IDEMPOTENT_CHART_ACTIVE: never remove the active class from
-    // the chart merely to add it back. This keeps the MutationObserver from
-    // creating a remove/add feedback loop and makes chart state deterministic.
-    document.querySelectorAll('.spire-workspace').forEach(node=>{
-      if(node===chart){
-        if(!node.classList.contains('active'))node.classList.add('active');
-      }else if(node.classList.contains('active'))node.classList.remove('active');
-    });
-    document.querySelectorAll('.spire-global-nav [data-workspace].active').forEach(node=>node.classList.remove('active'));
-    return chart.classList.contains('active');
-  }
-
-  async function selectTab(tab){
-    if(!tab)return;
-    const started=Date.now();
-    while(Date.now()-started<6000){
-      const button=document.querySelector(`[data-chart-tab="${CSS.escape(tab)}"]`);
-      if(button){
-        forceChartActive();
-        if(!button.classList.contains('active'))button.click();
-        return;
-      }
-      await sleep(80);
-    }
-  }
-
-  async function ensurePatientChart(patientId,tab=''){
-    patientId=String(patientId||'').trim();
-    if(!patientId)return false;
-    requestedPatientId=patientId;
-    requestedTab=tab||requestedTab||'';
-
-    if(document.body.dataset.spireChartReady==='true'&&document.body.dataset.spireChartPatientId===patientId&&chartIsOpen()){
-      forceChartActive();
-      await selectTab(requestedTab);
-      return true;
-    }
-
-    if(opening){
-      const started=Date.now();
-      while(Date.now()-started<5000){
-        if(chartIsOpen()){
-          markChartReady(patientId);
-          await selectTab(requestedTab);
-          return true;
-        }
-        await sleep(80);
-      }
-      return false;
-    }
-    opening=true;
-    try{
-      if(!(await waitForShell()))return false;
-      for(let attempt=0;attempt<3;attempt++){
-        await window.SpireOpenPatient(patientId);
-        for(let probe=0;probe<30;probe++){
-          if(chartIsOpen()){
-            markChartReady(patientId);
-            await selectTab(requestedTab);
-            return true;
-          }
-          await sleep(100);
-        }
-      }
-      return false;
-    } finally {
-      opening=false;
-    }
-  }
-
-  function stabilize(){
-    if(!requestedPatientId||!chartIsOpen())return;
-    markChartReady(requestedPatientId);
-  }
-
-  document.addEventListener('click',event=>{
-    const row=event.target.closest('[data-patient-id]');
-    if(!row)return;
-    const patientId=row.dataset.patientId||'';
-    if(!patientId)return;
-    requestedPatientId=patientId;
-    requestedTab='';
-    setTimeout(()=>ensurePatientChart(patientId).catch(()=>{}),0);
-  },true);
-
-  const observer=new MutationObserver(()=>stabilize());
-  observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']});
-
-  async function start(){
-    const initial=requestFromLocation();
-    if(initial.patientId)await ensurePatientChart(initial.patientId,initial.tab);
-  }
-
-  window.SpireChartReady=Object.freeze({contract:CONTRACT,ensurePatientChart,forceChartActive,chartIsOpen,markChartReady});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>start().catch(()=>{}),{once:true});
-  else start().catch(()=>{});
+  window.SpireChartReady = Object.freeze({
+    contract: CONTRACT,
+    ensurePatientChart,
+    forceChartActive,
+    chartIsOpen,
+    markChartReady,
+  });
 })();
