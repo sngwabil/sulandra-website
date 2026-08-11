@@ -31,4 +31,22 @@ if(analyticsSource.includes(unsafeSerializer)){
   throw new Error('Unable to locate the Employee analytics CSV serializer requiring TypeScript repair.');
 }
 
-console.log('Employee 360 analytics registration and CSV export TypeScript typing are build-safe.');
+const frontendPath=path.join(root,'assets','admin-employee-analytics.js');
+let frontend=await readFile(frontendPath,'utf8');
+frontend=frontend.replace(
+  /const token=\(\)=>[^;]+;/,
+  "const token=()=>sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';",
+);
+frontend=frontend.replace(
+  /Authorization:`Bearer \$\{token\(\)\}`,(?!\.\.\.\(window\.SulandraCompanyContext)/g,
+  "Authorization:`Bearer ${token()}`,...(window.SulandraCompanyContext?.headers?.()||{}),",
+);
+frontend=frontend.replace(
+  "document.getElementById('ea-export').onsubmit=exportReport}\n  async function saveDefinition",
+  "document.getElementById('ea-export').onsubmit=exportReport}}\n  async function saveDefinition",
+);
+if(frontend.includes("document.getElementById('ea-export').onsubmit=exportReport}\n  async function saveDefinition")) throw new Error('Employee analytics frontend still has the missing renderTab closing brace');
+if(!frontend.includes("sulandra:employee:access-token")) throw new Error('Employee analytics frontend is not using canonical Admin authentication');
+await writeFile(frontendPath,frontend,'utf8');
+
+console.log('Employee 360 analytics registration, CSV export typing, frontend syntax, and canonical Admin authentication are build-safe.');
