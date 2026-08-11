@@ -8,10 +8,14 @@ const target = path.join(repositoryRoot, 'api', 'dist', 'onboarding-bootstrap.js
 
 let source = await readFile(target, 'utf8');
 
-const importStatement =
-  "import { registerSpireEpicReferenceParityRoutes } from './spire-epic-reference-parity-routes.js';";
-const callStatement =
-  'registerSpireEpicReferenceParityRoutes(app, prisma, { authOf });';
+const imports = [
+  "import { registerSpireEpicReferenceParityRoutes } from './spire-epic-reference-parity-routes.js';",
+  "import { registerSpireSmartPhraseParityRoutes } from './spire-smartphrase-parity-routes.js';",
+];
+const calls = [
+  'registerSpireEpicReferenceParityRoutes(app, prisma, { authOf });',
+  'registerSpireSmartPhraseParityRoutes(app, prisma, { authOf });',
+];
 
 const importMarker =
   "import { registerSpireWorkspaceCompletionRoutes } from './spire-workspace-completion-routes.js';";
@@ -22,11 +26,15 @@ if (!source.includes(importMarker) || !source.includes(callMarker)) {
   throw new Error(`SPIRE reference parity injection markers were not found in ${target}`);
 }
 
-if (!source.includes(importStatement)) {
-  source = source.replace(importMarker, `${importMarker}\n${importStatement}`);
+for (const statement of imports) {
+  if (!source.includes(statement)) {
+    source = source.replace(importMarker, `${importMarker}\n${statement}`);
+  }
 }
-if (!source.includes(callStatement)) {
-  source = source.replace(callMarker, `${callMarker}\n${callStatement}`);
+for (const statement of calls) {
+  if (!source.includes(statement)) {
+    source = source.replace(callMarker, `${callMarker}\n${statement}`);
+  }
 }
 
 await writeFile(target, source, 'utf8');
