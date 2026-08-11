@@ -1,20 +1,18 @@
 (() => {
   'use strict';
 
-  const CONTRACT = '20260811-spire-patient-open-guard-3';
+  const CONTRACT = '20260811-spire-patient-open-guard-4';
   let activePatientId = '';
   let activeOpen = null;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // EARLY_OBSERVER_QUARANTINE: this file loads before workspace-completion and
-  // before the retired chart recovery facades. Block only the document-wide
-  // observers known to mutate the same chart DOM they observe. In particular,
-  // spire-workspace-completion reorders chart tabs with appendChild() and rewrites
-  // Quick Actions from its own child-list observer, creating a feedback loop.
+  // Early quarantine remains for retired compatibility runtimes. The workspace-
+  // completion observer is suppressed deterministically by the scripts bracketing
+  // that module in spire.html, so normal SPIRE observers remain available.
   const NativeMutationObserver = window.MutationObserver;
   if (NativeMutationObserver && !window.__spireLegacyObserverQuarantine) {
-    const unsafeObserverPattern = /spire-(?:canonical-bootstrap|shell-resilience|chart-ready|chart-recovery-v1|workspace-completion)\.js/i;
+    const unsafeObserverPattern = /spire-(?:canonical-bootstrap|shell-resilience|chart-ready|chart-recovery-v1)\.js/i;
     function GuardedMutationObserver(callback) {
       const stack = String(new Error().stack || '');
       if (unsafeObserverPattern.test(stack)) {
@@ -177,7 +175,8 @@
     const patientId = String(row?.dataset?.patientId || '').trim();
     if (!patientId) return;
 
-    // SINGLE_OWNER_PATIENT_CLICK: one native chart-open operation per user action.
+    // Row interaction has exactly one owner. Startup/deep-link opening remains in
+    // the canonical app bootstrap, so the same patient is never opened twice.
     event.preventDefault();
     event.stopImmediatePropagation();
     requestPatientOpen(patientId).catch(() => {});
@@ -193,7 +192,14 @@
   async function startFromLocation() {
     const request = requestedFromLocation();
     if (!request.patientId) return false;
-    return requestPatientOpen(request.patientId, request.tab);
+    if (chartOpenFor(request.patientId)) {
+      activateChart(request.patientId);
+      await selectTab(request.tab, request.patientId);
+      return true;
+    }
+    // Compatibility method only. Automatic startup is intentionally disabled so
+    // the build-injected canonical deep-link bridge is the sole URL-open owner.
+    return false;
   }
 
   document.addEventListener('click', ownPatientClick, true);
@@ -205,10 +211,4 @@
     chartOpenFor,
     startFromLocation,
   });
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => startFromLocation().catch(() => {}), { once: true });
-  } else {
-    startFromLocation().catch(() => {});
-  }
 })();
