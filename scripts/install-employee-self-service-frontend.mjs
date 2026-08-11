@@ -37,3 +37,4 @@ try {
 await import('./install-applicant-document-upload-v2.mjs');
 await import('./install-applicant-folder-review-v2.mjs');
 await import('./install-careers-current-employment.mjs');
+await import('./publish-applicant-review-ui.mjs');
