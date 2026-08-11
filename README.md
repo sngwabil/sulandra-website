@@ -3,7 +3,7 @@
 > **STOP: Read [`DEVELOPMENT_WORKFLOW.md`](DEVELOPMENT_WORKFLOW.md) before editing this repository.**
 >
 > The permanent primary development branch is `feature/spire-ehr-platform`.
-> The **Sulandra Static Website** is the frontend, while **sulandra-website** is the backend API. Do not mix their routing, deployment, database, or build responsibilities.
+> The **Sulandra Static Website** is the only frontend. **sulandra-website** and the backend deployment in the **magnificent-education** Railway project are backend services. Do not mix their routing, deployment, database, or build responsibilities.
 
 This repository contains the public Sulandra website and the production API used by
 the unified Sulandra Employee Portal.
@@ -31,16 +31,49 @@ commit `.env` or production secrets.
 
 ## Railway production services
 
-This repository deploys two different Railway services. Read
-`DEVELOPMENT_WORKFLOW.md` before changing either deployment.
+This repository participates in three Railway production services/deployments with
+different responsibilities. Read `DEVELOPMENT_WORKFLOW.md` before changing any deployment.
 
-### Backend API — sulandra-website
+### Frontend — Sulandra Static Website
 
-The backend service deploys from the repository root using `Dockerfile` and
-`railway.json`. It owns Express, Prisma, authentication, email, database access,
-and all `/api/*` and `/public/*` API routes.
+The **only frontend** is the Sulandra Static Website at `https://www.sulandrahealth.com`.
+It uses `Dockerfile.frontend` and `railway.frontend.json` and builds with:
 
-Required variables include:
+```bash
+npm run build:web
+```
+
+Only `dist-web/` is served by this static container. It owns HTML, CSS, browser
+JavaScript, employee/admin portals, SPIRE pages, education pages, careers pages,
+and every other user-facing page.
+
+The frontend deployment must not run Prisma migrations, database recovery, or the
+backend predeploy sequence.
+
+### Backend — sulandra-website
+
+`sulandra-website` is a Railway Node/Express/Prisma backend API. The primary API base
+used by the static frontend is currently:
+
+`https://sulandra-website-production-5fc4.up.railway.app`
+
+It deploys from the repository root using `Dockerfile` and `railway.json`. It owns
+Express, Prisma, authentication, email, database access, and `/api/*` and `/public/*`
+API routes.
+
+### Backend — magnificent-education Railway project
+
+The Railway project named **magnificent-education** also contains a backend deployment
+of the Sulandra server/API code. It is a backend service, not a frontend/static site.
+It must follow the same backend-only rules: Node/Express/Prisma responsibilities,
+backend build/predeploy behavior, database safeguards, and no user-facing HTML ownership.
+
+Do not identify magnificent-education as the website frontend. Do not route normal
+HTML navigation to either backend service.
+
+### Backend deployment requirements
+
+Backend deployments require variables such as:
 
 - `DATABASE_URL`
 - `CLIENT_ORIGIN`
@@ -67,21 +100,9 @@ The target database must already contain the supported legacy S.P.I.R.E. base
 schema, including the required `Organization`, `User`, `EmployeeApplication`, and
 `AuditEvent` prerequisites. Deployment stops if required prerequisites are missing.
 
-### Frontend — Sulandra Static Website
-
-The static frontend service uses `Dockerfile.frontend` and
-`railway.frontend.json`. It builds with:
-
-```bash
-npm run build:web
-```
-
-Only `dist-web/` is served by the static container. The frontend deployment must
-not run Prisma migrations, database recovery, or the backend predeploy sequence.
-
 The public Employee Portal link opens the static `employee-login.html` page. That
-page authenticates against the Railway backend API and stores the returned Bearer
-token only for the current browser tab session.
+page authenticates against an intentionally configured Railway backend API and stores
+the returned Bearer token only for the current browser tab session.
 
 ## CI and migration validation
 
