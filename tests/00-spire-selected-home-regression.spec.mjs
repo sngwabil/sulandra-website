@@ -36,7 +36,9 @@ function json(route,data,status=200){
 test('SPIRE selected home opens one patient chart without render loops',async({page})=>{
   let chartReviewCalls=0;
   const pageErrors=[];
+  const consoleErrors=[];
   page.on('pageerror',error=>pageErrors.push(String(error?.stack||error?.message||error)));
+  page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text())});
 
   await page.addInitScript(({token})=>{
     sessionStorage.setItem('sulandra:employee:access-token',token);
@@ -66,7 +68,9 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
     return json(route,{data:{ok:true}});
   });
 
-  await page.goto(`/spire.html?spireHome=${HOME_ID}#patient=${PATIENT_ID}&tab=chart-review`,{waitUntil:'domcontentloaded'});
+  // Commit returns as soon as the document navigation is accepted. This lets the
+  // regression distinguish a renderer freeze from a normal DOMContentLoaded delay.
+  await page.goto(`/spire.html?spireHome=${HOME_ID}#patient=${PATIENT_ID}&tab=chart-review`,{waitUntil:'commit'});
 
   const strip=page.locator('#spirePatientStrip');
   const chart=page.locator('#spireChartWorkspace');
@@ -76,11 +80,20 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
   await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();
   await expect(page.locator('#spireChartTabBody')).toContainText('Synthetic progress note');
 
-  // Give every mutation observer/debounced enhancer enough time to react. The chart
-  // must remain open, and Chart Review must not refetch itself indefinitely.
   await page.waitForTimeout(1800);
   await expect(chart).toHaveClass(/active/);
   await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toHaveCount(1);
   expect(chartReviewCalls,'Chart Review repeatedly refetched after rendering its own DOM').toBeLessThanOrEqual(3);
+
+  const observerDiagnostics=await page.evaluate(()=>({
+    breaker:document.documentElement.dataset.spireObserverCircuitBreaker||'',
+    quarantined:document.documentElement.dataset.spireUnsafeObserverQuarantined||'',
+    workspaceSuppressed:document.documentElement.dataset.spireWorkspaceObserverSuppressed||'',
+    workspaceRestored:document.documentElement.dataset.spireWorkspaceObserverRestored||'',
+    guard:window.SpirePatientOpenGuard?.contract||'',
+  }));
+  console.log('SPIRE observer diagnostics',JSON.stringify(observerDiagnostics));
+  expect(observerDiagnostics.breaker,`A SPIRE MutationObserver became runaway: ${observerDiagnostics.breaker}`).toBe('');
   expect(pageErrors,'SPIRE emitted browser page errors while opening the selected-home chart').toEqual([]);
+  expect(consoleErrors.filter(line=>!line.includes('observer circuit breaker')),'SPIRE emitted unexpected console errors').toEqual([]);
 });
