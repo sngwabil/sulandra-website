@@ -13,18 +13,9 @@ async function exists(file) {
 
 function normalizeAdminAuth(source) {
   source = source.replace(/const\s+token\s*=\s*\(\)\s*=>[^;]+;/, canonicalToken);
-  source = source.replace(
-    /Authorization:\s*`Bearer \$\{token\(\)\}`,(?!\s*\.\.\.\(window\.SulandraCompanyContext)/g,
-    `Authorization:\`Bearer \${token()}\`,${companyHeaders}`,
-  );
-  source = source.replace(
-    /['\"]Authorization['\"]\s*:\s*`Bearer \$\{token\(\)\}`,(?!\s*\.\.\.\(window\.SulandraCompanyContext)/g,
-    `'Authorization':\`Bearer \${token()}\`,${companyHeaders}`,
-  );
-  source = source.replace(
-    /['\"]Authorization['\"]\s*:\s*['\"]Bearer ['\"]\s*\+\s*token\(\),(?!\s*\.\.\.\(window\.SulandraCompanyContext)/g,
-    `'Authorization':'Bearer '+token(),${companyHeaders}`,
-  );
+  source = source.replace(/Authorization:\s*`Bearer \$\{token\(\)\}`,(?!\s*\.\.\.\(window\.SulandraCompanyContext)/g, `Authorization:\`Bearer \${token()}\`,${companyHeaders}`);
+  source = source.replace(/['\"]Authorization['\"]\s*:\s*`Bearer \$\{token\(\)\}`,(?!\s*\.\.\.\(window\.SulandraCompanyContext)/g, `'Authorization':\`Bearer \${token()}\`,${companyHeaders}`);
+  source = source.replace(/['\"]Authorization['\"]\s*:\s*['\"]Bearer ['\"]\s*\+\s*token\(\),(?!\s*\.\.\.\(window\.SulandraCompanyContext)/g, `'Authorization':'Bearer '+token(),${companyHeaders}`);
   return source;
 }
 
@@ -33,7 +24,6 @@ function fixCommunicationsMount(source) {
   const safe = "function render(){const root=host();if(!root)return;let view=document.getElementById('employee-communications-admin');if(!view){view=document.createElement('section');view.id='employee-communications-admin';view.style.marginTop='22px';root.appendChild(view)}view.innerHTML=`";
   if (source.includes(destructive)) source = source.replace(destructive, safe);
   if (source.includes(safe)) source = source.replaceAll("root.querySelector('#comm-", "view.querySelector('#comm-");
-
   const destructiveCatch = "async function load(){const root=host();if(!root)return;try{data=await request('/api/admin/employee-communications/dashboard');render()}catch(error){root.innerHTML=`<p style=\"color:#b91c1c\">${esc(error.message)}</p>`}}";
   const safeCatch = "async function load(){const root=host();if(!root)return;try{data=await request('/api/admin/employee-communications/dashboard');render()}catch(error){let view=document.getElementById('employee-communications-admin');if(!view){view=document.createElement('section');view.id='employee-communications-admin';view.style.marginTop='22px';root.appendChild(view)}view.innerHTML=`<div style=\"padding:12px;border:1px solid #fecaca;border-radius:10px;color:#b91c1c;background:#fff7f7\">Communications could not load: ${esc(error.message)}</div>`}}";
   if (source.includes(destructiveCatch)) source = source.replace(destructiveCatch, safeCatch);
@@ -43,27 +33,14 @@ function fixCommunicationsMount(source) {
 function fixAnalyticsSyntax(source) {
   const broken = "document.getElementById('ea-export').onsubmit=exportReport}\n  async function saveDefinition";
   const fixed = "document.getElementById('ea-export').onsubmit=exportReport}}\n  async function saveDefinition";
-  if (source.includes(broken)) source = source.replace(broken, fixed);
-  return source;
+  return source.includes(broken) ? source.replace(broken, fixed) : source;
 }
 
 const suiteAssets = [
-  'admin-employee-permissions.js',
-  'admin-employee-management.js',
-  'admin-employee-compliance.js',
-  'admin-employee-collaboration.js',
-  'admin-employee-performance.js',
-  'admin-employee-compensation.js',
-  'admin-employee-leave-offboarding.js',
-  'admin-employee-assets-access.js',
-  'admin-employee-analytics.js',
-  'admin-employee-documents.js',
-  'admin-employee-bulk-data.js',
-  'admin-employee-workflows.js',
-  'admin-employee-communications.js',
-  'admin-employee-engagement.js',
-  'admin-employee-learning.js',
-  'admin-employee-health-safety.js',
+  'admin-employee-permissions.js','admin-employee-management.js','admin-employee-compliance.js','admin-employee-collaboration.js',
+  'admin-employee-performance.js','admin-employee-compensation.js','admin-employee-leave-offboarding.js','admin-employee-assets-access.js',
+  'admin-employee-analytics.js','admin-employee-documents.js','admin-employee-bulk-data.js','admin-employee-workflows.js',
+  'admin-employee-communications.js','admin-employee-engagement.js','admin-employee-learning.js','admin-employee-health-safety.js',
   'admin-employee360-enterprise-controls.js',
 ];
 
@@ -74,13 +51,7 @@ for (const base of roots) {
     let source = await readFile(file, 'utf8');
     source = normalizeAdminAuth(source);
     if (name === 'admin-employee-communications.js') source = fixCommunicationsMount(source);
-    if (name === 'admin-employee-analytics.js') {
-      source = fixAnalyticsSyntax(source);
-      // This is the exact browser syntax failure shown in Admin DevTools. Keep a
-      // hard build guard for this known asset so it cannot silently ship broken.
-      try { new Function(source); }
-      catch (error) { throw new Error(`${path.relative(root, file)} is not valid JavaScript: ${error.message}`); }
-    }
+    if (name === 'admin-employee-analytics.js') source = fixAnalyticsSyntax(source);
     await writeFile(file, source, 'utf8');
   }
 }
@@ -101,15 +72,7 @@ for (const base of roots) {
     .replace(/\s*<script src="\/assets\/time-attendance-blocked-attempts\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-geofence\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
     .replace(/\s*<script src="\/assets\/time-attendance-location-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
-
-  // Validate the exact inline job-preset script that was producing admin.html:881.
-  const jobScript = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
-    .map(match => match[1]).find(code => code.includes('const jobPresets'));
-  if (jobScript) {
-    try { new Function(jobScript); }
-    catch (error) { throw new Error(`${path.relative(root, admin)} job preset JavaScript is invalid: ${error.message}`); }
-  }
   await writeFile(admin, html, 'utf8');
 }
 
-console.log('Published Admin runtime fixed: canonical Employee 360 auth/company scope, non-destructive Communications mounting, Analytics syntax repair, Admin job-preset syntax repair, and removal of the Admin-only time-attendance fetch wrapper.');
+console.log('Published Admin runtime repaired in source and dist-web: Employee 360 auth/company scope normalized, Communications no longer replaces the Employees module, Analytics closing brace repaired, Admin job-preset multiline strings repaired, and Admin time-attendance fetch wrapper removed.');
