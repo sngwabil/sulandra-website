@@ -1,0 +1,4 @@
+Validation-only trigger for Item 7 round 31.
+Exact feature head under test: e1d455512fa49c73e22cfc149364316f42a2b6c2
+Requires SPIRE canonical bootstrap v2 shell-reset recovery to be live before Playwright runs.
+Do not merge.
