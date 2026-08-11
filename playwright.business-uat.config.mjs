@@ -5,7 +5,7 @@ await import('./scripts/prepare-production-business-uat-round15.mjs');
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /production-business-path-uat\.spec\.mjs/,
+  testMatch: /(?:00-spire-selected-home-regression|production-business-path-uat)\.spec\.mjs/,
   timeout: 45_000,
   expect: { timeout: 12_000 },
   fullyParallel: false,
