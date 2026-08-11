@@ -71,8 +71,3 @@ await import('./install-applicant-document-upload-v2.mjs');
 await import('./install-applicant-folder-review-v2.mjs');
 await import('./install-careers-current-employment.mjs');
 await import('./publish-applicant-review-ui.mjs');
-
-// Final pass must touch the actual dist-web bundle Railway serves. Earlier fixes
-// mutated source assets after build-static-site had already copied them, which
-// allowed a green deployment to keep serving stale Employee 360 JavaScript.
-await import('./fix-admin-published-runtime.mjs');
