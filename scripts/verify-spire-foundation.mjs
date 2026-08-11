@@ -33,10 +33,18 @@ const files = {
   commCss: 'dist-web/assets/spire-communications-inbasket.css',
   referenceJs: 'dist-web/assets/spire-epic-reference-parity.js',
   referenceCss: 'dist-web/assets/spire-epic-reference-parity.css',
+  referenceCategoryJs: 'dist-web/assets/spire-epic-reference-chart-categories.js',
+  referenceCategoryCss: 'dist-web/assets/spire-epic-reference-chart-categories.css',
+  smartPhraseParityJs: 'dist-web/assets/spire-smartphrase-parity.js',
+  smartPhraseParityCss: 'dist-web/assets/spire-smartphrase-parity.css',
+  smartPhraseResetJs: 'dist-web/assets/spire-smartphrase-reset-patch.js',
   referenceRoutes: 'api/src/spire-epic-reference-parity-routes.ts',
+  smartPhraseRoutes: 'api/src/spire-smartphrase-parity-routes.ts',
+  speedButtonRoutes: 'api/src/spire-speed-button-parity-routes.ts',
   referenceInjector: 'scripts/inject-spire-epic-reference-parity-routes.mjs',
   apiPackage: 'api/package.json',
   parityDoc: 'docs/SPIRE_EPIC_REFERENCE_PARITY.md',
+  parityScopeMigration: 'prisma/migrations/20260811070000_spire_epic_reference_parity_scope/migration.sql',
   migration: 'prisma/migrations/20260807220000_spire_clinical_foundation/migration.sql',
   schedulingMigration: 'prisma/migrations/20260808002000_spire_scheduling_cadence/migration.sql',
   authMigration: 'prisma/migrations/20260808004000_spire_authorizations_evv/migration.sql',
@@ -72,6 +80,11 @@ has('html', [
   `/assets/spire-communications-inbasket.js?v=${publishedVersion}`,
   `/assets/spire-epic-reference-parity.css?v=${referenceVersion}`,
   `/assets/spire-epic-reference-parity.js?v=${referenceVersion}`,
+  '/assets/spire-epic-reference-chart-categories.css?v=20260811-spire-epic-reference-parity-2',
+  '/assets/spire-epic-reference-chart-categories.js?v=20260811-spire-epic-reference-parity-2',
+  '/assets/spire-smartphrase-parity.css?v=20260811-spire-smartphrase-parity-1',
+  '/assets/spire-smartphrase-parity.js?v=20260811-spire-smartphrase-parity-1',
+  '/assets/spire-smartphrase-reset-patch.js?v=20260811-spire-smartphrase-parity-2',
 ], 'Spire HTML');
 
 has('css', [
@@ -169,6 +182,28 @@ has('referenceCss', [
   'spire-reference-sticky-patient',
 ], 'Spire Epic-reference parity CSS');
 
+has('referenceCategoryJs', [
+  'All Chart Review',
+  "['ecg', 'ECG']",
+  "['referrals', 'Referrals']",
+  "['procedures', 'Procedures']",
+  "['episodes', 'Episodes']",
+  "['letters', 'Letters']",
+  'reference-review',
+], 'Spire reference Chart Review categories');
+has('referenceCategoryCss', ['spire-reference-chart-categories'], 'Spire reference Chart Review category CSS');
+
+has('smartPhraseParityJs', [
+  'SmartPhrase Manager',
+  'Progress-note Speed Buttons',
+  'share-targets',
+  'data-speed-phrase',
+  'data-parity-speed-phrase',
+  'speed-buttons',
+], 'Spire SmartPhrase parity frontend');
+has('smartPhraseParityCss', ['spire-smartphrase-dialog', 'spire-smartphrase-speed-help', 'spire-smartphrase-sharing'], 'Spire SmartPhrase parity CSS');
+has('smartPhraseResetJs', ['spireNewSmartPhrase', 'spirePhraseName', 'spireSavePhrase'], 'Spire SmartPhrase reset guard');
+
 has('referenceRoutes', [
   "app.get('/api/spire/patients/:patientId/reference-review/:category'",
   "app.get('/api/spire/patients/:patientId/wrap-up-context'",
@@ -179,9 +214,27 @@ has('referenceRoutes', [
   "'GC', 'GE', 'GT'",
 ], 'Spire Epic-reference parity routes');
 
+has('smartPhraseRoutes', [
+  "app.get('/api/spire/tools/smartphrases/manage'",
+  "app.get('/api/spire/tools/smartphrases/share-targets'",
+  "app.put('/api/spire/tools/smartphrases/:smartPhraseId'",
+  "app.post('/api/spire/tools/smartphrases/:smartPhraseId/share'",
+  "app.delete('/api/spire/tools/smartphrases/:smartPhraseId/share/:userId'",
+], 'Spire SmartPhrase parity routes');
+
+has('speedButtonRoutes', [
+  "app.put('/api/spire/tools/smartphrases/speed-buttons'",
+  "workspace\"='PROGRESS_NOTE'",
+  'SpireSpeedButton',
+], 'Spire speed-button parity route');
+
 has('referenceInjector', [
   'registerSpireEpicReferenceParityRoutes',
+  'registerSpireSpeedButtonParityRoutes',
+  'registerSpireSmartPhraseParityRoutes',
   'spire-epic-reference-parity-routes.js',
+  'spire-speed-button-parity-routes.js',
+  'spire-smartphrase-parity-routes.js',
 ], 'Spire Epic-reference parity injector');
 
 has('apiPackage', [
@@ -196,7 +249,21 @@ has('parityDoc', [
   'Wrap-Up',
   'Haiku',
   'Dragon Medical One',
+  'Current official Epic product-scope inventory',
+  'Enterprise parity ledger',
+  'Emergency / urgent care',
+  'Perioperative / surgery / anesthesia',
+  'Patient portal / digital front door',
 ], 'Spire parity documentation');
+
+has('parityScopeMigration', [
+  'ALTER TABLE "SpireEncounterParticipant" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
+  'ALTER TABLE "SpireEncounterStatusHistory" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
+  'ALTER TABLE "SpireVisitFollowUp" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
+  'ALTER TABLE "SpirePatientInstruction" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
+  'ALTER TABLE "SpireAfterVisitSummary" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
+  'SpireAfterVisitSummary_entity_patient_idx',
+], 'Spire Epic-reference company-scope migration');
 
 for (const table of [
   'SpireScheduleResource',
@@ -314,5 +381,7 @@ if (failures.length) {
 console.log(
   'Spire verified: clinical charting, CPOE, eMAR, Care Plan/ISP, incidents, assessments/flowsheets, '
   + 'scheduling, authorizations/EVV, secure documents/external records, Communications/In Basket 2.0, '
-  + 'and the supplied Epic-reference workflow parity layer are wired into the production static/backend architecture.',
+  + 'the supplied Epic-reference workflow parity layer, Chart Review reference categories, SmartPhrase sharing, '
+  + 'personal note speed buttons, company-scoped Wrap-Up/AVS, and the broader Epic parity ledger are wired into '
+  + 'the production static/backend architecture.',
 );
