@@ -31,6 +31,9 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-// This runs during build:web before the API TypeScript build, so applicant
-// document routing and the public workspace remain one deployable contract.
+// These run during build:web before the API TypeScript build, so the applicant
+// workspace, applicant folder, document routing, interview review, and career
+// application contracts are installed together and deployed as one system.
 await import('./install-applicant-document-upload-v2.mjs');
+await import('./install-applicant-folder-review-v2.mjs');
+await import('./install-careers-current-employment.mjs');
