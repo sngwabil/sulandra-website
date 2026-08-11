@@ -1,0 +1,61 @@
+/* SPIRE viewport safety and app-style window controls.
+   The clinical shell must never force the document wider than the browser viewport. */
+html,body{width:100%;max-width:100%;height:100%;overflow:hidden}
+body{min-width:0}
+.spire-app{width:100vw;max-width:100vw;min-width:0;overflow:hidden}
+.spire-topbar{width:100%;max-width:100vw;min-width:0;gap:7px;padding-left:8px;padding-right:8px;overflow:hidden}
+.spire-brand{flex:0 0 auto;min-width:0;width:clamp(132px,14vw,210px)}
+.spire-brand>div:last-child{min-width:0}
+.spire-global-nav{flex:1 1 auto;min-width:0;max-width:none;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain}
+.spire-global-nav button{flex:0 0 auto;padding-left:clamp(6px,.65vw,11px);padding-right:clamp(6px,.65vw,11px);font-size:clamp(10px,.78vw,12px)}
+.spire-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex:0 1 auto;min-width:0;max-width:min(48vw,720px);overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin}
+.spire-top-actions>*{flex:0 0 auto}
+.spire-top-actions button{padding-left:8px;padding-right:8px}
+.spire-current-home{max-width:220px;min-width:0;padding:6px 8px;gap:6px}
+.spire-current-home>span{display:block;max-width:125px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spire-current-home button{white-space:nowrap;text-decoration:none;border-left:1px solid #b9d4df;padding-left:7px}
+.spire-window-controls{display:inline-flex;align-items:center;gap:2px;padding:2px;border:1px solid #ffffff55;border-radius:6px;background:#004f7f66}
+.spire-window-control{width:31px!important;min-width:31px!important;height:29px!important;padding:0!important;display:grid!important;place-items:center;border:0!important;border-radius:4px!important;background:transparent!important;color:#fff!important;font-size:15px!important;font-weight:900!important;line-height:1!important;cursor:pointer}
+.spire-window-control:hover,.spire-window-control:focus-visible{background:#ffffff22!important;outline:2px solid #ffffff88;outline-offset:1px}
+.spire-window-control[aria-pressed="true"]{background:#ffffff2b!important;box-shadow:inset 0 -2px 0 #f6d55c}
+.spire-shell,.spire-main,.spire-workspace,.workspace-title,.panel{min-width:0;max-width:100%}
+.spire-main{width:100%;overflow:auto}
+.workspace-title{gap:10px;overflow:hidden}
+.workspace-title>div{min-width:0;overflow:hidden}
+.workspace-title h1,.workspace-title h2,.workspace-title p{overflow-wrap:anywhere}
+.workspace-title>button{flex:0 0 auto;white-space:nowrap}
+.panel{overflow-x:auto}
+.panel table{min-width:0;max-width:100%}
+.dashboard-grid{min-width:0;max-width:100%}
+.metric-card{min-width:0;overflow:hidden}
+body.spire-compact-mode .spire-shell{grid-template-columns:minmax(0,1fr)!important}
+body.spire-compact-mode .spire-left-rail,body.spire-compact-mode .spire-right-rail{display:none!important}
+body.spire-fit-mode .spire-topbar{gap:4px}
+body.spire-fit-mode .spire-brand{width:132px}
+body.spire-fit-mode .spire-brand strong{font-size:18px}
+body.spire-fit-mode .spire-brand span{display:none}
+body.spire-fit-mode .spire-global-nav button{padding-left:6px;padding-right:6px;font-size:10px}
+body.spire-fit-mode .spire-top-actions button{padding-left:6px;padding-right:6px;font-size:10px}
+body.spire-fit-mode .spire-current-home{max-width:180px}
+body.spire-fit-mode .spire-current-home>span{max-width:92px}
+@media(max-width:1280px){
+  .spire-brand{width:145px}.spire-brand span{display:none}
+  .spire-top-actions{max-width:44vw}
+  .spire-current-home{max-width:185px}.spire-current-home>span{max-width:95px}
+}
+@media(max-width:980px){
+  .spire-topbar{height:auto;min-height:58px;flex-wrap:wrap;align-content:center;padding-top:4px;padding-bottom:4px;overflow:visible}
+  .spire-brand{width:auto;min-width:125px}
+  .spire-global-nav{order:3;width:100%;height:38px}
+  .spire-global-nav button{height:38px}
+  .spire-top-actions{margin-left:auto;max-width:calc(100vw - 150px)}
+}
+@media(max-width:760px){
+  html,body{overflow:hidden!important}.spire-app{height:100dvh!important;min-height:0!important;overflow:hidden!important}
+  .spire-topbar{position:relative;z-index:30}
+  .spire-shell{display:grid!important;grid-template-columns:minmax(0,1fr)!important;min-height:0}
+  .spire-left-rail,.spire-right-rail{display:none!important}
+  .spire-main{overflow:auto!important}
+  .spire-top-actions{max-width:calc(100vw - 145px)}
+  .spire-current-home>span{max-width:80px}
+}
