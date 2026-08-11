@@ -73,28 +73,6 @@ export const careersPortalUrl = configuredPortalUrl.replace(
 );
 if (workflow !== workflowBefore) await writeFile(workflowPath, workflow, 'utf8');
 
-const adminPath = path.join(root, 'admin-railway.js');
-let admin = await readFile(adminPath, 'utf8');
-const adminBefore = admin;
-const companyChangeMarker = 'window.addEventListener("sulandra:company-change"';
-if (!admin.includes(companyChangeMarker)) {
-  admin = admin.replace(
-    '    window.addEventListener("hashchange", () => activateModule(location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard", false));',
-    `    window.addEventListener("hashchange", () => activateModule(location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard", false));
-    window.addEventListener("sulandra:company-change", async () => {
-      applications = [];
-      jobOpenings = [];
-      renderApplications();
-      try {
-        await Promise.all([loadApplications(), loadOpenings(), loadDashboard()]);
-      } catch (error) {
-        toast("Company data not refreshed", error.message);
-      }
-    });`,
-  );
-}
-if (admin !== adminBefore) await writeFile(adminPath, admin, 'utf8');
-
 if (!workflow.includes("'/applicant-portal.html'")) {
   throw new Error('Applicant portal URL repair failed: applicant emails are not pinned to applicant-portal.html');
 }
@@ -104,8 +82,5 @@ if (!entityAccess.includes("managesEveryDepartment && requiredCapability(request
 if (!careers.includes('a."legalEntityId"=$7')) {
   throw new Error('Careers company isolation regression: applicant listing is not scoped to the selected legal company');
 }
-if (!admin.includes(companyChangeMarker)) {
-  throw new Error('Admin company-switch repair failed: applicant data will not refresh when company context changes');
-}
 
-console.log('Recruiting flow repaired: applicant portal links, selected-company isolation, company-wide manager visibility, and company-switch refresh are enforced.');
+console.log('Recruiting backend repaired: applicant portal links, selected-company isolation, and company-wide manager visibility are enforced.');
