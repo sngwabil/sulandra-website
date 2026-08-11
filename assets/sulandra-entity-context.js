@@ -34,15 +34,38 @@
       '/workforce-admin.html',
     ];
     if (!compactPages.some((suffix) => pathname.endsWith(suffix)) || document.getElementById('sulandra-compact-workspace-header')) return;
+
+    // mainlogo.png intentionally has a large transparent canvas. Merely increasing
+    // the img width makes the CSS box larger while the visible logo stays tiny.
+    // Use the same clipped-slot + scaled-artwork treatment as Scheduling so every
+    // shared operational/SPIRE header has the same readable Sulandra logo without
+    // increasing the header height.
+    const header = document.querySelector('header.top,.top');
+    const logo = header?.querySelector(':scope > img');
+    if (logo && !logo.closest('.sulandra-workspace-logo-slot')) {
+      const slot = document.createElement('span');
+      slot.className = 'sulandra-workspace-logo-slot';
+      logo.replaceWith(slot);
+      slot.appendChild(logo);
+      logo.classList.add('sulandra-workspace-logo-art');
+    }
+
     const style = document.createElement('style');
     style.id = 'sulandra-compact-workspace-header';
     style.textContent = `
       header.top,.top{min-height:88px!important;height:auto!important;padding-top:8px!important;padding-bottom:8px!important;align-items:center!important}
-      header.top>img,.top>img{width:240px!important;height:72px!important;max-width:42vw!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 0 auto!important}
+      .sulandra-workspace-logo-slot{width:194px!important;height:58px!important;overflow:hidden!important;display:flex!important;align-items:center!important;flex:0 0 194px!important}
+      .sulandra-workspace-logo-slot>.sulandra-workspace-logo-art{width:180px!important;height:58px!important;max-width:none!important;object-fit:contain!important;object-position:left center!important;display:block!important;transform:scale(3.25)!important;transform-origin:left center!important}
+      header.top>img,.top>img{width:180px!important;height:58px!important;max-width:none!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 0 auto!important}
       header.top .spacer,.top .spacer{min-width:12px!important}
       header.top a,.top a{white-space:nowrap!important}
       #sulandraCompanySwitcher{flex:0 1 auto!important}
-      @media(max-width:760px){header.top,.top{min-height:76px!important;padding:6px 12px!important}header.top>img,.top>img{width:200px!important;height:60px!important;max-width:58vw!important}}
+      @media(max-width:760px){
+        header.top,.top{min-height:76px!important;padding:6px 12px!important}
+        .sulandra-workspace-logo-slot{width:160px!important;height:50px!important;flex-basis:160px!important}
+        .sulandra-workspace-logo-slot>.sulandra-workspace-logo-art{width:150px!important;height:48px!important;transform:scale(3.1)!important}
+        header.top>img,.top>img{width:150px!important;height:48px!important}
+      }
     `;
     document.head.appendChild(style);
   }
