@@ -19,6 +19,35 @@
   const isSulandraApi = (url) => url.startsWith(API + '/api/') || url.startsWith('/api/') || url.startsWith(`${location.origin}/api/`);
   const isContextRequest = (url) => /\/api\/entity-context(?:\?|$)/.test(url);
 
+  function installCompactWorkspaceHeader() {
+    const pathname = location.pathname.toLowerCase();
+    const compactPages = [
+      '/spire-admin.html',
+      '/spire-medication-qualifications.html',
+      '/spire-training.html',
+      '/company-documents.html',
+      '/home-health.html',
+      '/home-health-visits.html',
+      '/home-health-referrals.html',
+      '/nmt-orders.html',
+      '/nmt-dispatch.html',
+      '/workforce-admin.html',
+    ];
+    if (!compactPages.some((suffix) => pathname.endsWith(suffix)) || document.getElementById('sulandra-compact-workspace-header')) return;
+    const style = document.createElement('style');
+    style.id = 'sulandra-compact-workspace-header';
+    style.textContent = `
+      header.top,.top{min-height:74px!important;height:auto!important;padding-top:8px!important;padding-bottom:8px!important;align-items:center!important}
+      header.top>img,.top>img{width:180px!important;height:56px!important;max-width:32vw!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 0 auto!important}
+      header.top .spacer,.top .spacer{min-width:12px!important}
+      header.top a,.top a{white-space:nowrap!important}
+      #sulandraCompanySwitcher{flex:0 1 auto!important}
+      @media(max-width:760px){header.top,.top{min-height:66px!important;padding:6px 12px!important}header.top>img,.top>img{width:150px!important;height:48px!important;max-width:52vw!important}}
+    `;
+    document.head.appendChild(style);
+  }
+  installCompactWorkspaceHeader();
+
   async function loadContext() {
     const accessToken = token();
     if (!accessToken) { state.loaded = true; return state; }
