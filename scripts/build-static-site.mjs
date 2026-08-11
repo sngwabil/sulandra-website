@@ -68,6 +68,8 @@ try {
     'spire-order-composer', 'spire-emar', 'spire-care-plan', 'spire-incidents',
     'spire-assessments-flowsheets', 'spire-scheduling', 'spire-authorizations-evv',
     'spire-documents-external-records', 'spire-communications-inbasket',
+    // Keep viewport protection last so other SPIRE modules cannot reintroduce horizontal overflow.
+    'spire-screen-controls',
   ];
   const scripts = [...styles];
   for (const asset of styles) {
@@ -145,6 +147,7 @@ const requiredPublishedFiles = [
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
   'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
+  'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
   'spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
