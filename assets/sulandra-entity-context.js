@@ -188,6 +188,20 @@
     if (!pathname.endsWith('/client-intake.html') || document.documentElement.dataset.sulandraClientIntakeDialogGuard === 'true') return;
     document.documentElement.dataset.sulandraClientIntakeDialogGuard = 'true';
 
+    // Client Intake uses a three-column grid. A late-mounted workspace layer was
+    // winning hit-testing over most of the visible New Intake button at desktop
+    // widths, leaving only a thin edge clickable. Keep the intake sidebar in its
+    // own stacking context above neighboring workspace layers without changing
+    // the visual layout.
+    const style = document.createElement('style');
+    style.id = 'sulandra-client-intake-hit-area-fix';
+    style.textContent = `
+      body .layout > .cases{position:relative!important;z-index:30!important;isolation:isolate!important;pointer-events:auto!important;min-width:0!important}
+      body .layout > .sections,body .layout > .workspace{position:relative!important;z-index:1!important;min-width:0!important}
+      #newIntake{position:relative!important;z-index:31!important;pointer-events:auto!important;touch-action:manipulation!important;user-select:none!important}
+    `;
+    document.head.appendChild(style);
+
     const openNewIntake = () => {
       const dialog = document.getElementById('newDialog');
       const form = document.getElementById('newForm');
@@ -196,23 +210,38 @@
         console.error('[Client Intake] New Intake dialog is missing from the page.');
         return;
       }
+      if (dialog.open) return;
       if (form instanceof HTMLFormElement) form.reset();
       if (error instanceof HTMLElement) error.classList.remove('show');
       try {
-        if ('showModal' in dialog && typeof dialog.showModal === 'function') {
-          if (!dialog.open) dialog.showModal();
-        } else {
-          dialog.setAttribute('open', '');
-        }
+        if ('showModal' in dialog && typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
       } catch (errorValue) {
         console.error('[Client Intake] Unable to open New Intake dialog.', errorValue);
         dialog.setAttribute('open', '');
       }
     };
 
+    const pointInsideNewButton = (event) => {
+      const button = document.getElementById('newIntake');
+      if (!(button instanceof HTMLElement)) return false;
+      const rect = button.getBoundingClientRect();
+      return event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+    };
+
+    // Coordinate-based capture makes the entire visible rectangle authoritative.
+    // Even if an invisible sibling reports itself as event.target, a pointer that
+    // lands inside the visible New Intake button still opens the existing dialog.
+    document.addEventListener('pointerdown', (event) => {
+      if (!pointInsideNewButton(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openNewIntake();
+    }, true);
+
     document.addEventListener('click', (event) => {
       const target = event.target instanceof Element ? event.target.closest('#newIntake') : null;
-      if (!target) return;
+      if (!target && !pointInsideNewButton(event)) return;
       event.preventDefault();
       event.stopPropagation();
       openNewIntake();
