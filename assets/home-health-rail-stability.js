@@ -1,7 +1,8 @@
 (() => {
   'use strict';
-  const CONTRACT = '20260810-home-health-rail-stability-1';
+  const CONTRACT = '20260810-home-health-rail-stability-2';
   const KEY = 'sulandra:home-health:active-rail';
+  const RAILS = ['episodes','intakes','staff','schedule'];
   let restoring = false;
 
   function selectedRail() {
@@ -9,7 +10,7 @@
   }
 
   function remember(rail) {
-    if (!rail) return;
+    if (!rail || !RAILS.includes(rail)) return;
     try { sessionStorage.setItem(KEY, rail); } catch {}
   }
 
@@ -18,13 +19,35 @@
     return Boolean(host && !host.hidden);
   }
 
+  function enforceRail(rail) {
+    if (!RAILS.includes(rail)) return false;
+    let found = false;
+    document.querySelectorAll('[data-rail]').forEach((button) => {
+      const active = button.dataset.rail === rail;
+      button.classList.toggle('active', active);
+      if (active) found = true;
+    });
+    RAILS.forEach((key) => {
+      const host = document.getElementById(`${key}Rail`);
+      if (host) host.hidden = key !== rail;
+    });
+    if (found) document.documentElement.dataset.homeHealthActiveRail = rail;
+    return found && railVisible(rail);
+  }
+
   function restore() {
     const rail = selectedRail();
-    if (!rail || restoring || railVisible(rail)) return;
-    const button = document.querySelector(`[data-rail="${CSS.escape(rail)}"]`);
-    if (!button) return;
+    if (!rail || restoring) return;
     restoring = true;
-    try { button.click(); } finally { restoring = false; }
+    try {
+      // DETERMINISTIC_HOME_HEALTH_RAIL_RESTORE: enforce the rendered rail state
+      // directly first. Replaying a click alone is timing-dependent because the
+      // Home Health page may not have attached its onclick handlers yet.
+      enforceRail(rail);
+      const button = document.querySelector(`[data-rail="${CSS.escape(rail)}"]`);
+      if (button && !railVisible(rail)) button.click();
+      enforceRail(rail);
+    } finally { restoring = false; }
   }
 
   document.addEventListener('click', (event) => {
