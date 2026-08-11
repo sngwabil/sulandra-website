@@ -37,12 +37,12 @@
     const style = document.createElement('style');
     style.id = 'sulandra-compact-workspace-header';
     style.textContent = `
-      header.top,.top{min-height:74px!important;height:auto!important;padding-top:8px!important;padding-bottom:8px!important;align-items:center!important}
-      header.top>img,.top>img{width:180px!important;height:56px!important;max-width:32vw!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 0 auto!important}
+      header.top,.top{min-height:88px!important;height:auto!important;padding-top:8px!important;padding-bottom:8px!important;align-items:center!important}
+      header.top>img,.top>img{width:240px!important;height:72px!important;max-width:42vw!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 0 auto!important}
       header.top .spacer,.top .spacer{min-width:12px!important}
       header.top a,.top a{white-space:nowrap!important}
       #sulandraCompanySwitcher{flex:0 1 auto!important}
-      @media(max-width:760px){header.top,.top{min-height:66px!important;padding:6px 12px!important}header.top>img,.top>img{width:150px!important;height:48px!important;max-width:52vw!important}}
+      @media(max-width:760px){header.top,.top{min-height:76px!important;padding:6px 12px!important}header.top>img,.top>img{width:200px!important;height:60px!important;max-width:58vw!important}}
     `;
     document.head.appendChild(style);
   }
