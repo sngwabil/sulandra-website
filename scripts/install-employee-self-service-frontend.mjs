@@ -53,6 +53,12 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
+// Patch the published Employee Management asset itself. The transient red
+// Authentication required banner came from its first request racing startup.
+// Keep genuine persistent auth failures visible, but include the selected-company
+// header and silently retry only a brief authenticated boot-time 401.
+await import('./fix-admin-employee-auth-flash.mjs');
+
 // These run during build:web before the API TypeScript build, so the applicant
 // workspace, applicant folder, document routing, interview review, and career
 // application contracts are installed together and deployed as one system.
