@@ -3,6 +3,33 @@
 
   const COMPACT_KEY = 'spire:compact-mode';
   const FIT_KEY = 'spire:fit-mode';
+  const WORKSPACE_LOOP_GUARD = '20260811-spire-workspace-loop-guard-1';
+
+  // spire-workspace-completion.js has a document-wide child-list observer whose
+  // fallback pass reapplies chart-tab order with appendChild() for every existing
+  // tab. Once .chart-tabs exists, those moves create the next child-list mutation,
+  // which schedules another reorder indefinitely and can make Chromium unresponsive.
+  // The module already has direct click/custom-event hooks for the workspaces it
+  // owns, so disable only that unsafe fallback observer before the module loads.
+  const NativeMutationObserver = window.MutationObserver;
+  if (NativeMutationObserver && !window.__spireWorkspaceLoopGuard) {
+    const blockedCreator = /(?:^|\/)spire-workspace-completion\.js(?:\?|:|$)/i;
+    function GuardedMutationObserver(callback) {
+      const stack = String(new Error().stack || '');
+      if (blockedCreator.test(stack)) {
+        document.documentElement.dataset.spireWorkspaceLoopGuard = WORKSPACE_LOOP_GUARD;
+        return {
+          observe() {},
+          disconnect() {},
+          takeRecords() { return []; },
+        };
+      }
+      return new NativeMutationObserver(callback);
+    }
+    GuardedMutationObserver.prototype = NativeMutationObserver.prototype;
+    window.MutationObserver = GuardedMutationObserver;
+    window.__spireWorkspaceLoopGuard = WORKSPACE_LOOP_GUARD;
+  }
 
   const setPressed = (button, value) => button?.setAttribute('aria-pressed', value ? 'true' : 'false');
   const applyCompact = (value) => {
