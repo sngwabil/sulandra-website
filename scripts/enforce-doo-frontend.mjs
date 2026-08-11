@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const allowedExtensions = new Set(['.html', '.js', '.css']);
-const skipDirectories = new Set(['.git', 'node_modules', 'api', 'prisma', 'scripts']);
+// dist-web is generated output. Never mutate it here: this script runs more than
+// once in build:web, including after build-static-site.mjs, and post-copy Admin
+// changes violate the canonical Admin source contract.
+const skipDirectories = new Set(['.git', 'node_modules', 'api', 'prisma', 'scripts', 'dist-web']);
 let updated = 0;
 
 function revise(source) {
@@ -77,4 +80,4 @@ if (!doo.includes("appliedRole:'DOO'")) throw new Error('Director of Operations 
 if (!doo.includes('/public/careers/applications')) throw new Error('Director of Operations application is not connected to Careers intake.');
 if (/Chief Operating Officer|\bCOO\b/.test(doo)) throw new Error('Retired executive-role wording remains in the DOO application.');
 
-console.log(`Director of Operations frontend enforcement updated ${updated} user-facing file(s), including valid Admin job-preset JavaScript.`);
+console.log(`Director of Operations frontend enforcement updated ${updated} canonical user-facing file(s), including valid Admin job-preset JavaScript; generated dist-web is never mutated.`);
