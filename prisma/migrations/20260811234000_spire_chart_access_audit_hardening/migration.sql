@@ -14,8 +14,7 @@ CREATE INDEX IF NOT EXISTS "SpireChartAccessEvent_home_time_idx"
   WHERE "homeId" IS NOT NULL;
 
 UPDATE "SpireChartAccessEvent" event
-SET "homeId" = assignment."homeId"
-FROM LATERAL (
+SET "homeId" = (
   SELECT patient_home."homeId"
   FROM "SpirePatientHomeAssignment" patient_home
   WHERE patient_home."organizationId"=event."organizationId"
@@ -24,7 +23,7 @@ FROM LATERAL (
     AND (patient_home."endsAt" IS NULL OR patient_home."endsAt">event."createdAt")
   ORDER BY patient_home."primary" DESC,patient_home."startsAt" DESC
   LIMIT 1
-) assignment
+)
 WHERE event."homeId" IS NULL;
 
 CREATE OR REPLACE FUNCTION "spire_chart_access_attach_home"()
