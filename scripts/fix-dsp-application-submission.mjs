@@ -30,16 +30,26 @@ await repairFrontend('applicant-portal.html');
 const careersPath = path.join(root, 'api/src/careers-routes.ts');
 let careers = await readFile(careersPath, 'utf8');
 const careersBefore = careers;
-careers = careers
-  .replace(
-    "notes: z.string().max(12000).optional(),",
-    "notes: z.string().max(12000).nullish(),",
-  )
-  .replaceAll(
-    '\n        access.departmentId,\n',
-    "\n        access.enterpriseOwner || access.accessLevel === 'MANAGE' ? null : access.departmentId,\n",
-  );
+careers = careers.replace(
+  "notes: z.string().max(12000).optional(),",
+  "notes: z.string().max(12000).nullish(),",
+);
 if (careers !== careersBefore) await writeFile(careersPath, careers, 'utf8');
+
+const entityAccessPath = path.join(root, 'api/src/entity-access.ts');
+let entityAccess = await readFile(entityAccessPath, 'utf8');
+const entityAccessBefore = entityAccess;
+entityAccess = entityAccess.replace(
+`  } else {
+    const primaryDepartmentId = employments.find((employment) => employment.primaryEmployment)?.departmentId
+      ?? employments.find((employment) => employment.departmentId)?.departmentId
+      ?? null;`,
+`  } else if (!(managesEveryDepartment && requiredCapability(request.path) === 'CAREERS')) {
+    const primaryDepartmentId = employments.find((employment) => employment.primaryEmployment)?.departmentId
+      ?? employments.find((employment) => employment.departmentId)?.departmentId
+      ?? null;`,
+);
+if (entityAccess !== entityAccessBefore) await writeFile(entityAccessPath, entityAccess, 'utf8');
 
 const workflowPath = path.join(root, 'api/src/applicant-workflow.ts');
 let workflow = await readFile(workflowPath, 'utf8');
@@ -100,8 +110,11 @@ if (staticBuild !== staticBefore) await writeFile(staticBuildPath, staticBuild, 
 if (!workflow.includes("'/applicant-portal.html'")) {
   throw new Error('Applicant portal URL repair failed: email links are not pinned to applicant-portal.html');
 }
-if (!careers.includes("access.enterpriseOwner || access.accessLevel === 'MANAGE' ? null : access.departmentId")) {
-  throw new Error('Careers company-scope repair failed: company managers are still auto-filtered to one department');
+if (!entityAccess.includes("managesEveryDepartment && requiredCapability(request.path) === 'CAREERS'")) {
+  throw new Error('Careers visibility repair failed: company managers are still auto-filtered to one department');
+}
+if (!careers.includes('a."legalEntityId"=$7')) {
+  throw new Error('Careers company isolation repair failed: applicant listing is not scoped to the selected legal company');
 }
 if (!admin.includes(companyChangeMarker)) {
   throw new Error('Admin company-switch repair failed: applicant data will not refresh when company context changes');
@@ -110,4 +123,4 @@ if (!staticBuild.includes("'applicant-portal.html'")) {
   throw new Error('Static publication repair failed: applicant-portal.html is not required in dist-web');
 }
 
-console.log('Recruiting flow repaired: applicant portal links, applicant visibility, company isolation, and company-switch refresh are enforced.');
+console.log('Recruiting flow repaired: applicant portal links, selected-company isolation, company-wide manager visibility, and company-switch refresh are enforced.');
