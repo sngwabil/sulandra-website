@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contract = '20260810-business-uat-1';
-const spireAppGeneration = '20260810-business-uat-8';
+const spireAppGeneration = '20260811-business-uat-9';
 const spireBootstrapGeneration = '20260810-spire-canonical-bootstrap-3';
 const chartReadyGeneration = '20260810-spire-chart-ready-2';
 const deepLinkGeneration = '20260810-business-uat-5';
