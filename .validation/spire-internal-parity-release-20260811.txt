@@ -1,0 +1,1 @@
+Validation-only marker for release-grade SPIRE internal parity CI. Do not merge.
