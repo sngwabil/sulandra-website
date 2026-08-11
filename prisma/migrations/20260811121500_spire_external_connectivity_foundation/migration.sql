@@ -1,229 +1,76 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- External connectivity foundation. Secrets are not stored in this schema; provider
--- credentials are referenced by environment/secret-manager key names only.
+-- Owner-directed field operations foundation.
+-- Sulandra will use its own in-network workflows for diagnostics and revenue for now.
+-- External PACS/LIS/X12/eRx/PDMP/telehealth gateway tables are intentionally not
+-- required by this migration. Diagnostic results can be entered manually or attached
+-- as protected documents through existing SPIRE result/document workflows.
+--
+-- This migration previously failed before completion in production. Every table and
+-- index below is deliberately additive and retry-safe so the recognized failed Prisma
+-- record can be resolved and safely replayed without deleting existing data.
 
-CREATE TABLE IF NOT EXISTS "SpireIntegrationEndpoint" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text,
-  "kind" text NOT NULL,
-  "name" text NOT NULL,
-  "baseUrl" text,
-  "protocol" text NOT NULL,
-  "status" text NOT NULL DEFAULT 'DISABLED',
-  "credentialRef" text,
-  "capabilities" jsonb NOT NULL DEFAULT '[]'::jsonb,
-  "config" jsonb NOT NULL DEFAULT '{}'::jsonb,
-  "lastHealthAt" timestamptz,
-  "lastHealthStatus" text,
-  "createdById" text,
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT "SpireIntegrationEndpoint_kind_check" CHECK ("kind" IN ('PACS','LIS','DEVICE_GATEWAY','CLEARINGHOUSE','ERX','PDMP','TELEHEALTH','SMART_OAUTH','PUSH','MOBILE_BUILD')),
-  CONSTRAINT "SpireIntegrationEndpoint_status_check" CHECK ("status" IN ('DISABLED','CONFIGURED','ACTIVE','DEGRADED','ERROR'))
-);
-CREATE INDEX IF NOT EXISTS "SpireIntegrationEndpoint_scope_idx" ON "SpireIntegrationEndpoint"("organizationId","legalEntityId","kind","status");
-
-CREATE TABLE IF NOT EXISTS "SpireIntegrationMessage" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "patientId" text,
-  "direction" text NOT NULL,
-  "messageType" text NOT NULL,
-  "externalId" text,
-  "status" text NOT NULL DEFAULT 'QUEUED',
-  "payloadSha256" text,
-  "payloadMetadata" jsonb NOT NULL DEFAULT '{}'::jsonb,
-  "attemptCount" integer NOT NULL DEFAULT 0,
-  "nextAttemptAt" timestamptz,
-  "lastError" text,
-  "receivedAt" timestamptz,
-  "sentAt" timestamptz,
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT "SpireIntegrationMessage_direction_check" CHECK ("direction" IN ('INBOUND','OUTBOUND')),
-  CONSTRAINT "SpireIntegrationMessage_status_check" CHECK ("status" IN ('QUEUED','PROCESSING','SENT','RECEIVED','ACKNOWLEDGED','FAILED','DEAD_LETTER','CANCELLED'))
-);
-CREATE INDEX IF NOT EXISTS "SpireIntegrationMessage_endpoint_idx" ON "SpireIntegrationMessage"("organizationId","legalEntityId","endpointId","status","createdAt" DESC);
-CREATE INDEX IF NOT EXISTS "SpireIntegrationMessage_external_idx" ON "SpireIntegrationMessage"("organizationId","externalId");
-
-CREATE TABLE IF NOT EXISTS "SpireImagingStudyLink" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text NOT NULL,
-  "patientId" text NOT NULL REFERENCES "SpirePatient"("id") ON DELETE CASCADE,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "studyInstanceUid" text NOT NULL,
-  "accessionNumber" text,
-  "modality" text,
-  "studyDate" timestamptz,
-  "description" text,
-  "viewerLaunchPath" text,
-  "source" text NOT NULL DEFAULT 'PACS',
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  UNIQUE("organizationId","legalEntityId","studyInstanceUid")
-);
-CREATE INDEX IF NOT EXISTS "SpireImagingStudyLink_patient_idx" ON "SpireImagingStudyLink"("organizationId","legalEntityId","patientId","studyDate" DESC);
-
-CREATE TABLE IF NOT EXISTS "SpireLabInterfaceRecord" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text NOT NULL,
-  "patientId" text REFERENCES "SpirePatient"("id") ON DELETE SET NULL,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "externalOrderId" text,
-  "externalResultId" text,
-  "messageStandard" text NOT NULL DEFAULT 'HL7V2',
-  "messageEvent" text,
-  "specimenId" text,
-  "status" text NOT NULL DEFAULT 'RECEIVED',
-  "provenance" jsonb NOT NULL DEFAULT '{}'::jsonb,
-  "receivedAt" timestamptz NOT NULL DEFAULT now(),
-  "createdAt" timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS "SpireLabInterfaceRecord_patient_idx" ON "SpireLabInterfaceRecord"("organizationId","legalEntityId","patientId","receivedAt" DESC);
-
-CREATE TABLE IF NOT EXISTS "SpireDeviceFeedRegistration" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text NOT NULL,
-  "patientId" text REFERENCES "SpirePatient"("id") ON DELETE CASCADE,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "deviceIdentifier" text NOT NULL,
-  "deviceType" text NOT NULL,
-  "manufacturer" text,
-  "model" text,
-  "location" text,
-  "status" text NOT NULL DEFAULT 'ACTIVE',
-  "lastSeenAt" timestamptz,
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS "SpireDeviceFeedRegistration_patient_idx" ON "SpireDeviceFeedRegistration"("organizationId","legalEntityId","patientId","status");
-
-CREATE TABLE IF NOT EXISTS "SpireX12Transaction" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "patientId" text,
-  "transactionSet" text NOT NULL,
-  "direction" text NOT NULL,
-  "controlNumber" text,
-  "claimId" text,
-  "status" text NOT NULL DEFAULT 'QUEUED',
-  "acknowledgementCode" text,
-  "rejectionReason" text,
-  "payloadSha256" text,
-  "metadata" jsonb NOT NULL DEFAULT '{}'::jsonb,
-  "submittedAt" timestamptz,
-  "acknowledgedAt" timestamptz,
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT "SpireX12Transaction_set_check" CHECK ("transactionSet" IN ('270','271','276','277','278','837P','837I','835','999','TA1')),
-  CONSTRAINT "SpireX12Transaction_direction_check" CHECK ("direction" IN ('INBOUND','OUTBOUND'))
-);
-CREATE INDEX IF NOT EXISTS "SpireX12Transaction_scope_idx" ON "SpireX12Transaction"("organizationId","legalEntityId","transactionSet","status","createdAt" DESC);
-
-CREATE TABLE IF NOT EXISTS "SpireErxTransaction" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text NOT NULL,
-  "patientId" text NOT NULL REFERENCES "SpirePatient"("id") ON DELETE CASCADE,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "medicationOrderId" text,
-  "transactionType" text NOT NULL,
-  "networkMessageId" text,
-  "status" text NOT NULL DEFAULT 'DRAFT',
-  "controlledSubstance" boolean NOT NULL DEFAULT false,
-  "epcsRequired" boolean NOT NULL DEFAULT false,
-  "epcsSatisfiedAt" timestamptz,
-  "prescriberUserId" text,
-  "pharmacyNcpdpId" text,
-  "responseCode" text,
-  "responseText" text,
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT "SpireErxTransaction_type_check" CHECK ("transactionType" IN ('NEWRX','RXCHANGE','RXRENEWAL','CANCELRX','RXFILL','STATUS'))
-);
-CREATE INDEX IF NOT EXISTS "SpireErxTransaction_patient_idx" ON "SpireErxTransaction"("organizationId","legalEntityId","patientId","createdAt" DESC);
-
-CREATE TABLE IF NOT EXISTS "SpirePdmpQuery" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text NOT NULL,
-  "patientId" text NOT NULL REFERENCES "SpirePatient"("id") ON DELETE CASCADE,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "requestedById" text NOT NULL,
-  "purpose" text NOT NULL,
-  "status" text NOT NULL DEFAULT 'REQUESTED',
-  "externalRequestId" text,
-  "resultSummary" jsonb NOT NULL DEFAULT '{}'::jsonb,
-  "requestedAt" timestamptz NOT NULL DEFAULT now(),
-  "completedAt" timestamptz
-);
-CREATE INDEX IF NOT EXISTS "SpirePdmpQuery_patient_idx" ON "SpirePdmpQuery"("organizationId","legalEntityId","patientId","requestedAt" DESC);
-
-CREATE TABLE IF NOT EXISTS "SpireTelehealthSession" (
-  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-  "organizationId" text NOT NULL,
-  "legalEntityId" text NOT NULL,
-  "patientId" text REFERENCES "SpirePatient"("id") ON DELETE SET NULL,
-  "encounterId" text,
-  "endpointId" text REFERENCES "SpireIntegrationEndpoint"("id") ON DELETE SET NULL,
-  "roomKey" text NOT NULL,
-  "status" text NOT NULL DEFAULT 'SCHEDULED',
-  "consentRecordedAt" timestamptz,
-  "startedAt" timestamptz,
-  "endedAt" timestamptz,
-  "transportMode" text NOT NULL DEFAULT 'SFU',
-  "region" text,
-  "createdById" text,
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT "SpireTelehealthSession_status_check" CHECK ("status" IN ('SCHEDULED','WAITING','ACTIVE','ENDED','CANCELLED','FAILED'))
-);
-CREATE UNIQUE INDEX IF NOT EXISTS "SpireTelehealthSession_room_idx" ON "SpireTelehealthSession"("organizationId","roomKey");
-
-CREATE TABLE IF NOT EXISTS "SpireSmartClient" (
+CREATE TABLE IF NOT EXISTS "SpireMobileOAuthClient" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "organizationId" text NOT NULL,
   "legalEntityId" text,
   "clientId" text NOT NULL,
   "name" text NOT NULL,
+  "platform" text NOT NULL,
+  "bundleId" text NOT NULL,
   "redirectUris" jsonb NOT NULL DEFAULT '[]'::jsonb,
-  "launchUris" jsonb NOT NULL DEFAULT '[]'::jsonb,
   "allowedScopes" jsonb NOT NULL DEFAULT '[]'::jsonb,
-  "tokenEndpointAuthMethod" text NOT NULL DEFAULT 'private_key_jwt',
-  "jwksUri" text,
-  "status" text NOT NULL DEFAULT 'ACTIVE',
+  "active" boolean NOT NULL DEFAULT true,
   "createdById" text,
   "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now(),
-  UNIQUE("organizationId","clientId")
+  "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "clientId" text;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "name" text;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "platform" text;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "bundleId" text;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "redirectUris" jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "allowedScopes" jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "active" boolean NOT NULL DEFAULT true;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "createdById" text;
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireMobileOAuthClient" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS "SpireMobileOAuthClient_org_client_key" ON "SpireMobileOAuthClient"("organizationId","clientId");
+CREATE INDEX IF NOT EXISTS "SpireMobileOAuthClient_scope_idx" ON "SpireMobileOAuthClient"("organizationId","legalEntityId","active");
 
-CREATE TABLE IF NOT EXISTS "SpireOAuthAuthorization" (
+CREATE TABLE IF NOT EXISTS "SpireMobileAccessGrant" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "organizationId" text NOT NULL,
   "legalEntityId" text,
   "clientId" text NOT NULL,
   "userId" text NOT NULL,
-  "patientId" text,
-  "scope" text NOT NULL,
-  "codeHash" text,
-  "accessTokenHash" text,
-  "refreshTokenHash" text,
-  "pkceChallenge" text,
-  "status" text NOT NULL DEFAULT 'AUTHORIZED',
-  "authorizedAt" timestamptz NOT NULL DEFAULT now(),
+  "role" text NOT NULL,
+  "scopes" text[] NOT NULL DEFAULT ARRAY[]::text[],
+  "jtiHash" text NOT NULL,
+  "deviceId" text,
+  "issuedAt" timestamptz NOT NULL DEFAULT now(),
   "expiresAt" timestamptz NOT NULL,
-  "revokedAt" timestamptz
+  "revokedAt" timestamptz,
+  "lastUsedAt" timestamptz,
+  "createdAt" timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS "SpireOAuthAuthorization_client_idx" ON "SpireOAuthAuthorization"("organizationId","clientId","userId","status","expiresAt");
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "clientId" text;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "role" text;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "scopes" text[] NOT NULL DEFAULT ARRAY[]::text[];
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "jtiHash" text;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "deviceId" text;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "issuedAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "expiresAt" timestamptz;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "revokedAt" timestamptz;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "lastUsedAt" timestamptz;
+ALTER TABLE "SpireMobileAccessGrant" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS "SpireMobileAccessGrant_jti_key" ON "SpireMobileAccessGrant"("organizationId","jtiHash");
+CREATE INDEX IF NOT EXISTS "SpireMobileAccessGrant_user_idx" ON "SpireMobileAccessGrant"("organizationId","userId","expiresAt" DESC);
 
 CREATE TABLE IF NOT EXISTS "SpirePushDevice" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -236,14 +83,28 @@ CREATE TABLE IF NOT EXISTS "SpirePushDevice" (
   "tokenCiphertext" text,
   "appBundleId" text,
   "environment" text NOT NULL DEFAULT 'PRODUCTION',
+  "deviceLabel" text,
   "status" text NOT NULL DEFAULT 'ACTIVE',
   "lastSeenAt" timestamptz NOT NULL DEFAULT now(),
   "createdAt" timestamptz NOT NULL DEFAULT now(),
-  "updatedAt" timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT "SpirePushDevice_platform_check" CHECK ("platform" IN ('IOS','ANDROID')),
-  CONSTRAINT "SpirePushDevice_provider_check" CHECK ("provider" IN ('APNS','FCM'))
+  "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "platform" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "provider" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "tokenHash" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "tokenCiphertext" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "appBundleId" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "environment" text NOT NULL DEFAULT 'PRODUCTION';
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "deviceLabel" text;
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "lastSeenAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePushDevice" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz NOT NULL DEFAULT now();
 CREATE UNIQUE INDEX IF NOT EXISTS "SpirePushDevice_token_idx" ON "SpirePushDevice"("organizationId","userId","provider","tokenHash");
+CREATE INDEX IF NOT EXISTS "SpirePushDevice_user_idx" ON "SpirePushDevice"("organizationId","legalEntityId","userId","status");
 
 CREATE TABLE IF NOT EXISTS "SpirePushDelivery" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -252,13 +113,39 @@ CREATE TABLE IF NOT EXISTS "SpirePushDelivery" (
   "userId" text NOT NULL,
   "deviceId" text REFERENCES "SpirePushDevice"("id") ON DELETE SET NULL,
   "category" text NOT NULL,
+  "title" text NOT NULL DEFAULT 'Sulandra Health',
+  "body" text NOT NULL DEFAULT 'You have a new work update. Open Sulandra Health to review it.',
+  "deepLink" text,
+  "collapseKey" text,
+  "data" jsonb NOT NULL DEFAULT '{}'::jsonb,
+  "priority" text NOT NULL DEFAULT 'NORMAL',
   "status" text NOT NULL DEFAULT 'QUEUED',
   "providerMessageId" text,
   "errorCode" text,
   "attemptCount" integer NOT NULL DEFAULT 0,
+  "nextAttemptAt" timestamptz NOT NULL DEFAULT now(),
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "sentAt" timestamptz
 );
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "organizationId" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "userId" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "deviceId" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "category" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "title" text NOT NULL DEFAULT 'Sulandra Health';
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "body" text NOT NULL DEFAULT 'You have a new work update. Open Sulandra Health to review it.';
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "deepLink" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "collapseKey" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "data" jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "priority" text NOT NULL DEFAULT 'NORMAL';
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'QUEUED';
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "providerMessageId" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "errorCode" text;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "attemptCount" integer NOT NULL DEFAULT 0;
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "nextAttemptAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+ALTER TABLE "SpirePushDelivery" ADD COLUMN IF NOT EXISTS "sentAt" timestamptz;
+CREATE INDEX IF NOT EXISTS "SpirePushDelivery_queue_idx" ON "SpirePushDelivery"("status","nextAttemptAt","createdAt");
 CREATE INDEX IF NOT EXISTS "SpirePushDelivery_user_idx" ON "SpirePushDelivery"("organizationId","userId","status","createdAt" DESC);
 
 CREATE TABLE IF NOT EXISTS "SpireMobileBuild" (
@@ -272,6 +159,27 @@ CREATE TABLE IF NOT EXISTS "SpireMobileBuild" (
   "status" text NOT NULL DEFAULT 'REGISTERED',
   "artifactUrl" text,
   "releasedAt" timestamptz,
-  "createdAt" timestamptz NOT NULL DEFAULT now(),
-  UNIQUE("platform","bundleId","version","buildNumber")
+  "createdAt" timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "platform" text;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "bundleId" text;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "version" text;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "buildNumber" text;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "gitSha" text;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "distribution" text;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "status" text NOT NULL DEFAULT 'REGISTERED';
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "artifactUrl" text;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "releasedAt" timestamptz;
+ALTER TABLE "SpireMobileBuild" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz NOT NULL DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS "SpireMobileBuild_key" ON "SpireMobileBuild"("platform","bundleId","version","buildNumber");
+
+-- Make the existing field-service workflows company-aware for all future writes.
+-- Existing rows are intentionally left nullable instead of guessing ownership.
+ALTER TABLE "SpireEvvVisit" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpireServiceAuthorization" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpireAuthorizationLedger" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpireAuthorizationAlert" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpireBillingReconciliation" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+ALTER TABLE "SpireAppointment" ADD COLUMN IF NOT EXISTS "legalEntityId" text;
+CREATE INDEX IF NOT EXISTS "SpireEvvVisit_entity_employee_idx" ON "SpireEvvVisit"("organizationId","legalEntityId","employeeUserId","status","scheduledStart");
+CREATE INDEX IF NOT EXISTS "SpireAppointment_entity_provider_idx" ON "SpireAppointment"("organizationId","legalEntityId","providerUserId","startsAt");
