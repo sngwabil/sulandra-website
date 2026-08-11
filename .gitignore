@@ -3,6 +3,13 @@ api/node_modules/
 api/dist/
 dist/
 dist-web/
+mobile/node_modules/
+mobile/www/
+mobile/ios/App/Pods/
+mobile/ios/DerivedData/
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
 
 .env
 .env.*
