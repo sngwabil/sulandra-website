@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const contract = '20260810-business-uat-1';
 const spireAppGeneration = '20260810-business-uat-8';
+const spireBootstrapGeneration = '20260810-spire-canonical-bootstrap-3';
 const chartReadyGeneration = '20260810-spire-chart-ready-2';
 const deepLinkGeneration = '20260810-business-uat-5';
+const homeHealthRailGeneration = '20260810-home-health-rail-stability-2';
 const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
 const staleApi = 'https://sulandra-website-production.up.railway.app';
 const skippedFrontendSources = [];
@@ -52,12 +54,14 @@ await update('home-health.html', source => {
     if (!next.includes(marker)) throw new Error('Home Health header navigation anchor is missing');
     next = next.replace(marker, `<a id="homeHealthReferralInboxLink" data-business-uat-contract="${contract}" href="/home-health-referrals.html">Referral Inbox</a>${marker}`);
   }
-  if (!next.includes('home-health-rail-stability.js')) {
+  if (next.includes('home-health-rail-stability.js')) {
+    next = next.replace(/\/assets\/home-health-rail-stability\.js(?:\?v=[^"']+)?/g, `/assets/home-health-rail-stability.js?v=${homeHealthRailGeneration}`);
+  } else {
     if (!next.includes('</body>')) throw new Error('Home Health page has no body close');
-    next = next.replace('</body>', `<script src="/assets/home-health-rail-stability.js?v=${contract}"></script>\n</body>`);
+    next = next.replace('</body>', `<script src="/assets/home-health-rail-stability.js?v=${homeHealthRailGeneration}"></script>\n</body>`);
   }
   if (!next.includes('href="/home-health-referrals.html"')) throw new Error('Home Health Operations to Referral Inbox workflow bridge was not installed');
-  if (!next.includes('home-health-rail-stability.js')) throw new Error('Home Health rail stability bridge was not installed');
+  if (!next.includes(`/assets/home-health-rail-stability.js?v=${homeHealthRailGeneration}`)) throw new Error('Home Health rail stability bridge was not pinned to generation two');
   return next;
 });
 
@@ -72,9 +76,11 @@ await update('employee-portal-railway.js', source => {
 
 await update('spire.html', source => {
   let next = source.replace(/\/assets\/spire-app-v2\.js\?v=[^"']+/g, `/assets/spire-app-v2.js?v=${spireAppGeneration}`);
+  next = next.replace(/\/assets\/spire-canonical-bootstrap\.js\?v=[^"']+/g, `/assets/spire-canonical-bootstrap.js?v=${spireBootstrapGeneration}`);
   next = next.replace(/\/assets\/spire-chart-ready\.js\?v=[^"']+/g, `/assets/spire-chart-ready.js?v=${chartReadyGeneration}`);
   next = next.replace(/\/assets\/spire-deep-link\.js\?v=[^"']+/g, `/assets/spire-deep-link.js?v=${deepLinkGeneration}`);
   if (!next.includes(`/assets/spire-app-v2.js?v=${spireAppGeneration}`)) throw new Error('SPIRE page is not pinned to the current chart-stabilized application generation');
+  if (!next.includes(`/assets/spire-canonical-bootstrap.js?v=${spireBootstrapGeneration}`)) throw new Error('SPIRE page is not pinned to canonical bootstrap generation three');
   if (!next.includes(`/assets/spire-chart-ready.js?v=${chartReadyGeneration}`)) throw new Error('SPIRE page is not pinned to the idempotent chart-readiness generation');
   if (!next.includes(`/assets/spire-deep-link.js?v=${deepLinkGeneration}`)) throw new Error('SPIRE page is not pinned to the coordinator-aware deep-link generation');
   return next;
@@ -158,5 +164,5 @@ await update('employee-portal.html', source => {
 if (skippedFrontendSources.length) {
   console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and stable referral rail, pinned SPIRE app/chart-ready/deep-link generations with canonical single-runtime shell repair and idempotent chart activation, asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
+  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and rail stability v2, pinned SPIRE app/canonical bootstrap v3/chart-ready/deep-link generations with canonical single-runtime shell repair and idempotent chart activation, asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
 }
