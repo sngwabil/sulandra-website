@@ -2,15 +2,99 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const migration=await readFile(path.join(root,'prisma/migrations/20260811121500_spire_external_connectivity_foundation/migration.sql'),'utf8');
-const routes=await readFile(path.join(root,'api/src/spire-external-connectivity-routes.ts'),'utf8');
-const injector=await readFile(path.join(root,'scripts/inject-clinical-routes.mjs'),'utf8');
-const requiredTables=['SpireIntegrationEndpoint','SpireIntegrationMessage','SpireImagingStudyLink','SpireLabInterfaceRecord','SpireDeviceFeedRegistration','SpireX12Transaction','SpireErxTransaction','SpirePdmpQuery','SpireTelehealthSession','SpireSmartClient','SpireOAuthAuthorization','SpirePushDevice','SpirePushDelivery','SpireMobileBuild'];
-const requiredRoutes=['/api/spire/integrations/endpoints','/api/spire/patients/:patientId/imaging/studies','/api/spire/patients/:patientId/lis/records','/api/spire/patients/:patientId/device-feeds','/api/spire/revenue/x12','/api/spire/patients/:patientId/erx','/api/spire/patients/:patientId/pdmp/query','/api/spire/telehealth/sessions','/api/spire/smart/clients','/api/spire/mobile/push/register','/api/spire/mobile/builds'];
-const failures=[];
-for(const table of requiredTables) if(!migration.includes(`"${table}"`)) failures.push(`missing migration table ${table}`);
-for(const route of requiredRoutes) if(!routes.includes(route)) failures.push(`missing route ${route}`);
-if(!injector.includes('registerSpireExternalConnectivityRoutes')) failures.push('external connectivity routes are not registered');
-if(failures.length){console.error(`SPIRE external connectivity verification failed:\n- ${failures.join('\n- ')}`);process.exit(1);}
-console.log('SPIRE external connectivity foundation verified: PACS/LIS/device feeds, X12, eRx/PDMP, telehealth, SMART/OAuth, push, and mobile build registry.');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const migration = await readFile(path.join(root, 'prisma/migrations/20260811121500_spire_external_connectivity_foundation/migration.sql'), 'utf8');
+const triggerMigration = await readFile(path.join(root, 'prisma/migrations/20260811133000_spire_field_push_triggers/migration.sql'), 'utf8');
+const routes = await readFile(path.join(root, 'api/src/spire-field-mobile-routes.ts'), 'utf8');
+const push = await readFile(path.join(root, 'api/src/spire-push-service.ts'), 'utf8');
+const authInstaller = await readFile(path.join(root, 'scripts/install-mobile-oauth-boundary.mjs'), 'utf8');
+const injector = await readFile(path.join(root, 'scripts/inject-clinical-routes.mjs'), 'utf8');
+const apiPackage = await readFile(path.join(root, 'api/package.json'), 'utf8');
+
+const requiredTables = [
+  'SpireMobileOAuthClient',
+  'SpireMobileAccessGrant',
+  'SpirePushDevice',
+  'SpirePushDelivery',
+  'SpireMobileBuild',
+];
+const requiredRoutes = [
+  '/api/mobile/oauth/exchange',
+  '/api/mobile/session',
+  '/api/mobile/oauth/revoke',
+  '/api/mobile/push/register',
+  '/api/mobile/push/test',
+  '/api/mobile/notifications',
+  '/api/mobile/work/today',
+  '/api/mobile/my-shift',
+  '/api/mobile/clients/:patientId/summary',
+  '/api/mobile/evv/:visitId/clock-in',
+  '/api/mobile/evv/:visitId/clock-out',
+  '/api/mobile/evv/:visitId/complete',
+  '/api/mobile/clients/:patientId/results/manual',
+];
+const requiredScopes = [
+  'push:register',
+  'schedule:read',
+  'evv:read',
+  'evv:clock',
+  'client:assigned:summary',
+  'clinical:assigned:read',
+  'result:manual:write',
+  'transport:trips:read',
+  'transport:trips:update',
+];
+const requiredTriggers = [
+  'SpireAppointment_field_push',
+  'SpireEvvVisit_field_push',
+  'NmtTrip_field_push',
+  'SpireInBasketItem_field_push',
+];
+const failures = [];
+
+for (const table of requiredTables) {
+  if (!migration.includes(`\"${table}\"`)) failures.push(`missing field-mobile migration table ${table}`);
+}
+for (const columnTable of ['SpireEvvVisit', 'SpireServiceAuthorization', 'SpireAppointment']) {
+  if (!migration.includes(`ALTER TABLE \"${columnTable}\" ADD COLUMN IF NOT EXISTS \"legalEntityId\"`)) {
+    failures.push(`missing legalEntityId upgrade for ${columnTable}`);
+  }
+}
+for (const route of requiredRoutes) {
+  if (!routes.includes(route)) failures.push(`missing field-mobile route ${route}`);
+}
+for (const scope of requiredScopes) {
+  if (!routes.includes(`'${scope}'`)) failures.push(`missing mobile OAuth scope ${scope}`);
+}
+for (const trigger of requiredTriggers) {
+  if (!triggerMigration.includes(`\"${trigger}\"`)) failures.push(`missing field push trigger ${trigger}`);
+}
+for (const marker of [
+  "res.locals.mobileTokenUse = mobile.tokenUse",
+  "req.path.startsWith('/api/mobile/')",
+  "tokenUse !== 'mobile_oauth'",
+]) {
+  if (!authInstaller.includes(marker)) failures.push(`missing OAuth boundary marker ${marker}`);
+}
+for (const marker of [
+  'PUSH_TOKEN_ENCRYPTION_KEY',
+  'FCM_PROJECT_ID',
+  'APNS_TEAM_ID',
+  'FOR UPDATE SKIP LOCKED',
+  'startSpirePushDispatcher',
+]) {
+  if (!push.includes(marker)) failures.push(`missing push dispatcher marker ${marker}`);
+}
+if (!injector.includes('registerSpireFieldMobileRoutes')) failures.push('field mobile routes are not registered');
+if (injector.includes('registerSpireExternalConnectivityRoutes')) failures.push('deferred vendor connectivity routes must not be registered');
+if (!apiPackage.includes('install-mobile-oauth-boundary.mjs')) failures.push('mobile OAuth boundary installer is not in API build/typecheck');
+if (!routes.includes('UserRole.DRIVER')) failures.push('driver role boundary is missing');
+if (!routes.includes("return ['mobile:session','push:register','schedule:read','transport:trips:read','transport:trips:update']")) {
+  failures.push('driver scopes are not transport-only');
+}
+
+if (failures.length) {
+  console.error(`SPIRE field-mobile verification failed:\n- ${failures.join('\n- ')}`);
+  process.exit(1);
+}
+console.log('SPIRE field-mobile foundation verified: scoped OAuth, assigned-client RBAC, EVV/scheduling/transport workflows, manual diagnostic entry, and queued APNs/FCM push.');
