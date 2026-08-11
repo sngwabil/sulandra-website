@@ -18,20 +18,21 @@ Before any write operation:
 
 ## Production architecture
 
-This repository serves two separate Railway services with different responsibilities. Do not mix their deployment configuration or ownership.
+This repository participates in **three Railway production services/deployments** with different responsibilities: one frontend and two backends. Do not mix their deployment configuration or ownership.
 
-### Sulandra Static Website — frontend
+### Sulandra Static Website — only frontend
 
 This is the employee-facing and public-facing website at:
 
 `https://www.sulandrahealth.com`
 
-It owns:
+It is the **only frontend** and owns:
 
 - HTML pages
 - CSS
 - browser JavaScript
 - employee and administrator portals
+- S.P.I.R.E. pages
 - navigation
 - Time and Attendance screens
 - education screens
@@ -58,9 +59,9 @@ Do not route users to a backend Railway service URL for an HTML page.
 
 ### sulandra-website — backend API
 
-This is the Express, Prisma, PostgreSQL, authentication, email, and business-logic service.
+This is a Railway Express, Prisma, PostgreSQL, authentication, email, and business-logic backend service.
 
-Current API base:
+Current primary API base used by the static frontend:
 
 `https://sulandra-website-production-5fc4.up.railway.app`
 
@@ -92,9 +93,25 @@ which must route through `scripts/run-db-predeploy.mjs`.
 
 The backend must not be used as the destination for frontend HTML navigation.
 
+### magnificent-education — backend deployment
+
+The Railway project named `magnificent-education` also contains a Sulandra backend deployment. It is **backend infrastructure**, not the website frontend.
+
+It follows backend ownership rules:
+
+- Node/Express server code
+- Prisma/PostgreSQL access
+- authentication/authorization and business logic as configured for that deployment
+- backend build and predeploy behavior
+- no ownership of normal user-facing HTML navigation
+
+Do not describe `magnificent-education` as a frontend/static website. Do not route browser page navigation to it as though it were the Sulandra Static Website.
+
+When shared backend code or database migrations affect both backend deployments, verify the deployment result for **both** `sulandra-website` and the backend in `magnificent-education` before declaring the change complete.
+
 ## Frontend-to-backend communication
 
-Frontend pages call the Railway API using an explicit API base URL. Do not assume same-origin `/api` requests from the static website unless a verified proxy is intentionally configured.
+Frontend pages call an intentionally configured Railway backend API using an explicit API base URL. Do not assume same-origin `/api` requests from the static website unless a verified proxy is intentionally configured.
 
 New frontend code must preserve employee bearer-token authentication and send the token to the API where required.
 
@@ -107,7 +124,8 @@ Before editing:
 - Inspect the current page, route, and navigation code rather than guessing paths.
 - Confirm that a frontend page will be included in `dist-web/`.
 - Confirm that an API route is registered in the backend bootstrap.
-- For deployment changes, inspect both `railway.json` and `railway.frontend.json` and change only the service that owns the behavior.
+- For deployment changes, inspect `railway.json` and `railway.frontend.json` and change only the service class that owns the behavior.
+- Remember that backend changes may deploy to both `sulandra-website` and the backend in `magnificent-education`; inspect both resulting backend deployments when applicable.
 - For Prisma or database changes, inspect `prisma/schema.prisma`, the affected migration history, `scripts/run-db-predeploy.mjs`, `scripts/recover-failed-doo-migration.mjs`, and database verification scripts before writing.
 - Avoid broad click interceptors or global routing changes unless their effects have been reviewed across every portal.
 
@@ -166,13 +184,13 @@ For broad or release-ready changes, run:
 npm run check
 ```
 
-For changes affecting both services, account for all required commands and verify the generated `dist-web/` output contains the intended frontend page and assets.
+For changes affecting both frontend and backend, account for all required commands and verify the generated `dist-web/` output contains the intended frontend page and assets.
 
 For Prisma, migration, or database-predeploy changes, do not stop at TypeScript/build success. The GitHub CI migration-smoke job must also apply the complete ordered migration SQL chain successfully against the supported legacy PostgreSQL baseline and verify the expected platform tables.
 
-For deployment changes, inspect the resulting GitHub checks and the Railway deployment for the affected service. A green static frontend deployment does not prove the backend is healthy, and a healthy backend does not prove the static frontend bundle is correct.
+For deployment changes, inspect the resulting GitHub checks and the Railway deployment for every affected service. A green Sulandra Static Website deployment does not prove either backend is healthy, and one green backend does not prove the other backend or the static frontend is healthy.
 
-Do not describe work as complete merely because files were committed. A change is complete only after its service ownership, routing, build inclusion, TypeScript compatibility, relevant CI checks, and affected Railway deployment have been checked.
+Do not describe work as complete merely because files were committed. A change is complete only after its service ownership, routing, build inclusion, TypeScript compatibility, relevant CI checks, and every affected Railway deployment have been checked.
 
 ## Safety rules
 
@@ -189,9 +207,9 @@ Do not describe work as complete merely because files were committed. A change i
 
 Ask these questions before coding:
 
-1. Is this something the employee sees or clicks? It belongs to the Sulandra Static Website frontend.
-2. Is this data, authentication, database, email, validation, permissions, or migration behavior? It belongs to the sulandra-website backend API.
-3. Does it involve both? Build the page in the static frontend and the API in the backend, then connect them using the explicit API base.
+1. Is this something the employee sees or clicks? It belongs to the **Sulandra Static Website frontend**.
+2. Is this data, authentication, database, email, validation, permissions, or migration behavior? It belongs to a **backend deployment** (`sulandra-website` and/or the backend in `magnificent-education`, according to the configured service responsibility).
+3. Does it involve frontend and backend? Build the page in the static frontend and the API in the backend, then connect them using the explicit API base.
 4. Is it a database deployment concern? Keep it in the backend predeploy path and never add it to the static frontend service.
 
 This document is the authoritative workflow for future Sulandra website work.
