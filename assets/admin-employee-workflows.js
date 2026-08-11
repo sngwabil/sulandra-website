@@ -1,8 +1,9 @@
 (()=>{
   const API='https://sulandra-website-production-5fc4.up.railway.app';
-  const token=()=>localStorage.getItem('employeeToken')||localStorage.getItem('adminToken')||localStorage.getItem('token')||'';
-  const api=async(path,options={})=>{const response=await fetch(`${API}${path}`,{...options,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token()}`,...options.headers}});const type=response.headers.get('content-type')||'';const body=type.includes('application/json')?await response.json():await response.text();if(!response.ok)throw new Error(body?.error||body||`Request failed (${response.status})`);return body};
-  const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const token=()=>sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';
+  const entityHeaders=()=>window.SulandraCompanyContext?.headers?.()||{};
+  const api=async(path,options={})=>{const auth=token();if(!auth)throw new Error('Your administrator session is unavailable. Sign in again.');const response=await fetch(`${API}${path}`,{...options,cache:'no-store',headers:{Accept:'application/json',Authorization:`Bearer ${auth}`,...entityHeaders(),...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});const type=response.headers.get('content-type')||'';const body=type.includes('application/json')?await response.json():await response.text();if(!response.ok)throw new Error(body?.error||body?.message||body||`Request failed (${response.status})`);return body};
+  const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
   const date=v=>v?new Date(v).toLocaleString():'—';
   let state=null;
 
