@@ -1,22 +1,24 @@
 (() => {
   'use strict';
 
-  const CONTRACT = '20260811-spire-patient-open-guard-2';
+  const CONTRACT = '20260811-spire-patient-open-guard-3';
   let activePatientId = '';
   let activeOpen = null;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // CACHE_SAFE_LEGACY_OBSERVER_QUARANTINE: Chrome may retain an older cached copy
-  // of a recovery script even after a deployment. Block MutationObservers created
-  // by the retired SPIRE recovery runtimes only; all other application observers
-  // continue to use the native implementation.
+  // EARLY_OBSERVER_QUARANTINE: this file loads before workspace-completion and
+  // before the retired chart recovery facades. Block only the document-wide
+  // observers known to mutate the same chart DOM they observe. In particular,
+  // spire-workspace-completion reorders chart tabs with appendChild() and rewrites
+  // Quick Actions from its own child-list observer, creating a feedback loop.
   const NativeMutationObserver = window.MutationObserver;
   if (NativeMutationObserver && !window.__spireLegacyObserverQuarantine) {
-    const legacyObserverPattern = /spire-(?:canonical-bootstrap|shell-resilience|chart-ready|chart-recovery-v1)\.js/i;
+    const unsafeObserverPattern = /spire-(?:canonical-bootstrap|shell-resilience|chart-ready|chart-recovery-v1|workspace-completion)\.js/i;
     function GuardedMutationObserver(callback) {
       const stack = String(new Error().stack || '');
-      if (legacyObserverPattern.test(stack)) {
+      if (unsafeObserverPattern.test(stack)) {
+        document.documentElement.dataset.spireUnsafeObserverQuarantined = CONTRACT;
         return {
           observe() {},
           disconnect() {},
@@ -27,7 +29,7 @@
     }
     GuardedMutationObserver.prototype = NativeMutationObserver.prototype;
     window.MutationObserver = GuardedMutationObserver;
-    window.__spireLegacyObserverQuarantine = true;
+    window.__spireLegacyObserverQuarantine = CONTRACT;
   }
 
   const requestedFromLocation = () => {
