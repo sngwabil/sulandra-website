@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f4c81" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Sulandra Health</title>
+  <script type="module" src="/src/app.js"></script>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <section id="loginView" class="login-view">
+      <div class="brand-card">
+        <div class="brand-mark">S</div>
+        <div>
+          <div class="eyebrow">SULANDRA HEALTH</div>
+          <h1>Field App</h1>
+          <p>Secure mobile access for care, visits, schedules, and transportation.</p>
+        </div>
+      </div>
+      <form id="loginForm" class="panel login-panel">
+        <label>Username or email<input id="identifier" autocomplete="username" required /></label>
+        <label>Password<input id="password" type="password" autocomplete="current-password" required /></label>
+        <button class="primary" type="submit">Sign in</button>
+        <div id="loginError" class="message error" hidden></div>
+      </form>
+    </section>
+
+    <section id="mainView" class="main-view" hidden>
+      <header class="topbar">
+        <div><div class="eyebrow">SULANDRA HEALTH</div><strong>Field App</strong></div>
+        <button id="logoutButton" class="ghost">Sign out</button>
+      </header>
+      <main>
+        <section class="hero">
+          <div><span id="roleBadge" class="badge"></span><h2 id="welcomeTitle">My work</h2><p id="companyLabel">Loading company…</p></div>
+          <button id="refreshButton" class="secondary">Refresh</button>
+        </section>
+        <nav id="tabs" class="tabs">
+          <button data-tab="today" class="active">Today</button>
+          <button data-tab="clients" id="clientsTab">Clients</button>
+          <button data-tab="transport" id="transportTab">Transport</button>
+          <button data-tab="alerts">Alerts</button>
+        </nav>
+        <div id="statusMessage" class="message" hidden></div>
+        <section id="todayPane" class="pane"></section>
+        <section id="clientsPane" class="pane" hidden></section>
+        <section id="transportPane" class="pane" hidden></section>
+        <section id="alertsPane" class="pane" hidden></section>
+      </main>
+    </section>
+  </div>
+</body>
+</html>
