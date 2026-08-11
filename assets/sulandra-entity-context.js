@@ -34,38 +34,15 @@
       '/workforce-admin.html',
     ];
     if (!compactPages.some((suffix) => pathname.endsWith(suffix)) || document.getElementById('sulandra-compact-workspace-header')) return;
-
-    // mainlogo.png intentionally has a large transparent canvas. Merely increasing
-    // the img width makes the CSS box larger while the visible logo stays tiny.
-    // Use the same clipped-slot + scaled-artwork treatment as Scheduling so every
-    // shared operational/SPIRE header has the same readable Sulandra logo without
-    // increasing the header height.
-    const header = document.querySelector('header.top,.top');
-    const logo = header?.querySelector(':scope > img');
-    if (logo && !logo.closest('.sulandra-workspace-logo-slot')) {
-      const slot = document.createElement('span');
-      slot.className = 'sulandra-workspace-logo-slot';
-      logo.replaceWith(slot);
-      slot.appendChild(logo);
-      logo.classList.add('sulandra-workspace-logo-art');
-    }
-
     const style = document.createElement('style');
     style.id = 'sulandra-compact-workspace-header';
     style.textContent = `
-      header.top,.top{min-height:88px!important;height:auto!important;padding-top:8px!important;padding-bottom:8px!important;align-items:center!important}
-      .sulandra-workspace-logo-slot{width:194px!important;height:58px!important;overflow:hidden!important;display:flex!important;align-items:center!important;flex:0 0 194px!important}
-      .sulandra-workspace-logo-slot>.sulandra-workspace-logo-art{width:180px!important;height:58px!important;max-width:none!important;object-fit:contain!important;object-position:left center!important;display:block!important;transform:scale(3.25)!important;transform-origin:left center!important}
-      header.top>img,.top>img{width:180px!important;height:58px!important;max-width:none!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 0 auto!important}
+      header.top,.top{min-height:88px!important;height:auto!important;padding-top:8px!important;padding-bottom:8px!important;align-items:center!important;overflow:hidden!important}
+      header.top>img,.top>img{width:180px!important;height:58px!important;max-width:none!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 0 194px!important;transform:scale(3.25)!important;transform-origin:left center!important;clip-path:inset(0 -14px 0 0)!important}
       header.top .spacer,.top .spacer{min-width:12px!important}
       header.top a,.top a{white-space:nowrap!important}
       #sulandraCompanySwitcher{flex:0 1 auto!important}
-      @media(max-width:760px){
-        header.top,.top{min-height:76px!important;padding:6px 12px!important}
-        .sulandra-workspace-logo-slot{width:160px!important;height:50px!important;flex-basis:160px!important}
-        .sulandra-workspace-logo-slot>.sulandra-workspace-logo-art{width:150px!important;height:48px!important;transform:scale(3.1)!important}
-        header.top>img,.top>img{width:150px!important;height:48px!important}
-      }
+      @media(max-width:760px){header.top,.top{min-height:76px!important;padding:6px 12px!important}header.top>img,.top>img{width:150px!important;height:48px!important;flex-basis:160px!important;transform:scale(3.1)!important}}
     `;
     document.head.appendChild(style);
   }
@@ -206,6 +183,42 @@
     }
   }
 
+  function installClientIntakeDialogGuard() {
+    const pathname = location.pathname.toLowerCase().replace(/\/+$/, '');
+    if (!pathname.endsWith('/client-intake.html') || document.documentElement.dataset.sulandraClientIntakeDialogGuard === 'true') return;
+    document.documentElement.dataset.sulandraClientIntakeDialogGuard = 'true';
+
+    const openNewIntake = () => {
+      const dialog = document.getElementById('newDialog');
+      const form = document.getElementById('newForm');
+      const error = document.getElementById('newError');
+      if (!(dialog instanceof HTMLElement)) {
+        console.error('[Client Intake] New Intake dialog is missing from the page.');
+        return;
+      }
+      if (form instanceof HTMLFormElement) form.reset();
+      if (error instanceof HTMLElement) error.classList.remove('show');
+      try {
+        if ('showModal' in dialog && typeof dialog.showModal === 'function') {
+          if (!dialog.open) dialog.showModal();
+        } else {
+          dialog.setAttribute('open', '');
+        }
+      } catch (errorValue) {
+        console.error('[Client Intake] Unable to open New Intake dialog.', errorValue);
+        dialog.setAttribute('open', '');
+      }
+    };
+
+    document.addEventListener('click', (event) => {
+      const target = event.target instanceof Element ? event.target.closest('#newIntake') : null;
+      if (!target) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openNewIntake();
+    }, true);
+  }
+
   function loadEmployeeDirectoryEnhancer() {
     const pathname = location.pathname.toLowerCase();
     const eligible = ['spire-medication-qualifications.html','home-health.html','nmt-dispatch.html'].some((name) => pathname.endsWith(name));
@@ -228,6 +241,6 @@
     document.body.appendChild(script);
   }
 
-  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); loadEmployeeDirectoryEnhancer(); loadEmployeeWorkCrosslinks(); });
+  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); installClientIntakeDialogGuard(); loadEmployeeDirectoryEnhancer(); loadEmployeeWorkCrosslinks(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render, { once: true }); else render();
 })();
