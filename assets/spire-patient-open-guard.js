@@ -1,21 +1,25 @@
 (() => {
   'use strict';
 
-  const CONTRACT = '20260811-spire-patient-open-guard-4';
+  const CONTRACT = '20260811-spire-patient-open-guard-5';
   let activePatientId = '';
   let activeOpen = null;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // Early quarantine remains for retired compatibility runtimes. The workspace-
-  // completion observer is suppressed deterministically by the scripts bracketing
-  // that module in spire.html, so normal SPIRE observers remain available.
+  // Retired compatibility observers are blocked outright. Every other observer
+  // is wrapped with a per-observer runaway breaker: normal mutation observers are
+  // unaffected, but a callback that retriggers itself more than 40 times inside
+  // 500 ms is disconnected before it can lock the Chromium renderer. The creator
+  // stack is recorded on <html> so regression tests can identify the exact module.
   const NativeMutationObserver = window.MutationObserver;
-  if (NativeMutationObserver && !window.__spireLegacyObserverQuarantine) {
-    const unsafeObserverPattern = /spire-(?:canonical-bootstrap|shell-resilience|chart-ready|chart-recovery-v1)\.js/i;
+  if (NativeMutationObserver && !window.__spireObserverSafetyInstalled) {
+    const retiredObserverPattern = /spire-(?:canonical-bootstrap|shell-resilience|chart-ready|chart-recovery-v1)\.js/i;
+    let observerSequence = 0;
     function GuardedMutationObserver(callback) {
-      const stack = String(new Error().stack || '');
-      if (unsafeObserverPattern.test(stack)) {
+      const createdStack = String(new Error().stack || '');
+      const observerId = ++observerSequence;
+      if (retiredObserverPattern.test(createdStack)) {
         document.documentElement.dataset.spireUnsafeObserverQuarantined = CONTRACT;
         return {
           observe() {},
@@ -23,11 +27,35 @@
           takeRecords() { return []; },
         };
       }
-      return new NativeMutationObserver(callback);
+
+      let nativeObserver;
+      let windowStarted = performance.now();
+      let callbackCount = 0;
+      let tripped = false;
+      const wrapped = (records, observer) => {
+        if (tripped) return;
+        const now = performance.now();
+        if (now - windowStarted > 500) {
+          windowStarted = now;
+          callbackCount = 0;
+        }
+        callbackCount += 1;
+        if (callbackCount > 40) {
+          tripped = true;
+          try { nativeObserver?.disconnect(); } catch {}
+          const source = createdStack.split('\n').find((line) => /\/assets\/spire-[^\s)]+\.js/i.test(line)) || createdStack.split('\n')[1] || 'unknown';
+          document.documentElement.dataset.spireObserverCircuitBreaker = `${observerId}:${source.trim()}`.slice(0, 500);
+          console.error('[SPIRE observer circuit breaker] disconnected runaway observer', { observerId, source, createdStack });
+          return;
+        }
+        return callback(records, observer);
+      };
+      nativeObserver = new NativeMutationObserver(wrapped);
+      return nativeObserver;
     }
     GuardedMutationObserver.prototype = NativeMutationObserver.prototype;
     window.MutationObserver = GuardedMutationObserver;
-    window.__spireLegacyObserverQuarantine = CONTRACT;
+    window.__spireObserverSafetyInstalled = CONTRACT;
   }
 
   const requestedFromLocation = () => {
@@ -175,8 +203,6 @@
     const patientId = String(row?.dataset?.patientId || '').trim();
     if (!patientId) return;
 
-    // Row interaction has exactly one owner. Startup/deep-link opening remains in
-    // the canonical app bootstrap, so the same patient is never opened twice.
     event.preventDefault();
     event.stopImmediatePropagation();
     requestPatientOpen(patientId).catch(() => {});
@@ -197,8 +223,6 @@
       await selectTab(request.tab, request.patientId);
       return true;
     }
-    // Compatibility method only. Automatic startup is intentionally disabled so
-    // the build-injected canonical deep-link bridge is the sole URL-open owner.
     return false;
   }
 
