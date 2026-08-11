@@ -24,6 +24,7 @@ const desiredImports = [
   "import { registerSpireSpecialtyCareParityRoutes } from './spire-specialty-care-parity-routes.js';",
   "import { registerSpirePatientEngagementParityRoutes } from './spire-patient-engagement-parity-routes.js';",
   "import { registerSpireBreakGlassGuard, registerSpireEnterpriseParityRoutes } from './spire-enterprise-parity-routes.js';",
+  "import { registerSpireFhirR4Routes } from './spire-fhir-r4-routes.js';",
   "import { registerSpireEpicReferenceParityRoutes } from './spire-epic-reference-parity-routes.js';",
   "import { registerSpireSpeedButtonParityRoutes } from './spire-speed-button-parity-routes.js';",
   "import { registerSpireSmartPhraseParityRoutes } from './spire-smartphrase-parity-routes.js';",
@@ -38,6 +39,7 @@ const desiredCalls = [
   'registerSpireSpecialtyCareParityRoutes(app, prisma, { authOf });',
   'registerSpirePatientEngagementParityRoutes(app, prisma, { authOf });',
   'registerSpireEnterpriseParityRoutes(app, prisma, { authOf });',
+  'registerSpireFhirR4Routes(app, prisma, { authOf });',
   'registerSpireEpicReferenceParityRoutes(app, prisma, { authOf });',
 ];
 
@@ -62,4 +64,4 @@ for (const statement of [...desiredCalls].reverse()) {
 }
 
 await writeFile(target, source, 'utf8');
-console.log(`Registered SPIRE Epic/enterprise parity routes and emergency-access guard in ${target}.`);
+console.log(`Registered SPIRE Epic/enterprise/FHIR parity routes and emergency-access guard in ${target}.`);
