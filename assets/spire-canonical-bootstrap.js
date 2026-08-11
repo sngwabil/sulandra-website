@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const CONTRACT = '20260810-spire-canonical-bootstrap-2';
+  const CONTRACT = '20260810-spire-canonical-bootstrap-3';
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   let activeRun = null;
   let requestedPatientId = '';
@@ -81,6 +81,30 @@
     return false;
   }
 
+  async function nativeOpenUntilRendered(patientId) {
+    // RETRY_NATIVE_PATIENT_OPEN_AFTER_SHELL_REPAIR: openPatient intentionally
+    // catches its own render errors. If the shell is replaced while its API
+    // requests are in flight, retry the same canonical patient open after the
+    // repaired shell exists instead of treating the swallowed attempt as done.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      if (!(await ensureShell())) continue;
+      if (chartPresent()) return true;
+      if (typeof window.SpireOpenPatient !== 'function') {
+        await sleep(100);
+        continue;
+      }
+      try { await window.SpireOpenPatient(patientId); }
+      catch (error) { console.error('[SPIRE canonical bootstrap patient]', error); }
+      const probeStarted = Date.now();
+      while (Date.now() - probeStarted < 1600) {
+        if (forceChartActive(patientId)) return true;
+        if (!shellPresent()) break;
+        await sleep(80);
+      }
+    }
+    return forceChartActive(patientId);
+  }
+
   async function stabilize(patientId = '', tab = '') {
     patientId = String(patientId || requestedPatientId || '').trim();
     requestedPatientId = patientId || requestedPatientId;
@@ -97,25 +121,11 @@
     activeRun = (async () => {
       if (!(await ensureShell())) return false;
       if (!requestedPatientId) return true;
-
-      if (!chartPresent() && typeof window.SpireOpenPatient === 'function') {
-        try { await window.SpireOpenPatient(requestedPatientId); }
-        catch (error) { console.error('[SPIRE canonical bootstrap patient]', error); }
-      }
-
-      const started = Date.now();
-      while (Date.now() - started < 8000) {
-        if (forceChartActive(requestedPatientId)) {
-          await selectTab(requestedTab, requestedPatientId);
-          forceChartActive(requestedPatientId);
-          return true;
-        }
-        if (!shellPresent() && typeof window.SpireEnsureShell === 'function') {
-          try { window.SpireEnsureShell(); } catch {}
-        }
-        await sleep(75);
-      }
-      return false;
+      if (!(await nativeOpenUntilRendered(requestedPatientId))) return false;
+      forceChartActive(requestedPatientId);
+      await selectTab(requestedTab, requestedPatientId);
+      forceChartActive(requestedPatientId);
+      return true;
     })();
 
     try { return await activeRun; }
@@ -130,17 +140,12 @@
         forceChartActive(requestedPatientId);
         return;
       }
-      // RECOVER_AFTER_CANONICAL_SHELL_RESET: a later canonical shell install can
-      // legitimately replace the workspace DOM after a patient already opened.
-      // Reopen that same requested patient through the canonical runtime instead
-      // of abandoning recovery when the chart DOM temporarily disappears.
+      // RECOVER_AFTER_CANONICAL_SHELL_RESET
       stabilize(requestedPatientId, requestedTab).catch(() => {});
     }, 90);
   }
 
-  // DETERMINISTIC_CANONICAL_SHELL_BOOTSTRAP: install the canonical shell as soon
-  // as the application runtime has exported its installer, rather than relying
-  // only on DOMContentLoaded ordering during cross-page production navigation.
+  // DETERMINISTIC_CANONICAL_SHELL_BOOTSTRAP
   if (typeof window.SpireEnsureShell === 'function') {
     try { window.SpireEnsureShell(); } catch {}
   }
