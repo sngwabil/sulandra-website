@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const CONTRACT = '20260811-spire-patient-open-guard-6';
+  const CONTRACT = '20260811-spire-patient-open-guard-7';
   let activePatientId = '';
   let activeOpen = null;
 
@@ -122,6 +122,12 @@
     return null;
   }
 
+  function signalSelectedTab(tab, patientId) {
+    document.dispatchEvent(new CustomEvent('spire:chart-tab-selected', {
+      detail: { tab: String(tab || ''), patientId: String(patientId || '') },
+    }));
+  }
+
   async function selectTab(tab, patientId) {
     tab = String(tab || '').trim();
     if (!tab) return true;
@@ -132,6 +138,11 @@
         activateChart(patientId);
         if (!button.classList.contains('active')) button.click();
         activateChart(patientId);
+        // Dedicated renderers cannot depend on a click when the requested tab is
+        // already active after the native patient-open. This explicit signal makes
+        // deep links and selected-home opens deterministic without re-clicking the
+        // generic chart handler or overwriting a specialized clinical workspace.
+        signalSelectedTab(tab, patientId);
         return true;
       }
       await sleep(50);
