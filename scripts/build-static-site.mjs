@@ -111,7 +111,7 @@ try {
   spireHtml = spireHtml.replace(/\s*<script src="\/assets\/spire-flowsheet-workspace-launcher\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
   spireHtml = spireHtml
     .replace('</head>', styles.map(asset => `<link rel="stylesheet" href="/assets/${asset}.css?v=${versionFor(asset)}">`).join('') + '</head>')
-    .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${versionFor(asset)}"></script>`).join('') + '<script src="/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-1"></script></body>')
+    .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${versionFor(asset)}"></script>`).join('') + '<script src="/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-2"></script></body>')
     // The business-path installer pins app generation nine. The content of that
     // runtime is hardened by install-spire-idempotent-shell.mjs after the pinning
     // step, so publish it under a fresh URL or browsers may reuse the old pre-fix
@@ -203,7 +203,7 @@ const screenControlsHref = '/assets/spire-screen-controls.css?v=20260811-spire-s
 if (!publishedSpireHtml.includes(workstationHref) || publishedSpireHtml.indexOf(workstationHref) < publishedSpireHtml.indexOf(screenControlsHref)) {
   throw new Error('Static publication regression: SPIRE clinical workstation stylesheet is not the final presentation layer');
 }
-if (!publishedSpireHtml.includes('/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-1')) {
+if (!publishedSpireHtml.includes('/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-2')) {
   throw new Error('Static publication regression: SPIRE continuous flowsheet launcher is missing');
 }
 const publishedClinicalWorkstation = await readFile(path.join(outputDirectory, 'assets', 'spire-clinical-workstation.css'), 'utf8');
