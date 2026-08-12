@@ -68,8 +68,6 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
     return json(route,{data:{ok:true}});
   });
 
-  // Commit returns as soon as the document navigation is accepted. This lets the
-  // regression distinguish a renderer freeze from a normal DOMContentLoaded delay.
   await page.goto(`/spire.html?spireHome=${HOME_ID}#patient=${PATIENT_ID}&tab=chart-review`,{waitUntil:'commit'});
 
   const strip=page.locator('#spirePatientStrip');
@@ -85,26 +83,53 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
     const tabs=chart?.querySelector(':scope > .chart-tabs');
     const left=document.querySelector('.spire-left-rail');
     const right=document.querySelector('.spire-right-rail');
+    const strip=document.getElementById('spirePatientStrip');
+    const shell=document.querySelector('.spire-shell');
+    const brand=document.querySelector('.spire-brand');
+    const brandText=document.querySelector('.spire-brand strong');
+    const logoMark=document.querySelector('.spire-logo-mark');
     const stylesheet=[...document.styleSheets].map(sheet=>sheet.href||'').find(href=>href.includes('spire-clinical-workstation.css'))||'';
+    const chartRect=chart?.getBoundingClientRect();
+    const tabsRect=tabs?.getBoundingClientRect();
+    const stripRect=strip?.getBoundingClientRect();
+    const shellRect=shell?.getBoundingClientRect();
     return {
       stylesheet,
       chartDisplay:chart?getComputedStyle(chart).display:'',
-      chartColumns:chart?getComputedStyle(chart).gridTemplateColumns:'',
       tabsDirection:tabs?getComputedStyle(tabs).flexDirection:'',
       leftDisplay:left?getComputedStyle(left).display:'',
       rightDisplay:right?getComputedStyle(right).display:'',
       rightWidth:right?right.getBoundingClientRect().width:0,
-      patientStripHeight:document.getElementById('spirePatientStrip')?.getBoundingClientRect().height||0,
+      patientStripWidth:stripRect?.width||0,
+      patientStripHeight:stripRect?.height||0,
+      patientStripRight:stripRect?.right||0,
+      shellLeft:shellRect?.left||0,
+      chartTop:chartRect?.top||0,
+      tabsTop:tabsRect?.top||0,
+      tabsWidth:tabsRect?.width||0,
+      tabsHeight:tabsRect?.height||0,
+      brandWidth:brand?.getBoundingClientRect().width||0,
+      brandBackground:brand?getComputedStyle(brand).backgroundColor:'',
+      brandFontStyle:brandText?getComputedStyle(brandText).fontStyle:'',
+      logoMarkDisplay:logoMark?getComputedStyle(logoMark).display:'',
     };
   });
   console.log('SPIRE workstation diagnostics',JSON.stringify(workstation));
-  expect(workstation.stylesheet).toContain('20260811-spire-clinical-workstation-1');
+  expect(workstation.stylesheet).toContain('20260811-spire-clinical-workstation-2');
   expect(workstation.chartDisplay).toBe('grid');
-  expect(workstation.tabsDirection).toBe('column');
+  expect(workstation.tabsDirection).toBe('row');
   expect(workstation.leftDisplay).toBe('none');
   expect(workstation.rightDisplay).not.toBe('none');
-  expect(workstation.rightWidth).toBeGreaterThan(180);
-  expect(workstation.patientStripHeight).toBeLessThan(120);
+  expect(workstation.rightWidth).toBeGreaterThan(240);
+  expect(workstation.patientStripWidth).toBeGreaterThan(200);
+  expect(workstation.patientStripHeight).toBeGreaterThan(500);
+  expect(Math.abs(workstation.patientStripRight-workstation.shellLeft)).toBeLessThan(3);
+  expect(workstation.tabsWidth).toBeGreaterThan(workstation.tabsHeight*6);
+  expect(Math.abs(workstation.chartTop-workstation.tabsTop)).toBeLessThan(3);
+  expect(workstation.brandWidth).toBeGreaterThan(90);
+  expect(workstation.brandBackground).toBe('rgb(255, 255, 255)');
+  expect(workstation.brandFontStyle).toBe('italic');
+  expect(workstation.logoMarkDisplay).toBe('none');
 
   await page.waitForTimeout(1800);
   await expect(chart).toHaveClass(/active/);
