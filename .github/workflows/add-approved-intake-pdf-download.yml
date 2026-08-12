@@ -1,62 +1,11 @@
-name: Add Approved Intake PDF Download
+name: Approved Intake PDF Installer (disabled)
 
 on:
-  push:
-    branches:
-      - feature/spire-ehr-platform
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  install:
-    if: github.actor != 'github-actions[bot]'
+  disabled:
+    if: false
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feature/spire-ehr-platform
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Install approved intake PDF feature
-        run: python scripts/one-shot-add-approved-intake-pdf.py
-
-      - name: Validate focused backend module
-        run: npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --types node api/src/client-intake-routes.ts
-
-      - name: Validate client intake inline JavaScript
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          html=Path('client-intake.html').read_text()
-          scripts=re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>',html,re.I)
-          inline=[s for s in scripts if s.strip()]
-          if not inline:
-              raise SystemExit('No inline Client Intake script found')
-          Path('/tmp/client-intake-inline.js').write_text('\n'.join(inline))
-          if 'APPROVED_INTAKE_PDF_DOWNLOAD_V1' not in html:
-              raise SystemExit('Approved intake PDF marker missing')
-          PY
-          node --check /tmp/client-intake-inline.js
-          git diff --check
-
-      - name: Commit feature to SPIRE branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add api/src/client-intake-routes.ts client-intake.html
-          git diff --cached --quiet && { echo 'No source change required'; exit 0; }
-          git commit -m "Add approved intake PDF download"
-          git push origin HEAD:feature/spire-ehr-platform
+      - run: echo "Approved intake PDF feature is already installed."
