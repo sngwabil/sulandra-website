@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const CONTRACT='20260812-spire-intake-isp-sleep-1';
+  const CONTRACT='20260812-spire-intake-isp-sleep-2';
   const patientId=()=>sessionStorage.getItem('spire:patientId')||new URLSearchParams(String(location.hash||'').replace(/^#/,'')).get('patient')||new URLSearchParams(location.search).get('patientId')||'';
   const $=(selector,root=document)=>root.querySelector(selector);
   const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
@@ -47,6 +47,10 @@
     if(button.textContent!=='Intake / Admission')button.textContent='Intake / Admission';
     button.dataset.spmtIntakeAdmission='true';
     button.title='Open the approved Client Intake source record, attachments, signatures and admission history';
+    // Admission History is an existing full-source renderer. Keep its original tab
+    // out of the visible master activity strip so it cannot destabilize the user's
+    // ordered master tabs; the red toolbar, Summary and Quick Actions open it.
+    if(!button.hidden)button.hidden=true;
     const pending=sessionStorage.getItem('spire:pending-admission-history');
     if(pending&&pending===patientId()&&!button.classList.contains('active'))setTimeout(()=>openAdmission(),0);
   }
