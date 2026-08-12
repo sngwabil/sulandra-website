@@ -89,6 +89,7 @@ try {
     if (asset === 'spire-chart-review-v2') return '20260811-spire-chart-review-v2-2';
     if (asset === 'spire-screen-controls') return '20260811-spire-screen-controls-3';
     if (asset === 'spire-clinical-workstation') return '20260811-spire-clinical-workstation-2';
+    if (asset === 'spire-care-workstation') return '20260812-spire-care-workstation-1';
     return version;
   };
   const styles = [
@@ -96,10 +97,11 @@ try {
     'spire-order-composer', 'spire-emar', 'spire-care-plan', 'spire-incidents',
     'spire-assessments-flowsheets', 'spire-scheduling', 'spire-authorizations-evv',
     'spire-documents-external-records', 'spire-communications-inbasket',
-    // Viewport protection stays immediately before the final clinical workstation skin.
     'spire-screen-controls',
-    // Keep the workstation skin last so older module CSS cannot restore web-card spacing.
     'spire-clinical-workstation',
+    // The Sulandra-native care workstation is an intentional overlay on the
+    // existing chart shell, so its presentation layer is published last.
+    'spire-care-workstation',
   ];
   const scripts = styles.filter((asset) => asset !== 'spire-clinical-workstation');
   for (const asset of styles) {
@@ -111,10 +113,6 @@ try {
   spireHtml = spireHtml
     .replace('</head>', styles.map(asset => `<link rel="stylesheet" href="/assets/${asset}.css?v=${versionFor(asset)}">`).join('') + '</head>')
     .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${versionFor(asset)}"></script>`).join('') + '</body>')
-    // The business-path installer pins app generation nine. The content of that
-    // runtime is hardened by install-spire-idempotent-shell.mjs after the pinning
-    // step, so publish it under a fresh URL or browsers may reuse the old pre-fix
-    // generation-nine bytes from cache.
     .replace(/\/assets\/spire-app-v2\.js\?v=20260811-business-uat-9(?:&startup=[^"']+)?/g, '/assets/spire-app-v2.js?v=20260811-business-uat-9&startup=20260811-domready-1');
   await writeFile(spirePath, spireHtml, 'utf8');
 } catch (error) {
@@ -184,6 +182,7 @@ const requiredPublishedFiles = [
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
   'assets/spire-results-workspace.js', 'assets/spire-clinical-workstation.css',
+  'assets/spire-care-workstation.css', 'assets/spire-care-workstation.js',
   'spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
@@ -199,8 +198,15 @@ if (!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) 
 const publishedSpireHtml = await readFile(spirePath, 'utf8');
 const workstationHref = '/assets/spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2';
 const screenControlsHref = '/assets/spire-screen-controls.css?v=20260811-spire-screen-controls-3';
+const careWorkstationHref = '/assets/spire-care-workstation.css?v=20260812-spire-care-workstation-1';
 if (!publishedSpireHtml.includes(workstationHref) || publishedSpireHtml.indexOf(workstationHref) < publishedSpireHtml.indexOf(screenControlsHref)) {
-  throw new Error('Static publication regression: SPIRE clinical workstation stylesheet is not the final presentation layer');
+  throw new Error('Static publication regression: SPIRE clinical workstation stylesheet is not after viewport controls');
+}
+if (!publishedSpireHtml.includes(careWorkstationHref) || publishedSpireHtml.indexOf(careWorkstationHref) < publishedSpireHtml.indexOf(workstationHref)) {
+  throw new Error('Static publication regression: Sulandra care workstation stylesheet is not the final presentation layer');
+}
+if (!publishedSpireHtml.includes('/assets/spire-care-workstation.js?v=20260812-spire-care-workstation-1')) {
+  throw new Error('Static publication regression: Sulandra care workstation runtime is missing');
 }
 const publishedClinicalWorkstation = await readFile(path.join(outputDirectory, 'assets', 'spire-clinical-workstation.css'), 'utf8');
 for (const marker of [
@@ -212,9 +218,13 @@ for (const marker of [
 ]) {
   if (!publishedClinicalWorkstation.includes(marker)) throw new Error(`Static publication regression: reference workstation CSS missing ${marker}`);
 }
+const publishedCareWorkstation = await readFile(path.join(outputDirectory, 'assets', 'spire-care-workstation.js'), 'utf8');
+for (const marker of ['S.P.I.R.E. Care Workstation','goal-progress','sleep-wake','Admin Edit','clinicalModules']) {
+  if (!publishedCareWorkstation.includes(marker)) throw new Error(`Static publication regression: care workstation runtime missing ${marker}`);
+}
 
 await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; SPIRE Results tab ordering remains idempotent and the reference-workstation presentation layer is published last.');
+console.log('Static website published from canonical source files; SPIRE Results remains idempotent and the Sulandra care workstation is the final patient-centered presentation layer.');
