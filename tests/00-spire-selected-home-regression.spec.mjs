@@ -64,6 +64,8 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
       chartReviewCalls+=1;
       return json(route,{data:{items:[{id:'biz-chart-item',resourceId:'biz-chart-item',type:'Note',description:'Synthetic progress note',status:'SIGNED',author:'Synthetic RN',date:'2026-08-11T12:00:00.000Z'}]}});
     }
+    if(path===`/api/spire/patients/${PATIENT_ID}/assessments/overview`&&method==='GET')return json(route,{data:{responses:[],due:[]}});
+    if(path==='/api/spire/assessment-templates'&&method==='GET')return json(route,{data:[]});
     if(method==='GET')return json(route,{data:[]});
     return json(route,{data:{ok:true}});
   });
@@ -81,6 +83,7 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
   const workstation=await page.evaluate(()=>{
     const chart=document.getElementById('spireChartWorkspace');
     const tabs=chart?.querySelector(':scope > .chart-tabs');
+    const inactiveTab=chart?.querySelector('[data-chart-tab="results-review"]');
     const left=document.querySelector('.spire-left-rail');
     const right=document.querySelector('.spire-right-rail');
     const strip=document.getElementById('spirePatientStrip');
@@ -93,10 +96,16 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
     const tabsRect=tabs?.getBoundingClientRect();
     const stripRect=strip?.getBoundingClientRect();
     const shellRect=shell?.getBoundingClientRect();
+    const inactiveStyle=inactiveTab?getComputedStyle(inactiveTab):null;
+    const inactiveBefore=inactiveTab?getComputedStyle(inactiveTab,'::before'):null;
     return {
       stylesheet,
+      appFontFamily:getComputedStyle(document.querySelector('.spire-app')).fontFamily,
       chartDisplay:chart?getComputedStyle(chart).display:'',
       tabsDirection:tabs?getComputedStyle(tabs).flexDirection:'',
+      tabBeforeDisplay:inactiveBefore?.display||'',
+      tabBorderRadius:inactiveStyle?.borderRadius||'',
+      tabFontWeight:inactiveStyle?.fontWeight||'',
       leftDisplay:left?getComputedStyle(left).display:'',
       rightDisplay:right?getComputedStyle(right).display:'',
       rightWidth:right?right.getBoundingClientRect().width:0,
@@ -111,13 +120,18 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
       brandWidth:brand?.getBoundingClientRect().width||0,
       brandBackground:brand?getComputedStyle(brand).backgroundColor:'',
       brandFontStyle:brandText?getComputedStyle(brandText).fontStyle:'',
+      brandFontWeight:brandText?getComputedStyle(brandText).fontWeight:'',
       logoMarkDisplay:logoMark?getComputedStyle(logoMark).display:'',
     };
   });
   console.log('SPIRE workstation diagnostics',JSON.stringify(workstation));
   expect(workstation.stylesheet).toContain('20260811-spire-clinical-workstation-2');
+  expect(workstation.appFontFamily).toContain('Tahoma');
   expect(workstation.chartDisplay).toBe('grid');
   expect(workstation.tabsDirection).toBe('row');
+  expect(workstation.tabBeforeDisplay).toBe('none');
+  expect(workstation.tabBorderRadius).toBe('0px');
+  expect(Number(workstation.tabFontWeight)).toBeLessThanOrEqual(600);
   expect(workstation.leftDisplay).toBe('none');
   expect(workstation.rightDisplay).not.toBe('none');
   expect(workstation.rightWidth).toBeGreaterThan(240);
@@ -129,12 +143,24 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
   expect(workstation.brandWidth).toBeGreaterThan(90);
   expect(workstation.brandBackground).toBe('rgb(255, 255, 255)');
   expect(workstation.brandFontStyle).toBe('italic');
+  expect(Number(workstation.brandFontWeight)).toBeLessThanOrEqual(700);
   expect(workstation.logoMarkDisplay).toBe('none');
+
+  // Dedicated clinical tabs must own their rendering. The generic chart fallback
+  // must never overwrite Assessments with a JSON dump after its API request resolves.
+  await page.locator('[data-chart-tab="assessments"]').click();
+  await expect(page.locator('#spireChartTabBody .spire-assessment-head')).toBeVisible();
+  await expect(page.locator('#spireChartTabBody')).toContainText('Clinical Assessments');
+  await expect(page.locator('#spireChartTabBody .json-foundation')).toHaveCount(0);
+  await expect(page.locator('#spireChartTabBody')).toContainText('No assessments documented yet.');
+
+  await page.locator('[data-chart-tab="chart-review"]').click();
+  await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();
 
   await page.waitForTimeout(1800);
   await expect(chart).toHaveClass(/active/);
   await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toHaveCount(1);
-  expect(chartReviewCalls,'Chart Review repeatedly refetched after rendering its own DOM').toBeLessThanOrEqual(3);
+  expect(chartReviewCalls,'Chart Review repeatedly refetched after rendering its own DOM').toBeLessThanOrEqual(4);
 
   const observerDiagnostics=await page.evaluate(()=>({
     breaker:document.documentElement.dataset.spireObserverCircuitBreaker||'',
@@ -142,9 +168,11 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
     workspaceSuppressed:document.documentElement.dataset.spireWorkspaceObserverSuppressed||'',
     workspaceRestored:document.documentElement.dataset.spireWorkspaceObserverRestored||'',
     guard:window.SpirePatientOpenGuard?.contract||'',
+    specialized:window.SpireSpecializedTabOwnership?.contract||'',
   }));
   console.log('SPIRE observer diagnostics',JSON.stringify(observerDiagnostics));
   expect(observerDiagnostics.breaker,`A SPIRE MutationObserver became runaway: ${observerDiagnostics.breaker}`).toBe('');
+  expect(observerDiagnostics.specialized).toBe('20260811-spire-specialized-tab-ownership-1');
   expect(pageErrors,'SPIRE emitted browser page errors while opening the selected-home chart').toEqual([]);
   expect(consoleErrors.filter(line=>!line.includes('observer circuit breaker')),'SPIRE emitted unexpected console errors').toEqual([]);
 });
