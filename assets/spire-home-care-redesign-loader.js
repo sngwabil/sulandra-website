@@ -4,7 +4,7 @@
   // does not need another shell rewrite. The user-provided master template owns
   // presentation while all existing SPIRE modules retain Railway API auth,
   // company/service-home scope, PostgreSQL persistence and audit behavior.
-  const VERSION='20260812-user-master-template-3';
+  const VERSION='20260812-user-master-template-4';
   const css=[
     ['spireUserMasterTemplateStyle','/assets/spire-user-template-integration.css'],
     ['spireUserMasterTemplateLayoutFix','/assets/spire-user-template-layout-fix.css'],
