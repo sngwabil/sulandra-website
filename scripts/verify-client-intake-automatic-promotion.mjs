@@ -18,6 +18,7 @@ requireText(routes, "import { promoteApprovedIntakeToSpire } from './client-inta
 requireText(routes, 'CLIENT_INTAKE_AUTOMATIC_SPIRE_PROMOTION_V2', 'post-approval promotion marker is missing');
 requireText(routes, `"status"='APPROVED'`, 'approval state transition is missing');
 requireText(routes, 'const promotion=await promoteApprovedIntakeToSpire(prisma,a,req.params.caseId,patientId);', 'automatic promotion call is missing after approval');
+requireText(routes, "res.json({data:{status:'APPROVED',patientId,promotion}});", 'approval response does not return the SPIRE promotion result to the H&P client');
 
 const approvedIndex = routes.indexOf(`"status"='APPROVED'`);
 const promotionIndex = routes.indexOf('CLIENT_INTAKE_AUTOMATIC_SPIRE_PROMOTION_V2');
@@ -52,4 +53,4 @@ requireText(carePlanMigration, "'DRAFT'", 'intake-seeded care plan must remain D
 requireText(alignmentMigration, 'SpireMedicationReconciliation', 'medication reconciliation alignment migration is missing');
 requireText(alignmentMigration, 'updatedAt', 'retry-safe medication reconciliation timestamp is missing');
 
-console.log('Client Intake automatic promotion verification passed: approval-triggered DRAFT plan plus full SPIRE promotion mapping and safety gates are present.');
+console.log('Client Intake automatic promotion verification passed: approval-triggered DRAFT plan plus full SPIRE promotion mapping, safety gates, and promotion response payload are present.');
