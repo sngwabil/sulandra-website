@@ -6,6 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const target = path.join(root, 'api/src/client-intake-routes.ts');
 const marker = 'CLIENT_INTAKE_AUTOMATIC_SPIRE_PROMOTION_V2';
 const retryRouteMarker = 'CLIENT_INTAKE_APPROVED_REPROMOTION_ROUTE_V1';
+const correctionMarker = 'APPROVED_INTAKE_CORRECTION_REOPEN_V1';
 const oldMarker = 'CLIENT_INTAKE_AUTOMATIC_SPIRE_PROMOTION_V1';
 const importLine = "import { promoteApprovedIntakeToSpire } from './client-intake-promotion.js';";
 let source = await readFile(target, 'utf8');
@@ -72,5 +73,53 @@ if (!source.includes(retryRouteMarker)) {
   source = source.replace(retryAnchor, `${retryRoute}${retryAnchor}`);
 }
 
+/*
+ * APPROVED intake correction workflow.
+ *
+ * The permanent chart remains linked to the same patient. The first authorized
+ * correction to an APPROVED intake automatically opens an audit-tracked
+ * REVIEW_REQUIRED correction cycle instead of returning the old 409 lock error.
+ * SUBMITTED/CLOSED/WITHDRAWN records remain locked. Only a review-capable role may
+ * reopen an approved record. Reapproval reuses the existing patient ID so the
+ * correction can never create a duplicate chart identity.
+ */
+if (!source.includes(correctionMarker)) {
+  const reviewGuardAnchor = "const ensureReview=(a:AuthContext)=>{ensureWrite(a);if(!reviewRoles.has(a.role)&&!owner(a))throw httpError(403,'Clinical or program intake review permission is required');};";
+  if (!source.includes(reviewGuardAnchor)) throw new Error('Client Intake review guard anchor was not found');
+
+  const correctionHelper = `${reviewGuardAnchor}\n/* ${correctionMarker}: approved intakes enter an audit-tracked correction cycle on the first authorized edit. */\nasync function reopenApprovedForCorrection(prisma:PrismaClient,a:AuthContext,caseId:string,caseRow:Record<string,unknown>,reason:string,audit?:Deps['audit']){if(String(caseRow.status)!=='APPROVED')return false;ensureReview(a);const previousApprovedAt=caseRow.approvedAt??null,previousApprovedById=caseRow.approvedById??null,patientId=clean(caseRow.patientId,120)||null;await prisma.$executeRawUnsafe(\`UPDATE \\\"ClientIntakeCase\\\" SET \\\"status\\\"='REVIEW_REQUIRED',\\\"reviewNotes\\\"=$1,\\\"reviewedAt\\\"=NOW(),\\\"reviewedById\\\"=$2,\\\"updatedAt\\\"=NOW() WHERE \\\"organizationId\\\"=$3 AND \\\"legalEntityId\\\"=$4 AND \\\"id\\\"=$5\`,reason,a.userId,a.organizationId,selectedEntity(a),caseId);await event(prisma,a,caseId,'INTAKE_REOPENED_FOR_CORRECTION',{reason,patientId,previousStatus:'APPROVED',previousApprovedAt,previousApprovedById});await audit?.(a,'REOPEN_CLIENT_INTAKE_FOR_CORRECTION','ClientIntakeCase',caseId,{reason,patientId,legalEntityId:selectedEntity(a),previousApprovedAt,previousApprovedById});caseRow.status='REVIEW_REQUIRED';return true;}`;
+  source = source.replace(reviewGuardAnchor, correctionHelper);
+
+  const patchLock = "if(['APPROVED','CLOSED','WITHDRAWN'].includes(String(current.status)))throw httpError(409,'This intake case is no longer editable');";
+  const patchReplacement = "if(String(current.status)==='APPROVED')await reopenApprovedForCorrection(prisma,a,req.params.caseId,current,'Approved intake case details were corrected after approval.',audit);else if(['CLOSED','WITHDRAWN'].includes(String(current.status)))throw httpError(409,'This intake case is no longer editable');";
+  if (!source.includes(patchLock)) throw new Error('Approved Client Intake case edit lock anchor was not found');
+  source = source.replace(patchLock, patchReplacement);
+
+  const sectionLock = "if(['SUBMITTED','APPROVED','CLOSED','WITHDRAWN'].includes(String(caseRow.status)))throw httpError(409,'This intake is locked for editing');";
+  const sectionReplacement = "if(String(caseRow.status)==='APPROVED')await reopenApprovedForCorrection(prisma,a,req.params.caseId,caseRow,`Approved intake section ${req.params.sectionKey} was corrected after approval.`,audit);else if(['SUBMITTED','CLOSED','WITHDRAWN'].includes(String(caseRow.status)))throw httpError(409,'This intake is locked for editing');";
+  if (!source.includes(sectionLock)) throw new Error('Approved Client Intake section edit lock anchor was not found');
+  source = source.replace(sectionLock, sectionReplacement);
+
+  const attachmentLock = "if(['APPROVED','CLOSED','WITHDRAWN'].includes(String(caseRow.status)))throw httpError(409,'This intake is no longer accepting attachments');";
+  const attachmentReplacement = "if(String(caseRow.status)==='APPROVED')await reopenApprovedForCorrection(prisma,a,req.params.caseId,caseRow,'An admission attachment was added or corrected after approval.',audit);else if(['CLOSED','WITHDRAWN'].includes(String(caseRow.status)))throw httpError(409,'This intake is no longer accepting attachments');";
+  if (!source.includes(attachmentLock)) throw new Error('Approved Client Intake attachment lock anchor was not found');
+  source = source.replace(attachmentLock, attachmentReplacement);
+
+  const signatureLock = "if(['APPROVED','CLOSED','WITHDRAWN'].includes(String(caseRow.status)))throw httpError(409,'This intake is no longer accepting signatures');";
+  const signatureReplacement = "if(String(caseRow.status)==='APPROVED')await reopenApprovedForCorrection(prisma,a,req.params.caseId,caseRow,'An intake signature or attestation was added after approval.',audit);else if(['CLOSED','WITHDRAWN'].includes(String(caseRow.status)))throw httpError(409,'This intake is no longer accepting signatures');";
+  if (!source.includes(signatureLock)) throw new Error('Approved Client Intake signature lock anchor was not found');
+  source = source.replace(signatureLock, signatureReplacement);
+
+  const patientAnchor = "const patientId=await upsertPatientFromCase(prisma,a,caseRow,input.existingPatientId??null,life);";
+  const patientReplacement = "const existingPatientId=input.existingPatientId??(clean(caseRow.patientId,120)||null);const patientId=await upsertPatientFromCase(prisma,a,caseRow,existingPatientId,life);";
+  if (!source.includes(patientAnchor)) throw new Error('Client Intake approval patient-link anchor was not found');
+  source = source.replace(patientAnchor, patientReplacement);
+
+  source = source.replace(
+    "existingPatientId:input.existingPatientId??null,promotion",
+    'existingPatientId,promotion',
+  );
+}
+
 await writeFile(target, source, 'utf8');
-console.log('Client Intake automatic SPIRE promotion installed: approval seeds the DRAFT care plan first, then maps the full admission summary, medication reconciliation/eMAR-ready orders, intake documents, coded service authorizations, promotion audit trail, returns the promotion result to the H&P client, and exposes a retry-safe promotion endpoint for previously approved intakes.');
+console.log('Client Intake automatic SPIRE promotion installed: approval seeds the DRAFT care plan first, then maps the full admission summary, medication reconciliation/eMAR-ready orders, intake documents, coded service authorizations, promotion audit trail, returns the promotion result to the H&P client, exposes a retry-safe promotion endpoint for previously approved intakes, and allows review-authorized staff to reopen approved intakes automatically for audit-tracked corrections without creating a duplicate patient chart.');
