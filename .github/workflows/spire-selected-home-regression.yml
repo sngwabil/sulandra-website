@@ -45,13 +45,13 @@ jobs:
             workstation="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2' || true)"
             pre="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-workspace-loop-guard.js?v=20260811-workspace-observer-suppression-2' || true)"
             post="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-workspace-loop-restore.js?v=20260811-workspace-observer-suppression-2' || true)"
-            master_loader="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-home-care-redesign-loader.js?v=20260812-user-master-template-6' || true)"
-            master_runtime="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-integration.js?v=20260812-user-master-template-6' || true)"
-            master_style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-integration.css?v=20260812-user-master-template-6' || true)"
-            master_layout="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-layout-fix.css?v=20260812-user-master-template-6' || true)"
-            master_final="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-final-lock.css?v=20260812-user-master-template-6' || true)"
-            intake_wiring="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.js?v=20260812-user-master-template-6' || true)"
-            intake_style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.css?v=20260812-user-master-template-6' || true)"
+            master_loader="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-home-care-redesign-loader.js?v=20260812-user-master-template-7' || true)"
+            master_runtime="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-integration.js?v=20260812-user-master-template-7' || true)"
+            master_style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-integration.css?v=20260812-user-master-template-7' || true)"
+            master_layout="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-layout-fix.css?v=20260812-user-master-template-7' || true)"
+            master_final="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-final-lock.css?v=20260812-user-master-template-7' || true)"
+            intake_wiring="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.js?v=20260812-user-master-template-7' || true)"
+            intake_style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.css?v=20260812-user-master-template-7' || true)"
             flowsheet_style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1' || true)"
             flowsheet_runtime="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1' || true)"
             if grep -q 'spire-app-v2.js?v=20260811-business-uat-9&startup=20260811-domready-1' <<<"$html" \
@@ -61,7 +61,7 @@ jobs:
               && grep -q 'spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2' <<<"$html" \
               && grep -q 'spire-workspace-loop-guard.js?v=20260811-workspace-observer-suppression-2' <<<"$html" \
               && grep -q 'spire-workspace-loop-restore.js?v=20260811-workspace-observer-suppression-2' <<<"$html" \
-              && grep -q 'spire-home-care-redesign-loader.js?v=20260812-user-master-template-6' <<<"$html" \
+              && grep -q 'spire-home-care-redesign-loader.js?v=20260812-user-master-template-7' <<<"$html" \
               && grep -q 'spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1' <<<"$flowsheet_html" \
               && grep -q 'spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1' <<<"$flowsheet_html" \
               && grep -q 'BUSINESS_UAT_DEFER_DEEPLINK_UNTIL_DOM_READY' <<<"$app" \
@@ -76,7 +76,7 @@ jobs:
               && grep -q 'flex-direction:row!important' <<<"$workstation" \
               && grep -q 'spireWorkspaceObserverSuppressed' <<<"$pre" \
               && grep -q 'spireWorkspaceObserverRestored' <<<"$post" \
-              && grep -q "VERSION='20260812-user-master-template-6'" <<<"$master_loader" \
+              && grep -q "VERSION='20260812-user-master-template-7'" <<<"$master_loader" \
               && grep -q 'spireIntakeIspSleepWiringRuntime' <<<"$master_loader" \
               && grep -q 'spireUserMasterTemplateFinalLock' <<<"$master_loader" \
               && grep -q 'SpireMasterTemplate' <<<"$master_runtime" \
@@ -85,10 +85,11 @@ jobs:
               && grep -q 'grid-template-rows:40px 36px minmax(0,1fr)' <<<"$master_layout" \
               && grep -q 'background:linear-gradient(135deg,#050811 0%,#0f172a 100%)' <<<"$master_layout" \
               && grep -q 'border-radius:3px!important' <<<"$master_final" \
-              && grep -q '20260812-spire-intake-isp-sleep-1' <<<"$intake_wiring" \
+              && grep -q '20260812-spire-intake-isp-sleep-2' <<<"$intake_wiring" \
               && grep -q 'ISP Outcomes / Progress' <<<"$intake_wiring" \
               && grep -q 'Sleep / Wake' <<<"$intake_wiring" \
               && grep -q 'spireAdmissionHistoryTab' <<<"$intake_wiring" \
+              && grep -q 'button.hidden=true' <<<"$intake_wiring" \
               && grep -q '#spireAdmissionHistoryTab' <<<"$intake_style" \
               && grep -q 'background:#990000!important' <<<"$flowsheet_style" \
               && grep -q 'spire:flowsheet:preferred-group' <<<"$flowsheet_runtime"; then
@@ -106,7 +107,7 @@ jobs:
               raise SystemExit(f'unsafe SPIRE runtime order: {positions}')
           screen=html.find('spire-screen-controls.css?v=20260811-spire-screen-controls-3')
           workstation=html.find('spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2')
-          master=html.find('spire-home-care-redesign-loader.js?v=20260812-user-master-template-6')
+          master=html.find('spire-home-care-redesign-loader.js?v=20260812-user-master-template-7')
           if screen < 0 or workstation < 0 or workstation < screen:
               raise SystemExit(f'unsafe SPIRE stylesheet order: screen={screen}, workstation={workstation}')
           if master < 0:
