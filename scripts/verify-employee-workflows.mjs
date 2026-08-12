@@ -6,6 +6,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=async file=>readFile(path.join(root,file),'utf8');
 const checks=[];
 const expect=(name,condition)=>{checks.push({name,condition});if(!condition)throw new Error(`Employee workflow verification failed: ${name}`)};
+const hasBearerAuth=(source)=>source.includes('Authorization:`Bearer ${token()}`')||source.includes('Authorization:`Bearer ${auth}`');
 
 const backend=await read('api/src/employee-workflows-automation-routes.ts');
 expect('backend route exists',backend.includes('registerEmployeeWorkflowAutomationRoutes'));
@@ -50,7 +51,7 @@ expect('workflow registered before careers',workflowAt>=0&&careersAt>workflowAt)
 
 const admin=await read('assets/admin-employee-workflows.js');
 expect('admin explicit API base',admin.includes('sulandra-website-production-5fc4.up.railway.app'));
-expect('admin bearer auth',admin.includes('Authorization:`Bearer ${token()}`'));
+expect('admin bearer auth',hasBearerAuth(admin));
 expect('admin workflow dashboard',admin.includes('Workflow Automation & Task Orchestration'));
 expect('admin create workflow',admin.includes('Create workflow'));
 expect('admin starts workflows',admin.includes('data-start'));
@@ -59,7 +60,7 @@ expect('admin mobile responsive',admin.includes('@media(max-width:560px)'));
 
 const employee=await read('assets/employee-workflows-self-service.js');
 expect('employee explicit API base',employee.includes('sulandra-website-production-5fc4.up.railway.app'));
-expect('employee bearer auth',employee.includes('Authorization:`Bearer ${token()}`'));
+expect('employee bearer auth',hasBearerAuth(employee));
 expect('employee My Workflows',employee.includes('My Workflows'));
 expect('employee displays overdue metric',employee.includes('data.metrics.overdue'));
 expect('employee displays steps',employee.includes('i.steps'));
