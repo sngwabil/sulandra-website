@@ -106,7 +106,7 @@ try {
     spireHtml = spireHtml.replace(new RegExp(`\\s*<link rel="stylesheet" href="\\/assets\\/${asset}\\.css(?:\\?v=[^"']+)?">\\s*`, 'g'), '');
   }
   for (const asset of scripts) {
-    spireHtml = spireHtml.replace(new RegExp(`\\s*<script src="\\/assets\\/${asset}\\.js(?:\\?v=[^"']+)?"><\/script>\\s*`, 'g'), '');
+    spireHtml = spireHtml.replace(new RegExp(`\\s*<script src="\\/assets\\/${asset}\\.js(?:\\?v=[^"']+)?"><\\/script>\\s*`, 'g'), '');
   }
   spireHtml = spireHtml.replace(/\s*<script src="\/assets\/spire-flowsheet-workspace-launcher\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
   spireHtml = spireHtml
@@ -118,6 +118,23 @@ try {
     // generation-nine bytes from cache.
     .replace(/\/assets\/spire-app-v2\.js\?v=20260811-business-uat-9(?:&startup=[^"']+)?/g, '/assets/spire-app-v2.js?v=20260811-business-uat-9&startup=20260811-domready-1');
   await writeFile(spirePath, spireHtml, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
+// The dedicated continuous flowsheet remains a separate focused charting surface,
+// but it now uses the uploaded S.P.I.R.E. master-template presentation and routes
+// its header actions back into the current patient chart. Keep this publication
+// transform idempotent so repeated local/CI builds never duplicate assets.
+const flowsheetPath = path.join(outputDirectory, 'spire', 'flowsheets.html');
+try {
+  let html = await readFile(flowsheetPath, 'utf8');
+  html = html
+    .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-flowsheet-master\.css(?:\?v=[^"']+)?">\s*/g, '')
+    .replace(/\s*<script src="\/assets\/spire-flowsheet-master\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
+    .replace('</head>', '<link rel="stylesheet" href="/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1"></head>')
+    .replace('</body>', '<script src="/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1"></script></body>');
+  await writeFile(flowsheetPath, html, 'utf8');
 } catch (error) {
   if (error?.code !== 'ENOENT') throw error;
 }
@@ -186,6 +203,7 @@ const requiredPublishedFiles = [
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
   'assets/spire-results-workspace.js', 'assets/spire-chart-review-v2.js', 'assets/spire-clinical-workstation.css', 'assets/spire-flowsheet-workspace-launcher.js',
   'assets/spire-user-template-integration.css', 'assets/spire-user-template-integration.js', 'assets/spire-user-template-layout-fix.css', 'assets/spire-user-template-final-lock.css',
+  'assets/spire-flowsheet-master.css', 'assets/spire-flowsheet-master.js',
   'spire.html', 'spire/flowsheets.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
@@ -210,6 +228,10 @@ if (!publishedSpireHtml.includes('/assets/spire-chart-review-v2.js?v=20260812-sp
 if (!publishedSpireHtml.includes('/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-2')) {
   throw new Error('Static publication regression: SPIRE continuous flowsheet launcher is missing');
 }
+const publishedFlowsheetHtml = await readFile(flowsheetPath, 'utf8');
+if (!publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1') || !publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1')) {
+  throw new Error('Static publication regression: uploaded master-template flowsheet presentation/navigation is missing');
+}
 const publishedClinicalWorkstation = await readFile(path.join(outputDirectory, 'assets', 'spire-clinical-workstation.css'), 'utf8');
 for (const marker of [
   '--sp-ref-ribbon',
@@ -225,4 +247,4 @@ await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; user master-template SPIRE, deterministic Chart Review, and continuous flowsheet workspace are included.');
+console.log('Static website published from canonical source files; user master-template SPIRE, deterministic Chart Review, and master-styled continuous flowsheets are included.');
