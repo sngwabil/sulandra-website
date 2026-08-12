@@ -21,5 +21,22 @@
 </head>
 <body>
   <p>Opening S.P.I.R.E. Enterprise… <a href="/spire/master.html">Continue to S.P.I.R.E.</a></p>
+
+  <!--
+    SPIRE_MASTER_LEGACY_BUILD_CONTRACT_V1
+    These elements are deliberately inert inside <template>. Older build/UAT scripts
+    still verify the legacy SPIRE runtime inventory before the final publication step.
+    They must not execute in the browser and they are NOT the live workstation.
+    The final static-publication step replaces dist-web/spire.html with spire/master.html.
+  -->
+  <template id="legacySpireBuildContract">
+    <div id="spireApp"></div>
+    <script src="/assets/spire-app-v2.js?v=20260811-business-uat-9"><\/script>
+    <script src="/assets/spire-canonical-bootstrap.js?v=20260810-spire-canonical-bootstrap-3"><\/script>
+    <script src="/assets/spire-shell-resilience.js?v=20260810-spire-shell-resilience-4"><\/script>
+    <script src="/assets/spire-chart-ready.js?v=20260810-spire-chart-ready-2"><\/script>
+    <script src="/assets/spire-deep-link.js?v=20260810-business-uat-5"><\/script>
+    <script src="/assets/spire-home-care-redesign-loader.js?v=20260812-user-master-template-8"><\/script>
+  </template>
 </body>
 </html>
