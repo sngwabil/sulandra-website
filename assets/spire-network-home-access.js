@@ -7,6 +7,8 @@
   const HOME_ENTITY_KEY = 'spire:selected-service-home-entity';
   const url = new URL(location.href);
   let selectedHomeId = String(url.searchParams.get(HOME_QUERY_KEY) || '').trim();
+  const requestedPatientId = String(url.searchParams.get('patientId') || url.searchParams.get('patient') || '').trim();
+  const hasPatientDeepLink = Boolean(requestedPatientId);
   const previousFetch = window.fetch.bind(window);
 
   const style = document.createElement('style');
@@ -57,7 +59,7 @@
   const gate = document.createElement('section');
   gate.id = 'spireServiceHomeGate';
   gate.className = 'spire-home-gate';
-  gate.hidden = Boolean(selectedHomeId);
+  gate.hidden = Boolean(selectedHomeId || hasPatientDeepLink);
   gate.setAttribute('aria-label', 'Select a SPIRE service home');
   gate.innerHTML = `
     <div class="spire-home-gate__top"></div>
@@ -226,13 +228,15 @@
   }
 
   search.addEventListener('input', renderHomes);
-  if (!selectedHomeId) {
+  if (!selectedHomeId && !hasPatientDeepLink) {
     loadHomes().catch(() => {});
   } else {
     gate.hidden = true;
-    const observer = new MutationObserver(() => installCurrentHomeBadge());
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    window.addEventListener('DOMContentLoaded', installCurrentHomeBadge, { once: true });
-    installCurrentHomeBadge();
+    if (selectedHomeId) {
+      const observer = new MutationObserver(() => installCurrentHomeBadge());
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      window.addEventListener('DOMContentLoaded', installCurrentHomeBadge, { once: true });
+      installCurrentHomeBadge();
+    }
   }
 })();
