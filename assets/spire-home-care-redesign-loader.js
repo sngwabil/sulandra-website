@@ -1,10 +1,10 @@
 (() => {
   'use strict';
-  // This loader remains at the existing canonical SPIRE hook so Railway/static
-  // publication does not need another shell rewrite. The user-provided master
-  // template now owns presentation while all existing SPIRE modules keep their
-  // current Railway API, authentication, company scope and clinical persistence.
-  const VERSION='20260812-user-master-template-1';
+  // Keep the existing canonical SPIRE loader hook so Railway/static publication
+  // does not need another shell rewrite. The user-provided master template owns
+  // presentation while all existing SPIRE modules retain Railway API auth,
+  // company/service-home scope, PostgreSQL persistence and audit behavior.
+  const VERSION='20260812-user-master-template-2';
   if(!document.getElementById('spireUserMasterTemplateStyle')){
     const link=document.createElement('link');
     link.id='spireUserMasterTemplateStyle';
