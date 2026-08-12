@@ -41,6 +41,13 @@ for (const directory of publicDirectories) {
   );
 }
 
+// S.P.I.R.E. production entry: publish the Sulandra-native care workstation
+// at the existing clinical URL so employee portal links do not change.
+await cp(
+  path.join(repositoryRoot, 'spire-care-workstation.html'),
+  path.join(outputDirectory, 'spire-clinical.html'),
+);
+
 const adminPortalPath = path.join(outputDirectory, 'admin.html');
 let adminPortal = await readFile(adminPortalPath, 'utf8');
 
@@ -56,7 +63,7 @@ if (!adminPortal.includes('Admin Spire <small>Clinical</small>')) {
   adminPortal = adminPortal.replace(sideOnboardingButton, `${sideSpireLink}${sideOnboardingButton}`);
 }
 
-const deploymentVersion = '20260805-admin-onboarding-enhancements-1';
+const deploymentVersion = '20260812-spire-care-workstation-1';
 adminPortal = adminPortal.replace(
   /careers-admin-workflow\.js(?:\?v=[^"']+)?/g,
   `careers-admin-workflow.js?v=${deploymentVersion}`,

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/onboarding-bootstrap.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node ../scripts/wire-spire-care-workstation.mjs",
     "start": "node dist/onboarding-bootstrap.js",
     "typecheck": "tsc --noEmit"
   },
