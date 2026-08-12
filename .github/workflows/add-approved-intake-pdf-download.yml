@@ -26,69 +26,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Install audited approved-intake packet endpoint
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('api/src/client-intake-routes.ts')
-          source = path.read_text()
-          marker = 'APPROVED_INTAKE_PACKET_DOWNLOAD_V1'
-          if marker not in source:
-              anchor = "  app.post('/api/admin/client-intakes/:caseId/attachments'"
-              if source.count(anchor) != 1:
-                  raise SystemExit(f'Expected one intake attachment route anchor, found {source.count(anchor)}')
-              route = r'''  /* APPROVED_INTAKE_PACKET_DOWNLOAD_V1: immutable approved packet export with access audit. */
-  app.get('/api/admin/client-intakes/:caseId/approved-packet',async(req,res,next)=>{try{const a=authOf(res);ensureRead(a);const life=await lifecycle(prisma,a),caseRow=await requireCase(prisma,a,req.params.caseId);if(String(caseRow.status)!=='APPROVED')throw httpError(409,'Only an approved intake can be downloaded as the approved packet');await ensureCaseSections(prisma,a,req.params.caseId,life.code);const [caseSections,attachments,signatures]=await Promise.all([prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT * FROM "ClientIntakeSection" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "intakeCaseId"=$3 ORDER BY "createdAt","sectionKey"`,a.organizationId,selectedEntity(a),req.params.caseId),prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "id","sectionKey","documentType","title","originalFileName","mimeType","sizeBytes","sha256","status","expirationDate","notes","uploadedById","createdAt" FROM "ClientIntakeAttachment" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "intakeCaseId"=$3 ORDER BY "createdAt"`,a.organizationId,selectedEntity(a),req.params.caseId),prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "id","signatureType","signerName","signerRelationship","signerEmail","signatureMethod","attestation","signedAt","revokedAt" FROM "ClientIntakeSignature" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "intakeCaseId"=$3 ORDER BY "signedAt"`,a.organizationId,selectedEntity(a),req.params.caseId)]);await event(prisma,a,req.params.caseId,'INTAKE_APPROVED_PACKET_DOWNLOADED',{format:'PDF',patientId:caseRow.patientId??null});await audit?.(a,'DOWNLOAD_APPROVED_CLIENT_INTAKE','ClientIntakeCase',req.params.caseId,{legalEntityId:selectedEntity(a),patientId:caseRow.patientId??null,format:'PDF'});res.setHeader('Cache-Control','private, no-store');res.json({data:{case:caseRow,company:life,sectionDefinitions:catalogFor(life.code),sections:caseSections,attachments,signatures}});}catch(e){next(e);}});
-
-'''
-              source = source.replace(anchor, route + anchor)
-              path.write_text(source)
-          PY
-
-      - name: Add Download Approved Intake PDF action
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('client-intake.html')
-          source = path.read_text()
-          marker = 'APPROVED_INTAKE_PDF_DOWNLOAD_V1'
-          if marker not in source:
-              hero_old = "${['SUBMITTED','REVIEW_REQUIRED'].includes(c.status)?'<button class=\"btn success\" id=\"reviewIntake\">Review / Approve</button>':''}</div></section>"
-              hero_new = "${['SUBMITTED','REVIEW_REQUIRED'].includes(c.status)?'<button class=\"btn success\" id=\"reviewIntake\">Review / Approve</button>':''}${c.status==='APPROVED'?'<button class=\"btn success\" id=\"downloadApprovedIntake\">↓ Download Approved Intake PDF</button>':''}</div></section>"
-              if source.count(hero_old) != 1:
-                  raise SystemExit(f'Expected one approved-action hero anchor, found {source.count(hero_old)}')
-              source = source.replace(hero_old, hero_new)
-
-              wire_old = "$('reviewIntake')?.addEventListener('click',openReview);document.querySelectorAll('[data-download-attachment]')"
-              wire_new = "$('reviewIntake')?.addEventListener('click',openReview);$('downloadApprovedIntake')?.addEventListener('click',downloadApprovedIntake);document.querySelectorAll('[data-download-attachment]')"
-              if source.count(wire_old) != 1:
-                  raise SystemExit(f'Expected one workspace wiring anchor, found {source.count(wire_old)}')
-              source = source.replace(wire_old, wire_new)
-
-              function_anchor = "  function fileToBase64(file){"
-              if source.count(function_anchor) != 1:
-                  raise SystemExit(f'Expected one fileToBase64 anchor, found {source.count(function_anchor)}')
-              functions = r'''  /* APPROVED_INTAKE_PDF_DOWNLOAD_V1: dependency-free PDF export of the locked approved intake. */
-  function approvedPacketValue(value){if(value===true)return'Yes';if(value===false)return'No';if(Array.isArray(value))return value.map(approvedPacketValue).join(', ');if(value&&typeof value==='object')return JSON.stringify(value);const s=String(value??'').trim();return s||'—';}
-  function approvedPdfSafe(value){return String(value??'').replace(/[–—]/g,'-').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/•/g,'-').replace(/✓/g,'Yes').replace(/[^\x20-\x7E]/g,'?');}
-  function approvedPdfEscape(value){return approvedPdfSafe(value).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');}
-  function approvedPdfWrap(value,max=92){const text=approvedPdfSafe(value).replace(/\s+/g,' ').trim();if(!text)return[''];const words=text.split(' '),lines=[];let line='';for(const word of words){if(word.length>max){if(line){lines.push(line);line='';}for(let i=0;i<word.length;i+=max)lines.push(word.slice(i,i+max));continue;}const next=line?`${line} ${word}`:word;if(next.length>max){if(line)lines.push(line);line=word;}else line=next;}if(line)lines.push(line);return lines.length?lines:[''];}
-  function buildApprovedIntakePdf(packet){const c=packet.case||{},defs=packet.sectionDefinitions||[],sectionMap=new Map((packet.sections||[]).map(row=>[row.sectionKey,row])),rows=[];const add=(text,kind='body',indent=0)=>rows.push({text:String(text??''),kind,indent});add('SULANDRA HEALTH','title');add('APPROVED CLIENT INTAKE & ADMISSION PACKET','heading');add(`Company: ${packet.company?.displayName||'Sulandra Health'}`);add(`Client: ${caseName(c)}`);add(`Intake case ID: ${c.id||'—'}`);add(`SPIRE patient ID: ${c.patientId||'—'}`);add(`Status: APPROVED`);add(`Approved: ${fmtDateTime(c.approvedAt)}`);add(`Approved by user: ${c.approvedById||'—'}`);if(c.reviewNotes)add(`Approval / review notes: ${c.reviewNotes}`);add('');for(const def of defs){const record=sectionMap.get(def.key)||{},payload=record.payload&&typeof record.payload==='object'?record.payload:{};add(`${def.group||'Intake'} / ${def.title}`,'section');for(const field of def.fields||[])add(`${field.label}: ${approvedPacketValue(payload[field.key])}`);add('');}add('Consents & Signatures','section');const signatures=(packet.signatures||[]).filter(x=>!x.revokedAt);if(!signatures.length)add('No active intake signatures recorded.');else for(const x of signatures){add(`${statusLabel(x.signatureType)}: ${x.signerName||'—'}${x.signerRelationship?` (${x.signerRelationship})`:''} · ${x.signatureMethod||'—'} · signed ${fmtDateTime(x.signedAt)}`);if(x.attestation)add(`Attestation: ${x.attestation}`, 'body', 12);}add('');add('External Document Index','section');const attachments=(packet.attachments||[]).filter(x=>String(x.status||'ACTIVE')==='ACTIVE');if(!attachments.length)add('No active external documents attached.');else for(const x of attachments)add(`${x.title||statusLabel(x.documentType)} · ${x.originalFileName||'—'} · ${fmtSize(x.sizeBytes)} · SHA-256 ${x.sha256||'—'}`);add('');add('Export statement','section');add('This PDF is an export of the approved, locked Client Intake record. Source attachments remain separate controlled files in the intake record and are identified above by file name and SHA-256 fingerprint.');
-    const pages=[[]],top=752,bottom=46,lineHeight=13;let y=top;for(const row of rows){const isTitle=row.kind==='title',isHeading=row.kind==='heading',isSection=row.kind==='section',size=isTitle?16:isHeading?12:isSection?11:9,font=(isTitle||isHeading||isSection)?'F2':'F1',max=Math.max(42,92-Math.round((row.indent||0)/5));if(isSection)y-=5;for(const line of approvedPdfWrap(row.text,max)){if(y<bottom){pages.push([]);y=top;}pages[pages.length-1].push({x:50+(row.indent||0),y,text:line||' ',font,size});y-=lineHeight;}if(isTitle)y-=3;if(isHeading)y-=7;if(isSection)y-=2;if(row.text==='')y-=4;}
-    const objects=[null,'<< /Type /Catalog /Pages 2 0 R >>',null,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'];const kids=[];for(let i=0;i<pages.length;i++){const pageNo=5+i*2,contentNo=pageNo+1;kids.push(`${pageNo} 0 R`);const commands=pages[i].map(line=>`BT /${line.font} ${line.size} Tf 1 0 0 1 ${line.x} ${line.y} Tm (${approvedPdfEscape(line.text)}) Tj ET`);commands.push(`BT /F1 8 Tf 1 0 0 1 50 24 Tm (Approved Intake - Page ${i+1} of ${pages.length}) Tj ET`);const stream=commands.join('\n');objects[pageNo]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentNo} 0 R >>`;objects[contentNo]=`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;}
-    objects[2]=`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${pages.length} >>`;let pdf='%PDF-1.4\n',offsets=[0];for(let i=1;i<objects.length;i++){offsets[i]=pdf.length;pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`;}const xref=pdf.length;pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;for(let i=1;i<objects.length;i++)pdf+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;return pdf;}
-  async function downloadApprovedIntake(){const c=currentCase();if(!c||String(c.status)!=='APPROVED'){alert('Only an approved intake can be downloaded as the approved packet.');return;}const button=$('downloadApprovedIntake');if(button)button.disabled=true;try{const packet=await api(`/api/admin/client-intakes/${encodeURIComponent(state.caseId)}/approved-packet`);const pdf=buildApprovedIntakePdf(packet),blob=new Blob([pdf],{type:'application/pdf'}),url=URL.createObjectURL(blob),a=document.createElement('a'),name=caseName(packet.case||c).replace(/[^A-Za-z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'Client';a.href=url;a.download=`${name}_Approved_Intake_${String(packet.case?.approvedAt||'').slice(0,10)||'approved'}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}catch(e){alert(e.message||'Unable to download the approved intake PDF.');}finally{if(button)button.disabled=false;}}
-'''
-              source = source.replace(function_anchor, functions + function_anchor)
-              path.write_text(source)
-          PY
+      - name: Install approved intake PDF feature
+        run: python scripts/one-shot-add-approved-intake-pdf.py
 
       - name: Validate focused backend module
-        shell: bash
-        run: |
-          npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --types node api/src/client-intake-routes.ts
+        run: npx tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --skipLibCheck --types node api/src/client-intake-routes.ts
 
       - name: Validate client intake inline JavaScript
         shell: bash
@@ -99,9 +41,11 @@ jobs:
           html=Path('client-intake.html').read_text()
           scripts=re.findall(r'<script(?:\s[^>]*)?>([\s\S]*?)</script>',html,re.I)
           inline=[s for s in scripts if s.strip()]
-          if not inline: raise SystemExit('No inline Client Intake script found')
+          if not inline:
+              raise SystemExit('No inline Client Intake script found')
           Path('/tmp/client-intake-inline.js').write_text('\n'.join(inline))
-          if 'APPROVED_INTAKE_PDF_DOWNLOAD_V1' not in html: raise SystemExit('Approved intake PDF marker missing')
+          if 'APPROVED_INTAKE_PDF_DOWNLOAD_V1' not in html:
+              raise SystemExit('Approved intake PDF marker missing')
           PY
           node --check /tmp/client-intake-inline.js
           git diff --check
