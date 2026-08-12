@@ -1,107 +1,115 @@
-/* SPIRE reference-workstation shell v2
-   Mirrors the supplied clinical workstation geometry and density while retaining
-   the SPIRE name and Sulandra functionality. This is a presentation-only layer:
-   it does not own chart opening, API calls, security, or recovery behavior. */
+/* SPIRE reference-workstation shell v3
+   Dense desktop-clinical presentation modeled on the supplied workstation references.
+   Presentation only: chart opening, API, access control and recovery behavior are untouched. */
 :root{
-  --sp-ref-ribbon:#a9144d;
-  --sp-ref-ribbon-dark:#811238;
-  --sp-ref-ribbon-hot:#c62568;
-  --sp-ref-sky:#d9f1fb;
-  --sp-ref-sky-2:#c5e8f6;
-  --sp-ref-blue:#0a6fa6;
-  --sp-ref-blue-dark:#164e70;
-  --sp-ref-line:#94b8ca;
-  --sp-ref-line-soft:#c8dbe5;
-  --sp-ref-text:#153c55;
-  --sp-ref-muted:#637c8c;
-  --sp-ref-yellow:#f8d95b;
-  --sp-ref-canvas:#f7fbfd;
+  --sp-ref-ribbon:#a8172e;
+  --sp-ref-ribbon-dark:#7f1225;
+  --sp-ref-ribbon-hot:#bb1d37;
+  --sp-ref-sky:#dceff7;
+  --sp-ref-sky-2:#c9e4ef;
+  --sp-ref-blue:#096a99;
+  --sp-ref-blue-dark:#174c69;
+  --sp-ref-line:#8fb1c2;
+  --sp-ref-line-soft:#c8d9e1;
+  --sp-ref-text:#1f3d4f;
+  --sp-ref-muted:#627985;
+  --sp-ref-yellow:#e7c34a;
+  --sp-ref-canvas:#f7fafc;
+  --sp-ref-font:Tahoma,"Segoe UI",Arial,sans-serif;
 }
+
+html,body,.spire-app,.spire-app button,.spire-app input,.spire-app select,.spire-app textarea,.spire-app table{
+  font-family:var(--sp-ref-font)!important;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+.spire-app button,.spire-app input,.spire-app select,.spire-app textarea{font-weight:400!important}
 
 /* ---------- Global clinical ribbon ---------- */
 .spire-topbar{
-  height:42px!important;
-  min-height:42px!important;
-  padding:0 7px!important;
-  gap:4px!important;
+  height:40px!important;
+  min-height:40px!important;
+  padding:0 6px!important;
+  gap:3px!important;
   background:linear-gradient(180deg,var(--sp-ref-ribbon-hot),var(--sp-ref-ribbon))!important;
-  border-bottom:1px solid #721130!important;
-  box-shadow:0 1px 3px rgba(56,4,27,.35)!important;
+  border-bottom:1px solid #721020!important;
+  box-shadow:0 1px 2px rgba(40,0,12,.28)!important;
 }
 .spire-brand{
   flex:0 0 112px!important;
   width:112px!important;
   min-width:112px!important;
-  height:32px!important;
+  height:31px!important;
   padding:0 10px!important;
   margin-right:3px!important;
-  border:1px solid #ead7df!important;
-  border-radius:1px!important;
+  border:1px solid #cfd7dc!important;
+  border-radius:0!important;
   background:#fff!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  box-shadow:inset 0 0 0 1px #fff,0 1px 2px rgba(0,0,0,.18)!important;
+  box-shadow:0 1px 1px rgba(0,0,0,.12)!important;
 }
 .spire-logo-mark{display:none!important}
 .spire-brand>div:last-child{display:block!important;overflow:visible!important}
 .spire-brand strong{
   display:block!important;
-  color:#0a6fa6!important;
-  font-family:Arial,"Segoe UI",sans-serif!important;
-  font-size:24px!important;
+  color:#0b6c9a!important;
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif!important;
+  font-size:21px!important;
   line-height:1!important;
-  font-weight:900!important;
+  font-weight:700!important;
   font-style:italic!important;
-  letter-spacing:-1.5px!important;
-  text-shadow:0 1px 0 #fff!important;
+  letter-spacing:-.8px!important;
+  text-shadow:none!important;
 }
 .spire-brand span{display:none!important}
 .spire-global-nav{gap:0!important;align-self:stretch!important}
 .spire-global-nav button{
-  height:42px!important;
-  padding:0 8px!important;
+  height:40px!important;
+  padding:0 9px!important;
+  border:0!important;
   border-left:1px solid rgba(255,255,255,.08)!important;
-  border-right:1px solid rgba(83,8,35,.16)!important;
+  border-right:1px solid rgba(70,5,20,.18)!important;
+  border-radius:0!important;
   color:#fff!important;
-  font-size:10px!important;
-  font-weight:700!important;
-  text-shadow:0 1px 1px rgba(70,0,26,.35)!important;
+  font-size:10.5px!important;
+  font-weight:600!important;
+  text-shadow:none!important;
+  background:transparent!important;
 }
-.spire-global-nav button:hover,
+.spire-global-nav button:hover{background:rgba(255,255,255,.08)!important}
 .spire-global-nav button.active{
-  background:rgba(255,255,255,.15)!important;
-  box-shadow:inset 0 -3px 0 #ffd85b!important;
+  background:rgba(255,255,255,.08)!important;
+  box-shadow:inset 0 -2px 0 #f0d45b!important;
 }
 .spire-top-actions{gap:3px!important}
 .spire-top-actions button,
 .spire-current-home,
 .spire-window-controls{
-  height:29px!important;
-  border-radius:2px!important;
-  border-color:rgba(255,255,255,.5)!important;
-  background:rgba(92,4,38,.2)!important;
+  height:28px!important;
+  border-radius:0!important;
+  border:1px solid rgba(255,255,255,.42)!important;
+  background:rgba(75,0,22,.14)!important;
   color:#fff!important;
-  font-size:9px!important;
+  font-size:9.5px!important;
+  font-weight:500!important;
+  box-shadow:none!important;
 }
-.spire-current-home{background:#f5fbfe!important;color:#184b67!important;border-color:#b6cedb!important}
-.spire-current-home button{color:#165c82!important}
+.spire-current-home{background:#f7fbfd!important;color:#244b61!important;border-color:#a9c2cf!important}
+.spire-current-home button{color:#185e82!important;text-decoration:underline!important;text-underline-offset:2px}
 
-/* ---------- Open-chart app geometry ----------
-   Row 1 = global ribbon. Row 2 = patient sidebar + clinical chart shell. */
+/* ---------- Open-chart app geometry ---------- */
 body:has(#spireChartWorkspace.active) .spire-app{
   display:grid!important;
   grid-template-columns:clamp(230px,13.2vw,270px) minmax(0,1fr)!important;
-  grid-template-rows:42px minmax(0,1fr)!important;
+  grid-template-rows:40px minmax(0,1fr)!important;
   height:100vh!important;
   width:100vw!important;
   overflow:hidden!important;
-  background:#d7edf7!important;
+  background:#d9eaf2!important;
 }
-body:has(#spireChartWorkspace.active) .spire-topbar{
-  grid-column:1/-1!important;
-  grid-row:1!important;
-}
+body:has(#spireChartWorkspace.active) .spire-topbar{grid-column:1/-1!important;grid-row:1!important}
 
 /* ---------- Left patient information column ---------- */
 body:has(#spireChartWorkspace.active) .spire-patient-strip{
@@ -115,59 +123,62 @@ body:has(#spireChartWorkspace.active) .spire-patient-strip{
   height:100%!important;
   min-height:0!important;
   overflow:auto!important;
-  padding:10px 12px 12px!important;
-  gap:5px!important;
+  padding:8px 11px 10px!important;
+  gap:4px!important;
   border:0!important;
-  border-right:1px solid #8fb5c8!important;
-  background:linear-gradient(180deg,#dff3fb 0,#cfeaf6 100%)!important;
-  box-shadow:inset -1px 0 0 rgba(255,255,255,.7)!important;
+  border-right:1px solid #88aebf!important;
+  background:#d5ebf4!important;
+  box-shadow:none!important;
 }
 body:has(#spireChartWorkspace.active) .spire-patient-strip::before{
   content:'PATIENT';
   display:block;
-  margin:-10px -12px 10px!important;
-  padding:6px 9px 5px!important;
-  background:#b8deee!important;
-  border-bottom:1px solid #8fb5c8!important;
-  color:#315f75!important;
-  font-size:9px!important;
-  font-weight:900!important;
+  margin:-8px -11px 8px!important;
+  padding:5px 9px!important;
+  background:#bddce8!important;
+  border-bottom:1px solid #8eafbf!important;
+  color:#365c70!important;
+  font-size:8.5px!important;
+  font-weight:700!important;
   letter-spacing:.08em!important;
 }
 body:has(#spireChartWorkspace.active) .patient-avatar{
   flex:0 0 auto!important;
-  width:66px!important;
-  height:66px!important;
-  margin:0 auto 4px!important;
+  width:56px!important;
+  height:56px!important;
+  margin:4px auto 5px!important;
   border-radius:50%!important;
-  border:4px solid #e7f8ff!important;
-  background:#8f6dc5!important;
-  color:#fff!important;
-  font-size:28px!important;
-  box-shadow:0 0 0 1px #9bbfd1!important;
+  border:1px solid #91afbf!important;
+  background:#d8d1e8!important;
+  color:#615484!important;
+  font-size:23px!important;
+  font-weight:600!important;
+  box-shadow:none!important;
 }
 body:has(#spireChartWorkspace.active) .patient-main{
   flex:0 0 auto!important;
   width:100%!important;
   padding:0 2px 8px!important;
-  border-bottom:1px solid #a8c8d7!important;
+  border-bottom:1px solid #a3c0cf!important;
   text-align:left!important;
 }
 body:has(#spireChartWorkspace.active) .patient-main strong{
   display:block!important;
-  margin-bottom:3px!important;
-  color:#173b51!important;
-  font-size:18px!important;
-  line-height:1.05!important;
+  margin-bottom:2px!important;
+  color:#1d3949!important;
+  font-size:16px!important;
+  line-height:1.15!important;
+  font-weight:600!important;
 }
 body:has(#spireChartWorkspace.active) .patient-main span,
 body:has(#spireChartWorkspace.active) .patient-main small{
   display:block!important;
   white-space:normal!important;
   overflow:visible!important;
-  color:#526e7e!important;
-  font-size:9px!important;
+  color:#536c79!important;
+  font-size:9.5px!important;
   line-height:1.35!important;
+  font-weight:400!important;
 }
 body:has(#spireChartWorkspace.active) .patient-storyboard-facts{
   display:flex!important;
@@ -179,38 +190,38 @@ body:has(#spireChartWorkspace.active) .patient-storyboard-facts{
 body:has(#spireChartWorkspace.active) .storyboard-cell{
   width:100%!important;
   min-width:0!important;
-  padding:7px 3px!important;
+  padding:6px 3px!important;
   border:0!important;
-  border-bottom:1px solid #b1cedc!important;
+  border-bottom:1px solid #adc7d3!important;
   border-radius:0!important;
   background:transparent!important;
 }
 body:has(#spireChartWorkspace.active) .storyboard-cell span{
+  display:block!important;
   margin-bottom:2px!important;
-  color:#577486!important;
-  font-size:8px!important;
-  font-weight:900!important;
-  letter-spacing:.055em!important;
+  color:#58717e!important;
+  font-size:8.5px!important;
+  font-weight:600!important;
+  letter-spacing:.035em!important;
 }
 body:has(#spireChartWorkspace.active) .storyboard-cell b{
   display:block!important;
   white-space:normal!important;
   overflow:visible!important;
-  color:#183e55!important;
+  color:#213f50!important;
   font-size:10px!important;
   line-height:1.3!important;
+  font-weight:500!important;
 }
-body:has(#spireChartWorkspace.active) .storyboard-cell.danger{
-  padding:7px 5px!important;
-  background:transparent!important;
-}
+body:has(#spireChartWorkspace.active) .storyboard-cell.danger{padding:6px 3px!important;background:transparent!important}
 body:has(#spireChartWorkspace.active) .storyboard-cell.danger b{
   display:inline-block!important;
-  padding:2px 5px!important;
-  background:#ffe36c!important;
-  color:#6b3800!important;
-  border:1px solid #e1c24a!important;
-  border-radius:2px!important;
+  padding:2px 4px!important;
+  background:#f4dc73!important;
+  color:#5b4100!important;
+  border:1px solid #c7ad43!important;
+  border-radius:1px!important;
+  font-weight:600!important;
 }
 body:has(#spireChartWorkspace.active) .patient-alert-row{
   grid-column:auto!important;
@@ -220,16 +231,18 @@ body:has(#spireChartWorkspace.active) .patient-alert-row{
   width:100%!important;
   margin:0!important;
   padding-top:6px!important;
-  gap:4px!important;
+  gap:3px!important;
   overflow:visible!important;
 }
 body:has(#spireChartWorkspace.active) .flag-chip{
   display:block!important;
   width:100%!important;
-  padding:3px 5px!important;
-  border-radius:2px!important;
+  padding:3px 4px!important;
+  border-radius:1px!important;
   white-space:normal!important;
-  font-size:8px!important;
+  font-size:8.5px!important;
+  font-weight:500!important;
+  box-shadow:none!important;
 }
 
 /* ---------- Main clinical shell and right sidebar ---------- */
@@ -242,7 +255,7 @@ body:has(#spireChartWorkspace.active) .spire-shell{
   min-height:0!important;
   height:100%!important;
   overflow:hidden!important;
-  background:#e9f5fa!important;
+  background:#e9f3f7!important;
 }
 body:has(#spireChartWorkspace.active) .spire-left-rail{display:none!important}
 body:has(#spireChartWorkspace.active) .spire-main{
@@ -253,7 +266,7 @@ body:has(#spireChartWorkspace.active) .spire-main{
   height:100%!important;
   padding:0!important;
   overflow:hidden!important;
-  background:#eef8fc!important;
+  background:#f7fafc!important;
 }
 body:has(#spireChartWorkspace.active) #spireEncounterBar{display:none!important}
 body:has(#spireChartWorkspace.active) .spire-right-rail{
@@ -264,8 +277,8 @@ body:has(#spireChartWorkspace.active) .spire-right-rail{
   height:100%!important;
   overflow:auto!important;
   padding:0!important;
-  border-left:1px solid #88adbf!important;
-  background:#eaf6fb!important;
+  border-left:1px solid #8caebe!important;
+  background:#eff6f9!important;
 }
 body:has(#spireChartWorkspace.active) .spire-right-rail::before{
   content:'THIS VISIT     REVIEW ALL     NOTES';
@@ -273,49 +286,54 @@ body:has(#spireChartWorkspace.active) .spire-right-rail::before{
   position:sticky!important;
   top:0!important;
   z-index:9!important;
-  padding:7px 8px!important;
-  border-bottom:1px solid #9abccb!important;
-  background:linear-gradient(180deg,#dff2f9,#cde8f3)!important;
-  color:#315f76!important;
-  font-size:8px!important;
-  font-weight:900!important;
-  letter-spacing:.04em!important;
+  padding:6px 8px!important;
+  border-bottom:1px solid #a0bac7!important;
+  background:#dcecf3!important;
+  color:#3c5e70!important;
+  font-size:8.5px!important;
+  font-weight:600!important;
+  letter-spacing:.025em!important;
   white-space:pre!important;
 }
 body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card{
   margin:0!important;
   border:0!important;
-  border-bottom:1px solid #a8c6d4!important;
+  border-bottom:1px solid #a8c2cf!important;
   border-radius:0!important;
   background:#fbfdfe!important;
+  box-shadow:none!important;
 }
 body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card h3{
   margin:0!important;
-  padding:7px 9px!important;
-  border-bottom:1px solid #a7c6d5!important;
-  background:linear-gradient(180deg,#d9f0f8,#cce9f4)!important;
-  color:#0c5e88!important;
-  font-size:10px!important;
-  font-weight:800!important;
+  padding:6px 8px!important;
+  border-bottom:1px solid #abc3cf!important;
+  background:#d8ebf3!important;
+  color:#185b7d!important;
+  font-size:10.5px!important;
+  font-weight:600!important;
 }
 body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card button{
-  padding:6px 9px!important;
-  border-bottom:1px solid #d5e4eb!important;
+  padding:6px 8px!important;
+  border:0!important;
+  border-bottom:1px solid #d5e1e7!important;
+  border-radius:0!important;
   background:#fff!important;
-  color:#244e64!important;
-  font-size:9px!important;
+  color:#284b5d!important;
+  font-size:9.5px!important;
+  font-weight:400!important;
+  text-align:left!important;
 }
-body:has(#spireChartWorkspace.active) .context-section{padding:7px 9px!important}
-body:has(#spireChartWorkspace.active) .context-section>strong{font-size:8px!important;color:#0b5f89!important}
+body:has(#spireChartWorkspace.active) .context-section{padding:6px 8px!important}
+body:has(#spireChartWorkspace.active) .context-section>strong{font-size:8.5px!important;color:#185b7d!important;font-weight:600!important}
 body:has(#spireChartWorkspace.active) .context-section span,
-body:has(#spireChartWorkspace.active) .context-section small{font-size:8.5px!important;line-height:1.3!important}
+body:has(#spireChartWorkspace.active) .context-section small{font-size:9px!important;line-height:1.3!important;color:#5f747f!important;font-weight:400!important}
 
-/* ---------- Horizontal activity tabs like a desktop EHR ---------- */
+/* ---------- Horizontal activity tabs ---------- */
 #spireChartWorkspace.active{
   flex:1 1 auto!important;
   display:grid!important;
   grid-template-columns:minmax(0,1fr)!important;
-  grid-template-rows:38px minmax(0,1fr)!important;
+  grid-template-rows:35px minmax(0,1fr)!important;
   width:100%!important;
   height:100%!important;
   min-width:0!important;
@@ -332,16 +350,16 @@ body:has(#spireChartWorkspace.active) .context-section small{font-size:8.5px!imp
   display:flex!important;
   flex-direction:row!important;
   align-items:stretch!important;
-  gap:2px!important;
+  gap:1px!important;
   width:100%!important;
-  height:38px!important;
-  min-height:38px!important;
-  padding:3px 8px 0!important;
+  height:35px!important;
+  min-height:35px!important;
+  padding:2px 7px 0!important;
   overflow-x:auto!important;
   overflow-y:hidden!important;
   border:0!important;
-  border-bottom:1px solid #8bb1c4!important;
-  background:linear-gradient(180deg,#ccecf8,#bfe3f3)!important;
+  border-bottom:1px solid #8daebe!important;
+  background:#c9e3ee!important;
   scrollbar-width:thin!important;
 }
 #spireChartWorkspace>.chart-tabs::before{display:none!important}
@@ -349,50 +367,32 @@ body:has(#spireChartWorkspace.active) .context-section small{font-size:8.5px!imp
   position:relative!important;
   flex:0 0 auto!important;
   width:auto!important;
-  min-width:92px!important;
-  min-height:34px!important;
-  height:34px!important;
+  min-width:88px!important;
+  min-height:33px!important;
+  height:33px!important;
   margin:0!important;
-  padding:4px 11px 4px 31px!important;
-  border:1px solid #9bbbc9!important;
+  padding:4px 10px!important;
+  border:1px solid #9cb8c6!important;
   border-bottom:0!important;
-  border-radius:2px 2px 0 0!important;
-  background:linear-gradient(180deg,#edf8fc,#d9edf6)!important;
-  color:#173e55!important;
-  text-align:left!important;
+  border-radius:0!important;
+  background:#e8f2f6!important;
+  color:#254a5d!important;
+  text-align:center!important;
   white-space:nowrap!important;
-  font-size:9px!important;
-  font-weight:700!important;
+  font-size:10px!important;
+  font-weight:500!important;
   line-height:1!important;
-  box-shadow:inset 0 1px 0 #fff!important;
+  box-shadow:none!important;
 }
-#spireChartWorkspace>.chart-tabs button::before{
-  content:''!important;
-  position:absolute!important;
-  left:8px!important;
-  top:50%!important;
-  width:16px!important;
-  height:16px!important;
-  transform:translateY(-50%)!important;
-  border-radius:50%!important;
-  border:1px solid rgba(0,0,0,.14)!important;
-  background:#5e9cc1!important;
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.75)!important;
-}
-#spireChartWorkspace>.chart-tabs [data-chart-tab="orders"]::before{background:#d84d72!important}
-#spireChartWorkspace>.chart-tabs [data-chart-tab="notes"]::before{background:#7756b4!important}
-#spireChartWorkspace>.chart-tabs [data-chart-tab="care-plan"]::before{background:#45a06a!important}
-#spireChartWorkspace>.chart-tabs [data-chart-tab="medications"]::before,
-#spireChartWorkspace>.chart-tabs [data-chart-tab="mar"]::before{background:#d29b38!important}
-#spireChartWorkspace>.chart-tabs [data-chart-tab="vitals"]::before{background:#3c9bad!important}
-#spireChartWorkspace>.chart-tabs button:hover{background:#f8fcfe!important}
+#spireChartWorkspace>.chart-tabs button::before{display:none!important;content:none!important}
+#spireChartWorkspace>.chart-tabs button:hover{background:#f4f9fb!important}
 #spireChartWorkspace>.chart-tabs button.active{
   z-index:2!important;
   background:#fff!important;
-  color:#0b5d88!important;
-  border-color:#729db2!important;
-  font-weight:900!important;
-  box-shadow:inset 0 3px 0 #f1c53c!important;
+  color:#0b5f89!important;
+  border-color:#789caf!important;
+  font-weight:600!important;
+  box-shadow:inset 0 2px 0 #0c78aa!important;
 }
 #spireChartWorkspace>.chart-tabs button.active::after{display:none!important}
 #spireChartWorkspace>.chart-tabs .spire-customize-tabs,
@@ -406,14 +406,16 @@ body:has(#spireChartWorkspace.active) .context-section small{font-size:8.5px!imp
   height:100%!important;
   overflow:auto!important;
   padding:0!important;
-  background:#f8fcfe!important;
+  background:#fff!important;
+  color:var(--sp-ref-text)!important;
+  font-size:10px!important;
 }
 
 /* ---------- Inner activity/subtabs ---------- */
 #spireChartTabBody>.panel,
 #spireChartTabBody>.chart-review-panel,
 #spireChartTabBody .panel{border-radius:0!important;box-shadow:none!important}
-#spireChartTabBody>.panel{min-height:100%!important;border:0!important;padding:8px 10px!important;background:#fff!important}
+#spireChartTabBody>.panel{min-height:100%!important;border:0!important;padding:7px 9px!important;background:#fff!important}
 #spireChartTabBody .workspace-title.compact,
 #spireChartTabBody .spire-care-head,
 #spireChartTabBody .spire-flow-head,
@@ -421,93 +423,119 @@ body:has(#spireChartWorkspace.active) .context-section small{font-size:8.5px!imp
   margin:0!important;
   padding:6px 9px!important;
   border:0!important;
-  border-bottom:1px solid #9fbfce!important;
+  border-bottom:1px solid #a3bdca!important;
   border-radius:0!important;
-  background:linear-gradient(180deg,#edf8fc,#dbeef6)!important;
+  background:#e7f1f5!important;
 }
 #spireChartTabBody .workspace-title.compact h2,
 #spireChartTabBody .spire-care-head h2,
 #spireChartTabBody .spire-flow-head h2,
-#spireChartTabBody .spire-assessment-head h2{font-size:14px!important;color:#0b5d88!important}
+#spireChartTabBody .spire-assessment-head h2{
+  margin:0!important;
+  font-size:13px!important;
+  color:#155b7b!important;
+  font-weight:600!important;
+  letter-spacing:0!important;
+}
 #spireChartTabBody .workspace-title.compact p,
 #spireChartTabBody .spire-care-head p,
 #spireChartTabBody .spire-flow-head p,
-#spireChartTabBody .spire-assessment-head p{font-size:8.5px!important;color:#617d8d!important}
+#spireChartTabBody .spire-assessment-head p{font-size:9px!important;color:#657b86!important;font-weight:400!important}
 #spireChartTabBody .subtabs,
 #spireChartTabBody .chart-review-subtabs{
   display:flex!important;
   gap:0!important;
   margin:0!important;
-  padding:0 8px!important;
-  border-bottom:1px solid #9dbdcd!important;
-  background:#eef8fc!important;
+  padding:0 7px!important;
+  border-bottom:1px solid #a2bdca!important;
+  background:#eef5f8!important;
 }
 #spireChartTabBody .subtabs button,
 #spireChartTabBody .chart-review-subtabs button{
-  min-height:29px!important;
-  padding:5px 11px!important;
+  min-height:28px!important;
+  padding:5px 10px!important;
   margin:0!important;
   border:0!important;
-  border-right:1px solid #c5d9e3!important;
+  border-right:1px solid #c8d8e0!important;
   border-radius:0!important;
   background:transparent!important;
-  color:#365e72!important;
-  font-size:8.5px!important;
-  font-weight:700!important;
+  color:#3d5c6c!important;
+  font-size:9.5px!important;
+  font-weight:400!important;
 }
 #spireChartTabBody .subtabs button.active,
 #spireChartTabBody .chart-review-subtabs button.active{
   background:#fff!important;
-  color:#0a5f8b!important;
-  box-shadow:inset 0 -3px 0 #e6bd36!important;
+  color:#0c6088!important;
+  font-weight:600!important;
+  box-shadow:inset 0 -2px 0 #0c78aa!important;
 }
 
 /* ---------- Dense center panes ---------- */
-#spireChartTabBody .spire-cr-layout{grid-template-columns:140px minmax(0,1fr) 190px!important;gap:5px!important;padding:5px!important}
+#spireChartTabBody .spire-cr-layout{grid-template-columns:140px minmax(0,1fr) 190px!important;gap:4px!important;padding:4px!important}
 #spireChartTabBody .spire-cr-timeline,
-#spireChartTabBody .spire-cr-side{top:5px!important;max-height:calc(100vh - 105px)!important;padding:5px!important;border-radius:0!important;background:#f5fafc!important}
-#spireChartTabBody .spire-cr-toolbar{gap:3px!important;padding:4px!important;border-radius:0!important;background:#dceff7!important}
+#spireChartTabBody .spire-cr-side{top:4px!important;max-height:calc(100vh - 100px)!important;padding:5px!important;border-radius:0!important;background:#f6fafc!important;box-shadow:none!important}
+#spireChartTabBody .spire-cr-toolbar{gap:3px!important;padding:4px!important;border-radius:0!important;background:#dfeef4!important}
 #spireChartTabBody .spire-cr-toolbar input,
 #spireChartTabBody .spire-cr-toolbar select,
-#spireChartTabBody .spire-cr-toolbar button{padding:4px 5px!important;border-radius:0!important;font-size:8.5px!important}
+#spireChartTabBody .spire-cr-toolbar button{padding:4px 5px!important;border-radius:0!important;font-size:9px!important;font-weight:400!important}
 #spireChartTabBody .spire-cr-summary{gap:4px!important;padding:4px 0!important}
-#spireChartTabBody .spire-cr-summary span{padding:2px 5px!important;border-radius:6px!important;font-size:8.5px!important}
+#spireChartTabBody .spire-cr-summary span{padding:2px 5px!important;border-radius:1px!important;font-size:9px!important}
 #spireChartTabBody .spire-cr-items{gap:4px!important}
-#spireChartTabBody .spire-cr-card{padding:6px 7px!important;border-radius:0!important}
+#spireChartTabBody .spire-cr-card{padding:6px 7px!important;border-radius:0!important;box-shadow:none!important}
 
-/* Care Plan/ISP should read like a desktop plan workspace rather than web cards. */
-#spireChartTabBody .spire-care-summary{gap:0!important;margin:0!important;border:1px solid #9fbfce!important;border-bottom:0!important}
-#spireChartTabBody .spire-care-summary article{border-radius:0!important;border:0!important;border-right:1px solid #c4d8e2!important;box-shadow:none!important;padding:7px!important;background:#f9fcfe!important}
-#spireChartTabBody .spire-care-grid{gap:0!important;margin:0!important;border:1px solid #9fbfce!important}
+/* Care Plan/ISP */
+#spireChartTabBody .spire-care-summary{gap:0!important;margin:0!important;border:1px solid #a6bfca!important;border-bottom:0!important}
+#spireChartTabBody .spire-care-summary article{border-radius:0!important;border:0!important;border-right:1px solid #c5d6de!important;box-shadow:none!important;padding:6px!important;background:#fafcfd!important}
+#spireChartTabBody .spire-care-grid{gap:0!important;margin:0!important;border:1px solid #a6bfca!important}
 #spireChartTabBody .spire-care-grid>section,
-#spireChartTabBody .spire-care-panel{border-radius:0!important;box-shadow:none!important;border-color:#b8ceda!important}
+#spireChartTabBody .spire-care-panel{border-radius:0!important;box-shadow:none!important;border-color:#b9ccd5!important}
 #spireChartTabBody .spire-care-panel{margin:0!important;border-top:0!important}
 
-/* Tables and flowsheets: desktop EHR density. */
-#spireChartTabBody table{font-size:9px!important;border-collapse:collapse!important}
-#spireChartTabBody thead th{position:sticky!important;top:0!important;z-index:3!important;padding:4px 5px!important;background:linear-gradient(180deg,#edf7fb,#d9eaf2)!important;border-color:#a9c3d2!important;color:#3d6074!important}
-#spireChartTabBody tbody td{padding:4px 5px!important;border-color:#d0dde5!important}
-#spireChartTabBody tbody tr:nth-child(even){background:#fbfdfe!important}
-#spireChartTabBody tbody tr:hover{background:#eaf6fb!important}
-#spireChartTabBody .spire-flow-layout{grid-template-columns:220px minmax(0,1fr)!important;gap:0!important;min-height:620px!important;border:1px solid #9dbdcd!important}
+/* Tables and flowsheets */
+#spireChartTabBody table{font-size:9.5px!important;border-collapse:collapse!important;color:#2d4857!important}
+#spireChartTabBody thead th{position:sticky!important;top:0!important;z-index:3!important;padding:4px 5px!important;background:#e4eef3!important;border-color:#a8c0cb!important;color:#405d6c!important;font-weight:600!important}
+#spireChartTabBody tbody td{padding:4px 5px!important;border-color:#d2dfe5!important;font-weight:400!important}
+#spireChartTabBody tbody tr:nth-child(even){background:#fbfcfd!important}
+#spireChartTabBody tbody tr:hover{background:#eef6f9!important}
+#spireChartTabBody .spire-flow-layout{grid-template-columns:220px minmax(0,1fr)!important;gap:0!important;min-height:620px!important;border:1px solid #9fb9c6!important}
 #spireChartTabBody .spire-flow-rows,
 #spireChartTabBody .spire-flow-main,
 #spireChartTabBody .spire-flow-trend{border-radius:0!important;box-shadow:none!important}
-#spireChartTabBody .spire-flow-rows{padding:0!important;border:0!important;border-right:1px solid #9dbdcd!important;background:#f3f9fc!important}
-#spireChartTabBody .spire-flow-rows h3{margin:0!important;padding:6px 7px!important;background:#d9edf6!important;border-bottom:1px solid #a9c6d5!important;font-size:10px!important}
-#spireChartTabBody .spire-flow-rows button{padding:5px 6px!important;border-top:0!important;border-bottom:1px solid #d3e1e8!important;font-size:8.5px!important}
+#spireChartTabBody .spire-flow-rows{padding:0!important;border:0!important;border-right:1px solid #9fb9c6!important;background:#f4f8fa!important}
+#spireChartTabBody .spire-flow-rows h3{margin:0!important;padding:6px 7px!important;background:#dcebf1!important;border-bottom:1px solid #adc4cf!important;font-size:10px!important;font-weight:600!important}
+#spireChartTabBody .spire-flow-rows button{padding:5px 6px!important;border:0!important;border-bottom:1px solid #d5e1e6!important;border-radius:0!important;font-size:9px!important;font-weight:400!important;background:#f9fbfc!important}
 #spireChartTabBody .spire-flow-table{max-height:520px!important}
 #spireChartTabBody .spire-flow-table th,
-#spireChartTabBody .spire-flow-table td{padding:5px!important;font-size:8.5px!important}
+#spireChartTabBody .spire-flow-table td{padding:5px!important;font-size:9px!important}
 
-/* Raw fallback data remains readable but visually subdued until a specialized renderer owns the tab. */
-#spireChartTabBody .json-foundation{margin:0!important;max-height:calc(100vh - 120px)!important;padding:10px!important;border:0!important;background:#fbfdfe!important;color:#5a7484!important;font-size:8.5px!important;line-height:1.28!important}
+/* Raw fallback data stays subdued until a dedicated renderer owns the tab. */
+#spireChartTabBody .json-foundation{
+  margin:0!important;
+  max-height:calc(100vh - 115px)!important;
+  padding:8px 10px!important;
+  border:0!important;
+  background:#fff!important;
+  color:#71828b!important;
+  font-family:Consolas,"Courier New",monospace!important;
+  font-size:8.5px!important;
+  line-height:1.28!important;
+}
+
+/* Remove consumer-web decoration from all open-chart controls. */
+body:has(#spireChartWorkspace.active) .spire-app button,
+body:has(#spireChartWorkspace.active) .spire-app input,
+body:has(#spireChartWorkspace.active) .spire-app select,
+body:has(#spireChartWorkspace.active) .spire-app textarea{
+  border-radius:0!important;
+  box-shadow:none!important;
+}
 
 /* ---------- Responsive fallback ---------- */
 @media(max-width:1280px){
   body:has(#spireChartWorkspace.active) .spire-app{grid-template-columns:220px minmax(0,1fr)!important}
   body:has(#spireChartWorkspace.active) .spire-shell{grid-template-columns:minmax(0,1fr) 260px!important}
-  #spireChartWorkspace>.chart-tabs button{min-width:82px!important;padding-left:28px!important;padding-right:8px!important;font-size:8px!important}
+  #spireChartWorkspace>.chart-tabs button{min-width:80px!important;padding:4px 7px!important;font-size:9px!important}
   #spireChartTabBody .spire-cr-layout{grid-template-columns:120px minmax(0,1fr)!important}
   #spireChartTabBody .spire-cr-side{display:none!important}
 }
@@ -516,12 +544,12 @@ body:has(#spireChartWorkspace.active) .context-section small{font-size:8.5px!imp
   body:has(#spireChartWorkspace.active) .spire-shell{grid-template-columns:minmax(0,1fr)!important}
   body:has(#spireChartWorkspace.active) .spire-right-rail{display:none!important}
   .spire-brand{flex-basis:88px!important;width:88px!important;min-width:88px!important}
-  .spire-brand strong{font-size:20px!important}
+  .spire-brand strong{font-size:18px!important}
 }
 @media(max-width:700px){
   body:has(#spireChartWorkspace.active) .spire-app{display:block!important;height:100dvh!important;overflow:hidden!important}
   body:has(#spireChartWorkspace.active) .spire-patient-strip{display:none!important}
-  body:has(#spireChartWorkspace.active) .spire-shell{height:calc(100dvh - 42px)!important}
+  body:has(#spireChartWorkspace.active) .spire-shell{height:calc(100dvh - 40px)!important}
   #spireChartWorkspace>.chart-tabs{overflow-x:auto!important}
-  #spireChartWorkspace>.chart-tabs button{min-width:88px!important}
+  #spireChartWorkspace>.chart-tabs button{min-width:84px!important}
 }
