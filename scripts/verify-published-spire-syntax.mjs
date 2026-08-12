@@ -8,12 +8,12 @@ const page=await readFile(path.join(root,'spire.html'),'utf8');
 const refs=[...page.matchAll(/<script[^>]+src=["']\/([^"'?]+\.js)(?:\?[^"']*)?["'][^>]*><\/script>/gi)].map(match=>match[1]);
 
 // SPIRE's final presentation hook intentionally loads the user master-template
-// runtime dynamically. Include every JavaScript asset referenced by that loader
+// runtimes dynamically. Include every JavaScript asset referenced by that loader
 // in the same Node syntax gate as direct <script> tags.
 let loader='';
 try{loader=await readFile(path.join(root,'assets/spire-home-care-redesign-loader.js'),'utf8')}catch{}
 const dynamicRefs=[...loader.matchAll(/["'`]\/?(assets\/[A-Za-z0-9._/-]+\.js)(?:\?[^"'`]*)?["'`]/g)].map(match=>match[1]);
-for(const expected of ['assets/spire-user-template-integration.js','assets/spire-intake-isp-sleep-wiring.js']){
+for(const expected of ['assets/spire-user-template-integration.js','assets/spire-chart-review-ownership.js','assets/spire-intake-isp-sleep-wiring.js']){
   if(loader.includes(expected.split('/').pop())&&!dynamicRefs.includes(expected))dynamicRefs.push(expected);
 }
 
@@ -30,9 +30,16 @@ if(!unique.includes('assets/spire-shell-resilience.js'))failures.push('spire.htm
 if(!unique.includes('assets/spire-chart-ready.js'))failures.push('spire.html does not load assets/spire-chart-ready.js');
 if(!unique.includes('assets/spire-deep-link.js'))failures.push('spire.html does not load assets/spire-deep-link.js');
 if(!unique.includes('assets/spire-user-template-integration.js'))failures.push('SPIRE master-template runtime is not syntax-checked');
+if(!unique.includes('assets/spire-chart-review-ownership.js'))failures.push('SPIRE dedicated Chart Review ownership is not syntax-checked');
 if(!unique.includes('assets/spire-intake-isp-sleep-wiring.js'))failures.push('SPIRE intake/ISP/sleep wiring runtime is not syntax-checked');
-if(!page.includes('spire-home-care-redesign-loader.js?v=20260812-user-master-template-7'))failures.push('spire.html is not cache-busted to master-template generation 7');
+if(!page.includes('spire-home-care-redesign-loader.js?v=20260812-user-master-template-8'))failures.push('spire.html is not cache-busted to master-template generation 8');
 
+try{
+  const chartOwner=await readFile(path.join(root,'assets/spire-chart-review-ownership.js'),'utf8');
+  for(const marker of ['20260812-spire-chart-review-ownership-1','SpireChartReviewV2','stopImmediatePropagation','spire:chart-tab-selected','SpireChartReviewOwnership']){
+    if(!chartOwner.includes(marker))failures.push(`SPIRE Chart Review ownership missing ${marker}`);
+  }
+}catch{failures.push('SPIRE Chart Review ownership runtime is missing');}
 try{
   const wiring=await readFile(path.join(root,'assets/spire-intake-isp-sleep-wiring.js'),'utf8');
   for(const marker of ['20260812-spire-intake-isp-sleep-2','spireAdmissionHistoryTab','ISP Outcomes / Progress','Sleep / Wake','spire:flowsheet:preferred-group','SpireIntakeIspSleepWiring','button.hidden=true']){
@@ -62,4 +69,4 @@ if(failures.length){
   console.error('Published SPIRE JavaScript/integration verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log(`Published SPIRE JavaScript syntax and intake/ISP/sleep wiring verified across ${unique.length} direct/dynamic script assets.`);
+console.log(`Published SPIRE JavaScript syntax, dedicated Chart Review ownership, and intake/ISP/sleep wiring verified across ${unique.length} direct/dynamic script assets.`);
