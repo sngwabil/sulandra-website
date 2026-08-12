@@ -1,0 +1,223 @@
+/* SPIRE Sulandra control lock v1
+   Higher-specificity visual overrides so the legacy workstation skin cannot
+   restore red navigation or old compact button shapes when it is published later. */
+
+html body .spire-app > .spire-topbar{
+  height:48px!important;
+  min-height:48px!important;
+  padding:0 10px!important;
+  gap:6px!important;
+  background:#083a67!important;
+  border:0!important;
+  border-bottom:4px solid #d4a72c!important;
+  box-shadow:0 1px 3px rgba(7,45,77,.22)!important;
+}
+html body:has(#spireChartWorkspace.active) .spire-app{
+  grid-template-rows:48px minmax(0,1fr)!important;
+}
+html body .spire-app .spire-brand{
+  width:126px!important;
+  min-width:126px!important;
+  flex:0 0 126px!important;
+  height:36px!important;
+  border:1px solid #d4dee6!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+html body .spire-app .spire-brand strong{
+  color:#0b67a8!important;
+  font-family:"Segoe UI",Arial,sans-serif!important;
+  font-size:23px!important;
+  font-weight:700!important;
+}
+
+html body .spire-app .spire-global-nav{gap:2px!important}
+html body .spire-app .spire-global-nav button{
+  height:44px!important;
+  padding:0 12px!important;
+  border:0!important;
+  border-left:1px solid rgba(255,255,255,.08)!important;
+  border-right:1px solid rgba(0,0,0,.08)!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#fff!important;
+  font-family:"Segoe UI",Arial,sans-serif!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+}
+html body .spire-app .spire-global-nav button:hover{background:rgba(255,255,255,.10)!important}
+html body .spire-app .spire-global-nav button.active{
+  background:rgba(255,255,255,.08)!important;
+  box-shadow:inset 0 -4px 0 #d4a72c!important;
+}
+
+html body .spire-app .spire-top-actions button,
+html body .spire-app .spire-window-controls button,
+html body .spire-app .spire-current-home{
+  min-height:32px!important;
+  height:32px!important;
+  padding:0 11px!important;
+  border:1px solid #8fa5bd!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:#173b63!important;
+  font-family:"Segoe UI",Arial,sans-serif!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+}
+html body .spire-app .spire-top-actions button:hover,
+html body .spire-app .spire-window-controls button:hover{
+  background:#edf6ff!important;
+  border-color:#6f94b8!important;
+}
+html body .spire-app .spire-current-home button{
+  color:#0b4f86!important;
+  font-weight:700!important;
+}
+
+/* Horizontal clinical activities use the same rectangular control language as
+   Scheduling's Manage Schedules / Overview switch. */
+html body:has(#spireChartWorkspace.active) .spire-app #spireChartWorkspace.active{
+  grid-template-rows:48px minmax(0,1fr)!important;
+}
+html body:has(#spireChartWorkspace.active) .spire-app #spireChartWorkspace.active > .chart-tabs{
+  height:48px!important;
+  min-height:48px!important;
+  padding:5px 8px 0!important;
+  gap:4px!important;
+  background:#d8e4f1!important;
+  border:0!important;
+  border-bottom:1px solid #9dafc3!important;
+}
+html body:has(#spireChartWorkspace.active) .spire-app #spireChartWorkspace.active > .chart-tabs button{
+  min-width:108px!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:7px 12px!important;
+  border:1px solid #7ea0c4!important;
+  border-radius:0!important;
+  background:#e7eef7!important;
+  color:#173b63!important;
+  font-family:"Segoe UI",Arial,sans-serif!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+}
+html body:has(#spireChartWorkspace.active) .spire-app #spireChartWorkspace.active > .chart-tabs button:hover{
+  background:#f4f8fc!important;
+  border-color:#628bb3!important;
+}
+html body:has(#spireChartWorkspace.active) .spire-app #spireChartWorkspace.active > .chart-tabs button.active{
+  background:#fff!important;
+  color:#0b4d84!important;
+  border-color:#628bb3!important;
+  box-shadow:inset 0 -3px 0 #d4a72c!important;
+}
+
+/* Secondary chart selectors use Scheduling-style bordered white buttons. */
+html body .spire-app #spireChartTabBody .subtabs button,
+html body .spire-app #spireChartTabBody .chart-review-subtabs button{
+  min-height:35px!important;
+  padding:7px 12px!important;
+  border:1px solid #8fa5bd!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:#173b63!important;
+  font-family:"Segoe UI",Arial,sans-serif!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+}
+html body .spire-app #spireChartTabBody .subtabs button:hover,
+html body .spire-app #spireChartTabBody .chart-review-subtabs button:hover{background:#edf6ff!important}
+html body .spire-app #spireChartTabBody .subtabs button.active,
+html body .spire-app #spireChartTabBody .chart-review-subtabs button.active{
+  background:#e7eef7!important;
+  color:#0b4d84!important;
+  border-color:#7ea0c4!important;
+  box-shadow:inset 0 -3px 0 #d4a72c!important;
+}
+
+/* Default clinical actions match Scheduling toolbar buttons. */
+html body .spire-app #spireChartTabBody button,
+html body .spire-app .workspace-title button,
+html body .spire-app .results-toolbar button,
+html body .spire-app .note-actions button,
+html body .spire-app .patient-search button,
+html body .spire-app .tool-grid button{
+  min-height:34px!important;
+  padding:7px 10px!important;
+  border:1px solid #8fa5bd!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:#173b63!important;
+  font-family:"Segoe UI",Arial,sans-serif!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+}
+html body .spire-app #spireChartTabBody button:hover,
+html body .spire-app .workspace-title button:hover,
+html body .spire-app .results-toolbar button:hover,
+html body .spire-app .note-actions button:hover,
+html body .spire-app .patient-search button:hover,
+html body .spire-app .tool-grid button:hover{
+  background:#edf6ff!important;
+  border-color:#6f94b8!important;
+}
+html body .spire-app #spireChartTabBody button.primary,
+html body .spire-app .workspace-title button.primary,
+html body .spire-app .results-toolbar button.primary,
+html body .spire-app .note-actions .primary,
+html body .spire-app .patient-search button,
+html body .spire-app #spireChartTabBody .primary,
+html body .spire-app #spireChartTabBody button[data-primary="true"]{
+  background:#1769aa!important;
+  color:#fff!important;
+  border-color:#0d5d94!important;
+  font-weight:800!important;
+}
+
+/* Quick Actions retain their flat row behavior, but use the same readable font. */
+html body:has(#spireChartWorkspace.active) .spire-app .spire-right-rail .rail-card button{
+  min-height:38px!important;
+  padding:9px 10px!important;
+  border:0!important;
+  border-bottom:1px solid #c8d6e3!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:#173b63!important;
+  font-family:"Segoe UI",Arial,sans-serif!important;
+  font-size:12px!important;
+  font-weight:600!important;
+}
+html body:has(#spireChartWorkspace.active) .spire-app .spire-right-rail .rail-card button:hover{background:#edf6ff!important}
+
+/* Keep the larger Scheduling-scale grid after the legacy workstation skin. */
+html body .spire-app #spireChartTabBody table{
+  font-size:13px!important;
+  line-height:1.4!important;
+}
+html body .spire-app #spireChartTabBody thead th{
+  padding:9px 10px!important;
+  border:1px solid #a9b7c7!important;
+  background:#d7e4f2!important;
+  color:#17324b!important;
+  font-size:13px!important;
+  font-weight:800!important;
+}
+html body .spire-app #spireChartTabBody tbody td{
+  padding:9px 10px!important;
+  border:1px solid #b8c6d4!important;
+  background:#fff!important;
+  color:#17324b!important;
+  font-size:13px!important;
+}
+
+@media(max-width:1280px){
+  html body .spire-app .spire-global-nav button{padding:0 8px!important;font-size:11px!important}
+  html body:has(#spireChartWorkspace.active) .spire-app #spireChartWorkspace.active > .chart-tabs button{min-width:96px!important;padding:7px 9px!important;font-size:11px!important}
+}
