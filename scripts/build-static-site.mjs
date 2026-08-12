@@ -86,7 +86,7 @@ try {
   const version = '20260808-spire-workflow-13';
   const versionFor = (asset) => {
     if (asset === 'spire-results-workspace') return '20260811-spire-results-workspace-2';
-    if (asset === 'spire-chart-review-v2') return '20260811-spire-chart-review-v2-2';
+    if (asset === 'spire-chart-review-v2') return '20260812-spire-chart-review-v2-3';
     if (asset === 'spire-screen-controls') return '20260811-spire-screen-controls-3';
     if (asset === 'spire-clinical-workstation') return '20260811-spire-clinical-workstation-2';
     return version;
@@ -106,7 +106,7 @@ try {
     spireHtml = spireHtml.replace(new RegExp(`\\s*<link rel="stylesheet" href="\\/assets\\/${asset}\\.css(?:\\?v=[^"']+)?">\\s*`, 'g'), '');
   }
   for (const asset of scripts) {
-    spireHtml = spireHtml.replace(new RegExp(`\\s*<script src="\\/assets\\/${asset}\\.js(?:\\?v=[^"']+)?"><\\/script>\\s*`, 'g'), '');
+    spireHtml = spireHtml.replace(new RegExp(`\\s*<script src="\\/assets\\/${asset}\\.js(?:\\?v=[^"']+)?"><\/script>\\s*`, 'g'), '');
   }
   spireHtml = spireHtml.replace(/\s*<script src="\/assets\/spire-flowsheet-workspace-launcher\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
   spireHtml = spireHtml
@@ -184,7 +184,8 @@ const requiredPublishedFiles = [
   'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
-  'assets/spire-results-workspace.js', 'assets/spire-clinical-workstation.css', 'assets/spire-flowsheet-workspace-launcher.js',
+  'assets/spire-results-workspace.js', 'assets/spire-chart-review-v2.js', 'assets/spire-clinical-workstation.css', 'assets/spire-flowsheet-workspace-launcher.js',
+  'assets/spire-user-template-integration.css', 'assets/spire-user-template-integration.js', 'assets/spire-user-template-layout-fix.css', 'assets/spire-user-template-final-lock.css',
   'spire.html', 'spire/flowsheets.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
@@ -202,6 +203,9 @@ const workstationHref = '/assets/spire-clinical-workstation.css?v=20260811-spire
 const screenControlsHref = '/assets/spire-screen-controls.css?v=20260811-spire-screen-controls-3';
 if (!publishedSpireHtml.includes(workstationHref) || publishedSpireHtml.indexOf(workstationHref) < publishedSpireHtml.indexOf(screenControlsHref)) {
   throw new Error('Static publication regression: SPIRE clinical workstation stylesheet is not the final presentation layer');
+}
+if (!publishedSpireHtml.includes('/assets/spire-chart-review-v2.js?v=20260812-spire-chart-review-v2-3')) {
+  throw new Error('Static publication regression: deterministic SPIRE Chart Review runtime is missing');
 }
 if (!publishedSpireHtml.includes('/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-2')) {
   throw new Error('Static publication regression: SPIRE continuous flowsheet launcher is missing');
@@ -221,4 +225,4 @@ await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; SPIRE continuous assessments/flowsheet grid is published with the current live chart workstation.');
+console.log('Static website published from canonical source files; user master-template SPIRE, deterministic Chart Review, and continuous flowsheet workspace are included.');
