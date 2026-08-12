@@ -53,7 +53,13 @@ if (injector.includes('registerSpireExternalConnectivityRoutes')) failures.push(
 if (!parityInjector.includes('registerSpireFieldMobileOperationsRoutes')) failures.push('mobile care-log/transport routes are not registered');
 if (!apiPackage.includes('install-mobile-oauth-boundary.mjs')) failures.push('mobile OAuth boundary installer is not in API build/typecheck');
 if (!routes.includes('UserRole.DRIVER')) failures.push('driver role boundary is missing');
-if (!routes.includes("return ['mobile:session','push:register','schedule:read','transport:trips:read','transport:trips:update']")) failures.push('driver scopes are not transport-only');
+
+// Verify the DRIVER branch semantically instead of depending on one exact source-code line.
+// Prettier/TypeScript formatting may place the scope array across several lines without
+// changing the security boundary. This regex still requires exactly the transport-only
+// scope set in the DRIVER return branch.
+const driverScopePattern = /if\s*\(role\s*===\s*UserRole\.DRIVER\)\s*return\s*\[\s*'mobile:session'\s*,\s*'push:register'\s*,\s*'schedule:read'\s*,\s*'transport:trips:read'\s*,\s*'transport:trips:update'\s*,?\s*\]/s;
+if (!driverScopePattern.test(routes)) failures.push('driver scopes are not transport-only');
 if (!operations.includes("n.\"noteType\" IN ('FIELD_CARE_LOG','PROGRESS_NOTE')")) failures.push('mobile care logs are not backed by clinical notes');
 if (!operations.includes('tripTransitions')) failures.push('transport status workflow is missing transition enforcement');
 
@@ -64,13 +70,13 @@ for (const marker of ["appId: 'com.sulandrahealth.field'","appName: 'Sulandra He
   if (!capacitorConfig.includes(marker)) failures.push(`Capacitor config missing ${marker}`);
 }
 for (const marker of [
-  "PushNotifications.register()",
-  "'/api/mobile/oauth/exchange'",
-  "'/api/mobile/push/register'",
-  "'/api/mobile/work/today'",
-  "'/api/mobile/my-shift'",
-  "'/api/mobile/transport/trips/",
-  "'/care-logs'",
+  'PushNotifications.register()',
+  '/api/mobile/oauth/exchange',
+  '/api/mobile/push/register',
+  '/api/mobile/work/today',
+  '/api/mobile/my-shift',
+  '/api/mobile/transport/trips/',
+  '/care-logs',
 ]) {
   if (!mobileApp.includes(marker)) failures.push(`native field app missing ${marker}`);
 }
