@@ -1,52 +1,143 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const target = path.join(root, 'assets/spire-app-v2.js');
-let source = await readFile(target, 'utf8');
+const scriptDirectory =
+  path.dirname(fileURLToPath(import.meta.url));
 
-if (!source.includes('BUSINESS_UAT_IDEMPOTENT_SHELL_BOOTSTRAP')) {
-  const startAnchor = `  function installShell() {\n    const app = $('spireApp');\n    if (!app) return;\n    app.innerHTML = \``;
-  const startReplacement = `  function installShell() {\n    const app = $('spireApp');\n    if (!app) return false;\n    /* BUSINESS_UAT_IDEMPOTENT_SHELL_BOOTSTRAP */\n    if (\n      $('spirePatientStrip') &&\n      $('spireHomeWorkspace') &&\n      $('spireGenericWorkspace') &&\n      $('spireChartWorkspace')\n    ) return true;\n    app.innerHTML = \``;
-  if (!source.includes(startAnchor)) throw new Error('SPIRE installShell start anchor is missing');
-  source = source.replace(startAnchor, startReplacement);
+const root =
+  path.resolve(scriptDirectory, '..');
 
-  const completionAnchor = `    wireShell();\n    renderHome();\n    loadFoundation();\n  }\n\n  function wireShell() {`;
-  const completionReplacement = `    wireShell();\n    renderHome();\n    loadFoundation();\n    return true;\n  }\n\n  function wireShell() {`;
-  if (!source.includes(completionAnchor)) throw new Error('SPIRE installShell completion anchor is missing');
-  source = source.replace(completionAnchor, completionReplacement);
+const masterPath =
+  path.join(root, 'spire', 'master.html');
+
+const entryPath =
+  path.join(root, 'spire.html');
+
+async function requireFile(filePath, label) {
+  try {
+    await access(filePath);
+  } catch {
+    throw new Error(
+      `${label} is missing: ${filePath}`
+    );
+  }
 }
 
-if (!source.includes('BUSINESS_UAT_IMMEDIATE_SHELL_BOOTSTRAP')) {
-  const bootAnchor = `  document.addEventListener('DOMContentLoaded', installShell);\n  if (document.readyState !== 'loading') installShell();`;
-  const bootReplacement = `  /* BUSINESS_UAT_IMMEDIATE_SHELL_BOOTSTRAP */\n  installShell();\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', installShell, { once: true });\n  }`;
-  if (!source.includes(bootAnchor)) throw new Error('SPIRE shell bootstrap anchor is missing');
-  source = source.replace(bootAnchor, bootReplacement);
+async function verifyStandaloneSpireArchitecture() {
+  await requireFile(
+    masterPath,
+    'Standalone S.P.I.R.E. master application'
+  );
+
+  await requireFile(
+    entryPath,
+    'Canonical S.P.I.R.E. entry page'
+  );
+
+  const [
+    masterHtml,
+    entryHtml
+  ] = await Promise.all([
+    readFile(masterPath, 'utf8'),
+    readFile(entryPath, 'utf8'),
+  ]);
+
+  /*
+   * Verify that the standalone master is a complete HTML document.
+   */
+  if (
+    !/<html[\s>]/i.test(masterHtml) ||
+    !/<head[\s>]/i.test(masterHtml) ||
+    !/<body[\s>]/i.test(masterHtml) ||
+    !/<\/html>/i.test(masterHtml)
+  ) {
+    throw new Error(
+      '/spire/master.html does not appear to be a complete HTML application.'
+    );
+  }
+
+  /*
+   * Verify that the canonical entry sends users to the standalone master.
+   */
+  if (
+    !entryHtml.includes('/spire/master.html')
+  ) {
+    throw new Error(
+      '/spire.html is not configured to open /spire/master.html.'
+    );
+  }
+
+  /*
+   * Verify that query-string and hash deep-link context are preserved.
+   */
+  if (
+    !entryHtml.includes(
+      'window.location.search'
+    ) ||
+    !entryHtml.includes(
+      'window.location.hash'
+    )
+  ) {
+    throw new Error(
+      '/spire.html does not preserve SPIRE query/hash deep-link context.'
+    );
+  }
+
+  /*
+   * The old shell is intentionally no longer required.
+   * Do NOT require:
+   *
+   * window.SpireEnsureShell
+   * installShell()
+   * spire-app-v2.js
+   * spire-canonical-bootstrap.js
+   * spire-chart-ready.js
+   * spire-deep-link.js
+   */
+  const legacyEntryAssets = [
+    'spire-app-v2.js',
+    'spire-canonical-bootstrap.js',
+    'spire-shell-resilience.js',
+    'spire-chart-ready.js',
+    'spire-deep-link.js',
+    'spire-home-care-redesign-loader.js',
+  ];
+
+  const legacyFound =
+    legacyEntryAssets.filter(
+      asset => entryHtml.includes(asset)
+    );
+
+  if (legacyFound.length) {
+    throw new Error(
+      '/spire.html still references legacy SPIRE runtime assets: ' +
+      legacyFound.join(', ')
+    );
+  }
+
+  console.log(
+    [
+      'Standalone S.P.I.R.E. architecture verified.',
+      'Master application:',
+      '/spire/master.html.',
+      'Canonical entry:',
+      '/spire.html -> /spire/master.html.',
+      'Deep-link context is preserved.',
+      'Legacy SpireEnsureShell installation is not required.',
+    ].join(' ')
+  );
 }
 
-// The business-path installer adds native deep-link support inside loadFoundation().
-// That function can finish its API calls while the parser is still loading the rest
-// of SPIRE. Opening the chart at that moment creates chart tabs and starts optional
-// chart runtimes before DOMContentLoaded, which lets startup observers react to a
-// half-built page. Defer only the patient/tab handoff; the shell and foundation can
-// still initialize immediately.
-if (source.includes('BUSINESS_UAT_NATIVE_DEEPLINK') && !source.includes('BUSINESS_UAT_DEFER_DEEPLINK_UNTIL_DOM_READY')) {
-  const deepLinkAnchor = `      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
-  const deepLinkReplacement = `      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      /* BUSINESS_UAT_DEFER_DEEPLINK_UNTIL_DOM_READY */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId) {\n        const openDeepLinkedChart = async () => {\n          await openPatient(deepLinkPatientId);\n          if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n        };\n        if (document.readyState === 'loading') {\n          document.addEventListener('DOMContentLoaded', () => {\n            openDeepLinkedChart().catch((error) => console.error('[SPIRE deferred deep link]', error));\n          }, { once: true });\n        } else {\n          await openDeepLinkedChart();\n        }\n      }\n`;
-  if (!source.includes(deepLinkAnchor)) throw new Error('SPIRE native deep-link anchor changed; cannot safely defer chart opening');
-  source = source.replace(deepLinkAnchor, deepLinkReplacement);
-}
+try {
+  await verifyStandaloneSpireArchitecture();
+} catch (error) {
+  console.error(
+    'Standalone S.P.I.R.E. verification failed:',
+    error instanceof Error
+      ? error.message
+      : error
+  );
 
-if (!source.includes('window.SpireEnsureShell = installShell')) {
-  throw new Error('Canonical SpireEnsureShell hook is missing; run install-business-path-uat-bridges.mjs first');
+  process.exit(1);
 }
-if (!source.includes('BUSINESS_UAT_IDEMPOTENT_SHELL_BOOTSTRAP') || !source.includes('BUSINESS_UAT_IMMEDIATE_SHELL_BOOTSTRAP')) {
-  throw new Error('Idempotent SPIRE shell bootstrap was not installed');
-}
-if (source.includes('BUSINESS_UAT_NATIVE_DEEPLINK') && !source.includes('BUSINESS_UAT_DEFER_DEEPLINK_UNTIL_DOM_READY')) {
-  throw new Error('SPIRE deep-link chart opening is not deferred until DOMContentLoaded');
-}
-
-await writeFile(target, source, 'utf8');
-console.log('SPIRE canonical shell bootstrap is idempotent and immediate; deep-linked charts wait for DOMContentLoaded before rendering.');
