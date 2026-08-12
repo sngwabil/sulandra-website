@@ -1,10 +1,20 @@
 (() => {
   'use strict';
 
-  const contract='20260811-spire-specialized-tab-ownership-1';
+  const contract='20260812-spire-specialized-tab-ownership-2';
   const owners={
-    assessments:()=>window.SpireAssessmentsFlowsheets?.renderAssessments?.(),
-    vitals:()=>window.SpireAssessmentsFlowsheets?.renderFlowsheets?.(),
+    'chart-review':{
+      ready:()=>Boolean(window.SpireChartReviewV2?.load),
+      run:()=>window.SpireChartReviewV2?.load?.(true),
+    },
+    assessments:{
+      ready:()=>Boolean(window.SpireAssessmentsFlowsheets?.renderAssessments),
+      run:()=>window.SpireAssessmentsFlowsheets?.renderAssessments?.(),
+    },
+    vitals:{
+      ready:()=>Boolean(window.SpireAssessmentsFlowsheets?.renderFlowsheets),
+      run:()=>window.SpireAssessmentsFlowsheets?.renderFlowsheets?.(),
+    },
   };
 
   function patientId(){
@@ -17,13 +27,22 @@
     if(id) history.replaceState(null,'',`#patient=${encodeURIComponent(id)}&tab=${encodeURIComponent(tab)}`);
   }
 
+  function signal(tab){
+    document.dispatchEvent(new CustomEvent('spire:chart-tab-selected',{
+      detail:{tab,patientId:patientId()},
+    }));
+  }
+
   function renderOwned(tab,attempt=0){
-    const run=owners[tab];
-    if(!run)return;
-    const result=run();
-    if(result===undefined && !window.SpireAssessmentsFlowsheets && attempt<20){
-      setTimeout(()=>renderOwned(tab,attempt+1),25);
+    const owner=owners[tab];
+    if(!owner)return false;
+    if(!owner.ready()){
+      if(attempt<80)setTimeout(()=>renderOwned(tab,attempt+1),25);
+      return false;
     }
+    owner.run();
+    signal(tab);
+    return true;
   }
 
   document.addEventListener('click',event=>{
@@ -31,14 +50,24 @@
     const tab=button?.dataset.chartTab;
     if(!tab || !owners[tab])return;
 
-    // These tabs have dedicated clinical renderers. Stop the generic async chart
-    // fallback before it can fetch /patients/:id/:tab and later overwrite the
-    // structured UI with JSON after the dedicated renderer has already painted.
+    // Dedicated tabs must never fall through to the generic /patients/:id/:tab
+    // renderer. Chart Review, Clinical Assessments and the legacy Vitals activity
+    // each own their structured UI and persistence contract.
     event.preventDefault();
     event.stopImmediatePropagation();
     activate(tab);
     queueMicrotask(()=>renderOwned(tab));
   },true);
+
+  // Deep links can arrive with the requested tab already active, so there may be
+  // no click event for the dedicated owner to intercept. The patient-open guard
+  // emits this signal after chart activation; render the owned surface directly.
+  document.addEventListener('spire:chart-tab-selected',event=>{
+    const tab=String(event.detail?.tab||'');
+    if(!owners[tab])return;
+    activate(tab);
+    renderOwned(tab);
+  });
 
   window.SpireSpecializedTabOwnership={contract,renderOwned};
 })();
