@@ -1,0 +1,252 @@
+/* SPIRE Sulandra Health theme
+   Uses the same signature navy/gold system as scheduling.html while preserving
+   the workstation geometry and all chart/runtime behavior. */
+:root{
+  --spire-sulandra-navy:#083a67;
+  --spire-sulandra-blue:#0b67a8;
+  --spire-sulandra-gold:#d4a72c;
+  --spire-sulandra-cyan:#13a5bd;
+  --spire-sulandra-text:#17324b;
+  --spire-sulandra-line:#b8cad8;
+  --spire-sulandra-soft:#eef5fa;
+}
+
+/* Signature Sulandra navigation: same navy and gold stripe used by Scheduling. */
+.spire-topbar{
+  height:44px!important;
+  min-height:44px!important;
+  padding:0 8px!important;
+  gap:4px!important;
+  background:var(--spire-sulandra-navy)!important;
+  border-bottom:4px solid var(--spire-sulandra-gold)!important;
+  box-shadow:0 1px 3px rgba(7,45,77,.24)!important;
+}
+body:has(#spireChartWorkspace.active) .spire-app{
+  grid-template-rows:44px minmax(0,1fr)!important;
+}
+.spire-brand{
+  width:118px!important;
+  min-width:118px!important;
+  flex-basis:118px!important;
+  height:34px!important;
+  border-color:#d4dee6!important;
+}
+.spire-brand strong{
+  color:#0b67a8!important;
+  font-size:22px!important;
+  font-weight:700!important;
+}
+.spire-global-nav button{
+  height:40px!important;
+  padding:0 10px!important;
+  font-size:12px!important;
+  font-weight:600!important;
+  border-right:1px solid rgba(255,255,255,.12)!important;
+}
+.spire-global-nav button:hover,
+.spire-global-nav button.active{
+  background:rgba(255,255,255,.09)!important;
+}
+.spire-global-nav button.active{
+  box-shadow:inset 0 -3px 0 var(--spire-sulandra-gold)!important;
+}
+.spire-top-actions button,
+.spire-current-home,
+.spire-window-controls{
+  height:31px!important;
+  font-size:11px!important;
+  font-weight:600!important;
+}
+
+/* Larger patient storyboard typography, closer to the Scheduling workspace scale. */
+body:has(#spireChartWorkspace.active) .spire-patient-strip{
+  padding:10px 12px 12px!important;
+}
+body:has(#spireChartWorkspace.active) .spire-patient-strip::before{
+  margin:-10px -12px 9px!important;
+  padding:6px 10px!important;
+  font-size:10px!important;
+}
+body:has(#spireChartWorkspace.active) .patient-avatar{
+  width:62px!important;
+  height:62px!important;
+  font-size:26px!important;
+}
+body:has(#spireChartWorkspace.active) .patient-main strong{
+  font-size:19px!important;
+  line-height:1.2!important;
+}
+body:has(#spireChartWorkspace.active) .patient-main span,
+body:has(#spireChartWorkspace.active) .patient-main small{
+  font-size:11.5px!important;
+  line-height:1.45!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell{
+  padding:8px 4px!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell span{
+  font-size:10px!important;
+  font-weight:700!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell b{
+  font-size:12px!important;
+  line-height:1.4!important;
+}
+body:has(#spireChartWorkspace.active) .flag-chip{
+  font-size:10.5px!important;
+  padding:4px 6px!important;
+}
+
+/* Chart activity tabs: larger, easier to read, still workstation-dense. */
+#spireChartWorkspace.active{
+  grid-template-rows:46px minmax(0,1fr)!important;
+}
+#spireChartWorkspace>.chart-tabs{
+  height:46px!important;
+  min-height:46px!important;
+  padding:4px 8px 0!important;
+  background:#dcebf4!important;
+  border-bottom:1px solid #8faec1!important;
+}
+#spireChartWorkspace>.chart-tabs button{
+  min-width:104px!important;
+  height:41px!important;
+  min-height:41px!important;
+  padding:0 14px!important;
+  font-size:12px!important;
+  font-weight:600!important;
+  color:#17324b!important;
+}
+#spireChartWorkspace>.chart-tabs button.active{
+  color:#074f86!important;
+  border-top:2px solid var(--spire-sulandra-blue)!important;
+  box-shadow:inset 0 -3px 0 var(--spire-sulandra-gold)!important;
+}
+
+/* Right clinical context: increase readability without turning it into cards. */
+body:has(#spireChartWorkspace.active) .spire-right-rail::before{
+  padding:8px 10px!important;
+  font-size:10px!important;
+}
+body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card h3{
+  padding:9px 10px!important;
+  font-size:13px!important;
+}
+body:has(#spireChartWorkspace.active) .context-section{
+  padding:9px 10px!important;
+}
+body:has(#spireChartWorkspace.active) .context-section>strong{
+  font-size:10.5px!important;
+}
+body:has(#spireChartWorkspace.active) .context-section span,
+body:has(#spireChartWorkspace.active) .context-section small{
+  font-size:11px!important;
+  line-height:1.45!important;
+}
+body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card button{
+  min-height:36px!important;
+  padding:8px 10px!important;
+  font-size:11.5px!important;
+}
+
+/* Clinical content uses the same readable scale as the administrator scheduler. */
+#spireChartTabBody,
+#spireChartTabBody button,
+#spireChartTabBody input,
+#spireChartTabBody select,
+#spireChartTabBody textarea,
+#spireChartTabBody table{
+  font-size:13px!important;
+}
+#spireChartTabBody>.panel{
+  padding:10px 12px!important;
+}
+#spireChartTabBody .workspace-title.compact,
+#spireChartTabBody .spire-care-head,
+#spireChartTabBody .spire-flow-head,
+#spireChartTabBody .spire-assessment-head{
+  padding:9px 11px!important;
+}
+#spireChartTabBody .workspace-title.compact h2,
+#spireChartTabBody .spire-care-head h2,
+#spireChartTabBody .spire-flow-head h2,
+#spireChartTabBody .spire-assessment-head h2{
+  font-size:18px!important;
+  line-height:1.25!important;
+}
+#spireChartTabBody .workspace-title.compact p,
+#spireChartTabBody .spire-care-head p,
+#spireChartTabBody .spire-flow-head p,
+#spireChartTabBody .spire-assessment-head p{
+  font-size:12px!important;
+  line-height:1.4!important;
+}
+#spireChartTabBody .subtabs button,
+#spireChartTabBody .chart-review-subtabs button{
+  min-height:36px!important;
+  padding:7px 13px!important;
+  font-size:12px!important;
+}
+#spireChartTabBody input,
+#spireChartTabBody select,
+#spireChartTabBody textarea{
+  min-height:34px!important;
+  padding:6px 8px!important;
+  line-height:1.35!important;
+}
+#spireChartTabBody button{
+  min-height:32px;
+}
+
+/* Tables: materially larger text and row height like Scheduling. */
+#spireChartTabBody table{
+  width:100%!important;
+  font-size:13px!important;
+  line-height:1.35!important;
+}
+#spireChartTabBody thead th{
+  padding:8px 9px!important;
+  font-size:12.5px!important;
+  font-weight:700!important;
+  color:#17324b!important;
+  background:#dce8f3!important;
+}
+#spireChartTabBody tbody td{
+  padding:8px 9px!important;
+  font-size:13px!important;
+  vertical-align:middle!important;
+}
+#spireChartTabBody tbody tr{
+  min-height:38px!important;
+}
+#spireChartTabBody .spire-flow-table th,
+#spireChartTabBody .spire-flow-table td{
+  padding:8px!important;
+  font-size:12.5px!important;
+}
+#spireChartTabBody .spire-flow-rows h3{
+  padding:8px 9px!important;
+  font-size:13px!important;
+}
+#spireChartTabBody .spire-flow-rows button{
+  padding:8px!important;
+  font-size:12px!important;
+}
+#spireChartTabBody .spire-cr-toolbar input,
+#spireChartTabBody .spire-cr-toolbar select,
+#spireChartTabBody .spire-cr-toolbar button{
+  padding:7px 8px!important;
+  font-size:12px!important;
+}
+#spireChartTabBody .spire-cr-summary span{
+  padding:4px 7px!important;
+  font-size:11.5px!important;
+}
+#spireChartTabBody .spire-cr-card{
+  padding:9px 10px!important;
+}
+
+@media(max-width:1280px){
+  .spire-global-nav button{padding:0 7px!important;font-size:11px!important}
+  #spireChartWorkspace>.chart-tabs button{min-width:94px!important;padding:0 10px!important;font-size:11px!important}
+}
