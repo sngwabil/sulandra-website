@@ -1,0 +1,47 @@
+/* Final workstation parity lock for the approved SCLS Residential SPIRE reference. */
+:root{--ref-purple:#7e22ce;--ref-purple-dark:#5b149c;--ref-blue:#0b4a78;--ref-tab:#dbe7f3;--ref-bg:#f2e7fb;--ref-line:#b8c7d8}
+html,body,.spire-app{background:var(--ref-bg)!important}
+.spire-topbar{height:40px!important;min-height:40px!important;background:linear-gradient(90deg,#6715a9 0%,#8d25d3 62%,#5b149c 100%)!important;border-bottom:1px solid #4b0d84!important;padding:0 12px!important}
+.spire-brand{min-width:520px!important;max-width:620px!important;gap:10px!important}
+.spire-brand strong{background:#fff!important;color:#b30000!important;border-radius:3px!important;line-height:26px!important;font-size:16px!important;padding:0 10px!important}
+.spire-brand span{font-size:13px!important;color:#fff!important;font-weight:800!important;text-transform:none!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#spireMasterSearchHost{flex:0 0 330px!important;height:28px!important;margin-left:4px!important}
+.spire-global-nav{display:none!important}
+.spire-top-actions{margin-left:auto!important}
+.spire-top-actions>button{background:rgba(255,255,255,.16)!important;border-color:rgba(255,255,255,.28)!important;color:#fff!important}
+#spireMasterToolbar{height:36px!important;min-height:36px!important;background:var(--ref-purple)!important;border-bottom:1px solid var(--ref-purple-dark)!important;gap:0!important;padding:0 10px!important}
+#spireMasterToolbar button{height:35px!important;padding:0 11px!important;font-size:12px!important;font-weight:650!important}
+#spireMasterToolbar .spmt-client-tab{background:#e8f2ff!important;color:#073c68!important;border-color:#a7c4df!important;max-width:330px!important}
+body.spmt-ready .spire-app{grid-template-rows:40px 36px minmax(0,1fr)!important}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-app{grid-template-columns:298px minmax(0,1fr)!important}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-patient-strip{padding:12px!important;background:#eef3f8!important;border-right:1px solid #b8c7d8!important}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-patient-strip::before{display:none!important}
+body:has(#spireChartWorkspace.active).spmt-ready .patient-avatar{width:54px!important;height:66px!important;margin:0 12px 0 0!important;font-size:24px!important;display:grid!important;float:left!important}
+body:has(#spireChartWorkspace.active).spmt-ready .patient-main{min-height:78px!important;margin:0 0 12px!important;padding:14px 10px 10px 76px!important;border:0!important;border-bottom:2px solid #2675ff!important;border-radius:0 0 7px 7px!important;background:#e9f2fc!important}
+body:has(#spireChartWorkspace.active).spmt-ready .patient-main strong{font-size:16px!important;text-decoration:underline!important;color:#173d8b!important}
+body:has(#spireChartWorkspace.active).spmt-ready .patient-storyboard-facts{display:block!important;clear:both!important}
+body:has(#spireChartWorkspace.active).spmt-ready .storyboard-cell{padding:10px 11px!important;margin-bottom:11px!important;border-radius:6px!important;box-shadow:none!important}
+body:has(#spireChartWorkspace.active).spmt-ready .storyboard-cell span{font-size:11px!important;color:#4b2382!important;border-bottom:1px solid #d8e0e8!important}
+body:has(#spireChartWorkspace.active).spmt-ready .storyboard-cell b{font-size:12px!important;color:#2d0a55!important}
+body:has(#spireChartWorkspace.active).spmt-ready .storyboard-cell:nth-child(1){border-left-color:#2f6cff!important}
+body:has(#spireChartWorkspace.active).spmt-ready .storyboard-cell:nth-child(2){border-left-color:#16b873!important}
+body:has(#spireChartWorkspace.active).spmt-ready .storyboard-cell:nth-child(3){border-left-color:#f59e0b!important;background:#fff8e8!important}
+body:has(#spireChartWorkspace.active).spmt-ready .storyboard-cell:nth-child(4){border-left-color:#8b5cf6!important}
+.spmt-sidebar-title{display:none!important}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-shell{grid-template-columns:minmax(0,1fr)!important;background:var(--ref-bg)!important}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-right-rail{display:none!important}
+#spireChartWorkspace.active{grid-template-rows:40px minmax(0,1fr)!important;background:var(--ref-bg)!important}
+#spireChartWorkspace>.chart-tabs{height:40px!important;min-height:40px!important;background:#d9e5f1!important;border-bottom:1px solid #9fb2c7!important;padding:0 6px!important;align-items:stretch!important}
+#spireChartWorkspace>.chart-tabs button{height:40px!important;min-height:40px!important;padding:0 15px!important;color:#111827!important;font-size:12px!important;font-weight:500!important;border-radius:0!important}
+#spireChartWorkspace>.chart-tabs button.active{background:#fff!important;color:#0b5c94!important;border:1px solid #9fb2c7!important;border-bottom-color:#fff!important;font-weight:800!important}
+#spireChartTabBody{background:var(--ref-bg)!important;padding:0!important}
+.spire-reference-summary{padding:16px 18px 28px!important;background:var(--ref-bg)!important;min-height:100%}
+.spire-reference-subtabs{display:flex;gap:8px;padding:0 0 10px;border-bottom:1px solid #c6d1dc;margin-bottom:10px}
+.spire-reference-subtabs button{background:#dfe8f1!important;border:1px solid #bdcad7!important;border-radius:4px!important;color:#334155!important;padding:7px 14px!important;min-height:32px!important;font-size:12px!important}
+.spire-reference-subtabs button.active{background:#fff!important;color:#173d8b!important;border-bottom:3px solid #173d8b!important;font-weight:800!important}
+.ref-card{background:#fff;border:1px solid #bdcbd9;border-radius:4px;margin:0 0 12px;overflow:hidden}
+.ref-card>header{height:33px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:12.5px;font-weight:850;border-bottom:1px solid rgba(0,0,0,.1)}
+.ref-card>div{padding:11px 12px;font-size:12px;line-height:1.55;color:#2f0b55}
+.ref-card.agents>header{background:#dce9f7;color:#06375f}.ref-card.risk>header{background:#ffef88;color:#6b4700}.ref-card.problems>header{background:#f5bdd8;color:#82113f}.ref-card.team>header{background:#c8f4eb;color:#0f5a58}.ref-card.contacts>header{background:#d8def8;color:#37309a}
+.ref-card table{width:100%;border-collapse:collapse}.ref-card th,.ref-card td{border:1px solid #cbd5e1;padding:9px 10px;text-align:left;font-size:12px}.ref-card th{background:#edf2f7;color:#1f2937}
+#spireChartTabBody .json-foundation,#spireChartTabBody pre{font-family:'Segoe UI',sans-serif!important}
