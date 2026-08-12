@@ -154,15 +154,25 @@ try {
 await import('./install-employee-self-service-frontend.mjs');
 await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
 
-// Admin is deliberately not rewritten after publication. admin.html is copied as-is;
-// assets/admin-company-context.js owns the canonical navigation registry and loads
-// the canonical Admin shell/dashboard modules at runtime.
+// Keep the canonical Admin source untouched while adding a clearly separated,
+// non-destructive New S.P.I.R.E. preview launcher to the published dashboard.
 const publishedAdminPath = path.join(outputDirectory, 'admin.html');
-const publishedAdmin = await readFile(publishedAdminPath, 'utf8');
+let publishedAdmin = await readFile(publishedAdminPath, 'utf8');
+if (!publishedAdmin.includes('id="newSpirePreviewButton"')) {
+  const dashboardAnchor = '<p class="sub">Quick overview of system metrics and alerts.</p>';
+  if (!publishedAdmin.includes(dashboardAnchor)) throw new Error('New S.P.I.R.E. preview launcher could not find the Admin Dashboard anchor');
+  publishedAdmin = publishedAdmin.replace(
+    dashboardAnchor,
+    `${dashboardAnchor}\n          <div style="margin-top:14px;padding:14px;border:1px solid #c9dce8;border-radius:12px;background:linear-gradient(135deg,#f7fbfe,#eef8f5);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">\n            <div><strong style="display:block;color:#064d79;font-size:15px">New S.P.I.R.E. — Development Preview</strong><span class="sub">Open the replacement care workstation and monitor the build without changing the current live S.P.I.R.E.</span></div>\n            <a id="newSpirePreviewButton" class="btn btn-primary" href="/new-spire.html" style="text-decoration:none;padding:11px 16px">Open New Spire</a>\n          </div>`,
+  );
+  await writeFile(publishedAdminPath, publishedAdmin, 'utf8');
+}
 for (const marker of [
   '/assets/admin-company-context.js?v=20260809-admin-company-context-2',
   'careers-admin-workflow.js?v=20260809-hiring-provisioning-2',
   'admin-railway.js?v=20260804-admin-clean-4',
+  'id="newSpirePreviewButton"',
+  'href="/new-spire.html"',
 ]) {
   if (!publishedAdmin.includes(marker)) throw new Error(`Canonical Admin publication failed; missing ${marker}`);
 }
@@ -184,7 +194,7 @@ const requiredPublishedFiles = [
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
   'assets/spire-results-workspace.js', 'assets/spire-clinical-workstation.css',
-  'spire.html', 'spire-admin.html', 'services',
+  'spire.html', 'new-spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
   try { await stat(path.join(outputDirectory, relative)); }
@@ -217,4 +227,4 @@ await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; SPIRE Results tab ordering remains idempotent and the reference-workstation presentation layer is published last.');
+console.log('Static website published from canonical source files; New S.P.I.R.E. preview is available from the Admin Dashboard, SPIRE Results tab ordering remains idempotent, and the reference-workstation presentation layer is published last.');
