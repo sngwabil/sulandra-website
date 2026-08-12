@@ -1,0 +1,3144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spire Enterprise - Master EHR Template - SCLS RESIDENTIAL</title>
+    <style>
+        :root {
+            --title-bg: linear-gradient(135deg, #050811 0%, #0f172a 100%);
+            --toolbar-bg: #990000;
+            --main-bg: #f0f4f8;
+            --workspace-card-bg: #ffffff;
+            --text-color: #000000;
+            --base-font-size: 13px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: var(--base-font-size);
+        }
+        body, html {
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--main-bg);
+            color: var(--text-color);
+        }
+
+        /* Top Title Bar with Real-Time Dynamic Chart Search & User Profile */
+        .spire-title-bar {
+            background: var(--title-bg);
+            color: white;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            border-bottom: 1px solid #1e293b;
+            position: relative;
+            z-index: 1000;
+        }
+        .spire-title-bar .left-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13.5px;
+            font-weight: 600;
+        }
+        .spire-logo {
+            font-weight: bold;
+            font-style: italic;
+            background: #fff;
+            color: #a80000;
+            padding: 2px 10px;
+            border-radius: 3px;
+            font-size: 15px;
+        }
+        .search-container {
+            background: white;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 3px;
+            width: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #475569;
+            font-size: 12px;
+            position: relative;
+        }
+        .search-container input {
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 12px;
+            background: transparent;
+            color: #000;
+        }
+        /* Live Chart Search Results Dropdown */
+        #chartSearchResultsDropdown {
+            position: absolute;
+            top: 36px;
+            left: 0;
+            width: 100%;
+            background: white;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            border-radius: 4px;
+            max-height: 320px;
+            overflow-y: auto;
+            display: none;
+            z-index: 3000;
+            color: #0f172a;
+        }
+        .search-result-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            font-size: 11.5px;
+        }
+        .search-result-item:hover {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .right-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+        .access-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .access-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .user-profile-trigger {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .user-profile-trigger:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .top-user-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #3b82f6;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10.5px;
+            object-fit: cover;
+            overflow: hidden;
+        }
+        .comm-icons-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .comm-icon {
+            cursor: pointer;
+            font-size: 14px;
+            position: relative;
+        }
+        .comm-icon:hover {
+            opacity: 0.8;
+        }
+        .notification-badge {
+            position: absolute;
+            top: -4px;
+            right: -6px;
+            background: #ef4444;
+            color: white;
+            font-size: 9px;
+            padding: 1px 4px;
+            border-radius: 50%;
+            font-weight: bold;
+        }
+        .window-control-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 6px;
+            border-radius: 2px;
+        }
+        .window-control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Toolbar Red Bar */
+        .spire-toolbar {
+            background-color: var(--toolbar-bg);
+            color: white;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            padding: 0 6px;
+            gap: 6px;
+            border-bottom: 1px solid #660000;
+        }
+        .tool-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .client-tab {
+            background: #e6f2ff;
+            color: #003366;
+            padding: 6px 14px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            border: 1px solid #b3d1ff;
+            border-bottom: none;
+            font-size: 12px;
+        }
+
+        /* Main Workspace Layout */
+        .workspace {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            height: calc(100vh - 76px);
+            background: var(--main-bg);
+            transition: grid-template-columns 0.3s ease;
+        }
+        .workspace.sidebar-closed {
+            grid-template-columns: 280px 1fr 0px;
+        }
+
+        /* Left Client Sidebar */
+        .client-sidebar {
+            background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
+            border-right: 1px solid #cbd5e1;
+            padding: 12px;
+            overflow-y: auto;
+        }
+        .client-avatar-box {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+            cursor: pointer;
+            position: relative;
+            background: #eff6ff;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .client-avatar-box:hover::after {
+            content: 'Click to Change Photo';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            font-size: 11px;
+            width: 100%;
+            text-align: center;
+            padding: 3px;
+        }
+        .avatar-img {
+            width: 52px;
+            height: 62px;
+            background: #cbd5e1;
+            border: 1px solid #94a3b8;
+            object-fit: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            border-radius: 4px;
+        }
+        .client-name-block h2 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+        
+        .sidebar-card {
+            background: var(--workspace-card-bg);
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            color: var(--text-color);
+        }
+        .sidebar-card.demographics { border-left: 5px solid #3b82f6; }
+        .sidebar-card.clinical { border-left: 5px solid #10b981; }
+        .sidebar-card.alerts { border-left: 5px solid #f59e0b; background: #fffbeb; }
+        .sidebar-card.financial { border-left: 5px solid #8b5cf6; }
+
+        .sidebar-title {
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 4px;
+        }
+        .client-info-group {
+            margin-bottom: 6px;
+            line-height: 1.5;
+            color: var(--text-color);
+            font-size: 12.5px;
+        }
+        .editable {
+            border-bottom: 1px dotted #2563eb;
+            cursor: pointer;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+        .editable:hover {
+            background-color: #dbeafe;
+        }
+        .alert-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #b45309;
+            padding: 6px;
+            text-align: center;
+            font-weight: 700;
+            border-radius: 4px;
+            margin-top: 6px;
+            font-size: 12px;
+        }
+
+        /* Center Content Area */
+        .center-content {
+            display: flex;
+            flex-direction: column;
+            background: var(--workspace-card-bg);
+            overflow: hidden;
+            color: var(--text-color);
+        }
+        
+        /* Functional Chart Navigation Tabs */
+        .chart-tabs {
+            background: #d8e4f0;
+            display: flex;
+            border-bottom: 1px solid #a8b8d0;
+            padding-left: 6px;
+            overflow-x: auto;
+        }
+        .chart-tab {
+            padding: 8px 14px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            color: #0f172a;
+            white-space: nowrap;
+            font-size: 12.5px;
+            font-weight: 500;
+        }
+        .chart-tab:hover {
+            background: #e2e8f0;
+        }
+        .chart-tab.active {
+            background: #ffffff;
+            border-color: #a8b8d0;
+            border-bottom: 1px solid #ffffff;
+            font-weight: 700;
+            margin-bottom: -1px;
+            color: #1d4ed8;
+        }
+
+        /* Sub-tab bar for Summary View */
+        .summary-sub-tabs {
+            background: #f1f5f9;
+            display: flex;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 6px 10px;
+            gap: 6px;
+            overflow-x: auto;
+        }
+        .summary-sub-tab {
+            padding: 6px 12px;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #334155;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        .summary-sub-tab:hover {
+            background: #cbd5e1;
+        }
+        .summary-sub-tab.active {
+            background: #ffffff;
+            font-weight: 700;
+            color: #1e40af;
+            border-bottom: 3px solid #1e40af;
+        }
+
+        /* Workspace Views */
+        .workspace-view {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: var(--main-bg);
+        }
+        .workspace-view.active {
+            display: block;
+        }
+
+        /* Scrollable Overview Container */
+        .epic-overview-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-bottom: 24px;
+        }
+        
+        .epic-section-card {
+            background: var(--workspace-card-bg);
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            color: var(--text-color);
+        }
+        .epic-section-header {
+            padding: 6px 10px;
+            font-weight: 700;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        .epic-section-body {
+            padding: 10px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-color);
+        }
+
+        .header-agents { background: #e0ecf8; color: #003366; }
+        .header-advisory { background: #fef08a; color: #713f12; border-color: #eab308; }
+        .header-problems { background: #fbcfe8; color: #831843; }
+        .header-team { background: #ccfbf1; color: #115e59; }
+        .header-emergency { background: #e0e7ff; color: #3730a3; }
+        .header-history { background: #f3e8ff; color: #6b21a8; }
+        .header-family { background: #f1f5f9; color: #334155; }
+        .header-diet { background: #dcfce7; color: #166534; }
+
+        .doc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            color: var(--text-color);
+        }
+        .doc-table th, .doc-table td {
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 12px;
+        }
+        .doc-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+            font-weight: 700;
+        }
+        .doc-action-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11.5px;
+            font-weight: 600;
+        }
+        .doc-action-btn:hover {
+            background: #1d4ed8;
+        }
+
+        /* Flowsheets Controls & Tree */
+        .flowsheet-sub-toolbar {
+            background: #f0f4f8;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #d0d8e8;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+        .toolbar-action-btn {
+            background: #e4edf7;
+            border: 1px solid #7f9db9;
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        .toolbar-action-btn:hover {
+            background: #c2e0ff;
+        }
+        .flowsheet-filters {
+            background: #e4edf7;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid #c0d0e0;
+            font-size: 12px;
+        }
+        .filter-dropdown {
+            background: white;
+            border: 1px solid #7f9db9;
+            padding: 3px 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .flowsheet-main-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            flex: 1;
+            height: calc(100% - 76px);
+            overflow: hidden;
+        }
+        .flowsheet-tree {
+            background: #f9fbfe;
+            border-right: 1px solid #d0d8e8;
+            padding: 6px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .tree-item {
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-bottom: 2px;
+            color: #1e3a8a;
+            font-weight: 500;
+        }
+        .tree-item:hover {
+            background: #e2e8f0;
+        }
+        .tree-item.selected {
+            background: #c2e0ff;
+            font-weight: bold;
+            color: #003366;
+        }
+        
+        .flowsheet-grid-container {
+            overflow-x: auto;
+            overflow-y: auto;
+            background: var(--workspace-card-bg);
+            flex: 1;
+            position: relative;
+        }
+
+        .flowsheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 12px;
+            min-width: 800px;
+            color: var(--text-color);
+        }
+        .flowsheet-table th, .flowsheet-table td {
+            border: 1px solid #d0d8e8;
+            padding: 5px 8px;
+            height: 26px;
+        }
+        .flowsheet-table th {
+            background: #eef4fc;
+            color: #003366;
+            font-weight: normal;
+            text-align: center;
+        }
+        .flowsheet-table thead tr#headerTimeRow th {
+            position: sticky;
+            top: 0;
+            z-index: 25;
+            background: #eef4fc;
+        }
+        .flowsheet-table th:first-child,
+        .flowsheet-table td:first-child {
+            position: sticky;
+            left: 0;
+            background: #f4f7fc;
+            z-index: 20;
+            border-right: 2px solid #cbd5e1;
+        }
+        .sub-row-header {
+            background: var(--workspace-card-bg) !important;
+            padding-left: 16px !important;
+            color: var(--text-color);
+        }
+
+        .row-header {
+            background: #f4f7fc;
+            font-weight: bold;
+            color: #003366;
+        }
+        .chartable-cell {
+            cursor: pointer;
+            background: var(--workspace-card-bg);
+            position: relative;
+            color: var(--text-color);
+        }
+        .chartable-cell:hover {
+            background: #e6f2ff;
+        }
+        .chartable-cell.has-comment::after {
+            content: '💬';
+            position: absolute;
+            top: 1px;
+            right: 2px;
+            font-size: 9px;
+        }
+        .highlight-col {
+            background: #d6e8ff !important;
+            border: 2px solid #0055bb !important;
+        }
+
+        /* Fully Functional Professional MAR Styles with Horizontal Scroll */
+        .mar-sub-toolbar {
+            background: #f0f4f8;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #d0d8e8;
+            font-size: 12px;
+        }
+        .mar-filters {
+            background: #e4edf7;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid #c0d0e0;
+            font-size: 12px;
+        }
+        .mar-filter-tab {
+            cursor: pointer;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            color: #334155;
+        }
+        .mar-filter-tab:hover {
+            background: #cbd5e1;
+        }
+        .mar-filter-tab.active {
+            color: #1d4ed8;
+            font-weight: bold;
+            border-bottom: 2px solid #1d4ed8;
+        }
+        .mar-grid-container {
+            overflow-x: auto;
+            overflow-y: auto;
+            background: var(--workspace-card-bg);
+            flex: 1;
+            padding: 12px;
+            color: var(--text-color);
+            position: relative;
+        }
+        .mar-timeline-header {
+            display: grid;
+            grid-template-columns: 320px repeat(12, 120px);
+            background: #eef4fc;
+            border: 2px solid #94a3b8;
+            padding: 8px;
+            font-weight: 700;
+            color: #003366;
+            text-align: center;
+            font-size: 12.5px;
+            min-width: 1760px;
+            position: sticky;
+            top: 0;
+            z-index: 25;
+        }
+        .mar-med-row {
+            border: 2px solid #94a3b8;
+            margin-bottom: 12px;
+            background: var(--workspace-card-bg);
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            min-width: 1760px;
+        }
+        .mar-med-header {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            padding: 10px 14px;
+            border-bottom: 2px solid #3b82f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            left: 0;
+        }
+        .mar-med-title {
+            color: #1e3a8a;
+            font-weight: 800;
+            font-size: 14px;
+        }
+        .mar-admin-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 120px);
+            gap: 6px;
+            padding: 10px;
+            background: #f8fafc;
+        }
+        .mar-slot {
+            background: #e2e8f0;
+            height: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11.5px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid #cbd5e1;
+            font-weight: 700;
+            transition: all 0.2s;
+            position: relative;
+            color: #475569;
+        }
+        .mar-slot:hover {
+            border-color: #1d4ed8;
+            box-shadow: 0 0 6px rgba(29,78,216,0.4);
+            transform: scale(1.02);
+        }
+        .mar-slot.due {
+            background: #3b82f6 !important;
+            color: #ffffff !important;
+            border-color: #1d4ed8 !important;
+            font-weight: 800;
+        }
+        .mar-slot.given {
+            background: #22c55e !important;
+            color: #ffffff !important;
+            border-color: #15803d !important;
+            font-weight: 800;
+        }
+        .mar-slot.held {
+            background: #a855f7 !important;
+            color: #ffffff !important;
+            border-color: #7e22ce !important;
+            font-weight: 800;
+        }
+        .mar-slot.refused {
+            background: #ef4444 !important;
+            color: #ffffff !important;
+            border-color: #b91c1c !important;
+            font-weight: 800;
+        }
+        .mar-slot.overdue {
+            background: #dc2626 !important;
+            color: #ffffff !important;
+            border-color: #991b1b !important;
+            font-weight: 800;
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+            70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .mar-slot.discontinued {
+            background: #fca5a5 !important;
+            color: #7f1d1d !important;
+            border-color: #b91c1c !important;
+            text-decoration: line-through;
+            font-weight: 800;
+        }
+        .mar-slot.has-comment::after {
+            content: '💬';
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            font-size: 10px;
+        }
+        .mar-footer-info {
+            padding: 8px 14px;
+            font-size: 11.5px;
+            color: #475569;
+            background: #f8fafc;
+            border-top: 1px solid #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+
+        /* Fully Functional Clinical Notes Workspace */
+        .notes-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: 100%;
+            background: var(--workspace-card-bg);
+            color: var(--text-color);
+        }
+        .notes-sidebar-list {
+            border-right: 1px solid #cbd5e1;
+            background: #f8fafc;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        .note-item-card {
+            background: white;
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .note-item-card:hover {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        .notes-editor-pane {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+        }
+        .note-author-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+        .note-author-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3b82f6;
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            object-fit: cover;
+            overflow: hidden;
+        }
+
+        /* Collapsible Right Sidebar */
+        .right-sidebar {
+            background: #f7f9fc;
+            border-left: 1px solid #c0d0e0;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+            position: relative;
+            overflow: visible !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .workspace.sidebar-closed .right-sidebar {
+            padding: 0;
+            overflow: visible !important;
+            border-left: none;
+            width: 0px;
+        }
+        .workspace.sidebar-closed .sidebar-content-wrapper {
+            display: none !important;
+        }
+        .sidebar-toggle-handle {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            left: -16px;
+            background: #004080;
+            color: white;
+            border: 1px solid #002b5c;
+            width: 16px;
+            height: 72px;
+            border-top-left-radius: 4px;
+            border-bottom-left-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 100;
+            box-shadow: -2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .sidebar-toggle-handle:hover {
+            background: #0055bb;
+        }
+        .sidebar-section {
+            background: white;
+            border: 1px solid #b0c4de;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .sidebar-section-header {
+            background: #e0ecf8;
+            padding: 6px 8px;
+            font-weight: 700;
+            color: #003366;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sidebar-section-body {
+            padding: 8px;
+            font-size: 11.5px;
+            line-height: 1.4;
+        }
+
+        /* Floating Popover */
+        #floatingPopover {
+            position: fixed;
+            display: none;
+            background: white;
+            border: 1px solid #3b82f6;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            border-radius: 6px;
+            padding: 10px;
+            z-index: 2000;
+            width: 260px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .value-option-item {
+            padding: 5px 8px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #1e3a8a;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .value-option-item:hover {
+            background: #3b82f6;
+            color: white;
+        }
+        .value-option-item.refused {
+            background: #fef2f2;
+            color: #991b1b;
+            border-color: #fca5a5;
+        }
+        .value-option-item.refused:hover {
+            background: #dc2626;
+            color: white;
+        }
+        .value-option-item.held {
+            background: #f3e8ff;
+            color: #6b21a8;
+            border-color: #d8b4fe;
+        }
+        .value-option-item.held:hover {
+            background: #9333ea;
+            color: white;
+        }
+        .value-option-item.given {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #86efac;
+        }
+        .value-option-item.given:hover {
+            background: #16a34a;
+            color: white;
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: #fff;
+            width: 750px;
+            max-height: 85vh;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            background: #a80000;
+            color: white;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 13.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+            font-size: 12.5px;
+            line-height: 1.5;
+        }
+        .modal-footer {
+            padding: 10px 14px;
+            background: #f0f0f0;
+            text-align: right;
+            border-top: 1px solid #ccc;
+        }
+
+        .theme-card {
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px;
+            cursor: pointer;
+            text-align: center;
+            background: #f8fafc;
+            transition: all 0.2s;
+        }
+        .theme-card:hover {
+            border-color: #2563eb;
+            background: #eff6ff;
+            transform: translateY(-2px);
+        }
+
+        /* Epic-style H&P Admission Form Modal styling */
+        .hp-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .hp-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .hp-form-group label {
+            font-weight: 700;
+            font-size: 11.5px;
+            color: #334155;
+        }
+        .hp-form-group input, .hp-form-group select, .hp-form-group textarea {
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body id="appBody">
+
+    <!-- Floating Popover for Charting -->
+    <div id="floatingPopover">
+        <div style="font-weight: bold; color: #1e3a8a; margin-bottom: 6px; display: flex; justify-content: space-between;">
+            <span id="popoverTitle">Quick Chart</span>
+            <span style="cursor: pointer; color: #64748b;" onclick="hideFloatingPopover()">✖</span>
+        </div>
+        <div id="popoverOptionsContainer" style="max-height: 160px; overflow-y: auto; margin-bottom: 6px;"></div>
+        <input type="text" id="popoverCommentInput" placeholder="Add comment..." style="width: 100%; border: 1px solid #cbd5e1; padding: 4px; border-radius: 3px; font-size: 11px;">
+    </div>
+
+    <!-- Hidden file input for user profile avatar upload -->
+    <input type="file" id="userAvatarUpload" accept="image/*" style="display: none;">
+
+    <!-- Hidden file input for client photo upload -->
+    <input type="file" id="photoUpload" accept="image/*" style="display: none;">
+
+    <!-- Top Dark Blue-Black Title Bar with Real-Time Chart Search & User Profile -->
+    <div class="spire-title-bar" id="spireTitleBar">
+        <div class="left-title">
+            <span class="spire-logo">Spire</span>
+            <span id="topBarTimestampDisplay">Enterprise - SCLS RESIDENTIAL - ACTIVE CLIENT - DODD WAIVER</span>
+        </div>
+        <div class="search-container">
+            <!-- SUPABASE API SEARCH HOOK: Connect your live Supabase client search query here -->
+            <input type="text" id="globalChartSearchInput" placeholder="Search chart (e.g. diagnosis, vitals, note)..." oninput="handleChartSearch(this.value)">
+            <span>🔍</span>
+            <!-- Live Chart Search Results Dropdown -->
+            <div id="chartSearchResultsDropdown"></div>
+        </div>
+        <div class="right-controls">
+            <!-- User Profile & Settings Button (Routes to User Profile as requested) -->
+            <button class="user-profile-trigger" onclick="openAccessibilityModal()" title="User Profile & Accessibility Settings">
+                <div class="top-user-avatar" id="topUserAvatarDisplay">UP</div>
+                <span id="topUserNameDisplay">User Profile</span>
+            </button>
+            <button class="access-btn" onclick="openHpAdmissionModal()" title="Client Admission / H&P Form">📋 Client Admission (H&P)</button>
+            <div class="comm-icons-group">
+                <div class="comm-icon" id="messagingIconBtn" title="Messaging Portal" onclick="alert('Opening Staff Messaging Portal...')">💬</div>
+                <div class="comm-icon" id="notificationBellBtn" title="Alerts & Reminders" onclick="alert('Notifications: 3 unread reminders for current client.')">
+                    🔔
+                    <span class="notification-badge">3</span>
+                </div>
+            </div>
+            <span>🖨️ Print</span>
+            <span>🔒 Log Out</span>
+            <span>❓ Help Desk</span>
+            <span style="background: #a31919; padding: 3px 8px; border: 1px solid #ff9999;">SpireCare</span>
+            <button class="window-control-btn" id="maxBtn" title="Maximize / Restore">🗖</button>
+            <button class="window-control-btn" id="closeBtn" title="Close Workspace">✖</button>
+        </div>
+    </div>
+
+    <!-- Red Toolbar -->
+    <div class="spire-toolbar" id="spireToolbar">
+        <button class="tool-btn">🏠 Home</button>
+        <button class="tool-btn">👥 Client Lists</button>
+        <button class="tool-btn">🩺 Client Station</button>
+        <button class="tool-btn" id="openFollowupsBtn" style="background: #004080; border-radius: 4px; font-weight: bold;">📋 Upcoming appointments</button>
+        <div style="flex-grow: 1;"></div>
+        <div class="client-tab">
+            <span id="tabClientName">[Client Name] - HPC Residential</span>
+            <span>✖</span>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="workspace" id="mainWorkspace">
+        
+        <!-- Left Client Sidebar -->
+        <div class="client-sidebar">
+            <div class="client-avatar-box" id="avatarBox" title="Click to upload/change client profile photo">
+                <div class="avatar-img" id="avatarDisplay">👤</div>
+                <div class="client-name-block">
+                    <h2 id="displayNameFirst" class="editable" contenteditable="true">[Client</h2>
+                    <h2 id="displayNameLast" class="editable" contenteditable="true">Name]</h2>
+                </div>
+            </div>
+
+            <div class="sidebar-card demographics">
+                <div class="sidebar-title">Demographics & ID</div>
+                <div class="client-info-group">
+                    <div><span id="displayGender" class="editable" contenteditable="true">[Gender]</span>, <span id="displayAge" class="editable" contenteditable="true">[Age]</span> y.o., <span id="displayDOB" class="editable" contenteditable="true">[DOB]</span></div>
+                    <div><b>MRN:</b> <span id="displayMRN" class="editable" contenteditable="true">[MRN Number]</span></div>
+                    <div><b>Residence:</b> <span id="displayBed" class="editable" contenteditable="true">[Facility / Home Name]</span></div>
+                    <div><b>Code Status:</b> <span id="displayCode" class="editable" contenteditable="true">[Code Status]</span></div>
+                </div>
+            </div>
+
+            <div class="sidebar-card clinical">
+                <div class="sidebar-title">Clinical & Providers</div>
+                <div class="client-info-group">
+                    <div><b>PCP:</b> <span id="displayPCP" class="editable" contenteditable="true">[PCP Name], APRN</span></div>
+                    <div><b>Allergies:</b> <span id="displayAllergies" class="editable" contenteditable="true">[Allergies / None]</span></div>
+                    <div><b>Isolation:</b> <span id="displayIsolation" class="editable" contenteditable="true">[Isolation Status]</span></div>
+                </div>
+            </div>
+
+            <div class="sidebar-card alerts">
+                <div class="sidebar-title" style="color: #b45309;">Safety & Alerts</div>
+                <div class="alert-box" id="displaySupportLevel">Support Level: [Support Level]</div>
+                <div class="client-info-group" style="margin-top: 6px;">
+                    <div><b>Precautions:</b> <span id="displayPrecautions">[Active Precautions]</span></div>
+                    <div><b>Dietary Risk:</b> <span id="displayDiet">[Dietary Protocol]</span></div>
+                </div>
+            </div>
+
+            <div class="sidebar-card financial">
+                <div class="sidebar-title" style="color: #6d28d9;">Funding & Waiver</div>
+                <div class="client-info-group">
+                    <div><b>Payer:</b> <span id="displayPayer">[Payer / Waiver Type]</span></div>
+                    <div><b>Guardian:</b> <span id="displayGuardian">[Guardian Name]</span></div>
+                    <div><b>Admit Date:</b> <span id="displayAdmitDate">[Admit Date]</span></div>
+                    <div><b>Ht / Wt:</b> <span id="displayHtWt">[Height] | [Weight]</span></div>
+                    <div style="color: #047857; font-weight: bold; margin-top: 4px;"><b>BMI:</b> <span id="displayBMI">[BMI Value]</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Content Area -->
+        <div class="center-content">
+            <!-- Chart Navigation Tabs -->
+            <div class="chart-tabs" id="mainChartTabs">
+                <div class="chart-tab active" data-view="summary-view">Summary</div>
+                <div class="chart-tab" data-view="chart-review-view">Chart Review</div>
+                <div class="chart-tab" data-view="results-review-view">Results Review</div>
+                <div class="chart-tab" data-view="synopsis-view">Synopsis</div>
+                <div class="chart-tab" data-view="flowsheets-view">Flowsheets</div>
+                <div class="chart-tab" data-view="mar-view" onclick="triggerMarPopup()">MAR</div>
+                <div class="chart-tab" data-view="intake-output-view">Intake/Output</div>
+                <div class="chart-tab" data-view="notes-view">Notes</div>
+                <div class="chart-tab" data-view="manage-orders-view">eMAR / Orders</div>
+                <div class="chart-tab" data-view="work-list-view">Work List</div>
+                <div class="chart-tab" data-view="demographics-view">Demographics</div>
+                <div class="chart-tab" data-view="discharge-view">ISP & Goals</div>
+                <div class="chart-tab" data-view="order-management-view">EVV / Authorization</div>
+            </div>
+
+            <!-- 1. SUMMARY VIEW -->
+            <div id="summary-view" class="workspace-view active">
+                <div class="summary-sub-tabs" id="summarySubTabs">
+                    <div class="summary-sub-tab active" data-sumtab="overview-tab">Overview</div>
+                    <div class="summary-sub-tab" data-sumtab="intake-docs-tab">Intake Documents Index</div>
+                    <div class="summary-sub-tab" data-sumtab="medical-problems-tab">Medical Problems</div>
+                    <div class="summary-sub-tab" data-sumtab="treatment-team-tab">Treatment Team</div>
+                    <div class="summary-sub-tab" data-sumtab="discharge-planning-tab">Residential Planning</div>
+                </div>
+
+                <div id="overview-tab" class="sum-content-section" style="display: block;">
+                    <div class="epic-overview-container">
+                        <div class="epic-section-card">
+                            <div class="epic-section-header header-agents">
+                                <span>🛡️ Health Care Agents & Legal Guardian</span>
+                                <span>Comment</span>
+                            </div>
+                            <div class="epic-section-body">
+                                <div><b>Primary Guardian / Legal Representative:</b> <span id="sumGuardian">[Guardian Name]</span></div>
+                                <div><b>Contact Phone:</b> <span id="sumGuardianPhone">[Phone Number]</span> | <b>Email:</b> <span id="sumGuardianEmail">[Email Address]</span></div>
+                                <div><b>Scope of Authority:</b> Court-appointed guardian of the person and representative payee. Participates in major medical, residential, and service-plan decisions.</div>
+                            </div>
+                        </div>
+
+                        <div class="epic-section-card">
+                            <div class="epic-section-header header-advisory">
+                                <span>⚠️ Risk & Safety Advisories</span>
+                                <span>Active Protocols</span>
+                            </div>
+                            <div class="epic-section-body">
+                                <div>• <b>Safety Protocol:</b> <span id="sumPrecautions">[Active Precautions]</span></div>
+                                <div>• <b>Fall Risk:</b> Standard monitoring.</div>
+                            </div>
+                        </div>
+
+                        <div class="epic-section-card">
+                            <div class="epic-section-header header-problems">
+                                <span>🩺 Medical Problems & Active Diagnoses</span>
+                                <span>Problem List</span>
+                            </div>
+                            <div class="epic-section-body">
+                                <table class="doc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Condition / Diagnosis</th>
+                                            <th>Status</th>
+                                            <th>Management / Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sumProblemListTbody">
+                                        <tr><td>[Condition / Diagnosis Name]</td><td>Active</td><td>[Management / Support Protocol]</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="epic-section-card">
+                            <div class="epic-section-header header-team">
+                                <span>👥 Treatment Team & Providers</span>
+                                <span>Directory</span>
+                            </div>
+                            <div class="epic-section-body">
+                                <table class="doc-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Provider / Role</th>
+                                            <th>Specialty / Focus</th>
+                                            <th>Contact Phone</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sumTeamTbody">
+                                        <tr><td>[Primary Care Provider]</td><td>Primary Care Provider</td><td>[Phone]</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="epic-section-card">
+                            <div class="epic-section-header header-emergency">
+                                <span>🚨 Emergency Contacts & Important People</span>
+                                <span>Contacts</span>
+                            </div>
+                            <div class="epic-section-body" id="sumEmergencyBody">
+                                <div>• <b>Primary Emergency Contact:</b> [Name] - Phone: [Phone]</div>
+                                <div>• <b>Preferred Hospital Destination:</b> [Local Hospital Name]</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-tab 2: Intake Documents Index -->
+                <div id="intake-docs-tab" class="sum-content-section" style="display: none;">
+                    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:12px;">
+                        <div style="font-weight:700; color:#003366; margin-bottom:8px;">Approved Client Intake & Admission Packet - Document Index</div>
+                        <p style="margin-bottom: 10px; color: #475569;">Official external documents and admission attachments locked in the Supabase/Spire chart repository:</p>
+                        
+                        <table class="doc-table">
+                           <thead>
+                               <tr>
+                                   <th>Document Name / File Description</th>
+                                   <th>Size</th>
+                                   <th>SHA-256 Fingerprint</th>
+                                   <th>Action</th>
+                               </tr>
+                           </thead>
+                           <tbody>
+                               <tr>
+                                   <td><b>01_Client_Person_Centered_Plan.pdf</b></td>
+                                   <td>7.0 KB</td>
+                                   <td><code>------------------------...</code></td>
+                                   <td><button class="doc-action-btn" onclick="alert('Connecting to Supabase Storage Bucket...')">View Document</button></td>
+                               </tr>
+                           </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-tab 3: Medical Problems -->
+                <div id="medical-problems-tab" class="sum-content-section" style="display: none;">
+                    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:12px;">
+                        <div style="font-weight:700; color:#003366; margin-bottom:8px;">Comprehensive Problem List</div>
+                        <table class="doc-table">
+                            <thead><tr><th>Problem / Diagnosis</th><th>Status</th><th>Noted Date</th><th>Management</th></tr></thead>
+                            <tbody id="sumProblemListTab2">
+                                <tr><td>[Active Condition]</td><td>Active</td><td>[Date]</td><td>Standard Protocol</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-tab 4: Treatment Team -->
+                <div id="treatment-team-tab" class="sum-content-section" style="display: none;">
+                    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:12px;">
+                        <div style="font-weight:700; color:#003366; margin-bottom:8px;">Multidisciplinary Treatment Team</div>
+                        <table class="doc-table">
+                            <thead><tr><th>Provider / Name</th><th>Specialty</th><th>Phone / Contact</th></tr></thead>
+                            <tbody id="sumTeamTab2">
+                                <tr><td>[Provider Name]</td><td>[Specialty]</td><td>[Phone]</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-tab 5: Residential Planning -->
+                <div id="discharge-planning-tab" class="sum-content-section" style="display: none;">
+                    <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:12px;">
+                        <div style="font-weight:700; color:#003366; margin-bottom:8px;">Residential & Community Support Planning</div>
+                        <div><b>Living Arrangement:</b> <span id="planFacility">[Facility / Home Name]</span></div>
+                        <div><b>Support Level:</b> <span id="planSupport">[Support Level / HPC Hours]</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. CHART REVIEW VIEW -->
+            <div id="chart-review-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Chart Review</h3>
+                <p style="color: #475569; margin-bottom: 12px;">Review historical clinical encounters, nurse notes, incident reports, and specialist consultations.</p>
+                <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:12px;">
+                    <div style="font-weight:700; color:#003366; margin-bottom:6px;">Encounter History (Supabase API Endpoint: `/api/encounters`)</div>
+                    <div>• No historical encounters loaded. Connect Supabase table `client_encounters`.</div>
+                </div>
+            </div>
+
+            <!-- 3. RESULTS REVIEW VIEW -->
+            <div id="results-review-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Results Review - Laboratory & Diagnostics</h3>
+                <p style="color: #475569; margin-bottom: 12px;">Blood glucose logs, metabolic panels, and diagnostic imaging results.</p>
+                <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:12px;">
+                    <div style="font-weight:700; color:#003366; margin-bottom:6px;">Diagnostic Results (Supabase API Endpoint: `/api/lab_results`)</div>
+                    <div>• No lab results recorded.</div>
+                </div>
+            </div>
+
+            <!-- 4. SYNOPSIS VIEW -->
+            <div id="synopsis-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Clinical Synopsis & Trend Analysis</h3>
+                <p style="color: #475569;">Longitudinal tracking of vital signs, weight, seizure frequency, and parameters.</p>
+            </div>
+
+            <!-- 5. FLOWSHEETS VIEW -->
+            <div id="flowsheets-view" class="workspace-view" style="padding: 0;">
+                <div class="flowsheet-sub-toolbar">
+                    <span>📁 File</span>
+                    <button class="toolbar-action-btn" id="addRowBtn">➕ Add Rows</button>
+                    <span>👤 LDA Avatar</span>
+                    <button class="toolbar-action-btn" id="addColBtn">📊 Add Col (Current Time)</button>
+                    <button class="toolbar-action-btn" id="insertColBtn">📋 Insert Col (Custom Date & Time)</button>
+                    <span>💻 Device Data</span>
+                    <button class="toolbar-action-btn" id="lastFiledBtn">⏱️ Last Filed</button>
+                    <span>📄 Rag Doc</span>
+                    <span>⚙️ Macro Manager</span>
+                    <button class="toolbar-action-btn" id="goToDateBtn">📅 Gg to Date</button>
+                    <span>📌 Responsible</span>
+                    <button class="toolbar-action-btn" id="refreshBtn">🔄 Refresh</button>
+                    <span>📈 Flowsheet History</span>
+                    <span>📉 Graph</span>
+                </div>
+
+                <div class="flowsheet-filters">
+                    <div class="filter-dropdown">
+                        <span id="activeFlowsheetFilterName">DSP Daily Documentation - Show All Tasks</span>
+                        <span>▼</span>
+                    </div>
+                    <span><b>Click any box in the grid to type directly OR view task-specific options</b> (Hover over clinical names for normal ranges)</span>
+                </div>
+
+                <div class="flowsheet-main-layout">
+                    <div class="flowsheet-tree" id="flowsheetTreeMenu">
+                        <div style="margin-bottom: 6px;"><input type="text" placeholder="Search Task..." style="width: 100%; border: 1px solid #7f9db9; padding: 3px;"></div>
+                        <div class="tree-item selected" data-category="all"><span>Show All Tasks</span></div>
+                        <hr style="border:0; border-top:1px solid #ccc; margin: 4px 0;">
+                        <div class="tree-item" data-category="vitals"><span>Vitals & Blood Glucose</span></div>
+                        <div class="tree-item" data-category="adls"><span>ADLs & Personal Care Support</span></div>
+                        <div class="tree-item" data-category="meds"><span>Medication Administration (eMAR)</span></div>
+                        <div class="tree-item" data-category="meals"><span>Meal & Dysphagia Precautions</span></div>
+                        <div class="tree-item" data-category="seizure"><span>Seizure & Neurological Check</span></div>
+                        <div class="tree-item" data-category="behavior"><span>Behavioral & Elopement Support</span></div>
+                        <div class="tree-item" data-category="bowel"><span>Bowel & Elimination Protocol</span></div>
+                        <div class="tree-item" data-category="community"><span>Community Outings & Transport</span></div>
+                        <div class="tree-item" data-category="isp"><span>ISP Goal Skill-Building</span></div>
+                    </div>
+
+                    <div class="flowsheet-grid-container" id="flowsheetGridContainer">
+                        <table class="flowsheet-table" id="flowsheetTable">
+                            <thead>
+                                <tr id="headerTimeRow">
+                                    <th style="width: 280px; text-align: left;">Residential HPC Flowsheet</th>
+                                    <th style="width: 80px;" data-time="0600">0600</th>
+                                    <th style="width: 80px;" data-time="1400">1400</th>
+                                    <th style="width: 80px;" data-time="1425">1425</th>
+                                    <th style="width: 80px;" data-time="1428">1428</th>
+                                    <th style="width: 80px;" data-time="1433">1433</th>
+                                    <th style="width: 90px;" class="highlight-col" data-time="1438">1438</th>
+                                    <th style="width: 20px;"></th>
+                                </tr>
+                                <tr id="headerDateRow">
+                                    <th style="text-align: left; background: #fff;"></th>
+                                    <th colspan="6" style="background: #eef4fc;">Current Admission Baseline</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="flowsheetTbody">
+                                <!-- Populated dynamically by JS with Normal Range Tooltips -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FULLY FUNCTIONAL MAR TAB WITH HORIZONTAL SCROLL -->
+            <div id="mar-view" class="workspace-view" style="padding: 0;">
+                <div class="mar-sub-toolbar">
+                    <span>📋 MAR Actions:</span>
+                    <button class="toolbar-action-btn">🔄 Report</button>
+                    <button class="toolbar-action-btn">📝 MAR Note</button>
+                    <button class="toolbar-action-btn">💬 Messages</button>
+                    <button class="toolbar-action-btn">📌 Legend</button>
+                    <button class="toolbar-action-btn">👁️ Show All Actions</button>
+                </div>
+                <div class="mar-filters">
+                    <span class="mar-filter-tab active" data-filter="all" onclick="filterMar('all')">ALL</span>
+                    <span class="mar-filter-tab" data-filter="scheduled" onclick="filterMar('scheduled')">Scheduled</span>
+                    <span class="mar-filter-tab" data-filter="prn" onclick="filterMar('prn')">PRN</span>
+                    <span class="mar-filter-tab" data-filter="continuous" onclick="filterMar('continuous')">Continuous</span>
+                    <span class="mar-filter-tab" data-filter="respiratory" onclick="filterMar('respiratory')">Respiratory</span>
+                    <span class="mar-filter-tab" data-filter="due" onclick="filterMar('due')">Due/Overdue Meds</span>
+                    <div style="margin-left: auto; display: flex; gap: 8px;">
+                        <button class="toolbar-action-btn">Go to Now</button>
+                        <button class="toolbar-action-btn">Show All Details</button>
+                        <button class="toolbar-action-btn">Hide All Admins</button>
+                    </div>
+                </div>
+
+                <div class="mar-grid-container" id="marGridContainer">
+                    <div class="mar-timeline-header">
+                        <div style="text-align: left; padding-left: 6px; position: sticky; left: 0; background: #eef4fc; z-index: 20;">Medication & Administration Instructions</div>
+                        <div>0400</div>
+                        <div>0600</div>
+                        <div>0800</div>
+                        <div>1000</div>
+                        <div>1200</div>
+                        <div>1400</div>
+                        <div>1600</div>
+                        <div>1700</div>
+                        <div>2000</div>
+                        <div>2200</div>
+                        <div>2359</div>
+                        <div>PRN</div>
+                    </div>
+
+                    <!-- Dynamic eMAR / Medication Row Template -->
+                    <div class="mar-med-row" data-type="scheduled" data-med="Sample Medication" data-freq="BID">
+                        <div class="mar-med-header">
+                            <span class="mar-med-title">[Medication Name] | [Dose] | [Route] | [Frequency / Instructions]</span>
+                            <span style="font-size: 11.5px; color: #1e3a8a; font-weight: 800;">Scheduled | BID</span>
+                        </div>
+                        <div class="mar-admin-grid">
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '0400', '0400')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '0600', '0600')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '0800', '0800')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '1000', '1000')">--</div>
+                            <div class="mar-slot due" onclick="openMarAction(this, 'Sample Medication', '1200', '1200')">1200 Due</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '1400', '1400')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '1600', '1600')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '1700', '1700')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '2000', '2000')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '2200', '2200')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', '2359', '2359')">--</div>
+                            <div class="mar-slot" onclick="openMarAction(this, 'Sample Medication', 'PRN', 'PRN')">--</div>
+                        </div>
+                        <div class="mar-footer-info">
+                            <span>Ordered Admin Amount: [Amount]</span>
+                            <span>Dispense Location: [Pharmacy Name / Storage]</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- FULLY FUNCTIONAL CLINICAL NOTES VIEW -->
+            <div id="notes-view" class="workspace-view" style="padding: 0;">
+                <div class="notes-container">
+                    <div class="notes-sidebar-list">
+                        <div style="font-weight: 700; color: #003366; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>Filed Clinical Notes</span>
+                            <button class="toolbar-action-btn" onclick="createNewNote()">+ New Note</button>
+                        </div>
+                        <div id="notesListContainer">
+                            <div class="note-item-card" onclick="loadNote('2026-08-11 1430', 'Initial Assessment Note', 'Client record initialized in Spire Enterprise EHR.')">
+                                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+                                    <div class="note-author-avatar" style="width: 28px; height: 28px; font-size: 12px;">UP</div>
+                                    <div>
+                                        <div style="font-weight: 700; color: #1e3a8a; font-size: 11.5px;">Initial Assessment Note</div>
+                                        <div style="font-size: 10px; color: #64748b;">User Profile, RN</div>
+                                    </div>
+                                </div>
+                                <div style="font-size: 10px; color: #64748b;">2026-08-11 1430</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notes-editor-pane">
+                        <div class="note-author-banner">
+                            <div class="note-author-avatar" id="activeAuthorAvatar">UP</div>
+                            <div>
+                                <div style="font-weight: 800; color: #1e3a8a; font-size: 13px;" id="activeAuthorName">User Profile, RN</div>
+                                <div style="font-size: 11px; color: #475569;" id="activeAuthorRole">Registered Nurse | Clinical Operations</div>
+                            </div>
+                            <div style="margin-left: auto; font-size: 11px; color: #64748b; font-weight: 600;">Status: Active Documentation</div>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; align-items: center; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px;">
+                            <div>
+                                <label style="font-weight: 700; font-size: 11px; display: block; color: #475569;">Note Type:</label>
+                                <select id="noteTypeSelect" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600;">
+                                    <option>Progress Note</option>
+                                    <option>Shift Handoff Summary</option>
+                                    <option>Nursing Assessment</option>
+                                    <option>Behavioral Observation</option>
+                                    <option>Provider Communication</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-weight: 700; font-size: 11px; display: block; color: #475569;">Quick Template:</label>
+                                <select id="noteTemplateSelect" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600;" onchange="insertTemplate(this.value)">
+                                    <option value="">Select Template...</option>
+                                    <option value="routine">Routine Shift Note Template</option>
+                                    <option value="incident">Incident / Safety Report Template</option>
+                                </select>
+                            </div>
+                            <div style="margin-left: auto;">
+                                <button class="toolbar-action-btn" style="background: #166534; color: white;" onclick="signAndFileNote()">✍️ Sign & File Note</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="font-weight: 700; font-size: 11.5px; display: block; margin-bottom: 4px; color: #1e293b;">Note Subject / Title:</label>
+                            <input type="text" id="noteTitleInput" value="Daily Shift Progress Note" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600;">
+                        </div>
+
+                        <div style="flex: 1; display: flex; flex-direction: column;">
+                            <label style="font-weight: 700; font-size: 11.5px; display: block; margin-bottom: 4px; color: #1e293b;">Clinical Narrative Documentation:</label>
+                            <textarea id="noteContentInput" style="flex: 1; width: 100%; min-height: 240px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12.5px; line-height: 1.6; resize: vertical;" placeholder="Type clinical documentation here... (Integrate with Supabase API on save)"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. INTAKE / OUTPUT VIEW -->
+            <div id="intake-output-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Intake and Output (I/O) Monitoring</h3>
+                <p style="color: #475569;">Track daily fluid intake, meal consumption, and bowel/urinary output.</p>
+            </div>
+
+            <!-- 8. MANAGE ORDERS VIEW (eMAR) -->
+            <div id="manage-orders-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">eMAR & Medication Management</h3>
+                <p style="color: #475569; margin-bottom: 12px;">Active medication orders loaded from Supabase database.</p>
+            </div>
+
+            <!-- 9. WORK LIST VIEW -->
+            <div id="work-list-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Staff Work List & Tasks</h3>
+                <p style="color: #475569;">Pending tasks and scheduled assessments.</p>
+            </div>
+
+            <!-- 10. DEMOGRAPHICS VIEW -->
+            <div id="demographics-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Client Demographics & Administrative Record</h3>
+                <p style="color: #475569;">Full administrative profile record.</p>
+            </div>
+
+            <!-- 11. ISP & GOALS VIEW -->
+            <div id="discharge-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Individual Support Plan (ISP) & Goals</h3>
+                <p style="color: #475569; margin-bottom: 12px;">Waiver residential goals and skill-building objectives.</p>
+            </div>
+
+            <!-- 12. EVV & AUTHORIZATION VIEW -->
+            <div id="order-management-view" class="workspace-view">
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">EVV Visit Verification & Service Authorization</h3>
+                <p style="color: #475569; margin-bottom: 12px;">Electronic Visit Verification (EVV) records and authorization tracking.</p>
+            </div>
+        </div>
+
+        <!-- Collapsible Right Sidebar with Vertically-Centered Handle -->
+        <div class="right-sidebar" id="rightSidebar">
+            <button class="sidebar-toggle-handle" id="sidebarToggleBtn" title="Slide Sidebar In/Out">◀</button>
+            
+            <div class="sidebar-content-wrapper">
+                <div style="font-weight: 700; margin-bottom: 6px;" id="sidebarTimestampDisplay">08/12/26 1016</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #003366; margin-bottom: 8px;">Charting Inspector</div>
+                
+                <!-- Flowsheet Value Selector & Search Panel -->
+                <div class="sidebar-section" style="background: #f0fdf4; border-color: #86efac;" id="valueSelectorSection">
+                    <div class="sidebar-section-header" style="background: #dcfce7; color: #166534;">
+                        <span id="selectorHeaderTitle">Value Selector</span>
+                        <span>🔍</span>
+                    </div>
+                    <div class="sidebar-section-body">
+                        <div style="margin-bottom: 6px;">
+                            <input type="text" id="sidebarValueSearch" placeholder="Search task options..." style="width: 100%; border: 1px solid #7f9db9; padding: 4px; border-radius: 3px;">
+                        </div>
+                        <div id="valueOptionsContainer" style="max-height: 150px; overflow-y: auto; margin-bottom: 6px;">
+                            <div style="color: #64748b; text-align: center; padding: 10px; font-style: italic;">Click a flowsheet cell in the grid to view task-specific options.</div>
+                        </div>
+                        <div style="display: flex; gap: 4px; border-top: 1px dashed #86efac; padding-top: 6px;" id="addOptionBox">
+                            <input type="text" id="newOptionInput" placeholder="Add new option..." style="flex:1; border: 1px solid #7f9db9; padding: 3px; border-radius: 3px; font-size: 11px;">
+                            <button id="addNewOptionBtn" style="background: #166534; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-weight: 600;">Add</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comment Section per Box -->
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header">
+                        <span>Box Comments & Notes</span>
+                        <span>💬</span>
+                    </div>
+                    <div class="sidebar-section-body">
+                        <textarea id="cellCommentInput" placeholder="Add comment for selected cell..." style="width: 100%; height: 60px; border: 1px solid #7f9db9; padding: 4px; border-radius: 3px; resize: vertical;"></textarea>
+                        <button id="saveCellCommentBtn" style="margin-top: 4px; background: #004080; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-weight: 600; width: 100%;">Save Comment</button>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-header">
+                        <span>Mins/Maxes (Baseline)</span>
+                        <span>▲</span>
+                    </div>
+                    <div class="sidebar-section-body">
+                        <div style="display: flex; justify-content: space-between;"><span>Max Temp:</span> <b>100.4 °F</b></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Warn BP High:</span> <b>160/100</b></div>
+                        <div style="display: flex; justify-content: space-between;"><span>Glucose Target:</span> <b>80-180 mg/dL</b></div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section" style="background: #e6f2ff; border-color: #004080;">
+                    <div class="sidebar-section-header" style="background: #004080; color: white;">
+                        <span>Upcoming Appointments</span>
+                        <span>📌</span>
+                    </div>
+                    <div class="sidebar-section-body" style="font-size: 11px;">
+                        <div>• No appointments scheduled</div>
+                        <div style="margin-top: 6px; text-align: center;">
+                            <button id="viewAllFollowups" style="background: #a80000; color: white; border: none; padding: 3px 8px; cursor: pointer; border-radius: 3px; font-weight: 600;">View Appointments</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- EPIC-STYLE H&P CLIENT ADMISSION FORM MODAL -->
+    <div class="modal-overlay" id="hpAdmissionModal" style="display: flex;">
+        <div class="modal-card" style="width: 800px; height: 640px;">
+            <div class="modal-header" style="background: #990000;">
+                <span>📋 Spire Enterprise - Client Admission & H&P Form (Epic Workflow)</span>
+            </div>
+            <div class="modal-body" style="padding: 20px; background: #f8fafc;">
+                <p style="margin-bottom: 14px; color: #334155; font-weight: 600;">Fill out the admission and History & Physical (H&P) details for the new client. Submitting this form will instantly populate all template fields across Spire Enterprise.</p>
+                
+                <form id="clientHpForm" onsubmit="submitClientAdmission(event)">
+                    <div class="hp-form-grid" style="margin-bottom: 12px;">
+                        <div class="hp-form-group">
+                            <label>First Name:</label>
+                            <input type="text" id="hpFirstName" required placeholder="e.g. John">
+                        </div>
+                        <div class="hp-form-group">
+                            <label>Last Name:</label>
+                            <input type="text" id="hpLastName" required placeholder="e.g. Doe">
+                        </div>
+                    </div>
+
+                    <div class="hp-form-grid" style="margin-bottom: 12px;">
+                        <div class="hp-form-group">
+                            <label>Gender:</label>
+                            <select id="hpGender">
+                                <option>Female</option>
+                                <option>Male</option>
+                                <option>Non-Binary</option>
+                            </select>
+                        </div>
+                        <div class="hp-form-group">
+                            <label>Date of Birth (YYYY-MM-DD):</label>
+                            <input type="text" id="hpDob" placeholder="1990-05-12" required>
+                        </div>
+                    </div>
+
+                    <div class="hp-form-grid" style="margin-bottom: 12px;">
+                        <div class="hp-form-group">
+                            <label>MRN (Medical Record Number):</label>
+                            <input type="text" id="hpMrn" value="SCLS-2026-000002" required>
+                        </div>
+                        <div class="hp-form-group">
+                            <label>Facility / Home Name:</label>
+                            <input type="text" id="hpFacility" value="SCLS Training Residence" required>
+                        </div>
+                    </div>
+
+                    <div class="hp-form-grid" style="margin-bottom: 12px;">
+                        <div class="hp-form-group">
+                            <label>Primary Care Provider (PCP):</label>
+                            <input type="text" id="hpPcp" value="Dr. Smith, APRN" required>
+                        </div>
+                        <div class="hp-form-group">
+                            <label>Allergies:</label>
+                            <input type="text" id="hpAllergies" value="Penicillin, Latex" required>
+                        </div>
+                    </div>
+
+                    <div class="hp-form-grid" style="margin-bottom: 12px;">
+                        <div class="hp-form-group">
+                            <label>Support Level / HPC Hours:</label>
+                            <input type="text" id="hpSupportLevel" value="24-Hour HPC" required>
+                        </div>
+                        <div class="hp-form-group">
+                            <label>Primary Guardian / Contact:</label>
+                            <input type="text" id="hpGuardian" value="Jane Doe (Mother)" required>
+                        </div>
+                    </div>
+
+                    <div class="hp-form-group" style="margin-bottom: 12px;">
+                        <label>Active Medical Problems / Diagnoses (Comma separated):</label>
+                        <input type="text" id="hpProblems" value="Intellectual Developmental Disability, Essential Hypertension" required>
+                    </div>
+
+                    <div class="hp-form-group" style="margin-bottom: 12px;">
+                        <label>Safety & Dietary Precautions:</label>
+                        <textarea id="hpPrecautions" rows="2">Fall precautions active. Soft texture diet with thin liquids.</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="submitClientAdmission(event)" class="toolbar-action-btn" style="background: #166534; color: white; padding: 8px 20px; font-weight: bold;">Submit & Populate Chart</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- USER PROFILE & ACCESSIBILITY CUSTOMIZATION SUITE -->
+    <div class="modal-overlay" id="accessibilityModal">
+        <div class="modal-card" style="width: 820px; height: 620px;">
+            <div class="modal-header" style="background: #0f172a;">
+                <span>👤 Spire Enterprise - User Profile & Accessibility Suite</span>
+                <span style="cursor: pointer; font-weight: bold;" onclick="closeAccessibilityModal()">✖</span>
+            </div>
+            <div class="modal-body" style="padding: 16px; background: #f8fafc;">
+                
+                <div style="display: flex; gap: 8px; border-bottom: 2px solid #cbd5e1; margin-bottom: 14px; padding-bottom: 6px;">
+                    <button class="toolbar-action-btn active" id="tabProfileBtn" onclick="switchAccessTab('profile')">User Profile & Employee Photo</button>
+                    <button class="toolbar-action-btn" id="tabPresetBtn" onclick="switchAccessTab('presets')">20 Distinct Preset Looks</button>
+                    <button class="toolbar-action-btn" id="tabCustomBtn" onclick="switchAccessTab('custom')">Individual Color Customizer</button>
+                    <button class="toolbar-action-btn" id="tabCursorBtn" onclick="switchAccessTab('cursor')">Cursors & Font Scaling</button>
+                </div>
+
+                <!-- Tab 0: User Profile & Employee Photo Upload / Sync -->
+                <div id="accessProfileTab" style="display: block;">
+                    <p style="margin-bottom: 12px; color: #475569; font-weight: 600;">Configure active clinician credentials, name, and profile badge photo:</p>
+                    <div style="display: flex; gap: 20px; align-items: center; background: #fff; padding: 16px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 14px;">
+                        <div id="modalUserAvatarPreview" style="width: 72px; height: 72px; border-radius: 50%; background: #3b82f6; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 24px; object-fit: cover; overflow: hidden; border: 2px solid #1d4ed8;">UP</div>
+                        <div>
+                            <button onclick="document.getElementById('userAvatarUpload').click()" class="toolbar-action-btn" style="background: #2563eb; color: white; margin-bottom: 6px;">📷 Upload / Sync Employee Photo</button>
+                            <div style="font-size: 11px; color: #64748b;">Supported formats: JPG, PNG. Automatically syncs across clinical notes and top navigation bar.</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div style="background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <label style="font-weight: 700; display: block; margin-bottom: 6px;">Clinician Full Name:</label>
+                            <input type="text" id="inputClinicianName" value="User Profile" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600;">
+                        </div>
+                        <div style="background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <label style="font-weight: 700; display: block; margin-bottom: 6px;">Credentials / Title:</label>
+                            <input type="text" id="inputClinicianCredentials" value="RN" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 14px; text-align: right;">
+                        <button onclick="saveUserProfileSettings()" class="toolbar-action-btn" style="background: #166534; color: white; padding: 6px 16px;">Save User Profile</button>
+                    </div>
+                </div>
+
+                <!-- Tab 1: 20 Distinct Preset Themes -->
+                <div id="accessPresetsTab" style="display: none;">
+                    <p style="margin-bottom: 10px; color: #475569; font-weight: 600;">Select one of 20 distinct professional visual themes tailored for Spire Enterprise:</p>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px;">
+                        <div class="theme-card" onclick="applyPresetTheme('classicRed')"><b>1. Classic Spire Red</b><br><span style="font-size: 11px; color: #64748b;">Dark title & deep red toolbar</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('clinicalDark')"><b>2. Clinical Dark Mode</b><br><span style="font-size: 11px; color: #64748b;">Deep slate background with light text</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('midnightSlate')"><b>3. Midnight Slate</b><br><span style="font-size: 11px; color: #64748b;">Slate blue and gray executive look</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('emeraldHealth')"><b>4. Emerald Healthcare</b><br><span style="font-size: 11px; color: #64748b;">Rich forest green & mint clinical palette</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('oceanBlue')"><b>5. Ocean Blue Executive</b><br><span style="font-size: 11px; color: #64748b;">Deep royal blue and cyan accents</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('warmSepia')"><b>6. Warm Amber Sepia</b><br><span style="font-size: 11px; color: #64748b;">Low-glare warm brown tones</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('epicTeal')"><b>7. Hyperspace Teal</b><br><span style="font-size: 11px; color: #64748b;">Traditional healthcare teal aesthetic</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('monoHighContrast')"><b>8. Pure Monochrome</b><br><span style="font-size: 11px; color: #64748b;">High contrast black and white</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('colorblindSafe')"><b>9. Deuteranopia Safe</b><br><span style="font-size: 11px; color: #64748b;">Optimized blue & yellow palette</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('vibrantLavender')"><b>10. Vibrant Lavender</b><br><span style="font-size: 11px; color: #64748b;">Soft indigo and purple tones</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('crimsonNight')"><b>11. Crimson Night</b><br><span style="font-size: 11px; color: #64748b;">Dark charcoal with bold crimson highlights</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('arcticFrost')"><b>12. Arctic Frost</b><br><span style="font-size: 11px; color: #64748b;">Icy blue and crisp white background</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('goldenSunrise')"><b>13. Golden Sunrise</b><br><span style="font-size: 11px; color: #64748b;">Amber gold and soft cream palette</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('cyberpunkNeon')"><b>14. Cyberpunk Neon Clinical</b><br><span style="font-size: 11px; color: #64748b;">Dark mode with neon blue & magenta</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('retroVintage')"><b>15. Vintage Chartroom</b><br><span style="font-size: 11px; color: #64748b;">Muted parchment and olive tones</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('steelGray')"><b>16. Industrial Steel Gray</b><br><span style="font-size: 11px; color: #64748b;">Polished metal gray and charcoal</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('coralSunset')"><b>17. Coral Sunset</b><br><span style="font-size: 11px; color: #64748b;">Warm coral pink and orange accents</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('mintFresh')"><b>18. Mint Fresh Healthcare</b><br><span style="font-size: 11px; color: #64748b;">Light pastel mint and teal highlights</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('royalAmethyst')"><b>19. Royal Amethyst</b><br><span style="font-size: 11px; color: #64748b;">Deep violet and gold executive palette</span></div>
+                        <div class="theme-card" onclick="applyPresetTheme('solarizedLight')"><b>20. Solarized Light Clean</b><br><span style="font-size: 11px; color: #64748b;">Soft cream base with contrasting navy</span></div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Individual Color Customizer -->
+                <div id="accessCustomTab" style="display: none;">
+                    <p style="margin-bottom: 12px; color: #475569; font-weight: 600;">Customize individual component colors across Spire Enterprise:</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div style="background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <label style="font-weight: 700; display: block; margin-bottom: 6px;">Title Bar Background Color:</label>
+                            <input type="color" id="customTitleColor" value="#0f172a" style="width: 100%; height: 36px; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div style="background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <label style="font-weight: 700; display: block; margin-bottom: 6px;">Toolbar Background Color:</label>
+                            <input type="color" id="customToolbarColor" value="#990000" style="width: 100%; height: 36px; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div style="background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <label style="font-weight: 700; display: block; margin-bottom: 6px;">Workspace Background Color:</label>
+                            <input type="color" id="customBgColor" value="#f0f4f8" style="width: 100%; height: 36px; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                        <div style="background: #fff; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <label style="font-weight: 700; display: block; margin-bottom: 6px;">Primary Text Color:</label>
+                            <input type="color" id="customTextColor" value="#000000" style="width: 100%; height: 36px; cursor: pointer; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <div style="margin-top: 14px; text-align: right;">
+                        <button onclick="applyCustomColors()" class="toolbar-action-btn" style="background: #1e3a8a; color: white; padding: 6px 16px;">Apply Individual Custom Colors</button>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Cursors & Font Scaling -->
+                <div id="accessCursorTab" style="display: none;">
+                    <p style="margin-bottom: 12px; color: #475569; font-weight: 600;">Configure mouse pointer appearance and interface font scaling:</p>
+                    <div style="background: #fff; padding: 14px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 12px;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 6px;">Mouse Pointer Style / Look:</label>
+                        <select id="cursorStyleSelect" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600;" onchange="applyCursorStyle(this.value)">
+                            <option value="default">Default Pointer</option>
+                            <option value="crosshair">Precision Crosshair</option>
+                            <option value="help">Help / Guidance Cursor</option>
+                            <option value="pointer">Hand Pointer Link Style</option>
+                        </select>
+                    </div>
+                    <div style="background: #fff; padding: 14px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 6px;">Interface Font Size Scaling:</label>
+                        <select id="fontSizeSelect" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 600;" onchange="applyFontSize(this.value)">
+                            <option value="12px">Compact (12px)</option>
+                            <option value="13px" selected>Normal Standard (13px)</option>
+                            <option value="14px">Large Comfortable (14px)</option>
+                            <option value="16px">Extra Large High-Visibility (16px)</option>
+                        </select>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeAccessibilityModal()" style="background: #0f172a; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Fully Upgraded MAR Action Modal -->
+    <div class="modal-overlay" id="marActionModal">
+        <div class="modal-card" style="width: 480px; height: auto;">
+            <div class="modal-header">
+                <span id="marModalTitle">Medication Administration Record (MAR) Action</span>
+                <span style="cursor: pointer; font-weight: bold;" onclick="closeMarModal()">✖</span>
+            </div>
+            <div class="modal-body" style="padding: 16px;">
+                <div id="marModalMedInfo" style="font-weight: 800; color: #1e3a8a; margin-bottom: 12px; font-size: 14px;"></div>
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 700; display: block; margin-bottom: 6px;">Select Administration Status:</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button class="value-option-item given" style="font-size: 13px; padding: 8px;" onclick="setMarStatus('given')">✅ Given</button>
+                        <button class="value-option-item held" style="font-size: 13px; padding: 8px;" onclick="setMarStatus('held')">⏸️ Held</button>
+                        <button class="value-option-item refused" style="font-size: 13px; padding: 8px;" onclick="setMarStatus('refused')">❌ Refused</button>
+                        <button class="value-option-item due" style="background: #3b82f6; color: white; font-size: 13px; padding: 8px;" onclick="setMarStatus('due')">🔵 Due</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 700; display: block; margin-bottom: 4px;">Actual Administration Timestamp:</label>
+                    <input type="text" id="marModalTimestamp" placeholder="e.g. 0815" style="width: 100%; border: 1px solid #cbd5e1; padding: 6px; border-radius: 3px; font-weight: 600;">
+                    <span id="marLateWarning" style="color: #b91c1c; font-weight: 700; font-size: 11.5px; display: none; margin-top: 3px;">⚠️ Warning: This administration is significantly past the scheduled time slot (Late Administration Caution).</span>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 700; display: block; margin-bottom: 4px;">Administration Comment / Note:</label>
+                    <textarea id="marModalComment" placeholder="Add administration note..." style="width: 100%; height: 60px; border: 1px solid #cbd5e1; padding: 6px; border-radius: 3px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between;">
+                <button onclick="cancelMarEntry()" style="background: #64748b; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 700;">Cancel Entry</button>
+                <button onclick="saveMarAction()" style="background: #166534; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 700;">Confirm & Chart</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Over-Administration Warning Modal -->
+    <div class="modal-overlay" id="overAdminModal">
+        <div class="modal-card" style="width: 440px; height: auto;">
+            <div class="modal-header" style="background: #b91c1c;">
+                <span>⚠️ Medication Administration Frequency Warning</span>
+            </div>
+            <div class="modal-body" id="overAdminText" style="font-weight: 700; padding: 20px; color: #991b1b; line-height: 1.5;">
+                Warning: This medication is ordered Twice Daily (BID) and has already been marked as given 2 times today! Administering it again may exceed safe frequency limits.
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button onclick="closeOverAdminModal(false)" style="background: #64748b; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">Cancel</button>
+                <button onclick="closeOverAdminModal(true)" style="background: #b91c1c; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">Override & Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Medication Notification Popup Modal when Opening MAR -->
+    <div class="modal-overlay" id="overdueNotificationModal">
+        <div class="modal-card" style="width: 460px; height: auto;">
+            <div class="modal-header" style="background: #b91c1c;">
+                <span>⚠️ OVERDUE MEDICATIONS ALERT</span>
+            </div>
+            <div class="modal-body" style="padding: 20px; color: #1e293b; font-weight: 600;">
+                <p style="margin-bottom: 10px; color: #b91c1c; font-weight: 800; font-size: 14px;">The following medications are more than 1 hour past their scheduled time:</p>
+                <div id="overdueMedListPopup" style="background: #fef2f2; border: 1px solid #fca5a5; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 12.5px; line-height: 1.6;">
+                    • <b>Sample Medication</b> - Scheduled: 1200 (Overdue)
+                </div>
+                <p style="font-weight: 700; color: #334155;">Please contact the supervising nurse immediately regarding these overdue administrations.</p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+                <button onclick="closeOverdueNotification()" style="background: #b91c1c; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 700;">Acknowledge & Contact Nurse</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Yes/No Confirm Modal -->
+    <div class="modal-overlay" id="customConfirmModal">
+        <div class="modal-card" style="width: 420px; height: auto;">
+            <div class="modal-header">
+                <span>Spire Enterprise - Confirm Field Type</span>
+            </div>
+            <div class="modal-body" id="customConfirmText" style="font-weight: 600; padding: 20px; color: #1e3a8a;">
+                Is this a numeric objective field (like temperature or pulse)?
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button id="confirmYesBtn" style="background: #2563eb; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">Yes</button>
+                <button id="confirmNoBtn" style="background: #64748b; color: white; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">No</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Upcoming Appointments -->
+    <div class="modal-overlay" id="followupModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span>Client Workspace - Upcoming Appointments & Professional Follow-ups</span>
+                <span id="closeModal" style="cursor: pointer; font-weight: bold; font-size: 16px;">✖</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 12px; color: #333;">Upcoming appointments and professional follow-ups specified in the approved intake packet:</p>
+                
+                <div style="padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <div><b>08/20/2026</b> - Primary Care Provider Follow-up</div>
+                    <input type="checkbox" style="transform: scale(1.3); cursor: pointer;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveFollowupsBtn" style="background: #a80000; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 600;">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Full Interactivity (Epic H&P Form Population & Supabase Ready) -->
+    <script>
+        // Active User Profile State (Generic default routing to "User Profile")
+        let activeUserProfile = {
+            fullName: "User Profile",
+            credentials: "RN",
+            initials: "UP",
+            avatarHtml: "UP",
+            roleTitle: "Staff Clinician"
+        };
+
+        const userAvatarUpload = document.getElementById('userAvatarUpload');
+        userAvatarUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const imgHtml = `<img src="${evt.target.result}" style="width:100%; height:100%; object-fit:cover;">`;
+                    activeUserProfile.avatarHtml = imgHtml;
+                    document.getElementById('topUserAvatarDisplay').innerHTML = imgHtml;
+                    document.getElementById('modalUserAvatarPreview').innerHTML = imgHtml;
+                    document.getElementById('activeAuthorAvatar').innerHTML = imgHtml;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function saveUserProfileSettings() {
+            const nameInput = document.getElementById('inputClinicianName').value.trim();
+            const credInput = document.getElementById('inputClinicianCredentials').value.trim();
+            if (nameInput) activeUserProfile.fullName = nameInput;
+            if (credInput) activeUserProfile.credentials = credInput;
+
+            const initials = activeUserProfile.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            if (!activeUserProfile.avatarHtml.includes('<img')) {
+                activeUserProfile.initials = initials;
+                document.getElementById('topUserAvatarDisplay').innerText = initials;
+                document.getElementById('modalUserAvatarPreview').innerText = initials;
+                document.getElementById('activeAuthorAvatar').innerText = initials;
+            }
+
+            document.getElementById('topUserNameDisplay').innerText = `${activeUserProfile.fullName} (${activeUserProfile.credentials})`;
+            document.getElementById('activeAuthorName').innerText = `${activeUserProfile.fullName}, ${activeUserProfile.credentials}`;
+            
+            closeAccessibilityModal();
+        }
+
+        // Epic-Style H&P Form Submission / Population Function
+        function openHpAdmissionModal() {
+            document.getElementById('hpAdmissionModal').style.display = 'flex';
+        }
+
+        function submitClientAdmission(event) {
+            event.preventDefault();
+            
+            const fName = document.getElementById('hpFirstName').value.trim();
+            const lName = document.getElementById('hpLastName').value.trim();
+            const gender = document.getElementById('hpGender').value;
+            const dob = document.getElementById('hpDob').value.trim();
+            const mrn = document.getElementById('hpMrn').value.trim();
+            const facility = document.getElementById('hpFacility').value.trim();
+            const pcp = document.getElementById('hpPcp').value.trim();
+            const allergies = document.getElementById('hpAllergies').value.trim();
+            const supportLevel = document.getElementById('hpSupportLevel').value.trim();
+            const guardian = document.getElementById('hpGuardian').value.trim();
+            const problems = document.getElementById('hpProblems').value.trim();
+            const precautions = document.getElementById('hpPrecautions').value.trim();
+
+            if (!fName || !lName || !dob) {
+                alert("Please fill out required client name and date of birth.");
+                return;
+            }
+
+            // Calculate age from DOB
+            const dobDate = new Date(dob);
+            const today = new Date();
+            let age = today.getFullYear() - dobDate.getFullYear();
+            const m = today.getMonth() - dobDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+                age--;
+            }
+
+            // Populate Sidebar Elements
+            document.getElementById('displayNameFirst').innerText = fName;
+            document.getElementById('displayNameLast').innerText = lName;
+            document.getElementById('displayGender').innerText = gender;
+            document.getElementById('displayAge').innerText = age >= 0 ? age : 30;
+            document.getElementById('displayDOB').innerText = dob;
+            document.getElementById('displayMRN').innerText = mrn;
+            document.getElementById('displayBed').innerText = facility;
+            document.getElementById('displayPCP').innerText = pcp;
+            document.getElementById('displayAllergies').innerText = allergies;
+            document.getElementById('displaySupportLevel').innerText = `Support Level: ${supportLevel}`;
+            document.getElementById('displayPrecautions').innerText = precautions;
+            document.getElementById('displayGuardian').innerText = guardian;
+            document.getElementById('tabClientName').innerText = `${lName}, ${fName} - HPC Residential`;
+
+            // Populate Summary Tab Overview Elements
+            document.getElementById('sumGuardian').innerText = guardian;
+            document.getElementById('sumGuardianPhone').innerText = "937-555-0199";
+            document.getElementById('sumGuardianEmail').innerText = `${fName.toLowerCase()}.guardian@sulandrahealth.com`;
+            document.getElementById('sumPrecautions').innerText = precautions;
+            document.getElementById('planFacility').innerText = facility;
+            document.getElementById('planSupport').innerText = supportLevel;
+
+            // Populate Problem List Table dynamically
+            const probTbody = document.getElementById('sumProblemListTbody');
+            probTbody.innerHTML = '';
+            problems.split(',').forEach(prob => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${prob.trim()}</td><td>Active</td><td>Monitored per residential plan</td>`;
+                probTbody.appendChild(tr);
+            });
+
+            const probTab2 = document.getElementById('sumProblemListTab2');
+            probTab2.innerHTML = probTbody.innerHTML;
+
+            // Populate Treatment Team Table dynamically
+            const teamTbody = document.getElementById('sumTeamTbody');
+            teamTbody.innerHTML = `
+                <tr><td>${pcp}</td><td>Primary Care Provider</td><td>937-555-0160</td></tr>
+                <tr><td>County Case Manager (BDDS)</td><td>Case Management</td><td>937-555-0103</td></tr>
+            `;
+            document.getElementById('sumTeamTab2').innerHTML = teamTbody.innerHTML;
+
+            // Close Modal
+            document.getElementById('hpAdmissionModal').style.display = 'none';
+        }
+
+        // Refined Dynamic Chart Search
+        function handleChartSearch(query) {
+            const dropdown = document.getElementById('chartSearchResultsDropdown');
+            const q = query.trim().toLowerCase();
+            if (!q || q.length < 2) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                return;
+            }
+
+            let matches = [];
+            const sections = [
+                { id: 'summary-view', name: 'Summary & Overview', view: 'summary-view' },
+                { id: 'mar-view', name: 'Medication Administration Record (MAR)', view: 'mar-view' },
+                { id: 'flowsheets-view', name: 'Clinical Flowsheets', view: 'flowsheets-view' },
+                { id: 'notes-view', name: 'Clinical Notes', view: 'notes-view' },
+                { id: 'manage-orders-view', name: 'Orders & eMAR', view: 'manage-orders-view' }
+            ];
+
+            sections.forEach(sec => {
+                const el = document.getElementById(sec.id);
+                if (el && el.innerText.toLowerCase().includes(q)) {
+                    matches.push({ category: sec.name, title: `Found "${query}" in ${sec.name}`, view: sec.view });
+                }
+            });
+
+            if (matches.length === 0) {
+                matches.push({ category: 'Chart Search', title: `No matching records found for "${query}"`, view: 'summary-view' });
+            }
+
+            dropdown.innerHTML = '';
+            matches.forEach(res => {
+                const item = document.createElement('div');
+                item.className = 'search-result-item';
+                item.innerHTML = `<div style="font-weight:700; color:#1e3a8a;">[${res.category}] ${res.title}</div><div style="font-size:10px; color:#64748b;">Click to jump directly to section</div>`;
+                item.onclick = () => {
+                    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.workspace-view').forEach(v => v.classList.remove('active'));
+                    
+                    const targetTab = Array.from(document.querySelectorAll('.chart-tab')).find(t => t.getAttribute('data-view') === res.view);
+                    if (targetTab) targetTab.classList.add('active');
+                    document.getElementById(res.view).classList.add('active');
+
+                    dropdown.style.display = 'none';
+                    document.getElementById('globalChartSearchInput').value = '';
+                };
+                dropdown.appendChild(item);
+            });
+
+            dropdown.style.display = 'block';
+        }
+
+        document.addEventListener('click', (e) => {
+            const searchContainer = document.querySelector('.search-container');
+            if (!searchContainer.contains(e.target)) {
+                document.getElementById('chartSearchResultsDropdown').style.display = 'none';
+            }
+        });
+
+        function getCurrentEasternTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour12: false, hour: '2-digit', minute: '2-digit' });
+            return timeStr.replace(':', '');
+        }
+
+        function getCurrentEasternDate() {
+            const now = new Date();
+            return now.toLocaleDateString("en-US", { timeZone: "America/New_York", month: '2-digit', day: '2-digit', year: 'numeric' });
+        }
+
+        function getCurrentEasternDateTimeFormatted() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString("en-US", { timeZone: "America/New_York", month: '2-digit', day: '2-digit', year: '2-digit' });
+            const timeStr = now.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour12: false, hour: '2-digit', minute: '2-digit' }).replace(':', '');
+            return `${dateStr} ${timeStr}`;
+        }
+
+        document.getElementById('topBarTimestampDisplay').innerText = `Enterprise - SCLS RESIDENTIAL - ACTIVE CLIENT - DODD WAIVER (${getCurrentEasternDateTimeFormatted()})`;
+        document.getElementById('sidebarTimestampDisplay').innerText = getCurrentEasternDateTimeFormatted();
+
+        // Accessibility & Theme Customization Suite Functions
+        const accessibilityModal = document.getElementById('accessibilityModal');
+        function openAccessibilityModal() { accessibilityModal.style.display = 'flex'; }
+        function closeAccessibilityModal() { accessibilityModal.style.display = 'none'; }
+
+        function switchAccessTab(tabKey) {
+            document.getElementById('accessProfileTab').style.display = (tabKey === 'profile') ? 'block' : 'none';
+            document.getElementById('accessPresetsTab').style.display = (tabKey === 'presets') ? 'block' : 'none';
+            document.getElementById('accessCustomTab').style.display = (tabKey === 'custom') ? 'block' : 'none';
+            document.getElementById('accessCursorTab').style.display = (tabKey === 'cursor') ? 'block' : 'none';
+            
+            document.getElementById('tabProfileBtn').classList.toggle('active', tabKey === 'profile');
+            document.getElementById('tabPresetBtn').classList.toggle('active', tabKey === 'presets');
+            document.getElementById('tabCustomBtn').classList.toggle('active', tabKey === 'custom');
+            document.getElementById('tabCursorBtn').classList.toggle('active', tabKey === 'cursor');
+        }
+
+        function applyPresetTheme(themeName) {
+            const root = document.documentElement;
+            if (themeName === 'classicRed') {
+                root.style.setProperty('--title-bg', 'linear-gradient(135deg, #050811 0%, #0f172a 100%)');
+                root.style.setProperty('--toolbar-bg', '#990000');
+                root.style.setProperty('--main-bg', '#f0f4f8');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#000000');
+            } else if (themeName === 'clinicalDark') {
+                root.style.setProperty('--title-bg', '#020617');
+                root.style.setProperty('--toolbar-bg', '#1e293b');
+                root.style.setProperty('--main-bg', '#0f172a');
+                root.style.setProperty('--workspace-card-bg', '#1e293b');
+                root.style.setProperty('--text-color', '#f8fafc');
+            } else if (themeName === 'midnightSlate') {
+                root.style.setProperty('--title-bg', '#1e293b');
+                root.style.setProperty('--toolbar-bg', '#334155');
+                root.style.setProperty('--main-bg', '#475569');
+                root.style.setProperty('--workspace-card-bg', '#1e293b');
+                root.style.setProperty('--text-color', '#f1f5f9');
+            } else if (themeName === 'emeraldHealth') {
+                root.style.setProperty('--title-bg', '#064e3b');
+                root.style.setProperty('--toolbar-bg', '#047857');
+                root.style.setProperty('--main-bg', '#ecfdf5');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#064e3b');
+            } else if (themeName === 'oceanBlue') {
+                root.style.setProperty('--title-bg', '#1e40af');
+                root.style.setProperty('--toolbar-bg', '#2563eb');
+                root.style.setProperty('--main-bg', '#eff6ff');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#1e3a8a');
+            } else if (themeName === 'warmSepia') {
+                root.style.setProperty('--title-bg', '#78350f');
+                root.style.setProperty('--toolbar-bg', '#b45309');
+                root.style.setProperty('--main-bg', '#fef3c7');
+                root.style.setProperty('--workspace-card-bg', '#fffbeb');
+                root.style.setProperty('--text-color', '#451a03');
+            } else if (themeName === 'epicTeal') {
+                root.style.setProperty('--title-bg', '#0f766e');
+                root.style.setProperty('--toolbar-bg', '#115e59');
+                root.style.setProperty('--main-bg', '#f0fdfa');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#134e4a');
+            } else if (themeName === 'monoHighContrast') {
+                root.style.setProperty('--title-bg', '#000000');
+                root.style.setProperty('--toolbar-bg', '#333333');
+                root.style.setProperty('--main-bg', '#ffffff');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#000000');
+            } else if (themeName === 'colorblindSafe') {
+                root.style.setProperty('--title-bg', '#1d4ed8');
+                root.style.setProperty('--toolbar-bg', '#b45309');
+                root.style.setProperty('--main-bg', '#fef9c3');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#1e293b');
+            } else if (themeName === 'vibrantLavender') {
+                root.style.setProperty('--title-bg', '#581c87');
+                root.style.setProperty('--toolbar-bg', '#7e22ce');
+                root.style.setProperty('--main-bg', '#f3e8ff');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#3b0764');
+            } else if (themeName === 'crimsonNight') {
+                root.style.setProperty('--title-bg', '#450a0a');
+                root.style.setProperty('--toolbar-bg', '#7f1d1d');
+                root.style.setProperty('--main-bg', '#1c1917');
+                root.style.setProperty('--workspace-card-bg', '#292524');
+                root.style.setProperty('--text-color', '#fef2f2');
+            } else if (themeName === 'arcticFrost') {
+                root.style.setProperty('--title-bg', '#0284c7');
+                root.style.setProperty('--toolbar-bg', '#0369a1');
+                root.style.setProperty('--main-bg', '#f0f9ff');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#0c4a6e');
+            } else if (themeName === 'goldenSunrise') {
+                root.style.setProperty('--title-bg', '#b45309');
+                root.style.setProperty('--toolbar-bg', '#d97706');
+                root.style.setProperty('--main-bg', '#fffbeb');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#78350f');
+            } else if (themeName === 'cyberpunkNeon') {
+                root.style.setProperty('--title-bg', '#31103f');
+                root.style.setProperty('--toolbar-bg', '#4c1d95');
+                root.style.setProperty('--main-bg', '#09090b');
+                root.style.setProperty('--workspace-card-bg', '#18181b');
+                root.style.setProperty('--text-color', '#38bdf8');
+            } else if (themeName === 'retroVintage') {
+                root.style.setProperty('--title-bg', '#365314');
+                root.style.setProperty('--toolbar-bg', '#4d7c0f');
+                root.style.setProperty('--main-bg', '#f7fee7');
+                root.style.setProperty('--workspace-card-bg', '#ecfccb');
+                root.style.setProperty('--text-color', '#1a2e05');
+            } else if (themeName === 'steelGray') {
+                root.style.setProperty('--title-bg', '#334155');
+                root.style.setProperty('--toolbar-bg', '#475569');
+                root.style.setProperty('--main-bg', '#e2e8f0');
+                root.style.setProperty('--workspace-card-bg', '#f1f5f9');
+                root.style.setProperty('--text-color', '#0f172a');
+            } else if (themeName === 'coralSunset') {
+                root.style.setProperty('--title-bg', '#9a3412');
+                root.style.setProperty('--toolbar-bg', '#c2410c');
+                root.style.setProperty('--main-bg', '#fff7ed');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#7c2d12');
+            } else if (themeName === 'mintFresh') {
+                root.style.setProperty('--title-bg', '#134e4a');
+                root.style.setProperty('--toolbar-bg', '#0f766e');
+                root.style.setProperty('--main-bg', '#f0fdfa');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#042f2e');
+            } else if (themeName === 'royalAmethyst') {
+                root.style.setProperty('--title-bg', '#3b0764');
+                root.style.setProperty('--toolbar-bg', '#581c87');
+                root.style.setProperty('--main-bg', '#faf5ff');
+                root.style.setProperty('--workspace-card-bg', '#ffffff');
+                root.style.setProperty('--text-color', '#4c1d95');
+            } else if (themeName === 'solarizedLight') {
+                root.style.setProperty('--title-bg', '#073642');
+                root.style.setProperty('--toolbar-bg', '#268bd2');
+                root.style.setProperty('--main-bg', '#eee8d5');
+                root.style.setProperty('--workspace-card-bg', '#fdf6e3');
+                root.style.setProperty('--text-color', '#657b83');
+            }
+            closeAccessibilityModal();
+        }
+
+        function applyCustomColors() {
+            const root = document.documentElement;
+            root.style.setProperty('--title-bg', document.getElementById('customTitleColor').value);
+            root.style.setProperty('--toolbar-bg', document.getElementById('customToolbarColor').value);
+            root.style.setProperty('--main-bg', document.getElementById('customBgColor').value);
+            root.style.setProperty('--text-color', document.getElementById('customTextColor').value);
+            closeAccessibilityModal();
+        }
+
+        function applyCursorStyle(cursorVal) {
+            document.body.style.cursor = cursorVal;
+        }
+
+        function applyFontSize(sizeVal) {
+            document.documentElement.style.setProperty('--base-font-size', sizeVal);
+        }
+
+        // 1. Main Chart Tab Switching
+        const mainTabs = document.querySelectorAll('.chart-tab');
+        const workspaceViews = document.querySelectorAll('.workspace-view');
+
+        mainTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                mainTabs.forEach(t => t.classList.remove('active'));
+                workspaceViews.forEach(v => v.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const viewId = tab.getAttribute('data-view');
+                document.getElementById(viewId).classList.add('active');
+
+                if (viewId === 'mar-view') {
+                    triggerMarPopup();
+                }
+            });
+        });
+
+        function triggerMarPopup() {
+            document.getElementById('overdueNotificationModal').style.display = 'flex';
+        }
+
+        function closeOverdueNotification() {
+            document.getElementById('overdueNotificationModal').style.display = 'none';
+        }
+
+        // 2. Summary Sub-tab Switching
+        const summarySubTabs = document.querySelectorAll('.summary-sub-tab');
+        const sumSections = document.querySelectorAll('.sum-content-section');
+
+        summarySubTabs.forEach(subtab => {
+            subtab.addEventListener('click', () => {
+                summarySubTabs.forEach(st => st.classList.remove('active'));
+                sumSections.forEach(sec => sec.style.display = 'none');
+
+                subtab.classList.add('active');
+                const targetId = subtab.getAttribute('data-sumtab');
+                document.getElementById(targetId).style.display = 'block';
+            });
+        });
+
+        // 3. Profile Photo Upload
+        const avatarBox = document.getElementById('avatarBox');
+        const photoUpload = document.getElementById('photoUpload');
+        const avatarDisplay = document.getElementById('avatarDisplay');
+
+        avatarBox.addEventListener('click', () => photoUpload.click());
+        photoUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    avatarDisplay.innerHTML = `<img src="${evt.target.result}" style="width:100%; height:100%; object-fit:cover;">`;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 4. Flowsheet Dataset & Normal Ranges Tooltips Mapping
+        const flowsheetData = {
+            vitals: [
+                { header: "Vitals & Health Monitoring" },
+                { row: "Temp (°F)", vals: ["", "", "", "", "", ""], isNumeric: true, normalRange: "Normal Range: 97.8°F - 99.1°F" },
+                { row: "Temp Source", vals: ["", "", "", "", "", ""], normalRange: "Select administration route (Oral, Tympanic, Axillary, Temporal)" },
+                { row: "Pulse (bpm)", vals: ["", "", "", "", "", ""], isNumeric: true, normalRange: "Normal Range: 60 - 100 bpm" },
+                { row: "Resp (breaths/min)", vals: ["", "", "", "", "", ""], isNumeric: true, normalRange: "Normal Range: 12 - 20 breaths/min" },
+                { row: "BP (mmHg)", vals: ["", "", "", "", "", ""], isNumeric: true, normalRange: "Normal Range: Less than 120/80 mmHg" },
+                { row: "Blood Glucose (mg/dL)", vals: ["", "", "", "", "", ""], isNumeric: true, normalRange: "Target Range: 80 - 180 mg/dL" }
+            ],
+            adls: [
+                { header: "ADLs & Personal Care Support" },
+                { row: "Bathing / Showering (Bathing Assistance)", vals: ["", "", "", "", "", ""], normalRange: "Evaluate assistance level required (Independent, Prompted, Assist)" },
+                { row: "Dressing Assistance", vals: ["", "", "", "", "", ""], normalRange: "Evaluate dressing independence and adaptive equipment" },
+                { row: "Grooming & Oral Care", vals: ["", "", "", "", "", ""], normalRange: "Monitor daily hygiene support and prompting" },
+                { row: "Toileting Support", vals: ["", "", "", "", "", ""], normalRange: "Record continence and transfer assistance level" }
+            ],
+            meds: [
+                { header: "Medication Administration (eMAR)" },
+                { row: "Scheduled Meds Administered (AM)", vals: ["", "", "", "", "", ""], normalRange: "Verify eMAR orders prior to administration" },
+                { row: "Swallow & Prompt Supervision", vals: ["", "", "", "", "", ""], normalRange: "Monitor for dysphagia, coughing, or choking" },
+                { row: "PRN Medication Review", vals: ["", "", "", "", "", ""], normalRange: "Evaluate indication and effectiveness within 30-60 mins" },
+                { row: "Medication Refusals / Omissions", vals: ["", "", "", "", "", ""], normalRange: "Document reason and notify RN/provider if recurring" }
+            ],
+            meals: [
+                { header: "Meal & Dysphagia Precautions" },
+                { row: "Diet Texture (Soft & Bite-Sized)", vals: ["", "", "", "", "", ""], normalRange: "Verify prescribed texture per speech therapy order" },
+                { row: "Liquid Consistency (Thin Liquids)", vals: ["", "", "", "", "", ""], normalRange: "Ensure correct liquid thickness (Thin, Nectar, Honey)" },
+                { row: "Upright Positioning (30 Min Post-Meal)", vals: ["", "", "", "", "", ""], normalRange: "Maintain upright 90 degrees during and 30 mins after meals" },
+                { row: "Pacing & Small Bites Supervision", vals: ["", "", "", "", "", ""], normalRange: "One bite at a time, check clear swallow before next bite" }
+            ],
+            seizure: [
+                { header: "Seizure & Neurological Check" },
+                { row: "Seizure Observation", vals: ["", "", "", "", "", ""], normalRange: "Note onset, duration, motor activity, and post-state" },
+                { row: "Postictal Recovery Status", vals: ["", "", "", "", "", ""], normalRange: "Monitor orientation, lethargy, and vital stability" },
+                { row: "Rescue Med Preparedness (Midazolam)", vals: ["", "", "", "", "", ""], normalRange: "Ensure rescue medication is readily accessible per protocol" }
+            ],
+            behavior: [
+                { header: "Behavioral & Elopement Support" },
+                { row: "Emotional Baseline / Mood", vals: ["", "", "", "", "", ""], normalRange: "Observe affect, agitation level, or signs of anxiety" },
+                { row: "Triggers / Antecedents Observed", vals: ["", "", "", "", "", ""], normalRange: "Identify environmental or situational stressors" },
+                { row: "De-escalation / Proactive Support Used", vals: ["", "", "", "", "", ""], normalRange: "Document effective redirection and calming strategies" }
+            ],
+            bowel: [
+                { header: "Bowel & Elimination Protocol" },
+                { row: "Bowel Movement Recorded", vals: ["", "", "", "", "", ""], normalRange: "Track frequency, consistency, and color per Bristol scale" },
+                { row: "Fluid Intake Encouragement", vals: ["", "", "", "", "", ""], normalRange: "Ensure adequate daily hydration per care plan" }
+            ],
+            community: [
+                { header: "Community Outings & Transport" },
+                { row: "Community Outing / Activity", vals: ["", "", "", "", "", ""], normalRange: "Verify supervision ratio and destination safety plan" },
+                { row: "Vehicle Seat Belt Secured", vals: ["", "", "", "", "", ""], normalRange: "Ensure proper securement prior to transport vehicle movement" }
+            ],
+            isp: [
+                { header: "ISP Goal Skill-Building" },
+                { row: "Independent Task Prompting", vals: ["", "", "", "", "", ""], normalRange: "Record progress toward individual options waiver outcomes" },
+                { row: "Money Management Support", vals: ["", "", "", "", "", ""], normalRange: "Log budget tracking and transaction assistance" }
+            ]
+        };
+
+        let taskOptionsMap = {
+            "temp source": ["Oral", "Tympanic", "Axillary", "Temporal", "Refused"],
+            "bathing / showering (bathing assistance)": ["Prompted", "Independent", "Partial Assist", "Total Assist", "Refused", "Completed"],
+            "dressing assistance": ["Independent", "Prompting", "Partial Assist", "Total Assist", "Refused", "Completed"],
+            "grooming & oral care": ["Prompted", "Independent", "Partial Assist", "Total Assist", "Refused", "Completed"],
+            "toileting support": ["Independent", "Prompting", "Partial Assist", "Total Assist", "Refused", "Completed"],
+            "scheduled meds administered (am)": ["Given (8:00 AM)", "Given (5:00 PM)", "Held", "Refused", "Omitted"],
+            "swallow & prompt supervision": ["Completed", "Supervised", "Assisted", "Refused"],
+            "prn medication review": ["None", "Acetaminophen given", "Refused"],
+            "medication refusals / omissions": ["None", "Refused", "Omitted"],
+            "diet texture (soft & bite-sized)": ["Verified (Soft)", "Modified", "Refused"],
+            "liquid consistency (thin liquids)": ["Verified (Thin)", "Modified", "Refused"],
+            "upright positioning (30 min post-meal)": ["Maintained (30 min)", "Not Maintained", "Refused"],
+            "pacing & small bites supervision": ["Completed", "Supervised", "Refused"],
+            "seizure observation": ["None", "Generalized Tonic-Clonic", "Focal", "Rescue Med Given", "Refused"],
+            "postictal recovery status": ["Baseline", "Fatigued", "Confused", "Resting"],
+            "rescue med preparedness (midazolam)": ["Ready", "Administered", "Not Required"],
+            "emotional baseline / mood": ["Calm", "Anxious", "Agitated", "Withdrawn", "Cooperative"],
+            "triggers / antecedents observed": ["None", "Loud Noise", "Routine Change", "Rushed"],
+            "de-escalation / proactive support used": ["Not Needed", "Calm Reassurance", "Quiet Space Offered", "Redirected"],
+            "bowel movement recorded": ["Yes (Normal)", "Loose", "Constipated", "None", "Refused"],
+            "fluid intake encouragement": ["Encouraged", "Offered & Consumed", "Refused", "Completed"],
+            "community outing / activity": ["Completed", "Rescheduled", "Refused", "N/A"],
+            "vehicle seat belt secured": ["Secured", "Refused", "N/A"],
+            "independent task prompting": ["Completed", "Prompted", "Assisted", "Refused"],
+            "money management support": ["Reviewed", "Assisted", "Refused", "N/A"],
+            "sleep log": ["Sleeping", "Awake", "Restless", "Refused"]
+        };
+
+        function getOptionsForRow(rowName) {
+            const key = rowName.toLowerCase().trim();
+            if (taskOptionsMap[key]) {
+                return taskOptionsMap[key];
+            }
+            for (let k in taskOptionsMap) {
+                if (key.includes(k) || k.includes(key)) {
+                    return taskOptionsMap[k];
+                }
+            }
+            return ["Independent", "Prompting", "Partial Assist", "Total Assist", "Refused", "Completed", "N/A"];
+        }
+
+        const flowsheetTbody = document.getElementById('flowsheetTbody');
+        const activeFilterName = document.getElementById('activeFlowsheetFilterName');
+        let activeCell = null;
+
+        function renderFlowsheet(category) {
+            flowsheetTbody.innerHTML = '';
+            let categoriesToRender = [];
+
+            if (category === 'all') {
+                categoriesToRender = Object.keys(flowsheetData);
+                activeFilterName.innerText = "DSP Daily Documentation - Show All Tasks";
+            } else {
+                categoriesToRender = [category];
+                activeFilterName.innerText = "DSP Daily Documentation - " + document.querySelector(`[data-category="${category}"] span`).innerText;
+            }
+
+            categoriesToRender.forEach(catKey => {
+                const group = flowsheetData[catKey];
+                const headerTr = document.createElement('tr');
+                headerTr.className = 'row-header';
+                headerTr.innerHTML = `<td>${group[0].header}</td>` + '<td class="chartable-cell"></td>'.repeat(document.getElementById('headerTimeRow').cells.length - 2) + '<td></td>';
+                flowsheetTbody.appendChild(headerTr);
+
+                for (let i = 1; i < group.length; i++) {
+                    const item = group[i];
+                    const tr = document.createElement('tr');
+                    
+                    const tooltipAttr = item.normalRange ? ` title="${item.normalRange}" style="cursor: help;"` : '';
+                    const labelDisplay = item.normalRange ? `${item.row} ℹ️` : item.row;
+
+                    let cellsHtml = `<td class="sub-row-header"${tooltipAttr}>${labelDisplay}</td>`;
+                    const timeColsCount = document.getElementById('headerTimeRow').cells.length - 2;
+                    for (let j = 0; j < timeColsCount; j++) {
+                        const val = item.vals[j] || '';
+                        const isHighlightCol = document.getElementById('headerTimeRow').cells[j + 1].classList.contains('highlight-col');
+                        const cellClass = isHighlightCol ? 'highlight-col chartable-cell' : 'chartable-cell';
+                        cellsHtml += `<td class="${cellClass}" contenteditable="true" data-row="${item.row}" data-numeric="${item.isNumeric || false}">${val}</td>`;
+                    }
+                    cellsHtml += `<td></td>`;
+                    tr.innerHTML = cellsHtml;
+                    flowsheetTbody.appendChild(tr);
+                }
+            });
+        }
+
+        renderFlowsheet('all');
+
+        const treeMenu = document.getElementById('flowsheetTreeMenu');
+        treeMenu.addEventListener('click', (e) => {
+            const treeItem = e.target.closest('.tree-item');
+            if (treeItem) {
+                document.querySelectorAll('#flowsheetTreeMenu .tree-item').forEach(el => el.classList.remove('selected'));
+                treeItem.classList.add('selected');
+                const cat = treeItem.getAttribute('data-category');
+                renderFlowsheet(cat);
+            }
+        });
+
+        const flowsheetTable = document.getElementById('flowsheetTable');
+        const selectorHeaderTitle = document.getElementById('selectorHeaderTitle');
+        const cellCommentInput = document.getElementById('cellCommentInput');
+        const valueOptionsContainer = document.getElementById('valueOptionsContainer');
+        const floatingPopover = document.getElementById('floatingPopover');
+        const popoverTitle = document.getElementById('popoverTitle');
+        const popoverOptionsContainer = document.getElementById('popoverOptionsContainer');
+        const popoverCommentInput = document.getElementById('popoverCommentInput');
+
+        function populateValueSelector(rowName, isNumeric) {
+            selectorHeaderTitle.innerText = rowName;
+            valueOptionsContainer.innerHTML = '';
+            popoverTitle.innerText = rowName;
+            popoverOptionsContainer.innerHTML = '';
+
+            if (isNumeric === "true" || rowName.toLowerCase().includes('temp (°f)') || rowName.toLowerCase().includes('pulse') || rowName.toLowerCase().includes('resp') || rowName.toLowerCase().includes('bp') || rowName.toLowerCase().includes('glucose')) {
+                const infoNote = document.createElement('div');
+                infoNote.style.cssText = 'color: #1e3a8a; background: #eff6ff; border: 1px solid #bfdbfe; padding: 10px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 11.5px;';
+                infoNote.innerText = '⌨️ Direct keyboard typing enabled. Type numeric value directly.';
+                valueOptionsContainer.appendChild(infoNote.cloneNode(true));
+                popoverOptionsContainer.appendChild(infoNote);
+            } else {
+                const options = getOptionsForRow(rowName);
+                options.forEach(opt => {
+                    const div = document.createElement('div');
+                    div.className = opt.toLowerCase().includes('refused') ? 'value-option-item refused' : 'value-option-item';
+                    div.innerText = opt;
+                    div.onclick = () => applySidebarValue(opt);
+                    valueOptionsContainer.appendChild(div.cloneNode(true));
+
+                    const popDiv = div.cloneNode(true);
+                    popDiv.onclick = () => applyPopoverValue(opt);
+                    popoverOptionsContainer.appendChild(popDiv);
+                });
+            }
+        }
+
+        flowsheetTable.addEventListener('click', (e) => {
+            if (e.target.classList.contains('chartable-cell')) {
+                document.querySelectorAll('.chartable-cell').forEach(c => c.style.outline = '');
+                activeCell = e.target;
+                activeCell.style.outline = '2px solid #2563eb';
+
+                const rowName = activeCell.getAttribute('data-row') || 'Selected Cell';
+                const isNumeric = activeCell.getAttribute('data-numeric') || 'false';
+                
+                const workspace = document.getElementById('mainWorkspace');
+                const isClosed = workspace.classList.contains('sidebar-closed');
+
+                if (isClosed) {
+                    populateValueSelector(rowName, isNumeric);
+                    popoverCommentInput.value = activeCell.dataset.comment || '';
+                    
+                    const rect = activeCell.getBoundingClientRect();
+                    const popoverHeight = 260;
+                    const popoverWidth = 260;
+                    
+                    let topPos = rect.bottom + 4;
+                    if (topPos + popoverHeight > window.innerHeight) {
+                        topPos = Math.max(10, rect.top - popoverHeight - 4);
+                    }
+                    let leftPos = Math.min(rect.left, window.innerWidth - popoverWidth - 10);
+
+                    floatingPopover.style.top = topPos + 'px';
+                    floatingPopover.style.left = leftPos + 'px';
+                    floatingPopover.style.display = 'block';
+                } else {
+                    populateValueSelector(rowName, isNumeric);
+                    cellCommentInput.value = activeCell.dataset.comment || '';
+                    floatingPopover.style.display = 'none';
+                }
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!floatingPopover.contains(e.target) && !e.target.classList.contains('chartable-cell') && !document.getElementById('rightSidebar').contains(e.target)) {
+                floatingPopover.style.display = 'none';
+            }
+        });
+
+        window.hideFloatingPopover = function() {
+            floatingPopover.style.display = 'none';
+        }
+
+        window.applySidebarValue = function(val) {
+            if (activeCell) {
+                activeCell.innerText = val;
+                activeCell.style.backgroundColor = "#e6f2ff";
+            }
+        };
+
+        window.applyPopoverValue = function(val) {
+            if (activeCell) {
+                activeCell.innerText = val;
+                activeCell.style.backgroundColor = "#e6f2ff";
+                floatingPopover.style.display = 'none';
+            }
+        };
+
+        document.getElementById('addNewOptionBtn').addEventListener('click', () => {
+            if (!activeCell) {
+                alert("Please click a flowsheet cell first.");
+                return;
+            }
+            const newOpt = document.getElementById('newOptionInput').value.trim();
+            if (!newOpt) return;
+            const rowKey = activeCell.getAttribute('data-row').toLowerCase().trim();
+            if (!taskOptionsMap[rowKey]) {
+                taskOptionsMap[rowKey] = [];
+            }
+            if (!taskOptionsMap[rowKey].includes(newOpt)) {
+                taskOptionsMap[rowKey].push(newOpt);
+            }
+            document.getElementById('newOptionInput').value = '';
+            populateValueSelector(activeCell.getAttribute('data-row'), activeCell.getAttribute('data-numeric'));
+        });
+
+        document.getElementById('saveCellCommentBtn').addEventListener('click', () => {
+            if (activeCell) {
+                const commentText = cellCommentInput.value.trim();
+                activeCell.dataset.comment = commentText;
+                if (commentText) {
+                    activeCell.classList.add('has-comment');
+                } else {
+                    activeCell.classList.remove('has-comment');
+                }
+            } else {
+                alert("Please select a flowsheet cell first.");
+            }
+        });
+
+        popoverCommentInput.addEventListener('input', (e) => {
+            if (activeCell) {
+                activeCell.dataset.comment = e.target.value;
+                if (e.target.value.trim()) activeCell.classList.add('has-comment');
+                else activeCell.classList.remove('has-comment');
+            }
+        });
+
+        const sidebarValueSearch = document.getElementById('sidebarValueSearch');
+        sidebarValueSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('#valueOptionsContainer .value-option-item');
+            items.forEach(item => {
+                if (item.innerText.toLowerCase().includes(query)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        const mainWorkspace = document.getElementById('mainWorkspace');
+        let isSidebarOpen = true;
+
+        sidebarToggleBtn.addEventListener('click', () => {
+            isSidebarOpen = !isSidebarOpen;
+            if (isSidebarOpen) {
+                mainWorkspace.classList.remove('sidebar-closed');
+                sidebarToggleBtn.innerText = '◀';
+                floatingPopover.style.display = 'none';
+            } else {
+                mainWorkspace.classList.add('sidebar-closed');
+                sidebarToggleBtn.innerText = '▶';
+            }
+        });
+
+        function showCustomConfirm(callback) {
+            const modal = document.getElementById('customConfirmModal');
+            modal.style.display = 'flex';
+            
+            const yesBtn = document.getElementById('confirmYesBtn');
+            const noBtn = document.getElementById('confirmNoBtn');
+
+            const newYes = yesBtn.cloneNode(true);
+            const newNo = noBtn.cloneNode(true);
+            yesBtn.parentNode.replaceChild(newYes, yesBtn);
+            noBtn.parentNode.replaceChild(newNo, noBtn);
+
+            document.getElementById('confirmYesBtn').addEventListener('click', () => {
+                modal.style.display = 'none';
+                callback(true);
+            });
+            document.getElementById('confirmNoBtn').addEventListener('click', () => {
+                modal.style.display = 'none';
+                callback(false);
+            });
+        }
+
+        window.scrollTimeline = function(direction) {
+            const container = document.getElementById('flowsheetGridContainer');
+            if (direction === 'left') {
+                container.scrollBy({ left: -150, behavior: 'smooth' });
+            } else {
+                container.scrollBy({ left: 150, behavior: 'smooth' });
+            }
+        };
+
+        document.getElementById('addColBtn').addEventListener('click', () => {
+            const currentNYTime = getCurrentEasternTime();
+            addNewColumnAndFocus(currentNYTime);
+        });
+
+        document.getElementById('insertColBtn').addEventListener('click', () => {
+            const customDate = prompt("Enter date (MM/DD/YYYY):", getCurrentEasternDate());
+            if (!customDate) return;
+            const customTime = prompt("Enter timestamp (HHMM):", "1500");
+            if (!customTime) return;
+            addNewColumnAndFocus(customTime, customDate);
+        });
+
+        function addNewColumnAndFocus(newTime, customDate = null) {
+            const headerTimeRow = document.getElementById('headerTimeRow');
+            
+            let existingTh = null;
+            Array.from(headerTimeRow.cells).forEach(th => {
+                if (th.getAttribute('data-time') === newTime) {
+                    existingTh = th;
+                }
+            });
+
+            if (existingTh) {
+                Array.from(headerTimeRow.cells).forEach(th => th.classList.remove('highlight-col'));
+                existingTh.classList.add('highlight-col');
+                
+                const index = Array.from(headerTimeRow.cells).indexOf(existingTh);
+                document.querySelectorAll('#flowsheetTable tbody tr').forEach(row => {
+                    Array.from(row.cells).forEach((td, idx) => {
+                        if (idx === index) {
+                            td.classList.add('highlight-col');
+                        } else if (td.classList.contains('chartable-cell') || td.classList.contains('highlight-col')) {
+                            td.classList.remove('highlight-col');
+                        }
+                    });
+                });
+
+                const container = document.getElementById('flowsheetGridContainer');
+                container.scrollTo({ left: existingTh.offsetLeft - 300, behavior: 'smooth' });
+                return;
+            }
+
+            Array.from(headerTimeRow.cells).forEach(th => th.classList.remove('highlight-col'));
+
+            const thTime = document.createElement('th');
+            thTime.style.width = '80px';
+            thTime.className = 'highlight-col';
+            thTime.innerText = newTime;
+            thTime.setAttribute('data-time', newTime);
+            headerTimeRow.insertBefore(thTime, headerTimeRow.cells[headerTimeRow.cells.length - 1]);
+
+            const dateTh = document.getElementById('headerDateRow').cells[1];
+            if (dateTh) {
+                const currentCols = parseInt(dateTh.getAttribute('colspan')) || 6;
+                dateTh.setAttribute('colspan', currentCols + 1);
+                if (customDate) {
+                    dateTh.innerText = `${customDate} (Custom Entry)`;
+                }
+            }
+
+            const tbodyRows = document.querySelectorAll('#flowsheetTable tbody tr');
+            tbodyRows.forEach(row => {
+                if (!row.classList.contains('row-header')) {
+                    const newTd = document.createElement('td');
+                    newTd.className = 'highlight-col chartable-cell';
+                    newTd.setAttribute('contenteditable', 'true');
+                    const rowName = row.cells[0] ? row.cells[0].innerText : '';
+                    newTd.setAttribute('data-row', rowName);
+                    row.insertBefore(newTd, row.cells[row.cells.length - 1]);
+                } else {
+                    const newTd = document.createElement('td');
+                    newTd.className = 'highlight-col chartable-cell';
+                    row.insertBefore(newTd, row.cells[row.cells.length - 1]);
+                }
+            });
+
+            const container = document.getElementById('flowsheetGridContainer');
+            container.scrollTo({ left: container.scrollWidth, behavior: 'smooth' });
+        }
+
+        document.getElementById('addRowBtn').addEventListener('click', () => {
+            const rowName = prompt("Enter new Flowsheet Task Row Name (e.g. Sleep log):", "Sleep log");
+            if (!rowName) return;
+            const optionsInput = prompt("Enter default task options separated by commas (e.g. Sleeping, Awake, Restless, Refused):", "Sleeping, Awake, Restless, Refused");
+
+            if (optionsInput) {
+                taskOptionsMap[rowName.toLowerCase().trim()] = optionsInput.split(',').map(s => s.trim());
+            }
+
+            showCustomConfirm((isNumeric) => {
+                const tbody = flowsheetTable.querySelector('tbody');
+                const tr = document.createElement('tr');
+                const timeColsCount = document.getElementById('headerTimeRow').cells.length - 2;
+                tr.innerHTML = `<td class="sub-row-header" data-row="${rowName}" data-numeric="${isNumeric}">${rowName}</td>` + 
+                               `<td class="chartable-cell" contenteditable="true" data-row="${rowName}" data-numeric="${isNumeric}"></td>`.repeat(timeColsCount) + 
+                               '<td></td>';
+                tbody.appendChild(tr);
+            });
+        });
+
+        // 6. Fully Functional MAR Sub-Tab Filtering
+        window.filterMar = function(filterType) {
+            document.querySelectorAll('.mar-filter-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`[data-filter="${filterType}"]`).classList.add('active');
+
+            const medRows = document.querySelectorAll('.mar-med-row');
+            medRows.forEach(row => {
+                const type = row.getAttribute('data-type');
+                if (filterType === 'all') {
+                    row.style.display = 'block';
+                } else if (filterType === 'due') {
+                    const hasDueOrOverdue = row.querySelector('.mar-slot.due') || row.querySelector('.mar-slot.overdue');
+                    row.style.display = hasDueOrOverdue ? 'block' : 'none';
+                } else {
+                    row.style.display = (type === filterType) ? 'block' : 'none';
+                }
+            });
+        };
+
+        // 7. Interactive MAR Actions with Timestamp, Late Caution, and Over-Administration Warning
+        let activeMarSlot = null;
+        let selectedMarStatus = 'given';
+        const marActionModal = document.getElementById('marActionModal');
+        const overAdminModal = document.getElementById('overAdminModal');
+        const marModalMedInfo = document.getElementById('marModalMedInfo');
+        const marModalComment = document.getElementById('marModalComment');
+        const marModalTimestamp = document.getElementById('marModalTimestamp');
+        const marLateWarning = document.getElementById('marLateWarning');
+        let pendingMarStatusData = null;
+
+        window.openMarAction = function(slotElement, medName, timeSlot) {
+            activeMarSlot = slotElement;
+            marModalMedInfo.innerText = `Medication: ${medName} | Scheduled Slot: ${timeSlot}`;
+            marModalComment.value = slotElement.dataset.comment || '';
+            marModalTimestamp.value = getCurrentEasternTime();
+            
+            const scheduledHour = parseInt(timeSlot.substring(0, 2));
+            const currentHour = parseInt(getCurrentEasternTime().substring(0, 2));
+            if (currentHour > scheduledHour + 1) {
+                marLateWarning.style.display = 'block';
+                slotElement.classList.add('overdue');
+            } else {
+                marLateWarning.style.display = 'none';
+            }
+
+            marActionModal.style.display = 'flex';
+        };
+
+        window.closeMarModal = function() {
+            marActionModal.style.display = 'none';
+        };
+
+        window.cancelMarEntry = function() {
+            if (activeMarSlot) {
+                activeMarSlot.className = 'mar-slot';
+                activeMarSlot.innerText = '--';
+                activeMarSlot.removeAttribute('data-comment');
+                activeMarSlot.removeAttribute('data-timestamp');
+                activeMarSlot.classList.remove('has-comment');
+            }
+            closeMarModal();
+        };
+
+        window.setMarStatus = function(status) {
+            selectedMarStatus = status;
+            
+            if (status === 'given') {
+                const medRow = activeMarSlot.closest('.mar-med-row');
+                const freq = medRow.getAttribute('data-freq');
+                if (freq === 'BID') {
+                    let givenCount = 0;
+                    medRow.querySelectorAll('.mar-slot.given').forEach(s => {
+                        if (s !== activeMarSlot) givenCount++;
+                    });
+                    if (givenCount >= 2) {
+                        pendingMarStatusData = { status, timeText: marModalTimestamp.value.trim() || '0800' };
+                        closeMarModal();
+                        overAdminModal.style.display = 'flex';
+                        return;
+                    }
+                }
+            }
+            
+            executeMarStatusUpdate(status, marModalTimestamp.value.trim() || '1200');
+        };
+
+        function executeMarStatusUpdate(status, timeText) {
+            if (!activeMarSlot) return;
+            
+            activeMarSlot.classList.remove('given', 'held', 'refused', 'due', 'overdue');
+
+            if (status === 'given') {
+                activeMarSlot.classList.add('given');
+                activeMarSlot.innerText = `${timeText} Given`;
+            } else if (status === 'held') {
+                activeMarSlot.classList.add('held');
+                activeMarSlot.innerText = `${timeText} Held`;
+            } else if (status === 'refused') {
+                activeMarSlot.classList.add('refused');
+                activeMarSlot.innerText = `${timeText} Refused`;
+            } else if (status === 'due') {
+                activeMarSlot.classList.add('due');
+                activeMarSlot.innerText = `${timeText} Due`;
+            }
+
+            const comment = marModalComment.value.trim();
+            if (comment) {
+                activeMarSlot.dataset.comment = comment;
+                activeMarSlot.classList.add('has-comment');
+            } else {
+                activeMarSlot.removeAttribute('data-comment');
+                activeMarSlot.classList.remove('has-comment');
+            }
+
+            activeMarSlot.dataset.timestamp = timeText;
+            closeMarModal();
+        }
+
+        window.closeOverAdminModal = function(override) {
+            overAdminModal.style.display = 'none';
+            if (override && pendingMarStatusData) {
+                executeMarStatusUpdate(pendingMarStatusData.status, pendingMarStatusData.timeText);
+            }
+            pendingMarStatusData = null;
+        };
+
+        window.saveMarAction = function() {
+            setMarStatus(selectedMarStatus);
+        };
+
+        // 8. Functional Clinical Notes Workspace using Active User Profile
+        window.createNewNote = function() {
+            document.getElementById('noteTitleInput').value = "New Clinical Note";
+            document.getElementById('noteContentInput').value = "";
+        };
+
+        window.loadNote = function(timestamp, title, body) {
+            document.getElementById('noteTitleInput').value = title;
+            document.getElementById('noteContentInput').value = body;
+        };
+
+        window.insertTemplate = function(templateKey) {
+            const contentArea = document.getElementById('noteContentInput');
+            if (templateKey === 'routine') {
+                contentArea.value = "Shift Assessment:\n- General Appearance: Calm, cooperative, well-groomed.\n- Vital Signs: Stable within baseline limits.\n- Nutrition: Tolerated meals with appropriate dysphagia precautions (soft texture, upright positioning).\n- Behavior: No seizure activity or elopement risk behaviors noted.";
+            } else if (templateKey === 'incident') {
+                contentArea.value = "Incident Report:\n- Date/Time: \n- Description of Event: \n- Immediate Actions Taken: \n- Notifications (Supervisor / Guardian / Physician): ";
+            }
+        };
+
+        window.signAndFileNote = function() {
+            const title = document.getElementById('noteTitleInput').value;
+            const body = document.getElementById('noteContentInput').value;
+            if (!body.trim()) {
+                return;
+            }
+            const nowStr = getCurrentEasternDateTimeFormatted();
+            const listContainer = document.getElementById('notesListContainer');
+            
+            const newCard = document.createElement('div');
+            newCard.className = 'note-item-card';
+            newCard.onclick = () => loadNote(nowStr, title, body);
+            newCard.innerHTML = `
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 4px;">
+                    <div class="note-author-avatar" style="width: 28px; height: 28px; font-size: 12px; overflow:hidden;">${activeUserProfile.avatarHtml}</div>
+                    <div>
+                        <div style="font-weight: 700; color: #1e3a8a; font-size: 11.5px;">${title}</div>
+                        <div style="font-size: 10px; color: #64748b;">${activeUserProfile.fullName}, ${activeUserProfile.credentials}</div>
+                    </div>
+                </div>
+                <div style="font-size: 10px; color: #64748b;">${nowStr}</div>
+            `;
+            listContainer.insertBefore(newCard, listContainer.firstChild);
+        };
+
+        // Modal Follow-ups
+        const followupModal = document.getElementById('followupModal');
+        document.getElementById('openFollowupsBtn').addEventListener('click', () => {
+            // Open H&P Admission Form modal on clicking Upcoming appointments or let it open via admission workflow
+            openHpAdmissionModal();
+        });
+        document.getElementById('viewAllFollowups').addEventListener('click', () => followupModal.style.display = 'flex');
+        document.getElementById('closeModal').addEventListener('click', () => followupModal.style.display = 'none');
+        document.getElementById('saveFollowupsBtn').addEventListener('click', () => {
+            followupModal.style.display = 'none';
+        });
+
+        // 9. Maximize and Close Window Controls
+        const maxBtn = document.getElementById('maxBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        let isMaximized = false;
+
+        maxBtn.addEventListener('click', () => {
+            isMaximized = !isMaximized;
+            if (isMaximized) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                }
+                maxBtn.innerText = "🗗";
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+                maxBtn.innerText = "🗖";
+            }
+        });
+
+        closeBtn.addEventListener('click', () => {
+            if (confirm("Are you sure you want to close this client workspace?")) {
+                document.getElementById('appBody').innerHTML = '<div style="display:flex; height:100vh; justify-content:center; align-items:center; background:#1e293b; color:#fff; font-size:20px; font-weight:bold;">Spire Enterprise Workspace Closed. Session Ended.</div>';
+            }
+        });
+    </script>
+</body>
+</html>
