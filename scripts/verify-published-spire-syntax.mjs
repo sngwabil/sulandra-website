@@ -31,11 +31,11 @@ if(!unique.includes('assets/spire-chart-ready.js'))failures.push('spire.html doe
 if(!unique.includes('assets/spire-deep-link.js'))failures.push('spire.html does not load assets/spire-deep-link.js');
 if(!unique.includes('assets/spire-user-template-integration.js'))failures.push('SPIRE master-template runtime is not syntax-checked');
 if(!unique.includes('assets/spire-intake-isp-sleep-wiring.js'))failures.push('SPIRE intake/ISP/sleep wiring runtime is not syntax-checked');
-if(!page.includes('spire-home-care-redesign-loader.js?v=20260812-user-master-template-6'))failures.push('spire.html is not cache-busted to master-template generation 6');
+if(!page.includes('spire-home-care-redesign-loader.js?v=20260812-user-master-template-7'))failures.push('spire.html is not cache-busted to master-template generation 7');
 
 try{
   const wiring=await readFile(path.join(root,'assets/spire-intake-isp-sleep-wiring.js'),'utf8');
-  for(const marker of ['spireAdmissionHistoryTab','ISP Outcomes / Progress','Sleep / Wake','spire:flowsheet:preferred-group','SpireIntakeIspSleepWiring']){
+  for(const marker of ['20260812-spire-intake-isp-sleep-2','spireAdmissionHistoryTab','ISP Outcomes / Progress','Sleep / Wake','spire:flowsheet:preferred-group','SpireIntakeIspSleepWiring','button.hidden=true']){
     if(!wiring.includes(marker))failures.push(`SPIRE intake/ISP/sleep wiring missing ${marker}`);
   }
 }catch{failures.push('SPIRE intake/ISP/sleep wiring runtime is missing');}
