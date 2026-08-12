@@ -1,15 +1,15 @@
 (() => {
   'use strict';
-  // Keep the existing canonical SPIRE loader hook so Railway/static publication
-  // does not need another shell rewrite. The user-provided master template owns
-  // presentation while all existing SPIRE modules retain Railway API auth,
-  // company/service-home scope, PostgreSQL persistence and audit behavior.
-  const VERSION='20260812-user-master-template-8';
+  // Existing SPIRE modules continue to own auth, data, persistence and clinical
+  // behavior. These final assets make the approved workstation screenshot the
+  // authoritative visual/layout contract.
+  const VERSION='20260812-user-master-template-9';
   const css=[
     ['spireUserMasterTemplateStyle','/assets/spire-user-template-integration.css'],
     ['spireUserMasterTemplateLayoutFix','/assets/spire-user-template-layout-fix.css'],
     ['spireUserMasterTemplateFinalLock','/assets/spire-user-template-final-lock.css'],
     ['spireIntakeIspSleepWiringStyle','/assets/spire-intake-isp-sleep-wiring.css'],
+    ['spireReferenceScreenshotLockStyle','/assets/spire-reference-screenshot-lock.css'],
   ];
   for(const [id,href] of css){
     if(document.getElementById(id))continue;
@@ -19,6 +19,7 @@
     ['spireUserMasterTemplateRuntime','/assets/spire-user-template-integration.js'],
     ['spireChartReviewOwnershipRuntime','/assets/spire-chart-review-ownership.js'],
     ['spireIntakeIspSleepWiringRuntime','/assets/spire-intake-isp-sleep-wiring.js'],
+    ['spireReferenceScreenshotLockRuntime','/assets/spire-reference-screenshot-lock.js'],
   ];
   for(const [id,src] of scripts){
     if(document.getElementById(id))continue;
