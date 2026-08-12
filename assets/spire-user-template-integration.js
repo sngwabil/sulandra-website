@@ -1,9 +1,10 @@
 (() => {
   'use strict';
-  const VERSION='20260812-user-master-template-1';
+  const VERSION='20260812-user-master-template-2';
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  const setText=(node,value)=>{if(node&&node.textContent!==value)node.textContent=value};
   const patientId=()=>sessionStorage.getItem('spire:patientId')||new URLSearchParams(location.hash.replace(/^#/,'' )).get('patient')||new URLSearchParams(location.search).get('patientId')||'';
   const workspaceButton=key=>$(`[data-workspace="${CSS.escape(key)}"]`);
   const chartButton=key=>$(`#spireChartWorkspace>.chart-tabs [data-chart-tab="${CSS.escape(key)}"]`);
@@ -27,10 +28,10 @@
 
   function installGlobalLabels(){
     const labels={home:'Home',schedule:'Schedule',inbasket:'In Basket',census:'Client Lists',search:'Chart Search',tasks:'My Tasks',orders:'Orders',reports:'Reports',tools:'Tools'};
-    $$('.spire-global-nav [data-workspace]').forEach(b=>{if(labels[b.dataset.workspace])b.textContent=labels[b.dataset.workspace]});
-    const brand=$('.spire-brand strong');if(brand)brand.textContent='Spire';
-    const subtitle=$('.spire-brand span');if(subtitle)subtitle.textContent='Enterprise • Client Care Record';
-    const find=document.getElementById('spirePatientSearch');if(find){find.textContent='Find Client';find.title='Search authorized client charts'}
+    $$('.spire-global-nav [data-workspace]').forEach(b=>{const v=labels[b.dataset.workspace];if(v)setText(b,v)});
+    setText($('.spire-brand strong'),'Spire');
+    setText($('.spire-brand span'),'Enterprise • Client Care Record');
+    const find=document.getElementById('spirePatientSearch');if(find){setText(find,'Find Client');if(find.title!=='Search authorized client charts')find.title='Search authorized client charts'}
   }
 
   function installSearch(){
@@ -50,21 +51,24 @@
     const top=$('.spire-topbar');if(!top)return;
     let bar=document.getElementById('spireMasterToolbar');
     if(!bar){bar=document.createElement('nav');bar.id='spireMasterToolbar';top.insertAdjacentElement('afterend',bar)}
-    const client=currentClientName();
-    bar.innerHTML=`
-      <button type="button" data-spmt-tool="home">⌂ Home</button>
-      <button type="button" data-spmt-tool="clients">👥 Client Lists</button>
-      <button type="button" data-spmt-tool="station">🩺 Client Station</button>
-      <button type="button" data-spmt-tool="flowsheets">▦ Flowsheets</button>
-      <button type="button" data-spmt-tool="mar">💊 MAR / TAR</button>
-      <button type="button" data-spmt-tool="isp">◎ ISP & Goals</button>
-      <button type="button" data-spmt-tool="clinical">✚ Clinical</button>
-      <button type="button" data-spmt-tool="incidents">⚠ Incidents</button>
-      <button type="button" data-spmt-tool="documents">▤ Documents</button>
-      <button type="button" data-spmt-tool="appointments">📅 Upcoming Appointments</button>
-      <button type="button" class="spmt-client-tab" data-spmt-tool="station" title="Return to current client chart">${esc(client)}</button>`;
-    const actions={home:()=>clickWorkspace('home'),clients:()=>clickWorkspace('census'),station:()=>clickChart('chart-review'),flowsheets:()=>openFlowsheets(),mar:()=>clickChart('mar'),isp:()=>clickChart('care-plan'),clinical:()=>clickChart('assessments'),incidents:()=>clickChart('incidents'),documents:()=>clickChart('documents'),appointments:()=>clickWorkspace('schedule')};
-    $$('[data-spmt-tool]',bar).forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();actions[b.dataset.spmtTool]?.()});
+    if(bar.dataset.spmtVersion!==VERSION){
+      bar.dataset.spmtVersion=VERSION;
+      bar.innerHTML=`
+        <button type="button" data-spmt-tool="home">⌂ Home</button>
+        <button type="button" data-spmt-tool="clients">👥 Client Lists</button>
+        <button type="button" data-spmt-tool="station">🩺 Client Station</button>
+        <button type="button" data-spmt-tool="flowsheets">▦ Flowsheets</button>
+        <button type="button" data-spmt-tool="mar">💊 MAR / TAR</button>
+        <button type="button" data-spmt-tool="isp">◎ ISP & Goals</button>
+        <button type="button" data-spmt-tool="clinical">✚ Clinical</button>
+        <button type="button" data-spmt-tool="incidents">⚠ Incidents</button>
+        <button type="button" data-spmt-tool="documents">▤ Documents</button>
+        <button type="button" data-spmt-tool="appointments">📅 Upcoming Appointments</button>
+        <button type="button" class="spmt-client-tab" data-spmt-tool="station" title="Return to current client chart">Client Chart</button>`;
+      const actions={home:()=>clickWorkspace('home'),clients:()=>clickWorkspace('census'),station:()=>clickChart('chart-review'),flowsheets:()=>openFlowsheets(),mar:()=>clickChart('mar'),isp:()=>clickChart('care-plan'),clinical:()=>clickChart('assessments'),incidents:()=>clickChart('incidents'),documents:()=>clickChart('documents'),appointments:()=>clickWorkspace('schedule')};
+      $$('[data-spmt-tool]',bar).forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();actions[b.dataset.spmtTool]?.()});
+    }
+    setText($('.spmt-client-tab',bar),currentClientName());
   }
 
   function enhancePatientSidebar(){
@@ -72,38 +76,32 @@
     const main=$('.patient-main',strip),facts=$('.patient-storyboard-facts',strip),alerts=$('.patient-alert-row',strip);
     const addTitle=(before,text,key)=>{if(!before||strip.querySelector(`[data-spmt-side-title="${key}"]`))return;const n=document.createElement('div');n.className='spmt-sidebar-title';n.dataset.spmtSideTitle=key;n.textContent=text;before.insertAdjacentElement('beforebegin',n)};
     addTitle(main,'Demographics & ID','demographics');addTitle(facts,'Clinical, Home & Open Work','clinical');addTitle(alerts,'Safety & Alerts','alerts');
-    const cells=$$('.storyboard-cell',strip);
-    const labels=['Allergies','Home / Program','Latest Vitals','Open Work'];
-    cells.forEach((c,i)=>{const label=$('span',c);if(label&&labels[i])label.textContent=labels[i]});
+    const cells=$$('.storyboard-cell',strip);const labels=['Allergies','Home / Program','Latest Vitals','Open Work'];
+    cells.forEach((c,i)=>{const label=$('span',c);if(label&&labels[i])setText(label,labels[i])});
   }
 
-  const tabLabels={
-    'chart-review':'Chart Review','results-review':'Results Review','timeline':'Synopsis','mar':'MAR','notes':'Notes','orders':'eMAR / Orders','medications':'Medications','care-plan':'ISP & Goals','assessments':'Clinical','authorizations':'EVV / Authorization','incidents':'Incidents & Risk','documents':'Documents','external':'External Records','communications':'Communications','wrap-up':'Wrap-Up','plan':'Plan'
-  };
-  const desiredOrder=['chart-review','results-review','timeline','mar','notes','orders','medications','care-plan','assessments','authorizations','incidents','documents','external','communications','wrap-up','plan'];
-
+  const tabLabels={'chart-review':'Chart Review','results-review':'Results Review','timeline':'Synopsis','mar':'MAR','notes':'Notes','orders':'eMAR / Orders','medications':'Medications','care-plan':'ISP & Goals','assessments':'Clinical','authorizations':'EVV / Authorization','incidents':'Incidents & Risk','documents':'Documents','external':'External Records','communications':'Communications','wrap-up':'Wrap-Up','plan':'Plan'};
   function specialButton(key,label){const b=document.createElement('button');b.type='button';b.dataset.spmtSpecial=key;b.textContent=label;return b}
-  function setSpecialActive(key=''){
-    $$('#spireChartWorkspace>.chart-tabs [data-spmt-special]').forEach(b=>b.classList.toggle('active',b.dataset.spmtSpecial===key));
-    if(key)$$('#spireChartWorkspace>.chart-tabs [data-chart-tab]').forEach(b=>b.classList.remove('active'));
-  }
+  function setSpecialActive(key=''){$$('#spireChartWorkspace>.chart-tabs [data-spmt-special]').forEach(b=>b.classList.toggle('active',b.dataset.spmtSpecial===key));if(key)$$('#spireChartWorkspace>.chart-tabs [data-chart-tab]').forEach(b=>b.classList.remove('active'))}
 
   function enhanceChartTabs(){
     const bar=$('#spireChartWorkspace>.chart-tabs');if(!bar)return;
-    $$('.chart-tabs [data-chart-tab]',document).forEach(b=>{const k=b.dataset.chartTab;if(tabLabels[k])b.textContent=tabLabels[k]});
-    // The master template keeps Summary and Chart Review as distinct activities.
+    $$('[data-chart-tab]',bar).forEach(b=>{const v=tabLabels[b.dataset.chartTab];if(v)setText(b,v)});
+    const vitals=chartButton('vitals');if(vitals&&!vitals.hidden)vitals.hidden=true;
     let summary=$('[data-spmt-special="summary"]',bar);if(!summary)summary=specialButton('summary','Summary');
     let flows=$('[data-spmt-special="flowsheets"]',bar);if(!flows)flows=specialButton('flowsheets','Flowsheets');
     let io=$('[data-spmt-special="io"]',bar);if(!io)io=specialButton('io','Intake/Output');
     let work=$('[data-spmt-special="worklist"]',bar);if(!work)work=specialButton('worklist','Work List');
     let demo=$('[data-spmt-special="demographics"]',bar);if(!demo)demo=specialButton('demographics','Demographics');
     const ordered=[summary,chartButton('chart-review'),chartButton('results-review'),chartButton('timeline'),flows,chartButton('mar'),io,chartButton('notes'),chartButton('orders'),work,demo,chartButton('medications'),chartButton('care-plan'),chartButton('assessments'),chartButton('authorizations'),chartButton('incidents'),chartButton('documents'),chartButton('external'),chartButton('communications'),chartButton('wrap-up'),chartButton('plan')].filter(Boolean);
-    ordered.forEach(n=>bar.appendChild(n));
-    flows.onclick=e=>{e.preventDefault();e.stopPropagation();openFlowsheets()};
-    io.onclick=e=>{e.preventDefault();e.stopPropagation();openFlowsheets('Intake / Output')};
-    work.onclick=e=>{e.preventDefault();e.stopPropagation();clickWorkspace('tasks')};
-    demo.onclick=e=>{e.preventDefault();e.stopPropagation();renderDemographics();setSpecialActive('demographics')};
-    summary.onclick=e=>{e.preventDefault();e.stopPropagation();renderSummary();setSpecialActive('summary')};
+    const visible=$$('button',bar).filter(n=>!n.hidden);
+    const same=visible.length===ordered.length&&ordered.every((n,i)=>visible[i]===n);
+    if(!same)ordered.forEach(n=>bar.appendChild(n));
+    if(!summary.dataset.spmtBound){summary.dataset.spmtBound='1';summary.onclick=e=>{e.preventDefault();e.stopPropagation();renderSummary();setSpecialActive('summary')}}
+    if(!flows.dataset.spmtBound){flows.dataset.spmtBound='1';flows.onclick=e=>{e.preventDefault();e.stopPropagation();openFlowsheets()}}
+    if(!io.dataset.spmtBound){io.dataset.spmtBound='1';io.onclick=e=>{e.preventDefault();e.stopPropagation();openFlowsheets('Intake / Output')}}
+    if(!work.dataset.spmtBound){work.dataset.spmtBound='1';work.onclick=e=>{e.preventDefault();e.stopPropagation();clickWorkspace('tasks')}}
+    if(!demo.dataset.spmtBound){demo.dataset.spmtBound='1';demo.onclick=e=>{e.preventDefault();e.stopPropagation();renderDemographics();setSpecialActive('demographics')}}
   }
 
   function getStoryFacts(){
@@ -148,8 +146,9 @@
   }
 
   function markContext(){
-    document.body.classList.add('spmt-ready');document.documentElement.dataset.spireUserTemplateIntegration=VERSION;
-    const bar=document.getElementById('spireMasterToolbar');if(bar){const c=$('.spmt-client-tab',bar);if(c)c.textContent=currentClientName()}
+    if(!document.body.classList.contains('spmt-ready'))document.body.classList.add('spmt-ready');
+    if(document.documentElement.dataset.spireUserTemplateIntegration!==VERSION)document.documentElement.dataset.spireUserTemplateIntegration=VERSION;
+    const c=$('#spireMasterToolbar .spmt-client-tab');if(c)setText(c,currentClientName());
   }
 
   function apply(){installGlobalLabels();installSearch();installToolbar();enhancePatientSidebar();enhanceChartTabs();enhanceQuickActions();markContext()}
