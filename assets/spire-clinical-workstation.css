@@ -1,367 +1,527 @@
-/* SPIRE clinical workstation layout
-   Uses the supplied EHR references for information-density and workstation structure
-   while preserving Sulandra Health branding and SPIRE behavior. */
+/* SPIRE reference-workstation shell v2
+   Mirrors the supplied clinical workstation geometry and density while retaining
+   the SPIRE name and Sulandra functionality. This is a presentation-only layer:
+   it does not own chart opening, API calls, security, or recovery behavior. */
 :root{
-  --spcw-top:#076fa8;
-  --spcw-top-dark:#055a8d;
-  --spcw-ink:#153f59;
-  --spcw-muted:#647f91;
-  --spcw-line:#a7c5d6;
-  --spcw-line-soft:#cddfe8;
-  --spcw-blue-050:#f4fbfe;
-  --spcw-blue-100:#e6f4fa;
-  --spcw-blue-150:#d9eef7;
-  --spcw-blue-200:#cae7f3;
-  --spcw-blue-300:#afd5e7;
-  --spcw-active:#fff0a8;
-  --spcw-active-line:#d4ac25;
+  --sp-ref-ribbon:#a9144d;
+  --sp-ref-ribbon-dark:#811238;
+  --sp-ref-ribbon-hot:#c62568;
+  --sp-ref-sky:#d9f1fb;
+  --sp-ref-sky-2:#c5e8f6;
+  --sp-ref-blue:#0a6fa6;
+  --sp-ref-blue-dark:#164e70;
+  --sp-ref-line:#94b8ca;
+  --sp-ref-line-soft:#c8dbe5;
+  --sp-ref-text:#153c55;
+  --sp-ref-muted:#637c8c;
+  --sp-ref-yellow:#f8d95b;
+  --sp-ref-canvas:#f7fbfd;
 }
 
-/* A clinical workstation should read as one continuous application, not a stack of cards. */
+/* ---------- Global clinical ribbon ---------- */
 .spire-topbar{
-  height:48px;
-  min-height:48px;
-  gap:6px;
-  padding:0 8px;
-  background:linear-gradient(180deg,var(--spcw-top),var(--spcw-top-dark));
-  box-shadow:0 1px 3px rgba(0,45,77,.28);
+  height:42px!important;
+  min-height:42px!important;
+  padding:0 7px!important;
+  gap:4px!important;
+  background:linear-gradient(180deg,var(--sp-ref-ribbon-hot),var(--sp-ref-ribbon))!important;
+  border-bottom:1px solid #721130!important;
+  box-shadow:0 1px 3px rgba(56,4,27,.35)!important;
 }
-.spire-brand{width:138px;min-width:138px;gap:7px}
-.spire-logo-mark{width:34px;height:34px;border-radius:7px;font-size:21px}
-.spire-brand strong{font-size:18px}
-.spire-brand span{font-size:9px;white-space:nowrap}
-.spire-global-nav button{height:48px;padding:0 8px;font-size:10px;letter-spacing:.005em}
-.spire-top-actions button{height:31px;padding:0 8px;font-size:10px;border-radius:3px}
-.spire-current-home{height:31px;border-radius:16px}
-.spire-window-controls{height:31px;border-radius:4px}
-
-/* Dense patient storyboard/header. */
-.spire-patient-strip{
-  min-height:70px;
-  padding:6px 10px 5px;
-  gap:8px 10px;
-  grid-template-columns:48px minmax(235px,.9fr) minmax(520px,2.4fr);
-  background:linear-gradient(180deg,#edf9fe,#e4f4fb);
-  border-bottom:1px solid #8fb9cf;
-  box-shadow:inset 0 -1px 0 #fff;
+.spire-brand{
+  flex:0 0 112px!important;
+  width:112px!important;
+  min-width:112px!important;
+  height:32px!important;
+  padding:0 10px!important;
+  margin-right:3px!important;
+  border:1px solid #ead7df!important;
+  border-radius:1px!important;
+  background:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-shadow:inset 0 0 0 1px #fff,0 1px 2px rgba(0,0,0,.18)!important;
 }
-.patient-avatar{width:42px;height:42px;border:3px solid #bce6f5;font-size:20px}
-.patient-main{min-width:0;align-self:center}
-.patient-main strong{font-size:18px;line-height:1.05;color:#173e57}
-.patient-main span{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.patient-main small{font-size:9px;margin-top:1px}
-.patient-storyboard-facts{grid-template-columns:repeat(4,minmax(120px,1fr));gap:5px}
-.storyboard-cell{padding:5px 7px;border-radius:2px;background:#fbfdff}
-.storyboard-cell span{font-size:8px;letter-spacing:.055em}
-.storyboard-cell b{font-size:9px;margin-top:1px}
-.patient-alert-row{gap:3px;margin-top:-2px;min-height:16px}
-.flag-chip{padding:1px 6px;font-size:8px;border-radius:8px}
+.spire-logo-mark{display:none!important}
+.spire-brand>div:last-child{display:block!important;overflow:visible!important}
+.spire-brand strong{
+  display:block!important;
+  color:#0a6fa6!important;
+  font-family:Arial,"Segoe UI",sans-serif!important;
+  font-size:24px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  font-style:italic!important;
+  letter-spacing:-1.5px!important;
+  text-shadow:0 1px 0 #fff!important;
+}
+.spire-brand span{display:none!important}
+.spire-global-nav{gap:0!important;align-self:stretch!important}
+.spire-global-nav button{
+  height:42px!important;
+  padding:0 8px!important;
+  border-left:1px solid rgba(255,255,255,.08)!important;
+  border-right:1px solid rgba(83,8,35,.16)!important;
+  color:#fff!important;
+  font-size:10px!important;
+  font-weight:700!important;
+  text-shadow:0 1px 1px rgba(70,0,26,.35)!important;
+}
+.spire-global-nav button:hover,
+.spire-global-nav button.active{
+  background:rgba(255,255,255,.15)!important;
+  box-shadow:inset 0 -3px 0 #ffd85b!important;
+}
+.spire-top-actions{gap:3px!important}
+.spire-top-actions button,
+.spire-current-home,
+.spire-window-controls{
+  height:29px!important;
+  border-radius:2px!important;
+  border-color:rgba(255,255,255,.5)!important;
+  background:rgba(92,4,38,.2)!important;
+  color:#fff!important;
+  font-size:9px!important;
+}
+.spire-current-home{background:#f5fbfe!important;color:#184b67!important;border-color:#b6cedb!important}
+.spire-current-home button{color:#165c82!important}
 
-/* Once a patient chart is active, the generic dashboard rail gets out of the way.
-   The chart's own module navigator becomes the left-side clinical navigator. */
+/* ---------- Open-chart app geometry ----------
+   Row 1 = global ribbon. Row 2 = patient sidebar + clinical chart shell. */
+body:has(#spireChartWorkspace.active) .spire-app{
+  display:grid!important;
+  grid-template-columns:clamp(230px,13.2vw,270px) minmax(0,1fr)!important;
+  grid-template-rows:42px minmax(0,1fr)!important;
+  height:100vh!important;
+  width:100vw!important;
+  overflow:hidden!important;
+  background:#d7edf7!important;
+}
+body:has(#spireChartWorkspace.active) .spire-topbar{
+  grid-column:1/-1!important;
+  grid-row:1!important;
+}
+
+/* ---------- Left patient information column ---------- */
+body:has(#spireChartWorkspace.active) .spire-patient-strip{
+  grid-column:1!important;
+  grid-row:2!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  min-width:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  overflow:auto!important;
+  padding:10px 12px 12px!important;
+  gap:5px!important;
+  border:0!important;
+  border-right:1px solid #8fb5c8!important;
+  background:linear-gradient(180deg,#dff3fb 0,#cfeaf6 100%)!important;
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.7)!important;
+}
+body:has(#spireChartWorkspace.active) .spire-patient-strip::before{
+  content:'PATIENT';
+  display:block;
+  margin:-10px -12px 10px!important;
+  padding:6px 9px 5px!important;
+  background:#b8deee!important;
+  border-bottom:1px solid #8fb5c8!important;
+  color:#315f75!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  letter-spacing:.08em!important;
+}
+body:has(#spireChartWorkspace.active) .patient-avatar{
+  flex:0 0 auto!important;
+  width:66px!important;
+  height:66px!important;
+  margin:0 auto 4px!important;
+  border-radius:50%!important;
+  border:4px solid #e7f8ff!important;
+  background:#8f6dc5!important;
+  color:#fff!important;
+  font-size:28px!important;
+  box-shadow:0 0 0 1px #9bbfd1!important;
+}
+body:has(#spireChartWorkspace.active) .patient-main{
+  flex:0 0 auto!important;
+  width:100%!important;
+  padding:0 2px 8px!important;
+  border-bottom:1px solid #a8c8d7!important;
+  text-align:left!important;
+}
+body:has(#spireChartWorkspace.active) .patient-main strong{
+  display:block!important;
+  margin-bottom:3px!important;
+  color:#173b51!important;
+  font-size:18px!important;
+  line-height:1.05!important;
+}
+body:has(#spireChartWorkspace.active) .patient-main span,
+body:has(#spireChartWorkspace.active) .patient-main small{
+  display:block!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  color:#526e7e!important;
+  font-size:9px!important;
+  line-height:1.35!important;
+}
+body:has(#spireChartWorkspace.active) .patient-storyboard-facts{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  width:100%!important;
+  min-width:0!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell{
+  width:100%!important;
+  min-width:0!important;
+  padding:7px 3px!important;
+  border:0!important;
+  border-bottom:1px solid #b1cedc!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell span{
+  margin-bottom:2px!important;
+  color:#577486!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  letter-spacing:.055em!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell b{
+  display:block!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  color:#183e55!important;
+  font-size:10px!important;
+  line-height:1.3!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell.danger{
+  padding:7px 5px!important;
+  background:transparent!important;
+}
+body:has(#spireChartWorkspace.active) .storyboard-cell.danger b{
+  display:inline-block!important;
+  padding:2px 5px!important;
+  background:#ffe36c!important;
+  color:#6b3800!important;
+  border:1px solid #e1c24a!important;
+  border-radius:2px!important;
+}
+body:has(#spireChartWorkspace.active) .patient-alert-row{
+  grid-column:auto!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  width:100%!important;
+  margin:0!important;
+  padding-top:6px!important;
+  gap:4px!important;
+  overflow:visible!important;
+}
+body:has(#spireChartWorkspace.active) .flag-chip{
+  display:block!important;
+  width:100%!important;
+  padding:3px 5px!important;
+  border-radius:2px!important;
+  white-space:normal!important;
+  font-size:8px!important;
+}
+
+/* ---------- Main clinical shell and right sidebar ---------- */
 body:has(#spireChartWorkspace.active) .spire-shell{
-  grid-template-columns:minmax(0,1fr) 250px;
-  background:#e5f2f8;
+  grid-column:2!important;
+  grid-row:2!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) clamp(270px,18vw,360px)!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:100%!important;
+  overflow:hidden!important;
+  background:#e9f5fa!important;
 }
 body:has(#spireChartWorkspace.active) .spire-left-rail{display:none!important}
 body:has(#spireChartWorkspace.active) .spire-main{
-  padding:0;
-  overflow:hidden;
-  background:#fff;
+  display:flex!important;
+  flex-direction:column!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:100%!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#eef8fc!important;
 }
+body:has(#spireChartWorkspace.active) #spireEncounterBar{display:none!important}
 body:has(#spireChartWorkspace.active) .spire-right-rail{
-  padding:0;
-  background:#e4f3f9;
-  border-left:1px solid #8fb9cf;
-  overflow:auto;
+  display:block!important;
+  width:auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:100%!important;
+  overflow:auto!important;
+  padding:0!important;
+  border-left:1px solid #88adbf!important;
+  background:#eaf6fb!important;
+}
+body:has(#spireChartWorkspace.active) .spire-right-rail::before{
+  content:'THIS VISIT     REVIEW ALL     NOTES';
+  display:block!important;
+  position:sticky!important;
+  top:0!important;
+  z-index:9!important;
+  padding:7px 8px!important;
+  border-bottom:1px solid #9abccb!important;
+  background:linear-gradient(180deg,#dff2f9,#cde8f3)!important;
+  color:#315f76!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  letter-spacing:.04em!important;
+  white-space:pre!important;
 }
 body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card{
-  margin:0;
-  border:0;
-  border-bottom:1px solid #9fc1d3;
-  border-radius:0;
-  background:#f8fcfe;
+  margin:0!important;
+  border:0!important;
+  border-bottom:1px solid #a8c6d4!important;
+  border-radius:0!important;
+  background:#fbfdfe!important;
 }
 body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card h3{
-  padding:7px 8px;
-  font-size:11px;
-  background:linear-gradient(180deg,#d8eef7,#cae7f3);
-  border-bottom:1px solid #9fc1d3;
-  color:#0a5a86;
+  margin:0!important;
+  padding:7px 9px!important;
+  border-bottom:1px solid #a7c6d5!important;
+  background:linear-gradient(180deg,#d9f0f8,#cce9f4)!important;
+  color:#0c5e88!important;
+  font-size:10px!important;
+  font-weight:800!important;
 }
 body:has(#spireChartWorkspace.active) .spire-right-rail .rail-card button{
-  padding:6px 8px;
-  font-size:10px;
+  padding:6px 9px!important;
+  border-bottom:1px solid #d5e4eb!important;
+  background:#fff!important;
+  color:#244e64!important;
+  font-size:9px!important;
 }
-body:has(#spireChartWorkspace.active) .context-section{padding:7px 8px}
-body:has(#spireChartWorkspace.active) .context-section>strong{font-size:9px;margin-bottom:2px}
+body:has(#spireChartWorkspace.active) .context-section{padding:7px 9px!important}
+body:has(#spireChartWorkspace.active) .context-section>strong{font-size:8px!important;color:#0b5f89!important}
 body:has(#spireChartWorkspace.active) .context-section span,
-body:has(#spireChartWorkspace.active) .context-section small{font-size:9px;line-height:1.25}
+body:has(#spireChartWorkspace.active) .context-section small{font-size:8.5px!important;line-height:1.3!important}
 
-/* Patient-specific chart navigator + main chart canvas. */
+/* ---------- Horizontal activity tabs like a desktop EHR ---------- */
 #spireChartWorkspace.active{
+  flex:1 1 auto!important;
   display:grid!important;
-  grid-template-columns:178px minmax(0,1fr);
-  grid-template-rows:minmax(0,1fr);
-  min-height:0;
-  height:100%;
-  overflow:hidden;
-  background:#fff;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:38px minmax(0,1fr)!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  background:#fff!important;
 }
 #spireChartWorkspace>.chart-tabs{
-  grid-column:1;
-  grid-row:1;
-  position:relative;
-  top:auto;
-  z-index:2;
-  display:flex;
-  flex-direction:column;
-  align-items:stretch;
-  gap:0;
-  min-width:0;
-  height:100%;
-  overflow-y:auto;
-  overflow-x:hidden;
-  padding:0;
-  border:0;
-  border-right:1px solid #7eacc4;
-  background:linear-gradient(90deg,#d8edf7,#c8e4f1);
-  scrollbar-width:thin;
+  grid-column:1!important;
+  grid-row:1!important;
+  position:relative!important;
+  top:auto!important;
+  z-index:10!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:stretch!important;
+  gap:2px!important;
+  width:100%!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:3px 8px 0!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  border:0!important;
+  border-bottom:1px solid #8bb1c4!important;
+  background:linear-gradient(180deg,#ccecf8,#bfe3f3)!important;
+  scrollbar-width:thin!important;
 }
-#spireChartWorkspace>.chart-tabs::before{
-  content:'PATIENT CHART';
-  display:block;
-  flex:0 0 auto;
-  padding:7px 9px 6px;
-  border-bottom:1px solid #93b9cc;
-  background:#bcddeb;
-  color:#22556e;
-  font-size:9px;
-  font-weight:900;
-  letter-spacing:.08em;
-}
+#spireChartWorkspace>.chart-tabs::before{display:none!important}
 #spireChartWorkspace>.chart-tabs button{
-  width:100%;
-  min-height:31px;
-  flex:0 0 auto;
-  border:0;
-  border-bottom:1px solid #a9c9d9;
-  border-radius:0;
-  padding:6px 8px 6px 10px;
-  background:linear-gradient(180deg,#e8f5fa,#d9edf6);
-  color:#153f59;
-  text-align:left;
-  font-size:10px;
-  font-weight:650;
-  white-space:normal;
-  line-height:1.1;
-  box-shadow:inset 1px 0 0 rgba(255,255,255,.75);
+  position:relative!important;
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:92px!important;
+  min-height:34px!important;
+  height:34px!important;
+  margin:0!important;
+  padding:4px 11px 4px 31px!important;
+  border:1px solid #9bbbc9!important;
+  border-bottom:0!important;
+  border-radius:2px 2px 0 0!important;
+  background:linear-gradient(180deg,#edf8fc,#d9edf6)!important;
+  color:#173e55!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+  font-size:9px!important;
+  font-weight:700!important;
+  line-height:1!important;
+  box-shadow:inset 0 1px 0 #fff!important;
 }
-#spireChartWorkspace>.chart-tabs button:hover{background:#f4fbfe}
+#spireChartWorkspace>.chart-tabs button::before{
+  content:''!important;
+  position:absolute!important;
+  left:8px!important;
+  top:50%!important;
+  width:16px!important;
+  height:16px!important;
+  transform:translateY(-50%)!important;
+  border-radius:50%!important;
+  border:1px solid rgba(0,0,0,.14)!important;
+  background:#5e9cc1!important;
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.75)!important;
+}
+#spireChartWorkspace>.chart-tabs [data-chart-tab="orders"]::before{background:#d84d72!important}
+#spireChartWorkspace>.chart-tabs [data-chart-tab="notes"]::before{background:#7756b4!important}
+#spireChartWorkspace>.chart-tabs [data-chart-tab="care-plan"]::before{background:#45a06a!important}
+#spireChartWorkspace>.chart-tabs [data-chart-tab="medications"]::before,
+#spireChartWorkspace>.chart-tabs [data-chart-tab="mar"]::before{background:#d29b38!important}
+#spireChartWorkspace>.chart-tabs [data-chart-tab="vitals"]::before{background:#3c9bad!important}
+#spireChartWorkspace>.chart-tabs button:hover{background:#f8fcfe!important}
 #spireChartWorkspace>.chart-tabs button.active{
-  position:relative;
-  background:linear-gradient(90deg,#1180b9 0,#1180b9 5px,#fff 5px,#fff 100%);
-  border-color:#7baac1;
-  color:#0b4f75;
-  font-weight:850;
-  box-shadow:none;
+  z-index:2!important;
+  background:#fff!important;
+  color:#0b5d88!important;
+  border-color:#729db2!important;
+  font-weight:900!important;
+  box-shadow:inset 0 3px 0 #f1c53c!important;
 }
-#spireChartWorkspace>.chart-tabs button.active::after{
-  content:'›';
-  position:absolute;
-  right:7px;
-  top:50%;
-  transform:translateY(-50%);
-  color:#0b6e9e;
-  font-size:15px;
-  font-weight:900;
-}
+#spireChartWorkspace>.chart-tabs button.active::after{display:none!important}
 #spireChartWorkspace>.chart-tabs .spire-customize-tabs,
-#spireChartWorkspace>.chart-tabs [data-spire-customize-tabs]{
-  margin-top:auto;
-  border-top:1px solid #8cb4c9;
-  background:#c5e2ef;
-  color:#24566f;
-  font-size:9px;
-}
+#spireChartWorkspace>.chart-tabs [data-spire-customize-tabs]{margin:0!important}
+
 #spireChartTabBody{
-  grid-column:2;
-  grid-row:1;
-  min-width:0;
-  min-height:0;
-  height:100%;
-  overflow:auto;
-  background:#fff;
+  grid-column:1!important;
+  grid-row:2!important;
+  min-width:0!important;
+  min-height:0!important;
+  height:100%!important;
+  overflow:auto!important;
+  padding:0!important;
+  background:#f8fcfe!important;
 }
 
-/* Module title/ribbon: closer to a clinical chart ribbon than a web card header. */
+/* ---------- Inner activity/subtabs ---------- */
 #spireChartTabBody>.panel,
 #spireChartTabBody>.chart-review-panel,
-#spireChartTabBody .panel{
-  border-radius:0;
-  box-shadow:none;
+#spireChartTabBody .panel{border-radius:0!important;box-shadow:none!important}
+#spireChartTabBody>.panel{min-height:100%!important;border:0!important;padding:8px 10px!important;background:#fff!important}
+#spireChartTabBody .workspace-title.compact,
+#spireChartTabBody .spire-care-head,
+#spireChartTabBody .spire-flow-head,
+#spireChartTabBody .spire-assessment-head{
+  margin:0!important;
+  padding:6px 9px!important;
+  border:0!important;
+  border-bottom:1px solid #9fbfce!important;
+  border-radius:0!important;
+  background:linear-gradient(180deg,#edf8fc,#dbeef6)!important;
 }
-#spireChartTabBody>.panel{min-height:100%;border:0;padding:8px 10px;background:#fff}
-#spireChartTabBody .workspace-title.compact{
-  margin:-8px -10px 7px;
-  padding:7px 9px;
-  border:0;
-  border-bottom:1px solid #9ebfd1;
-  border-radius:0;
-  background:linear-gradient(180deg,#eef9fd,#dceef6);
-}
-#spireChartTabBody .workspace-title.compact h2{font-size:15px;color:#0b5d88}
-#spireChartTabBody .workspace-title.compact p{font-size:9px;color:#5f7a8c}
-
-/* Secondary tabs and filters mimic workstation ribbons: small, adjacent, information dense. */
+#spireChartTabBody .workspace-title.compact h2,
+#spireChartTabBody .spire-care-head h2,
+#spireChartTabBody .spire-flow-head h2,
+#spireChartTabBody .spire-assessment-head h2{font-size:14px!important;color:#0b5d88!important}
+#spireChartTabBody .workspace-title.compact p,
+#spireChartTabBody .spire-care-head p,
+#spireChartTabBody .spire-flow-head p,
+#spireChartTabBody .spire-assessment-head p{font-size:8.5px!important;color:#617d8d!important}
 #spireChartTabBody .subtabs,
 #spireChartTabBody .chart-review-subtabs{
-  gap:0;
-  margin:0;
-  padding:0 6px;
-  border-bottom:1px solid #9fbfd0;
-  background:#d9edf6;
+  display:flex!important;
+  gap:0!important;
+  margin:0!important;
+  padding:0 8px!important;
+  border-bottom:1px solid #9dbdcd!important;
+  background:#eef8fc!important;
 }
 #spireChartTabBody .subtabs button,
 #spireChartTabBody .chart-review-subtabs button{
-  min-height:30px;
-  margin:0;
-  padding:5px 10px;
-  border:0;
-  border-right:1px solid #b2cedd;
-  border-bottom:0;
-  border-radius:0;
-  background:transparent;
-  color:#25566f;
-  font-size:9px;
-  font-weight:700;
+  min-height:29px!important;
+  padding:5px 11px!important;
+  margin:0!important;
+  border:0!important;
+  border-right:1px solid #c5d9e3!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#365e72!important;
+  font-size:8.5px!important;
+  font-weight:700!important;
 }
 #spireChartTabBody .subtabs button.active,
 #spireChartTabBody .chart-review-subtabs button.active{
-  background:#fff;
-  color:#0b5e8b;
-  box-shadow:inset 0 -3px 0 #e0b52a;
+  background:#fff!important;
+  color:#0a5f8b!important;
+  box-shadow:inset 0 -3px 0 #e6bd36!important;
 }
 
-/* Chart Review: three-pane clinical review, but denser and usable at normal laptop widths. */
-#spireChartTabBody .spire-cr-layout{
-  grid-template-columns:145px minmax(0,1fr) 190px;
-  gap:6px;
-  padding:6px;
-}
+/* ---------- Dense center panes ---------- */
+#spireChartTabBody .spire-cr-layout{grid-template-columns:140px minmax(0,1fr) 190px!important;gap:5px!important;padding:5px!important}
 #spireChartTabBody .spire-cr-timeline,
-#spireChartTabBody .spire-cr-side{
-  top:6px;
-  max-height:calc(100vh - 142px);
-  padding:6px;
-  border-radius:2px;
-  background:#f4fafc;
-}
-#spireChartTabBody .spire-cr-timeline h3,
-#spireChartTabBody .spire-cr-side h3{font-size:11px;margin:1px 0 6px}
-#spireChartTabBody .spire-cr-timeline button,
-#spireChartTabBody .spire-cr-side button{padding:5px 6px;margin:2px 0;border-radius:2px}
-#spireChartTabBody .spire-cr-timeline time,
-#spireChartTabBody .spire-cr-timeline span,
-#spireChartTabBody .spire-cr-side span{font-size:9px}
-#spireChartTabBody .spire-cr-toolbar{
-  grid-template-columns:minmax(125px,1.25fr) minmax(90px,.75fr) minmax(90px,.75fr) minmax(94px,.75fr) minmax(94px,.75fr) auto auto;
-  gap:4px;
-  padding:5px;
-  border-radius:2px;
-  background:#dceef6;
-}
+#spireChartTabBody .spire-cr-side{top:5px!important;max-height:calc(100vh - 105px)!important;padding:5px!important;border-radius:0!important;background:#f5fafc!important}
+#spireChartTabBody .spire-cr-toolbar{gap:3px!important;padding:4px!important;border-radius:0!important;background:#dceff7!important}
 #spireChartTabBody .spire-cr-toolbar input,
 #spireChartTabBody .spire-cr-toolbar select,
-#spireChartTabBody .spire-cr-toolbar button{padding:5px 6px;border-radius:2px;font-size:9px}
-#spireChartTabBody .spire-cr-toolbar label{font-size:9px;min-width:0}
-#spireChartTabBody .spire-cr-summary{gap:5px;padding:5px 0}
-#spireChartTabBody .spire-cr-summary span{padding:3px 6px;border-radius:8px;font-size:9px}
-#spireChartTabBody .spire-cr-items{gap:5px}
-#spireChartTabBody .spire-cr-card{padding:7px 8px;border-radius:2px}
-#spireChartTabBody .spire-cr-card h4{font-size:12px;margin:5px 0 4px}
-#spireChartTabBody .spire-cr-card time,
-#spireChartTabBody .spire-cr-meta,
-#spireChartTabBody .spire-cr-card p{font-size:9px}
+#spireChartTabBody .spire-cr-toolbar button{padding:4px 5px!important;border-radius:0!important;font-size:8.5px!important}
+#spireChartTabBody .spire-cr-summary{gap:4px!important;padding:4px 0!important}
+#spireChartTabBody .spire-cr-summary span{padding:2px 5px!important;border-radius:6px!important;font-size:8.5px!important}
+#spireChartTabBody .spire-cr-items{gap:4px!important}
+#spireChartTabBody .spire-cr-card{padding:6px 7px!important;border-radius:0!important}
 
-/* Tables should behave like EHR grids, not generic website tables. */
-#spireChartTabBody table{font-size:10px;border-collapse:collapse}
-#spireChartTabBody thead th{
-  position:sticky;
-  top:0;
-  z-index:3;
-  padding:5px 6px;
-  background:linear-gradient(180deg,#edf7fb,#d9eaf2);
-  border-color:#a9c3d2;
-  color:#3d6074;
-}
-#spireChartTabBody tbody td{padding:5px 6px;border-color:#d0dde5}
-#spireChartTabBody tbody tr:nth-child(even){background:#fbfdfe}
-#spireChartTabBody tbody tr:hover{background:#eaf6fb}
+/* Care Plan/ISP should read like a desktop plan workspace rather than web cards. */
+#spireChartTabBody .spire-care-summary{gap:0!important;margin:0!important;border:1px solid #9fbfce!important;border-bottom:0!important}
+#spireChartTabBody .spire-care-summary article{border-radius:0!important;border:0!important;border-right:1px solid #c4d8e2!important;box-shadow:none!important;padding:7px!important;background:#f9fcfe!important}
+#spireChartTabBody .spire-care-grid{gap:0!important;margin:0!important;border:1px solid #9fbfce!important}
+#spireChartTabBody .spire-care-grid>section,
+#spireChartTabBody .spire-care-panel{border-radius:0!important;box-shadow:none!important;border-color:#b8ceda!important}
+#spireChartTabBody .spire-care-panel{margin:0!important;border-top:0!important}
 
-/* Flowsheets: denser row navigator + data grid, closer to the supplied clinical example. */
-#spireChartTabBody .spire-assessment-head,
-#spireChartTabBody .spire-flow-head{margin:0 0 8px;gap:10px}
-#spireChartTabBody .spire-assessment-head h2,
-#spireChartTabBody .spire-flow-head h2{font-size:15px}
-#spireChartTabBody .spire-assessment-head p,
-#spireChartTabBody .spire-flow-head p{font-size:9px}
-#spireChartTabBody .spire-assessment-head button,
-#spireChartTabBody .spire-flow-head button{padding:6px 9px;border-radius:2px;font-size:9px}
-#spireChartTabBody .spire-flow-layout{grid-template-columns:185px minmax(0,1fr);gap:0;min-height:560px;border:1px solid #a8c2d1}
+/* Tables and flowsheets: desktop EHR density. */
+#spireChartTabBody table{font-size:9px!important;border-collapse:collapse!important}
+#spireChartTabBody thead th{position:sticky!important;top:0!important;z-index:3!important;padding:4px 5px!important;background:linear-gradient(180deg,#edf7fb,#d9eaf2)!important;border-color:#a9c3d2!important;color:#3d6074!important}
+#spireChartTabBody tbody td{padding:4px 5px!important;border-color:#d0dde5!important}
+#spireChartTabBody tbody tr:nth-child(even){background:#fbfdfe!important}
+#spireChartTabBody tbody tr:hover{background:#eaf6fb!important}
+#spireChartTabBody .spire-flow-layout{grid-template-columns:220px minmax(0,1fr)!important;gap:0!important;min-height:620px!important;border:1px solid #9dbdcd!important}
 #spireChartTabBody .spire-flow-rows,
 #spireChartTabBody .spire-flow-main,
-#spireChartTabBody .spire-flow-trend{border-radius:0;box-shadow:none}
-#spireChartTabBody .spire-flow-rows{padding:0;border:0;border-right:1px solid #a8c2d1;background:#f4fafc}
-#spireChartTabBody .spire-flow-rows h3{margin:0;padding:7px 8px;background:#d9edf6;border-bottom:1px solid #aec9d8;font-size:11px}
-#spireChartTabBody .spire-flow-rows button{padding:6px 7px;border-top:0;border-bottom:1px solid #d2e1e8;font-size:9px}
-#spireChartTabBody .spire-flow-rows span{font-size:8px}
-#spireChartTabBody .spire-flow-main{border:0;background:#fff}
-#spireChartTabBody .spire-flow-table{max-height:490px}
-#spireChartTabBody .spire-flow-table table{font-size:10px}
+#spireChartTabBody .spire-flow-trend{border-radius:0!important;box-shadow:none!important}
+#spireChartTabBody .spire-flow-rows{padding:0!important;border:0!important;border-right:1px solid #9dbdcd!important;background:#f3f9fc!important}
+#spireChartTabBody .spire-flow-rows h3{margin:0!important;padding:6px 7px!important;background:#d9edf6!important;border-bottom:1px solid #a9c6d5!important;font-size:10px!important}
+#spireChartTabBody .spire-flow-rows button{padding:5px 6px!important;border-top:0!important;border-bottom:1px solid #d3e1e8!important;font-size:8.5px!important}
+#spireChartTabBody .spire-flow-table{max-height:520px!important}
 #spireChartTabBody .spire-flow-table th,
-#spireChartTabBody .spire-flow-table td{padding:5px 6px}
-#spireChartTabBody .spire-flow-trend{margin:6px;padding:8px;border:1px solid #c7d9e3}
-#spireChartTabBody .spire-spark{height:95px;border-radius:2px}
+#spireChartTabBody .spire-flow-table td{padding:5px!important;font-size:8.5px!important}
 
-/* Admission history / accordion-heavy modules. */
-#spireChartTabBody details,
-#spireChartTabBody .spwc-plan-card,
-#spireChartTabBody .assessment-card,
-#spireChartTabBody .spire-assessment-panel{
-  border-radius:2px!important;
-  box-shadow:none!important;
-}
-#spireChartTabBody summary{font-size:11px}
+/* Raw fallback data remains readable but visually subdued until a specialized renderer owns the tab. */
+#spireChartTabBody .json-foundation{margin:0!important;max-height:calc(100vh - 120px)!important;padding:10px!important;border:0!important;background:#fbfdfe!important;color:#5a7484!important;font-size:8.5px!important;line-height:1.28!important}
 
-/* Avoid giant empty gutters on wide displays. */
-body:has(#spireChartWorkspace.active) .panel{max-width:none}
-body:has(#spireChartWorkspace.active) #spireChartTabBody .json-foundation{max-height:none;height:calc(100vh - 150px);font-size:10px}
-
+/* ---------- Responsive fallback ---------- */
 @media(max-width:1280px){
-  body:has(#spireChartWorkspace.active) .spire-shell{grid-template-columns:minmax(0,1fr) 220px}
-  #spireChartWorkspace.active{grid-template-columns:158px minmax(0,1fr)}
-  #spireChartTabBody .spire-cr-layout{grid-template-columns:125px minmax(0,1fr)}
-  #spireChartTabBody .spire-cr-side{display:none}
-  #spireChartTabBody .spire-cr-toolbar{grid-template-columns:1fr 1fr 1fr}
+  body:has(#spireChartWorkspace.active) .spire-app{grid-template-columns:220px minmax(0,1fr)!important}
+  body:has(#spireChartWorkspace.active) .spire-shell{grid-template-columns:minmax(0,1fr) 260px!important}
+  #spireChartWorkspace>.chart-tabs button{min-width:82px!important;padding-left:28px!important;padding-right:8px!important;font-size:8px!important}
+  #spireChartTabBody .spire-cr-layout{grid-template-columns:120px minmax(0,1fr)!important}
+  #spireChartTabBody .spire-cr-side{display:none!important}
 }
-@media(max-width:980px){
-  .spire-patient-strip{grid-template-columns:42px minmax(200px,1fr)}
-  .patient-storyboard-facts{grid-column:1/-1;grid-template-columns:repeat(4,minmax(0,1fr))}
-  .patient-alert-row{grid-column:1/-1}
-  body:has(#spireChartWorkspace.active) .spire-shell{grid-template-columns:minmax(0,1fr)}
-  body:has(#spireChartWorkspace.active) .spire-right-rail{display:none}
-  #spireChartWorkspace.active{grid-template-columns:145px minmax(0,1fr)}
+@media(max-width:900px){
+  body:has(#spireChartWorkspace.active) .spire-app{grid-template-columns:180px minmax(0,1fr)!important}
+  body:has(#spireChartWorkspace.active) .spire-shell{grid-template-columns:minmax(0,1fr)!important}
+  body:has(#spireChartWorkspace.active) .spire-right-rail{display:none!important}
+  .spire-brand{flex-basis:88px!important;width:88px!important;min-width:88px!important}
+  .spire-brand strong{font-size:20px!important}
 }
-@media(max-width:760px){
-  .spire-patient-strip{min-height:0;padding:6px}
-  .patient-storyboard-facts{grid-template-columns:1fr 1fr}
-  #spireChartWorkspace.active{display:block!important;height:auto;overflow:visible}
-  #spireChartWorkspace>.chart-tabs{position:sticky;top:0;height:auto;display:flex;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid #8fb9cf;z-index:10}
-  #spireChartWorkspace>.chart-tabs::before{display:none}
-  #spireChartWorkspace>.chart-tabs button{width:auto;min-width:max-content;border-right:1px solid #a9c9d9;border-bottom:0;padding:7px 9px}
-  #spireChartWorkspace>.chart-tabs button.active{background:#fff;color:#0b5f8b;box-shadow:inset 0 -3px 0 #e0b52a}
-  #spireChartWorkspace>.chart-tabs button.active::after{display:none}
-  #spireChartTabBody{height:auto;overflow:visible}
-  #spireChartTabBody .spire-flow-layout{grid-template-columns:1fr}
+@media(max-width:700px){
+  body:has(#spireChartWorkspace.active) .spire-app{display:block!important;height:100dvh!important;overflow:hidden!important}
+  body:has(#spireChartWorkspace.active) .spire-patient-strip{display:none!important}
+  body:has(#spireChartWorkspace.active) .spire-shell{height:calc(100dvh - 42px)!important}
+  #spireChartWorkspace>.chart-tabs{overflow-x:auto!important}
+  #spireChartWorkspace>.chart-tabs button{min-width:88px!important}
 }
