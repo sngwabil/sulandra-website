@@ -53,7 +53,14 @@ if (injector.includes('registerSpireExternalConnectivityRoutes')) failures.push(
 if (!parityInjector.includes('registerSpireFieldMobileOperationsRoutes')) failures.push('mobile care-log/transport routes are not registered');
 if (!apiPackage.includes('install-mobile-oauth-boundary.mjs')) failures.push('mobile OAuth boundary installer is not in API build/typecheck');
 if (!routes.includes('UserRole.DRIVER')) failures.push('driver role boundary is missing');
-if (!routes.includes("return ['mobile:session','push:register','schedule:read','transport:trips:read','transport:trips:update']")) failures.push('driver scopes are not transport-only');
+
+// Verify the DRIVER branch semantically rather than depending on one-line formatting.
+const driverBranch = routes.match(/if\s*\(role\s*===\s*UserRole\.DRIVER\)\s*return\s*\[([\s\S]*?)\];/i)?.[1] || '';
+const driverRequired = ['mobile:session','push:register','schedule:read','transport:trips:read','transport:trips:update'];
+const driverForbidden = ['evv:clock','carelog:read','carelog:write','clinical:assigned:write','result:manual:write','admin:field'];
+if (!driverBranch || driverRequired.some(scope => !driverBranch.includes(`'${scope}'`)) || driverForbidden.some(scope => driverBranch.includes(`'${scope}'`))) {
+  failures.push('driver scopes are not transport-only');
+}
 if (!operations.includes("n.\"noteType\" IN ('FIELD_CARE_LOG','PROGRESS_NOTE')")) failures.push('mobile care logs are not backed by clinical notes');
 if (!operations.includes('tripTransitions')) failures.push('transport status workflow is missing transition enforcement');
 
@@ -63,14 +70,15 @@ for (const marker of ['@capacitor/core','@capacitor/ios','@capacitor/android','@
 for (const marker of ["appId: 'com.sulandrahealth.field'","appName: 'Sulandra Health'","webDir: 'www'"]) {
   if (!capacitorConfig.includes(marker)) failures.push(`Capacitor config missing ${marker}`);
 }
+// Dynamic template-literal calls are canonical in the field app; verify route stems instead of quote style.
 for (const marker of [
-  "PushNotifications.register()",
-  "'/api/mobile/oauth/exchange'",
-  "'/api/mobile/push/register'",
-  "'/api/mobile/work/today'",
-  "'/api/mobile/my-shift'",
-  "'/api/mobile/transport/trips/",
-  "'/care-logs'",
+  'PushNotifications.register()',
+  '/api/mobile/oauth/exchange',
+  '/api/mobile/push/register',
+  '/api/mobile/work/today',
+  '/api/mobile/my-shift',
+  '/api/mobile/transport/trips/',
+  '/care-logs',
 ]) {
   if (!mobileApp.includes(marker)) failures.push(`native field app missing ${marker}`);
 }
