@@ -88,6 +88,7 @@ try {
     if (asset === 'spire-results-workspace') return '20260811-spire-results-workspace-2';
     if (asset === 'spire-chart-review-v2') return '20260811-spire-chart-review-v2-2';
     if (asset === 'spire-screen-controls') return '20260811-spire-screen-controls-3';
+    if (asset === 'spire-clinical-workstation') return '20260811-spire-clinical-workstation-1';
     return version;
   };
   const styles = [
@@ -95,10 +96,12 @@ try {
     'spire-order-composer', 'spire-emar', 'spire-care-plan', 'spire-incidents',
     'spire-assessments-flowsheets', 'spire-scheduling', 'spire-authorizations-evv',
     'spire-documents-external-records', 'spire-communications-inbasket',
-    // Keep viewport protection last so other SPIRE modules cannot reintroduce horizontal overflow.
+    // Viewport protection stays immediately before the final clinical workstation skin.
     'spire-screen-controls',
+    // Keep the workstation skin last so older module CSS cannot restore web-card spacing.
+    'spire-clinical-workstation',
   ];
-  const scripts = [...styles];
+  const scripts = styles.filter((asset) => asset !== 'spire-clinical-workstation');
   for (const asset of styles) {
     spireHtml = spireHtml.replace(new RegExp(`\\s*<link rel="stylesheet" href="\\/assets\\/${asset}\\.css(?:\\?v=[^"']+)?">\\s*`, 'g'), '');
   }
@@ -180,7 +183,7 @@ const requiredPublishedFiles = [
   'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
-  'assets/spire-results-workspace.js',
+  'assets/spire-results-workspace.js', 'assets/spire-clinical-workstation.css',
   'spire.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
@@ -193,8 +196,19 @@ if (!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) 
   throw new Error('Static publication regression: SPIRE Results workspace can recreate the chart-tab MutationObserver loop');
 }
 
+const publishedSpireHtml = await readFile(spirePath, 'utf8');
+const workstationHref = '/assets/spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-1';
+const screenControlsHref = '/assets/spire-screen-controls.css?v=20260811-spire-screen-controls-3';
+if (!publishedSpireHtml.includes(workstationHref) || publishedSpireHtml.indexOf(workstationHref) < publishedSpireHtml.indexOf(screenControlsHref)) {
+  throw new Error('Static publication regression: SPIRE clinical workstation stylesheet is not the final presentation layer');
+}
+const publishedClinicalWorkstation = await readFile(path.join(outputDirectory, 'assets', 'spire-clinical-workstation.css'), 'utf8');
+for (const marker of ['PATIENT CHART', '#spireChartWorkspace.active', 'body:has(#spireChartWorkspace.active)', '.spire-flow-layout']) {
+  if (!publishedClinicalWorkstation.includes(marker)) throw new Error(`Static publication regression: clinical workstation CSS missing ${marker}`);
+}
+
 await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; SPIRE Results tab ordering is idempotent and cannot recreate the chart-opening mutation loop.');
+console.log('Static website published from canonical source files; SPIRE Results tab ordering remains idempotent and the clinical workstation presentation layer is published last.');
