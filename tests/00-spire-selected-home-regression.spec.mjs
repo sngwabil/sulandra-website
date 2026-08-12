@@ -80,6 +80,32 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
   await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();
   await expect(page.locator('#spireChartTabBody')).toContainText('Synthetic progress note');
 
+  const workstation=await page.evaluate(()=>{
+    const chart=document.getElementById('spireChartWorkspace');
+    const tabs=chart?.querySelector(':scope > .chart-tabs');
+    const left=document.querySelector('.spire-left-rail');
+    const right=document.querySelector('.spire-right-rail');
+    const stylesheet=[...document.styleSheets].map(sheet=>sheet.href||'').find(href=>href.includes('spire-clinical-workstation.css'))||'';
+    return {
+      stylesheet,
+      chartDisplay:chart?getComputedStyle(chart).display:'',
+      chartColumns:chart?getComputedStyle(chart).gridTemplateColumns:'',
+      tabsDirection:tabs?getComputedStyle(tabs).flexDirection:'',
+      leftDisplay:left?getComputedStyle(left).display:'',
+      rightDisplay:right?getComputedStyle(right).display:'',
+      rightWidth:right?right.getBoundingClientRect().width:0,
+      patientStripHeight:document.getElementById('spirePatientStrip')?.getBoundingClientRect().height||0,
+    };
+  });
+  console.log('SPIRE workstation diagnostics',JSON.stringify(workstation));
+  expect(workstation.stylesheet).toContain('20260811-spire-clinical-workstation-1');
+  expect(workstation.chartDisplay).toBe('grid');
+  expect(workstation.tabsDirection).toBe('column');
+  expect(workstation.leftDisplay).toBe('none');
+  expect(workstation.rightDisplay).not.toBe('none');
+  expect(workstation.rightWidth).toBeGreaterThan(180);
+  expect(workstation.patientStripHeight).toBeLessThan(120);
+
   await page.waitForTimeout(1800);
   await expect(chart).toHaveClass(/active/);
   await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toHaveCount(1);
