@@ -84,6 +84,7 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
     const chart=document.getElementById('spireChartWorkspace');
     const tabs=chart?.querySelector(':scope > .chart-tabs');
     const inactiveTab=chart?.querySelector('[data-chart-tab="results-review"]');
+    const activeTab=chart?.querySelector('[data-chart-tab="chart-review"]');
     const left=document.querySelector('.spire-left-rail');
     const right=document.querySelector('.spire-right-rail');
     const strip=document.getElementById('spirePatientStrip');
@@ -91,21 +92,37 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
     const brand=document.querySelector('.spire-brand');
     const brandText=document.querySelector('.spire-brand strong');
     const logoMark=document.querySelector('.spire-logo-mark');
+    const topbar=document.querySelector('.spire-topbar');
+    const topAction=document.querySelector('.spire-top-actions button');
     const stylesheet=[...document.styleSheets].map(sheet=>sheet.href||'').find(href=>href.includes('spire-clinical-workstation.css'))||'';
+    const controlStylesheet=[...document.styleSheets].map(sheet=>sheet.href||'').find(href=>href.includes('spire-sulandra-controls-final.css'))||'';
     const chartRect=chart?.getBoundingClientRect();
     const tabsRect=tabs?.getBoundingClientRect();
     const stripRect=strip?.getBoundingClientRect();
     const shellRect=shell?.getBoundingClientRect();
     const inactiveStyle=inactiveTab?getComputedStyle(inactiveTab):null;
+    const activeStyle=activeTab?getComputedStyle(activeTab):null;
     const inactiveBefore=inactiveTab?getComputedStyle(inactiveTab,'::before'):null;
+    const topbarStyle=topbar?getComputedStyle(topbar):null;
+    const topActionStyle=topAction?getComputedStyle(topAction):null;
     return {
       stylesheet,
+      controlStylesheet,
       appFontFamily:getComputedStyle(document.querySelector('.spire-app')).fontFamily,
       chartDisplay:chart?getComputedStyle(chart).display:'',
       tabsDirection:tabs?getComputedStyle(tabs).flexDirection:'',
       tabBeforeDisplay:inactiveBefore?.display||'',
       tabBorderRadius:inactiveStyle?.borderRadius||'',
       tabFontWeight:inactiveStyle?.fontWeight||'',
+      inactiveTabBackground:inactiveStyle?.backgroundColor||'',
+      activeTabBackground:activeStyle?.backgroundColor||'',
+      topbarBackground:topbarStyle?.backgroundColor||'',
+      topbarHeight:topbar?.getBoundingClientRect().height||0,
+      topbarBorderBottomColor:topbarStyle?.borderBottomColor||'',
+      topbarBorderBottomWidth:topbarStyle?.borderBottomWidth||'',
+      topActionBackground:topActionStyle?.backgroundColor||'',
+      topActionColor:topActionStyle?.color||'',
+      topActionBorderRadius:topActionStyle?.borderRadius||'',
       leftDisplay:left?getComputedStyle(left).display:'',
       rightDisplay:right?getComputedStyle(right).display:'',
       rightWidth:right?right.getBoundingClientRect().width:0,
@@ -126,12 +143,22 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
   });
   console.log('SPIRE workstation diagnostics',JSON.stringify(workstation));
   expect(workstation.stylesheet).toContain('20260811-spire-clinical-workstation-2');
-  expect(workstation.appFontFamily).toContain('Tahoma');
+  expect(workstation.controlStylesheet).toContain('20260811-sulandra-controls-lock-1');
+  expect(workstation.appFontFamily).toContain('Segoe UI');
   expect(workstation.chartDisplay).toBe('grid');
   expect(workstation.tabsDirection).toBe('row');
   expect(workstation.tabBeforeDisplay).toBe('none');
   expect(workstation.tabBorderRadius).toBe('0px');
-  expect(Number(workstation.tabFontWeight)).toBeLessThanOrEqual(600);
+  expect(Number(workstation.tabFontWeight)).toBeLessThanOrEqual(700);
+  expect(workstation.inactiveTabBackground).toBe('rgb(231, 238, 247)');
+  expect(workstation.activeTabBackground).toBe('rgb(255, 255, 255)');
+  expect(workstation.topbarBackground).toBe('rgb(8, 58, 103)');
+  expect(workstation.topbarHeight).toBeGreaterThanOrEqual(48);
+  expect(workstation.topbarBorderBottomColor).toBe('rgb(212, 167, 44)');
+  expect(workstation.topbarBorderBottomWidth).toBe('4px');
+  expect(workstation.topActionBackground).toBe('rgb(255, 255, 255)');
+  expect(workstation.topActionColor).toBe('rgb(23, 59, 99)');
+  expect(workstation.topActionBorderRadius).toBe('0px');
   expect(workstation.leftDisplay).toBe('none');
   expect(workstation.rightDisplay).not.toBe('none');
   expect(workstation.rightWidth).toBeGreaterThan(240);
