@@ -32,17 +32,19 @@ async function openChart(page){
   await expect(page.locator('body')).toHaveClass(/spmt-ready/);
   await expect(page.locator('#spireChartWorkspace')).toHaveClass(/active/);
   await expect(page.locator('#spireMasterToolbar')).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-spire-intake-isp-sleep-wiring','20260812-spire-intake-isp-sleep-1');
+  await expect(page.locator('html')).toHaveAttribute('data-spire-intake-isp-sleep-wiring','20260812-spire-intake-isp-sleep-2');
 }
 
 test('approved Client Intake is wired into current SPIRE chart',async({page})=>{
   await openChart(page);
-  await expect(page.locator('#spireMasterToolbar [data-spmt-tool="intake"]')).toBeVisible();
+  const intake=page.locator('#spireMasterToolbar [data-spmt-tool="intake"]');
+  await expect(intake).toBeVisible();
   await expect(page.locator('#spireMasterToolbar [data-spmt-tool="isp-logs"]')).toBeVisible();
   await expect(page.locator('#spireMasterToolbar [data-spmt-tool="sleep-wake"]')).toBeVisible();
   const admissionTab=page.locator('#spireAdmissionHistoryTab');
   await expect(admissionTab).toHaveText('Intake / Admission');
-  await admissionTab.click();
+  await expect(admissionTab).toBeHidden();
+  await intake.click();
   await expect(page.locator('#spireChartTabBody')).toContainText('Completed Intake Sections');
   await expect(page.locator('#spireChartTabBody')).toContainText('Preferences, Routines & Interests');
   await expect(page.locator('#spireChartTabBody')).toContainText('Usually sleeps 10 PM to 6 AM');
