@@ -1,5 +1,10 @@
-/* High-specificity geometry lock applied after legacy SPIRE workstation skins. */
-body:has(#spireChartWorkspace.active).spmt-ready .spire-app{
+/* User master-template final presentation lock.
+   Loaded dynamically after every legacy SPIRE stylesheet. These selectors are
+   deliberately more specific than spire-sulandra-controls-final.css so the
+   uploaded master template, not the old blue/gold shell, owns presentation. */
+
+/* Geometry: dark title bar + red contextual toolbar + chart workspace. */
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app{
   display:grid!important;
   grid-template-columns:280px minmax(0,1fr)!important;
   grid-template-rows:40px 36px minmax(0,1fr)!important;
@@ -7,11 +12,226 @@ body:has(#spireChartWorkspace.active).spmt-ready .spire-app{
   width:100vw!important;
   overflow:hidden!important;
 }
-body:has(#spireChartWorkspace.active).spmt-ready .spire-topbar{grid-column:1/-1!important;grid-row:1!important}
-body:has(#spireChartWorkspace.active).spmt-ready #spireMasterToolbar{grid-column:1/-1!important;grid-row:2!important}
-body:has(#spireChartWorkspace.active).spmt-ready .spire-patient-strip{grid-column:1!important;grid-row:3!important;min-height:0!important;height:100%!important}
-body:has(#spireChartWorkspace.active).spmt-ready .spire-shell{grid-column:2!important;grid-row:3!important;min-height:0!important;height:100%!important}
-body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-app{grid-template-rows:40px 36px minmax(0,1fr)!important}
-body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-topbar{grid-row:1!important}
-body.spmt-ready:not(:has(#spireChartWorkspace.active)) #spireMasterToolbar{grid-row:2!important}
-body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-shell{grid-row:3!important;min-height:0!important}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-topbar{grid-column:1/-1!important;grid-row:1!important}
+html body:has(#spireChartWorkspace.active).spmt-ready #spireMasterToolbar{grid-column:1/-1!important;grid-row:2!important}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-patient-strip{grid-column:1!important;grid-row:3!important;min-height:0!important;height:100%!important}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-shell{grid-column:2!important;grid-row:3!important;min-height:0!important;height:100%!important}
+html body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-app{grid-template-rows:40px 36px minmax(0,1fr)!important}
+html body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-topbar{grid-row:1!important}
+html body.spmt-ready:not(:has(#spireChartWorkspace.active)) #spireMasterToolbar{grid-row:2!important}
+html body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-shell{grid-row:3!important;min-height:0!important}
+
+/* Uploaded master dark title bar. */
+html body.spmt-ready .spire-app > .spire-topbar{
+  height:40px!important;
+  min-height:40px!important;
+  max-height:40px!important;
+  padding:0 10px!important;
+  gap:7px!important;
+  background:linear-gradient(135deg,#050811 0%,#0f172a 100%)!important;
+  color:#fff!important;
+  border:0!important;
+  border-bottom:1px solid #1e293b!important;
+  box-shadow:none!important;
+}
+html body.spmt-ready .spire-app .spire-brand{
+  width:auto!important;
+  min-width:175px!important;
+  flex:0 0 auto!important;
+  height:30px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  display:flex!important;
+  align-items:center!important;
+}
+html body.spmt-ready .spire-app .spire-brand > div:last-child{display:flex!important;align-items:center!important;gap:8px!important}
+html body.spmt-ready .spire-app .spire-brand strong{
+  display:inline-flex!important;
+  align-items:center!important;
+  min-height:24px!important;
+  padding:2px 10px!important;
+  border-radius:3px!important;
+  background:#fff!important;
+  color:#a80000!important;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important;
+  font-size:15px!important;
+  line-height:20px!important;
+  font-style:italic!important;
+  font-weight:900!important;
+  letter-spacing:0!important;
+}
+html body.spmt-ready .spire-app .spire-brand span{
+  display:inline!important;
+  color:#e2e8f0!important;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important;
+  font-size:11px!important;
+  font-weight:600!important;
+  white-space:nowrap!important;
+}
+html body.spmt-ready .spire-app .spire-logo-mark{display:none!important}
+
+/* Master title navigation: compact white-on-dark controls, no gold selection. */
+html body.spmt-ready .spire-app .spire-global-nav{gap:1px!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important}
+html body.spmt-ready .spire-app .spire-global-nav button{
+  height:34px!important;
+  min-height:34px!important;
+  padding:0 9px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#fff!important;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important;
+  font-size:11.5px!important;
+  font-weight:650!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+}
+html body.spmt-ready .spire-app .spire-global-nav button:hover,
+html body.spmt-ready .spire-app .spire-global-nav button.active{
+  background:rgba(255,255,255,.14)!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+
+/* Master title utilities. */
+html body.spmt-ready .spire-app .spire-top-actions button,
+html body.spmt-ready .spire-app .spire-window-controls button,
+html body.spmt-ready .spire-app .spire-current-home{
+  min-height:30px!important;
+  height:30px!important;
+  padding:0 9px!important;
+  border:1px solid rgba(255,255,255,.3)!important;
+  border-radius:3px!important;
+  background:rgba(255,255,255,.10)!important;
+  color:#fff!important;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  box-shadow:none!important;
+}
+html body.spmt-ready .spire-app .spire-window-controls button{width:28px!important;padding:0!important}
+html body.spmt-ready .spire-app .spire-current-home button{color:#fff!important;font-weight:700!important}
+html body.spmt-ready .spire-app .spire-top-actions button:hover,
+html body.spmt-ready .spire-app .spire-window-controls button:hover,
+html body.spmt-ready .spire-app .spire-current-home:hover{background:rgba(255,255,255,.22)!important;border-color:rgba(255,255,255,.45)!important}
+
+/* Master clinical activity strip. */
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app #spireChartWorkspace.active{
+  display:grid!important;
+  grid-template-rows:39px minmax(0,1fr)!important;
+  background:#fff!important;
+  overflow:hidden!important;
+}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app #spireChartWorkspace.active > .chart-tabs{
+  height:39px!important;
+  min-height:39px!important;
+  padding:4px 5px 0!important;
+  gap:1px!important;
+  background:#d8e4f0!important;
+  border:0!important;
+  border-bottom:1px solid #a8b8d0!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  box-shadow:none!important;
+}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app #spireChartWorkspace.active > .chart-tabs button{
+  min-width:0!important;
+  height:35px!important;
+  min-height:35px!important;
+  padding:0 11px!important;
+  border:1px solid transparent!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#0f172a!important;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important;
+  font-size:11.5px!important;
+  font-weight:550!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app #spireChartWorkspace.active > .chart-tabs button:hover{
+  background:#e2e8f0!important;
+  border-color:transparent!important;
+}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app #spireChartWorkspace.active > .chart-tabs button.active{
+  background:#fff!important;
+  color:#1d4ed8!important;
+  border:1px solid #a8b8d0!important;
+  border-bottom-color:#fff!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+  margin-bottom:-1px!important;
+}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app #spireChartWorkspace.active > .chart-tabs button[data-spmt-special="flowsheets"]{color:#075f91!important;font-weight:850!important}
+
+/* Master chart content keeps compact, information-dense tables/forms. */
+html body.spmt-ready .spire-app #spireChartTabBody{background:#f0f4f8!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important}
+html body.spmt-ready .spire-app #spireChartTabBody table{font-size:11px!important;line-height:1.35!important}
+html body.spmt-ready .spire-app #spireChartTabBody thead th{
+  padding:6px 8px!important;
+  border:1px solid #cbd5e1!important;
+  background:#eef4fc!important;
+  color:#003366!important;
+  font-size:11px!important;
+  font-weight:750!important;
+}
+html body.spmt-ready .spire-app #spireChartTabBody tbody td{
+  padding:6px 8px!important;
+  border:1px solid #cbd5e1!important;
+  background:#fff!important;
+  color:#0f172a!important;
+  font-size:11px!important;
+}
+html body.spmt-ready .spire-app #spireChartTabBody button,
+html body.spmt-ready .spire-app .workspace-title button,
+html body.spmt-ready .spire-app .results-toolbar button,
+html body.spmt-ready .spire-app .note-actions button,
+html body.spmt-ready .spire-app .patient-search button,
+html body.spmt-ready .spire-app .tool-grid button{
+  min-height:29px!important;
+  padding:5px 9px!important;
+  border:1px solid #7f9db9!important;
+  border-radius:3px!important;
+  background:#e4edf7!important;
+  color:#173b63!important;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif!important;
+  font-size:11px!important;
+  font-weight:650!important;
+  box-shadow:none!important;
+}
+html body.spmt-ready .spire-app #spireChartTabBody button:hover,
+html body.spmt-ready .spire-app .workspace-title button:hover,
+html body.spmt-ready .spire-app .results-toolbar button:hover,
+html body.spmt-ready .spire-app .note-actions button:hover,
+html body.spmt-ready .spire-app .patient-search button:hover,
+html body.spmt-ready .spire-app .tool-grid button:hover{background:#c2e0ff!important;border-color:#628bb3!important}
+html body.spmt-ready .spire-app #spireChartTabBody button.primary,
+html body.spmt-ready .spire-app .workspace-title button.primary,
+html body.spmt-ready .spire-app #spireChartTabBody .primary{
+  background:#2563eb!important;color:#fff!important;border-color:#1d4ed8!important;font-weight:800!important
+}
+
+/* Right quick-actions retain master flat-row styling over the legacy final skin. */
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app .spire-right-rail .rail-card button{
+  min-height:0!important;
+  height:auto!important;
+  padding:8px 10px!important;
+  border:0!important;
+  border-bottom:1px solid #e1e8ed!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:#173a52!important;
+  font-size:11px!important;
+  font-weight:650!important;
+  box-shadow:none!important;
+}
+html body:has(#spireChartWorkspace.active).spmt-ready .spire-app .spire-right-rail .rail-card button:hover{background:#eff6ff!important;color:#1d4ed8!important}
+
+@media(max-width:1200px){
+  html body.spmt-ready .spire-app .spire-brand{min-width:115px!important}
+  html body.spmt-ready .spire-app .spire-brand span{display:none!important}
+  html body.spmt-ready .spire-app .spire-global-nav button{padding:0 6px!important;font-size:10.5px!important}
+}
