@@ -1,0 +1,20 @@
+/* Final uploaded-master-template lock.
+   This file is appended last by the canonical SPIRE loader. Keep it small and
+   limited to presentation properties that legacy control skins mark !important. */
+html body.spmt-ready #spireApp.spire-app > .spire-topbar .spire-top-actions > button{
+  min-height:30px!important;
+  height:30px!important;
+  padding:0 9px!important;
+  border:1px solid rgba(255,255,255,.30)!important;
+  border-radius:3px!important;
+  background:rgba(255,255,255,.10)!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+html body.spmt-ready #spireApp.spire-app > .spire-topbar .spire-top-actions > button:hover{
+  border-color:rgba(255,255,255,.45)!important;
+  background:rgba(255,255,255,.22)!important;
+}
+html body.spmt-ready #spireApp.spire-app > .spire-topbar .spire-window-controls > button{
+  border-radius:2px!important;
+}
