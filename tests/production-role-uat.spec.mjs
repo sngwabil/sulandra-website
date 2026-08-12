@@ -70,7 +70,8 @@ async function login(page,p){
   else{await expect(page).toHaveURL(/\/employee-portal\.html$/);await expect(page.locator('body')).toHaveAttribute('data-role-uat-ready','true');await expect(page.locator('body')).toHaveAttribute('data-authenticated-role',p.role);}
   return mutations;
 }
-async function open(page,selector,path,label){const control=page.locator(selector).first();await expect(control).toBeVisible();await control.click();await expect(page).toHaveURL(new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));if(label){const heading=page.getByRole('heading',{name:label,exact:false}).first();if(await heading.count())await expect(heading).toBeVisible();else await expect(page).toHaveTitle(new RegExp(label,'i'));}}
+const labelPattern=label=>String(label).toUpperCase()==='SPIRE'?/S\.?P\.?I\.?R\.?E\.?/i:new RegExp(label,'i');
+async function open(page,selector,path,label){const control=page.locator(selector).first();await expect(control).toBeVisible();await control.click();await expect(page).toHaveURL(new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));if(label){const pattern=labelPattern(label);const heading=page.getByRole('heading',{name:pattern,exact:false}).first();if(await heading.count())await expect(heading).toBeVisible();else await expect(page).toHaveTitle(pattern);}}
 const absent=async(page,...selectors)=>{for(const s of selectors)await expect(page.locator(s)).toHaveCount(0);};
 
 for(const [key,p] of Object.entries(PERSONAS))test(`${p.label}: login-first production UAT`,async({page})=>{

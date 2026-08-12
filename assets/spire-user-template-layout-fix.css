@@ -1,0 +1,17 @@
+/* High-specificity geometry lock applied after legacy SPIRE workstation skins. */
+body:has(#spireChartWorkspace.active).spmt-ready .spire-app{
+  display:grid!important;
+  grid-template-columns:280px minmax(0,1fr)!important;
+  grid-template-rows:40px 36px minmax(0,1fr)!important;
+  height:100vh!important;
+  width:100vw!important;
+  overflow:hidden!important;
+}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-topbar{grid-column:1/-1!important;grid-row:1!important}
+body:has(#spireChartWorkspace.active).spmt-ready #spireMasterToolbar{grid-column:1/-1!important;grid-row:2!important}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-patient-strip{grid-column:1!important;grid-row:3!important;min-height:0!important;height:100%!important}
+body:has(#spireChartWorkspace.active).spmt-ready .spire-shell{grid-column:2!important;grid-row:3!important;min-height:0!important;height:100%!important}
+body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-app{grid-template-rows:40px 36px minmax(0,1fr)!important}
+body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-topbar{grid-row:1!important}
+body.spmt-ready:not(:has(#spireChartWorkspace.active)) #spireMasterToolbar{grid-row:2!important}
+body.spmt-ready:not(:has(#spireChartWorkspace.active)) .spire-shell{grid-row:3!important;min-height:0!important}
