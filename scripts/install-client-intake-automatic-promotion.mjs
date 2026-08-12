@@ -49,5 +49,15 @@ if (!source.includes(marker)) {
   source = source.replace(approvalAnchor, replacement);
 }
 
+// Return the mapping result to the standalone H&P/master workstation as part of the
+// approval response. The UI can immediately show which permanent chart resources
+// were created or linked without making a second best-effort promotion request.
+const approvalResponse = "res.json({data:{status:'APPROVED',patientId}});";
+const promotedApprovalResponse = "res.json({data:{status:'APPROVED',patientId,promotion}});";
+if (!source.includes(promotedApprovalResponse)) {
+  if (!source.includes(approvalResponse)) throw new Error('Client Intake approval response anchor was not found');
+  source = source.replace(approvalResponse, promotedApprovalResponse);
+}
+
 await writeFile(target, source, 'utf8');
-console.log('Client Intake automatic SPIRE promotion installed: approval seeds the DRAFT care plan first, then maps the full admission summary, medication reconciliation/eMAR-ready orders, intake documents, coded service authorizations, and promotion audit trail.');
+console.log('Client Intake automatic SPIRE promotion installed: approval seeds the DRAFT care plan first, then maps the full admission summary, medication reconciliation/eMAR-ready orders, intake documents, coded service authorizations, promotion audit trail, and returns the promotion result to the H&P client.');
