@@ -156,11 +156,12 @@ test('SPIRE selected home opens one patient chart without render loops',async({p
 
   await page.locator('[data-chart-tab="chart-review"]').click();
   await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();
+  const chartReviewCallsAfterNavigation=chartReviewCalls;
 
   await page.waitForTimeout(1800);
   await expect(chart).toHaveClass(/active/);
   await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toHaveCount(1);
-  expect(chartReviewCalls,'Chart Review repeatedly refetched after rendering its own DOM').toBeLessThanOrEqual(4);
+  expect(chartReviewCalls,'Chart Review kept refetching after the explicit navigation settled').toBe(chartReviewCallsAfterNavigation);
 
   const observerDiagnostics=await page.evaluate(()=>({
     breaker:document.documentElement.dataset.spireObserverCircuitBreaker||'',
