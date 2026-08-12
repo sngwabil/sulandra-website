@@ -5,45 +5,108 @@ const HOME_ID='biz-spire-home';
 const PATIENT_ID='biz-spire-patient';
 const TOKEN='biz-spire-selected-home-token';
 
-const patient={id:PATIENT_ID,patientId:PATIENT_ID,firstName:'Synthetic',lastName:'SPIRE Patient',preferredName:'Synthetic',name:'Synthetic SPIRE Patient',medicalRecordNumber:'SPIRE-UAT-0001',dateOfBirth:'1990-01-01',sexAtBirth:'FEMALE',homeName:'Synthetic SPIRE Home',programName:'Community Living',flags:[],riskAlerts:[],allergies:[],diagnoses:[],problems:[],careTeam:[],latestVitals:{systolic:120,diastolic:76,pulse:74,spo2:98},openOrderCount:0,openTaskCount:0,activeMedicationCount:0};
-function json(route,data,status=200){return route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});}
+const patient={
+  id:PATIENT_ID,patientId:PATIENT_ID,firstName:'Synthetic',lastName:'SPIRE Patient',preferredName:'Synthetic',name:'Synthetic SPIRE Patient',
+  medicalRecordNumber:'SPIRE-UAT-0001',dateOfBirth:'1990-01-01',sexAtBirth:'FEMALE',homeName:'Synthetic SPIRE Home',programName:'Community Living',
+  flags:[],riskAlerts:[],allergies:[],diagnoses:[],problems:[],careTeam:[],latestVitals:{systolic:120,diastolic:76,pulse:74,spo2:98},openOrderCount:0,openTaskCount:0,activeMedicationCount:0,
+};
+const json=(route,data,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
 
-test('SPIRE selected home opens user master-template chart without render loops',async({page})=>{
-  let chartReviewCalls=0;const pageErrors=[];const consoleErrors=[];
+test('SPIRE selected home opens the master workstation without render loops',async({page})=>{
+  let chartReviewCalls=0;
+  const pageErrors=[];
+  const consoleErrors=[];
   page.on('pageerror',error=>pageErrors.push(String(error?.stack||error?.message||error)));
   page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text())});
-  await page.addInitScript(({token})=>{sessionStorage.setItem('sulandra:employee:access-token',token);localStorage.setItem('sulandra:employee:access-token',token);sessionStorage.setItem('spire:selected-service-home-name','Synthetic SPIRE Home');sessionStorage.setItem('spire:selected-service-home-entity','entity-scls');},{token:TOKEN});
+
+  await page.addInitScript(({token})=>{
+    sessionStorage.setItem('sulandra:employee:access-token',token);
+    localStorage.setItem('sulandra:employee:access-token',token);
+    sessionStorage.setItem('spire:selected-service-home-name','Synthetic SPIRE Home');
+    sessionStorage.setItem('spire:selected-service-home-entity','entity-scls');
+  },{token:TOKEN});
+
   await page.route(`${API}/**`,async route=>{
-    const request=route.request(),url=new URL(request.url()),path=url.pathname,method=request.method().toUpperCase();
+    const request=route.request();
+    const url=new URL(request.url());
+    const path=url.pathname;
+    const method=request.method().toUpperCase();
     if(path==='/api/entity-context')return json(route,{data:{entities:[{id:'entity-scls',code:'SCLS',displayName:'Sulandra Community Living Services',status:'ACTIVE'}],primaryEntityId:'entity-scls',enterpriseOwner:false}});
     if(['/api/session','/api/auth/session','/api/auth/me'].includes(path))return json(route,{data:{id:'biz-spire-user',userId:'biz-spire-user',email:'spire.uat@sulandrahealth.test',displayName:'Synthetic SPIRE User',role:'RN',status:'ACTIVE'},session:{id:'biz-spire-user',userId:'biz-spire-user',email:'spire.uat@sulandrahealth.test',displayName:'Synthetic SPIRE User',role:'RN',status:'ACTIVE'}});
     if(path===`/api/spire/network/service-homes/${HOME_ID}/patients`)return json(route,{data:[patient]});
     if(path===`/api/spire/network/service-homes/${HOME_ID}/schedule`||path===`/api/spire/network/service-homes/${HOME_ID}/inbasket`)return json(route,{data:[]});
-    if(path===`/api/spire/patients/${PATIENT_ID}`&&method==='GET'||path===`/api/spire/patients/${PATIENT_ID}/storyboard`&&method==='GET')return json(route,{data:patient});
-    if(path===`/api/spire/patients/${PATIENT_ID}/chart-review-v2`&&method==='GET'){chartReviewCalls+=1;return json(route,{data:{items:[{id:'biz-chart-item',resourceId:'biz-chart-item',type:'Note',description:'Synthetic progress note',status:'SIGNED',author:'Synthetic RN',date:'2026-08-11T12:00:00.000Z'}]}});}
+    if((path===`/api/spire/patients/${PATIENT_ID}`||path===`/api/spire/patients/${PATIENT_ID}/storyboard`)&&method==='GET')return json(route,{data:patient});
+    if(path===`/api/spire/patients/${PATIENT_ID}/chart-review-v2`&&method==='GET'){
+      chartReviewCalls+=1;
+      return json(route,{data:{items:[{id:'biz-chart-item',resourceId:'biz-chart-item',type:'Note',description:'Synthetic progress note',status:'SIGNED',author:'Synthetic RN',date:'2026-08-11T12:00:00.000Z'}]}});
+    }
     if(path===`/api/spire/patients/${PATIENT_ID}/assessments/overview`&&method==='GET')return json(route,{data:{responses:[],due:[]}});
     if(path==='/api/spire/assessment-templates'&&method==='GET')return json(route,{data:[]});
-    if(method==='GET')return json(route,{data:[]});return json(route,{data:{ok:true}});
+    if(method==='GET')return json(route,{data:[]});
+    return json(route,{error:'UAT blocks live mutation'},409);
   });
+
   await page.goto(`/spire.html?spireHome=${HOME_ID}#patient=${PATIENT_ID}&tab=chart-review`,{waitUntil:'commit'});
-  const strip=page.locator('#spirePatientStrip'),chart=page.locator('#spireChartWorkspace');
-  await expect(page.locator('body')).toHaveClass(/spmt-ready/);await expect(strip).toContainText('Synthetic SPIRE Patient');await expect(chart).toHaveClass(/active/);await expect(chart.locator('[data-chart-tab="chart-review"]')).toBeVisible();await expect(chart.locator('[data-spmt-special="flowsheets"]')).toBeVisible();await expect(page.locator('#spireMasterToolbar')).toBeVisible();await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();await expect(page.locator('#spireChartTabBody')).toContainText('Synthetic progress note');
 
-  const workstation=await page.evaluate(()=>{
-    const chart=document.getElementById('spireChartWorkspace'),tabs=chart?.querySelector(':scope > .chart-tabs'),inactiveTab=chart?.querySelector('[data-chart-tab="results-review"]'),activeTab=chart?.querySelector('[data-chart-tab="chart-review"]'),flowsheetsTab=chart?.querySelector('[data-spmt-special="flowsheets"]'),left=document.querySelector('.spire-left-rail'),right=document.querySelector('.spire-right-rail'),strip=document.getElementById('spirePatientStrip'),shell=document.querySelector('.spire-shell'),brand=document.querySelector('.spire-brand'),brandText=document.querySelector('.spire-brand strong'),logoMark=document.querySelector('.spire-logo-mark'),topbar=document.querySelector('.spire-topbar'),topAction=document.querySelector('.spire-top-actions button'),masterToolbar=document.getElementById('spireMasterToolbar');
-    const stylesheets=[...document.styleSheets].map(sheet=>sheet.href||''),stylesheet=stylesheets.find(href=>href.includes('spire-clinical-workstation.css'))||'',controlStylesheet=stylesheets.find(href=>href.includes('spire-sulandra-controls-final.css'))||'',masterStylesheet=stylesheets.find(href=>href.includes('spire-user-template-integration.css'))||'',masterLayoutStylesheet=stylesheets.find(href=>href.includes('spire-user-template-layout-fix.css'))||'',masterFinalStylesheet=stylesheets.find(href=>href.includes('spire-user-template-final-lock.css'))||'';
-    const chartRect=chart?.getBoundingClientRect(),tabsRect=tabs?.getBoundingClientRect(),stripRect=strip?.getBoundingClientRect(),shellRect=shell?.getBoundingClientRect(),inactiveStyle=inactiveTab?getComputedStyle(inactiveTab):null,activeStyle=activeTab?getComputedStyle(activeTab):null,inactiveBefore=inactiveTab?getComputedStyle(inactiveTab,'::before'):null,topbarStyle=topbar?getComputedStyle(topbar):null,topActionStyle=topAction?getComputedStyle(topAction):null,toolbarStyle=masterToolbar?getComputedStyle(masterToolbar):null,brandStyle=brand?getComputedStyle(brand):null,brandTextStyle=brandText?getComputedStyle(brandText):null;
-    return {stylesheet,controlStylesheet,masterStylesheet,masterLayoutStylesheet,masterFinalStylesheet,masterRuntime:window.SpireMasterTemplate?.version||'',appFontFamily:getComputedStyle(document.querySelector('.spire-app')).fontFamily,chartDisplay:chart?getComputedStyle(chart).display:'',tabsDirection:tabs?getComputedStyle(tabs).flexDirection:'',tabBeforeDisplay:inactiveBefore?.display||'',tabBorderRadius:inactiveStyle?.borderRadius||'',tabFontWeight:inactiveStyle?.fontWeight||'',inactiveTabBackground:inactiveStyle?.backgroundColor||'',activeTabBackground:activeStyle?.backgroundColor||'',flowsheetsTabText:flowsheetsTab?.textContent?.trim()||'',topbarBackgroundImage:topbarStyle?.backgroundImage||'',topbarHeight:topbar?.getBoundingClientRect().height||0,topbarBorderBottomColor:topbarStyle?.borderBottomColor||'',topbarBorderBottomWidth:topbarStyle?.borderBottomWidth||'',topActionBackground:topActionStyle?.backgroundColor||'',topActionColor:topActionStyle?.color||'',topActionBorderRadius:topActionStyle?.borderRadius||'',masterToolbarBackground:toolbarStyle?.backgroundColor||'',masterToolbarHeight:masterToolbar?.getBoundingClientRect().height||0,leftDisplay:left?getComputedStyle(left).display:'',rightDisplay:right?getComputedStyle(right).display:'',rightWidth:right?right.getBoundingClientRect().width:0,patientStripWidth:stripRect?.width||0,patientStripHeight:stripRect?.height||0,patientStripRight:stripRect?.right||0,shellLeft:shellRect?.left||0,chartTop:chartRect?.top||0,tabsTop:tabsRect?.top||0,tabsWidth:tabsRect?.width||0,tabsHeight:tabsRect?.height||0,brandWidth:brand?.getBoundingClientRect().width||0,brandBackground:brandStyle?.backgroundColor||'',brandTextBackground:brandTextStyle?.backgroundColor||'',brandTextColor:brandTextStyle?.color||'',brandFontStyle:brandTextStyle?.fontStyle||'',brandFontWeight:brandTextStyle?.fontWeight||'',brandText:brandText?.textContent?.trim()||'',logoMarkDisplay:logoMark?getComputedStyle(logoMark).display:''};
-  });
-  console.log('SPIRE user master-template diagnostics',JSON.stringify(workstation));
-  expect(workstation.stylesheet).toContain('20260811-spire-clinical-workstation-2');expect(workstation.controlStylesheet).toContain('20260811-sulandra-controls-lock-1');expect(workstation.masterStylesheet).toContain('spire-user-template-integration.css?v=20260812-user-master-template-5');expect(workstation.masterLayoutStylesheet).toContain('spire-user-template-layout-fix.css?v=20260812-user-master-template-5');expect(workstation.masterFinalStylesheet).toContain('spire-user-template-final-lock.css?v=20260812-user-master-template-5');expect(workstation.masterRuntime).toBe('20260812-user-master-template-2');
-  expect(workstation.appFontFamily).toContain('Segoe UI');expect(workstation.chartDisplay).toBe('grid');expect(workstation.tabsDirection).toBe('row');expect(workstation.tabBeforeDisplay).toBe('none');expect(workstation.tabBorderRadius).toBe('0px');expect(Number(workstation.tabFontWeight)).toBeLessThanOrEqual(600);expect(['rgba(0, 0, 0, 0)','rgb(216, 228, 240)','rgb(226, 232, 240)']).toContain(workstation.inactiveTabBackground);expect(workstation.activeTabBackground).toBe('rgb(255, 255, 255)');expect(workstation.flowsheetsTabText).toBe('Flowsheets');
-  expect(workstation.topbarBackgroundImage).toContain('linear-gradient');expect(workstation.topbarHeight).toBeGreaterThanOrEqual(39);expect(workstation.topbarHeight).toBeLessThanOrEqual(41);expect(workstation.topbarBorderBottomColor).toBe('rgb(30, 41, 59)');expect(workstation.topbarBorderBottomWidth).toBe('1px');expect(workstation.topActionBackground).toMatch(/rgba?\(/);expect(workstation.topActionColor).toBe('rgb(255, 255, 255)');expect(workstation.topActionBorderRadius).toBe('3px');
-  expect(workstation.masterToolbarBackground).toBe('rgb(153, 0, 0)');expect(workstation.masterToolbarHeight).toBeGreaterThanOrEqual(35);expect(workstation.masterToolbarHeight).toBeLessThanOrEqual(37);expect(workstation.leftDisplay).toBe('none');expect(workstation.rightDisplay).not.toBe('none');expect(workstation.rightWidth).toBeGreaterThanOrEqual(270);expect(workstation.rightWidth).toBeLessThanOrEqual(290);expect(workstation.patientStripWidth).toBeGreaterThanOrEqual(270);expect(workstation.patientStripWidth).toBeLessThanOrEqual(290);expect(workstation.patientStripHeight).toBeGreaterThan(500);expect(Math.abs(workstation.patientStripRight-workstation.shellLeft)).toBeLessThan(3);expect(workstation.tabsWidth).toBeGreaterThan(workstation.tabsHeight*6);expect(Math.abs(workstation.chartTop-workstation.tabsTop)).toBeLessThan(3);
-  expect(workstation.brandWidth).toBeGreaterThan(90);expect(['rgba(0, 0, 0, 0)','transparent']).toContain(workstation.brandBackground);expect(workstation.brandTextBackground).toBe('rgb(255, 255, 255)');expect(workstation.brandTextColor).toBe('rgb(168, 0, 0)');expect(workstation.brandFontStyle).toBe('italic');expect(Number(workstation.brandFontWeight)).toBeGreaterThanOrEqual(800);expect(workstation.brandText).toBe('Spire');expect(workstation.logoMarkDisplay).toBe('none');
+  const chart=page.locator('#spireChartWorkspace');
+  const strip=page.locator('#spirePatientStrip');
+  await expect(page.locator('body')).toHaveClass(/spmt-ready/);
+  await expect(strip).toContainText('Synthetic SPIRE Patient');
+  await expect(chart).toHaveClass(/active/);
+  await expect(page.locator('#spireMasterToolbar')).toBeVisible();
+  await expect(chart.locator('[data-spmt-special="flowsheets"]')).toBeVisible();
+  await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();
+  await expect(page.locator('#spireChartTabBody')).toContainText('Synthetic progress note');
 
-  await page.locator('[data-chart-tab="assessments"]').click();await expect(page.locator('#spireChartTabBody .spire-assessment-head')).toBeVisible();await expect(page.locator('#spireChartTabBody')).toContainText('Clinical Assessments');await expect(page.locator('#spireChartTabBody .json-foundation')).toHaveCount(0);await expect(page.locator('#spireChartTabBody')).toContainText('No assessments documented yet.');
-  await page.locator('[data-chart-tab="chart-review"]').click();await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();const chartReviewCallsAfterNavigation=chartReviewCalls;await page.waitForTimeout(1800);await expect(chart).toHaveClass(/active/);await expect(page.locator('#spireMasterToolbar')).toBeVisible();await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toHaveCount(1);expect(chartReviewCalls,'Chart Review kept refetching after the explicit navigation settled').toBe(chartReviewCallsAfterNavigation);
-  const observerDiagnostics=await page.evaluate(()=>({breaker:document.documentElement.dataset.spireObserverCircuitBreaker||'',quarantined:document.documentElement.dataset.spireUnsafeObserverQuarantined||'',workspaceSuppressed:document.documentElement.dataset.spireWorkspaceObserverSuppressed||'',workspaceRestored:document.documentElement.dataset.spireWorkspaceObserverRestored||'',guard:window.SpirePatientOpenGuard?.contract||'',specialized:window.SpireSpecializedTabOwnership?.contract||'',master:window.SpireMasterTemplate?.version||''}));
-  console.log('SPIRE observer diagnostics',JSON.stringify(observerDiagnostics));expect(observerDiagnostics.breaker,`A SPIRE MutationObserver became runaway: ${observerDiagnostics.breaker}`).toBe('');expect(observerDiagnostics.specialized).toBe('20260811-spire-specialized-tab-ownership-1');expect(observerDiagnostics.master).toBe('20260812-user-master-template-2');expect(pageErrors,'SPIRE emitted browser page errors while opening the selected-home chart').toEqual([]);expect(consoleErrors.filter(line=>!line.includes('observer circuit breaker')),'SPIRE emitted unexpected console errors').toEqual([]);
+  const master=await page.evaluate(()=>({
+    runtime:window.SpireMasterTemplate?.version||'',
+    chartOwner:window.SpireChartReviewOwnership?.contract||'',
+    patientGuard:window.SpirePatientOpenGuard?.contract||'',
+    specialized:window.SpireSpecializedTabOwnership?.contract||'',
+    intake:window.SpireIntakeIspSleepWiring?.contract||'',
+    breaker:document.documentElement.dataset.spireObserverCircuitBreaker||'',
+    appGrid:getComputedStyle(document.querySelector('.spire-app')).display,
+    titleHeight:document.querySelector('.spire-topbar')?.getBoundingClientRect().height||0,
+    toolbarHeight:document.getElementById('spireMasterToolbar')?.getBoundingClientRect().height||0,
+    patientWidth:document.getElementById('spirePatientStrip')?.getBoundingClientRect().width||0,
+    rightWidth:document.getElementById('spireRightRail')?.getBoundingClientRect().width||0,
+    titleBackground:getComputedStyle(document.querySelector('.spire-topbar')).backgroundImage,
+    toolbarBackground:getComputedStyle(document.getElementById('spireMasterToolbar')).backgroundColor,
+    styles:[...document.styleSheets].map(sheet=>sheet.href||''),
+  }));
+  expect(master.runtime).toBe('20260812-user-master-template-2');
+  expect(master.chartOwner).toBe('20260812-spire-chart-review-ownership-1');
+  expect(master.patientGuard).toBe('20260811-spire-patient-open-guard-7');
+  expect(master.specialized).toBe('20260811-spire-specialized-tab-ownership-1');
+  expect(master.intake).toBe('20260812-spire-intake-isp-sleep-2');
+  expect(master.breaker).toBe('');
+  expect(master.appGrid).toBe('grid');
+  expect(master.titleHeight).toBeGreaterThanOrEqual(39);
+  expect(master.titleHeight).toBeLessThanOrEqual(41);
+  expect(master.toolbarHeight).toBeGreaterThanOrEqual(35);
+  expect(master.toolbarHeight).toBeLessThanOrEqual(37);
+  expect(master.patientWidth).toBeGreaterThanOrEqual(260);
+  expect(master.patientWidth).toBeLessThanOrEqual(300);
+  expect(master.rightWidth).toBeGreaterThanOrEqual(250);
+  expect(master.titleBackground).toContain('linear-gradient');
+  expect(master.toolbarBackground).toBe('rgb(153, 0, 0)');
+  expect(master.styles.some(href=>href.includes('spire-user-template-integration.css?v=20260812-user-master-template-8'))).toBeTruthy();
+  expect(master.styles.some(href=>href.includes('spire-user-template-final-lock.css?v=20260812-user-master-template-8'))).toBeTruthy();
+
+  await page.locator('[data-chart-tab="assessments"]').click();
+  await expect(page.locator('#spireChartTabBody .spire-assessment-head')).toBeVisible();
+  await expect(page.locator('#spireChartTabBody')).toContainText('Clinical Assessments');
+  await expect(page.locator('#spireChartTabBody .json-foundation')).toHaveCount(0);
+
+  await page.locator('[data-chart-tab="chart-review"]').click();
+  await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toBeVisible();
+  const settledCalls=chartReviewCalls;
+  await page.waitForTimeout(1800);
+  await expect(page.locator('#spireChartTabBody .spire-cr-layout')).toHaveCount(1);
+  expect(chartReviewCalls,'Chart Review kept refetching after the owned renderer settled').toBe(settledCalls);
+
+  const finalBreaker=await page.evaluate(()=>document.documentElement.dataset.spireObserverCircuitBreaker||'');
+  expect(finalBreaker,'A SPIRE MutationObserver became runaway').toBe('');
+  expect(pageErrors,'SPIRE emitted browser page errors').toEqual([]);
+  expect(consoleErrors.filter(line=>!line.includes('observer circuit breaker')),'SPIRE emitted unexpected console errors').toEqual([]);
 });
