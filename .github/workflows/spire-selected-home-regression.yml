@@ -44,12 +44,17 @@ jobs:
             workstation="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2' || true)"
             pre="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-workspace-loop-guard.js?v=20260811-workspace-observer-suppression-2' || true)"
             post="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-workspace-loop-restore.js?v=20260811-workspace-observer-suppression-2' || true)"
+            master_loader="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-home-care-redesign-loader.js?v=20260812-user-master-template-3' || true)"
+            master_runtime="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-integration.js?v=20260812-user-master-template-3' || true)"
+            master_style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-integration.css?v=20260812-user-master-template-3' || true)"
+            master_layout="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-user-template-layout-fix.css?v=20260812-user-master-template-3' || true)"
             if grep -q 'spire-app-v2.js?v=20260811-business-uat-9&startup=20260811-domready-1' <<<"$html" \
               && grep -q 'spire-patient-open-guard.js?v=20260811-spire-patient-open-guard-6' <<<"$html" \
               && grep -q 'spire-results-workspace.js?v=20260811-spire-results-workspace-2' <<<"$html" \
               && grep -q 'spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2' <<<"$html" \
               && grep -q 'spire-workspace-loop-guard.js?v=20260811-workspace-observer-suppression-2' <<<"$html" \
               && grep -q 'spire-workspace-loop-restore.js?v=20260811-workspace-observer-suppression-2' <<<"$html" \
+              && grep -q 'spire-home-care-redesign-loader.js?v=20260812-user-master-template-3' <<<"$html" \
               && grep -q 'BUSINESS_UAT_DEFER_DEEPLINK_UNTIL_DOM_READY' <<<"$app" \
               && grep -q '20260811-spire-patient-open-guard-6' <<<"$guard" \
               && grep -q 'callbackCount > 250' <<<"$guard" \
@@ -59,7 +64,12 @@ jobs:
               && grep -q 'grid-template-columns:clamp(230px,13.2vw,270px)' <<<"$workstation" \
               && grep -q 'flex-direction:row!important' <<<"$workstation" \
               && grep -q 'spireWorkspaceObserverSuppressed' <<<"$pre" \
-              && grep -q 'spireWorkspaceObserverRestored' <<<"$post"; then
+              && grep -q 'spireWorkspaceObserverRestored' <<<"$post" \
+              && grep -q "VERSION='20260812-user-master-template-3'" <<<"$master_loader" \
+              && grep -q "SpireMasterTemplate" <<<"$master_runtime" \
+              && grep -q 'spireMasterToolbar' <<<"$master_runtime" \
+              && grep -q -- '--spmt-toolbar:#990000' <<<"$master_style" \
+              && grep -q 'grid-template-rows:40px 36px minmax(0,1fr)' <<<"$master_layout"; then
               HTML="$html" python - <<'PY'
           import os
           html=os.environ['HTML']
@@ -74,16 +84,19 @@ jobs:
               raise SystemExit(f'unsafe SPIRE runtime order: {positions}')
           screen=html.find('spire-screen-controls.css?v=20260811-spire-screen-controls-3')
           workstation=html.find('spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2')
+          master=html.find('spire-home-care-redesign-loader.js?v=20260812-user-master-template-3')
           if screen < 0 or workstation < 0 or workstation < screen:
               raise SystemExit(f'unsafe SPIRE stylesheet order: screen={screen}, workstation={workstation}')
+          if master < 0:
+              raise SystemExit('user master-template loader missing from deployed SPIRE')
           PY
-              echo 'Exact freeze-safe SPIRE runtime with reference workstation v2 is live.'
+              echo 'Exact freeze-safe SPIRE runtime with the user master template is live.'
               exit 0
             fi
-            echo "Waiting for SPIRE frontend deployment (${attempt}/60)..."
+            echo "Waiting for SPIRE master-template frontend deployment (${attempt}/60)..."
             sleep 10
           done
-          echo 'Timed out waiting for reference-workstation SPIRE runtime.' >&2
+          echo 'Timed out waiting for user master-template SPIRE runtime.' >&2
           exit 1
 
       - name: Validate freeze-safe runtime syntax
@@ -96,7 +109,9 @@ jobs:
             spire-results-workspace.js \
             spire-workspace-loop-guard.js \
             spire-workspace-loop-restore.js \
-            spire-chart-review-v2.js; do
+            spire-chart-review-v2.js \
+            spire-home-care-redesign-loader.js \
+            spire-user-template-integration.js; do
             curl -fsSL --max-time 20 "https://www.sulandrahealth.com/assets/${asset}" -o "/tmp/${asset}"
             node --check "/tmp/${asset}"
           done
