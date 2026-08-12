@@ -47,6 +47,7 @@ const imports = [
   "import { registerSpireShiftWorkspaceRoutes } from './spire-shift-workspace-routes.js';",
   "import { registerSpireIncidentManagementRoutes } from './spire-incident-management-routes.js';",
   "import { registerSpireAssessmentsFlowsheetsRoutes } from './spire-assessments-flowsheets-routes.js';",
+  "import { registerSpireCareWorkstationRoutes } from './spire-care-workstation-routes.js';",
   "import { registerSpireSchedulingRoutes } from './spire-scheduling-routes.js';",
   "import { registerSpireAuthorizationsEvvRoutes } from './spire-authorizations-evv-routes.js';",
   "import { registerSpireDocumentsExternalRecordsRoutes } from './spire-documents-external-records-routes.js';",
@@ -99,6 +100,7 @@ const calls = [
   'registerSpireShiftWorkspaceRoutes(app, prisma, { authOf });',
   'registerSpireIncidentManagementRoutes(app, prisma, { authOf });',
   'registerSpireAssessmentsFlowsheetsRoutes(app, prisma, { authOf });',
+  'registerSpireCareWorkstationRoutes(app, prisma, { authOf });',
   'registerSpireSchedulingRoutes(app, prisma, { authOf });',
   'registerSpireAuthorizationsEvvRoutes(app, prisma, { authOf });',
   'registerSpireDocumentsExternalRecordsRoutes(app, prisma, { authOf });',
@@ -124,4 +126,4 @@ for (const statement of calls) {
   if (!source.includes(statement)) source = source.replace(callMarker, `${statement}\n${callMarker}`);
 }
 await writeFile(target, source, 'utf8');
-console.log(`Registered the complete SPIRE enterprise and field-mobile route set in ${target}.`);
+console.log(`Registered the complete SPIRE enterprise, care-workstation and field-mobile route set in ${target}.`);
