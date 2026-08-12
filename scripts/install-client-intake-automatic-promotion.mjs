@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const target = path.join(root, 'api/src/client-intake-routes.ts');
 const marker = 'CLIENT_INTAKE_AUTOMATIC_SPIRE_PROMOTION_V2';
+const retryRouteMarker = 'CLIENT_INTAKE_APPROVED_REPROMOTION_ROUTE_V1';
 const oldMarker = 'CLIENT_INTAKE_AUTOMATIC_SPIRE_PROMOTION_V1';
 const importLine = "import { promoteApprovedIntakeToSpire } from './client-intake-promotion.js';";
 let source = await readFile(target, 'utf8');
@@ -59,5 +60,17 @@ if (!source.includes(promotedApprovalResponse)) {
   source = source.replace(approvalResponse, promotedApprovalResponse);
 }
 
+// Existing APPROVED training/client intakes may predate automatic promotion. Expose
+// an authorized, retry-safe repair endpoint so those approved records can be pushed
+// through the exact same permanent-chart mapping without reopening or mutating the
+// signed intake packet. promoteApprovedIntakeToSpire uses stable IDs, so retrying is
+// deliberate and does not create duplicate native chart resources.
+if (!source.includes(retryRouteMarker)) {
+  const retryAnchor = "  app.get('/api/admin/client-intakes/:caseId/duplicate-candidates'";
+  if (!source.includes(retryAnchor)) throw new Error('Client Intake duplicate-candidate route anchor was not found');
+  const retryRoute = `  /* ${retryRouteMarker}: repair/refresh an already-approved intake into the permanent SPIRE chart without reopening the immutable intake. */\n  app.post('/api/admin/client-intakes/:caseId/promote-to-spire',async(req,res,next)=>{try{const a=authOf(res);ensureReview(a);const caseRow=await requireCase(prisma,a,req.params.caseId),patientId=clean(caseRow.patientId,120);if(String(caseRow.status)!=='APPROVED'||!patientId)throw httpError(409,'Only an approved intake linked to a SPIRE patient can be promoted to the permanent chart');const promotion=await promoteApprovedIntakeToSpire(prisma,a,req.params.caseId,patientId);await event(prisma,a,req.params.caseId,'INTAKE_REPROMOTED_TO_SPIRE',{patientId,promotion});await audit?.(a,'REPROMOTE_CLIENT_INTAKE_TO_SPIRE','ClientIntakeCase',req.params.caseId,{patientId,legalEntityId:selectedEntity(a),promotion});res.json({data:{status:'APPROVED',patientId,promotion}});}catch(e){next(e);}});\n\n`;
+  source = source.replace(retryAnchor, `${retryRoute}${retryAnchor}`);
+}
+
 await writeFile(target, source, 'utf8');
-console.log('Client Intake automatic SPIRE promotion installed: approval seeds the DRAFT care plan first, then maps the full admission summary, medication reconciliation/eMAR-ready orders, intake documents, coded service authorizations, promotion audit trail, and returns the promotion result to the H&P client.');
+console.log('Client Intake automatic SPIRE promotion installed: approval seeds the DRAFT care plan first, then maps the full admission summary, medication reconciliation/eMAR-ready orders, intake documents, coded service authorizations, promotion audit trail, returns the promotion result to the H&P client, and exposes a retry-safe promotion endpoint for previously approved intakes.');
