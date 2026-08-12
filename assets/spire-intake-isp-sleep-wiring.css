@@ -1,0 +1,26 @@
+/* Master-template presentation for approved intake/admission and direct ISP logs. */
+.spmt-summary-card.intake>header{background:#e0e7ff;color:#3730a3}
+.spmt-summary-card.intake>div{background:#fff}
+#spireChartWorkspace>.chart-tabs #spireAdmissionHistoryTab[data-spmt-intake-admission="true"]{color:#075f91!important;font-weight:800!important}
+#spireChartWorkspace>.chart-tabs #spireAdmissionHistoryTab[data-spmt-intake-admission="true"].active{background:#fff!important;color:#1d4ed8!important;border:1px solid #a8b8d0!important;border-bottom-color:#fff!important}
+body.spmt-ready #spireChartTabBody .admission-history-wrap{gap:8px!important;padding:0!important}
+body.spmt-ready #spireChartTabBody .admission-card{border:1px solid #cbd5e1!important;border-radius:4px!important;box-shadow:none!important;background:#fff!important}
+body.spmt-ready #spireChartTabBody .admission-head{padding:7px 9px!important;border-bottom:1px solid #cbd5e1!important;background:#eef4fc!important}
+body.spmt-ready #spireChartTabBody .admission-head h3{font-size:12px!important;color:#003366!important}
+body.spmt-ready #spireChartTabBody .admission-head p{font-size:10px!important;color:#64748b!important;margin-top:2px!important}
+body.spmt-ready #spireChartTabBody .admission-company{padding:3px 6px!important;border-radius:3px!important;background:#dbeafe!important;color:#1e3a8a!important;font-size:9px!important}
+body.spmt-ready #spireChartTabBody .admission-body{padding:8px!important}
+body.spmt-ready #spireChartTabBody .admission-summary{gap:6px!important;margin-bottom:8px!important}
+body.spmt-ready #spireChartTabBody .admission-summary div{border:1px solid #d7e2ea!important;background:#f8fafc!important;border-radius:3px!important;padding:6px!important}
+body.spmt-ready #spireChartTabBody .admission-summary span{font-size:8.5px!important;color:#64748b!important}
+body.spmt-ready #spireChartTabBody .admission-summary strong{font-size:10.5px!important;color:#173a52!important}
+body.spmt-ready #spireChartTabBody .admission-section{border:1px solid #cbd5e1!important;border-radius:3px!important;margin:5px 0!important}
+body.spmt-ready #spireChartTabBody .admission-section summary{padding:7px 9px!important;background:#f1f5f9!important;color:#173a52!important;font-size:10.5px!important}
+body.spmt-ready #spireChartTabBody .admission-section-content{padding:8px!important;gap:5px!important}
+body.spmt-ready #spireChartTabBody .admission-field{grid-template-columns:minmax(160px,28%) 1fr!important;gap:8px!important;padding-bottom:5px!important}
+body.spmt-ready #spireChartTabBody .admission-field b{font-size:10px!important;color:#475569!important}
+body.spmt-ready #spireChartTabBody .admission-field span{font-size:10.5px!important;color:#1f3f55!important;line-height:1.4!important}
+body.spmt-ready #spireChartTabBody .admission-doc{border:1px solid #cbd5e1!important;border-radius:3px!important;padding:7px 8px!important;margin:5px 0!important;background:#fff!important}
+body.spmt-ready #spireChartTabBody .admission-doc strong{font-size:10.5px!important;color:#173a52!important}
+body.spmt-ready #spireChartTabBody .admission-doc small{font-size:9.5px!important;color:#64748b!important}
+body.spmt-ready #spireChartTabBody .admission-download{border-radius:3px!important;background:#e4edf7!important;color:#173b63!important;border:1px solid #7f9db9!important;font-size:10px!important}
