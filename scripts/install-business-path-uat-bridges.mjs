@@ -2,15 +2,15 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const root = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..'
+);
 const contract = '20260810-business-uat-1';
-const spireAppGeneration = '20260811-business-uat-9';
-const spireBootstrapGeneration = '20260810-spire-canonical-bootstrap-3';
-const chartReadyGeneration = '20260810-spire-chart-ready-2';
-const deepLinkGeneration = '20260810-business-uat-5';
-const homeHealthRailGeneration = '20260810-home-health-rail-stability-2';
-const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
-const staleApi = 'https://sulandra-website-production.up.railway.app';
+const canonicalApi =
+  'https://sulandra-website-production-5fc4.up.railway.app';
+const staleApi =
+  'https://sulandra-website-production.up.railway.app';
 const skippedFrontendSources = [];
 
 async function update(relative, transform) {
@@ -55,68 +55,72 @@ await update('home-health.html', source => {
     next = next.replace(marker, `<a id="homeHealthReferralInboxLink" data-business-uat-contract="${contract}" href="/home-health-referrals.html">Referral Inbox</a>${marker}`);
   }
   if (next.includes('home-health-rail-stability.js')) {
-    next = next.replace(/\/assets\/home-health-rail-stability\.js(?:\?v=[^"']+)?/g, `/assets/home-health-rail-stability.js?v=${homeHealthRailGeneration}`);
+    next = next.replace(/\/assets\/home-health-rail-stability\.js(?:\?v=[^"']+)?/g, '/assets/home-health-rail-stability.js?v=20260810-home-health-rail-stability-2');
   } else {
     if (!next.includes('</body>')) throw new Error('Home Health page has no body close');
-    next = next.replace('</body>', `<script src="/assets/home-health-rail-stability.js?v=${homeHealthRailGeneration}"></script>\n</body>`);
+    next = next.replace('</body>', '<script src="/assets/home-health-rail-stability.js?v=20260810-home-health-rail-stability-2"></script>\n</body>');
   }
   if (!next.includes('href="/home-health-referrals.html"')) throw new Error('Home Health Operations to Referral Inbox workflow bridge was not installed');
-  if (!next.includes(`/assets/home-health-rail-stability.js?v=${homeHealthRailGeneration}`)) throw new Error('Home Health rail stability bridge was not pinned to generation two');
   return next;
 });
 
 await update('employee-portal-railway.js', source => {
   if (source.includes('employeeHomeHealthReferralInboxLauncher')) return source;
-  const marker = '          quick.appendChild(launcher("Home Health Operations", "/home-health.html", "Manage Home Health referrals, episodes, Plan of Care, disciplines, staff and scheduling", "employeeHomeHealthOperationsLauncher"));';
+  const marker = '         quick.appendChild(launcher("Home Health Operations", "/home-health.html", "Manage Home Health referrals, episodes, Plan of Care, disciplines, staff and scheduling", "employeeHomeHealthOperationsLauncher"));';
   if (!source.includes(marker)) throw new Error('Employee Portal Home Health management launcher anchor is missing');
-  const next = source.replace(marker, `${marker}\n          quick.appendChild(launcher("Home Health Referral Inbox", "/home-health-referrals.html", "Review secure hospital and provider Home Health referrals and create intake cases", "employeeHomeHealthReferralInboxLauncher"));`);
+  const next = source.replace(marker, `${marker}\n         quick.appendChild(launcher("Home Health Referral Inbox", "/home-health-referrals.html", "Review secure hospital and provider Home Health referrals and create intake cases", "employeeHomeHealthReferralInboxLauncher"));`);
   if (!next.includes('employeeHomeHealthReferralInboxLauncher')) throw new Error('Employee Portal Home Health Referral Inbox launcher was not installed');
   return next;
 });
 
 await update('spire.html', source => {
-  let next = source.replace(/\/assets\/spire-app-v2\.js\?v=[^"']+/g, `/assets/spire-app-v2.js?v=${spireAppGeneration}`);
-  next = next.replace(/\/assets\/spire-canonical-bootstrap\.js\?v=[^"']+/g, `/assets/spire-canonical-bootstrap.js?v=${spireBootstrapGeneration}`);
-  next = next.replace(/\/assets\/spire-chart-ready\.js\?v=[^"']+/g, `/assets/spire-chart-ready.js?v=${chartReadyGeneration}`);
-  next = next.replace(/\/assets\/spire-deep-link\.js\?v=[^"']+/g, `/assets/spire-deep-link.js?v=${deepLinkGeneration}`);
-  if (!next.includes(`/assets/spire-app-v2.js?v=${spireAppGeneration}`)) throw new Error('SPIRE page is not pinned to the current chart-stabilized application generation');
-  if (!next.includes(`/assets/spire-canonical-bootstrap.js?v=${spireBootstrapGeneration}`)) throw new Error('SPIRE page is not pinned to canonical bootstrap generation three');
-  if (!next.includes(`/assets/spire-chart-ready.js?v=${chartReadyGeneration}`)) throw new Error('SPIRE page is not pinned to the idempotent chart-readiness generation');
-  if (!next.includes(`/assets/spire-deep-link.js?v=${deepLinkGeneration}`)) throw new Error('SPIRE page is not pinned to the coordinator-aware deep-link generation');
-  return next;
-});
-
-await update('assets/spire-app-v2.js', source => {
-  let next = source;
-  const oldOrder = '      renderPatientStrip();\n      renderChartWorkspace();';
-  const priorChartFirst = '      /* BUSINESS_UAT_CHART_FIRST */\n      renderChartWorkspace();\n      renderPatientStrip();';
-  const stabilizedChartOpen = `      /* BUSINESS_UAT_CHART_FIRST */\n      /* BUSINESS_UAT_CHART_STABILIZED */\n      /* BUSINESS_UAT_CHART_WORKSPACE_STATE */\n      state.activeWorkspace = 'chart';\n      try { renderPatientStrip(); } catch (error) { console.error('[SPIRE patient strip]', error); }\n      renderChartWorkspace();\n      const openedPatientId = String(id);\n      const stabilizeOpenedChart = () => {\n        const currentPatientId = String(state.patient?.id || state.patient?.patientId || '');\n        if (currentPatientId !== openedPatientId) return;\n        const chartWorkspace = $('spireChartWorkspace');\n        if (!chartWorkspace) return;\n        document.querySelectorAll('.spire-workspace').forEach(node => {\n          if (node === chartWorkspace) { if (!node.classList.contains('active')) node.classList.add('active'); }\n          else if (node.classList.contains('active')) node.classList.remove('active');\n        });\n      };\n      stabilizeOpenedChart();\n      requestAnimationFrame(stabilizeOpenedChart);\n      setTimeout(stabilizeOpenedChart, 120);`;
-  if (next.includes(oldOrder)) next = next.replace(oldOrder, stabilizedChartOpen);
-  else if (next.includes(priorChartFirst)) next = next.replace(priorChartFirst, stabilizedChartOpen);
-  if (!next.includes('BUSINESS_UAT_CHART_FIRST') || !next.includes('BUSINESS_UAT_CHART_STABILIZED') || !next.includes('BUSINESS_UAT_CHART_WORKSPACE_STATE')) throw new Error('SPIRE stabilized chart-open hardening was not installed');
-
-  if (!next.includes('window.SpireOpenPatient = openPatient')) {
-    const exposeAnchor = '\n  function renderPatientStrip() {';
-    if (!next.includes(exposeAnchor)) throw new Error('SPIRE native patient opener export anchor is missing');
-    next = next.replace(exposeAnchor, '\n  window.SpireOpenPatient = openPatient;\n\n  function renderPatientStrip() {');
+  if (source.includes('/spire/master.html')) {
+    return source;
   }
-  if (!next.includes('window.SpireEnsureShell = installShell')) {
-    const openerAnchor = '  window.SpireOpenPatient = openPatient;';
-    if (!next.includes(openerAnchor)) throw new Error('SPIRE native patient opener export is unavailable for shell hook installation');
-    next = next.replace(openerAnchor, `  /* BUSINESS_UAT_CANONICAL_SHELL_REPAIR */\n  window.SpireEnsureShell = installShell;\n${openerAnchor}`);
-  }
-  if (!next.includes('window.SpireOpenPatient = openPatient')) throw new Error('SPIRE native patient opener was not exported');
-  if (!next.includes('window.SpireEnsureShell = installShell') || !next.includes('BUSINESS_UAT_CANONICAL_SHELL_REPAIR')) throw new Error('SPIRE canonical shell repair hook was not exported');
 
-  if (!next.includes('BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH')) {
-    const marker = '      renderMiniPanels();\n      renderHome();\n';
-    if (!next.includes(marker)) throw new Error('SPIRE foundation load anchor is missing');
-    const bridge = `${marker}      /* BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH */\n      if (['census','search'].includes(state.activeWorkspace)) renderGenericWorkspace(state.activeWorkspace);\n      /* BUSINESS_UAT_NATIVE_DEEPLINK */\n      const deepLinkQuery = new URLSearchParams(location.search);\n      const deepLinkHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));\n      const deepLinkPatientId = deepLinkQuery.get('patientId') || deepLinkQuery.get('patient') || deepLinkHash.get('patientId') || deepLinkHash.get('patient') || '';\n      const deepLinkTab = deepLinkQuery.get('tab') || deepLinkHash.get('tab') || '';\n      if (deepLinkPatientId) {\n        await openPatient(deepLinkPatientId);\n        if (state.patient && deepLinkTab && chartTabs.some(([key]) => key === deepLinkTab)) await renderChartTab(deepLinkTab);\n      }\n`;
-    next = next.replace(marker, bridge);
-  }
-  if (!next.includes('BUSINESS_UAT_ASYNC_WORKSPACE_REFRESH')) throw new Error('SPIRE asynchronous patient-list workspace refresh was not installed');
-  if (!next.includes('BUSINESS_UAT_NATIVE_DEEPLINK') || !next.includes('await openPatient(deepLinkPatientId)')) throw new Error('SPIRE native patient/tab deep-link bridge was not installed');
-  return next;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <title>S.P.I.R.E. Enterprise | Sulandra Health</title>
+
+  <link rel="icon" href="/favicon.ico">
+
+  <script>
+    // SPIRE_CANONICAL_MASTER_ENTRY_V1
+    (() => {
+      const destination =
+        '/spire/master.html' +
+        window.location.search +
+        window.location.hash;
+
+      window.location.replace(destination);
+    })();
+  </script>
+
+  <noscript>
+    <meta
+      http-equiv="refresh"
+      content="0;url=/spire/master.html"
+    >
+  </noscript>
+</head>
+
+<body>
+  <p>
+    Opening S.P.I.R.E. Enterprise…
+    <a href="/spire/master.html">
+      Continue to S.P.I.R.E.
+    </a>
+  </p>
+</body>
+</html>`;
 });
 
 await update('scls-residential.html', source => {
@@ -162,7 +166,13 @@ await update('employee-portal.html', source => {
 });
 
 if (skippedFrontendSources.length) {
-  console.log(`Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${[...new Set(skippedFrontendSources)].join(', ')}.`);
+  console.log(
+    `Business-path UAT bridge installer skipped frontend-only sources that are not present in this build image: ${
+      [...new Set(skippedFrontendSources)].join(', ')
+    }.`
+  );
 } else {
-  console.log('Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and rail stability v2, pinned SPIRE app/canonical bootstrap v3/chart-ready/deep-link generations with canonical single-runtime shell repair and idempotent chart activation, asynchronous patient-list refresh and native chart recovery, SCLS Task Board continuity, Company Documents compliance continuity, guarded Workforce navigation, payroll-ready export, and exact production contract marker.');
+  console.log(
+    'Business-path UAT bridges installed: canonical hiring APIs, secure Home Health invitation tokens and rail stability, exact production contract marker, and canonical SPIRE master redirect stub.'
+  );
 }
