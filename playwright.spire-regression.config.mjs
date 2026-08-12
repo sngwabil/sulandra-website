@@ -2,7 +2,9 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /00-spire-selected-home-regression\.spec\.mjs/,
+  // Keep both live SPIRE regression specs eligible. Individual workflows still
+  // pass the exact spec path they intend to run.
+  testMatch: /0[01]-spire-(?:selected-home-regression|intake-isp-sleep-wiring)\.spec\.mjs/,
   timeout: 20_000,
   expect: { timeout: 8_000 },
   fullyParallel: false,
