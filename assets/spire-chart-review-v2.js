@@ -2,6 +2,7 @@
   'use strict';
   const API='https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS=['sulandra:employee:access-token','sulandra_token','token','accessToken'];
+  const CONTRACT='20260812-chart-review-selected-tab-1';
   const getToken=()=>TOKEN_KEYS.map(k=>sessionStorage.getItem(k)||localStorage.getItem(k)).find(Boolean)||'';
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fmt=v=>v?new Date(v).toLocaleString():'—';
@@ -23,6 +24,8 @@
   function scheduleRefresh(){clearTimeout(state.refreshTimer);state.refreshTimer=setTimeout(refresh,35);}
   new MutationObserver(scheduleRefresh).observe(document.body,{childList:true,subtree:true});
   document.addEventListener('click',e=>{if(e.target.closest('[data-chart-tab="chart-review"]'))setTimeout(()=>load(true),0);});
+  document.addEventListener('spire:chart-tab-selected',e=>{const detail=e.detail||{};if(detail.tab!=='chart-review')return;if(detail.patientId)state.patientId=String(detail.patientId);setTimeout(()=>load(false),0);});
   window.addEventListener('sulandra:entity-context-changed',()=>{const host=document.getElementById('spireChartTabBody');if(host){delete host.dataset.chartReviewV2Patient;delete host.dataset.chartReviewV2;}state.items=[];scheduleRefresh();});
+  window.SpireChartReviewV2=Object.freeze({contract:CONTRACT,load:(force=true)=>load(force),refresh:scheduleRefresh});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleRefresh);else scheduleRefresh();
 })();
