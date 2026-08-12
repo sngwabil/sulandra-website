@@ -32,18 +32,19 @@ jobs:
           set -euo pipefail
           for attempt in $(seq 1 60); do
             html="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire.html || true)"
-            loader="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-home-care-redesign-loader.js?v=20260812-user-master-template-6' || true)"
-            wiring="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.js?v=20260812-user-master-template-6' || true)"
-            style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.css?v=20260812-user-master-template-6' || true)"
+            loader="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-home-care-redesign-loader.js?v=20260812-user-master-template-7' || true)"
+            wiring="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.js?v=20260812-user-master-template-7' || true)"
+            style="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/assets/spire-intake-isp-sleep-wiring.css?v=20260812-user-master-template-7' || true)"
             flowsheet="$(curl -fsSL --max-time 20 'https://www.sulandrahealth.com/spire/flowsheets.html?patientId=deployment-check' || true)"
-            if grep -q 'spire-home-care-redesign-loader.js?v=20260812-user-master-template-6' <<<"$html" \
-              && grep -q "VERSION='20260812-user-master-template-6'" <<<"$loader" \
+            if grep -q 'spire-home-care-redesign-loader.js?v=20260812-user-master-template-7' <<<"$html" \
+              && grep -q "VERSION='20260812-user-master-template-7'" <<<"$loader" \
               && grep -q 'spire-intake-isp-sleep-wiring.js' <<<"$loader" \
               && grep -q 'spire-intake-isp-sleep-wiring.css' <<<"$loader" \
-              && grep -q '20260812-spire-intake-isp-sleep-1' <<<"$wiring" \
+              && grep -q '20260812-spire-intake-isp-sleep-2' <<<"$wiring" \
               && grep -q 'ISP Outcomes / Progress' <<<"$wiring" \
               && grep -q 'Sleep / Wake' <<<"$wiring" \
               && grep -q 'spireAdmissionHistoryTab' <<<"$wiring" \
+              && grep -q 'button.hidden=true' <<<"$wiring" \
               && grep -q '#spireAdmissionHistoryTab' <<<"$style" \
               && grep -q 'spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1' <<<"$flowsheet"; then
               echo 'SPIRE intake/ISP/sleep generation is live.'
