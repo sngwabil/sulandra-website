@@ -88,7 +88,7 @@ try {
     if (asset === 'spire-results-workspace') return '20260811-spire-results-workspace-2';
     if (asset === 'spire-chart-review-v2') return '20260811-spire-chart-review-v2-2';
     if (asset === 'spire-screen-controls') return '20260811-spire-screen-controls-3';
-    if (asset === 'spire-clinical-workstation') return '20260811-spire-clinical-workstation-1';
+    if (asset === 'spire-clinical-workstation') return '20260811-spire-clinical-workstation-2';
     return version;
   };
   const styles = [
@@ -197,18 +197,24 @@ if (!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) 
 }
 
 const publishedSpireHtml = await readFile(spirePath, 'utf8');
-const workstationHref = '/assets/spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-1';
+const workstationHref = '/assets/spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2';
 const screenControlsHref = '/assets/spire-screen-controls.css?v=20260811-spire-screen-controls-3';
 if (!publishedSpireHtml.includes(workstationHref) || publishedSpireHtml.indexOf(workstationHref) < publishedSpireHtml.indexOf(screenControlsHref)) {
   throw new Error('Static publication regression: SPIRE clinical workstation stylesheet is not the final presentation layer');
 }
 const publishedClinicalWorkstation = await readFile(path.join(outputDirectory, 'assets', 'spire-clinical-workstation.css'), 'utf8');
-for (const marker of ['PATIENT CHART', '#spireChartWorkspace.active', 'body:has(#spireChartWorkspace.active)', '.spire-flow-layout']) {
-  if (!publishedClinicalWorkstation.includes(marker)) throw new Error(`Static publication regression: clinical workstation CSS missing ${marker}`);
+for (const marker of [
+  '--sp-ref-ribbon',
+  'grid-template-columns:clamp(230px,13.2vw,270px)',
+  'flex-direction:row!important',
+  '.spire-brand strong',
+  '#spireChartWorkspace.active',
+]) {
+  if (!publishedClinicalWorkstation.includes(marker)) throw new Error(`Static publication regression: reference workstation CSS missing ${marker}`);
 }
 
 await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; SPIRE Results tab ordering remains idempotent and the clinical workstation presentation layer is published last.');
+console.log('Static website published from canonical source files; SPIRE Results tab ordering remains idempotent and the reference-workstation presentation layer is published last.');
