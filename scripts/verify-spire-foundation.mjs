@@ -45,7 +45,8 @@ has(data.flowJs, ['SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1','SPIRE Client Station befo
 forbids(data.flowJs, ["entry?.recordedByDisplayName || entry?.recordedById","entry?.recordedByDisplayName || entry?.recordedByName || entry?.recordedById",'SPIRE Patient Station before using Flowsheets'], 'SPIRE Flowsheet');
 has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js','/assets/spire-mar-timeline.js'], 'SPIRE master chart');
 has(data.medOrderJs, ['Add Medication Order','Save & Activate Order','/api/admin/spire/medication-orders'], 'SPIRE medication order entry');
-has(data.marTimelineJs, ['SPIRE_MAR_TIMELINE_V2','Go to Now','Medication / Order','Completed / Inactive Medications','data-mar-filter="scheduled"','data-mar-filter="prn"'], 'SPIRE MAR timeline');
+hasAny(data.marTimelineJs, ['SPIRE_MAR_TIMELINE_V3','SPIRE_MAR_TIMELINE_V2'], 'SPIRE MAR timeline runtime');
+has(data.marTimelineJs, ['Go to Now','Medication / Order','Completed / Inactive Medications','data-mar-filter="scheduled"','data-mar-filter="prn"'], 'SPIRE MAR timeline');
 has(data.workflowJs, ['Start Encounter','New Clinical Note'], 'SPIRE workflow');
 has(data.cpoeJs, ['Order Composer','Sign & Place Order'], 'SPIRE CPOE');
 has(data.emarJs, ['Electronic Medication Administration Record','PRN Effect'], 'SPIRE eMAR');
