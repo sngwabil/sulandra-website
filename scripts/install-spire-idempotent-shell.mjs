@@ -132,3 +132,6 @@ catch (error) {
 
 // Preserve and extend the existing accessibility/theme repair pass.
 await import('./fix-spire-accessibility-suite.mjs');
+// Remove internal actor IDs from user-visible Flowsheet filing metadata and keep
+// Client Station terminology synchronized before dist-web is copied.
+await import('./fix-spire-flowsheet-friendly-actor.mjs');
