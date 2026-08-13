@@ -117,6 +117,162 @@ if (!html.includes(marker)) {
   );
   html = html.replaceAll("new Date(column).toLocaleDateString()", "new Date(column).toLocaleDateString('en-US')");
 
+  const accessOpenPattern = /  function openAccessibilityModal\(\)\{[\s\S]*?\n  \}\n  window\.openAccessibilityModal=openAccessibilityModal;/;
+  if (!accessOpenPattern.test(html)) throw new Error('SPIRE master accessibility modal runtime anchor was not found');
+  html = html.replace(accessOpenPattern, `  function openAccessibilityModal(){
+    const modal=$('#accessibilityModal');
+    if(!modal)return;
+    const name=state.user?.displayName||state.user?.name||state.user?.email||'User Profile';
+    const role=state.user?.role||state.user?.credentials||'';
+    modal.style.display='flex';
+    const nameInput=$('#inputClinicianName',modal); if(nameInput) nameInput.value=name;
+    const credentialInput=$('#inputClinicianCredentials',modal); if(credentialInput) credentialInput.value=role;
+    const avatar=$('#modalUserAvatarPreview',modal); if(avatar) avatar.textContent=initialFromName(name);
+  }
+  window.openAccessibilityModal=openAccessibilityModal;`);
+
+  const closeAnchor = "  function closeAccessibilityModal(){const modal=$('#accessibilityModal');if(modal)modal.style.display='none'}\n  window.closeAccessibilityModal=closeAccessibilityModal;";
+  if (!html.includes(closeAnchor)) throw new Error('SPIRE master accessibility close anchor was not found');
+  const themeRuntime = `${closeAnchor}
+  function switchAccessTab(tabName) {
+    const map={profile:'accessProfileTab',presets:'accessPresetsTab',custom:'accessCustomTab',cursor:'accessCursorTab'};
+    const buttons={profile:'tabProfileBtn',presets:'tabPresetBtn',custom:'tabCustomBtn',cursor:'tabCursorBtn'};
+    Object.entries(map).forEach(([key,id])=>{const node=document.getElementById(id);if(node)node.style.display=key===tabName?'block':'none';});
+    Object.entries(buttons).forEach(([key,id])=>{const node=document.getElementById(id);if(node)node.classList.toggle('active',key===tabName);});
+  }
+  window.switchAccessTab=switchAccessTab;
+
+  function applyPresetTheme(themeName) {
+    const root = document.documentElement;
+    if (themeName === 'classicRed') {
+        root.style.setProperty('--title-bg', 'linear-gradient(135deg, #050811 0%, #0f172a 100%)');
+        root.style.setProperty('--toolbar-bg', '#990000');
+        root.style.setProperty('--main-bg', '#f0f4f8');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#000000');
+    } else if (themeName === 'clinicalDark') {
+        root.style.setProperty('--title-bg', '#020617');
+        root.style.setProperty('--toolbar-bg', '#1e293b');
+        root.style.setProperty('--main-bg', '#0f172a');
+        root.style.setProperty('--workspace-card-bg', '#1e293b');
+        root.style.setProperty('--text-color', '#f8fafc');
+    } else if (themeName === 'midnightSlate') {
+        root.style.setProperty('--title-bg', '#1e293b');
+        root.style.setProperty('--toolbar-bg', '#334155');
+        root.style.setProperty('--main-bg', '#475569');
+        root.style.setProperty('--workspace-card-bg', '#1e293b');
+        root.style.setProperty('--text-color', '#f1f5f9');
+    } else if (themeName === 'emeraldHealth') {
+        root.style.setProperty('--title-bg', '#064e3b');
+        root.style.setProperty('--toolbar-bg', '#047857');
+        root.style.setProperty('--main-bg', '#ecfdf5');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#064e3b');
+    } else if (themeName === 'oceanBlue') {
+        root.style.setProperty('--title-bg', '#1e40af');
+        root.style.setProperty('--toolbar-bg', '#2563eb');
+        root.style.setProperty('--main-bg', '#eff6ff');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#1e3a8a');
+    } else if (themeName === 'warmSepia') {
+        root.style.setProperty('--title-bg', '#78350f');
+        root.style.setProperty('--toolbar-bg', '#b45309');
+        root.style.setProperty('--main-bg', '#fef3c7');
+        root.style.setProperty('--workspace-card-bg', '#fffbeb');
+        root.style.setProperty('--text-color', '#451a03');
+    } else if (themeName === 'epicTeal') {
+        root.style.setProperty('--title-bg', '#0f766e');
+        root.style.setProperty('--toolbar-bg', '#115e59');
+        root.style.setProperty('--main-bg', '#f0fdfa');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#134e4a');
+    } else if (themeName === 'monoHighContrast') {
+        root.style.setProperty('--title-bg', '#000000');
+        root.style.setProperty('--toolbar-bg', '#333333');
+        root.style.setProperty('--main-bg', '#ffffff');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#000000');
+    } else if (themeName === 'colorblindSafe') {
+        root.style.setProperty('--title-bg', '#1d4ed8');
+        root.style.setProperty('--toolbar-bg', '#b45309');
+        root.style.setProperty('--main-bg', '#fef9c3');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#1e293b');
+    } else if (themeName === 'vibrantLavender') {
+        root.style.setProperty('--title-bg', '#581c87');
+        root.style.setProperty('--toolbar-bg', '#7e22ce');
+        root.style.setProperty('--main-bg', '#f3e8ff');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#3b0764');
+    } else if (themeName === 'crimsonNight') {
+        root.style.setProperty('--title-bg', '#450a0a');
+        root.style.setProperty('--toolbar-bg', '#7f1d1d');
+        root.style.setProperty('--main-bg', '#1c1917');
+        root.style.setProperty('--workspace-card-bg', '#292524');
+        root.style.setProperty('--text-color', '#fef2f2');
+    } else if (themeName === 'arcticFrost') {
+        root.style.setProperty('--title-bg', '#0284c7');
+        root.style.setProperty('--toolbar-bg', '#0369a1');
+        root.style.setProperty('--main-bg', '#f0f9ff');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#0c4a6e');
+    } else if (themeName === 'goldenSunrise') {
+        root.style.setProperty('--title-bg', '#b45309');
+        root.style.setProperty('--toolbar-bg', '#d97706');
+        root.style.setProperty('--main-bg', '#fffbeb');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#78350f');
+    } else if (themeName === 'cyberpunkNeon') {
+        root.style.setProperty('--title-bg', '#31103f');
+        root.style.setProperty('--toolbar-bg', '#4c1d95');
+        root.style.setProperty('--main-bg', '#09090b');
+        root.style.setProperty('--workspace-card-bg', '#18181b');
+        root.style.setProperty('--text-color', '#38bdf8');
+    } else if (themeName === 'retroVintage') {
+        root.style.setProperty('--title-bg', '#365314');
+        root.style.setProperty('--toolbar-bg', '#4d7c0f');
+        root.style.setProperty('--main-bg', '#f7fee7');
+        root.style.setProperty('--workspace-card-bg', '#ecfccb');
+        root.style.setProperty('--text-color', '#1a2e05');
+    } else if (themeName === 'steelGray') {
+        root.style.setProperty('--title-bg', '#334155');
+        root.style.setProperty('--toolbar-bg', '#475569');
+        root.style.setProperty('--main-bg', '#e2e8f0');
+        root.style.setProperty('--workspace-card-bg', '#f1f5f9');
+        root.style.setProperty('--text-color', '#0f172a');
+    } else if (themeName === 'coralSunset') {
+        root.style.setProperty('--title-bg', '#9a3412');
+        root.style.setProperty('--toolbar-bg', '#c2410c');
+        root.style.setProperty('--main-bg', '#fff7ed');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#7c2d12');
+    } else if (themeName === 'mintFresh') {
+        root.style.setProperty('--title-bg', '#134e4a');
+        root.style.setProperty('--toolbar-bg', '#0f766e');
+        root.style.setProperty('--main-bg', '#f0fdfa');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#042f2e');
+    } else if (themeName === 'royalAmethyst') {
+        root.style.setProperty('--title-bg', '#3b0764');
+        root.style.setProperty('--toolbar-bg', '#581c87');
+        root.style.setProperty('--main-bg', '#faf5ff');
+        root.style.setProperty('--workspace-card-bg', '#ffffff');
+        root.style.setProperty('--text-color', '#4c1d95');
+    } else if (themeName === 'solarizedLight') {
+        root.style.setProperty('--title-bg', '#073642');
+        root.style.setProperty('--toolbar-bg', '#268bd2');
+        root.style.setProperty('--main-bg', '#eee8d5');
+        root.style.setProperty('--workspace-card-bg', '#fdf6e3');
+        root.style.setProperty('--text-color', '#657b83');
+    }
+    closeAccessibilityModal();
+  }
+  window.applyPresetTheme=applyPresetTheme;`;
+  html = html.replace(closeAnchor, themeRuntime);
+
+  const legacyApplyThemePattern = /  function applyTheme\(theme\)\{[\s\S]*?\n  \}\n/;
+  if (legacyApplyThemePattern.test(html)) html = html.replace(legacyApplyThemePattern, '');
+
   replaceRequired(
     "  async function bootstrap() {\n    if(!requireSession())return;",
     "  async function bootstrap() {\n    if(!requireSession())return;\n    clearStaticDemoMarkup();",
@@ -126,4 +282,4 @@ if (!html.includes(marker)) {
 
 if (!html.includes(marker)) throw new Error('SPIRE master defect-fix marker was not installed');
 await writeFile(target, html, 'utf8');
-console.log('SPIRE standalone master defect fixes installed: read-only styling, identity fallbacks, schema normalization, deterministic US dates, authenticated viewer identity, empty-flowsheet error state, and demo-markup cleanup.');
+console.log('SPIRE standalone master defect fixes installed: read-only styling, identity fallbacks, schema normalization, 20 preset accessibility themes, deterministic US dates, authenticated viewer identity, empty-flowsheet error state, and demo-markup cleanup.');
