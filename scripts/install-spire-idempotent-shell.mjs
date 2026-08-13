@@ -1,4 +1,4 @@
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +24,41 @@ async function requireFile(filePath, label) {
   }
 }
 
+function normalizeAccessibilityRuntime(masterHtml) {
+  const startToken = 'function openAccessibilityModal';
+  const endToken = 'window.openAccessibilityModal=openAccessibilityModal;';
+
+  const startIndex = masterHtml.indexOf(startToken);
+  const endStart = masterHtml.indexOf(endToken, startIndex);
+
+  if (startIndex === -1 || endStart === -1) {
+    throw new Error(
+      'Standalone SPIRE master accessibility runtime could not be located.'
+    );
+  }
+
+  const lineStart = masterHtml.lastIndexOf('\n', startIndex) + 1;
+  const endIndex = endStart + endToken.length;
+
+  const normalized = `  function openAccessibilityModal(){
+    const modal=$('#accessibilityModal');
+    if(!modal)return;
+    const name=state.user?.displayName||state.user?.name||state.user?.email||'User Profile';
+    const role=state.user?.role||state.user?.credentials||'';
+    modal.style.display='flex';
+    const nameInput=$('#inputClinicianName',modal); if(nameInput) nameInput.value=name;
+    const credentialInput=$('#inputClinicianCredentials',modal); if(credentialInput) credentialInput.value=role;
+    const avatar=$('#modalUserAvatarPreview',modal); if(avatar) avatar.textContent=initialFromName(name);
+  }
+  window.openAccessibilityModal=openAccessibilityModal;`;
+
+  return (
+    masterHtml.slice(0, lineStart) +
+    normalized +
+    masterHtml.slice(endIndex)
+  );
+}
+
 async function verifyStandaloneSpireArchitecture() {
   await requireFile(
     masterPath,
@@ -35,7 +70,7 @@ async function verifyStandaloneSpireArchitecture() {
     'Canonical S.P.I.R.E. entry page'
   );
 
-  const [
+  let [
     masterHtml,
     entryHtml
   ] = await Promise.all([
@@ -43,9 +78,6 @@ async function verifyStandaloneSpireArchitecture() {
     readFile(entryPath, 'utf8'),
   ]);
 
-  /*
-   * Verify that the standalone master is a complete HTML document.
-   */
   if (
     !/<html[\s>]/i.test(masterHtml) ||
     !/<head[\s>]/i.test(masterHtml) ||
@@ -57,9 +89,6 @@ async function verifyStandaloneSpireArchitecture() {
     );
   }
 
-  /*
-   * Verify that the canonical entry sends users to the standalone master.
-   */
   if (
     !entryHtml.includes('/spire/master.html')
   ) {
@@ -68,9 +97,6 @@ async function verifyStandaloneSpireArchitecture() {
     );
   }
 
-  /*
-   * Verify that query-string and hash deep-link context are preserved.
-   */
   if (
     !entryHtml.includes(
       'window.location.search'
@@ -84,17 +110,6 @@ async function verifyStandaloneSpireArchitecture() {
     );
   }
 
-  /*
-   * The old shell is intentionally no longer required.
-   * Do NOT require:
-   *
-   * window.SpireEnsureShell
-   * installShell()
-   * spire-app-v2.js
-   * spire-canonical-bootstrap.js
-   * spire-chart-ready.js
-   * spire-deep-link.js
-   */
   const legacyEntryAssets = [
     'spire-app-v2.js',
     'spire-canonical-bootstrap.js',
@@ -116,6 +131,18 @@ async function verifyStandaloneSpireArchitecture() {
     );
   }
 
+  /*
+   * The next build step applies production defect fixes and the 20-theme
+   * accessibility runtime. Normalize only the existing accessibility function
+   * boundary here so that step is deterministic. This does not touch the
+   * flowsheet, MAR, chart, intake, or any other clinical workspace.
+   */
+  const normalizedMaster = normalizeAccessibilityRuntime(masterHtml);
+  if (normalizedMaster !== masterHtml) {
+    await writeFile(masterPath, normalizedMaster, 'utf8');
+    masterHtml = normalizedMaster;
+  }
+
   console.log(
     [
       'Standalone S.P.I.R.E. architecture verified.',
@@ -124,6 +151,7 @@ async function verifyStandaloneSpireArchitecture() {
       'Canonical entry:',
       '/spire.html -> /spire/master.html.',
       'Deep-link context is preserved.',
+      'Accessibility runtime boundary normalized for the master defect/theme pass.',
       'Legacy SpireEnsureShell installation is not required.',
     ].join(' ')
   );
