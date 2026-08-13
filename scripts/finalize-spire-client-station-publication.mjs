@@ -74,10 +74,14 @@ for (const marker of ['SPIRE_SECURE_CHAT_V2', 'Secure Chat', '← Client Station
   if (!chat.includes(marker)) throw new Error(`SPIRE Secure Chat publication missing ${marker}`);
 }
 
+// Count actual published script src attributes, not explanatory strings or
+// source-code references to the runtime file names inside the master itself.
 for (const [pattern, label] of [
-  [/spire-user-preferences\.js/g, 'shared preferences'], [/spire-master-navigation\.js/g, 'Client Station navigation'],
-  [/spire-master-flowsheet-grid\.js/g, 'Flowsheet'], [/spire-flowsheet-frozen-pane\.js/g, 'frozen pane'],
-  [/spire-screen-controls\.js/g, 'live controls'],
+  [/src="\/assets\/spire-user-preferences\.js(?:\?[^"']*)?"/g, 'shared preferences'],
+  [/src="\/assets\/spire-master-navigation\.js(?:\?[^"']*)?"/g, 'Client Station navigation'],
+  [/src="\/assets\/spire-master-flowsheet-grid\.js(?:\?[^"']*)?"/g, 'Flowsheet'],
+  [/src="\/assets\/spire-flowsheet-frozen-pane\.js(?:\?[^"']*)?"/g, 'frozen pane'],
+  [/src="\/assets\/spire-screen-controls\.js(?:\?[^"']*)?"/g, 'live controls'],
 ]) {
   const count = (publishedMaster.match(pattern) || []).length;
   if (count !== 1) throw new Error(`SPIRE master must publish ${label} exactly once; found ${count}`);
