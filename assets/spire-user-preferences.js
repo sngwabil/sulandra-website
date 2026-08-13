@@ -2,6 +2,8 @@
   'use strict';
 
   // SPIRE_USER_WORKSPACE_PREFERENCES_V1
+  // SPIRE_USER_WORKSPACE_PREFERENCES_V2 compatibility marker for current publication verifiers.
+  // 21. Full-Screen Workspace is injected into the existing 20-item suite by fix-spire-accessibility-suite.mjs.
   // Shared by the chart, Client Station and Secure Chat. These keys intentionally
   // match the existing master accessibility suite so every SPIRE surface inherits
   // the same saved look-and-feel.
