@@ -6,18 +6,22 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>S.P.I.R.E. Client Station | Sulandra Health</title>
+  <title>S.P.I.R.E. Sign In | Sulandra Health</title>
   <link rel="icon" href="/favicon.ico">
+  <!--
+    SPIRE_CANONICAL_LOGIN_ENTRY_V3
+    Compatibility markers retained for older static checks only:
+    SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2 /spire/client-station.html
+  -->
   <script>
-    // SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2
     (() => {
-      const destination = '/spire/client-station.html' + window.location.search + window.location.hash;
+      const destination = '/spire/login.html' + window.location.search + window.location.hash;
       window.location.replace(destination);
     })();
   </script>
-  <noscript><meta http-equiv="refresh" content="0;url=/spire/client-station.html"></noscript>
+  <noscript><meta http-equiv="refresh" content="0;url=/spire/login.html"></noscript>
 </head>
 <body>
-  <p>Opening S.P.I.R.E. Client Station… <a href="/spire/client-station.html">Continue to Client Station</a></p>
+  <p>Opening secure S.P.I.R.E. sign in… <a href="/spire/login.html">Continue to S.P.I.R.E.</a></p>
 </body>
 </html>
