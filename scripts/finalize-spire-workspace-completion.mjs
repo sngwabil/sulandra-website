@@ -16,14 +16,12 @@ const navigationRuntimePath = path.join(dist, 'assets', 'spire-master-navigation
 const flowsheetRuntimePath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
 const transactionalFileRoutePath = path.join(root, 'api', 'src', 'spire-flowsheet-file-routes.ts');
 const navigationUrl = '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1';
-const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-file-transaction-2';
+const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-user-master-layout-1';
 
 for (const file of [publishedPortalPath, publishedMasterPath, portalRuntimePath, navigationRuntimePath, flowsheetRuntimePath, transactionalFileRoutePath]) {
   await stat(file);
 }
 
-// Final publication always restores the root launcher from canonical source so
-// no post-build legacy finalizer can turn /spire.html back into a chart shell.
 await writeFile(publishedEntryPath, await readFile(sourceEntryPath, 'utf8'), 'utf8');
 
 let master = await readFile(publishedMasterPath, 'utf8');
@@ -66,8 +64,20 @@ if (portalRuntime.includes('openSelectedChart();\n      }\n    }\n    setStep(\'
   throw new Error('SPIRE portal may not automatically open a patient after service-home selection');
 }
 
-for (const marker of ['id="flowsheets-view"', navigationUrl, flowsheetUrl, 'window.SpireMasterFlowsheetGrid']) {
-  if (!finalMaster.includes(marker)) throw new Error(`Standalone SPIRE chart is missing ${marker}`);
+for (const marker of [
+  'id="flowsheets-view"',
+  'class="flowsheet-sub-toolbar"',
+  'class="flowsheet-main-layout"',
+  'id="flowsheetTreeMenu"',
+  'id="flowsheetGridContainer"',
+  'class="flowsheet-table"',
+  'id="headerTimeRow"',
+  'id="headerDateRow"',
+  navigationUrl,
+  flowsheetUrl,
+  'window.SpireMasterFlowsheetGrid',
+]) {
+  if (!finalMaster.includes(marker)) throw new Error(`Standalone SPIRE chart/master flowsheet is missing ${marker}`);
 }
 if ((finalMaster.match(/spire-master-navigation\.js/g) || []).length !== 1) throw new Error('SPIRE master navigation runtime must be published exactly once');
 if ((finalMaster.match(/spire-master-flowsheet-grid\.js/g) || []).length !== 1) throw new Error('SPIRE master flowsheet runtime must be published exactly once');
@@ -79,18 +89,32 @@ for (const marker of [
   'SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1',
   'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1',
   'SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2',
+  'SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1',
+  'restoreAuthoritativeToolbar',
+  '#flowsheetTbody',
+  '.flowsheet-table',
   '/flowsheet-workspace/file',
   'filePending',
   'hasPending',
   'Save Comment to Box',
-  'UNFILED AMENDMENT',
-  'Filed by',
-  'Nothing was filed.',
+  'is-draft-amendment',
+  'filed-amendment',
+  'Nothing was filed:',
 ]) {
-  if (!flowsheetRuntime.includes(marker)) throw new Error(`SPIRE transactional File runtime is missing ${marker}`);
+  if (!flowsheetRuntime.includes(marker)) throw new Error(`SPIRE user-master transactional flowsheet runtime is missing ${marker}`);
 }
-for (const forbidden of ['setTimeout(() => saveCell', 'scheduleSave(cell)', "addEventListener('focusout',", "saveCell(cell, { force: true })", '/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}']) {
-  if (flowsheetRuntime.includes(forbidden)) throw new Error(`SPIRE flowsheet direct/autosave behavior returned: ${forbidden}`);
+for (const forbidden of [
+  'host.innerHTML = `\n      <div class="flow-file-toolbar"',
+  'flow-layout',
+  'flow-tree',
+  'flow-table',
+  'setTimeout(() => saveCell',
+  'scheduleSave(cell)',
+  "addEventListener('focusout',",
+  "saveCell(cell, { force: true })",
+  '/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}',
+]) {
+  if (flowsheetRuntime.includes(forbidden)) throw new Error(`SPIRE replacement-grid/direct-save behavior returned: ${forbidden}`);
 }
 
 for (const marker of [
@@ -103,8 +127,6 @@ for (const marker of [
   if (!transactionalFileRoute.includes(marker)) throw new Error(`SPIRE transactional File backend is missing ${marker}`);
 }
 
-// Existing master actions still call loadFlowsheetsView(). It must delegate to
-// the authoritative runtime and must never rebuild the retired continuous UI.
 const loaderStart = finalMaster.indexOf('  async function loadFlowsheetsView(groupOverride) {');
 const rendererStart = finalMaster.indexOf('  function renderFlowsheet(host) {', loaderStart);
 if (loaderStart < 0 || rendererStart < 0) throw new Error('Standalone SPIRE flowsheet compatibility loader could not be verified');
@@ -115,4 +137,4 @@ for (const forbidden of ['Loading continuous flowsheet', 'renderFlowsheet(host);
 }
 
 await import('./verify-spire-portal-workflow.mjs');
-console.log('Final SPIRE publication verified: login/session -> company -> service home -> Patient Station -> explicit chart; Flowsheets stage locally and commit atomically only when File is pressed.');
+console.log('Final SPIRE publication verified: portal -> explicit chart; the user-authored master flowsheet layout is preserved, values stage locally, and File commits atomically.');
