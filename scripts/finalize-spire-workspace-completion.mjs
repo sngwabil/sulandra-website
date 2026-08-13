@@ -14,11 +14,13 @@ const publishedMasterPath = path.join(dist, 'spire', 'master.html');
 const portalRuntimePath = path.join(dist, 'assets', 'spire-portal.js');
 const navigationRuntimePath = path.join(dist, 'assets', 'spire-master-navigation.js');
 const flowsheetRuntimePath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
+const frozenPaneRuntimePath = path.join(dist, 'assets', 'spire-flowsheet-frozen-pane.js');
 const transactionalFileRoutePath = path.join(root, 'api', 'src', 'spire-flowsheet-file-routes.ts');
 const navigationUrl = '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1';
 const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-suggestions-1';
+const frozenPaneUrl = '/assets/spire-flowsheet-frozen-pane.js?v=20260813-frozen-pane-1';
 
-for (const file of [publishedPortalPath, publishedMasterPath, portalRuntimePath, navigationRuntimePath, flowsheetRuntimePath, transactionalFileRoutePath]) {
+for (const file of [publishedPortalPath, publishedMasterPath, portalRuntimePath, navigationRuntimePath, flowsheetRuntimePath, frozenPaneRuntimePath, transactionalFileRoutePath]) {
   await stat(file);
 }
 
@@ -27,18 +29,20 @@ await writeFile(publishedEntryPath, await readFile(sourceEntryPath, 'utf8'), 'ut
 let master = await readFile(publishedMasterPath, 'utf8');
 master = master
   .replace(/\s*<script src="\/assets\/spire-master-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
-  .replace(/\s*<script src="\/assets\/spire-master-flowsheet-grid\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+  .replace(/\s*<script src="\/assets\/spire-master-flowsheet-grid\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+  .replace(/\s*<script src="\/assets\/spire-flowsheet-frozen-pane\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
 if (!master.includes('</body>')) throw new Error('Standalone SPIRE master has no closing body tag');
-master = master.replace('</body>', `  <script src="${navigationUrl}"></script>\n  <script src="${flowsheetUrl}"></script>\n</body>`);
+master = master.replace('</body>', `  <script src="${navigationUrl}"></script>\n  <script src="${flowsheetUrl}"></script>\n  <script src="${frozenPaneUrl}"></script>\n</body>`);
 await writeFile(publishedMasterPath, master, 'utf8');
 
-const [entry, portal, finalMaster, portalRuntime, navigationRuntime, flowsheetRuntime, transactionalFileRoute] = await Promise.all([
+const [entry, portal, finalMaster, portalRuntime, navigationRuntime, flowsheetRuntime, frozenPaneRuntime, transactionalFileRoute] = await Promise.all([
   readFile(publishedEntryPath, 'utf8'),
   readFile(publishedPortalPath, 'utf8'),
   readFile(publishedMasterPath, 'utf8'),
   readFile(portalRuntimePath, 'utf8'),
   readFile(navigationRuntimePath, 'utf8'),
   readFile(flowsheetRuntimePath, 'utf8'),
+  readFile(frozenPaneRuntimePath, 'utf8'),
   readFile(transactionalFileRoutePath, 'utf8'),
 ]);
 
@@ -75,12 +79,14 @@ for (const marker of [
   'id="headerDateRow"',
   navigationUrl,
   flowsheetUrl,
+  frozenPaneUrl,
   'window.SpireMasterFlowsheetGrid',
 ]) {
   if (!finalMaster.includes(marker)) throw new Error(`Standalone SPIRE chart/master flowsheet is missing ${marker}`);
 }
 if ((finalMaster.match(/spire-master-navigation\.js/g) || []).length !== 1) throw new Error('SPIRE master navigation runtime must be published exactly once');
 if ((finalMaster.match(/spire-master-flowsheet-grid\.js/g) || []).length !== 1) throw new Error('SPIRE master flowsheet runtime must be published exactly once');
+if ((finalMaster.match(/spire-flowsheet-frozen-pane\.js/g) || []).length !== 1) throw new Error('SPIRE frozen-pane runtime must be published exactly once');
 
 for (const marker of ['SPIRE_MASTER_EXPLICIT_PATIENT_GATE_V1', "if (!patientId || !homeId)", "headers.set('x-spire-home-id', homeId)", 'My Clients', 'Homes', 'Patient Station']) {
   if (!navigationRuntime.includes(marker)) throw new Error(`SPIRE master explicit-patient navigation is missing ${marker}`);
@@ -126,6 +132,20 @@ for (const forbidden of [
 }
 
 for (const marker of [
+  'SPIRE_FLOWSHEET_FROZEN_PANE_V1',
+  'grid-template-columns:245px minmax(0,1fr)',
+  'position:sticky',
+  'flow-section-label',
+  'flow-section-scroll-fill',
+  'splitSectionRow',
+  'MutationObserver',
+]) {
+  if (!frozenPaneRuntime.includes(marker)) throw new Error(`SPIRE frozen-pane runtime is missing ${marker}`);
+}
+try { new Function(frozenPaneRuntime); }
+catch (error) { throw new Error(`SPIRE frozen-pane runtime syntax error: ${error instanceof Error ? error.message : String(error)}`); }
+
+for (const marker of [
   "app.post('/api/spire/patients/:patientId/flowsheet-workspace/file'",
   'prisma.$transaction',
   'FLOWSHEET_FILE_COMMITTED',
@@ -149,4 +169,4 @@ for (const forbidden of ['Loading continuous flowsheet', 'renderFlowsheet(host);
 }
 
 await import('./verify-spire-portal-workflow.mjs');
-console.log('Final SPIRE publication verified: portal -> explicit chart; authored master flowsheet geometry; direct inline cell typing; optional nonblocking suggestions; numeric cells without popovers; local staging; and atomic File commit.');
+console.log('Final SPIRE publication verified: portal -> explicit chart; authored master flowsheet geometry; frozen task/group panes; direct inline cell typing; optional nonblocking suggestions; numeric cells without popovers; local staging; and atomic File commit.');
