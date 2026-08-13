@@ -58,9 +58,17 @@ requireMarkers(portalJs, [
 
 requireMarkers(master, [
   '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1',
-  '/assets/spire-master-flowsheet-grid.js?v=20260813-file-transaction-2',
+  '/assets/spire-master-flowsheet-grid.js?v=20260813-user-master-layout-1',
   'id="flowsheets-view"',
-], 'SPIRE chart master');
+  'class="flowsheet-sub-toolbar"',
+  'class="flowsheet-main-layout"',
+  'id="flowsheetTreeMenu"',
+  'id="flowsheetGridContainer"',
+  'class="flowsheet-table"',
+  'id="headerTimeRow"',
+  'id="headerDateRow"',
+  'id="flowsheetTbody"',
+], 'SPIRE chart master/user flowsheet layout');
 requireMarkers(navigationJs, [
   'SPIRE_MASTER_EXPLICIT_PATIENT_GATE_V1',
   "if (!patientId || !homeId)",
@@ -75,22 +83,30 @@ requireMarkers(flowsheetJs, [
   'SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1',
   'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1',
   'SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2',
+  'SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1',
+  'restoreAuthoritativeToolbar',
+  '#flowsheetTbody',
+  '.flowsheet-table',
+  'Residential HPC Flowsheet',
   '/flowsheet-workspace/file',
   'filePending',
   'hasPending',
   'Save Comment to Box',
-  'UNFILED AMENDMENT',
-  'pending-amendment',
+  'is-draft-amendment',
   'filed-amendment',
-  'Nothing was filed.',
-], 'SPIRE staged transactional flowsheet');
+  'Nothing was filed:',
+], 'SPIRE user-master staged transactional flowsheet');
 forbidMarkers(flowsheetJs, [
+  'flow-file-toolbar',
+  'flow-layout',
+  'flow-tree',
+  'flow-table',
   'scheduleSave(cell)',
   'setTimeout(() => saveCell',
   "addEventListener('focusout'",
   'saveCell(cell, { force: true })',
   '/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}',
-], 'SPIRE staged transactional flowsheet');
+], 'SPIRE user-master staged transactional flowsheet');
 
 requireMarkers(fileRoute, [
   "app.post('/api/spire/patients/:patientId/flowsheet-workspace/file'",
@@ -108,7 +124,7 @@ requireMarkers(injector, [
 for (const [label, source] of [
   ['SPIRE portal runtime', portalJs],
   ['SPIRE chart navigation', navigationJs],
-  ['SPIRE staged flowsheet', flowsheetJs],
+  ['SPIRE user-master flowsheet', flowsheetJs],
 ]) {
   try { new Function(source); }
   catch (error) { failures.push(`${label} JavaScript syntax error: ${error instanceof Error ? error.message : String(error)}`); }
@@ -120,7 +136,7 @@ if (navigationCount !== 1) failures.push(`SPIRE chart must publish navigation ru
 if (flowsheetCount !== 1) failures.push(`SPIRE chart must publish flowsheet runtime exactly once; found ${flowsheetCount}`);
 
 if (failures.length) {
-  console.error('SPIRE portal/transactional File workflow verification failed:\n- ' + failures.join('\n- '));
+  console.error('SPIRE portal/user-master flowsheet verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('SPIRE portal/transactional File workflow verified: explicit company and home selection, Patient Station double-click chart entry, actor-scoped chart navigation, local staging, all-or-nothing File, and red amendment presentation.');
+console.log('SPIRE portal/user-master flowsheet verified: explicit chart entry, original master grid geometry, local staging, popup value-to-box behavior, all-or-nothing File, and red amendments.');
