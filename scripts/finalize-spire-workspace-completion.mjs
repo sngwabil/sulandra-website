@@ -1,75 +1,103 @@
-// finalize-spire-workspace-completion
+// Standalone S.P.I.R.E. publication finalizer.
+//
+// Historical versions of this script injected the legacy spire-app-v2/workspace
+// completion stack back into dist-web/spire.html after build-static-site.mjs had
+// already published the canonical redirect. That recreated a second SPIRE
+// frontend and allowed the retired continuous flowsheet renderer to compete with
+// /spire/master.html. The standalone master is now the only frontend authority.
+
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const dist=path.join(root,'dist-web');
-const htmlPath=path.join(dist,'spire.html');
-const corePath=path.join(dist,'assets','spire-app-v2.js');
-const version='20260810-spire-workspaces-1';
-const observerVersion='20260811-workspace-observer-suppression-2';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const dist = path.join(root, 'dist-web');
+const sourceEntryPath = path.join(root, 'spire.html');
+const publishedEntryPath = path.join(dist, 'spire.html');
+const publishedMasterPath = path.join(dist, 'spire', 'master.html');
+const masterGridAssetPath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
+const masterGridVersion = '20260813-dsp-daily-grid-3';
+const masterGridUrl = `/assets/spire-master-flowsheet-grid.js?v=${masterGridVersion}`;
 
-for(const relative of [
-  'assets/spire-workspace-completion.css',
-  'assets/spire-workspace-completion.js',
-  'assets/spire-workspace-stability.js',
-  'assets/spire-workspace-polish.js',
-  'assets/spire-note-cosigner-polish.js',
-  'assets/spire-results-workspace.js',
-  'assets/spire-workspace-loop-guard.js',
-  'assets/spire-workspace-loop-restore.js',
-]){
-  await stat(path.join(dist,relative));
+// Restore the root entry from its canonical source at the final publication
+// stage. No later SPIRE finalizer is allowed to turn /spire.html into an app.
+const sourceEntry = await readFile(sourceEntryPath, 'utf8');
+await writeFile(publishedEntryPath, sourceEntry, 'utf8');
+
+let master = await readFile(publishedMasterPath, 'utf8');
+await stat(masterGridAssetPath);
+
+// Force a fresh browser/CDN generation of the authoritative DSP grid runtime.
+master = master.replace(
+  /\/assets\/spire-master-flowsheet-grid\.js\?v=[^"']+/g,
+  masterGridUrl,
+);
+await writeFile(publishedMasterPath, master, 'utf8');
+
+const entry = await readFile(publishedEntryPath, 'utf8');
+const finalMaster = await readFile(publishedMasterPath, 'utf8');
+
+for (const marker of [
+  '/spire/master.html',
+  'window.location.search',
+  'window.location.hash',
+]) {
+  if (!entry.includes(marker)) {
+    throw new Error(`Canonical /spire.html entry is missing ${marker}`);
+  }
 }
 
-let html=await readFile(htmlPath,'utf8');
-html=html
-  .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-workspace-completion\.css(?:\?v=[^"']+)?">\s*/g,'')
-  .replace(/\s*<script src="\/assets\/spire-workspace-loop-guard\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'')
-  .replace(/\s*<script src="\/assets\/spire-workspace-loop-restore\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'')
-  .replace(/\s*<script src="\/assets\/spire-workspace-completion\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'')
-  .replace(/\s*<script src="\/assets\/spire-workspace-stability\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'')
-  .replace(/\s*<script src="\/assets\/spire-workspace-polish\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'')
-  .replace(/\s*<script src="\/assets\/spire-note-cosigner-polish\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'');
-html=html.replace('</head>',`<link rel="stylesheet" href="/assets/spire-workspace-completion.css?v=${version}"></head>`);
-html=html.replace('</body>',`<script src="/assets/spire-workspace-loop-guard.js?v=${observerVersion}"></script><script src="/assets/spire-workspace-completion.js?v=${version}"></script><script src="/assets/spire-workspace-loop-restore.js?v=${observerVersion}"></script><script src="/assets/spire-workspace-stability.js?v=${version}"></script><script src="/assets/spire-workspace-polish.js?v=${version}"></script><script src="/assets/spire-note-cosigner-polish.js?v=${version}"></script></body>`);
-await writeFile(htmlPath,html,'utf8');
-
-let core=await readFile(corePath,'utf8');
-core=core.replace('This workspace is part of the Spire clinical architecture and will be expanded in its implementation phase.','Loading the complete SPIRE workspace…');
-await writeFile(corePath,core,'utf8');
-
-const finalHtml=await readFile(htmlPath,'utf8');
-for(const marker of [
-  `/assets/spire-workspace-completion.css?v=${version}`,
-  `/assets/spire-workspace-loop-guard.js?v=${observerVersion}`,
-  `/assets/spire-workspace-completion.js?v=${version}`,
-  `/assets/spire-workspace-loop-restore.js?v=${observerVersion}`,
-  `/assets/spire-workspace-stability.js?v=${version}`,
-  `/assets/spire-workspace-polish.js?v=${version}`,
-  `/assets/spire-note-cosigner-polish.js?v=${version}`,
-]){
-  if(!finalHtml.includes(marker))throw new Error(`Final SPIRE publication is missing ${marker}`);
-}
-for(const asset of [
-  'spire-workspace-loop-guard.js',
+for (const legacyAsset of [
+  'spire-app-v2.js',
+  'spire-canonical-bootstrap.js',
+  'spire-shell-resilience.js',
+  'spire-chart-ready.js',
+  'spire-deep-link.js',
+  'spire-flowsheet-workspace-launcher.js',
   'spire-workspace-completion.js',
-  'spire-workspace-loop-restore.js',
   'spire-workspace-stability.js',
   'spire-workspace-polish.js',
   'spire-note-cosigner-polish.js',
-]){
-  if((finalHtml.match(new RegExp(asset.replaceAll('.','\\.'),'g'))||[]).length!==1)throw new Error(`${asset} must be published exactly once`);
+  'spire-workspace-loop-guard.js',
+  'spire-workspace-loop-restore.js',
+]) {
+  if (entry.includes(legacyAsset)) {
+    throw new Error(`Legacy SPIRE runtime re-entered canonical /spire.html: ${legacyAsset}`);
+  }
 }
-const guardIndex=finalHtml.indexOf(`/assets/spire-workspace-loop-guard.js?v=${observerVersion}`);
-const completionIndex=finalHtml.indexOf(`/assets/spire-workspace-completion.js?v=${version}`);
-const restoreIndex=finalHtml.indexOf(`/assets/spire-workspace-loop-restore.js?v=${observerVersion}`);
-const stabilityIndex=finalHtml.indexOf(`/assets/spire-workspace-stability.js?v=${version}`);
-if(!(guardIndex>=0&&guardIndex<completionIndex&&completionIndex<restoreIndex&&restoreIndex<stabilityIndex)){
-  throw new Error('SPIRE workspace observer safety order regressed: guard must wrap completion before stability');
-}
-if(core.includes('will be expanded in its implementation phase'))throw new Error('Legacy unfinished SPIRE workspace copy remains in production output');
 
-await import('./verify-spire-workspace-completion.mjs');
-console.log('Final SPIRE static output pins complete workspaces with the observer guard wrapped around workspace-completion, then restores native observers before stability/polish modules.');
+for (const marker of [
+  'id="flowsheets-view"',
+  'SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1',
+  'window.SpireMasterFlowsheetGrid',
+  masterGridUrl,
+]) {
+  if (!finalMaster.includes(marker)) {
+    throw new Error(`Standalone SPIRE master flowsheet authority is missing ${marker}`);
+  }
+}
+
+// The compatibility loader may remain because existing master actions call it,
+// but it must delegate to the new grid and must never rebuild the retired UI.
+const loaderStart = finalMaster.indexOf('  async function loadFlowsheetsView(groupOverride) {');
+const rendererStart = finalMaster.indexOf('  function renderFlowsheet(host) {', loaderStart);
+if (loaderStart < 0 || rendererStart < 0) {
+  throw new Error('Standalone SPIRE flowsheet compatibility loader could not be verified.');
+}
+const loaderSource = finalMaster.slice(loaderStart, rendererStart);
+for (const forbidden of [
+  'Loading continuous flowsheet',
+  'renderFlowsheet(host);',
+  'state.flowColumns = keys.slice(-8)',
+]) {
+  if (loaderSource.includes(forbidden)) {
+    throw new Error(`Retired continuous flowsheet behavior is still reachable: ${forbidden}`);
+  }
+}
+if (!loaderSource.includes('window.SpireMasterFlowsheetGrid')) {
+  throw new Error('Flowsheets compatibility loader does not delegate to SpireMasterFlowsheetGrid.');
+}
+
+console.log(
+  'Final SPIRE publication verified: /spire.html is a redirect only, /spire/master.html is authoritative, and the server-backed DSP Daily Documentation grid is the sole master Flowsheets renderer.'
+);
