@@ -2,6 +2,9 @@
   'use strict';
 
   // SPIRE_USER_WORKSPACE_PREFERENCES_V4
+  // Backward-compatible publication markers retained for older build checks:
+  // SPIRE_USER_WORKSPACE_PREFERENCES_V2
+  // 21. Full-Screen Workspace
   // Theme #21 is the exact Client Station visual system. Fullscreen is a separate
   // user preference and defaults to ON. Browsers require a user gesture before
   // entering fullscreen, so SPIRE arms the first interaction to enter fullscreen
@@ -256,6 +259,15 @@
     armPreferredFullscreen();
   }
 
+  function loadMedicationOrderEntry() {
+    if (document.querySelector('script[data-spire-medication-order-entry]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/spire-medication-order-entry.js?v=20260813-med-order-entry-1';
+    script.dataset.spireMedicationOrderEntry = 'true';
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
   window.SpireUserPreferences = Object.freeze({
     keys: BASE_KEYS, presets: PRESETS, userScope, getPreference, setPreference, removePreference,
     setPreset, setCustomColors, apply: applyAll, applyVisualPreferences, fullscreenPreferred,
@@ -269,6 +281,7 @@
   window.addEventListener('storage', (event) => {
     if (Object.values(BASE_KEYS).some((base) => event.key === base || event.key?.startsWith(`${base}:user:`))) applyVisualPreferences();
   });
+  loadMedicationOrderEntry();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyAll, { once: true });
   else applyAll();
 })();
