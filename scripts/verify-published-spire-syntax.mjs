@@ -3,8 +3,6 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// This verifier operates on repository source so it is safe to run directly as
-// part of verify:business-uat as well as after a static build.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
 
@@ -12,15 +10,12 @@ async function read(relative) {
   try { return await readFile(path.join(root, relative), 'utf8'); }
   catch { failures.push(`${relative}: missing`); return ''; }
 }
-
 function requireMarkers(source, markers, label) {
   for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`);
 }
-
 function forbidMarkers(source, markers, label) {
   for (const marker of markers) if (source.includes(marker)) failures.push(`${label} contains retired ${marker}`);
 }
-
 async function checkJs(relative, label = relative) {
   try { await access(path.join(root, relative)); }
   catch { failures.push(`${relative}: referenced SPIRE script is missing`); return; }
@@ -30,17 +25,23 @@ async function checkJs(relative, label = relative) {
 
 const entry = await read('spire.html');
 requireMarkers(entry, [
-  'SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2', '/spire/client-station.html',
+  'SPIRE_CANONICAL_LOGIN_ENTRY_V3', '/spire/login.html',
   'window.location.search', 'window.location.hash',
 ], 'SPIRE canonical source entry');
-forbidMarkers(entry, ['/spire/portal.html', '/spire/master.html', 'spire-app-v2.js'], 'SPIRE canonical source entry');
+forbidMarkers(entry, ['/spire/portal.html', 'spire-app-v2.js'], 'SPIRE canonical source entry');
+
+const login = await read('spire/login.html');
+requireMarkers(login, [
+  'SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1', 'spireWorkspaceFrame',
+  '/assets/spire-login.js?v=20260813-exact-workflow-1',
+], 'SPIRE authentication/fullscreen shell');
 
 const station = await read('spire/client-station.html');
 requireMarkers(station, [
   'SPIRE_CLIENT_STATION_LISTS_V2', 'Client Station', 'Client Lists', 'Available Homes',
   '/assets/spire-client-station.js?v=20260813-client-station-2',
-  '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1',
 ], 'SPIRE Client Station source');
+forbidMarkers(station, ['Patient Lists', '>Patient Station<'], 'SPIRE Client Station source');
 
 const secureChat = await read('spire/secure-chat.html');
 requireMarkers(secureChat, [
@@ -49,9 +50,10 @@ requireMarkers(secureChat, [
 ], 'SPIRE Secure Chat source');
 
 const browserAssets = [
+  ['assets/spire-login.js', 'SPIRE login/SSO shell runtime'],
   ['assets/spire-client-station.js', 'Client Station runtime'],
   ['assets/spire-secure-chat.js', 'Secure Chat runtime'],
-  ['assets/spire-user-preferences.js', 'Shared SPIRE preferences'],
+  ['assets/spire-user-preferences.js', 'Authenticated-user SPIRE preferences'],
   ['assets/spire-screen-controls.js', 'SPIRE live screen controls'],
   ['assets/spire-master-navigation.js', 'SPIRE chart navigation'],
   ['assets/spire-master-flowsheet-grid.js', 'SPIRE master Flowsheet'],
@@ -62,6 +64,12 @@ const browserAssets = [
   ['assets/spire-user-template-integration.js', 'SPIRE master-template integration'],
 ];
 for (const [relative, label] of browserAssets) await checkJs(relative, label);
+
+const loginJs = await read('assets/spire-login.js');
+requireMarkers(loginJs, [
+  'SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1', '/api/auth/me', '/employee-login.html?returnTo=',
+  '/spire/client-station.html', 'restoreRememberedHome', 'mirrorRememberedHome',
+], 'SPIRE login/SSO runtime');
 
 const stationJs = await read('assets/spire-client-station.js');
 requireMarkers(stationJs, [
@@ -79,14 +87,17 @@ forbidMarkers(chatJs, ['Demo Conversation', 'Demo Message', 'mockMessages', '/sp
 
 const preferences = await read('assets/spire-user-preferences.js');
 requireMarkers(preferences, [
-  'SPIRE_USER_WORKSPACE_PREFERENCES_V1', 'spire:accessibility:fullscreen',
-  'requestFullscreen', 'fullscreenPreferred', 'pointerdown',
-], 'SPIRE shared preferences');
+  'SPIRE_USER_WORKSPACE_PREFERENCES_V3', 'clientStation:', 'spire:accessibility:preset',
+  'spire:accessibility:fullscreen', 'requestFullscreen', 'fullscreenPreferred', 'userScope',
+], 'SPIRE authenticated-user preferences');
+if (!preferences.includes("clientStation: { title:'#990000', toolbar:'#990000', background:'#eaf7fb'")) {
+  failures.push('SPIRE theme #21 is not the Client Station red/cyan/ice workstation palette');
+}
 
 const controls = await read('assets/spire-screen-controls.js');
 requireMarkers(controls, [
   'SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?status=OPEN',
-  '/spire/secure-chat.html', 'Secure Chat',
+  '/spire/secure-chat.html', 'Secure Chat', 'Alerts & Reminders',
 ], 'SPIRE live screen controls');
 forbidMarkers(controls, [
   'Opening Staff Messaging Portal', 'Notifications: 3 unread reminders for current client.',
@@ -121,4 +132,4 @@ if (failures.length) {
   console.error('Published SPIRE JavaScript/integration verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log(`Published SPIRE syntax verified across ${browserAssets.length} browser runtimes: Client Station is canonical, Secure Chat/In Basket are live, preferences are shared, and intake/chart integrations remain present.`);
+console.log(`Published SPIRE syntax verified across ${browserAssets.length} browser runtimes: login/SSO is canonical, Client Station is first workspace, theme #21 is Client Station Classic, fullscreen is separate, Secure Chat/In Basket are live, and intake/chart integrations remain present.`);
