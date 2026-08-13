@@ -8,6 +8,7 @@ const failures = [];
 const read = async (relative) => { try { return await readFile(path.join(root, relative), 'utf8'); } catch { failures.push(`Missing ${relative}`); return ''; } };
 const requireFile = async (relative) => { try { await access(path.join(root, relative)); } catch { failures.push(`Missing ${relative}`); } };
 const has = (source, markers, label) => { for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`); };
+const hasAny = (source, markers, label) => { if (!markers.some((marker) => source.includes(marker))) failures.push(`${label} missing one of: ${markers.join(', ')}`); };
 const forbids = (source, markers, label) => { for (const marker of markers) if (source.includes(marker)) failures.push(`${label} still contains forbidden ${marker}`); };
 const syntax = (relative, label) => {
   const result = spawnSync(process.execPath, ['--check', path.join(root, relative)], { encoding: 'utf8' });
@@ -19,6 +20,7 @@ const files = {
   legacyStation:'dist-web/spire/patient-station.html', chat:'dist-web/spire/secure-chat.html', master:'dist-web/spire/master.html',
   loginJs:'dist-web/assets/spire-login.js', stationJs:'dist-web/assets/spire-client-station.js', chatJs:'dist-web/assets/spire-secure-chat.js',
   prefsJs:'dist-web/assets/spire-user-preferences.js', screenJs:'dist-web/assets/spire-screen-controls.js', masterNavJs:'dist-web/assets/spire-master-navigation.js',
+  medOrderJs:'dist-web/assets/spire-medication-order-entry.js',
   flowJs:'dist-web/assets/spire-master-flowsheet-grid.js', commJs:'dist-web/assets/spire-communications-inbasket.js',
   workflowJs:'dist-web/assets/spire-workflow.js', cpoeJs:'dist-web/assets/spire-order-composer.js', emarJs:'dist-web/assets/spire-emar.js',
   careJs:'dist-web/assets/spire-care-plan.js', incidentJs:'dist-web/assets/spire-incidents.js',
@@ -35,7 +37,8 @@ has(data.loginJs, ['SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1','/api/auth/me','/em
 
 has(data.station, ['SPIRE_CLIENT_STATION_LISTS_V2','Client Station','Client Lists','All My Clients','Available Homes','stationClientBody','clientPreview','data-spire-fullscreen-control'], 'SPIRE Client Station');
 forbids(data.station, ['Patient Lists','>Patient Station<'], 'SPIRE Client Station');
-has(data.stationJs, ['SPIRE_CLIENT_STATION_LISTS_V2','/api/spire/network/service-homes','/access','localStorage.setItem(HOME_ID_KEY',"row.addEventListener('dblclick'",'openChart','/spire/secure-chat.html','/api/spire/inbasket-v2?status=OPEN'], 'SPIRE Client Station runtime');
+hasAny(data.stationJs, ['SPIRE_CLIENT_STATION_LISTS_V3','SPIRE_CLIENT_STATION_LISTS_V2'], 'SPIRE Client Station runtime');
+has(data.stationJs, ['/api/spire/network/service-homes','/access','localStorage.setItem(HOME_ID_KEY',"row.addEventListener('dblclick'",'openChart','/spire/secure-chat.html','/api/spire/inbasket-v2?status=OPEN'], 'SPIRE Client Station runtime');
 forbids(data.stationJs, ['/spire/portal.html','openChart(state.clients[0]'], 'SPIRE Client Station runtime');
 
 has(data.legacyStation, ['SPIRE_RETIRED_PATIENT_STATION_COMPAT_V1','/spire/client-station.html'], 'Retired Patient Station compatibility entry');
@@ -44,11 +47,11 @@ has(data.chat, ['SPIRE_SECURE_CHAT_V2','Secure Chat','← Client Station','Clien
 has(data.chatJs, ['SPIRE_SECURE_CHAT_V2','/communications/overview','/communications/threads/','/api/spire/routing-pools','recipientPoolId','/spire/client-station.html','Messages are client-scoped'], 'SPIRE Secure Chat runtime');
 forbids(data.chatJs, ['Demo Conversation','Demo Message','mockMessages','/spire/portal.html'], 'SPIRE Secure Chat runtime');
 
-has(data.prefsJs, [
-  'SPIRE_USER_WORKSPACE_PREFERENCES_V3','clientStation:','spire:accessibility:preset','spire:accessibility:font-size',
-  'spire:accessibility:fullscreen','fullscreenPreferred','requestFullscreen','pointerdown','userScope'
-], 'SPIRE authenticated-user preferences');
-if (!data.prefsJs.includes("clientStation: { title:'#990000', toolbar:'#990000', background:'#eaf7fb'")) failures.push('SPIRE theme #21 is not the Client Station red/cyan/ice palette');
+hasAny(data.prefsJs, ['SPIRE_USER_WORKSPACE_PREFERENCES_V4','SPIRE_USER_WORKSPACE_PREFERENCES_V3'], 'SPIRE authenticated-user preferences');
+has(data.prefsJs, ['clientStation:','spire:accessibility:preset','spire:accessibility:font-size','spire:accessibility:fullscreen','fullscreenPreferred','requestFullscreen','pointerdown','userScope'], 'SPIRE authenticated-user preferences');
+for (const marker of ["title:'#0f172a'","toolbar:'#f4510b'","background:'#eaf7fb'","cyan:'#5bd0e7'","nav:'#082f49'"]) {
+  if (!data.prefsJs.includes(marker)) failures.push(`SPIRE theme #21 Client Station palette missing ${marker}`);
+}
 
 has(data.screenJs, ['SPIRE_SCREEN_CONTROLS_LIVE_V2','/api/spire/inbasket-v2?status=OPEN','/spire/secure-chat.html','Alerts & Reminders','Secure Chat'], 'SPIRE chart controls');
 forbids(data.screenJs, ['Opening Staff Messaging Portal','Notifications: 3 unread reminders for current client.'], 'SPIRE chart controls');
@@ -62,8 +65,9 @@ forbids(data.flowJs, ["entry?.recordedByDisplayName || entry?.recordedById","ent
 has(data.master, [
   '<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"',
   '/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2',
-  '/assets/spire-master-navigation.js?v=20260813-client-station-2'
+  '/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js'
 ], 'SPIRE master chart');
+has(data.medOrderJs, ['Add Medication Order','Save & Activate Order','/api/admin/spire/medication-orders'], 'SPIRE medication order entry');
 
 has(data.workflowJs, ['Start Encounter','New Clinical Note'], 'SPIRE workflow');
 has(data.cpoeJs, ['Order Composer','Sign & Place Order'], 'SPIRE CPOE');
@@ -79,11 +83,11 @@ for (const [relative, label] of [
   ['dist-web/assets/spire-login.js','SPIRE login shell'],['dist-web/assets/spire-client-station.js','Client Station'],
   ['dist-web/assets/spire-secure-chat.js','Secure Chat'],['dist-web/assets/spire-user-preferences.js','Shared preferences'],
   ['dist-web/assets/spire-screen-controls.js','Chart controls'],['dist-web/assets/spire-master-navigation.js','Chart navigation'],
-  ['dist-web/assets/spire-master-flowsheet-grid.js','Flowsheet']
+  ['dist-web/assets/spire-master-flowsheet-grid.js','Flowsheet'],['dist-web/assets/spire-medication-order-entry.js','Medication order entry']
 ]) { await requireFile(relative); syntax(relative, label); }
 
 if (failures.length) {
   console.error('SPIRE corrected workflow verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('SPIRE verified: SSO/system login → Client Station → remembered authorized home → explicit client chart; theme #21 is Client Station Classic; fullscreen is separate/default-on; Secure Chat and live notifications are real; no raw Filed-by user IDs.');
+console.log('SPIRE verified: SSO/system login → Client Station → remembered authorized home → explicit client chart; theme #21 is Client Station Classic; fullscreen is separate/default-on; medication order entry is published; Secure Chat and live notifications are real; no raw Filed-by user IDs.');
