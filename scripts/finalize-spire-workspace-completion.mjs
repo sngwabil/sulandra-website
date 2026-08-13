@@ -14,10 +14,11 @@ const publishedMasterPath = path.join(dist, 'spire', 'master.html');
 const portalRuntimePath = path.join(dist, 'assets', 'spire-portal.js');
 const navigationRuntimePath = path.join(dist, 'assets', 'spire-master-navigation.js');
 const flowsheetRuntimePath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
+const transactionalFileRoutePath = path.join(root, 'api', 'src', 'spire-flowsheet-file-routes.ts');
 const navigationUrl = '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1';
-const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-file-on-command-1';
+const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-file-transaction-2';
 
-for (const file of [publishedPortalPath, publishedMasterPath, portalRuntimePath, navigationRuntimePath, flowsheetRuntimePath]) {
+for (const file of [publishedPortalPath, publishedMasterPath, portalRuntimePath, navigationRuntimePath, flowsheetRuntimePath, transactionalFileRoutePath]) {
   await stat(file);
 }
 
@@ -33,13 +34,14 @@ if (!master.includes('</body>')) throw new Error('Standalone SPIRE master has no
 master = master.replace('</body>', `  <script src="${navigationUrl}"></script>\n  <script src="${flowsheetUrl}"></script>\n</body>`);
 await writeFile(publishedMasterPath, master, 'utf8');
 
-const [entry, portal, finalMaster, portalRuntime, navigationRuntime, flowsheetRuntime] = await Promise.all([
+const [entry, portal, finalMaster, portalRuntime, navigationRuntime, flowsheetRuntime, transactionalFileRoute] = await Promise.all([
   readFile(publishedEntryPath, 'utf8'),
   readFile(publishedPortalPath, 'utf8'),
   readFile(publishedMasterPath, 'utf8'),
   readFile(portalRuntimePath, 'utf8'),
   readFile(navigationRuntimePath, 'utf8'),
   readFile(flowsheetRuntimePath, 'utf8'),
+  readFile(transactionalFileRoutePath, 'utf8'),
 ]);
 
 for (const marker of ['/spire/portal.html', 'window.location.search', 'window.location.hash', 'SPIRE_CANONICAL_PORTAL_ENTRY_V1']) {
@@ -73,11 +75,32 @@ if ((finalMaster.match(/spire-master-flowsheet-grid\.js/g) || []).length !== 1) 
 for (const marker of ['SPIRE_MASTER_EXPLICIT_PATIENT_GATE_V1', "if (!patientId || !homeId)", "headers.set('x-spire-home-id', homeId)", 'My Clients', 'Homes', 'Patient Station']) {
   if (!navigationRuntime.includes(marker)) throw new Error(`SPIRE master explicit-patient navigation is missing ${marker}`);
 }
-for (const marker of ['SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1', 'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1', 'filePending', 'hasPending', 'Save Comment to Box', 'UNFILED AMENDMENT', 'Filed by']) {
-  if (!flowsheetRuntime.includes(marker)) throw new Error(`SPIRE File-based flowsheet runtime is missing ${marker}`);
+for (const marker of [
+  'SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1',
+  'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1',
+  'SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2',
+  '/flowsheet-workspace/file',
+  'filePending',
+  'hasPending',
+  'Save Comment to Box',
+  'UNFILED AMENDMENT',
+  'Filed by',
+  'Nothing was filed.',
+]) {
+  if (!flowsheetRuntime.includes(marker)) throw new Error(`SPIRE transactional File runtime is missing ${marker}`);
 }
-for (const forbidden of ['setTimeout(() => saveCell', 'scheduleSave(cell)', "addEventListener('focusout',", "saveCell(cell, { force: true })"]) {
-  if (flowsheetRuntime.includes(forbidden)) throw new Error(`SPIRE flowsheet autosave behavior returned: ${forbidden}`);
+for (const forbidden of ['setTimeout(() => saveCell', 'scheduleSave(cell)', "addEventListener('focusout',", "saveCell(cell, { force: true })", '/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}']) {
+  if (flowsheetRuntime.includes(forbidden)) throw new Error(`SPIRE flowsheet direct/autosave behavior returned: ${forbidden}`);
+}
+
+for (const marker of [
+  "app.post('/api/spire/patients/:patientId/flowsheet-workspace/file'",
+  'prisma.$transaction',
+  'FLOWSHEET_FILE_COMMITTED',
+  'FLOWSHEET_ENTRY_AMENDED',
+  'Only the user who originally filed this flowsheet entry can amend it',
+]) {
+  if (!transactionalFileRoute.includes(marker)) throw new Error(`SPIRE transactional File backend is missing ${marker}`);
 }
 
 // Existing master actions still call loadFlowsheetsView(). It must delegate to
@@ -92,4 +115,4 @@ for (const forbidden of ['Loading continuous flowsheet', 'renderFlowsheet(host);
 }
 
 await import('./verify-spire-portal-workflow.mjs');
-console.log('Final SPIRE publication verified: login/session -> company -> service home -> Patient Station -> explicit chart; Flowsheets stage locally and file only on command.');
+console.log('Final SPIRE publication verified: login/session -> company -> service home -> Patient Station -> explicit chart; Flowsheets stage locally and commit atomically only when File is pressed.');

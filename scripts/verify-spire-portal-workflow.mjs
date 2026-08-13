@@ -6,9 +6,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const failures = [];
 
-async function read(relative) {
+async function readDist(relative) {
   try { return await readFile(path.join(dist, relative), 'utf8'); }
   catch { failures.push(`Missing dist-web/${relative}`); return ''; }
+}
+async function readSource(relative) {
+  try { return await readFile(path.join(root, relative), 'utf8'); }
+  catch { failures.push(`Missing ${relative}`); return ''; }
 }
 function requireMarkers(source, markers, label) {
   for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`);
@@ -17,13 +21,15 @@ function forbidMarkers(source, markers, label) {
   for (const marker of markers) if (source.includes(marker)) failures.push(`${label} unexpectedly contains ${marker}`);
 }
 
-const [entry, portal, master, portalJs, navigationJs, flowsheetJs] = await Promise.all([
-  read('spire.html'),
-  read('spire/portal.html'),
-  read('spire/master.html'),
-  read('assets/spire-portal.js'),
-  read('assets/spire-master-navigation.js'),
-  read('assets/spire-master-flowsheet-grid.js'),
+const [entry, portal, master, portalJs, navigationJs, flowsheetJs, fileRoute, injector] = await Promise.all([
+  readDist('spire.html'),
+  readDist('spire/portal.html'),
+  readDist('spire/master.html'),
+  readDist('assets/spire-portal.js'),
+  readDist('assets/spire-master-navigation.js'),
+  readDist('assets/spire-master-flowsheet-grid.js'),
+  readSource('api/src/spire-flowsheet-file-routes.ts'),
+  readSource('scripts/inject-clinical-routes.mjs'),
 ]);
 
 requireMarkers(entry, [
@@ -52,7 +58,7 @@ requireMarkers(portalJs, [
 
 requireMarkers(master, [
   '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1',
-  '/assets/spire-master-flowsheet-grid.js?v=20260813-file-on-command-1',
+  '/assets/spire-master-flowsheet-grid.js?v=20260813-file-transaction-2',
   'id="flowsheets-view"',
 ], 'SPIRE chart master');
 requireMarkers(navigationJs, [
@@ -68,21 +74,36 @@ requireMarkers(navigationJs, [
 requireMarkers(flowsheetJs, [
   'SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1',
   'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1',
+  'SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2',
+  '/flowsheet-workspace/file',
   'filePending',
   'hasPending',
   'Save Comment to Box',
   'UNFILED AMENDMENT',
   'pending-amendment',
   'filed-amendment',
-  "method: 'POST'",
-  "method: 'PUT'",
-], 'SPIRE staged flowsheet');
+  'Nothing was filed.',
+], 'SPIRE staged transactional flowsheet');
 forbidMarkers(flowsheetJs, [
   'scheduleSave(cell)',
   'setTimeout(() => saveCell',
   "addEventListener('focusout'",
   'saveCell(cell, { force: true })',
-], 'SPIRE staged flowsheet');
+  '/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}',
+], 'SPIRE staged transactional flowsheet');
+
+requireMarkers(fileRoute, [
+  "app.post('/api/spire/patients/:patientId/flowsheet-workspace/file'",
+  'prisma.$transaction',
+  'FLOWSHEET_FILE_COMMITTED',
+  'FLOWSHEET_ENTRY_FILED',
+  'FLOWSHEET_ENTRY_AMENDED',
+  'Only the user who originally filed this flowsheet entry can amend it',
+], 'SPIRE transactional File backend');
+requireMarkers(injector, [
+  "import { registerSpireFlowsheetFileRoutes } from './spire-flowsheet-file-routes.js';",
+  'registerSpireFlowsheetFileRoutes(app, prisma, { authOf });',
+], 'SPIRE route injector');
 
 for (const [label, source] of [
   ['SPIRE portal runtime', portalJs],
@@ -99,7 +120,7 @@ if (navigationCount !== 1) failures.push(`SPIRE chart must publish navigation ru
 if (flowsheetCount !== 1) failures.push(`SPIRE chart must publish flowsheet runtime exactly once; found ${flowsheetCount}`);
 
 if (failures.length) {
-  console.error('SPIRE portal/file workflow verification failed:\n- ' + failures.join('\n- '));
+  console.error('SPIRE portal/transactional File workflow verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('SPIRE portal/file workflow verified: explicit company and home selection, Patient Station double-click chart entry, scoped master navigation, staged documentation, explicit File, and red amendment presentation.');
+console.log('SPIRE portal/transactional File workflow verified: explicit company and home selection, Patient Station double-click chart entry, actor-scoped chart navigation, local staging, all-or-nothing File, and red amendment presentation.');

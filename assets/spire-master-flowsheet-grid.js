@@ -3,9 +3,10 @@
 
   // SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1
   // SPIRE_FLOWSHEET_FILE_WORKFLOW_V1
-  // Clinical charting is staged locally. No POST/PUT occurs until the user
-  // deliberately presses File. Filed amendments remain visibly red.
-  const VERSION = '20260813-file-on-command-1';
+  // SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2
+  // Clinical charting is staged locally. Nothing reaches the clinical record
+  // until File is pressed; File commits the entire staged set in one transaction.
+  const VERSION = '20260813-file-transaction-2';
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
   const HOME_ID_KEY = 'spire:selected-service-home-id';
@@ -163,10 +164,11 @@
   }
 
   function amendedEntry(entry) {
+    if (entry?.amended === true) return true;
     if (!entry?.createdAt || !entry?.updatedAt) return false;
     const created = new Date(entry.createdAt).getTime();
     const updated = new Date(entry.updatedAt).getTime();
-    return Number.isFinite(created) && Number.isFinite(updated) && updated - created > 1000;
+    return Number.isFinite(created) && Number.isFinite(updated) && updated > created;
   }
 
   function valueOf(entry, row) {
@@ -463,7 +465,7 @@
         <button type="button" class="flow-tool" id="flowRefresh">↻ Refresh</button>
         <span class="flow-user">File as ${esc(actorName())}</span>
       </div>
-      <div class="flow-file-notice"><span><b>Draft-first charting:</b> values and comments stay unfiled in this browser until you press <b>File</b>. Filed amendments are shown in red.</span><span id="spireFlowStatus"></span><span class="pending" id="flowPendingCount"></span></div>
+      <div class="flow-file-notice"><span><b>Draft-first charting:</b> values and comments stay unfiled in this browser until you press <b>File</b>. File commits the full staged set together; filed amendments are shown in red.</span><span id="spireFlowStatus"></span><span class="pending" id="flowPendingCount"></span></div>
       <div class="flow-layout">
         <aside class="flow-tree"><input type="search" id="flowTaskSearch" placeholder="Search task…"><button type="button" class="flow-group-btn ${runtime.group === 'all' ? 'active' : ''}" data-flow-group="all">Show All Tasks</button>${groups.map((group) => `<button type="button" class="flow-group-btn ${runtime.group === group ? 'active' : ''}" data-flow-group="${esc(group)}">${esc(group)}</button>`).join('')}</aside>
         <div class="flow-grid-wrap" id="flowGridWrap"></div>
@@ -542,17 +544,31 @@
     });
   }
 
+  function buildFilePayload(drafts, rows) {
+    return drafts.map(([, draft]) => {
+      const row = rows.find((candidate) => String(candidate.id) === String(draft.rowId));
+      if (!row) throw new Error(`${draft.rowName || 'A flowsheet row'} is no longer configured on the server.`);
+      validateDraft(draft, row);
+      const type = String(row.dataType || draft.dataType || 'TEXT').toUpperCase();
+      return {
+        entryId: draft.entryId || null,
+        rowId: draft.rowId,
+        recordedAt: isoMinute(draft.recordedAt),
+        comment: clean(draft.comment) || null,
+        value: type === 'NUMBER' ? null : clean(draft.value) || null,
+        numericValue: type === 'NUMBER' && clean(draft.value) !== '' ? Number(draft.value) : null,
+      };
+    });
+  }
+
   async function filePending() {
     if (runtime.filing || !runtime.drafts.size) return;
     if (runtime.data?.viewer?.canWrite !== true) return setStatus('Your SPIRE role is read-only.', 'error');
     const rows = Array.isArray(runtime.data?.rows) ? runtime.data.rows : [];
     const drafts = [...runtime.drafts.entries()];
+    let entries;
     try {
-      for (const [, draft] of drafts) {
-        const row = rows.find((candidate) => String(candidate.id) === String(draft.rowId));
-        if (!row) throw new Error(`${draft.rowName || 'A flowsheet row'} is no longer configured on the server.`);
-        validateDraft(draft, row);
-      }
+      entries = buildFilePayload(drafts, rows);
     } catch (error) {
       setStatus(error.message, 'error');
       return;
@@ -561,42 +577,28 @@
     runtime.filing = true;
     updateFileButton();
     hidePopover();
-    setStatus(`Filing ${drafts.length} change${drafts.length === 1 ? '' : 's'} as ${actorName()}…`, 'warn');
-    let filed = 0;
-    let failed = null;
-    for (const [key, draft] of drafts) {
-      const row = rows.find((candidate) => String(candidate.id) === String(draft.rowId));
-      const type = String(row?.dataType || draft.dataType || 'TEXT').toUpperCase();
-      const body = {
-        rowId: draft.rowId,
-        recordedAt: isoMinute(draft.recordedAt),
-        comment: clean(draft.comment) || null,
-        value: type === 'NUMBER' ? null : clean(draft.value) || null,
-        numericValue: type === 'NUMBER' && clean(draft.value) !== '' ? Number(draft.value) : null,
-      };
-      try {
-        if (draft.entryId) {
-          await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}`, { method: 'PUT', body: JSON.stringify(body) });
-        } else {
-          await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace/entries`, { method: 'POST', body: JSON.stringify(body) });
-        }
-        runtime.drafts.delete(key);
-        saveDraftStore();
-        filed += 1;
-      } catch (error) {
-        failed = error;
-        break;
-      }
-    }
-    runtime.filing = false;
-    updateFileButton();
+    setStatus(`Filing ${entries.length} change${entries.length === 1 ? '' : 's'} together as ${actorName()}…`, 'warn');
     try {
+      const result = await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace/file`, {
+        method: 'POST',
+        body: JSON.stringify({ entries }),
+      });
+      runtime.drafts.clear();
+      saveDraftStore();
+      const count = Number(result?.count ?? entries.length);
+      const fileId = clean(result?.fileId);
       await loadWorkspace({ preserveColumns: true, preserveMessage: true });
-    } catch {}
-    if (failed) {
-      setStatus(`${filed} change${filed === 1 ? '' : 's'} filed; filing stopped: ${failed.message}. Remaining drafts are still unfiled.`, 'error');
-    } else {
-      setStatus(`${filed} change${filed === 1 ? '' : 's'} filed to the audited chart as ${actorName()}.`, 'success');
+      setStatus(`${count} change${count === 1 ? '' : 's'} filed together to the audited chart as ${actorName()}${fileId ? ` · File ${fileId.slice(0, 8)}` : ''}.`, 'success');
+    } catch (error) {
+      // The backend File route is transactional. If it rejects any staged cell,
+      // the transaction rolls back and every local draft remains available.
+      loadDraftStore();
+      updateFileButton();
+      renderGridOnly();
+      setStatus(`Nothing was filed. ${error.message} All ${runtime.drafts.size} staged change${runtime.drafts.size === 1 ? '' : 's'} remain unfiled.`, 'error');
+    } finally {
+      runtime.filing = false;
+      updateFileButton();
     }
   }
 
