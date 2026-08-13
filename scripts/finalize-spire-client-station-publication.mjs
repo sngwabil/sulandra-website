@@ -117,7 +117,7 @@ for (const marker of ['SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?s
 for (const marker of ['SPIRE_MEDICATION_ORDER_ENTRY_V1', '+ Add Medication Order', '/api/admin/spire/medication-orders', 'Save & Activate Order']) {
   if (!medication.includes(marker)) throw new Error(`SPIRE medication order entry runtime missing ${marker}`);
 }
-for (const marker of ['SPIRE_MAR_TIMELINE_V2', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications']) {
+for (const marker of ['SPIRE_MAR_TIMELINE_V3', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications']) {
   if (!marTimeline.includes(marker)) throw new Error(`SPIRE MAR timeline runtime missing ${marker}`);
 }
 for (const forbidden of ['Opening Staff Messaging Portal', 'Notifications: 3 unread reminders for current client.']) {
