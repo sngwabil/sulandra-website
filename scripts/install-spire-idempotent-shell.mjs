@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const entryPath = path.join(root, 'spire.html');
-const portalPath = path.join(root, 'spire', 'portal.html');
+const stationPath = path.join(root, 'spire', 'client-station.html');
 const masterPath = path.join(root, 'spire', 'master.html');
-const portalContractMarker = 'SPIRE_MASTER_PORTAL_CHART_CONTRACT_V1';
+const stationContractMarker = 'SPIRE_MASTER_CLIENT_STATION_CHART_CONTRACT_V2';
 
 async function requireFile(filePath, label) {
   try { await access(filePath); }
@@ -41,14 +41,14 @@ function normalizeThemeCompatibilityAlias(masterHtml) {
   return masterHtml;
 }
 
-function normalizeMasterPortalContract(masterHtml) {
+function normalizeMasterClientStationContract(masterHtml) {
   let next = masterHtml;
 
   const patientPattern = /  function currentPatientId\(\) \{[\s\S]*?\n  \}\n\n  function requireSession/;
   if (!patientPattern.test(next)) throw new Error('SPIRE master currentPatientId() boundary was not found');
   next = next.replace(patientPattern, `  function currentPatientId() {
-    // ${portalContractMarker}: a chart may open only from Patient Station.
-    // Never resurrect the last viewed patient from sessionStorage.
+    // ${stationContractMarker}: a chart may open only after an explicit Client Station selection.
+    // Never resurrect the last viewed client from sessionStorage.
     const hash = new URLSearchParams(String(location.hash || '').replace(/^#/,''));
     const query = new URLSearchParams(location.search);
     return hash.get('patient') || query.get('patientId') || '';
@@ -59,10 +59,10 @@ function normalizeMasterPortalContract(masterHtml) {
   const loaderPattern = /  async function loadFlowsheetsView\(groupOverride\) \{[\s\S]*?\n  \}\n\n  function renderFlowsheet\(host\) \{/;
   if (!loaderPattern.test(next)) throw new Error('SPIRE master legacy flowsheet-loader boundary was not found');
   next = next.replace(loaderPattern, `  async function loadFlowsheetsView(groupOverride) {
-    // ${portalContractMarker}: the external master grid is the only renderer.
+    // ${stationContractMarker}: the external master grid is the only renderer.
     const host = $('#flowsheets-view');
     if (!host) return;
-    if (!state.patientId) return showError(host,'Open a client from Patient Station first.');
+    if (!state.patientId) return showError(host,'Open a client from Client Station first.');
     if (typeof groupOverride === 'string' && groupOverride) state.flowGroup = groupOverride;
     const grid = window.SpireMasterFlowsheetGrid;
     if (!grid) {
@@ -78,7 +78,7 @@ function normalizeMasterPortalContract(masterHtml) {
   const patientStart = next.indexOf('  function currentPatientId() {');
   const patientEnd = next.indexOf('  function requireSession', patientStart);
   const patientSource = next.slice(patientStart, patientEnd);
-  if (patientSource.includes("sessionStorage.getItem('spire:patientId')")) throw new Error('SPIRE master still auto-selects a patient from sessionStorage');
+  if (patientSource.includes("sessionStorage.getItem('spire:patientId')")) throw new Error('SPIRE master still auto-selects a client from sessionStorage');
 
   const loaderStart = next.indexOf('  async function loadFlowsheetsView(groupOverride) {');
   const rendererStart = next.indexOf('  function renderFlowsheet(host) {', loaderStart);
@@ -93,20 +93,20 @@ function normalizeMasterPortalContract(masterHtml) {
 async function verifyAndNormalize() {
   await Promise.all([
     requireFile(entryPath, 'Canonical S.P.I.R.E. entry page'),
-    requireFile(portalPath, 'S.P.I.R.E. Clinical Access Portal'),
+    requireFile(stationPath, 'S.P.I.R.E. Client Station'),
     requireFile(masterPath, 'Standalone S.P.I.R.E. chart master'),
   ]);
-  const [entry, portal, originalMaster] = await Promise.all([
+  const [entry, station, originalMaster] = await Promise.all([
     readFile(entryPath, 'utf8'),
-    readFile(portalPath, 'utf8'),
+    readFile(stationPath, 'utf8'),
     readFile(masterPath, 'utf8'),
   ]);
 
-  if (!entry.includes('/spire/portal.html') || !entry.includes('window.location.search') || !entry.includes('window.location.hash')) {
-    throw new Error('/spire.html must launch /spire/portal.html while preserving query/hash context.');
+  if (!entry.includes('/spire/client-station.html') || !entry.includes('window.location.search') || !entry.includes('window.location.hash')) {
+    throw new Error('/spire.html must launch /spire/client-station.html while preserving query/hash context.');
   }
-  if (!portal.includes('SPIRE_PORTAL_WORKFLOW_V1') || !portal.includes('Patient Station')) {
-    throw new Error('/spire/portal.html is not the canonical company/home/Patient Station gateway.');
+  if (!station.includes('SPIRE_CLIENT_STATION_LISTS_V2') || !station.includes('Client Station') || !station.includes('Available Homes')) {
+    throw new Error('/spire/client-station.html is not the canonical remembered-home Client Station.');
   }
   if (!/<html[\s>]/i.test(originalMaster) || !/<body[\s>]/i.test(originalMaster) || !/<\/html>/i.test(originalMaster)) {
     throw new Error('/spire/master.html does not appear to be a complete chart application.');
@@ -115,13 +115,13 @@ async function verifyAndNormalize() {
     if (entry.includes(legacy)) throw new Error(`/spire.html still references legacy SPIRE runtime ${legacy}`);
   }
 
-  let master = normalizeMasterPortalContract(originalMaster);
+  let master = normalizeMasterClientStationContract(originalMaster);
   master = normalizeAccessibilityRuntime(master);
   master = normalizeThemeCompatibilityAlias(master);
   if (master.includes('window.selectPresetTheme=applyTheme;')) throw new Error('SPIRE master still contains the bootstrap-breaking applyTheme compatibility alias.');
   if (master !== originalMaster) await writeFile(masterPath, master, 'utf8');
 
-  console.log('S.P.I.R.E. source architecture verified: portal-only entry, explicit Patient Station chart selection, no stale-patient fallback, and one authoritative Flowsheets renderer.');
+  console.log('S.P.I.R.E. source architecture verified: Client Station entry, remembered authorized home, explicit client chart selection, no stale-client fallback, and one authoritative Flowsheets renderer.');
 }
 
 try { await verifyAndNormalize(); }
@@ -130,6 +130,5 @@ catch (error) {
   process.exit(1);
 }
 
-// Preserve the existing accessibility/theme repair pass. It is independent of
-// clinical routing, patient scope and flowsheet persistence.
+// Preserve and extend the existing accessibility/theme repair pass.
 await import('./fix-spire-accessibility-suite.mjs');
