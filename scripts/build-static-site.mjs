@@ -70,7 +70,7 @@ for (const marker of ['<html','<head','<body','</html>',"window.SULANDRA_API_BAS
 const flowsheetPath=path.join(outputDirectory,'spire','flowsheets.html');
 try {
   let html=await readFile(flowsheetPath,'utf8');
-  html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/spire-flowsheet-master\.css(?:\?v=[^"']+)?">\s*/g,'').replace(/\s*<script src="\/assets\/spire-flowsheet-master\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'').replace('</head>','<link rel="stylesheet" href="/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1"></head>').replace('</body>','<script src="/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1"></script></body>');
+  html=html.replace(/\s*<link rel="\/assets\/spire-flowsheet-master\.css(?:\?v=[^"']+)?">\s*/g,'').replace(/\s*<script src="\/assets\/spire-flowsheet-master\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'').replace('</head>','<link rel="stylesheet" href="/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1"></head>').replace('</body>','<script src="/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1"></script></body>');
   await writeFile(flowsheetPath,html,'utf8');
 } catch(error){ if(error?.code!=='ENOENT') throw error; }
 
@@ -84,6 +84,7 @@ try { let html=await readFile(timeAttendancePath,'utf8'); html=html.replace(/con
 await import('./install-employee-self-service-frontend.mjs');
 await rm(path.join(outputDirectory,'time-attendance.txt'),{force:true});
 
+// Admin is deliberately not rewritten after publication.
 const publishedAdminPath=path.join(outputDirectory,'admin.html');
 const publishedAdmin=await readFile(publishedAdminPath,'utf8');
 for (const marker of ['/assets/admin-company-context.js?v=20260809-admin-company-context-2','careers-admin-workflow.js?v=20260809-hiring-provisioning-2','admin-railway.js?v=20260804-admin-clean-4']) if(!publishedAdmin.includes(marker)) throw new Error(`Canonical Admin publication failed; missing ${marker}`);
