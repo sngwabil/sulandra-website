@@ -1,11 +1,10 @@
 (() => {
   'use strict';
 
-  // SPIRE_USER_WORKSPACE_PREFERENCES_V2
-  // SPIRE_USER_WORKSPACE_PREFERENCES_V1 compatibility marker for existing verifiers.
-  // Shared by the chart, Client Station and Secure Chat. It uses the existing
-  // accessibility storage contract and enhances the master profile suite at
-  // runtime instead of rewriting the 200KB master HTML during every build.
+  // SPIRE_USER_WORKSPACE_PREFERENCES_V1
+  // Shared by the chart, Client Station and Secure Chat. These keys intentionally
+  // match the existing master accessibility suite so every SPIRE surface inherits
+  // the same saved look-and-feel.
   const KEYS = Object.freeze({
     preset: 'spire:accessibility:preset',
     mode: 'spire:accessibility:mode',
@@ -78,23 +77,13 @@
       if (!style) { style = document.createElement('style'); style.id = 'spireSharedCursorStyle'; document.head.appendChild(style); }
       style.textContent = `body, body * { cursor:${cursor} !important; }`;
     }
-    root.dataset.spirePreset = get(KEYS.preset) || 'classicRed';
+    document.documentElement.dataset.spirePreset = get(KEYS.preset) || 'classicRed';
   }
 
   function fullscreenPreferred() {
     const stored = get(KEYS.fullscreen);
+    // Full-screen workstation is the SPIRE default; the user may explicitly turn it off.
     return stored == null ? true : stored !== '0';
-  }
-
-  function syncFullscreenPreferenceCard() {
-    const card = document.getElementById('spireFullscreenPreferenceCard');
-    if (!card) return;
-    const active = fullscreenPreferred();
-    card.setAttribute('aria-pressed', active ? 'true' : 'false');
-    card.style.outline = active ? '3px solid #2563eb' : '';
-    card.style.outlineOffset = active ? '1px' : '';
-    const status = card.querySelector('[data-fullscreen-status]');
-    if (status) status.textContent = active ? 'Preferred on' : 'Preferred off';
   }
 
   function syncFullscreenButtons() {
@@ -105,7 +94,6 @@
       button.setAttribute('aria-label', active ? 'Exit full screen' : 'Open SPIRE full screen');
       button.setAttribute('title', active ? 'Exit full screen' : (fullscreenPreferred() ? 'Full screen preferred' : 'Open full screen'));
     });
-    syncFullscreenPreferenceCard();
   }
 
   async function requestFullscreen({ persist = true } = {}) {
@@ -131,16 +119,14 @@
 
   async function toggleFullscreenPreference() {
     if (document.fullscreenElement) return exitFullscreen({ persist: true });
-    if (fullscreenPreferred()) return requestFullscreen({ persist: true });
-    set(KEYS.fullscreen, '1');
-    return requestFullscreen({ persist: false });
+    return requestFullscreen({ persist: true });
   }
 
   function armPreferredFullscreen() {
     if (!fullscreenPreferred() || document.fullscreenElement) return;
-    // Browser security forbids silent native fullscreen after navigation/reload.
-    // We try immediately and, when blocked, honor the saved preference on the
-    // user's very next gesture. There is no alert/popup and no second click.
+    // Browsers do not permit a page to silently enter native fullscreen after a
+    // reload/navigation. Try once, then use the user's very next gesture to honor
+    // the saved preference without a popup or a second click.
     requestFullscreen({ persist: false }).catch(() => {});
     const reenter = () => {
       if (fullscreenPreferred() && !document.fullscreenElement) requestFullscreen({ persist: false }).catch(() => {});
@@ -163,104 +149,8 @@
     syncFullscreenButtons();
   }
 
-  function savePresetFromCard(card) {
-    const handler = String(card?.getAttribute('onclick') || '');
-    const match = handler.match(/applyPresetTheme\(['"]([^'"]+)['"]\)/);
-    if (!match || !PRESETS[match[1]]) return;
-    set(KEYS.preset, match[1]);
-    set(KEYS.mode, 'preset');
-    try { localStorage.removeItem(KEYS.custom); } catch {}
-    queueMicrotask(applyVisualPreferences);
-  }
-
-  function saveCustomColors() {
-    const values = {
-      title: document.getElementById('customTitleColor')?.value || '#0f172a',
-      toolbar: document.getElementById('customToolbarColor')?.value || '#990000',
-      background: document.getElementById('customBgColor')?.value || '#f0f4f8',
-      text: document.getElementById('customTextColor')?.value || '#000000'
-    };
-    set(KEYS.custom, JSON.stringify(values));
-    set(KEYS.mode, 'custom');
-    applyVisualPreferences();
-  }
-
-  function installMasterEnhancements() {
-    const presetTabButton = document.getElementById('tabPresetBtn');
-    if (presetTabButton) presetTabButton.textContent = '21 Display & Accessibility Preferences';
-
-    const presetTab = document.getElementById('accessPresetsTab');
-    if (presetTab) {
-      const intro = [...presetTab.querySelectorAll('p')].find((node) => /20 distinct professional visual themes/i.test(node.textContent || ''));
-      if (intro) intro.textContent = 'Choose one of 20 professional visual themes plus the persistent full-screen workspace preference:';
-
-      presetTab.querySelectorAll('.theme-card').forEach((card) => {
-        if (card.dataset.spirePreferenceBound === 'true') return;
-        card.dataset.spirePreferenceBound = 'true';
-        card.addEventListener('click', () => savePresetFromCard(card));
-      });
-
-      if (!document.getElementById('spireFullscreenPreferenceCard')) {
-        const grid = presetTab.querySelector('.theme-grid') || presetTab.querySelector('div[style*="grid-template-columns"]') || presetTab.lastElementChild;
-        if (grid) {
-          const card = document.createElement('div');
-          card.className = 'theme-card';
-          card.id = 'spireFullscreenPreferenceCard';
-          card.tabIndex = 0;
-          card.setAttribute('role', 'button');
-          card.innerHTML = '<b>21. Full-Screen Workspace</b><br><span style="font-size:11px;color:#64748b">Remember full-screen as the default across Client Station, charts and Secure Chat · <span data-fullscreen-status>Preferred on</span></span>';
-          const activate = (event) => {
-            if (event?.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
-            event?.preventDefault?.();
-            if (fullscreenPreferred()) exitFullscreen({ persist: true }).catch(() => {});
-            else requestFullscreen({ persist: true }).catch(() => {});
-          };
-          card.addEventListener('click', activate);
-          card.addEventListener('keydown', activate);
-          grid.appendChild(card);
-        }
-      }
-    }
-
-    ['customTitleColor','customToolbarColor','customBgColor','customTextColor'].forEach((id) => {
-      const input = document.getElementById(id);
-      if (input && input.dataset.spirePreferenceBound !== 'true') {
-        input.dataset.spirePreferenceBound = 'true';
-        input.addEventListener('change', saveCustomColors);
-      }
-    });
-
-    const cursor = document.getElementById('cursorStyleSelect');
-    if (cursor && cursor.dataset.spirePreferenceBound !== 'true') {
-      cursor.dataset.spirePreferenceBound = 'true';
-      cursor.value = get(KEYS.cursor) || cursor.value || 'default';
-      cursor.addEventListener('change', () => { set(KEYS.cursor, cursor.value); applyVisualPreferences(); });
-    }
-    const font = document.getElementById('fontSizeSelect');
-    if (font && font.dataset.spirePreferenceBound !== 'true') {
-      font.dataset.spirePreferenceBound = 'true';
-      font.value = get(KEYS.fontSize) || font.value || '13px';
-      font.addEventListener('change', () => { set(KEYS.fontSize, font.value); applyVisualPreferences(); });
-    }
-
-    const message = document.getElementById('messagingIconBtn');
-    if (message) {
-      message.removeAttribute('onclick');
-      message.setAttribute('title', 'Secure Chat');
-      message.setAttribute('aria-label', 'Secure Chat');
-    }
-    const bell = document.getElementById('notificationBellBtn');
-    if (bell) bell.removeAttribute('onclick');
-    const badge = bell?.querySelector('.notification-badge');
-    if (badge && !badge.dataset.liveCount) { badge.textContent = '0'; badge.hidden = true; }
-
-    syncFullscreenPreferenceCard();
-    bindFullscreenControls();
-  }
-
   function applyAll() {
     applyVisualPreferences();
-    installMasterEnhancements();
     bindFullscreenControls();
     armPreferredFullscreen();
   }
@@ -270,7 +160,6 @@
     presets: PRESETS,
     apply: applyAll,
     applyVisualPreferences,
-    installMasterEnhancements,
     fullscreenPreferred,
     requestFullscreen,
     exitFullscreen,
