@@ -1,17 +1,18 @@
 (() => {
   'use strict';
 
-  // SPIRE_CLIENT_STATION_LISTS_V2
+  // SPIRE_CLIENT_STATION_LISTS_V3
   // Canonical SPIRE landing surface. It validates the authenticated user's last
   // authorized service home, restores it, and loads that home's clients without
-  // an extra company/home gateway.
+  // an extra company/home gateway. Fullscreen chart/chat navigation is kept
+  // inside the active document so browser fullscreen does not collapse on route changes.
   const API = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
   const ENTITY_KEY = 'sulandra:selected-legal-entity-id';
   const HOME_ID_KEY = 'spire:selected-service-home-id';
   const HOME_NAME_KEY = 'spire:selected-service-home-name';
   const HOME_ENTITY_KEY = 'spire:selected-service-home-entity';
-  const CLIENT_KEY = 'spire:patientId'; // Existing backend/session contract; user-facing terminology is Client.
+  const CLIENT_KEY = 'spire:patientId';
   const params = new URLSearchParams(location.search);
 
   const state = { user: null, companyId: '', homeId: '', home: null, homes: [], clients: [], selected: null, notifications: [] };
@@ -118,12 +119,9 @@
   async function enterHome(homeId, { replaceUrl = true } = {}) {
     const requested = clean(homeId);
     if (!requested) throw new Error('No authorized service home is available for Client Station.');
-
-    // Resolve company from the authorized home before the scoped access request.
     const listedHome = state.homes.find((home) => clean(home.id) === requested) || null;
     state.homeId = requested;
     state.companyId = clean(listedHome?.legalEntityId || state.companyId);
-
     const data = await api(`/api/spire/network/service-homes/${encodeURIComponent(state.homeId)}/access`, {
       method: 'POST', body: JSON.stringify({}), homeId: state.homeId,
     });
@@ -131,8 +129,6 @@
     state.clients = Array.isArray(data?.patients) ? data.patients : [];
     state.selected = null;
     state.companyId = clean(state.home?.legalEntityId || state.companyId);
-
-    // Last home is intentionally persistent across sign-in and browser sessions.
     sessionStorage.setItem(HOME_ID_KEY, state.homeId);
     localStorage.setItem(HOME_ID_KEY, state.homeId);
     sessionStorage.setItem(HOME_NAME_KEY, String(state.home?.name || 'Service Home'));
@@ -144,7 +140,6 @@
       sessionStorage.setItem(ENTITY_KEY, state.companyId);
       localStorage.setItem(ENTITY_KEY, state.companyId);
     }
-
     if (replaceUrl) {
       const query = new URLSearchParams({ company: state.companyId, spireHome: state.homeId });
       history.replaceState(null, '', `/spire/client-station.html?${query}`);
@@ -209,7 +204,6 @@
         <td><span class="status-ok">✓</span> Authorized</td>
       </tr>`;
     }).join('');
-
     $$('.client-row', body).forEach((row) => {
       const findClient = () => state.clients.find((client) => clientId(client) === clean(row.dataset.clientId));
       row.addEventListener('click', () => selectClient(findClient()));
@@ -266,15 +260,31 @@
     $('[data-preview-chat]', host)?.addEventListener('click', () => openChat(client));
   }
 
+  function navigateSpire(url) {
+    if (!document.fullscreenElement) {
+      location.assign(url);
+      return;
+    }
+    let frame = document.getElementById('spireFullscreenRouteFrame');
+    if (!frame) {
+      frame = document.createElement('iframe');
+      frame.id = 'spireFullscreenRouteFrame';
+      frame.title = 'S.P.I.R.E. workspace';
+      frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#fff;z-index:2147483000';
+      document.body.appendChild(frame);
+    }
+    frame.src = url;
+  }
+
   function openChart(client = state.selected) {
     if (!client) return;
     sessionStorage.setItem(CLIENT_KEY, clientId(client));
-    location.assign(chartUrl(client));
+    navigateSpire(chartUrl(client));
   }
   function openChat(client = state.selected) {
     if (!client) return;
     sessionStorage.setItem(CLIENT_KEY, clientId(client));
-    location.assign(chatUrl(client));
+    navigateSpire(chatUrl(client));
   }
 
   function renderNotifications() {
