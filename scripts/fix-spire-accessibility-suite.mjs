@@ -2,6 +2,10 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Normalize the standalone master first so this repair always operates on the
+// exact runtime shape produced by fix-spire-master-defects.mjs.
+await import('./fix-spire-master-defects.mjs');
+
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDirectory, '..');
 const target = path.join(root, 'spire', 'master.html');
@@ -79,7 +83,7 @@ if (!html.includes(marker)) {
     rootStyle.setProperty('--title-bg', values.title || '#0f172a');
     rootStyle.setProperty('--toolbar-bg', values.toolbar || '#990000');
     rootStyle.setProperty('--main-bg', values.background || '#f0f4f8');
-    rootStyle.setProperty('--workspace-card-bg', values.background === '#ffffff' ? '#ffffff' : '#ffffff');
+    rootStyle.setProperty('--workspace-card-bg', '#ffffff');
     rootStyle.setProperty('--text-color', values.text || '#000000');
     document.body.style.filter = 'none';
 
