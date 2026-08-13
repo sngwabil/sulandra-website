@@ -81,7 +81,9 @@ try {
 // - /spire.html launches /spire/client-station.html.
 // - Client Station restores the last authorized service home when possible.
 // - /spire/master.html is chart-only and is reached after explicit client selection.
-// - no legacy shell/runtime is injected into the root entry during publication.
+// - dynamic preference #21, Secure Chat and live notifications are runtime-owned
+//   capabilities and therefore are verified in their published JS, not by brittle
+//   string rewriting inside the authoritative 200KB chart HTML.
 const spirePath = path.join(outputDirectory, 'spire.html');
 const spireStationPath = path.join(outputDirectory, 'spire', 'client-station.html');
 const spireMasterPath = path.join(outputDirectory, 'spire', 'master.html');
@@ -117,15 +119,8 @@ for (const marker of [
   '<html', '<head', '<body', '</html>',
   "window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'",
   '/assets/sulandra-entity-context.js', 'SPIRE_MASTER_DEFECT_FIXES_V1',
-  '21. Full-Screen Workspace', 'title="Secure Chat"',
 ]) {
   if (!publishedSpireMaster.includes(marker)) throw new Error(`Static publication regression: standalone SPIRE chart missing ${marker}`);
-}
-for (const forbidden of [
-  "alert('Opening Staff Messaging Portal...')",
-  "alert('Notifications: 3 unread reminders for current client.')",
-]) {
-  if (publishedSpireMaster.includes(forbidden)) throw new Error(`Static publication regression: SPIRE master still contains fake clinical alert behavior ${forbidden}`);
 }
 
 // The dedicated continuous flowsheet remains a separate focused charting surface.
@@ -217,6 +212,35 @@ for (const relative of requiredPublishedFiles) {
   catch { throw new Error(`Static publication regression: missing ${relative}`); }
 }
 
+// Verify dynamic SPIRE capabilities in the runtime files that actually own them.
+const publishedSpirePreferences = await readFile(path.join(outputDirectory, 'assets', 'spire-user-preferences.js'), 'utf8');
+for (const marker of [
+  'SPIRE_USER_WORKSPACE_PREFERENCES_V2',
+  '21. Full-Screen Workspace',
+  'spire:accessibility:fullscreen',
+  'spire:accessibility:preset',
+  'requestFullscreen',
+]) {
+  if (!publishedSpirePreferences.includes(marker)) throw new Error(`Static publication regression: shared SPIRE preference runtime missing ${marker}`);
+}
+
+const publishedSpireScreenControls = await readFile(path.join(outputDirectory, 'assets', 'spire-screen-controls.js'), 'utf8');
+for (const marker of [
+  'SPIRE_SCREEN_CONTROLS_LIVE_V2',
+  '/api/spire/inbasket-v2?status=OPEN',
+  '/spire/secure-chat.html',
+  'Secure Chat',
+  'Alerts & Reminders',
+]) {
+  if (!publishedSpireScreenControls.includes(marker)) throw new Error(`Static publication regression: live SPIRE chart controls missing ${marker}`);
+}
+for (const forbidden of [
+  'Opening Staff Messaging Portal',
+  'Notifications: 3 unread reminders for current client.',
+]) {
+  if (publishedSpireScreenControls.includes(forbidden)) throw new Error(`Static publication regression: live SPIRE chart controls contain fake behavior ${forbidden}`);
+}
+
 const publishedResultsWorkspace = await readFile(path.join(outputDirectory, 'assets', 'spire-results-workspace.js'), 'utf8');
 if (!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) {
   throw new Error('Static publication regression: SPIRE Results workspace can recreate the chart-tab MutationObserver loop');
@@ -231,4 +255,4 @@ await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; /spire.html launches Client Station, the remembered authorized home can be restored, and /spire/master.html remains the explicit client chart.');
+console.log('Static website published from canonical source files; /spire.html launches Client Station, the remembered authorized home can be restored, /spire/master.html remains the explicit client chart, and display/full-screen/Secure Chat/notification capabilities are verified in their live runtimes.');
