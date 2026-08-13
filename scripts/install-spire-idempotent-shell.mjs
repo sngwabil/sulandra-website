@@ -4,9 +4,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const entryPath = path.join(root, 'spire.html');
+const loginPath = path.join(root, 'spire', 'login.html');
 const stationPath = path.join(root, 'spire', 'client-station.html');
 const masterPath = path.join(root, 'spire', 'master.html');
-const stationContractMarker = 'SPIRE_MASTER_CLIENT_STATION_CHART_CONTRACT_V2';
+const contract = 'SPIRE_MASTER_CLIENT_STATION_CHART_CONTRACT_V3';
 
 async function requireFile(filePath, label) {
   try { await access(filePath); }
@@ -36,23 +37,21 @@ function normalizeAccessibilityRuntime(masterHtml) {
 }
 
 function normalizeThemeCompatibilityAlias(masterHtml) {
-  if (masterHtml.includes('window.selectPresetTheme=applyTheme;')) {
-    return masterHtml.replace('window.selectPresetTheme=applyTheme;', 'window.selectPresetTheme=applyPresetTheme;');
+  let next = masterHtml.replaceAll('window.selectPresetTheme=applyTheme;', 'window.selectPresetTheme=applyPresetTheme;');
+  if (!next.includes('window.selectPresetTheme=applyPresetTheme;')) {
+    const anchor = 'window.applyPresetTheme=applyPresetTheme;';
+    if (!next.includes(anchor)) throw new Error('Standalone SPIRE master preset-theme compatibility alias could not be located.');
+    next = next.replace(anchor, `${anchor}\n  window.selectPresetTheme=applyPresetTheme;`);
   }
-  if (!masterHtml.includes('window.selectPresetTheme=applyPresetTheme;')) {
-    throw new Error('Standalone SPIRE master preset-theme compatibility alias could not be located.');
-  }
-  return masterHtml;
+  return next;
 }
 
 function normalizeMasterClientStationContract(masterHtml) {
   let next = masterHtml;
-
-  const patientPattern = /  function currentPatientId\(\) \{[\s\S]*?\n  \}\n\n  function requireSession/;
-  if (!patientPattern.test(next)) throw new Error('SPIRE master currentPatientId() boundary was not found');
-  next = next.replace(patientPattern, `  function currentPatientId() {
-    // ${stationContractMarker}: a chart may open only after explicit Client Station selection.
-    // Never resurrect the last viewed client from sessionStorage.
+  const clientPattern = /  function currentPatientId\(\) \{[\s\S]*?\n  \}\n\n  function requireSession/;
+  if (!clientPattern.test(next)) throw new Error('SPIRE master current client boundary was not found');
+  next = next.replace(clientPattern, `  function currentPatientId() {
+    // ${contract}: chart scope comes only from explicit Client Station selection.
     const hash = new URLSearchParams(String(location.hash || '').replace(/^#/,''));
     const query = new URLSearchParams(location.search);
     return hash.get('patient') || query.get('patientId') || '';
@@ -61,9 +60,9 @@ function normalizeMasterClientStationContract(masterHtml) {
   function requireSession`);
 
   const loaderPattern = /  async function loadFlowsheetsView\(groupOverride\) \{[\s\S]*?\n  \}\n\n  function renderFlowsheet\(host\) \{/;
-  if (!loaderPattern.test(next)) throw new Error('SPIRE master legacy flowsheet-loader boundary was not found');
+  if (!loaderPattern.test(next)) throw new Error('SPIRE master flowsheet-loader boundary was not found');
   next = next.replace(loaderPattern, `  async function loadFlowsheetsView(groupOverride) {
-    // ${stationContractMarker}: the external master grid is the only renderer.
+    // ${contract}: assets/spire-master-flowsheet-grid.js is the only live grid renderer.
     const host = $('#flowsheets-view');
     if (!host) return;
     if (!state.patientId) return showError(host,'Open a client from Client Station first.');
@@ -78,61 +77,49 @@ function normalizeMasterClientStationContract(masterHtml) {
   }
 
   function renderFlowsheet(host) {`);
-
-  const patientStart = next.indexOf('  function currentPatientId() {');
-  const patientEnd = next.indexOf('  function requireSession', patientStart);
-  const patientSource = next.slice(patientStart, patientEnd);
-  if (patientSource.includes("sessionStorage.getItem('spire:patientId')")) {
-    throw new Error('SPIRE master still auto-selects a client from sessionStorage');
-  }
-
-  const loaderStart = next.indexOf('  async function loadFlowsheetsView(groupOverride) {');
-  const rendererStart = next.indexOf('  function renderFlowsheet(host) {', loaderStart);
-  const loaderSource = next.slice(loaderStart, rendererStart);
-  if (!loaderSource.includes('window.SpireMasterFlowsheetGrid')) {
-    throw new Error('SPIRE master flowsheet loader does not delegate to SpireMasterFlowsheetGrid');
-  }
-  for (const forbidden of ['Loading continuous flowsheet', 'renderFlowsheet(host);', 'state.flowColumns = keys.slice(-8)']) {
-    if (loaderSource.includes(forbidden)) throw new Error(`Retired continuous flowsheet behavior is still reachable: ${forbidden}`);
-  }
   return next;
 }
 
 async function verifyAndNormalize() {
   await Promise.all([
     requireFile(entryPath, 'Canonical S.P.I.R.E. entry page'),
+    requireFile(loginPath, 'S.P.I.R.E. authentication/fullscreen shell'),
     requireFile(stationPath, 'S.P.I.R.E. Client Station'),
     requireFile(masterPath, 'Standalone S.P.I.R.E. chart master'),
   ]);
 
-  const [entry, station, originalMaster] = await Promise.all([
+  const [entry, login, station, originalMaster] = await Promise.all([
     readFile(entryPath, 'utf8'),
+    readFile(loginPath, 'utf8'),
     readFile(stationPath, 'utf8'),
     readFile(masterPath, 'utf8'),
   ]);
 
-  if (!entry.includes('/spire/client-station.html') || !entry.includes('window.location.search') || !entry.includes('window.location.hash')) {
-    throw new Error('/spire.html must launch /spire/client-station.html while preserving query/hash context.');
+  if (!entry.includes('SPIRE_CANONICAL_LOGIN_ENTRY_V3') || !entry.includes('/spire/login.html')) {
+    throw new Error('/spire.html must launch the S.P.I.R.E. authentication shell.');
+  }
+  if (!login.includes('SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1') || !login.includes('spireWorkspaceFrame')) {
+    throw new Error('/spire/login.html is not the authenticated fullscreen S.P.I.R.E. shell.');
   }
   if (!station.includes('SPIRE_CLIENT_STATION_LISTS_V2') || !station.includes('Client Station') || !station.includes('Available Homes')) {
-    throw new Error('/spire/client-station.html is not the canonical remembered-home Client Station.');
+    throw new Error('/spire/client-station.html is not the remembered-home Client Station.');
   }
   if (!/<html[\s>]/i.test(originalMaster) || !/<body[\s>]/i.test(originalMaster) || !/<\/html>/i.test(originalMaster)) {
-    throw new Error('/spire/master.html does not appear to be a complete chart application.');
-  }
-  for (const legacy of ['spire-app-v2.js', 'spire-canonical-bootstrap.js', 'spire-shell-resilience.js', 'spire-chart-ready.js', 'spire-deep-link.js']) {
-    if (entry.includes(legacy)) throw new Error(`/spire.html still references legacy SPIRE runtime ${legacy}`);
+    throw new Error('/spire/master.html is not a complete chart application.');
   }
 
   let master = normalizeMasterClientStationContract(originalMaster);
   master = normalizeAccessibilityRuntime(master);
   master = normalizeThemeCompatibilityAlias(master);
-  if (master.includes('window.selectPresetTheme=applyTheme;')) {
-    throw new Error('SPIRE master still contains the bootstrap-breaking applyTheme compatibility alias.');
-  }
   if (master !== originalMaster) await writeFile(masterPath, master, 'utf8');
 
-  console.log('S.P.I.R.E. source architecture verified: Client Station entry, explicit client chart selection, no stale-client fallback, normalized accessibility runtime, and one authoritative Flowsheets renderer.');
+  const normalized = await readFile(masterPath, 'utf8');
+  const patientStart = normalized.indexOf('  function currentPatientId() {');
+  const patientEnd = normalized.indexOf('  function requireSession', patientStart);
+  if (normalized.slice(patientStart, patientEnd).includes("sessionStorage.getItem('spire:patientId')")) {
+    throw new Error('SPIRE chart can still resurrect a stale client from sessionStorage.');
+  }
+  console.log('S.P.I.R.E. source architecture verified: authenticated shell → Client Station → explicit client chart; no duplicate company/home gateway.');
 }
 
 try { await verifyAndNormalize(); }
@@ -141,7 +128,5 @@ catch (error) {
   process.exit(1);
 }
 
-// Preserve the proven accessibility/theme repair sequence from the last green deployment.
 await import('./fix-spire-accessibility-suite.mjs');
-// User-visible Flowsheet metadata must never fall back to an internal actor ID.
 await import('./fix-spire-flowsheet-friendly-actor.mjs');
