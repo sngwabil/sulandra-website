@@ -16,19 +16,15 @@ let html = await readFile(target, 'utf8');
 if (!html.includes(marker)) {
   // fix-spire-master-defects.mjs installs the real switchAccessTab() and
   // applyPresetTheme() implementations. The original master source still has
-  // two obsolete compatibility assignments immediately afterward; one points
-  // at the removed applyTheme() function and the other replaces the real tab
-  // handler with a no-op. Remove both before adding the persistent controls.
-  html = html.replace(
-    "  window.selectPresetTheme=applyTheme;\n  window.switchAccessTab=()=>{};\n",
-    '',
-  );
-  html = html.replace("  window.selectPresetTheme=applyTheme;\n", '');
+  // an obsolete switchAccessTab no-op below those implementations. Remove the
+  // no-op, but retain the canonical selectPresetTheme alias as an idempotent
+  // build marker and inject the persistent runtime after it so nothing later
+  // can overwrite the functional handlers.
   html = html.replace("  window.switchAccessTab=()=>{};\n", '');
 
-  const anchor = '  window.applyPresetTheme=applyPresetTheme;';
+  const anchor = '  window.selectPresetTheme=applyPresetTheme;';
   if (!html.includes(anchor)) {
-    throw new Error('SPIRE accessibility preset runtime anchor was not found');
+    throw new Error('SPIRE accessibility canonical preset alias was not found');
   }
 
   const runtime = `${anchor}
@@ -171,7 +167,9 @@ if (!html.includes(marker)) {
     throw new Error('SPIRE accessibility runtime still references the removed applyTheme function');
   }
   for (const required of [
+    'window.switchAccessTab=switchAccessTab',
     'window.applyPresetTheme = applyPresetThemePersistent',
+    'window.selectPresetTheme = applyPresetThemePersistent',
     'window.applyCustomColors = applyCustomColors',
     'window.applyCursorStyle = applyCursorStyle',
     'window.applyFontSize = applyFontSize',
