@@ -88,8 +88,8 @@ async function verifyAndNormalize() {
     requireFile(masterPath, 'Standalone S.P.I.R.E. chart master'),
   ]);
 
-  const [entry, login, station, originalMaster] = await Promise.all([
-    readFile(entryPath, 'utf8'),
+  let entry = await readFile(entryPath, 'utf8');
+  const [login, station, originalMaster] = await Promise.all([
     readFile(loginPath, 'utf8'),
     readFile(stationPath, 'utf8'),
     readFile(masterPath, 'utf8'),
@@ -119,7 +119,18 @@ async function verifyAndNormalize() {
   if (normalized.slice(patientStart, patientEnd).includes("sessionStorage.getItem('spire:patientId')")) {
     throw new Error('SPIRE chart can still resurrect a stale client from sessionStorage.');
   }
-  console.log('S.P.I.R.E. source architecture verified: authenticated shell → Client Station → explicit client chart; no duplicate company/home gateway.');
+
+  // During isolation of an older publisher a non-executable /spire/master.html
+  // compatibility line was temporarily placed in the entry comment. The current
+  // publisher correctly rejects that retired direct-chart target, so remove only
+  // that comment line before dist-web is copied. The actual redirect remains login-first.
+  const cleanedEntry = entry.replace(/^\s*\/spire\/master\.html\s*$/m, '');
+  if (cleanedEntry !== entry) {
+    await writeFile(entryPath, cleanedEntry, 'utf8');
+    entry = cleanedEntry;
+  }
+
+  console.log('S.P.I.R.E. source architecture verified: authenticated shell → Client Station → explicit client chart; no duplicate company/home gateway and no direct-master entry marker is published.');
 }
 
 try { await verifyAndNormalize(); }
