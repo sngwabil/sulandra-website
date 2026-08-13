@@ -28,7 +28,7 @@ const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-s
 const frozenUrl = '/assets/spire-flowsheet-frozen-pane.js?v=20260813-frozen-pane-1';
 const screenUrl = '/assets/spire-screen-controls.js?v=20260813-live-controls-2';
 const medicationUrl = '/assets/spire-medication-order-entry.js?v=20260813-medication-orders-1';
-const marTimelineUrl = '/assets/spire-mar-timeline.js?v=20260813-mar-timeline-1';
+const marTimelineUrl = '/assets/spire-mar-timeline.js?v=20260813-mar-timeline-2';
 const screenCssUrl = '/assets/spire-screen-controls.css?v=20260813-live-controls-2';
 
 for (const file of [
@@ -117,7 +117,7 @@ for (const marker of ['SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?s
 for (const marker of ['SPIRE_MEDICATION_ORDER_ENTRY_V1', '+ Add Medication Order', '/api/admin/spire/medication-orders', 'Save & Activate Order']) {
   if (!medication.includes(marker)) throw new Error(`SPIRE medication order entry runtime missing ${marker}`);
 }
-for (const marker of ['SPIRE_MAR_TIMELINE_V1', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications']) {
+for (const marker of ['SPIRE_MAR_TIMELINE_V2', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications']) {
   if (!marTimeline.includes(marker)) throw new Error(`SPIRE MAR timeline runtime missing ${marker}`);
 }
 for (const forbidden of ['Opening Staff Messaging Portal', 'Notifications: 3 unread reminders for current client.']) {
