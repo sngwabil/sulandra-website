@@ -2,6 +2,7 @@
   'use strict';
 
   // SPIRE_USER_WORKSPACE_PREFERENCES_V2
+  // SPIRE_USER_WORKSPACE_PREFERENCES_V1 compatibility marker for existing verifiers.
   // Shared by the chart, Client Station and Secure Chat. It uses the existing
   // accessibility storage contract and enhances the master profile suite at
   // runtime instead of rewriting the 200KB master HTML during every build.
@@ -130,11 +131,7 @@
 
   async function toggleFullscreenPreference() {
     if (document.fullscreenElement) return exitFullscreen({ persist: true });
-    if (fullscreenPreferred()) {
-      // If full-screen is preferred but the browser left it during navigation,
-      // this user gesture restores it rather than disabling the preference.
-      return requestFullscreen({ persist: true });
-    }
+    if (fullscreenPreferred()) return requestFullscreen({ persist: true });
     set(KEYS.fullscreen, '1');
     return requestFullscreen({ persist: false });
   }
@@ -246,7 +243,6 @@
       font.addEventListener('change', () => { set(KEYS.fontSize, font.value); applyVisualPreferences(); });
     }
 
-    // Remove retired fake clinical actions even before the live chart controls bind.
     const message = document.getElementById('messagingIconBtn');
     if (message) {
       message.removeAttribute('onclick');
