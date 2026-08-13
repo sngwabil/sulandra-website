@@ -84,7 +84,7 @@ try {
 const spirePath = path.join(outputDirectory, 'spire.html');
 const spireMasterPath = path.join(outputDirectory, 'spire', 'master.html');
 const publishedSpireEntry = await readFile(spirePath, 'utf8');
-const publishedSpireMaster = await readFile(spireMasterPath, 'utf8');
+let publishedSpireMaster = await readFile(spireMasterPath, 'utf8');
 for (const marker of ['/spire/master.html', 'window.location.search', 'window.location.hash']) {
   if (!publishedSpireEntry.includes(marker)) throw new Error(`Static publication regression: SPIRE canonical entry missing ${marker}`);
 }
@@ -102,11 +102,22 @@ for (const legacyAsset of [
     throw new Error(`Static publication regression: SPIRE canonical entry still loads legacy runtime ${legacyAsset}`);
   }
 }
+
+// The standalone master owns its flowsheet DOM. Publish the requested DSP Daily
+// Documentation grid as a first-party master runtime, not as a legacy root-shell overlay.
+const masterFlowsheetRuntime = '/assets/spire-master-flowsheet-grid.js?v=20260813-dsp-daily-grid-1';
+if (!publishedSpireMaster.includes(masterFlowsheetRuntime)) {
+  if (!publishedSpireMaster.includes('</body>')) throw new Error('Static publication regression: standalone SPIRE master has no body close');
+  publishedSpireMaster = publishedSpireMaster.replace('</body>', `<script src="${masterFlowsheetRuntime}"></script>\n</body>`);
+  await writeFile(spireMasterPath, publishedSpireMaster, 'utf8');
+}
+
 for (const marker of [
   '<html', '<head', '<body', '</html>',
   "window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'",
   '/assets/sulandra-entity-context.js',
   'SPIRE_MASTER_DEFECT_FIXES_V1',
+  masterFlowsheetRuntime,
 ]) {
   if (!publishedSpireMaster.includes(marker)) throw new Error(`Static publication regression: standalone SPIRE master missing ${marker}`);
 }
@@ -186,6 +197,7 @@ const requiredPublishedFiles = [
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
   'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
+  'assets/spire-master-flowsheet-grid.js',
   // Retain legacy capability assets as independently testable modules, but do not
   // inject them into the canonical /spire.html entry.
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
@@ -213,4 +225,4 @@ await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; /spire.html remains a clean redirect and /spire/master.html is the authoritative standalone SPIRE workstation.');
+console.log('Static website published from canonical source files; /spire.html remains a clean redirect, /spire/master.html is authoritative, and the server-backed DSP Daily Documentation grid is published.');
