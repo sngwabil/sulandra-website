@@ -98,7 +98,6 @@ if (failures.length) {
 
 console.log('Employee 360 manager scope, learning assignments, development goals, safety incidents, corrective actions, and wellness programs are selected-company scoped.');
 
-// This is intentionally the final command in build:web. Older SPIRE verifiers can
-// inspect their inert compatibility contract first; only after all static checks
-// pass do we publish the standalone user-authored master as the canonical root.
-await import('./finalize-master-spire-entry.mjs');
+// IMPORTANT: this verifier must not publish or rewrite SPIRE. The canonical SPIRE
+// entry is owned earlier by finalize-spire-client-station-publication.mjs and must
+// remain login/SSO -> Client Station -> explicit client chart after build:web.
