@@ -6,92 +6,17 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>S.P.I.R.E. Patient Station | Sulandra Health</title>
-  <link rel="icon" href="/favicon.ico">
-  <style>
-    :root{--navy:#082f49;--navy2:#0b4f73;--red:#a20d18;--cyan:#5bd0e7;--cyan2:#dff8fc;--ice:#eaf7fb;--panel:#f8fdff;--line:#b7d3df;--line2:#d4e4eb;--ink:#173c50;--muted:#5b7482;--purple:#7c3db5}
-    *{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;font-family:"Segoe UI",Arial,sans-serif;color:var(--ink);background:#dff2f7}button,input{font:inherit}
-    .station{height:100vh;display:grid;grid-template-rows:34px 38px 1fr;min-width:960px}
-    .topbar{background:linear-gradient(90deg,#7f0710,#b20c17 62%,#830710);color:#fff;display:flex;align-items:center;gap:8px;padding:0 10px;font-size:12px;white-space:nowrap}.spire-mark{background:#fff;color:#a20d18;font-style:italic;font-weight:900;border-radius:2px;padding:3px 8px;font-size:15px}.top-title{font-weight:800;margin-right:8px}.top-link{border:0;background:transparent;color:#fff;cursor:pointer;padding:5px 7px;border-radius:3px}.top-link:hover{background:rgba(255,255,255,.15)}.top-spacer{flex:1}.identity{display:flex;align-items:center;gap:7px}.avatar{width:25px;height:25px;border-radius:50%;background:#d7eff8;color:#07567f;display:grid;place-items:center;font-weight:900;border:1px solid #fff}.logout{border:1px solid rgba(255,255,255,.55);background:#8a111b;color:#fff;border-radius:3px;padding:4px 9px;cursor:pointer;font-weight:700}
-    .pagebar{background:#dff8fc;border-bottom:1px solid #88bfce;display:flex;align-items:center;gap:8px;padding:0 9px}.pagebar h1{font-size:18px;margin:0;color:#0d6984;font-weight:500}.scope{font-size:11px;color:#315d6e;font-weight:700}.page-spacer{flex:1}.search{height:27px;width:230px;border:1px solid #9cbac6;background:#fff;padding:0 8px;outline:none}.search:focus{border-color:#0b7fa1;box-shadow:0 0 0 2px rgba(11,127,161,.12)}
-    .workspace{min-height:0;display:grid;grid-template-columns:235px minmax(0,1fr);background:#dff2f7}.list-rail{min-height:0;border-right:1px solid #8cb9c8;background:#eaf9fc;display:grid;grid-template-rows:minmax(230px,45%) 1fr;overflow:hidden}.rail-section{min-height:0;display:flex;flex-direction:column}.rail-title{height:30px;padding:6px 8px;color:#0a738e;font-size:16px}.rail-toolbar{padding:4px 7px;border-bottom:1px solid #b9d5df;font-size:11px;color:#446b7a}.tree{padding:4px 6px;overflow:auto;font-size:12px}.tree-item{display:flex;align-items:center;gap:6px;min-height:26px;padding:4px 7px;cursor:pointer;color:#17475b;border-radius:2px}.tree-item:hover{background:#d8f1f7}.tree-item.selected{background:#64d4e8;color:#073a4d;font-weight:800}.tree-item.child{padding-left:24px}.tree-item .count{margin-left:auto;font-size:10px;color:#56717d}.tree-folder{font-weight:800}.available{border-top:1px solid #98c2cf;background:#edf9fb}.available .rail-title{display:flex;align-items:center}.rail-chevron{margin-left:auto}.home-list{padding:5px 7px;overflow:auto}.home-item{display:flex;gap:7px;align-items:flex-start;padding:5px 4px;cursor:pointer;font-size:11.5px;border-radius:2px}.home-item:hover{background:#d8f1f7}.home-item.current{font-weight:800;color:#075f7a}.home-icon{color:#087392}.home-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.home-meta{font-size:9.5px;color:#718a96}
-    .main{min-width:0;min-height:0;display:grid;grid-template-rows:35px minmax(225px,46%) 20px 1fr;background:#e8f8fb}.toolbar{display:flex;align-items:center;gap:4px;border-bottom:1px solid #9ec6d2;background:#e6f7fb;padding:4px 7px;overflow-x:auto;white-space:nowrap}.tool{border:0;background:transparent;color:#284f5f;padding:4px 7px;cursor:pointer;font-size:11.5px;border-radius:2px}.tool:hover:not(:disabled){background:#caeaf2}.tool:disabled{opacity:.45;cursor:not-allowed}.tool.primary{font-weight:800;color:#005f7a}.sep{width:1px;height:18px;background:#b7d2dc;margin:0 2px}
-    .table-panel{min-height:0;overflow:auto;background:#eaf9fc}.patient-table{width:100%;min-width:930px;border-collapse:collapse;table-layout:fixed;font-size:11px}.patient-table th{height:39px;vertical-align:bottom;text-align:left;padding:4px 5px;background:#eefbfe;border-right:1px solid #c3dce5;border-bottom:1px solid #8cb8c7;color:#38606e;font-weight:500;position:sticky;top:0;z-index:3}.patient-table td{height:42px;padding:4px 6px;border-right:1px solid #c6dfe7;border-bottom:1px solid #b6d3de;background:#edfafd;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}.patient-row{cursor:default;user-select:none}.patient-row:hover td{background:#d9f4f9}.patient-row.selected td{background:#5bd2e7!important;color:#063b4a}.patient-cell{display:grid;grid-template-columns:34px 1fr;gap:6px;align-items:center}.patient-photo{width:31px;height:31px;border-radius:50%;background:#d9e3e7;display:grid;place-items:center;color:#6c7d84;font-size:16px;border:1px solid #c6d3d8}.patient-name{font-weight:800;color:#0e758f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.patient-row.selected .patient-name{color:#034a60}.patient-sub{font-size:9.5px;color:#506f7d;margin-top:1px}.patient-row.selected .patient-sub{color:#285b69}.flag{display:inline-block;padding:2px 5px;margin:1px 2px 1px 0;border-radius:9px;background:#fff0b5;color:#725500;font-size:9px;font-weight:800}.status-ok{font-size:17px;color:#078b72;font-weight:900}.empty-row td{text-align:center;padding:30px;color:#65808b}
-    .splitter{background:#d9eff5;border-top:1px solid #9fc4d0;border-bottom:1px solid #9fc4d0;display:flex;justify-content:center;align-items:center;color:#5b7784;font-size:9px}.split-grip{width:35px;height:5px;border:1px solid #9cb9c4;background:#eef9fb;border-radius:1px}
-    .preview{min-height:0;background:#fff;overflow:auto}.preview-placeholder{padding:42px;text-align:center;color:#6d8792}.preview-head{height:43px;border-bottom:1px solid #b9d7e1;background:#e8f8fb;display:flex;align-items:center;gap:8px;padding:0 9px;position:sticky;top:0;z-index:2}.preview-name{font-size:16px;color:#0b6b84;font-weight:800}.preview-meta{font-size:10.5px;color:#4f6e7a}.preview-spacer{flex:1}.preview-action{border:1px solid #93b8c5;background:#f8fdff;color:#174d60;border-radius:2px;padding:4px 8px;cursor:pointer;font-size:10.5px;font-weight:700}.preview-action:hover{background:#dff5fa}.preview-action.primary{background:#0b728f;color:#fff;border-color:#0b728f}
-    .preview-body{padding:18px 20px 30px}.patient-banner{display:grid;grid-template-columns:minmax(280px,1.25fr) 1fr 1fr;gap:22px;border-bottom:3px solid #a33bc2;padding:0 2px 17px;margin-bottom:14px}.banner-name{font-size:21px;color:#23677b;font-weight:500;margin-bottom:10px}.facts{font-size:10.5px;line-height:1.55;color:#506974}.facts b{color:#344f5b}.preview-section-title{color:#78219b;font-weight:700;font-size:13px;margin:10px 0 8px}.mini-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#cddfe6;border:1px solid #cddfe6}.mini-cell{background:#fff;padding:9px;font-size:10.5px;min-height:48px}.mini-cell b{display:block;color:#476574;margin-bottom:3px}.secure-chip{display:inline-flex;align-items:center;gap:5px;color:#64408d;font-weight:800}.loading{padding:36px;text-align:center;color:#66818d}
-    @media(max-width:1100px){.workspace{grid-template-columns:205px minmax(0,1fr)}.patient-banner{grid-template-columns:1fr 1fr}.patient-banner>div:first-child{grid-column:1/-1}.station{min-width:900px}}
-    @media print{.topbar,.toolbar,.list-rail,.splitter{display:none!important}.station{display:block;overflow:visible}.workspace{display:block}.main{display:block}.table-panel{overflow:visible}.preview{overflow:visible}}
-  </style>
+  <title>S.P.I.R.E. Client Station | Sulandra Health</title>
+  <script>
+    // SPIRE_RETIRED_PATIENT_STATION_COMPAT_V1
+    (() => {
+      const destination = '/spire/client-station.html' + window.location.search + window.location.hash;
+      window.location.replace(destination);
+    })();
+  </script>
+  <noscript><meta http-equiv="refresh" content="0;url=/spire/client-station.html"></noscript>
 </head>
-<body data-spire-patient-station="SPIRE_PATIENT_STATION_LISTS_V1">
-  <div class="station">
-    <header class="topbar">
-      <span class="spire-mark">Spire</span>
-      <span class="top-title" id="topStationTitle">Patient Station</span>
-      <button class="top-link" id="topPortal">🏥 SPIRE Portal</button>
-      <button class="top-link" id="topHomes">🏘 Homes</button>
-      <button class="top-link" id="topStation">👥 Patient Station</button>
-      <button class="top-link" id="topSecureChat" disabled>🔒 Secure Chat</button>
-      <span class="top-spacer"></span>
-      <span class="identity"><span class="avatar" id="stationAvatar">SH</span><span id="stationUser">Verifying session…</span></span>
-      <button class="logout" id="stationLogout">Log Out</button>
-    </header>
-
-    <div class="pagebar">
-      <h1>Patient Lists</h1>
-      <span class="scope" id="stationScope">Loading clinical scope…</span>
-      <span class="page-spacer"></span>
-      <input id="patientSearch" class="search" type="search" autocomplete="off" placeholder="Search current location…">
-    </div>
-
-    <main class="workspace">
-      <aside class="list-rail">
-        <section class="rail-section">
-          <div class="rail-title">My Lists</div>
-          <div class="rail-toolbar">🔧 Edit List&nbsp;&nbsp; ▾ Location</div>
-          <div class="tree" id="myLists">
-            <div class="tree-item tree-folder">▾ 🏠 <span id="myHomeLabel">My Service Home</span></div>
-            <div class="tree-item child selected" id="allClientsList">👥 All My Clients <span class="count" id="clientCount">0</span></div>
-            <div class="tree-item tree-folder">▸ 📁 Shared Patient Lists</div>
-          </div>
-        </section>
-        <section class="rail-section available">
-          <div class="rail-title">Available Homes <span class="rail-chevron">⌄</span></div>
-          <div class="home-list" id="availableHomes"><div class="loading">Loading homes…</div></div>
-        </section>
-      </aside>
-
-      <section class="main">
-        <div class="toolbar">
-          <button class="tool primary" id="refreshStation">↻ Refresh</button>
-          <span class="sep"></span>
-          <button class="tool" id="openSelected" disabled>▣ Open Chart</button>
-          <button class="tool" id="openSecureChat" disabled>🔒 Secure Chat</button>
-          <button class="tool" id="writeHandoff" disabled>👥 Write Handoff</button>
-          <span class="sep"></span>
-          <button class="tool" id="printList">🖨 Print List</button>
-          <button class="tool" id="chooseHome">🏠 Change Home</button>
-        </div>
-
-        <div class="table-panel">
-          <table class="patient-table" aria-label="Clients in selected service home">
-            <colgroup><col style="width:190px"><col style="width:115px"><col style="width:105px"><col style="width:170px"><col style="width:150px"><col style="width:190px"><col style="width:105px"></colgroup>
-            <thead><tr><th>Client ▲</th><th>MRN</th><th>DOB / Age</th><th>Service Home</th><th>Program / Service</th><th>Alerts / Precautions</th><th>Chart Access</th></tr></thead>
-            <tbody id="stationPatientBody"><tr class="empty-row"><td colspan="7">Loading authorized clients…</td></tr></tbody>
-          </table>
-        </div>
-
-        <div class="splitter"><span class="split-grip"></span></div>
-
-        <div class="preview" id="patientPreview">
-          <div class="preview-placeholder">Select a client row to preview the chart. <b>Double-click the row to open the chart.</b></div>
-        </div>
-      </section>
-    </main>
-  </div>
-  <script>window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app';</script>
-  <script src="/assets/sulandra-entity-context.js"></script>
-  <script src="/assets/spire-patient-station.js?v=20260813-patient-lists-1"></script>
+<body>
+  <p>Opening S.P.I.R.E. Client Station… <a href="/spire/client-station.html">Continue to Client Station</a></p>
 </body>
 </html>
