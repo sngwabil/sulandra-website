@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const target = path.join(root, 'client-intake.html');
 const marker = 'CLIENT_INTAKE_DISPOSITION_UI_V1';
+const correctionMarker = 'CLIENT_INTAKE_APPROVED_CORRECTION_UI_V2';
 let source = await readFile(target, 'utf8');
 
 const replaceRequired = (before, after, label) => {
@@ -70,8 +71,27 @@ if (!source.includes(marker)) {
   const submitEnd = "await openCase(data.id);}catch(err){error.textContent=err.message;error.classList.add('show');}};";
   const guardedEnd = "await openCase(data.id);}catch(err){error.textContent=err.message;error.classList.add('show');}finally{state.creating=false;if(button){button.disabled=false;button.textContent=oldLabel;}}};";
   replaceRequired(submitEnd, guardedEnd, 'submit completion');
-
-  await writeFile(target, source, 'utf8');
 }
 
-console.log('Client Intake frontend disposition installed: active/archive work queues, reject/archive actions, and single-flight creation are enabled.');
+if (!source.includes(correctionMarker)) {
+  replaceRequired(
+    "${c.status==='APPROVED'?'<button class=\"btn success\" id=\"downloadApprovedIntake\">↓ Download Approved Intake PDF</button>':''}",
+    "${c.status==='APPROVED'?'<button class=\"btn warn\" id=\"reopenCorrection\">↻ Reopen for Correction</button><button class=\"btn success\" id=\"downloadApprovedIntake\">↓ Download Approved Intake PDF</button>':''}",
+    'approved correction action'
+  );
+
+  replaceRequired(
+    "$('downloadApprovedIntake')?.addEventListener('click',downloadApprovedIntake);",
+    "$('reopenCorrection')?.addEventListener('click',reopenApprovedForCorrection);$('downloadApprovedIntake')?.addEventListener('click',downloadApprovedIntake);",
+    'approved correction binding'
+  );
+
+  const submitAnchor = '  async function submitIntake(){';
+  const at = source.indexOf(submitAnchor);
+  if (at < 0) throw new Error('Client Intake correction-function boundary changed');
+  const correctionFunction = `  /* ${correctionMarker} */\n  async function reopenApprovedForCorrection(){const c=state.detail?.case;if(!c||String(c.status)!=='APPROVED')return;const reason=prompt('Enter the reason this approved intake must be corrected:','');if(reason===null)return;if(!reason.trim()){alert('A correction reason is required.');return;}if(!confirm('Reopen this approved intake for correction? The same live SPIRE chart will remain linked, and all changes must be resubmitted and reapproved.'))return;try{await api(\`/api/admin/client-intakes/\${encodeURIComponent(state.caseId)}/reopen-correction\`,{method:'POST',body:JSON.stringify({reason:reason.trim()})});await loadCases();await openCase(state.caseId,true,state.sectionKey);alert('Correction cycle opened. The intake is now editable and must be submitted and approved again when corrections are complete.');}catch(e){alert(e.message);}}\n`;
+  source = source.slice(0, at) + correctionFunction + source.slice(at);
+}
+
+await writeFile(target, source, 'utf8');
+console.log('Client Intake frontend disposition installed: active/archive work queues, reject/archive actions, single-flight creation, and audited approved-intake correction controls are enabled.');
