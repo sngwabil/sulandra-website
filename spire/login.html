@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>S.P.I.R.E. Sign In | Sulandra Health</title>
+  <link rel="icon" href="/favicon.ico">
+  <script src="/assets/spire-user-preferences.js?v=20260813-exact-workflow-1"></script>
+  <style>
+    :root{--spire-title-bg:#0f172a;--spire-toolbar-bg:#990000;--spire-page-bg:#eaf7fb;--spire-card-bg:#fff;--spire-text:#173c50}
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;font-family:"Segoe UI",Arial,sans-serif;background:var(--spire-page-bg);color:var(--spire-text)}
+    body{overflow:hidden}.login-page{height:100%;display:grid;grid-template-rows:40px 1fr;background:linear-gradient(150deg,var(--spire-page-bg),#fff)}
+    .topbar{background:var(--spire-toolbar-bg);color:#fff;display:flex;align-items:center;padding:0 13px;gap:10px;box-shadow:0 1px 0 #0002}.logo{background:#fff;color:#a20d18;font-style:italic;font-weight:900;font-size:17px;padding:3px 10px;border-radius:3px}.title{font-weight:800}.spacer{flex:1}.secure{font-size:11px;opacity:.9}
+    .login-stage{display:grid;place-items:center;padding:24px}.card{width:min(430px,calc(100vw - 34px));background:var(--spire-card-bg);border:1px solid #b8d2de;border-radius:7px;box-shadow:0 18px 55px #18394b24;overflow:hidden}.card-head{background:#e7f5fa;border-bottom:1px solid #bdd6e1;padding:18px 22px}.card-head h1{margin:0;color:#0b6681;font-size:22px}.card-head p{margin:6px 0 0;color:#55717e;font-size:12px;line-height:1.45}.card-body{padding:20px 22px 22px}.field{margin-bottom:14px}.field label{display:block;font-size:11px;font-weight:800;color:#33586a;margin-bottom:5px}.field input{width:100%;height:39px;border:1px solid #9dbbc8;border-radius:4px;padding:0 10px;font:inherit;outline:none;background:#fff}.field input:focus{border-color:#087b9a;box-shadow:0 0 0 3px #0b86a51c}.actions{display:flex;align-items:center;gap:9px;margin-top:4px}.primary{height:38px;border:1px solid #075e79;background:#0b728f;color:#fff;border-radius:4px;padding:0 18px;font-weight:800;cursor:pointer}.primary:disabled{opacity:.55;cursor:wait}.secondary{font-size:11px;color:#496977;text-decoration:none}.secondary:hover{text-decoration:underline}.status{min-height:34px;margin-top:14px;padding:8px 10px;border-radius:4px;background:#eef7fa;color:#496b79;font-size:11px;line-height:1.4}.status.error{background:#fff1f2;color:#a11220;border:1px solid #fecdd3}.status.success{background:#ecfdf5;color:#166534;border:1px solid #bbf7d0}.sso{display:flex;align-items:center;gap:7px;font-size:10px;color:#68808a;margin-bottom:13px}.dot{width:8px;height:8px;border-radius:50%;background:#0aa37f;box-shadow:0 0 0 3px #0aa37f1b}
+    #spireWorkspaceShell{position:fixed;inset:0;background:#eaf7fb;z-index:50}#spireWorkspaceShell[hidden]{display:none}#spireWorkspaceFrame{width:100%;height:100%;border:0;display:block;background:#eaf7fb}
+    @media(max-width:600px){.secure{display:none}.card-body,.card-head{padding-left:16px;padding-right:16px}}
+  </style>
+</head>
+<body data-spire-login="SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1">
+  <section class="login-page" id="spireLoginPage">
+    <header class="topbar"><span class="logo">Spire</span><span class="title">S.P.I.R.E. Enterprise</span><span class="spacer"></span><span class="secure">Secure Clinical Workspace</span></header>
+    <main class="login-stage">
+      <form class="card" id="spireLoginForm" autocomplete="on">
+        <div class="card-head"><h1>Sign in to S.P.I.R.E.</h1><p>Use your Sulandra Health system credentials. If you opened S.P.I.R.E. from the Employee or Admin Portal, your existing authenticated session will be verified automatically.</p></div>
+        <div class="card-body">
+          <div class="sso"><span class="dot"></span><span id="spireSsoState">Checking existing Sulandra session…</span></div>
+          <div class="field"><label for="spireIdentifier">Username or email</label><input id="spireIdentifier" name="identifier" autocomplete="username" required></div>
+          <div class="field"><label for="spirePassword">Password</label><input id="spirePassword" name="password" type="password" autocomplete="current-password" required></div>
+          <div class="actions"><button class="primary" id="spireLoginButton" type="submit">Sign In & Open Client Station</button><a class="secondary" href="/employee-login.html">Account recovery</a></div>
+          <div class="status" id="spireLoginStatus" role="status" aria-live="polite">Verifying session…</div>
+        </div>
+      </form>
+    </main>
+  </section>
+
+  <section id="spireWorkspaceShell" hidden aria-label="S.P.I.R.E. workspace">
+    <iframe id="spireWorkspaceFrame" title="S.P.I.R.E. Client Station" allow="fullscreen" allowfullscreen></iframe>
+  </section>
+
+  <script>window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app';</script>
+  <script src="/assets/spire-login.js?v=20260813-exact-workflow-1"></script>
+</body>
+</html>
