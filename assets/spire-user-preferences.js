@@ -1,11 +1,11 @@
 (() => {
   'use strict';
 
-  // SPIRE_USER_WORKSPACE_PREFERENCES_V3
-  // Compatibility markers retained for older publication checks:
-  // SPIRE_USER_WORKSPACE_PREFERENCES_V2 / 21. Full-Screen Workspace
-  // Theme #21 is now the Client Station visual theme. Fullscreen is a separate
-  // persistent workspace preference and remains default-on until the user exits.
+  // SPIRE_USER_WORKSPACE_PREFERENCES_V4
+  // Theme #21 is the exact Client Station visual system. Fullscreen is a separate
+  // user preference and defaults to ON. Browsers require a user gesture before
+  // entering fullscreen, so SPIRE arms the first interaction to enter fullscreen
+  // automatically when that preference is enabled.
   const BASE_KEYS = Object.freeze({
     preset: 'spire:accessibility:preset',
     mode: 'spire:accessibility:mode',
@@ -37,11 +37,16 @@
     mintFresh: { title:'#065f46', toolbar:'#0d9488', background:'#ecfdf5', card:'#ffffff', text:'#064e3b' },
     royalAmethyst: { title:'#4c1d95', toolbar:'#6d28d9', background:'#f5f3ff', card:'#ffffff', text:'#3b0764' },
     solarizedLight: { title:'#073642', toolbar:'#268bd2', background:'#fdf6e3', card:'#eee8d5', text:'#073642' },
-    clientStation: { title:'#990000', toolbar:'#990000', background:'#eaf7fb', card:'#ffffff', text:'#173c50' }
+    clientStation: {
+      title:'#0f172a', toolbar:'#f4510b', background:'#eaf7fb', card:'#ffffff', text:'#173c50',
+      cyan:'#5bd0e7', cyan2:'#dff8fc', ice:'#eaf7fb', panel:'#f8fdff', line:'#b7d3df', line2:'#d4e4eb',
+      nav:'#082f49', nav2:'#0b4f73', purple:'#7c3db5'
+    }
   });
 
   let navigating = false;
   let deliberateFullscreenExit = false;
+  let fullscreenArmed = false;
 
   function readSession() {
     for (const storage of [sessionStorage, localStorage]) {
@@ -81,7 +86,6 @@
     const scoped = scopedKey(base);
     try {
       localStorage.setItem(scoped, String(value));
-      // Keep the legacy key synchronized because older SPIRE inline handlers read it.
       localStorage.setItem(base, String(value));
     } catch {}
   }
@@ -110,16 +114,20 @@
   function applyVisualPreferences() {
     const palette = currentPalette();
     const root = document.documentElement;
-    root.style.setProperty('--title-bg', palette.title);
-    root.style.setProperty('--toolbar-bg', palette.toolbar);
-    root.style.setProperty('--main-bg', palette.background);
-    root.style.setProperty('--workspace-card-bg', palette.card);
-    root.style.setProperty('--text-color', palette.text);
-    root.style.setProperty('--spire-title-bg', palette.title);
-    root.style.setProperty('--spire-toolbar-bg', palette.toolbar);
-    root.style.setProperty('--spire-page-bg', palette.background);
-    root.style.setProperty('--spire-card-bg', palette.card);
-    root.style.setProperty('--spire-text', palette.text);
+    const pairs = {
+      '--title-bg': palette.title, '--toolbar-bg': palette.toolbar, '--main-bg': palette.background,
+      '--workspace-card-bg': palette.card, '--text-color': palette.text,
+      '--spire-title-bg': palette.title, '--spire-toolbar-bg': palette.toolbar,
+      '--spire-page-bg': palette.background, '--spire-card-bg': palette.card, '--spire-text': palette.text
+    };
+    if (palette === PRESETS.clientStation || getPreference('preset') === 'clientStation') {
+      Object.assign(pairs, {
+        '--navy': palette.nav, '--navy2': palette.nav2, '--cyan': palette.cyan, '--cyan2': palette.cyan2,
+        '--ice': palette.ice, '--panel': palette.panel, '--line': palette.line, '--line2': palette.line2,
+        '--ink': palette.text, '--purple': palette.purple
+      });
+    }
+    Object.entries(pairs).forEach(([key, value]) => value && root.style.setProperty(key, value));
 
     const fontSize = getPreference('fontSize') || '13px';
     if (['12px','13px','14px','16px'].includes(fontSize)) root.style.setProperty('--base-font-size', fontSize);
@@ -206,16 +214,19 @@
   }
 
   function armPreferredFullscreen() {
-    const targetDocument = fullscreenDocument();
-    if (!fullscreenPreferred() || targetDocument.fullscreenElement) return;
-    requestFullscreen({ persist: false }).catch(() => {});
-    const reenter = () => {
-      if (fullscreenPreferred() && !fullscreenDocument().fullscreenElement) requestFullscreen({ persist: false }).catch(() => {});
-      document.removeEventListener('pointerdown', reenter, true);
-      document.removeEventListener('keydown', reenter, true);
+    if (fullscreenArmed || !fullscreenPreferred() || fullscreenDocument().fullscreenElement) return;
+    fullscreenArmed = true;
+    const attempt = () => {
+      if (!fullscreenPreferred() || fullscreenDocument().fullscreenElement) return cleanup();
+      requestFullscreen({ persist: false }).finally(cleanup);
     };
-    document.addEventListener('pointerdown', reenter, true);
-    document.addEventListener('keydown', reenter, true);
+    const cleanup = () => {
+      document.removeEventListener('pointerdown', attempt, true);
+      document.removeEventListener('keydown', attempt, true);
+      fullscreenArmed = false;
+    };
+    document.addEventListener('pointerdown', attempt, true);
+    document.addEventListener('keydown', attempt, true);
   }
 
   function bindFullscreenControls() {
@@ -234,8 +245,7 @@
   function handleFullscreenChange() {
     const targetDocument = fullscreenDocument();
     if (!targetDocument.fullscreenElement && !navigating && !deliberateFullscreenExit && fullscreenPreferred()) {
-      // Escape/browser exit means the user deliberately returned to browser mode.
-      setPreference('fullscreen', '0');
+      armPreferredFullscreen();
     }
     syncFullscreenButtons();
   }
@@ -247,23 +257,10 @@
   }
 
   window.SpireUserPreferences = Object.freeze({
-    keys: BASE_KEYS,
-    presets: PRESETS,
-    userScope,
-    getPreference,
-    setPreference,
-    removePreference,
-    setPreset,
-    setCustomColors,
-    apply: applyAll,
-    applyVisualPreferences,
-    fullscreenPreferred,
-    requestFullscreen,
-    exitFullscreen,
-    toggleFullscreenPreference,
-    syncFullscreenButtons,
-    armPreferredFullscreen,
-    setFullscreenPreferred(value) { setPreference('fullscreen', value ? '1' : '0'); syncFullscreenButtons(); }
+    keys: BASE_KEYS, presets: PRESETS, userScope, getPreference, setPreference, removePreference,
+    setPreset, setCustomColors, apply: applyAll, applyVisualPreferences, fullscreenPreferred,
+    requestFullscreen, exitFullscreen, toggleFullscreenPreference, syncFullscreenButtons, armPreferredFullscreen,
+    setFullscreenPreferred(value) { setPreference('fullscreen', value ? '1' : '0'); syncFullscreenButtons(); if (value) armPreferredFullscreen(); }
   });
   window.toggleSpireFullscreenPreference = toggleFullscreenPreference;
 
