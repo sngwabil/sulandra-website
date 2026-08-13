@@ -241,96 +241,42 @@ await update(
  * S.P.I.R.E. canonical frontend entry
  * --------------------------------------------------------------------------
  *
- * /spire.html is now ONLY the public/canonical frontend entry point.
- *
- * The actual standalone SPIRE application lives at:
- *
- *   /spire/master.html
- *
- * Do not inject the legacy spire-app-v2 shell here.
- * Do not mutate assets/spire-app-v2.js here.
- *
- * Query-string and hash state are preserved so service-home, patient,
- * chart-tab and other deep-link context survives the handoff.
+ * /spire.html launches /spire/client-station.html. Client Station restores the
+ * authenticated user's last authorized service home and loads that home's
+ * clients. /spire/master.html remains chart-only and is opened only after an
+ * explicit client selection.
  * --------------------------------------------------------------------------
  */
 
 await update('spire.html', source => {
-  /*
-   * If this is already our redirect stub, leave it alone.
-   */
   if (
-    source.includes(
-      'SPIRE_CANONICAL_MASTER_ENTRY_V1'
-    ) &&
-    source.includes('/spire/master.html')
+    source.includes('SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2') &&
+    source.includes('/spire/client-station.html')
   ) {
     return source;
   }
 
-  return `<!DOCTYPE html>
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1"
-  >
-
-  <meta
-    http-equiv="Cache-Control"
-    content="no-cache, no-store, must-revalidate"
-  >
-  <meta
-    http-equiv="Pragma"
-    content="no-cache"
-  >
-  <meta
-    http-equiv="Expires"
-    content="0"
-  >
-
-  <title>
-    S.P.I.R.E. Enterprise | Sulandra Health
-  </title>
-
-  <link
-    rel="icon"
-    href="/favicon.ico"
-  >
-
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>S.P.I.R.E. Client Station | Sulandra Health</title>
+  <link rel="icon" href="/favicon.ico">
   <script>
-    // SPIRE_CANONICAL_MASTER_ENTRY_V1
-    //
-    // Preserve service-home, patient, tab and other deep-link
-    // context while making /spire/master.html the authoritative
-    // live SPIRE workstation.
-
+    // SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2
     (() => {
-      const destination =
-        '/spire/master.html' +
-        window.location.search +
-        window.location.hash;
-
+      const destination = '/spire/client-station.html' + window.location.search + window.location.hash;
       window.location.replace(destination);
     })();
   </script>
-
-  <noscript>
-    <meta
-      http-equiv="refresh"
-      content="0;url=/spire/master.html"
-    >
-  </noscript>
+  <noscript><meta http-equiv="refresh" content="0;url=/spire/client-station.html"></noscript>
 </head>
-
 <body>
-  <p>
-    Opening S.P.I.R.E. Enterprise…
-    <a href="/spire/master.html">
-      Continue to S.P.I.R.E.
-    </a>
-  </p>
+  <p>Opening S.P.I.R.E. Client Station… <a href="/spire/client-station.html">Continue to Client Station</a></p>
 </body>
 </html>`;
 });
@@ -556,7 +502,7 @@ if (skippedFrontendSources.length) {
       'Company Documents compliance continuity,',
       'guarded Workforce navigation,',
       'Employee Portal production contract marker,',
-      'and canonical SPIRE master redirect.',
+      'and canonical SPIRE Client Station entry.',
     ].join(' ')
   );
 }
