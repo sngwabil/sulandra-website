@@ -68,20 +68,6 @@ function asDate(value: unknown) {
   return date;
 }
 
-function rowOptions(row: Record<string, unknown>) {
-  const raw = row.options;
-  if (Array.isArray(raw)) return raw.map((item) => typeof item === 'object' && item ? text((item as Record<string, unknown>).label ?? (item as Record<string, unknown>).value, 500) : text(item, 500)).filter(Boolean);
-  if (typeof raw === 'string') {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.map((item) => text(item, 500)).filter(Boolean) : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
 function validateValues(row: Record<string, unknown>, change: FileChange) {
   const dataType = text(row.dataType, 40).toUpperCase() || 'TEXT';
   const rowName = text(row.name, 500) || 'Flowsheet row';
@@ -100,10 +86,10 @@ function validateValues(row: Record<string, unknown>, change: FileChange) {
     value = null;
   }
 
-  if (dataType === 'SELECT' && value) {
-    const options = rowOptions(row);
-    if (options.length && !options.includes(value)) throw badRequest(`Choose an allowed value for ${rowName}: ${options.join(', ')}.`);
-  }
+  // SELECT/options are advisory suggestions in the SPIRE flowsheet UI, not a
+  // hard enum. Staff may type an appropriate free-text value when the configured
+  // suggestions do not describe what actually occurred. The actor, timestamp,
+  // original value and later amendments remain fully audited by File.
 
   if (rowName === 'BP (mmHg)' && value) {
     const match = value.match(/^(\d{2,3})\s*\/\s*(\d{2,3})$/);
