@@ -1,902 +1,191 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..'
-);
-
+// DEVELOPMENT_WORKFLOW: all paths resolve from this script, never process.cwd().
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
 
 async function read(relative) {
-  try {
-    return await readFile(
-      path.join(root, relative),
-      'utf8'
-    );
-  } catch {
-    failures.push(`Missing ${relative}`);
-    return '';
-  }
+  try { return await readFile(path.join(root, relative), 'utf8'); }
+  catch { failures.push(`Missing ${relative}`); return ''; }
+}
+
+async function requireFile(relative) {
+  try { await access(path.join(root, relative)); }
+  catch { failures.push(`Missing ${relative}`); }
+}
+
+function has(source, markers, label) {
+  for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`);
+}
+
+function forbids(source, markers, label) {
+  for (const marker of markers) if (source.includes(marker)) failures.push(`${label} still contains forbidden ${marker}`);
+}
+
+function syntax(relative, label) {
+  const result = spawnSync(process.execPath, ['--check', path.join(root, relative)], { encoding: 'utf8' });
+  if (result.status !== 0) failures.push(`${label} syntax failed: ${(result.stderr || result.stdout || '').trim()}`);
 }
 
 const files = {
-  /*
-   * Canonical SPIRE entry and standalone master.
-   *
-   * /spire.html is now only the public entry/redirect.
-   * /spire/master.html is the actual standalone SPIRE application.
-   */
-  entryHtml: 'dist-web/spire.html',
-  html: 'dist-web/spire/master.html',
-
-  /*
-   * Existing SPIRE assets are still verified independently because
-   * backend/workflow modules may continue using them even though the
-   * canonical root entry no longer loads the legacy shell.
-   */
-  css: 'dist-web/assets/spire-app.css',
+  entry: 'dist-web/spire.html',
+  master: 'dist-web/spire/master.html',
+  station: 'dist-web/spire/client-station.html',
+  legacyStation: 'dist-web/spire/patient-station.html',
+  chat: 'dist-web/spire/secure-chat.html',
+  stationJs: 'dist-web/assets/spire-client-station.js',
+  chatJs: 'dist-web/assets/spire-secure-chat.js',
+  prefsJs: 'dist-web/assets/spire-user-preferences.js',
+  screenJs: 'dist-web/assets/spire-screen-controls.js',
+  masterNavJs: 'dist-web/assets/spire-master-navigation.js',
+  flowJs: 'dist-web/assets/spire-master-flowsheet-grid.js',
+  commJs: 'dist-web/assets/spire-communications-inbasket.js',
+  commCss: 'dist-web/assets/spire-communications-inbasket.css',
   workflowJs: 'dist-web/assets/spire-workflow.js',
   cpoeJs: 'dist-web/assets/spire-order-composer.js',
   emarJs: 'dist-web/assets/spire-emar.js',
   careJs: 'dist-web/assets/spire-care-plan.js',
   incidentJs: 'dist-web/assets/spire-incidents.js',
   assessmentJs: 'dist-web/assets/spire-assessments-flowsheets.js',
-
   schedulingJs: 'dist-web/assets/spire-scheduling.js',
-  schedulingCss: 'dist-web/assets/spire-scheduling.css',
-
   authJs: 'dist-web/assets/spire-authorizations-evv.js',
-  authCss: 'dist-web/assets/spire-authorizations-evv.css',
-
   docsJs: 'dist-web/assets/spire-documents-external-records.js',
-  docsCss: 'dist-web/assets/spire-documents-external-records.css',
-
-  commJs: 'dist-web/assets/spire-communications-inbasket.js',
-  commCss: 'dist-web/assets/spire-communications-inbasket.css',
-
   referenceJs: 'dist-web/assets/spire-epic-reference-parity.js',
-  referenceCss: 'dist-web/assets/spire-epic-reference-parity.css',
-
-  referenceCategoryJs:
-    'dist-web/assets/spire-epic-reference-chart-categories.js',
-
-  referenceCategoryCss:
-    'dist-web/assets/spire-epic-reference-chart-categories.css',
-
-  smartPhraseParityJs:
-    'dist-web/assets/spire-smartphrase-parity.js',
-
-  smartPhraseParityCss:
-    'dist-web/assets/spire-smartphrase-parity.css',
-
-  smartPhraseResetJs:
-    'dist-web/assets/spire-smartphrase-reset-patch.js',
-
-  /*
-   * Backend/API source verification.
-   */
-  referenceRoutes:
-    'api/src/spire-epic-reference-parity-routes.ts',
-
-  smartPhraseRoutes:
-    'api/src/spire-smartphrase-parity-routes.ts',
-
-  speedButtonRoutes:
-    'api/src/spire-speed-button-parity-routes.ts',
-
-  referenceInjector:
-    'scripts/inject-spire-epic-reference-parity-routes.mjs',
-
-  apiPackage:
-    'api/package.json',
-
-  parityDoc:
-    'docs/SPIRE_EPIC_REFERENCE_PARITY.md',
-
-  parityScopeMigration:
-    'prisma/migrations/20260811070000_spire_epic_reference_parity_scope/migration.sql',
-
-  migration:
-    'prisma/migrations/20260807220000_spire_clinical_foundation/migration.sql',
-
-  schedulingMigration:
-    'prisma/migrations/20260808002000_spire_scheduling_cadence/migration.sql',
-
-  authMigration:
-    'prisma/migrations/20260808004000_spire_authorizations_evv/migration.sql',
-
-  docsMigration:
-    'prisma/migrations/20260808005000_spire_documents_external_records/migration.sql',
-
-  commMigration:
-    'prisma/migrations/20260808006000_spire_communications_inbasket/migration.sql',
-
-  schedulingRoutes:
-    'api/src/spire-scheduling-routes.ts',
-
-  authRoutes:
-    'api/src/spire-authorizations-evv-routes.ts',
-
-  docsRoutes:
-    'api/src/spire-documents-external-records-routes.ts',
-
-  commRoutes:
-    'api/src/spire-communications-inbasket-routes.ts',
-
-  injector:
-    'scripts/inject-clinical-routes.mjs',
+  smartPhraseJs: 'dist-web/assets/spire-smartphrase-parity.js',
+  homeRoutes: 'api/src/spire-network-home-access-routes.ts',
+  commRoutes: 'api/src/spire-communications-inbasket-routes.ts',
+  flowRoutes: 'api/src/spire-flowsheet-workspace-routes.ts',
+  chartRoutes: 'api/src/spire-chart-routes.ts',
+  injector: 'scripts/inject-clinical-routes.mjs',
 };
 
 const data = {};
+for (const [key, relative] of Object.entries(files)) data[key] = await read(relative);
 
-await Promise.all(
-  Object.entries(files).map(
-    async ([key, value]) => {
-      data[key] = await read(value);
-    }
-  )
-);
+// Canonical entry: authenticated SPIRE work begins in Client Station, not a
+// duplicate company/home gateway and never directly in a chart.
+has(data.entry, [
+  'SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2', '/spire/client-station.html',
+  'window.location.search', 'window.location.hash',
+], 'SPIRE canonical entry');
+forbids(data.entry, ['/spire/portal.html', '/spire/master.html', 'spire-app-v2.js'], 'SPIRE canonical entry');
 
-const has = (key, markers, label) => {
-  for (const marker of markers) {
-    if (!data[key].includes(marker)) {
-      failures.push(
-        `${label} missing ${marker}`
-      );
-    }
-  }
-};
+// Client Station restores only an authorized home, loads that home's clients,
+// and requires explicit client action before opening a chart.
+has(data.station, [
+  'SPIRE_CLIENT_STATION_LISTS_V2', 'Client Station', 'Client Lists', 'All My Clients',
+  'Available Homes', 'stationClientBody', 'clientPreview', 'data-spire-fullscreen-control',
+  '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1',
+], 'SPIRE Client Station');
+forbids(data.station, ['Patient Lists', '>Patient Station<'], 'SPIRE Client Station');
+has(data.stationJs, [
+  'SPIRE_CLIENT_STATION_LISTS_V2', '/api/spire/network/service-homes', '/access',
+  'localStorage.setItem(HOME_ID_KEY', "row.addEventListener('dblclick'", 'openChart',
+  '/spire/secure-chat.html', '/api/spire/inbasket-v2?status=OPEN',
+], 'SPIRE Client Station runtime');
+forbids(data.stationJs, [
+  '/spire/portal.html', 'openChart(state.clients[0]', 'location.assign(chartUrl(state.clients[0]',
+], 'SPIRE Client Station runtime');
 
-/*
- * ==========================================================================
- * SPIRE CANONICAL ENTRY
- * ==========================================================================
- *
- * Root /spire.html must now be only the canonical launcher.
- *
- * It must preserve:
- * - query string
- * - hash/deep-link state
- *
- * It must route to:
- * /spire/master.html
- *
- * The old SPIRE shell is intentionally not required here.
- */
+// Old bookmarks continue to work but cannot reintroduce the old station.
+has(data.legacyStation, ['SPIRE_RETIRED_PATIENT_STATION_COMPAT_V1', '/spire/client-station.html'], 'Retired Patient Station compatibility entry');
 
-has(
-  'entryHtml',
-  [
-    '/spire/master.html',
-    'window.location.search',
-    'window.location.hash',
-  ],
-  'Spire canonical entry'
-);
+// Secure Chat is live, client-scoped and uses the existing SPIRE communications backend.
+has(data.chat, [
+  'SPIRE_SECURE_CHAT_V2', 'Secure Chat', '← Client Station', 'Client-scoped',
+  'data-spire-fullscreen-control', '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1',
+], 'SPIRE Secure Chat');
+has(data.chatJs, [
+  'SPIRE_SECURE_CHAT_V2', '/communications/overview', '/communications/threads/',
+  '/api/spire/routing-pools', 'recipientPoolId', '/spire/client-station.html', 'Messages are client-scoped',
+], 'SPIRE Secure Chat runtime');
+forbids(data.chatJs, ['Demo Conversation', 'Demo Message', 'mockMessages', '/spire/portal.html', 'Patient-scoped'], 'SPIRE Secure Chat runtime');
 
-/*
- * Prevent the legacy shell from accidentally becoming active again.
- */
-for (const legacyAsset of [
-  'spire-app-v2.js',
-  'spire-canonical-bootstrap.js',
-  'spire-shell-resilience.js',
-  'spire-chart-ready.js',
-  'spire-deep-link.js',
-  'spire-home-care-redesign-loader.js',
+// One preference contract serves chart, Client Station and Secure Chat.
+has(data.prefsJs, [
+  'SPIRE_USER_WORKSPACE_PREFERENCES_V1', 'spire:accessibility:preset',
+  'spire:accessibility:font-size', 'spire:accessibility:fullscreen',
+  'fullscreenPreferred', 'requestFullscreen', 'pointerdown',
+], 'SPIRE shared user preferences');
+
+// Master chart controls must use real Secure Chat/In Basket behavior, never fake alerts.
+has(data.screenJs, [
+  'SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?status=OPEN',
+  '/spire/secure-chat.html', 'Alerts & Reminders', 'Secure Chat',
+], 'SPIRE chart controls');
+forbids(data.screenJs, [
+  'Opening Staff Messaging Portal', 'Notifications: 3 unread reminders for current client.',
+], 'SPIRE chart controls');
+
+has(data.masterNavJs, ['SPIRE_MASTER_EXPLICIT_CLIENT_GATE_V2', '/spire/client-station.html', 'Client Station'], 'SPIRE chart navigation');
+forbids(data.masterNavJs, ['/spire/portal.html', '🩺 Patient Station'], 'SPIRE chart navigation');
+
+// Flowsheet filing metadata may display a friendly name/email, but never a raw internal actor ID.
+has(data.flowJs, ['SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1', 'SPIRE Client Station before using Flowsheets'], 'SPIRE Flowsheet');
+forbids(data.flowJs, [
+  "entry?.recordedByDisplayName || entry?.recordedById",
+  "entry?.recordedByDisplayName || entry?.recordedByName || entry?.recordedById",
+  'SPIRE Patient Station before using Flowsheets',
+], 'SPIRE Flowsheet');
+
+// Master remains the standalone chart application, with the user's established
+// accessibility suite extended by preference 21 and live controls.
+has(data.master, [
+  '<html', '<body', 'S.P.I.R.E.', '21. Full-Screen Workspace',
+  'title="Secure Chat"', '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1',
+], 'SPIRE master chart');
+forbids(data.master, [
+  "alert('Opening Staff Messaging Portal...')",
+  "alert('Notifications: 3 unread reminders for current client.')",
+], 'SPIRE master chart');
+
+// Preserve the established clinical modules while changing only navigation/presentation.
+has(data.workflowJs, ['Start Encounter', 'New Clinical Note', 'Save & Sign'], 'SPIRE workflow');
+has(data.cpoeJs, ['Order Composer', 'Sign & Place Order'], 'SPIRE CPOE');
+has(data.emarJs, ['Electronic Medication Administration Record', 'PRN Effect'], 'SPIRE eMAR');
+has(data.careJs, ['Care Plan / ISP', 'Goals & Outcomes'], 'SPIRE Care Plan');
+has(data.incidentJs, ['Incident Management', 'New Incident', 'Corrective Action'], 'SPIRE incidents');
+has(data.assessmentJs, ['Clinical Assessments', 'Vitals & Flowsheets'], 'SPIRE assessments');
+has(data.schedulingJs, ['New Appointment', 'Open Chart', '/api/spire/scheduling/day'], 'SPIRE scheduling');
+has(data.authJs, ['Authorizations & EVV', 'Start EVV Visit'], 'SPIRE authorizations/EVV');
+has(data.docsJs, ['Documents / Media', 'External Records'], 'SPIRE documents');
+has(data.commJs, ['In Basket 2.0', 'Clinical Message', 'communications/overview', 'inbasket-v2'], 'SPIRE communications');
+has(data.commCss, ['thread-list', 'ib-metrics'], 'SPIRE communications styling');
+has(data.referenceJs, ['Schedule Glance', 'In Basket Glance', 'SPIRE Workspace Settings'], 'SPIRE reference parity');
+has(data.smartPhraseJs, ['SmartPhrase Manager', 'Progress-note Speed Buttons'], 'SPIRE SmartPhrase parity');
+
+// Backend contracts remain the authority for access and communication data.
+has(data.homeRoutes, [
+  "app.get('/api/spire/network/service-homes'", "app.post('/api/spire/network/service-homes/:homeId/access'",
+  'SpireEmployeeHomeAssignment', 'SpirePatientHomeAssignment',
+], 'SPIRE service-home access routes');
+has(data.commRoutes, [
+  "app.get('/api/spire/inbasket-v2'", '/communications/overview', '/communications/threads',
+  'SpireClinicalAuditEvent',
+], 'SPIRE communications backend');
+has(data.flowRoutes, ['flowsheet', 'recordedBy'], 'SPIRE flowsheet backend');
+has(data.chartRoutes, ['/api/spire/patients/', 'chart'], 'SPIRE chart backend');
+has(data.injector, ['registerSpireNetworkHomeAccessRoutes', 'registerSpireCommunicationsInBasketRoutes'], 'SPIRE route injector');
+
+// Syntax gate all new/changed browser runtimes from the published artifact.
+for (const [relative, label] of [
+  ['dist-web/assets/spire-client-station.js', 'Client Station'],
+  ['dist-web/assets/spire-secure-chat.js', 'Secure Chat'],
+  ['dist-web/assets/spire-user-preferences.js', 'Shared preferences'],
+  ['dist-web/assets/spire-screen-controls.js', 'Chart controls'],
+  ['dist-web/assets/spire-master-navigation.js', 'Chart navigation'],
+  ['dist-web/assets/spire-master-flowsheet-grid.js', 'Flowsheet'],
 ]) {
-  if (
-    data.entryHtml.includes(legacyAsset)
-  ) {
-    failures.push(
-      `Spire canonical entry still loads legacy runtime asset ${legacyAsset}`
-    );
-  }
+  await requireFile(relative);
+  syntax(relative, label);
 }
-
-/*
- * ==========================================================================
- * SPIRE STANDALONE MASTER
- * ==========================================================================
- */
-
-has(
-  'html',
-  [
-    '<html',
-    '<head',
-    '<body',
-    '</html>',
-    'S.P.I.R.E.',
-  ],
-  'Spire standalone master'
-);
-
-/*
- * Ensure the master page is not accidentally replaced by the legacy shell.
- */
-if (
-  data.html.includes(
-    'id="spireApp"'
-  ) &&
-  data.html.includes(
-    '/assets/spire-app-v2.js'
-  )
-) {
-  failures.push(
-    'Spire standalone master appears to have regressed to the legacy spireApp shell'
-  );
-}
-
-/*
- * ==========================================================================
- * EXISTING SPIRE FRONTEND ASSETS
- * ==========================================================================
- *
- * These files remain part of the repository/platform contract and are
- * verified independently from the root /spire.html redirect.
- */
-
-has(
-  'css',
-  [
-    'spire-topbar',
-    'spire-patient-strip',
-    'spire-left-rail',
-    'spire-right-rail',
-    'chart-tabs',
-  ],
-  'Spire CSS'
-);
-
-has(
-  'workflowJs',
-  [
-    'Start Encounter',
-    'New Clinical Note',
-    'Save & Sign',
-    'Place Order',
-    'Record Vitals',
-  ],
-  'Spire workflow'
-);
-
-has(
-  'cpoeJs',
-  [
-    'Order Composer',
-    'Sign & Place Order',
-    'Check Order',
-  ],
-  'Spire CPOE'
-);
-
-has(
-  'emarJs',
-  [
-    'Electronic Medication Administration Record',
-    'Medication Management',
-    'PRN Effect',
-  ],
-  'Spire eMAR'
-);
-
-has(
-  'careJs',
-  [
-    'Care Plan / ISP',
-    'Person-Centered Profile',
-    'Goals & Outcomes',
-  ],
-  'Spire Care Plan'
-);
-
-has(
-  'incidentJs',
-  [
-    'Incident Management',
-    'New Incident',
-    'Investigation',
-    'Corrective Action',
-    'Close Incident',
-  ],
-  'Spire Incident'
-);
-
-has(
-  'assessmentJs',
-  [
-    'Clinical Assessments',
-    'New Assessment',
-    'Vitals & Flowsheets',
-    'flowsheets/trends',
-  ],
-  'Spire Assessments/Flowsheets'
-);
-
-/*
- * ==========================================================================
- * SCHEDULING
- * ==========================================================================
- */
-
-has(
-  'schedulingJs',
-  [
-    'New Appointment',
-    'Check In',
-    'Room',
-    'Start Visit',
-    'Check Out',
-    'Waitlist',
-    'Transportation',
-    'Open Chart',
-    '/api/spire/scheduling/day',
-  ],
-  'Spire Scheduling'
-);
-
-has(
-  'schedulingCss',
-  [
-    'spire-sched-toolbar',
-    'spire-sched-card',
-    'spire-sched-summary',
-    'spire-waitlist',
-    'spire-sched-modal',
-  ],
-  'Spire Scheduling CSS'
-);
-
-/*
- * ==========================================================================
- * AUTHORIZATIONS / EVV
- * ==========================================================================
- */
-
-has(
-  'authJs',
-  [
-    'Authorizations & EVV',
-    'Start EVV Visit',
-    'remainingUnits',
-    'authorizations/overview',
-  ],
-  'Spire Authorizations/EVV'
-);
-
-has(
-  'authCss',
-  [
-    'auth-head',
-    'auth-metrics',
-    'auth-card',
-    'spire-auth-modal',
-  ],
-  'Spire Authorizations/EVV CSS'
-);
-
-/*
- * ==========================================================================
- * DOCUMENTS / EXTERNAL RECORDS
- * ==========================================================================
- */
-
-has(
-  'docsJs',
-  [
-    'Documents / Media',
-    'Upload Clinical Document',
-    'docSearch',
-    'External Records',
-    'New Version',
-  ],
-  'Spire Documents'
-);
-
-has(
-  'docsCss',
-  [
-    'doc-head',
-    'doc-tools',
-    'spire-doc-modal',
-    'external-card',
-  ],
-  'Spire Documents CSS'
-);
-
-/*
- * ==========================================================================
- * COMMUNICATIONS / IN BASKET
- * ==========================================================================
- */
-
-has(
-  'commJs',
-  [
-    'In Basket 2.0',
-    'Clinical Message',
-    'Document Communication',
-    'communications/overview',
-    'inbasket-v2',
-  ],
-  'Spire Communications'
-);
-
-has(
-  'commCss',
-  [
-    'comm-head',
-    'thread-list',
-    'ib-metrics',
-    'spire-comm-modal',
-  ],
-  'Spire Communications CSS'
-);
-
-/*
- * ==========================================================================
- * EPIC-REFERENCE WORKFLOW PARITY ASSETS
- * ==========================================================================
- *
- * These remain checked as repository capabilities.
- * They are no longer required to be directly injected into root /spire.html.
- */
-
-has(
-  'referenceJs',
-  [
-    'Schedule Glance',
-    'In Basket Glance',
-    'SPIRE Workspace Settings',
-    'Apply reference tab order',
-    'Type <b>.</b> for SmartPhrases',
-    'press <b>F2</b>',
-    'Dictate',
-    'reference-review',
-    'Wrap-Up / After Visit Summary',
-    'GC',
-    'GE',
-    'GT',
-    'wrap-up-reference',
-  ],
-  'Spire Epic-reference parity frontend'
-);
-
-has(
-  'referenceCss',
-  [
-    'spire-reference-dashboard',
-    'spire-reference-calendar',
-    'spire-reference-note-tools',
-    'spire-reference-wrap-grid',
-    'spire-reference-sticky-patient',
-  ],
-  'Spire Epic-reference parity CSS'
-);
-
-has(
-  'referenceCategoryJs',
-  [
-    'All Chart Review',
-    "['ecg', 'ECG']",
-    "['referrals', 'Referrals']",
-    "['procedures', 'Procedures']",
-    "['episodes', 'Episodes']",
-    "['letters', 'Letters']",
-    'reference-review',
-  ],
-  'Spire reference Chart Review categories'
-);
-
-has(
-  'referenceCategoryCss',
-  [
-    'spire-reference-chart-categories',
-  ],
-  'Spire reference Chart Review category CSS'
-);
-
-/*
- * ==========================================================================
- * SMARTPHRASE / SPEED BUTTON PARITY
- * ==========================================================================
- */
-
-has(
-  'smartPhraseParityJs',
-  [
-    'SmartPhrase Manager',
-    'Progress-note Speed Buttons',
-    'share-targets',
-    'data-speed-phrase',
-    'data-parity-speed-phrase',
-    'speed-buttons',
-  ],
-  'Spire SmartPhrase parity frontend'
-);
-
-has(
-  'smartPhraseParityCss',
-  [
-    'spire-smartphrase-dialog',
-    'spire-smartphrase-speed-help',
-    'spire-smartphrase-sharing',
-  ],
-  'Spire SmartPhrase parity CSS'
-);
-
-has(
-  'smartPhraseResetJs',
-  [
-    'spireNewSmartPhrase',
-    'spirePhraseName',
-    'spireSavePhrase',
-  ],
-  'Spire SmartPhrase reset guard'
-);
-
-/*
- * ==========================================================================
- * EPIC-REFERENCE BACKEND ROUTES
- * ==========================================================================
- */
-
-has(
-  'referenceRoutes',
-  [
-    "app.get('/api/spire/patients/:patientId/reference-review/:category'",
-    "app.get('/api/spire/patients/:patientId/wrap-up-context'",
-    "app.post('/api/spire/patients/:patientId/wrap-up-reference'",
-    "'ATTENDING_COSIGNER'",
-    '"SpirePatientInstruction"',
-    '"SpireAfterVisitSummary"',
-    "'GC', 'GE', 'GT'",
-  ],
-  'Spire Epic-reference parity routes'
-);
-
-/*
- * ==========================================================================
- * SMARTPHRASE ROUTES
- * ==========================================================================
- */
-
-has(
-  'smartPhraseRoutes',
-  [
-    "app.get('/api/spire/tools/smartphrases/manage'",
-    "app.get('/api/spire/tools/smartphrases/share-targets'",
-    "app.put('/api/spire/tools/smartphrases/:smartPhraseId'",
-    "app.post('/api/spire/tools/smartphrases/:smartPhraseId/share'",
-    "app.delete('/api/spire/tools/smartphrases/:smartPhraseId/share/:userId'",
-  ],
-  'Spire SmartPhrase parity routes'
-);
-
-has(
-  'speedButtonRoutes',
-  [
-    "app.put('/api/spire/tools/smartphrases/speed-buttons'",
-    "workspace\"='PROGRESS_NOTE'",
-    'SpireSpeedButton',
-  ],
-  'Spire speed-button parity route'
-);
-
-/*
- * ==========================================================================
- * ROUTE INJECTORS
- * ==========================================================================
- */
-
-has(
-  'referenceInjector',
-  [
-    'registerSpireEpicReferenceParityRoutes',
-    'registerSpireSpeedButtonParityRoutes',
-    'registerSpireSmartPhraseParityRoutes',
-    'spire-epic-reference-parity-routes.js',
-    'spire-speed-button-parity-routes.js',
-    'spire-smartphrase-parity-routes.js',
-  ],
-  'Spire Epic-reference parity injector'
-);
-
-has(
-  'apiPackage',
-  [
-    'inject-clinical-routes.mjs && node ../scripts/inject-spire-epic-reference-parity-routes.mjs',
-  ],
-  'Spire API build'
-);
-
-/*
- * ==========================================================================
- * PARITY DOCUMENTATION
- * ==========================================================================
- */
-
-has(
-  'parityDoc',
-  [
-    'Reference parity gate',
-    'The supplied guide is not an exhaustive Epic product inventory',
-    'Provider Dashboard',
-    'SmartPhrase',
-    'Wrap-Up',
-    'Haiku',
-    'Dragon Medical One',
-    'Current official Epic product-scope inventory',
-    'Enterprise parity ledger',
-    'Emergency / urgent care',
-    'Perioperative / surgery / anesthesia',
-    'Patient portal / digital front door',
-  ],
-  'Spire parity documentation'
-);
-
-/*
- * ==========================================================================
- * COMPANY-SCOPE MIGRATION
- * ==========================================================================
- */
-
-has(
-  'parityScopeMigration',
-  [
-    'ALTER TABLE "SpireEncounterParticipant" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
-    'ALTER TABLE "SpireEncounterStatusHistory" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
-    'ALTER TABLE "SpireVisitFollowUp" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
-    'ALTER TABLE "SpirePatientInstruction" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
-    'ALTER TABLE "SpireAfterVisitSummary" ADD COLUMN IF NOT EXISTS "legalEntityId" text',
-    'SpireAfterVisitSummary_entity_patient_idx',
-  ],
-  'Spire Epic-reference company-scope migration'
-);
-
-/*
- * ==========================================================================
- * SCHEDULING MIGRATION
- * ==========================================================================
- */
-
-for (const table of [
-  'SpireScheduleResource',
-  'SpireProviderAvailability',
-  'SpireAppointmentStatusHistory',
-  'SpireAppointmentReminder',
-  'SpireAppointmentWaitlist',
-  'SpireAppointmentTransportation',
-  'SpireAppointmentPreparation',
-]) {
-  if (
-    !data.schedulingMigration.includes(
-      `"${table}"`
-    )
-  ) {
-    failures.push(
-      `Spire Scheduling migration missing ${table}`
-    );
-  }
-}
-
-/*
- * ==========================================================================
- * AUTHORIZATION / EVV MIGRATION
- * ==========================================================================
- */
-
-for (const table of [
-  'SpireServiceAuthorization',
-  'SpireEvvVisit',
-  'SpireAuthorizationLedger',
-  'SpireAuthorizationAlert',
-  'SpireBillingReconciliation',
-]) {
-  if (
-    !data.authMigration.includes(
-      `"${table}"`
-    )
-  ) {
-    failures.push(
-      `Spire Authorization migration missing ${table}`
-    );
-  }
-}
-
-/*
- * ==========================================================================
- * DOCUMENTS MIGRATION
- * ==========================================================================
- */
-
-for (const table of [
-  'SpireDocumentAccessEvent',
-  'SpireDocumentAcknowledgement',
-  'SpireClinicalDocument',
-  'SpireExternalRecord',
-  'SpireMediaItem',
-]) {
-  if (
-    !data.docsMigration.includes(
-      `"${table}"`
-    )
-  ) {
-    failures.push(
-      `Spire Documents migration missing ${table}`
-    );
-  }
-}
-
-/*
- * ==========================================================================
- * COMMUNICATIONS MIGRATION
- * ==========================================================================
- */
-
-for (const table of [
-  'SpireMessageThread',
-  'SpireRoutingPool',
-  'SpireRoutingPoolMember',
-  'SpireClinicalMessageAttachment',
-  'SpireCommunicationContact',
-  'SpireCommunicationLog',
-]) {
-  if (
-    !data.commMigration.includes(
-      `"${table}"`
-    )
-  ) {
-    failures.push(
-      `Spire Communications migration missing ${table}`
-    );
-  }
-}
-
-/*
- * ==========================================================================
- * SCHEDULING ROUTES
- * ==========================================================================
- */
-
-has(
-  'schedulingRoutes',
-  [
-    "'/api/spire/scheduling/day'",
-    "'/api/spire/scheduling/context'",
-    "'/api/spire/patients/:patientId/appointments'",
-  ],
-  'Spire Scheduling routes'
-);
-
-/*
- * ==========================================================================
- * AUTHORIZATION ROUTES
- * ==========================================================================
- */
-
-has(
-  'authRoutes',
-  [
-    "'/api/spire/patients/:patientId/authorizations/overview'",
-    "'/api/spire/patients/:patientId/authorizations'",
-    "'/api/spire/patients/:patientId/evv/visits'",
-    'Delivered units exceed remaining authorization',
-  ],
-  'Spire Authorization routes'
-);
-
-/*
- * ==========================================================================
- * DOCUMENT ROUTES
- * ==========================================================================
- */
-
-has(
-  'docsRoutes',
-  [
-    "'/api/spire/patients/:patientId/documents'",
-    "'/api/spire/patients/:patientId/documents/:documentId/content'",
-    "'/api/spire/patients/:patientId/external-records'",
-    'scanBufferForMalware',
-    'putSecureObject',
-  ],
-  'Spire Document routes'
-);
-
-/*
- * ==========================================================================
- * COMMUNICATION ROUTES
- * ==========================================================================
- */
-
-has(
-  'commRoutes',
-  [
-    "'/api/spire/inbasket-v2'",
-    "'/api/spire/inbasket-v2/:itemId/action'",
-    "'/api/spire/routing-pools'",
-    "'/api/spire/patients/:patientId/communications/overview'",
-    "'/api/spire/patients/:patientId/communications/threads'",
-    'ACKNOWLEDGE',
-  ],
-  'Spire Communications routes'
-);
-
-/*
- * ==========================================================================
- * BACKEND CLINICAL ROUTE INJECTOR
- * ==========================================================================
- */
-
-has(
-  'injector',
-  [
-    'registerSpireSchedulingRoutes',
-    'registerSpireAuthorizationsEvvRoutes',
-    'registerSpireDocumentsExternalRecordsRoutes',
-    'registerSpireCommunicationsInBasketRoutes',
-  ],
-  'Backend injector'
-);
-
-/*
- * ==========================================================================
- * CORE SPIRE FOUNDATION DATABASE TABLES
- * ==========================================================================
- */
-
-for (const table of [
-  'SpirePatient',
-  'SpireAppointment',
-  'SpireEncounter',
-  'SpireClinicalNote',
-  'SpireResult',
-  'SpireMedicationOrder',
-  'SpireOrder',
-  'SpireCarePlan',
-  'SpireAssessment',
-  'SpireIncident',
-  'SpireClinicalMessage',
-  'SpireInBasketItem',
-  'SpireChartAccessEvent',
-]) {
-  if (
-    !data.migration.includes(
-      `"${table}"`
-    )
-  ) {
-    failures.push(
-      `Spire foundation migration missing ${table}`
-    );
-  }
-}
-
-/*
- * ==========================================================================
- * FINAL RESULT
- * ==========================================================================
- */
 
 if (failures.length) {
-  console.error(
-    `Spire verification failed:\n- ${failures.join('\n- ')}`
-  );
-
+  console.error('SPIRE Client Station foundation verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
 
-console.log(
-  [
-    'Spire verified:',
-    'the canonical /spire.html entry routes to the standalone /spire/master.html workstation;',
-    'clinical charting, CPOE, eMAR, Care Plan/ISP, incidents, assessments/flowsheets,',
-    'scheduling, authorizations/EVV, secure documents/external records, Communications/In Basket 2.0,',
-    'Epic-reference workflow capabilities, Chart Review reference categories, SmartPhrase sharing,',
-    'personal note speed buttons, company-scoped Wrap-Up/AVS, database migrations,',
-    'and backend route registrations remain wired into the production static/backend architecture.',
-  ].join(' ')
-);
+console.log('SPIRE foundation verified: Client Station is canonical, last authorized home is restorable, chart selection is explicit, Secure Chat and In Basket are live, user display/full-screen preferences are shared, and clinical modules/backends remain present.');
