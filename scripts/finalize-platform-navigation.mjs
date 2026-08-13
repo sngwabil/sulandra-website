@@ -80,7 +80,6 @@ try{
   await writeFile(employee360Path,html,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
-await import('./finalize-spire-workspace-completion.mjs');
-await import('./finalize-spire-patient-station-secure-chat.mjs');
+await import('./finalize-spire-client-station-publication.mjs');
 await import('./verify-employee-work-center.mjs');
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected from generic post-build rewriting.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected from generic post-build rewriting and SPIRE is finalized by one Client Station publication owner.');
