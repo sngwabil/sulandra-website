@@ -3,70 +3,122 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const page=await readFile(path.join(root,'spire.html'),'utf8');
-const refs=[...page.matchAll(/<script[^>]+src=["']\/([^"'?]+\.js)(?:\?[^"']*)?["'][^>]*><\/script>/gi)].map(match=>match[1]);
+// This verifier operates on repository source so it is safe to run directly as
+// part of verify:business-uat as well as after a static build.
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const failures = [];
 
-// SPIRE's final presentation hook intentionally loads the user master-template
-// runtimes dynamically. Include every JavaScript asset referenced by that loader
-// in the same Node syntax gate as direct <script> tags.
-let loader='';
-try{loader=await readFile(path.join(root,'assets/spire-home-care-redesign-loader.js'),'utf8')}catch{}
-const dynamicRefs=[...loader.matchAll(/["'`]\/?(assets\/[A-Za-z0-9._/-]+\.js)(?:\?[^"'`]*)?["'`]/g)].map(match=>match[1]);
-for(const expected of ['assets/spire-user-template-integration.js','assets/spire-chart-review-ownership.js','assets/spire-intake-isp-sleep-wiring.js']){
-  if(loader.includes(expected.split('/').pop())&&!dynamicRefs.includes(expected))dynamicRefs.push(expected);
+async function read(relative) {
+  try { return await readFile(path.join(root, relative), 'utf8'); }
+  catch { failures.push(`${relative}: missing`); return ''; }
 }
 
-const unique=[...new Set([...refs,...dynamicRefs])];
-const failures=[];
-for(const relative of unique){
-  const target=path.join(root,relative);
-  try{await access(target)}catch{failures.push(`${relative}: referenced SPIRE script is missing`);continue}
-  const result=spawnSync(process.execPath,['--check',target],{encoding:'utf8'});
-  if(result.status!==0)failures.push(`${relative}: ${(result.stderr||result.stdout||'syntax check failed').trim()}`);
+function requireMarkers(source, markers, label) {
+  for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`);
 }
-if(!unique.includes('assets/spire-app-v2.js'))failures.push('spire.html does not load assets/spire-app-v2.js');
-if(!unique.includes('assets/spire-shell-resilience.js'))failures.push('spire.html does not load assets/spire-shell-resilience.js');
-if(!unique.includes('assets/spire-chart-ready.js'))failures.push('spire.html does not load assets/spire-chart-ready.js');
-if(!unique.includes('assets/spire-deep-link.js'))failures.push('spire.html does not load assets/spire-deep-link.js');
-if(!unique.includes('assets/spire-user-template-integration.js'))failures.push('SPIRE master-template runtime is not syntax-checked');
-if(!unique.includes('assets/spire-chart-review-ownership.js'))failures.push('SPIRE dedicated Chart Review ownership is not syntax-checked');
-if(!unique.includes('assets/spire-intake-isp-sleep-wiring.js'))failures.push('SPIRE intake/ISP/sleep wiring runtime is not syntax-checked');
-if(!page.includes('spire-home-care-redesign-loader.js?v=20260812-user-master-template-8'))failures.push('spire.html is not cache-busted to master-template generation 8');
 
-try{
-  const chartOwner=await readFile(path.join(root,'assets/spire-chart-review-ownership.js'),'utf8');
-  for(const marker of ['20260812-spire-chart-review-ownership-1','SpireChartReviewV2','stopImmediatePropagation','spire:chart-tab-selected','SpireChartReviewOwnership']){
-    if(!chartOwner.includes(marker))failures.push(`SPIRE Chart Review ownership missing ${marker}`);
-  }
-}catch{failures.push('SPIRE Chart Review ownership runtime is missing');}
-try{
-  const wiring=await readFile(path.join(root,'assets/spire-intake-isp-sleep-wiring.js'),'utf8');
-  for(const marker of ['20260812-spire-intake-isp-sleep-2','spireAdmissionHistoryTab','ISP Outcomes / Progress','Sleep / Wake','spire:flowsheet:preferred-group','SpireIntakeIspSleepWiring','button.hidden=true']){
-    if(!wiring.includes(marker))failures.push(`SPIRE intake/ISP/sleep wiring missing ${marker}`);
-  }
-}catch{failures.push('SPIRE intake/ISP/sleep wiring runtime is missing');}
-try{
-  const style=await readFile(path.join(root,'assets/spire-intake-isp-sleep-wiring.css'),'utf8');
-  for(const marker of ['#spireAdmissionHistoryTab','admission-history-wrap','.spmt-summary-card.intake']){
-    if(!style.includes(marker))failures.push(`SPIRE intake master styling missing ${marker}`);
-  }
-}catch{failures.push('SPIRE intake/ISP/sleep wiring stylesheet is missing');}
-try{
-  const promotion=await readFile(path.join(root,'api/src/client-intake-promotion.ts'),'utf8');
-  for(const marker of ['CLIENT INTAKE → SPIRE ADMISSION SUMMARY','ensureMedications','ensureDocuments','ensureServiceAuthorization','PROMOTE_CLIENT_INTAKE']){
-    if(!promotion.includes(marker))failures.push(`Client Intake promotion contract missing ${marker}`);
-  }
-}catch{failures.push('Client Intake promotion service is missing');}
-try{
-  const admission=await readFile(path.join(root,'assets/spire-admission-history.js'),'utf8');
-  for(const marker of ['/admission-history','Completed Intake Sections','Attached Admission Documents','Recorded Acknowledgments']){
-    if(!admission.includes(marker))failures.push(`SPIRE admission-history wiring missing ${marker}`);
-  }
-}catch{failures.push('SPIRE admission history runtime is missing');}
+function forbidMarkers(source, markers, label) {
+  for (const marker of markers) if (source.includes(marker)) failures.push(`${label} contains retired ${marker}`);
+}
 
-if(failures.length){
-  console.error('Published SPIRE JavaScript/integration verification failed:\n- '+failures.join('\n- '));
+async function checkJs(relative, label = relative) {
+  try { await access(path.join(root, relative)); }
+  catch { failures.push(`${relative}: referenced SPIRE script is missing`); return; }
+  const result = spawnSync(process.execPath, ['--check', path.join(root, relative)], { encoding: 'utf8' });
+  if (result.status !== 0) failures.push(`${label}: ${(result.stderr || result.stdout || 'syntax check failed').trim()}`);
+}
+
+const entry = await read('spire.html');
+requireMarkers(entry, [
+  'SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2', '/spire/client-station.html',
+  'window.location.search', 'window.location.hash',
+], 'SPIRE canonical source entry');
+forbidMarkers(entry, ['/spire/portal.html', '/spire/master.html', 'spire-app-v2.js'], 'SPIRE canonical source entry');
+
+const station = await read('spire/client-station.html');
+requireMarkers(station, [
+  'SPIRE_CLIENT_STATION_LISTS_V2', 'Client Station', 'Client Lists', 'Available Homes',
+  '/assets/spire-client-station.js?v=20260813-client-station-2',
+  '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1',
+], 'SPIRE Client Station source');
+
+const secureChat = await read('spire/secure-chat.html');
+requireMarkers(secureChat, [
+  'SPIRE_SECURE_CHAT_V2', 'Secure Chat', '← Client Station', 'Client-scoped',
+  '/assets/spire-secure-chat.js?v=20260813-secure-chat-2',
+], 'SPIRE Secure Chat source');
+
+const browserAssets = [
+  ['assets/spire-client-station.js', 'Client Station runtime'],
+  ['assets/spire-secure-chat.js', 'Secure Chat runtime'],
+  ['assets/spire-user-preferences.js', 'Shared SPIRE preferences'],
+  ['assets/spire-screen-controls.js', 'SPIRE live screen controls'],
+  ['assets/spire-master-navigation.js', 'SPIRE chart navigation'],
+  ['assets/spire-master-flowsheet-grid.js', 'SPIRE master Flowsheet'],
+  ['assets/spire-communications-inbasket.js', 'SPIRE communications/In Basket'],
+  ['assets/spire-chart-review-ownership.js', 'SPIRE Chart Review ownership'],
+  ['assets/spire-intake-isp-sleep-wiring.js', 'SPIRE intake/ISP/sleep wiring'],
+  ['assets/spire-admission-history.js', 'SPIRE admission history'],
+  ['assets/spire-user-template-integration.js', 'SPIRE master-template integration'],
+];
+for (const [relative, label] of browserAssets) await checkJs(relative, label);
+
+const stationJs = await read('assets/spire-client-station.js');
+requireMarkers(stationJs, [
+  'SPIRE_CLIENT_STATION_LISTS_V2', '/api/spire/network/service-homes', '/access',
+  '/api/spire/inbasket-v2?status=OPEN', '/spire/secure-chat.html', 'localStorage.setItem(HOME_ID_KEY',
+], 'SPIRE Client Station runtime');
+forbidMarkers(stationJs, ['/spire/portal.html', 'openChart(state.clients[0]'], 'SPIRE Client Station runtime');
+
+const chatJs = await read('assets/spire-secure-chat.js');
+requireMarkers(chatJs, [
+  'SPIRE_SECURE_CHAT_V2', '/communications/overview', '/api/spire/routing-pools',
+  '/spire/client-station.html', 'Messages are client-scoped',
+], 'SPIRE Secure Chat runtime');
+forbidMarkers(chatJs, ['Demo Conversation', 'Demo Message', 'mockMessages', '/spire/portal.html'], 'SPIRE Secure Chat runtime');
+
+const preferences = await read('assets/spire-user-preferences.js');
+requireMarkers(preferences, [
+  'SPIRE_USER_WORKSPACE_PREFERENCES_V1', 'spire:accessibility:fullscreen',
+  'requestFullscreen', 'fullscreenPreferred', 'pointerdown',
+], 'SPIRE shared preferences');
+
+const controls = await read('assets/spire-screen-controls.js');
+requireMarkers(controls, [
+  'SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?status=OPEN',
+  '/spire/secure-chat.html', 'Secure Chat',
+], 'SPIRE live screen controls');
+forbidMarkers(controls, [
+  'Opening Staff Messaging Portal', 'Notifications: 3 unread reminders for current client.',
+], 'SPIRE live screen controls');
+
+const chartOwner = await read('assets/spire-chart-review-ownership.js');
+requireMarkers(chartOwner, [
+  '20260812-spire-chart-review-ownership-1', 'SpireChartReviewV2',
+  'stopImmediatePropagation', 'spire:chart-tab-selected', 'SpireChartReviewOwnership',
+], 'SPIRE Chart Review ownership');
+
+const wiring = await read('assets/spire-intake-isp-sleep-wiring.js');
+requireMarkers(wiring, [
+  '20260812-spire-intake-isp-sleep-2', 'spireAdmissionHistoryTab',
+  'ISP Outcomes / Progress', 'Sleep / Wake', 'spire:flowsheet:preferred-group',
+  'SpireIntakeIspSleepWiring', 'button.hidden=true',
+], 'SPIRE intake/ISP/sleep wiring');
+
+const style = await read('assets/spire-intake-isp-sleep-wiring.css');
+requireMarkers(style, ['#spireAdmissionHistoryTab', 'admission-history-wrap', '.spmt-summary-card.intake'], 'SPIRE intake master styling');
+
+const promotion = await read('api/src/client-intake-promotion.ts');
+requireMarkers(promotion, [
+  'CLIENT INTAKE → SPIRE ADMISSION SUMMARY', 'ensureMedications', 'ensureDocuments',
+  'ensureServiceAuthorization', 'PROMOTE_CLIENT_INTAKE',
+], 'Client Intake promotion contract');
+
+const admission = await read('assets/spire-admission-history.js');
+requireMarkers(admission, ['/admission-history', 'Completed Intake Sections', 'Attached Admission Documents', 'Recorded Acknowledgments'], 'SPIRE admission-history wiring');
+
+if (failures.length) {
+  console.error('Published SPIRE JavaScript/integration verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log(`Published SPIRE JavaScript syntax, dedicated Chart Review ownership, and intake/ISP/sleep wiring verified across ${unique.length} direct/dynamic script assets.`);
+console.log(`Published SPIRE syntax verified across ${browserAssets.length} browser runtimes: Client Station is canonical, Secure Chat/In Basket are live, preferences are shared, and intake/chart integrations remain present.`);
