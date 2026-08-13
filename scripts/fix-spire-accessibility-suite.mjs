@@ -2,51 +2,51 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Normalize the standalone master first so this repair always operates on the
-// exact runtime shape produced by fix-spire-master-defects.mjs.
+// Preserve the established master profile/accessibility implementation. This pass
+// only makes it persistent, adds the requested Client Station visual theme as #21,
+// and removes the retired fake messaging/notification handlers.
 await import('./fix-spire-master-defects.mjs');
 
-const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(scriptDirectory, '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const target = path.join(root, 'spire', 'master.html');
-const marker = 'SPIRE_ACCESSIBILITY_SUITE_RUNTIME_V2';
-const workspaceMarker = 'SPIRE_ACCESSIBILITY_FULLSCREEN_V3';
-const preferenceAsset = '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1';
-
+const marker = 'SPIRE_ACCESSIBILITY_SUITE_RUNTIME_V4';
+const preferenceAsset = '/assets/spire-user-preferences.js?v=20260813-exact-workflow-1';
 let html = await readFile(target, 'utf8');
 
+html = html
+  .replaceAll('  window.switchAccessTab=()=>{};\n', '')
+  .replaceAll('  window.selectPresetTheme=applyTheme;\n', '  window.selectPresetTheme=applyPresetTheme;\n')
+  .replace('20 Distinct Preset Looks', '21 Distinct Preset Looks')
+  .replace('Select one of 20 distinct professional visual themes tailored for Spire Enterprise:', 'Select one of 21 distinct professional visual themes tailored for S.P.I.R.E. Enterprise:')
+  .replace('title="Messaging Portal"', 'title="Secure Chat"')
+  .replace(" onclick=\"alert('Opening Staff Messaging Portal...')\"", '')
+  .replace(" onclick=\"alert('Notifications: 3 unread reminders for current client.')\"", '')
+  .replace('<span class="notification-badge">3</span>', '<span class="notification-badge" hidden>0</span>');
+
+if (!html.includes('window.selectPresetTheme=applyPresetTheme;')) {
+  const aliasAnchor = '  window.applyPresetTheme=applyPresetTheme;';
+  if (!html.includes(aliasAnchor)) throw new Error('SPIRE accessibility applyPresetTheme alias anchor is missing');
+  html = html.replace(aliasAnchor, `${aliasAnchor}\n  window.selectPresetTheme=applyPresetTheme;`);
+}
+
+if (!html.includes(preferenceAsset)) {
+  if (!html.includes('</head>')) throw new Error('SPIRE master head close is missing');
+  html = html.replace('</head>', `  <script src="${preferenceAsset}"></script>\n</head>`);
+}
+
+if (!html.includes('21. Client Station Classic')) {
+  const twentieth = `<div class="theme-card" onclick="applyPresetTheme('solarizedLight')"><b>20. Solarized Light Clean</b><br><span style="font-size: 11px; color: #64748b;">Soft cream base with contrasting navy</span></div>`;
+  if (!html.includes(twentieth)) throw new Error('SPIRE accessibility preset 20 anchor is missing');
+  const twentyFirst = `${twentieth}\n                        <div class="theme-card" onclick="applyPresetTheme('clientStation')"><b>21. Client Station Classic</b><br><span style="font-size: 11px; color: #64748b;">The red, cyan and ice-blue Client Station workstation look</span></div>`;
+  html = html.replace(twentieth, twentyFirst);
+}
+
 if (!html.includes(marker)) {
-  // fix-spire-master-defects.mjs installs the real switchAccessTab() and
-  // applyPresetTheme() implementations. The original master source still has
-  // an obsolete switchAccessTab no-op below those implementations. Remove the
-  // no-op, but retain the canonical selectPresetTheme alias as an idempotent
-  // build marker and inject the persistent runtime after it so nothing later
-  // can overwrite the functional handlers.
-  html = html.replace("  window.switchAccessTab=()=>{};\n", '');
-
   const anchor = '  window.selectPresetTheme=applyPresetTheme;';
-  if (!html.includes(anchor)) {
-    throw new Error('SPIRE accessibility canonical preset alias was not found');
-  }
-
+  if (!html.includes(anchor)) throw new Error('SPIRE accessibility persistent-runtime anchor is missing');
   const runtime = `${anchor}
 
-  /* ${marker}: make every visual-accessibility control functional and persistent. */
-  const SPIRE_ACCESS_KEYS = Object.freeze({
-    preset: 'spire:accessibility:preset',
-    mode: 'spire:accessibility:mode',
-    custom: 'spire:accessibility:custom-colors',
-    cursor: 'spire:accessibility:cursor',
-    fontSize: 'spire:accessibility:font-size',
-    fullscreen: 'spire:accessibility:fullscreen'
-  });
-
-  const accessibilityStore = {
-    get(key) { try { return localStorage.getItem(key); } catch { return null; } },
-    set(key, value) { try { localStorage.setItem(key, value); } catch {} },
-    remove(key) { try { localStorage.removeItem(key); } catch {} }
-  };
-
+  /* ${marker}: authenticated-user persistence for all 21 visual themes. */
   const baseApplyPresetTheme = applyPresetTheme;
 
   function markSelectedPreset(themeName) {
@@ -59,10 +59,15 @@ if (!html.includes(marker)) {
   }
 
   function applyPresetThemePersistent(themeName) {
-    baseApplyPresetTheme(themeName);
-    accessibilityStore.set(SPIRE_ACCESS_KEYS.preset, String(themeName || 'classicRed'));
-    accessibilityStore.set(SPIRE_ACCESS_KEYS.mode, 'preset');
-    accessibilityStore.remove(SPIRE_ACCESS_KEYS.custom);
+    if (themeName !== 'clientStation') baseApplyPresetTheme(themeName);
+    if (window.SpireUserPreferences?.setPreset) {
+      window.SpireUserPreferences.setPreset(themeName);
+    } else {
+      try {
+        localStorage.setItem('spire:accessibility:preset', String(themeName || 'classicRed'));
+        localStorage.setItem('spire:accessibility:mode', 'preset');
+      } catch {}
+    }
     markSelectedPreset(themeName);
   }
   window.applyPresetTheme = applyPresetThemePersistent;
@@ -77,154 +82,78 @@ if (!html.includes(marker)) {
     };
   }
 
-  function applyCustomColorValues(values, persist = true) {
-    const rootStyle = document.documentElement.style;
-    rootStyle.setProperty('--title-bg', values.title || '#0f172a');
-    rootStyle.setProperty('--toolbar-bg', values.toolbar || '#990000');
-    rootStyle.setProperty('--main-bg', values.background || '#f0f4f8');
-    rootStyle.setProperty('--workspace-card-bg', '#ffffff');
-    rootStyle.setProperty('--text-color', values.text || '#000000');
-    document.body.style.filter = 'none';
-
-    const map = {
-      customTitleColor: values.title,
-      customToolbarColor: values.toolbar,
-      customBgColor: values.background,
-      customTextColor: values.text
-    };
-    Object.entries(map).forEach(([id, value]) => {
-      const input = document.getElementById(id);
-      if (input && value) input.value = value;
-    });
-
-    if (persist) {
-      accessibilityStore.set(SPIRE_ACCESS_KEYS.custom, JSON.stringify(values));
-      accessibilityStore.set(SPIRE_ACCESS_KEYS.mode, 'custom');
-    }
-  }
-
   function applyCustomColors() {
-    applyCustomColorValues(readCustomColorValues(), true);
+    const values = readCustomColorValues();
+    if (window.SpireUserPreferences?.setCustomColors) window.SpireUserPreferences.setCustomColors(values);
+    else {
+      const rootStyle = document.documentElement.style;
+      rootStyle.setProperty('--title-bg', values.title);
+      rootStyle.setProperty('--toolbar-bg', values.toolbar);
+      rootStyle.setProperty('--main-bg', values.background);
+      rootStyle.setProperty('--workspace-card-bg', '#ffffff');
+      rootStyle.setProperty('--text-color', values.text);
+      try {
+        localStorage.setItem('spire:accessibility:custom-colors', JSON.stringify(values));
+        localStorage.setItem('spire:accessibility:mode', 'custom');
+      } catch {}
+    }
   }
   window.applyCustomColors = applyCustomColors;
 
-  function applyCursorStyle(value, persist = true) {
-    const allowed = new Set(['default', 'crosshair', 'help', 'pointer']);
-    const cursor = allowed.has(String(value)) ? String(value) : 'default';
-    let style = document.getElementById('spireAccessibilityCursorStyle');
-    if (cursor === 'default') {
-      style?.remove();
-    } else {
-      if (!style) {
-        style = document.createElement('style');
-        style.id = 'spireAccessibilityCursorStyle';
-        document.head.appendChild(style);
-      }
-      style.textContent = \`body, body * { cursor: \${cursor} !important; }\`;
-    }
-    const select = document.getElementById('cursorStyleSelect');
-    if (select) select.value = cursor;
-    if (persist) accessibilityStore.set(SPIRE_ACCESS_KEYS.cursor, cursor);
+  function applyCursorStyle(value) {
+    const cursor = ['default','crosshair','help','pointer'].includes(String(value)) ? String(value) : 'default';
+    window.SpireUserPreferences?.setPreference?.('cursor', cursor);
+    window.SpireUserPreferences?.applyVisualPreferences?.();
   }
   window.applyCursorStyle = applyCursorStyle;
 
-  function applyFontSize(value, persist = true) {
-    const allowed = new Set(['12px', '13px', '14px', '16px']);
-    const size = allowed.has(String(value)) ? String(value) : '13px';
-    document.documentElement.style.setProperty('--base-font-size', size);
-    const select = document.getElementById('fontSizeSelect');
-    if (select) select.value = size;
-    if (persist) accessibilityStore.set(SPIRE_ACCESS_KEYS.fontSize, size);
+  function applyFontSize(value) {
+    const size = ['12px','13px','14px','16px'].includes(String(value)) ? String(value) : '13px';
+    window.SpireUserPreferences?.setPreference?.('fontSize', size);
+    window.SpireUserPreferences?.applyVisualPreferences?.();
   }
   window.applyFontSize = applyFontSize;
 
   function restoreSpireAccessibilityPreferences() {
-    const mode = accessibilityStore.get(SPIRE_ACCESS_KEYS.mode);
-    const preset = accessibilityStore.get(SPIRE_ACCESS_KEYS.preset);
-    const custom = accessibilityStore.get(SPIRE_ACCESS_KEYS.custom);
-
-    if (mode === 'custom' && custom) {
-      try { applyCustomColorValues(JSON.parse(custom), false); } catch {}
-    } else if (preset) {
-      baseApplyPresetTheme(preset);
-      markSelectedPreset(preset);
-    }
-
-    applyCursorStyle(accessibilityStore.get(SPIRE_ACCESS_KEYS.cursor) || 'default', false);
-    applyFontSize(accessibilityStore.get(SPIRE_ACCESS_KEYS.fontSize) || '13px', false);
     window.SpireUserPreferences?.apply?.();
+    const preset = window.SpireUserPreferences?.getPreference?.('preset') || 'classicRed';
+    markSelectedPreset(preset);
+    const cursor = document.getElementById('cursorStyleSelect');
+    if (cursor) cursor.value = window.SpireUserPreferences?.getPreference?.('cursor') || 'default';
+    const font = document.getElementById('fontSizeSelect');
+    if (font) font.value = window.SpireUserPreferences?.getPreference?.('fontSize') || '13px';
   }
   window.restoreSpireAccessibilityPreferences = restoreSpireAccessibilityPreferences;
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', restoreSpireAccessibilityPreferences, { once: true });
-  } else {
-    restoreSpireAccessibilityPreferences();
-  }`;
-
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restoreSpireAccessibilityPreferences, { once: true });
+  else restoreSpireAccessibilityPreferences();`;
   html = html.replace(anchor, runtime);
-
-  if (html.includes('window.switchAccessTab=()=>{}')) {
-    throw new Error('SPIRE accessibility tab handler is still being replaced with a no-op');
-  }
-  if (html.includes('window.selectPresetTheme=applyTheme')) {
-    throw new Error('SPIRE accessibility runtime still references the removed applyTheme function');
-  }
-  for (const required of [
-    'window.switchAccessTab=switchAccessTab',
-    'window.applyPresetTheme = applyPresetThemePersistent',
-    'window.selectPresetTheme = applyPresetThemePersistent',
-    'window.applyCustomColors = applyCustomColors',
-    'window.applyCursorStyle = applyCursorStyle',
-    'window.applyFontSize = applyFontSize',
-  ]) {
-    if (!html.includes(required)) throw new Error(`SPIRE accessibility runtime is missing: ${required}`);
-  }
-
-  await writeFile(target, html, 'utf8');
 }
 
-// V3 is deliberately a separate idempotent pass so sites that already contain
-// the V2 runtime receive the new Client Station/fullscreen/live-notification
-// contract on the next build instead of being skipped by the older marker.
-html = await readFile(target, 'utf8');
-if (!html.includes(workspaceMarker)) {
-  // The shared preference runtime must execute before body scripts such as the
-  // screen controls so one controller owns native fullscreen state.
-  if (!html.includes(preferenceAsset)) {
-    if (!html.includes('<head>')) throw new Error('SPIRE master head was not found');
-    html = html.replace('<head>', `<head>\n  <script src="${preferenceAsset}"></script>`);
-  }
-
-  html = html
-    .replace('20 Distinct Preset Looks', '21 Display & Accessibility Preferences')
-    .replace('Select one of 20 distinct professional visual themes tailored for Spire Enterprise:', 'Choose one of 20 professional visual themes plus the persistent full-screen workspace preference:')
-    .replace('title="Messaging Portal"', 'title="Secure Chat"')
-    .replace(" onclick=\"alert('Opening Staff Messaging Portal...')\"", '')
-    .replace(" onclick=\"alert('Notifications: 3 unread reminders for current client.')\"", '')
-    .replace('<span class="notification-badge">3</span>', '<span class="notification-badge" hidden>0</span>');
-
-  if (!html.includes('21. Full-Screen Workspace')) {
-    const twentieth = `<div class="theme-card" onclick="applyPresetTheme('solarizedLight')"><b>20. Solarized Light Clean</b><br><span style="font-size: 11px; color: #64748b;">Soft cream base with contrasting navy</span></div>`;
-    if (!html.includes(twentieth)) throw new Error('SPIRE accessibility preset 20 anchor was not found');
-    const twentyFirst = `${twentieth}\n                        <div class="theme-card" id="spireFullscreenPreferenceCard" onclick="toggleSpireFullscreenPreference()"><b>21. Full-Screen Workspace</b><br><span style="font-size: 11px; color: #64748b;">Remember full-screen as the default across Client Station, charts and Secure Chat</span></div>`;
-    html = html.replace(twentieth, twentyFirst);
-  }
-
-  if (!html.includes('</body>')) throw new Error('SPIRE master body close was not found');
-  html = html.replace('</body>', `  <!-- ${workspaceMarker} -->\n</body>`);
-  await writeFile(target, html, 'utf8');
+if (!html.includes('</body>')) throw new Error('SPIRE master body close is missing');
+if (!html.includes('SPIRE_ACCESSIBILITY_THEME21_CLIENT_STATION_V1')) {
+  html = html.replace('</body>', '  <!-- SPIRE_ACCESSIBILITY_THEME21_CLIENT_STATION_V1 -->\n</body>');
 }
 
+await writeFile(target, html, 'utf8');
 html = await readFile(target, 'utf8');
+
 for (const forbidden of [
   "alert('Opening Staff Messaging Portal...')",
   "alert('Notifications: 3 unread reminders for current client.')",
+  '21. Full-Screen Workspace</b>'
 ]) {
-  if (html.includes(forbidden)) throw new Error(`SPIRE master still contains fake clinical UI behavior: ${forbidden}`);
+  if (html.includes(forbidden)) throw new Error(`SPIRE master still contains retired behavior: ${forbidden}`);
 }
-for (const required of [preferenceAsset, '21. Full-Screen Workspace', 'title="Secure Chat"', workspaceMarker]) {
-  if (!html.includes(required)) throw new Error(`SPIRE workspace preference/live-control normalization missing: ${required}`);
+for (const required of [
+  preferenceAsset,
+  '21. Client Station Classic',
+  "applyPresetTheme('clientStation')",
+  'title="Secure Chat"',
+  marker,
+  'SPIRE_ACCESSIBILITY_THEME21_CLIENT_STATION_V1'
+]) {
+  if (!html.includes(required)) throw new Error(`SPIRE accessibility correction is missing: ${required}`);
 }
 
-console.log('SPIRE accessibility suite verified: 20 visual themes, custom colors, cursor/font scaling, #21 persistent full-screen workspace preference, shared Client Station/Secure Chat appearance, and no fake messaging/notification alerts.');
+console.log('SPIRE accessibility verified: 21 visual themes with Client Station Classic as #21; authenticated-user persistence remains shared; fullscreen is separate/default-on; fake messaging and notification alerts are removed.');
