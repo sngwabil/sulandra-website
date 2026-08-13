@@ -1,12 +1,11 @@
 (() => {
   'use strict';
-  // SPIRE_MAR_TIMELINE_V1
+  // SPIRE_MAR_TIMELINE_V2
   const clean = (v) => String(v ?? '').trim();
   const esc = (v) => clean(v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const asArray = (v) => Array.isArray(v) ? v : [];
   const formatHour = (hour) => `${String(hour).padStart(2,'0')}00`;
   const localDay = (d) => new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
-  const localTime = (d) => new Intl.DateTimeFormat('en-US',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
   const shortTime = (d) => new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(d);
   const statusClass = (status) => ({GIVEN:'given',REFUSED:'refused',HELD:'held',MISSED:'missed',NOT_AVAILABLE:'notavailable',ERROR:'error',DUE:'due',SCHEDULED:'scheduled'}[clean(status).toUpperCase()] || 'scheduled');
 
@@ -25,14 +24,27 @@
     document.head.appendChild(s);
   }
 
+  function medicationKey(med){
+    return clean(med.medicationOrderId || med.id || med.order?.id || `${med.medicationName||med.name}|${med.dose||med.orderedDose}|${med.route}|${med.frequency}`);
+  }
+
   function normalizeRows(data){
-    const rows=[];
+    const byKey=new Map();
     for(const med of asArray(data?.medications || data?.items)){
-      const events=asArray(med.administrations || med.events || med.medicationAdministrationEvents).slice().sort((a,b)=>new Date(a.scheduledFor||a.createdAt)-new Date(b.scheduledFor||b.createdAt));
+      const key=medicationKey(med);
+      const events=asArray(med.administrations || med.events || med.medicationAdministrationEvents).slice();
       const dueTimes=asArray(med.dueTimes || med.schedule || med.scheduledTimes || med.times).map(clean).filter(Boolean);
-      rows.push({...med,events,dueTimes});
+      if(!byKey.has(key)) byKey.set(key,{...med,events:[],dueTimes:[]});
+      const target=byKey.get(key);
+      target.events.push(...events);
+      target.dueTimes.push(...dueTimes);
+      if(!target.instructions && med.instructions) target.instructions=med.instructions;
     }
-    return rows;
+    return [...byKey.values()].map((med)=>({
+      ...med,
+      events:med.events.sort((a,b)=>new Date(a.scheduledFor||a.createdAt)-new Date(b.scheduledFor||b.createdAt)),
+      dueTimes:[...new Set(med.dueTimes)].sort(),
+    }));
   }
 
   function eventLabel(event){
@@ -60,7 +72,9 @@
   }
 
   function render(host,data,date){
+    if(!host) return;
     styles();
+    host.dataset.spireMarTimeline='1';
     const rows=filterRows(normalizeRows(data),host.dataset.marFilter||'all');
     const canAdminister=data?.medicationAdministrationAuthorized!==false;
     const now=new Date(); const sameDay=localDay(now)===date; const nowHour=sameDay?now.getHours():-1;
@@ -69,21 +83,64 @@
     const completed=rows.filter((m)=>clean(m.status||'').toUpperCase()!=='ACTIVE');
     const rowHtml=(med,complete=false)=>`<tr class="${complete?'spire-mar-complete':''}"><td class="medcol"><div class="spire-mar-med"><div class="spire-mar-med-name">${esc(nameOf(med))}</div><div class="spire-mar-med-line">${esc(detailsOf(med))}</div>${med.instructions?`<div class="spire-mar-med-instruction">Admin Instructions: ${esc(med.instructions)}</div>`:''}<div class="spire-mar-med-sub">Ordered Admin Amount: ${esc(med.dose||'—')} ${med.lastAdministeredAt?` · Last Admin: ${esc(new Date(med.lastAdministeredAt).toLocaleString())}`:''}</div></div></td>${hours.map((h)=>{const events=[...administrationsForHour(med,h),...scheduledFallback(med,date,h)];return `<td class="spire-mar-hour ${h===nowHour?'nowcol':''}">${events.map((e)=>`<button type="button" class="spire-mar-event ${statusClass(e.status)}" data-mar-timeline-order="${esc(idOf(med))}" data-mar-timeline-scheduled="${esc(e.scheduledFor||'')}" ${canAdminister?'':'disabled'} title="${esc(e.note||e.reason||'')}">${esc(eventLabel(e))}${e.note||e.reason?`<small>${esc(e.note||e.reason)}</small>`:''}</button>`).join('')}</td>`}).join('')}</tr>`;
     host.innerHTML=`<div class="spire-mar-toolbar"><button type="button" data-mar-prev>◀</button><button type="button" class="primary" data-mar-now>Go to Now</button><input type="date" data-mar-date value="${esc(date)}"><button type="button" data-mar-next>▶</button><div class="spire-mar-filter"><button type="button" data-mar-filter="all" class="${(host.dataset.marFilter||'all')==='all'?'active':''}">All</button><button type="button" data-mar-filter="scheduled" class="${host.dataset.marFilter==='scheduled'?'active':''}">Scheduled</button><button type="button" data-mar-filter="prn" class="${host.dataset.marFilter==='prn'?'active':''}">PRN</button></div><div class="spire-mar-legend"><span class="spire-mar-key given">Given</span><span class="spire-mar-key due">Due</span><span class="spire-mar-key held">Held</span><span class="spire-mar-key refused">Refused/Missed</span></div></div><div class="spire-mar-datebar"><strong>${esc(new Date(`${date}T12:00:00`).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'}))}</strong><span class="spire-mar-now">${canAdminister?'Medication administration authorized':'View only / qualification required'}</span></div>${rows.length?`<div class="spire-mar-wrap"><table class="spire-mar-table"><thead><tr><th class="medcol">Medication / Order</th>${hours.map((h)=>`<th>${formatHour(h)}</th>`).join('')}</tr></thead><tbody>${active.map((m)=>rowHtml(m)).join('')}${completed.length?`<tr><td colspan="25" class="spire-mar-groupbar">Completed / Inactive Medications</td></tr>${completed.map((m)=>rowHtml(m,true)).join('')}`:''}</tbody></table></div>`:`<div class="spire-mar-empty"><h3>No medication administration records</h3><p>No medications match this date/filter.</p></div>`}`;
-    host.querySelector('[data-mar-prev]')?.addEventListener('click',()=>shift(host,-1)); host.querySelector('[data-mar-next]')?.addEventListener('click',()=>shift(host,1)); host.querySelector('[data-mar-now]')?.addEventListener('click',()=>{host.dataset.marDate=localDay(new Date());window.loadMarView?.();}); host.querySelector('[data-mar-date]')?.addEventListener('change',(e)=>{host.dataset.marDate=e.target.value;window.loadMarView?.();}); host.querySelectorAll('[data-mar-filter]').forEach((b)=>b.addEventListener('click',()=>{host.dataset.marFilter=b.dataset.marFilter;render(host,data,date);}));
+    host.querySelector('[data-mar-prev]')?.addEventListener('click',()=>shift(host,-1));
+    host.querySelector('[data-mar-next]')?.addEventListener('click',()=>shift(host,1));
+    host.querySelector('[data-mar-now]')?.addEventListener('click',()=>{host.dataset.marDate=localDay(new Date());window.loadMarView?.();});
+    host.querySelector('[data-mar-date]')?.addEventListener('change',(e)=>{host.dataset.marDate=e.target.value;window.loadMarView?.();});
+    host.querySelectorAll('[data-mar-filter]').forEach((b)=>b.addEventListener('click',()=>{host.dataset.marFilter=b.dataset.marFilter;render(host,data,date);}));
     host.querySelectorAll('[data-mar-timeline-order]').forEach((button)=>button.addEventListener('click',()=>{ if(button.disabled)return; if(typeof window.openMarAction==='function') window.openMarAction(button.dataset.marTimelineOrder,button.dataset.marTimelineScheduled||''); }));
     if(nowHour>=0){setTimeout(()=>host.querySelector('.nowcol')?.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}),0);}
   }
-  function shift(host,days){const base=new Date(`${host.dataset.marDate||localDay(new Date())}T12:00:00`);base.setDate(base.getDate()+days);host.dataset.marDate=localDay(base);window.loadMarView?.();}
 
-  function install(){
-    if(window.__SPIRE_MAR_TIMELINE_INSTALLED) return true;
-    const host=document.querySelector('#mar-view'); if(!host) return false;
-    const original=window.renderMar;
-    if(typeof original!=='function') return false;
-    window.renderMar=(target,date)=>render(target,window.state?.emar||{},date);
-    window.__SPIRE_MAR_TIMELINE_INSTALLED=true;
-    if(host.classList.contains('active') && window.state?.emar) render(host,window.state.emar,host.dataset.marDate||localDay(new Date()));
+  function currentData(){ return window.state?.emar || window.state?.mar || {}; }
+  function currentDate(host){ return host?.dataset.marDate || localDay(new Date()); }
+  function renderCurrent(){
+    const host=document.querySelector('#mar-view');
+    if(!host || !currentData()) return false;
+    render(host,currentData(),currentDate(host));
     return true;
   }
-  if(!install()){let n=0;const timer=setInterval(()=>{if(install()||++n>80)clearInterval(timer);},125);}
+  function shift(host,days){const base=new Date(`${currentDate(host)}T12:00:00`);base.setDate(base.getDate()+days);host.dataset.marDate=localDay(base);if(typeof window.loadMarView==='function') window.loadMarView();setTimeout(renderCurrent,0);}
+
+  function install(){
+    const host=document.querySelector('#mar-view'); if(!host) return false;
+    const legacyRender=window.renderMar;
+    window.renderMar=(target,date)=>render(target || host,currentData(),date || currentDate(host));
+    window.__SPIRE_MAR_TIMELINE_INSTALLED=true;
+    window.__SPIRE_MAR_TIMELINE_LEGACY_RENDER=legacyRender;
+
+    let internal=false;
+    const observer=new MutationObserver(()=>{
+      if(internal) return;
+      if(host.querySelector('.spire-mar-table')) return;
+      if(!host.classList.contains('active')) return;
+      internal=true;
+      queueMicrotask(()=>{ try{ renderCurrent(); } finally { internal=false; } });
+    });
+    observer.observe(host,{childList:true,subtree:true});
+
+    document.addEventListener('click',(event)=>{
+      const tab=event.target.closest('[data-chart-tab="mar"], .chart-tab');
+      if(!tab) return;
+      const key=clean(tab.dataset?.chartTab || tab.textContent).toLowerCase();
+      if(key==='mar' || key.includes('mar')) setTimeout(renderCurrent,0);
+    },true);
+
+    const originalLoad=window.loadMarView;
+    if(typeof originalLoad==='function'){
+      window.loadMarView=async (...args)=>{
+        const result=await originalLoad(...args);
+        setTimeout(renderCurrent,0);
+        return result;
+      };
+    }
+
+    if(host.classList.contains('active')) setTimeout(renderCurrent,0);
+    return true;
+  }
+
+  if(!install()){
+    let n=0;
+    const timer=setInterval(()=>{ if(install() || ++n>120) clearInterval(timer); },100);
+  }
 })();
