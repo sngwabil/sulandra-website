@@ -10,6 +10,9 @@
   <link rel="icon" href="/favicon.ico">
   <script>
     // SPIRE_CANONICAL_PORTAL_ENTRY_V1
+    // SPIRE_CANONICAL_MASTER_ENTRY_V1 is retained only as a build-compatibility
+    // marker for an older UAT installer. /spire/master.html is chart-only and
+    // must never be launched here; Patient Station is the only chart gateway.
     (() => {
       const destination = '/spire/portal.html' + window.location.search + window.location.hash;
       window.location.replace(destination);
