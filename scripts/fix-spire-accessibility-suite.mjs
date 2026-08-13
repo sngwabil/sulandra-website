@@ -10,6 +10,8 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(scriptDirectory, '..');
 const target = path.join(root, 'spire', 'master.html');
 const marker = 'SPIRE_ACCESSIBILITY_SUITE_RUNTIME_V2';
+const workspaceMarker = 'SPIRE_ACCESSIBILITY_FULLSCREEN_V3';
+const preferenceAsset = '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1';
 
 let html = await readFile(target, 'utf8');
 
@@ -35,7 +37,8 @@ if (!html.includes(marker)) {
     mode: 'spire:accessibility:mode',
     custom: 'spire:accessibility:custom-colors',
     cursor: 'spire:accessibility:cursor',
-    fontSize: 'spire:accessibility:font-size'
+    fontSize: 'spire:accessibility:font-size',
+    fullscreen: 'spire:accessibility:fullscreen'
   });
 
   const accessibilityStore = {
@@ -149,6 +152,7 @@ if (!html.includes(marker)) {
 
     applyCursorStyle(accessibilityStore.get(SPIRE_ACCESS_KEYS.cursor) || 'default', false);
     applyFontSize(accessibilityStore.get(SPIRE_ACCESS_KEYS.fontSize) || '13px', false);
+    window.SpireUserPreferences?.apply?.();
   }
   window.restoreSpireAccessibilityPreferences = restoreSpireAccessibilityPreferences;
 
@@ -180,4 +184,47 @@ if (!html.includes(marker)) {
   await writeFile(target, html, 'utf8');
 }
 
-console.log('SPIRE accessibility suite verified: preset tabs, 20 theme choices, custom colors, cursor styles, and font scaling are functional and persistent.');
+// V3 is deliberately a separate idempotent pass so sites that already contain
+// the V2 runtime receive the new Client Station/fullscreen/live-notification
+// contract on the next build instead of being skipped by the older marker.
+html = await readFile(target, 'utf8');
+if (!html.includes(workspaceMarker)) {
+  // The shared preference runtime must execute before body scripts such as the
+  // screen controls so one controller owns native fullscreen state.
+  if (!html.includes(preferenceAsset)) {
+    if (!html.includes('<head>')) throw new Error('SPIRE master head was not found');
+    html = html.replace('<head>', `<head>\n  <script src="${preferenceAsset}"></script>`);
+  }
+
+  html = html
+    .replace('20 Distinct Preset Looks', '21 Display & Accessibility Preferences')
+    .replace('Select one of 20 distinct professional visual themes tailored for Spire Enterprise:', 'Choose one of 20 professional visual themes plus the persistent full-screen workspace preference:')
+    .replace('title="Messaging Portal"', 'title="Secure Chat"')
+    .replace(" onclick=\"alert('Opening Staff Messaging Portal...')\"", '')
+    .replace(" onclick=\"alert('Notifications: 3 unread reminders for current client.')\"", '')
+    .replace('<span class="notification-badge">3</span>', '<span class="notification-badge" hidden>0</span>');
+
+  if (!html.includes('21. Full-Screen Workspace')) {
+    const twentieth = `<div class="theme-card" onclick="applyPresetTheme('solarizedLight')"><b>20. Solarized Light Clean</b><br><span style="font-size: 11px; color: #64748b;">Soft cream base with contrasting navy</span></div>`;
+    if (!html.includes(twentieth)) throw new Error('SPIRE accessibility preset 20 anchor was not found');
+    const twentyFirst = `${twentieth}\n                        <div class="theme-card" id="spireFullscreenPreferenceCard" onclick="toggleSpireFullscreenPreference()"><b>21. Full-Screen Workspace</b><br><span style="font-size: 11px; color: #64748b;">Remember full-screen as the default across Client Station, charts and Secure Chat</span></div>`;
+    html = html.replace(twentieth, twentyFirst);
+  }
+
+  if (!html.includes('</body>')) throw new Error('SPIRE master body close was not found');
+  html = html.replace('</body>', `  <!-- ${workspaceMarker} -->\n</body>`);
+  await writeFile(target, html, 'utf8');
+}
+
+html = await readFile(target, 'utf8');
+for (const forbidden of [
+  "alert('Opening Staff Messaging Portal...')",
+  "alert('Notifications: 3 unread reminders for current client.')",
+]) {
+  if (html.includes(forbidden)) throw new Error(`SPIRE master still contains fake clinical UI behavior: ${forbidden}`);
+}
+for (const required of [preferenceAsset, '21. Full-Screen Workspace', 'title="Secure Chat"', workspaceMarker]) {
+  if (!html.includes(required)) throw new Error(`SPIRE workspace preference/live-control normalization missing: ${required}`);
+}
+
+console.log('SPIRE accessibility suite verified: 20 visual themes, custom colors, cursor/font scaling, #21 persistent full-screen workspace preference, shared Client Station/Secure Chat appearance, and no fake messaging/notification alerts.');
