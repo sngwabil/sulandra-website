@@ -16,7 +16,7 @@ const navigationRuntimePath = path.join(dist, 'assets', 'spire-master-navigation
 const flowsheetRuntimePath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
 const transactionalFileRoutePath = path.join(root, 'api', 'src', 'spire-flowsheet-file-routes.ts');
 const navigationUrl = '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1';
-const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-user-master-layout-1';
+const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-suggestions-1';
 
 for (const file of [publishedPortalPath, publishedMasterPath, portalRuntimePath, navigationRuntimePath, flowsheetRuntimePath, transactionalFileRoutePath]) {
   await stat(file);
@@ -90,9 +90,15 @@ for (const marker of [
   'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1',
   'SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2',
   'SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1',
+  'SPIRE_FLOWSHEET_INLINE_ENTRY_V3',
   'restoreAuthoritativeToolbar',
   '#flowsheetTbody',
   '.flowsheet-table',
+  'data-flow-editor',
+  'suggestionsForRow',
+  'isNumericRow',
+  'positionPopoverBesideCell',
+  'Suggestions only',
   '/flowsheet-workspace/file',
   'filePending',
   'hasPending',
@@ -101,7 +107,7 @@ for (const marker of [
   'filed-amendment',
   'Nothing was filed:',
 ]) {
-  if (!flowsheetRuntime.includes(marker)) throw new Error(`SPIRE user-master transactional flowsheet runtime is missing ${marker}`);
+  if (!flowsheetRuntime.includes(marker)) throw new Error(`SPIRE inline user-master transactional flowsheet runtime is missing ${marker}`);
 }
 for (const forbidden of [
   'host.innerHTML = `\n      <div class="flow-file-toolbar"',
@@ -113,8 +119,10 @@ for (const forbidden of [
   "addEventListener('focusout',",
   "saveCell(cell, { force: true })",
   '/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}',
+  'valueInput.disabled = readonly || options.length > 0',
+  'choose one of the configured options',
 ]) {
-  if (flowsheetRuntime.includes(forbidden)) throw new Error(`SPIRE replacement-grid/direct-save behavior returned: ${forbidden}`);
+  if (flowsheetRuntime.includes(forbidden)) throw new Error(`SPIRE replacement-grid/direct-save/restrictive-selector behavior returned: ${forbidden}`);
 }
 
 for (const marker of [
@@ -123,8 +131,12 @@ for (const marker of [
   'FLOWSHEET_FILE_COMMITTED',
   'FLOWSHEET_ENTRY_AMENDED',
   'Only the user who originally filed this flowsheet entry can amend it',
+  'SELECT/options are advisory suggestions',
 ]) {
   if (!transactionalFileRoute.includes(marker)) throw new Error(`SPIRE transactional File backend is missing ${marker}`);
+}
+for (const forbidden of ['Choose an allowed value for', 'options.includes(value)']) {
+  if (transactionalFileRoute.includes(forbidden)) throw new Error(`SPIRE backend restored a hard suggestion restriction: ${forbidden}`);
 }
 
 const loaderStart = finalMaster.indexOf('  async function loadFlowsheetsView(groupOverride) {');
@@ -137,4 +149,4 @@ for (const forbidden of ['Loading continuous flowsheet', 'renderFlowsheet(host);
 }
 
 await import('./verify-spire-portal-workflow.mjs');
-console.log('Final SPIRE publication verified: portal -> explicit chart; the user-authored master flowsheet layout is preserved, values stage locally, and File commits atomically.');
+console.log('Final SPIRE publication verified: portal -> explicit chart; authored master flowsheet geometry; direct inline cell typing; optional nonblocking suggestions; numeric cells without popovers; local staging; and atomic File commit.');
