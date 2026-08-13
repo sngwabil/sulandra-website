@@ -59,6 +59,23 @@ function normalizeAccessibilityRuntime(masterHtml) {
   );
 }
 
+function normalizeThemeCompatibilityAlias(masterHtml) {
+  const legacyAlias = 'window.selectPresetTheme=applyTheme;';
+  const canonicalAlias = 'window.selectPresetTheme=applyPresetTheme;';
+
+  if (masterHtml.includes(legacyAlias)) {
+    return masterHtml.replace(legacyAlias, canonicalAlias);
+  }
+
+  if (!masterHtml.includes(canonicalAlias)) {
+    throw new Error(
+      'Standalone SPIRE master preset-theme compatibility alias could not be located.'
+    );
+  }
+
+  return masterHtml;
+}
+
 async function verifyStandaloneSpireArchitecture() {
   await requireFile(
     masterPath,
@@ -136,8 +153,29 @@ async function verifyStandaloneSpireArchitecture() {
    * accessibility runtime. Normalize only the existing accessibility function
    * boundary here so that step is deterministic. This does not touch the
    * flowsheet, MAR, chart, intake, or any other clinical workspace.
+   *
+   * IMPORTANT: the defect/theme pass removes the legacy applyTheme() function.
+   * The source master previously left `window.selectPresetTheme=applyTheme;`
+   * below that removal point. In a published build that statement throws a
+   * ReferenceError before bootstrap() is registered, leaving the page stuck on
+   * literal HTML placeholders. Point the compatibility alias at the canonical
+   * applyPresetTheme() runtime before the defect/theme pass runs.
    */
-  const normalizedMaster = normalizeAccessibilityRuntime(masterHtml);
+  let normalizedMaster = normalizeAccessibilityRuntime(masterHtml);
+  normalizedMaster = normalizeThemeCompatibilityAlias(normalizedMaster);
+
+  if (normalizedMaster.includes('window.selectPresetTheme=applyTheme;')) {
+    throw new Error(
+      'Standalone SPIRE master still contains the bootstrap-breaking applyTheme compatibility alias.'
+    );
+  }
+
+  if (!normalizedMaster.includes('window.selectPresetTheme=applyPresetTheme;')) {
+    throw new Error(
+      'Standalone SPIRE master is missing the canonical preset-theme compatibility alias.'
+    );
+  }
+
   if (normalizedMaster !== masterHtml) {
     await writeFile(masterPath, normalizedMaster, 'utf8');
     masterHtml = normalizedMaster;
@@ -152,6 +190,7 @@ async function verifyStandaloneSpireArchitecture() {
       '/spire.html -> /spire/master.html.',
       'Deep-link context is preserved.',
       'Accessibility runtime boundary normalized for the master defect/theme pass.',
+      'Preset-theme compatibility alias normalized so bootstrap remains reachable.',
       'Legacy SpireEnsureShell installation is not required.',
     ].join(' ')
   );
