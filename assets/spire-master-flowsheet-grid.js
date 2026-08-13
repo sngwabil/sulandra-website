@@ -1,69 +1,71 @@
 (() => {
   'use strict';
 
-  const VERSION = '20260813-dsp-daily-grid-1';
+  const VERSION = '20260813-dsp-daily-grid-2';
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
+  const EXPECTED_TASK_ROWS = 30;
 
-  // Requested DSP Daily Documentation visual/task model. These are templates only;
-  // charted values continue to be read from and written to the SPIRE flowsheet API.
+  // These definitions are row/task metadata only. Clinical values are NEVER
+  // fabricated from this file; every displayed filed value comes from the
+  // server-backed SpireFlowsheetEntry record or from a local unsaved draft.
   const flowsheetData = {
     vitals: [
       { header: 'Vitals & Health Monitoring' },
-      { row: 'Temp (°F)', vals: ['98.2', '', '', '', '', '98.2'], isNumeric: true },
-      { row: 'Temp Source', vals: ['Oral', '', '', '', '', 'Oral'] },
-      { row: 'Pulse (bpm)', vals: ['76', '', '', '', '', '76'], isNumeric: true },
-      { row: 'Resp (breaths/min)', vals: ['16', '', '', '', '', '16'], isNumeric: true },
-      { row: 'BP (mmHg)', vals: ['128/78', '', '', '', '', '128/78'], isNumeric: true },
-      { row: 'Blood Glucose (mg/dL)', vals: ['110', '', '', '', '', '125'], isNumeric: true },
+      { row: 'Temp (°F)', isNumeric: true },
+      { row: 'Temp Source' },
+      { row: 'Pulse (bpm)', isNumeric: true },
+      { row: 'Resp (breaths/min)', isNumeric: true },
+      { row: 'BP (mmHg)' },
+      { row: 'Blood Glucose (mg/dL)', isNumeric: true },
     ],
     adls: [
       { header: 'ADLs & Personal Care Support' },
-      { row: 'Bathing / Showering (Bathing Assistance)', vals: ['Prompted', '', '', '', '', 'Completed'] },
-      { row: 'Dressing Assistance', vals: ['Independent', '', '', '', '', 'Independent'] },
-      { row: 'Grooming & Oral Care', vals: ['Prompted', '', '', '', '', 'Completed'] },
-      { row: 'Toileting Support', vals: ['Independent', '', '', '', '', 'Independent'] },
+      { row: 'Bathing / Showering (Bathing Assistance)' },
+      { row: 'Dressing Assistance' },
+      { row: 'Grooming & Oral Care' },
+      { row: 'Toileting Support' },
     ],
     meds: [
       { header: 'Medication Administration (eMAR)' },
-      { row: 'Scheduled Meds Administered (AM)', vals: ['Given (8:00 AM)', '', '', '', '', ''] },
-      { row: 'Swallow & Prompt Supervision', vals: ['Completed', '', '', '', '', ''] },
-      { row: 'PRN Medication Review', vals: ['None', '', '', '', '', 'None'] },
-      { row: 'Medication Refusals / Omissions', vals: ['None', '', '', '', '', 'None'] },
+      { row: 'Scheduled Meds Administered (AM)' },
+      { row: 'Swallow & Prompt Supervision' },
+      { row: 'PRN Medication Review' },
+      { row: 'Medication Refusals / Omissions' },
     ],
     meals: [
       { header: 'Meal & Dysphagia Precautions' },
-      { row: 'Diet Texture (Soft & Bite-Sized)', vals: ['Verified', '', '', '', '', 'Verified'] },
-      { row: 'Liquid Consistency (Thin Liquids)', vals: ['Verified', '', '', '', '', 'Verified'] },
-      { row: 'Upright Positioning (30 Min Post-Meal)', vals: ['Maintained', '', '', '', '', 'Maintained'] },
-      { row: 'Pacing & Small Bites Supervision', vals: ['Completed', '', '', '', '', 'Completed'] },
+      { row: 'Diet Texture (Soft & Bite-Sized)' },
+      { row: 'Liquid Consistency (Thin Liquids)' },
+      { row: 'Upright Positioning (30 Min Post-Meal)' },
+      { row: 'Pacing & Small Bites Supervision' },
     ],
     seizure: [
       { header: 'Seizure & Neurological Check' },
-      { row: 'Seizure Observation', vals: ['None', '', '', '', '', 'None'] },
-      { row: 'Postictal Recovery Status', vals: ['Baseline', '', '', '', '', 'Baseline'] },
-      { row: 'Rescue Med Preparedness (Midazolam)', vals: ['Ready', '', '', '', '', 'Ready'] },
+      { row: 'Seizure Observation' },
+      { row: 'Postictal Recovery Status' },
+      { row: 'Rescue Med Preparedness (Midazolam)' },
     ],
     behavior: [
       { header: 'Behavioral & Elopement Support' },
-      { row: 'Emotional Baseline / Mood', vals: ['Calm', '', '', '', '', 'Calm'] },
-      { row: 'Triggers / Antecedents Observed', vals: ['None', '', '', '', '', 'None'] },
-      { row: 'De-escalation / Proactive Support Used', vals: ['Not Needed', '', '', '', '', 'Not Needed'] },
+      { row: 'Emotional Baseline / Mood' },
+      { row: 'Triggers / Antecedents Observed' },
+      { row: 'De-escalation / Proactive Support Used' },
     ],
     bowel: [
       { header: 'Bowel & Elimination Protocol' },
-      { row: 'Bowel Movement Recorded', vals: ['Yes (Normal)', '', '', '', '', ''] },
-      { row: 'Fluid Intake Encouragement', vals: ['Encouraged', '', '', '', '', 'Encouraged'] },
+      { row: 'Bowel Movement Recorded' },
+      { row: 'Fluid Intake Encouragement' },
     ],
     community: [
       { header: 'Community Outings & Transport' },
-      { row: 'Community Outing / Activity', vals: ['None Scheduled', '', '', '', '', ''] },
-      { row: 'Vehicle Seat Belt Secured', vals: ['N/A', '', '', '', '', 'N/A'] },
+      { row: 'Community Outing / Activity' },
+      { row: 'Vehicle Seat Belt Secured' },
     ],
     isp: [
       { header: 'ISP Goal Skill-Building' },
-      { row: 'Independent Task Prompting', vals: ['Completed', '', '', '', '', 'Completed'] },
-      { row: 'Money Management Support', vals: ['Reviewed', '', '', '', '', ''] },
+      { row: 'Independent Task Prompting' },
+      { row: 'Money Management Support' },
     ],
   };
 
@@ -105,6 +107,9 @@
     loading: false,
     rendering: false,
     observer: null,
+    companyObserver: null,
+    saveTimers: new Map(),
+    savePromises: new Map(),
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -121,19 +126,63 @@
   const fmtTime = (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '');
   const fmtDate = (value) => new Date(value).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
-  function getOptionsForRow(rowName) {
-    const key = normalize(rowName);
-    if (taskOptionsMap[key]) return taskOptionsMap[key];
-    for (const optionKey of Object.keys(taskOptionsMap)) {
-      if (key.includes(optionKey) || optionKey.includes(key)) return taskOptionsMap[optionKey];
-    }
-    return ['Independent', 'Prompting', 'Partial Assist', 'Total Assist', 'Refused', 'Completed', 'N/A'];
-  }
-
   function currentPatientId() {
     const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
     const query = new URLSearchParams(location.search);
     return hash.get('patient') || query.get('patientId') || sessionStorage.getItem('spire:patientId') || '';
+  }
+
+  function columnStorageKey() {
+    return runtime.patientId ? `spire:flowsheet:columns:${runtime.patientId}` : '';
+  }
+
+  function draftStorageKey(rowId, recordedAt) {
+    return runtime.patientId && rowId && recordedAt
+      ? `spire:flowsheet:draft:${runtime.patientId}:${rowId}:${isoMinute(recordedAt)}`
+      : '';
+  }
+
+  function readStoredColumns() {
+    const key = columnStorageKey();
+    if (!key) return [];
+    try {
+      const values = JSON.parse(sessionStorage.getItem(key) || '[]');
+      return Array.isArray(values) ? values.map(isoMinute).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function storeColumns() {
+    const key = columnStorageKey();
+    if (!key) return;
+    sessionStorage.setItem(key, JSON.stringify(runtime.columns));
+  }
+
+  function readDraft(rowId, recordedAt) {
+    const key = draftStorageKey(rowId, recordedAt);
+    if (!key) return null;
+    try {
+      const value = JSON.parse(sessionStorage.getItem(key) || 'null');
+      return value && typeof value === 'object' ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeDraft(cell) {
+    const key = draftStorageKey(cell.dataset.rowId, cell.dataset.flowTime);
+    if (!key) return;
+    sessionStorage.setItem(key, JSON.stringify({
+      text: cell.textContent.trim(),
+      comment: cell.dataset.comment || '',
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
+  function clearDraft(rowId, recordedAt) {
+    const key = draftStorageKey(rowId, recordedAt);
+    if (key) sessionStorage.removeItem(key);
   }
 
   async function api(path, options = {}) {
@@ -148,39 +197,13 @@
     return payload.data ?? payload;
   }
 
-  function isTrainingChart() {
-    const patient = runtime.data?.patient || {};
-    const text = [
-      patient.medicalRecordNumber,
-      patient.mrn,
-      patient.displayName,
-      patient.firstName,
-      patient.lastName,
-      patient.homeName,
-      $('#displayMRN')?.textContent,
-      $('#displayBed')?.textContent,
-      $('#tabClientName')?.textContent,
-    ].filter(Boolean).join(' ');
-    return /\bSCLS-DEMO-|\bDEMO\b|TRAINING/i.test(text);
-  }
-
-  function demoColumns() {
-    return ['06:00', '14:00', '14:25', '14:28', '14:33', '14:38'].map((time) => isoMinute(new Date(`2026-08-11T${time}:00`)));
-  }
-
-  function deriveColumns() {
-    const entries = Array.isArray(runtime.data?.entries) ? runtime.data.entries : [];
-    const saved = [...new Set(entries.map((entry) => isoMinute(entry.recordedAt)).filter(Boolean))].sort();
-    if (isTrainingChart()) return demoColumns();
-    if (saved.length >= 2) return saved.slice(-6);
-    const now = new Date();
-    const times = [];
-    for (let i = 5; i >= 0; i -= 1) {
-      const d = new Date(now.getTime() - i * 60 * 60 * 1000);
-      d.setMinutes(0, 0, 0);
-      times.push(isoMinute(d));
+  function getOptionsForRow(rowName) {
+    const key = normalize(rowName);
+    if (taskOptionsMap[key]) return taskOptionsMap[key];
+    for (const optionKey of Object.keys(taskOptionsMap)) {
+      if (key.includes(optionKey) || optionKey.includes(key)) return taskOptionsMap[optionKey];
     }
-    return times;
+    return ['Independent', 'Prompting', 'Partial Assist', 'Total Assist', 'Refused', 'Completed', 'N/A'];
   }
 
   function rowByName(name) {
@@ -199,15 +222,30 @@
 
   function entryFor(rowId, recordedAt) {
     const targetMinute = isoMinute(recordedAt);
-    return (Array.isArray(runtime.data?.entries) ? runtime.data.entries : []).find((entry) => String(entry.rowId) === String(rowId) && isoMinute(entry.recordedAt) === targetMinute) || null;
+    return (Array.isArray(runtime.data?.entries) ? runtime.data.entries : []).find(
+      (entry) => String(entry.rowId) === String(rowId) && isoMinute(entry.recordedAt) === targetMinute,
+    ) || null;
   }
 
-  function templateItem(rowName) {
-    for (const group of Object.values(flowsheetData)) {
-      const item = group.find((candidate) => normalize(candidate.row) === normalize(rowName));
-      if (item) return item;
+  function deriveColumns() {
+    const entries = Array.isArray(runtime.data?.entries) ? runtime.data.entries : [];
+    const serverColumns = [...new Set(entries.map((entry) => isoMinute(entry.recordedAt)).filter(Boolean))];
+    const storedColumns = readStoredColumns();
+    const values = [...new Set([...serverColumns, ...storedColumns])].sort();
+    if (values.length) return values.slice(-12);
+    const now = new Date();
+    const columns = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(now.getTime() - i * 60 * 60 * 1000);
+      d.setMinutes(0, 0, 0);
+      columns.push(isoMinute(d));
     }
-    return null;
+    return columns;
+  }
+
+  function displayHomeName() {
+    const patient = runtime.data?.patient || {};
+    return patient.homeName || patient.locationName || $('#displayBed')?.textContent?.trim() || 'Client Residence';
   }
 
   function installStyle() {
@@ -217,14 +255,16 @@
     style.textContent = `
       #flowsheets-view[data-spire-dsp-grid="true"]{height:100%;overflow:hidden!important;background:var(--workspace-card-bg,#fff)}
       #flowsheets-view[data-spire-dsp-grid="true"] .flowsheet-main-layout{height:calc(100% - 78px)}
-      #flowsheets-view .chartable-cell[contenteditable="true"]{min-width:80px;outline:none}
-      #flowsheets-view .chartable-cell.is-saving{background:#fff7d6!important}
+      #flowsheets-view .chartable-cell[contenteditable="true"]{min-width:80px;outline:none;cursor:text;background:#fff}
+      #flowsheets-view .chartable-cell[contenteditable="true"]:focus{outline:2px solid #2563eb!important;background:#eff6ff!important}
+      #flowsheets-view .chartable-cell.is-draft{background:#fff7d6!important}
+      #flowsheets-view .chartable-cell.is-saving{background:#fef3c7!important}
       #flowsheets-view .chartable-cell.is-saved{background:#e8f7ea!important}
       #flowsheets-view .chartable-cell.save-error{background:#fee2e2!important}
-      #flowsheets-view .chartable-cell.training-template{color:#64748b;font-style:italic;background:#f8fafc}
-      #flowsheets-view .flow-config-note{padding:4px 8px;border-left:3px solid #2563eb;background:#eff6ff;color:#1e3a8a;font-weight:600}
-      #spireFlowCellPopover{position:fixed;z-index:5000;width:285px;max-height:430px;overflow:auto;background:#fff;border:1px solid #94a3b8;border-radius:6px;box-shadow:0 10px 30px rgba(15,23,42,.28);display:none;color:#0f172a}
-      #spireFlowCellPopover header{background:#0f3c68;color:#fff;padding:7px 9px;font-weight:800;display:flex;justify-content:space-between;gap:8px}
+      #flowsheets-view .chartable-cell.is-readonly{background:#f8fafc;color:#64748b;cursor:not-allowed}
+      #flowsheets-view .flow-config-note{padding:4px 8px;border-left:3px solid #2563eb;background:#eff6ff;color:#1e3a8a;font-weight:700}
+      #spireFlowCellPopover{position:fixed;z-index:5000;width:295px;max-height:430px;overflow:auto;background:#fff;border:1px solid #94a3b8;border-radius:6px;box-shadow:0 10px 30px rgba(15,23,42,.28);display:none;color:#0f172a}
+      #spireFlowCellPopover .flow-popover-header{background:#0f3c68;color:#fff;padding:7px 9px;font-weight:800;display:flex;justify-content:space-between;gap:8px}
       #spireFlowCellPopover .body{padding:8px}
       #spireFlowCellPopover .value-option-item{padding:6px 8px;margin:3px 0;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;background:#f8fafc;font-weight:600}
       #spireFlowCellPopover .value-option-item:hover{background:#dbeafe;border-color:#60a5fa}
@@ -232,6 +272,8 @@
       #spireFlowCellPopover textarea{width:100%;min-height:62px;margin-top:7px;border:1px solid #94a3b8;border-radius:4px;padding:6px;font:inherit}
       #spireFlowCellPopover footer{display:flex;justify-content:flex-end;gap:6px;padding:7px 8px;border-top:1px solid #e2e8f0}
       #flowsheetTreeMenu input[type="text"]{font:inherit}
+      .right-controls #sulandraCompanySwitcher{padding:4px 7px!important;border-radius:6px!important;box-shadow:none!important;max-width:250px!important}
+      .right-controls #sulandraCompanySwitcher select{max-width:165px!important}
       @media(max-width:1050px){#flowsheets-view[data-spire-dsp-grid="true"] .flowsheet-main-layout{grid-template-columns:190px 1fr}}
     `;
     document.head.appendChild(style);
@@ -257,8 +299,8 @@
       </div>
       <div class="flowsheet-filters">
         <div class="filter-dropdown"><span id="activeFlowsheetFilterName">DSP Daily Documentation - Show All Tasks</span><span>▼</span></div>
-        <span><b>Click any box in the grid to type directly OR view task-specific options</b></span>
-        <span id="flowSaveStatus" class="flow-config-note" style="margin-left:auto">Server-backed • audited</span>
+        <span><b>Click a writable box and type, or choose a task-specific option.</b></span>
+        <span id="flowSaveStatus" class="flow-config-note" style="margin-left:auto">Connecting to server…</span>
       </div>
       <div class="flowsheet-main-layout">
         <div class="flowsheet-tree" id="flowsheetTreeMenu">
@@ -277,60 +319,41 @@
         </div>
         <div class="flowsheet-grid-container" id="flowsheetGridContainer">
           <table class="flowsheet-table" id="flowsheetTable">
-            <thead>
-              <tr id="headerTimeRow"></tr>
-              <tr id="headerDateRow"></tr>
-            </thead>
+            <thead><tr id="headerTimeRow"></tr><tr id="headerDateRow"></tr></thead>
             <tbody id="flowsheetTbody"></tbody>
           </table>
         </div>
       </div>`;
   }
 
-  function renderShell() {
-    const host = $('#flowsheets-view');
-    if (!host) return null;
-    runtime.rendering = true;
-    host.dataset.spireDspGrid = 'true';
-    host.style.padding = '0';
-    host.innerHTML = shellMarkup();
-    runtime.rendering = false;
-    wireShellEvents(host);
-    renderHeaders();
-    renderFlowsheet(runtime.category);
-    return host;
-  }
-
-  function displayHomeName() {
-    if (isTrainingChart()) return 'SCLS Training Residence';
-    const patient = runtime.data?.patient || {};
-    return patient.homeName || patient.locationName || $('#displayBed')?.textContent?.trim() || 'Client Residence';
+  function setStatus(message, type = 'info') {
+    const node = $('#flowSaveStatus');
+    if (!node) return;
+    node.textContent = message;
+    node.style.borderLeftColor = type === 'error' ? '#dc2626' : type === 'success' ? '#16a34a' : type === 'warn' ? '#d97706' : '#2563eb';
+    node.style.background = type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : type === 'warn' ? '#fffbeb' : '#eff6ff';
+    node.style.color = type === 'error' ? '#991b1b' : type === 'success' ? '#166534' : type === 'warn' ? '#92400e' : '#1e3a8a';
   }
 
   function renderHeaders() {
     const timeRow = $('#headerTimeRow');
     const dateRow = $('#headerDateRow');
     if (!timeRow || !dateRow) return;
-    const columns = runtime.columns;
-    const highlightIndex = columns.length - 1;
-    timeRow.innerHTML = `<th style="width:280px;text-align:left">Residential HPC Flowsheet - ${esc(displayHomeName())}</th>` + columns.map((column, index) => `<th style="width:${index === highlightIndex ? 90 : 80}px" class="${index === highlightIndex ? 'highlight-col' : ''}" data-time="${esc(fmtTime(column))}" data-flow-time="${esc(column)}">${esc(fmtTime(column))}</th>`).join('') + '<th style="width:20px"></th>';
-    const first = columns[0] || new Date();
-    const label = isTrainingChart() && fmtDate(first) === '08/11/2026' ? '08/11/2026 (Admission Baseline)' : `${fmtDate(first)} (Current Charting Window)`;
-    dateRow.innerHTML = `<th style="text-align:left;background:#fff"></th><th colspan="${Math.max(columns.length, 1)}" style="background:#eef4fc">${esc(label)}</th><th></th>`;
+    const highlightIndex = runtime.columns.length - 1;
+    timeRow.innerHTML = `<th style="width:280px;text-align:left">Residential HPC Flowsheet - ${esc(displayHomeName())}</th>` + runtime.columns.map((column, index) => `<th style="width:${index === highlightIndex ? 90 : 80}px" class="${index === highlightIndex ? 'highlight-col' : ''}" data-flow-time="${esc(column)}">${esc(fmtTime(column))}</th>`).join('') + '<th style="width:20px"></th>';
+    const first = runtime.columns[0] || new Date();
+    dateRow.innerHTML = `<th style="text-align:left;background:#fff"></th><th colspan="${Math.max(runtime.columns.length, 1)}" style="background:#eef4fc">${esc(fmtDate(first))} (Charting Window)</th><th></th>`;
   }
 
-  function categoriesToRender(category) {
-    return category === 'all' ? Object.keys(flowsheetData) : [category];
-  }
-
-  function valueForCell(item, row, column, columnIndex) {
-    const entry = row ? entryFor(row.id, column) : null;
-    if (entry) {
-      const value = entry.numericValue != null ? entry.numericValue : (entry.value ?? '');
-      return { text: String(value ?? ''), entry, trainingPreview: false };
-    }
-    const preview = isTrainingChart() ? String(item.vals?.[columnIndex] ?? '') : '';
-    return { text: preview, entry: null, trainingPreview: Boolean(preview) };
+  function cellState(item, serverRow, column) {
+    const entry = serverRow ? entryFor(serverRow.id, column) : null;
+    const draft = !entry && serverRow ? readDraft(serverRow.id, column) : null;
+    const text = entry
+      ? String(entry.numericValue != null ? entry.numericValue : (entry.value ?? ''))
+      : String(draft?.text ?? '');
+    const comment = entry?.comment || draft?.comment || '';
+    const canWrite = runtime.data?.viewer?.canWrite === true && Boolean(serverRow) && (!entry || entry.canEdit === true);
+    return { entry, draft, text, comment, canWrite, isNumeric: item.isNumeric || String(serverRow?.dataType || '').toUpperCase() === 'NUMBER' };
   }
 
   function renderFlowsheet(category = 'all') {
@@ -346,7 +369,8 @@
       activeFilterName.textContent = `DSP Daily Documentation - ${label}`;
     }
 
-    for (const catKey of categoriesToRender(runtime.category)) {
+    const categories = runtime.category === 'all' ? Object.keys(flowsheetData) : [runtime.category];
+    for (const catKey of categories) {
       const group = flowsheetData[catKey];
       if (!group) continue;
       const headerTr = document.createElement('tr');
@@ -363,12 +387,20 @@
         tr.dataset.flowCategory = catKey;
         let cellsHtml = `<td class="sub-row-header">${esc(item.row)}</td>`;
         runtime.columns.forEach((column, columnIndex) => {
-          const cellValue = valueForCell(item, serverRow, column, columnIndex);
+          const state = cellState(item, serverRow, column);
           const highlight = columnIndex === runtime.columns.length - 1;
-          const canWrite = runtime.data?.viewer?.canWrite === true && Boolean(serverRow);
-          const classes = [highlight ? 'highlight-col' : '', 'chartable-cell', cellValue.trainingPreview ? 'training-template' : '', cellValue.entry ? 'is-saved' : ''].filter(Boolean).join(' ');
-          const comment = cellValue.entry?.comment || '';
-          cellsHtml += `<td class="${classes}" contenteditable="${canWrite ? 'true' : 'false'}" data-row="${esc(item.row)}" data-row-id="${esc(serverRow?.id || '')}" data-flow-time="${esc(column)}" data-entry-id="${esc(cellValue.entry?.id || '')}" data-comment="${esc(comment)}" data-numeric="${String(item.isNumeric || String(serverRow?.dataType || '').toUpperCase() === 'NUMBER')}" data-data-type="${esc(serverRow?.dataType || '')}" data-template-preview="${cellValue.trainingPreview ? 'true' : 'false'}" title="${cellValue.trainingPreview ? 'Training template example — edit or select a value to file it to the audited chart.' : (canWrite ? 'Click or type to document this value.' : serverRow ? 'Read only for your current role.' : 'This task row is not yet configured on the server. Use Add Rows or Refresh.')}"${comment ? ' data-has-comment="true"' : ''}>${esc(cellValue.text)}</td>`;
+          const classes = [
+            highlight ? 'highlight-col' : '',
+            'chartable-cell',
+            state.entry ? 'is-saved' : '',
+            state.draft ? 'is-draft' : '',
+            state.canWrite ? '' : 'is-readonly',
+          ].filter(Boolean).join(' ');
+          let title = 'Click or type to document this value. The value is saved to the audited chart.';
+          if (!serverRow) title = 'This task row is not configured on the server yet. Refresh after the backend deployment completes.';
+          else if (!runtime.data?.viewer?.canWrite) title = 'Your current SPIRE role is read-only.';
+          else if (state.entry && state.entry.canEdit !== true) title = 'This filed value belongs to another author and is read-only.';
+          cellsHtml += `<td class="${classes}" contenteditable="${state.canWrite ? 'true' : 'false'}" spellcheck="false" data-row="${esc(item.row)}" data-row-id="${esc(serverRow?.id || '')}" data-flow-time="${esc(column)}" data-entry-id="${esc(state.entry?.id || '')}" data-comment="${esc(state.comment)}" data-numeric="${String(state.isNumeric)}" data-data-type="${esc(serverRow?.dataType || (item.isNumeric ? 'NUMBER' : 'TEXT'))}" data-last-saved="${esc(state.entry ? state.text : '')}" title="${esc(title)}">${esc(state.text)}</td>`;
         });
         cellsHtml += '<td></td>';
         tr.innerHTML = cellsHtml;
@@ -378,13 +410,18 @@
     applyTaskSearch($('#flowsheetTaskSearch')?.value || '');
   }
 
-  function setStatus(message, type = 'info') {
-    const node = $('#flowSaveStatus');
-    if (!node) return;
-    node.textContent = message;
-    node.style.borderLeftColor = type === 'error' ? '#dc2626' : type === 'success' ? '#16a34a' : '#2563eb';
-    node.style.background = type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : '#eff6ff';
-    node.style.color = type === 'error' ? '#991b1b' : type === 'success' ? '#166534' : '#1e3a8a';
+  function renderShell() {
+    const host = $('#flowsheets-view');
+    if (!host) return null;
+    runtime.rendering = true;
+    host.dataset.spireDspGrid = 'true';
+    host.style.padding = '0';
+    host.innerHTML = shellMarkup();
+    runtime.rendering = false;
+    wireShellEvents(host);
+    renderHeaders();
+    renderFlowsheet(runtime.category);
+    return host;
   }
 
   function applyTaskSearch(value) {
@@ -411,14 +448,19 @@
     runtime.loading = true;
     try {
       setStatus('Loading live flowsheet…');
-      const from = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-      const to = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+      const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const to = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       runtime.data = await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
       if (!preserveColumns || !runtime.columns.length) runtime.columns = deriveColumns();
+      else runtime.columns = [...new Set([...runtime.columns, ...deriveColumns()])].sort().slice(-12);
+      storeColumns();
       renderShell();
-      const configured = Object.values(flowsheetData).flat().filter((item) => item.row).filter((item) => rowByName(item.row)).length;
-      const expected = Object.values(flowsheetData).flat().filter((item) => item.row).length;
-      setStatus(configured === expected ? 'Server-backed • audited • all task rows ready' : `Server-backed • ${configured}/${expected} task rows configured`, configured === expected ? 'success' : 'info');
+      const configured = Object.values(flowsheetData).flat().filter((item) => item.row && rowByName(item.row)).length;
+      if (configured === EXPECTED_TASK_ROWS) {
+        setStatus('Server-backed • audited • keyboard charting ready', 'success');
+      } else {
+        setStatus(`Server configuration incomplete • ${configured}/${EXPECTED_TASK_ROWS} task rows ready`, 'error');
+      }
     } catch (error) {
       const host = $('#flowsheets-view');
       if (host) {
@@ -431,15 +473,11 @@
     }
   }
 
-  function showFlowsheetView() {
-    $$('.chart-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === 'flowsheets-view'));
-    $$('.workspace-view').forEach((view) => view.classList.toggle('active', view.id === 'flowsheets-view'));
-  }
-
   function addColumn(value) {
     const iso = isoMinute(value);
     if (!iso) return;
     runtime.columns = [...new Set([...runtime.columns, iso])].sort().slice(-12);
+    storeColumns();
     renderHeaders();
     renderFlowsheet(runtime.category);
   }
@@ -451,6 +489,7 @@
     const parsed = new Date(`${answer}T06:00:00`);
     if (Number.isNaN(parsed.getTime())) return alert('Enter a valid date in YYYY-MM-DD format.');
     runtime.columns = ['06:00', '14:00', '14:25', '14:28', '14:33', '14:38'].map((time) => isoMinute(new Date(`${answer}T${time}:00`)));
+    storeColumns();
     renderHeaders();
     renderFlowsheet(runtime.category);
   }
@@ -477,14 +516,36 @@
     });
   }
 
-  async function saveCell(cell) {
-    if (!(cell instanceof HTMLElement)) return;
+  function saveKey(cell) {
+    return `${cell.dataset.rowId || ''}|${isoMinute(cell.dataset.flowTime)}`;
+  }
+
+  async function saveCell(cell, { force = false } = {}) {
+    if (!(cell instanceof HTMLElement)) return false;
     const rowId = cell.dataset.rowId;
     const recordedAt = cell.dataset.flowTime;
-    if (!rowId || !recordedAt || runtime.data?.viewer?.canWrite !== true) return;
+    if (!rowId) {
+      setStatus(`${cell.dataset.row || 'This task'} is not configured on the server yet.`, 'error');
+      return false;
+    }
+    if (!recordedAt || runtime.data?.viewer?.canWrite !== true || cell.contentEditable !== 'true') return false;
+
+    const key = saveKey(cell);
+    if (runtime.savePromises.has(key)) {
+      await runtime.savePromises.get(key);
+      if (!force) return true;
+    }
+
     const textValue = cell.textContent.trim();
     const comment = cell.dataset.comment || '';
-    if (!textValue && !comment) return;
+    const lastSaved = cell.dataset.lastSaved || '';
+    if (!force && textValue === lastSaved && !readDraft(rowId, recordedAt)) return true;
+    if (!textValue && !comment) {
+      clearDraft(rowId, recordedAt);
+      cell.classList.remove('is-draft');
+      return true;
+    }
+
     const isNumber = String(cell.dataset.dataType || '').toUpperCase() === 'NUMBER';
     let numericValue = null;
     let value = textValue || null;
@@ -492,36 +553,67 @@
       numericValue = textValue === '' ? null : Number(textValue);
       if (numericValue != null && !Number.isFinite(numericValue)) {
         cell.classList.add('save-error');
-        setStatus(`${cell.dataset.row}: enter a numeric value.`, 'error');
-        return;
+        setStatus(`${cell.dataset.row}: enter a valid number.`, 'error');
+        return false;
       }
       value = null;
     }
-    cell.classList.remove('save-error', 'is-saved', 'training-template');
+
+    writeDraft(cell);
+    cell.classList.remove('save-error', 'is-saved');
     cell.classList.add('is-saving');
     setStatus(`Saving ${cell.dataset.row}…`);
-    try {
-      const existingId = cell.dataset.entryId;
-      const body = JSON.stringify({ rowId, recordedAt, value, numericValue, comment: comment || null });
-      const saved = existingId
-        ? await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace/entries/${encodeURIComponent(existingId)}`, { method: 'PUT', body })
-        : await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace/entries`, { method: 'POST', body });
-      cell.dataset.entryId = String(saved?.id || existingId || '');
-      cell.dataset.templatePreview = 'false';
-      cell.classList.remove('is-saving');
-      cell.classList.add('is-saved');
-      if (saved) {
-        const entries = Array.isArray(runtime.data.entries) ? runtime.data.entries : (runtime.data.entries = []);
-        const index = entries.findIndex((entry) => String(entry.id) === String(saved.id));
-        if (index >= 0) entries[index] = { ...entries[index], ...saved };
-        else entries.push(saved);
+
+    const promise = (async () => {
+      try {
+        const existingId = cell.dataset.entryId;
+        const body = JSON.stringify({ rowId, recordedAt, value, numericValue, comment: comment || null });
+        const saved = existingId
+          ? await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace/entries/${encodeURIComponent(existingId)}`, { method: 'PUT', body })
+          : await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace/entries`, { method: 'POST', body });
+
+        cell.dataset.entryId = String(saved?.id || existingId || '');
+        cell.dataset.lastSaved = textValue;
+        cell.classList.remove('is-saving', 'is-draft', 'save-error');
+        cell.classList.add('is-saved');
+        clearDraft(rowId, recordedAt);
+
+        if (saved) {
+          const entries = Array.isArray(runtime.data.entries) ? runtime.data.entries : (runtime.data.entries = []);
+          const index = entries.findIndex((entry) => String(entry.id) === String(saved.id));
+          if (index >= 0) entries[index] = { ...entries[index], ...saved };
+          else entries.push(saved);
+        }
+        storeColumns();
+        setStatus(`${cell.dataset.row} filed to the audited chart.`, 'success');
+        return true;
+      } catch (error) {
+        cell.classList.remove('is-saving');
+        cell.classList.add('save-error', 'is-draft');
+        writeDraft(cell);
+        setStatus(`${cell.dataset.row}: ${error.message}. Draft retained in this browser.`, 'error');
+        return false;
+      } finally {
+        runtime.savePromises.delete(key);
       }
-      setStatus(`${cell.dataset.row} filed to the audited chart.`, 'success');
-    } catch (error) {
-      cell.classList.remove('is-saving');
-      cell.classList.add('save-error');
-      setStatus(error.message, 'error');
-    }
+    })();
+
+    runtime.savePromises.set(key, promise);
+    return promise;
+  }
+
+  function scheduleSave(cell) {
+    if (!(cell instanceof HTMLElement) || cell.contentEditable !== 'true') return;
+    writeDraft(cell);
+    cell.classList.add('is-draft');
+    cell.classList.remove('is-saved', 'save-error');
+    setStatus(`${cell.dataset.row}: unsaved typing…`, 'warn');
+    const key = saveKey(cell);
+    clearTimeout(runtime.saveTimers.get(key));
+    runtime.saveTimers.set(key, setTimeout(() => {
+      runtime.saveTimers.delete(key);
+      saveCell(cell, { force: true });
+    }, 1200));
   }
 
   function ensurePopover() {
@@ -529,13 +621,16 @@
     if (popover) return popover;
     popover = document.createElement('section');
     popover.id = 'spireFlowCellPopover';
-    popover.innerHTML = '<header><span id="spireFlowPopoverTitle">Selected Cell</span><button type="button" id="spireFlowPopoverClose" style="border:0;background:transparent;color:#fff;cursor:pointer">✖</button></header><div class="body"><div id="spireFlowPopoverOptions"></div><label style="display:block;margin-top:7px;font-weight:700">Comment<textarea id="spireFlowPopoverComment" placeholder="Optional chart comment"></textarea></label></div><footer><button type="button" class="toolbar-action-btn" id="spireFlowPopoverSave">Save</button></footer>';
+    // Deliberately not a semantic <header>: the global company switcher must
+    // never treat a transient cell editor as the application header.
+    popover.innerHTML = '<div class="flow-popover-header"><span id="spireFlowPopoverTitle">Selected Cell</span><button type="button" id="spireFlowPopoverClose" style="border:0;background:transparent;color:#fff;cursor:pointer">✖</button></div><div class="body"><div id="spireFlowPopoverOptions"></div><label style="display:block;margin-top:7px;font-weight:700">Comment<textarea id="spireFlowPopoverComment" placeholder="Optional chart comment"></textarea></label></div><footer><button type="button" class="toolbar-action-btn" id="spireFlowPopoverSave">Save</button></footer>';
     document.body.appendChild(popover);
     $('#spireFlowPopoverClose', popover).addEventListener('click', () => { popover.style.display = 'none'; });
     $('#spireFlowPopoverSave', popover).addEventListener('click', async () => {
       if (!runtime.activeCell) return;
       runtime.activeCell.dataset.comment = $('#spireFlowPopoverComment', popover)?.value || '';
-      await saveCell(runtime.activeCell);
+      writeDraft(runtime.activeCell);
+      await saveCell(runtime.activeCell, { force: true });
       popover.style.display = 'none';
     });
     return popover;
@@ -546,10 +641,14 @@
     div.className = option.toLowerCase().includes('refused') ? 'value-option-item refused' : 'value-option-item';
     div.textContent = option;
     div.addEventListener('click', async () => {
+      if (!cell.dataset.rowId || cell.contentEditable !== 'true') {
+        setStatus(`${cell.dataset.row || 'This task'} cannot be filed until its server row is ready.`, 'error');
+        return;
+      }
       cell.textContent = option;
-      cell.dataset.templatePreview = 'false';
-      cell.classList.remove('training-template');
-      await saveCell(cell);
+      writeDraft(cell);
+      cell.classList.add('is-draft');
+      await saveCell(cell, { force: true });
       if (closeAfter) ensurePopover().style.display = 'none';
     });
     return div;
@@ -562,8 +661,12 @@
     if (selectorHeaderTitle) selectorHeaderTitle.textContent = rowName;
     if (valueOptionsContainer) {
       valueOptionsContainer.innerHTML = '';
-      if (isNumeric) {
-        valueOptionsContainer.innerHTML = '<div style="color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;padding:10px;border-radius:4px;text-align:center;font-weight:600;font-size:11.5px">⌨️ Direct keyboard typing enabled. Type the numeric value directly.</div>';
+      if (!cell.dataset.rowId) {
+        valueOptionsContainer.innerHTML = '<div style="color:#991b1b;background:#fef2f2;border:1px solid #fecaca;padding:10px;border-radius:4px;font-weight:700">This row is waiting for server configuration. Refresh after deployment.</div>';
+      } else if (cell.contentEditable !== 'true') {
+        valueOptionsContainer.innerHTML = '<div style="color:#475569;background:#f8fafc;border:1px solid #cbd5e1;padding:10px;border-radius:4px;font-weight:700">This cell is read-only for the current user or filed author.</div>';
+      } else if (isNumeric) {
+        valueOptionsContainer.innerHTML = '<div style="color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;padding:10px;border-radius:4px;text-align:center;font-weight:600;font-size:11.5px">⌨️ Click the grid cell and type the value. It autosaves after you pause, on Enter, or when you leave the cell.</div>';
       } else {
         options.forEach((option) => valueOptionsContainer.appendChild(optionNode(option, cell)));
       }
@@ -573,15 +676,19 @@
     $('#spireFlowPopoverTitle', popover).textContent = rowName;
     const optionHost = $('#spireFlowPopoverOptions', popover);
     optionHost.innerHTML = '';
-    if (isNumeric) {
-      optionHost.innerHTML = '<div style="color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;padding:8px;border-radius:4px;text-align:center;font-weight:600">⌨️ Type the value directly in the selected grid cell.</div>';
+    if (!cell.dataset.rowId) {
+      optionHost.innerHTML = '<div style="color:#991b1b;background:#fef2f2;border:1px solid #fecaca;padding:8px;border-radius:4px;font-weight:700">Server row not ready. This cell cannot be saved yet.</div>';
+    } else if (cell.contentEditable !== 'true') {
+      optionHost.innerHTML = '<div style="color:#475569;background:#f8fafc;border:1px solid #cbd5e1;padding:8px;border-radius:4px;font-weight:700">Read-only cell.</div>';
+    } else if (isNumeric) {
+      optionHost.innerHTML = '<div style="color:#1e3a8a;background:#eff6ff;border:1px solid #bfdbfe;padding:8px;border-radius:4px;text-align:center;font-weight:600">⌨️ Type directly in the selected grid cell. It autosaves.</div>';
     } else {
       options.forEach((option) => optionHost.appendChild(optionNode(option, cell, true)));
     }
     $('#spireFlowPopoverComment', popover).value = cell.dataset.comment || '';
     const rect = cell.getBoundingClientRect();
-    popover.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 300))}px`;
-    popover.style.top = `${Math.min(rect.bottom + 5, window.innerHeight - 440)}px`;
+    popover.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 310))}px`;
+    popover.style.top = `${Math.max(8, Math.min(rect.bottom + 5, window.innerHeight - 420))}px`;
     popover.style.display = 'block';
   }
 
@@ -589,10 +696,18 @@
     $$('#flowsheetTable .chartable-cell').forEach((candidate) => { candidate.style.outline = ''; });
     runtime.activeCell = cell;
     cell.style.outline = '2px solid #2563eb';
-    if (cell.dataset.templatePreview === 'true') {
-      cell.dataset.originalTemplateValue = cell.textContent;
-    }
     populateValueSelector(cell.dataset.row || 'Selected Cell', cell.dataset.numeric === 'true', cell);
+    if (cell.contentEditable === 'true') {
+      requestAnimationFrame(() => {
+        cell.focus({ preventScroll: true });
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(cell);
+        range.collapse(false);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      });
+    }
   }
 
   function wireShellEvents(host) {
@@ -606,29 +721,35 @@
       const cell = event.target.closest('.chartable-cell[data-row]');
       if (cell) selectCell(cell);
     });
-    $('#flowsheetTable', host)?.addEventListener('focusin', (event) => {
+    $('#flowsheetTable', host)?.addEventListener('input', (event) => {
       const cell = event.target.closest('.chartable-cell[data-row]');
-      if (!cell) return;
-      if (cell.dataset.templatePreview === 'true') {
-        cell.textContent = '';
-        cell.classList.remove('training-template');
-        cell.dataset.templatePreview = 'false';
-      }
+      if (cell) scheduleSave(cell);
     });
     $('#flowsheetTable', host)?.addEventListener('keydown', (event) => {
       const cell = event.target.closest('.chartable-cell[data-row]');
       if (!cell) return;
       if (event.key === 'Enter') {
         event.preventDefault();
+        clearTimeout(runtime.saveTimers.get(saveKey(cell)));
+        runtime.saveTimers.delete(saveKey(cell));
+        saveCell(cell, { force: true }).then(() => cell.blur());
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        const entry = entryFor(cell.dataset.rowId, cell.dataset.flowTime);
+        const draft = readDraft(cell.dataset.rowId, cell.dataset.flowTime);
+        cell.textContent = entry ? String(entry.numericValue != null ? entry.numericValue : (entry.value ?? '')) : String(draft?.text ?? '');
         cell.blur();
       }
     });
     $('#flowsheetTable', host)?.addEventListener('focusout', (event) => {
       const cell = event.target.closest('.chartable-cell[data-row]');
-      if (cell) saveCell(cell);
+      if (!cell || cell.contentEditable !== 'true') return;
+      clearTimeout(runtime.saveTimers.get(saveKey(cell)));
+      runtime.saveTimers.delete(saveKey(cell));
+      saveCell(cell, { force: true });
     });
     $('#addRowBtn', host)?.addEventListener('click', async () => {
-      setStatus('Checking server task-row configuration…');
+      setStatus('Synchronizing server task-row configuration…');
       await loadWorkspace({ preserveColumns: true });
     });
     $('#addColBtn', host)?.addEventListener('click', () => addColumn(new Date()));
@@ -637,7 +758,12 @@
     $('#goToDateBtn', host)?.addEventListener('click', goToDate);
     $('#refreshBtn', host)?.addEventListener('click', () => loadWorkspace({ preserveColumns: true }));
     $('[data-flow-command="history"]', host)?.addEventListener('click', lastFiled);
-    $('[data-flow-command="graph"]', host)?.addEventListener('click', () => setStatus('Select a numeric task row, then use Results Review for longitudinal graphing.'));
+    $('[data-flow-command="graph"]', host)?.addEventListener('click', () => setStatus('Use Results Review for longitudinal numeric trending.'));
+  }
+
+  function showFlowsheetView() {
+    $$('.chart-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === 'flowsheets-view'));
+    $$('.workspace-view').forEach((view) => view.classList.toggle('active', view.id === 'flowsheets-view'));
   }
 
   function interceptNavigation(event) {
@@ -656,25 +782,45 @@
     if (!host || runtime.observer) return;
     runtime.observer = new MutationObserver(() => {
       if (runtime.rendering || runtime.loading || !host.classList.contains('active')) return;
-      if (!$('#flowsheetTbody', host)) {
-        queueMicrotask(() => loadWorkspace({ preserveColumns: true }));
-      }
+      if (!$('#flowsheetTbody', host)) queueMicrotask(() => loadWorkspace({ preserveColumns: true }));
     });
     runtime.observer.observe(host, { childList: true, subtree: true });
+  }
+
+  function placeCompanySwitcher() {
+    const switcher = document.getElementById('sulandraCompanySwitcher');
+    const host = document.querySelector('.right-controls');
+    if (!switcher || !host || switcher.parentElement === host) return;
+    host.prepend(switcher);
+  }
+
+  function observeCompanySwitcher() {
+    placeCompanySwitcher();
+    if (runtime.companyObserver || !document.body) return;
+    runtime.companyObserver = new MutationObserver(() => placeCompanySwitcher());
+    runtime.companyObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   function install() {
     installStyle();
     ensurePopover();
+    observeCompanySwitcher();
     document.addEventListener('click', interceptNavigation, true);
     observeHost();
     if ($('#flowsheets-view')?.classList.contains('active')) loadWorkspace();
+    window.addEventListener('sulandra:entity-context-ready', placeCompanySwitcher);
     window.addEventListener('sulandra:entity-context-changed', () => {
       runtime.data = null;
       runtime.columns = [];
+      runtime.patientId = currentPatientId();
       if ($('#flowsheets-view')?.classList.contains('active')) loadWorkspace();
     });
-    window.SpireMasterFlowsheetGrid = Object.freeze({ version: VERSION, refresh: () => loadWorkspace({ preserveColumns: true }), render: renderFlowsheet, getOptionsForRow });
+    window.SpireMasterFlowsheetGrid = Object.freeze({
+      version: VERSION,
+      refresh: () => loadWorkspace({ preserveColumns: true }),
+      render: renderFlowsheet,
+      getOptionsForRow,
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
