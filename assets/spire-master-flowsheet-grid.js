@@ -5,10 +5,12 @@
   // SPIRE_FLOWSHEET_FILE_WORKFLOW_V1
   // SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2
   // SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1
+  // SPIRE_FLOWSHEET_INLINE_ENTRY_V3
   // Preserve the user's authoritative master flowsheet DOM/layout. This runtime
-  // only supplies live data and behavior; it must never replace #flowsheets-view.
+  // supplies live data and behavior only. Cells remain directly editable; any
+  // configured or task-derived choices are optional suggestions, never a gate.
 
-  const VERSION = '20260813-user-master-layout-1';
+  const VERSION = '20260813-inline-suggestions-1';
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
   const HOME_ID_KEY = 'spire:selected-service-home-id';
@@ -178,6 +180,31 @@
     return [];
   }
 
+  function isNumericRow(row) {
+    return String(row?.dataType || row?.valueType || '').toUpperCase() === 'NUMBER';
+  }
+
+  function suggestionsForRow(row) {
+    const configured = rowOptions(row);
+    if (configured.length) return configured;
+    if (isNumericRow(row)) return [];
+
+    const context = `${row?.name || ''} ${row?.groupName || ''} ${row?.description || ''}`.toLowerCase();
+    if (/community participation/.test(context)) return ['Completed', 'Partially Completed', 'Declined', 'Not Completed', 'Not Applicable'];
+    if (/community outing|outing \/ activity|activity status/.test(context)) return ['Completed', 'Partially Completed', 'Declined', 'Canceled', 'Not Applicable'];
+    if (/vehicle.*seat belt|seat belt.*secured/.test(context)) return ['Secured', 'Prompted / Then Secured', 'Refused', 'Not Applicable'];
+    if (/bath|dress|groom|toilet|personal care|adl/.test(context)) return ['Independent', 'Prompting', 'Partial Assist', 'Total Assist', 'Refused'];
+    if (/swallow|dysphagia|meal|diet|bite|pacing|upright/.test(context)) return ['Independent', 'Prompting', 'Supervised', 'Partial Assist', 'Refused', 'Not Applicable'];
+    if (/bowel movement/.test(context)) return ['Yes', 'No', 'Not Applicable'];
+    if (/sleep|wake/.test(context)) return ['Sleeping', 'Awake', 'Out of Bed', 'Not Observed'];
+    if (/seizure|neurolog/.test(context)) return ['No Seizure Activity Observed', 'Seizure Activity Observed', 'Post-Ictal Monitoring', 'Rescue Protocol Initiated'];
+    if (/behavior|elopement|mood|trigger|de-escalation/.test(context)) return ['Baseline / No Concern', 'Prompting / Redirection', 'Intervention Provided', 'Follow-Up Required', 'Not Applicable'];
+    if (/isp|goal|skill|outcome|progress/.test(context)) return ['Independent', 'Verbal Prompting', 'Partial Assistance', 'Full Assistance', 'Declined'];
+    if (/medication|emar|treatment|prn/.test(context)) return ['Completed', 'Refused', 'Held', 'Not Due', 'Not Applicable'];
+    if (/completed|completion|status|participation|activity|task|support/.test(context)) return ['Completed', 'Partially Completed', 'Declined', 'Not Completed', 'Not Applicable'];
+    return [];
+  }
+
   function entryFor(rowId, recordedAt) {
     const minute = isoMinute(recordedAt);
     const matches = (Array.isArray(runtime.data?.entries) ? runtime.data.entries : []).filter(
@@ -197,8 +224,7 @@
 
   function entryValue(entry, row) {
     if (!entry) return '';
-    const type = String(row?.dataType || row?.valueType || '').toUpperCase();
-    return type === 'NUMBER' ? String(entry.numericValue ?? '') : String(entry.value ?? '');
+    return isNumericRow(row) ? String(entry.numericValue ?? '') : String(entry.value ?? '');
   }
 
   function displayedValue(row, recordedAt) {
@@ -252,32 +278,36 @@
     style = document.createElement('style');
     style.id = 'spireUserMasterFlowsheetStyle';
     style.textContent = `
-      /* SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1: behavior-only additions. */
+      /* SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1 + SPIRE_FLOWSHEET_INLINE_ENTRY_V3 */
       #flowsheets-view[data-user-master-flowsheet="true"]{overflow:hidden!important}
       #flowsheets-view .flowsheet-main-layout{height:calc(100% - 76px)!important;min-height:0!important}
       #flowsheets-view .flowsheet-grid-container{min-width:0!important}
       #flowsheets-view .flowsheet-table{width:max-content!important;min-width:100%!important;table-layout:auto!important}
       #flowsheets-view .flowsheet-table th:not(:first-child),#flowsheets-view .flowsheet-table td:not(:first-child){width:80px!important;min-width:80px!important;max-width:110px!important}
       #flowsheets-view .flowsheet-table th:first-child,#flowsheets-view .flowsheet-table td:first-child{width:280px!important;min-width:280px!important;max-width:280px!important}
-      #flowsheets-view .chartable-cell{vertical-align:middle!important;text-align:center!important;white-space:normal!important;overflow-wrap:anywhere!important;padding:4px 5px!important}
+      #flowsheets-view .chartable-cell{vertical-align:middle!important;text-align:center!important;white-space:normal!important;overflow:visible!important;padding:0!important;position:relative!important}
       #flowsheets-view .chartable-cell.is-draft{background:#fff7cc!important;box-shadow:inset 0 0 0 2px #d9a521!important}
       #flowsheets-view .chartable-cell.is-draft-amendment{background:#fff0f0!important;color:#a01421!important;box-shadow:inset 0 0 0 2px #c62032!important}
       #flowsheets-view .chartable-cell.filed-amendment{background:#fff4f4!important;color:#b01828!important;font-weight:700!important}
-      #flowsheets-view .chartable-cell.locked{background:#f8fafc!important;color:#64748b!important;cursor:not-allowed!important}
+      #flowsheets-view .chartable-cell.locked{background:#f8fafc!important;color:#64748b!important;cursor:not-allowed!important;padding:4px 5px!important}
       #flowsheets-view .flow-section-row td{background:#e6eef8!important;color:#003366!important;font-weight:800!important;height:24px!important;padding:3px 8px!important}
-      #flowsheets-view .flow-value-main{font-size:11.5px;line-height:1.15}
-      #flowsheets-view .flow-comment-mark{position:absolute;right:2px;top:1px;font-size:8px}
-      #flowsheets-view .flow-amend-mark{position:absolute;left:2px;top:1px;font-size:8px;color:#b01828;font-weight:900}
+      #flowsheets-view .flow-cell-editor{display:block;width:100%;height:100%;min-height:28px;border:0!important;outline:0;background:transparent;color:inherit;text-align:center;padding:4px 5px;font:11.5px/1.15 "Segoe UI",Arial,sans-serif}
+      #flowsheets-view .flow-cell-editor:focus{background:#eef6ff!important;box-shadow:inset 0 0 0 2px #2563eb!important}
+      #flowsheets-view .flow-cell-editor[type="number"]{-moz-appearance:textfield}
+      #flowsheets-view .flow-cell-editor[type="number"]::-webkit-outer-spin-button,#flowsheets-view .flow-cell-editor[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+      #flowsheets-view .flow-readonly-value{font-size:11.5px;line-height:1.15;padding:4px 5px}
+      #flowsheets-view .flow-comment-mark{position:absolute;right:2px;top:1px;font-size:8px;pointer-events:none}
+      #flowsheets-view .flow-amend-mark{position:absolute;left:2px;top:1px;font-size:8px;color:#b01828;font-weight:900;pointer-events:none}
       #flowsheets-view #flowFileBtn{margin-left:0}
       #flowsheets-view #flowFileBtn.has-drafts{background:#dff2e5;border-color:#2d7a4f;color:#14532d}
       #flowsheets-view #flowFileBtn:disabled{opacity:.55;cursor:not-allowed}
       #flowsheets-view .flow-inline-status{margin-left:auto;font-size:10.5px;color:#4b6475;font-weight:700;white-space:nowrap}
       #flowsheets-view .flow-inline-status.error{color:#a11220}.flow-inline-status.success{color:#166534}.flow-inline-status.warn{color:#8a5a0a}
-      #spireFlowCellPopover{position:fixed;z-index:7000;width:300px;max-height:430px;overflow:auto;background:#fff;border:1px solid #7f9db9;border-radius:4px;box-shadow:0 8px 26px rgba(15,23,42,.28);display:none;color:#172b3b;font:12px "Segoe UI",Arial,sans-serif}
-      #spireFlowCellPopover .pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#004080;color:#fff;padding:7px 8px;font-weight:700}
+      #spireFlowCellPopover{position:fixed;z-index:7000;width:270px;max-height:360px;overflow:auto;background:#fff;border:1px solid #7f9db9;border-radius:4px;box-shadow:0 8px 26px rgba(15,23,42,.28);display:none;color:#172b3b;font:12px "Segoe UI",Arial,sans-serif}
+      #spireFlowCellPopover .pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#004080;color:#fff;padding:6px 8px;font-weight:700}
       #spireFlowCellPopover .pop-head button{border:0;background:transparent;color:#fff;cursor:pointer;font-weight:800}
-      #spireFlowCellPopover .pop-body{padding:8px}.pop-options{margin-bottom:7px}.pop-option{display:block;width:100%;text-align:left;border:1px solid #b6c8d8;background:#f7fbff;color:#163d60;border-radius:3px;padding:5px 7px;margin:3px 0;cursor:pointer;font-weight:600}.pop-option:hover{background:#dbeafe;border-color:#7aa8c7}.pop-option.refused{color:#991b1b;background:#fff1f2}
-      #spireFlowCellPopover label{display:block;font-size:10.5px;font-weight:700;color:#334155;margin-top:6px}#spireFlowCellPopover input,#spireFlowCellPopover textarea{width:100%;border:1px solid #7f9db9;border-radius:3px;padding:5px;font:inherit;margin-top:3px}#spireFlowCellPopover textarea{min-height:62px;resize:vertical}
+      #spireFlowCellPopover .pop-body{padding:7px 8px}.pop-options{margin-bottom:6px}.pop-option{display:block;width:100%;text-align:left;border:1px solid #b6c8d8;background:#f7fbff;color:#163d60;border-radius:3px;padding:5px 7px;margin:3px 0;cursor:pointer;font-weight:600}.pop-option:hover{background:#dbeafe;border-color:#7aa8c7}.pop-option.refused{color:#991b1b;background:#fff1f2}
+      #spireFlowCellPopover label{display:block;font-size:10.5px;font-weight:700;color:#334155;margin-top:6px}#spireFlowCellPopover textarea{width:100%;border:1px solid #7f9db9;border-radius:3px;padding:5px;font:inherit;margin-top:3px;min-height:56px;resize:vertical}
       #spireFlowCellPopover .pop-note{font-size:10px;color:#607789;line-height:1.35;margin:5px 0}.pop-footer{display:flex;justify-content:flex-end;gap:6px;border-top:1px solid #dce5ec;padding:6px 8px;background:#f7fafc}.pop-footer button{border:1px solid #7f9db9;background:#e4edf7;border-radius:3px;padding:4px 8px;cursor:pointer;font-weight:600}.pop-footer .primary{background:#004080;color:#fff}
     `;
     document.head.appendChild(style);
@@ -289,11 +319,10 @@
     popover = document.createElement('section');
     popover.id = 'spireFlowCellPopover';
     popover.innerHTML = `
-      <div class="pop-head"><span id="flowPopTitle">Flowsheet Cell</span><button type="button" id="flowPopClose">✖</button></div>
+      <div class="pop-head"><span id="flowPopTitle">Suggestions</span><button type="button" id="flowPopClose">✖</button></div>
       <div class="pop-body">
+        <div class="pop-note" id="flowPopNote">Suggestions only. You can always type directly in the box.</div>
         <div class="pop-options" id="flowPopOptions"></div>
-        <label id="flowPopValueLabel">Value<input id="flowPopValue" autocomplete="off"></label>
-        <div class="pop-note" id="flowPopNote">Nothing is filed until you press File.</div>
         <label>Comment<textarea id="flowPopComment" placeholder="Optional comment for this box"></textarea></label>
       </div>
       <div class="pop-footer"><button type="button" id="flowPopCancel">Close</button><button type="button" class="primary" id="flowPopSaveComment">Save Comment to Box</button></div>`;
@@ -307,6 +336,10 @@
       if (target && (popover.contains(target) || runtime.selectedCell?.contains(target))) return;
       closePopover();
     }, true);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && popover.style.display === 'block') closePopover();
+    });
+    window.addEventListener('resize', closePopover);
     return popover;
   }
 
@@ -362,10 +395,6 @@
     const type = String(row?.dataType || row?.valueType || draft.dataType || 'TEXT').toUpperCase();
     const value = clean(draft.value);
     if (type === 'NUMBER' && value && !Number.isFinite(Number(value))) throw new Error(`${row.name}: enter a valid number.`);
-    if (type === 'SELECT' && value) {
-      const options = rowOptions(row);
-      if (options.length && !options.includes(value)) throw new Error(`${row.name}: choose one of the configured options.`);
-    }
     if (String(row?.name || '') === 'BP (mmHg)' && value) {
       const match = value.match(/^(\d{2,3})\s*\/\s*(\d{2,3})$/);
       if (!match || Number(match[1]) <= Number(match[2])) throw new Error('BP (mmHg): use a valid systolic/diastolic value, for example 120/80.');
@@ -373,56 +402,71 @@
     if (!value && !clean(draft.comment)) throw new Error(`${row?.name || 'Flowsheet row'} has no value or comment.`);
   }
 
-  function openCell(cell) {
+  function positionPopoverBesideCell(cell, popover) {
+    const gap = 8;
+    const margin = 8;
+    const rect = cell.getBoundingClientRect();
+    popover.style.visibility = 'hidden';
+    popover.style.display = 'block';
+    const width = Math.min(popover.offsetWidth || 270, innerWidth - margin * 2);
+    const height = Math.min(popover.offsetHeight || 300, innerHeight - margin * 2);
+
+    let left;
+    let top = Math.max(margin, Math.min(rect.top, innerHeight - height - margin));
+    if (rect.right + gap + width <= innerWidth - margin) {
+      left = rect.right + gap;
+    } else if (rect.left - gap - width >= margin) {
+      left = rect.left - gap - width;
+    } else {
+      left = Math.max(margin, Math.min(rect.left, innerWidth - width - margin));
+      if (rect.bottom + gap + height <= innerHeight - margin) top = rect.bottom + gap;
+      else top = Math.max(margin, rect.top - gap - height);
+    }
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.style.visibility = 'visible';
+  }
+
+  function openSuggestionsForCell(cell) {
     const row = (Array.isArray(runtime.data?.rows) ? runtime.data.rows : []).find((item) => String(item.id) === String(cell.dataset.rowId));
-    if (!row) return;
+    if (!row) return closePopover();
     const recordedAt = cell.dataset.flowTime;
     const existing = entryFor(row.id, recordedAt);
     const readonly = runtime.data?.viewer?.canWrite !== true || (existing && existing.canEdit === false);
+
+    // Numeric cells are always typed directly in the grid. Never cover them with a selector.
+    if (isNumericRow(row) || readonly) return closePopover();
+
+    const suggestions = suggestionsForRow(row);
+    if (!suggestions.length) return closePopover();
+
+    closePopover();
     runtime.selectedCell = cell;
     const popover = ensurePopover();
     $('#flowPopTitle', popover).textContent = `${row.name || 'Flowsheet'} · ${fmtTime(recordedAt)}`;
+    $('#flowPopComment', popover).value = displayedComment(row, recordedAt);
+    $('#flowPopComment', popover).disabled = false;
+    $('#flowPopSaveComment', popover).disabled = false;
+    $('#flowPopNote', popover).textContent = 'Suggestions only — choose one or keep typing your own value directly in the selected box. Nothing is filed until File is pressed.';
+
     const optionHost = $('#flowPopOptions', popover);
     optionHost.innerHTML = '';
-    const options = rowOptions(row);
-    const valueInput = $('#flowPopValue', popover);
-    const valueLabel = $('#flowPopValueLabel', popover);
-    valueInput.value = displayedValue(row, recordedAt);
-    $('#flowPopComment', popover).value = displayedComment(row, recordedAt);
-    valueInput.disabled = readonly || options.length > 0;
-    $('#flowPopComment', popover).disabled = readonly;
-    $('#flowPopSaveComment', popover).disabled = readonly;
-    valueLabel.style.display = options.length ? 'none' : 'block';
-
-    if (readonly) {
-      optionHost.innerHTML = '<div class="pop-note" style="color:#991b1b;font-weight:700">Filed documentation from another user is read-only.</div>';
-    } else if (options.length) {
-      for (const option of options) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `pop-option${/refused|omitted|not maintained|held/i.test(option) ? ' refused' : ''}`;
-        button.textContent = option;
-        button.addEventListener('click', () => {
-          stageDraft(row, recordedAt, option, displayedComment(row, recordedAt), existing);
-          closePopover();
-          renderGrid();
-          setStatus(`${row.name}: ${option} placed in the box — not filed yet.`, 'warn');
-        });
-        optionHost.appendChild(button);
-      }
+    for (const suggestion of suggestions) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `pop-option${/refused|declined|not completed|held|canceled/i.test(suggestion) ? ' refused' : ''}`;
+      button.textContent = suggestion;
+      button.addEventListener('click', () => {
+        const editor = $('.flow-cell-editor', cell);
+        if (editor) editor.value = suggestion;
+        stageDraft(row, recordedAt, suggestion, displayedComment(row, recordedAt), existing);
+        closePopover();
+        renderGrid();
+        setStatus(`${row.name}: ${suggestion} placed in the box — not filed yet.`, 'warn');
+      });
+      optionHost.appendChild(button);
     }
-
-    $('#flowPopNote', popover).textContent = readonly
-      ? 'This filed value is locked to the original documenting user.'
-      : options.length
-        ? 'Select a value. The selector closes immediately. Click the box again if you want to add a comment. Nothing is saved to the clinical record until File is pressed.'
-        : 'Enter the value and/or comment, then choose Save Comment to Box. That only stages the box; it does not file to the backend.';
-
-    const rect = cell.getBoundingClientRect();
-    popover.style.left = `${Math.max(8, Math.min(rect.left, innerWidth - 312))}px`;
-    popover.style.top = `${Math.max(8, Math.min(rect.bottom + 3, innerHeight - 440))}px`;
-    popover.style.display = 'block';
-    if (!readonly && !options.length) requestAnimationFrame(() => valueInput.focus({ preventScroll: true }));
+    positionPopoverBesideCell(cell, popover);
   }
 
   function savePopoverToBox() {
@@ -432,13 +476,13 @@
     const recordedAt = cell.dataset.flowTime;
     const existing = entryFor(row.id, recordedAt);
     if (existing && existing.canEdit === false) return closePopover();
-    const options = rowOptions(row);
-    const value = options.length ? displayedValue(row, recordedAt) : $('#flowPopValue')?.value;
+    const editor = $('.flow-cell-editor', cell);
+    const value = editor ? editor.value : displayedValue(row, recordedAt);
     const comment = $('#flowPopComment')?.value;
     stageDraft(row, recordedAt, value, comment, existing);
     closePopover();
     renderGrid();
-    setStatus('Value/comment placed in the box — still unfiled.', 'warn');
+    setStatus('Comment/value placed in the box — still unfiled.', 'warn');
   }
 
   function rowCellHtml(row, recordedAt, latestColumn) {
@@ -456,7 +500,38 @@
     const author = entry?.recordedByDisplayName || entry?.recordedById || '';
     const status = draft ? (draft.amendment ? 'Unfiled amendment' : 'Unfiled') : entry ? (isAmended(entry) ? 'Filed amendment' : 'Filed') : 'Empty';
     const title = [status, author ? `by ${author}` : '', entry?.createdAt ? `documented ${new Date(entry.createdAt).toLocaleString()}` : '', comment ? `Comment: ${comment}` : ''].filter(Boolean).join(' · ');
-    return `<td class="${classes.join(' ')}" data-flow-cell data-row-id="${esc(row.id)}" data-flow-time="${esc(recordedAt)}" title="${esc(title)}"><div class="flow-value-main">${esc(value)}</div>${comment ? '<span class="flow-comment-mark">💬</span>' : ''}${(!draft && isAmended(entry)) || draft?.amendment ? '<span class="flow-amend-mark">▲</span>' : ''}</td>`;
+    const editor = readonly
+      ? `<div class="flow-readonly-value">${esc(value)}</div>`
+      : `<input class="flow-cell-editor" data-flow-editor type="${isNumericRow(row) ? 'number' : 'text'}" step="any" autocomplete="off" value="${esc(value)}" aria-label="${esc(row.name || 'Flowsheet value')} at ${esc(fmtTime(recordedAt))}">`;
+    return `<td class="${classes.join(' ')}" data-flow-cell data-row-id="${esc(row.id)}" data-flow-time="${esc(recordedAt)}" title="${esc(title)}">${editor}${comment ? '<span class="flow-comment-mark">💬</span>' : ''}${(!draft && isAmended(entry)) || draft?.amendment ? '<span class="flow-amend-mark">▲</span>' : ''}</td>`;
+  }
+
+  function wireGridCells(tbody) {
+    $$('[data-flow-cell]', tbody).forEach((cell) => {
+      const row = (Array.isArray(runtime.data?.rows) ? runtime.data.rows : []).find((item) => String(item.id) === String(cell.dataset.rowId));
+      const editor = $('.flow-cell-editor', cell);
+      if (!row || !editor) return;
+      const recordedAt = cell.dataset.flowTime;
+      const existing = entryFor(row.id, recordedAt);
+
+      editor.addEventListener('input', () => {
+        const currentComment = displayedComment(row, recordedAt);
+        stageDraft(row, recordedAt, editor.value, currentComment, existing);
+        cell.classList.toggle('is-draft', !existing && runtime.drafts.has(cellKey(row.id, recordedAt)));
+        cell.classList.toggle('is-draft-amendment', Boolean(existing) && runtime.drafts.has(cellKey(row.id, recordedAt)));
+        setStatus(`${row.name}: value staged in the box — not filed yet.`, 'warn');
+      });
+      editor.addEventListener('focus', () => openSuggestionsForCell(cell));
+      editor.addEventListener('click', () => {
+        if (!isNumericRow(row) && runtime.selectedCell !== cell) openSuggestionsForCell(cell);
+      });
+      editor.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closePopover();
+      });
+      cell.addEventListener('click', (event) => {
+        if (event.target !== editor) editor.focus({ preventScroll: true });
+      });
+    });
   }
 
   function renderHeaders() {
@@ -470,6 +545,7 @@
   function renderGrid() {
     const tbody = $('#flowsheetTbody');
     if (!tbody || !runtime.data) return;
+    closePopover();
     renderHeaders();
     const rows = visibleRows();
     const body = [];
@@ -483,7 +559,7 @@
       body.push(`<tr><td class="sub-row-header"><b>${esc(row.name || 'Flowsheet Row')}</b>${row.unit ? ` <span style="color:#64748b;font-size:10px">(${esc(row.unit)})</span>` : ''}${row.description ? `<div style="color:#64748b;font-size:9px;font-weight:400;margin-top:1px">${esc(row.description)}</div>` : ''}</td>${runtime.columns.map((column) => rowCellHtml(row, column, runtime.columns[runtime.columns.length - 1])).join('')}<td></td></tr>`);
     }
     tbody.innerHTML = body.length ? body.join('') : `<tr><td colspan="${runtime.columns.length + 2}" style="padding:24px;text-align:center;color:#64748b">No configured flowsheet rows match this category/search.</td></tr>`;
-    $$('[data-flow-cell]', tbody).forEach((cell) => cell.addEventListener('click', () => openCell(cell)));
+    wireGridCells(tbody);
     updateFileButton();
   }
 
@@ -517,12 +593,10 @@
     let table = $('#flowsheetTable', host);
     let tbody = $('#flowsheetTbody', host);
 
-    // If an earlier runtime replaced the host, rebuild ONLY the exact master
-    // flowsheet fragment, never a different presentation.
     if (!toolbar || !filters || !layout || !tree || !grid || !table || !tbody) {
       host.innerHTML = `
         <div class="flowsheet-sub-toolbar"></div>
-        <div class="flowsheet-filters"><div class="filter-dropdown"><span id="activeFlowsheetFilterName">DSP Daily Documentation - Show All Tasks</span><span>▼</span></div><span><b>Click any box in the grid to enter/select a value.</b> Values remain unfiled until File is pressed.</span></div>
+        <div class="flowsheet-filters"><div class="filter-dropdown"><span id="activeFlowsheetFilterName">DSP Daily Documentation - Show All Tasks</span><span>▼</span></div><span><b>Type directly in any writable box.</b> Suggestions are optional and nothing is filed until File is pressed.</span></div>
         <div class="flowsheet-main-layout"><div class="flowsheet-tree" id="flowsheetTreeMenu"></div><div class="flowsheet-grid-container" id="flowsheetGridContainer"><table class="flowsheet-table" id="flowsheetTable"><thead><tr id="headerTimeRow"></tr><tr id="headerDateRow"></tr></thead><tbody id="flowsheetTbody"></tbody></table></div></div>`;
       toolbar = $('.flowsheet-sub-toolbar', host);
       filters = $('.flowsheet-filters', host);
