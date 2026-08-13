@@ -21,13 +21,14 @@ function forbidMarkers(source, markers, label) {
   for (const marker of markers) if (source.includes(marker)) failures.push(`${label} unexpectedly contains ${marker}`);
 }
 
-const [entry, portal, master, portalJs, navigationJs, flowsheetJs, fileRoute, injector] = await Promise.all([
+const [entry, portal, master, portalJs, navigationJs, flowsheetJs, frozenPaneJs, fileRoute, injector] = await Promise.all([
   readDist('spire.html'),
   readDist('spire/portal.html'),
   readDist('spire/master.html'),
   readDist('assets/spire-portal.js'),
   readDist('assets/spire-master-navigation.js'),
   readDist('assets/spire-master-flowsheet-grid.js'),
+  readDist('assets/spire-flowsheet-frozen-pane.js'),
   readSource('api/src/spire-flowsheet-file-routes.ts'),
   readSource('scripts/inject-clinical-routes.mjs'),
 ]);
@@ -59,6 +60,7 @@ requireMarkers(portalJs, [
 requireMarkers(master, [
   '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1',
   '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-suggestions-1',
+  '/assets/spire-flowsheet-frozen-pane.js?v=20260813-frozen-pane-1',
   'id="flowsheets-view"',
   'class="flowsheet-sub-toolbar"',
   'class="flowsheet-main-layout"',
@@ -116,6 +118,17 @@ forbidMarkers(flowsheetJs, [
   'choose one of the configured options',
 ], 'SPIRE inline user-master staged transactional flowsheet');
 
+requireMarkers(frozenPaneJs, [
+  'SPIRE_FLOWSHEET_FROZEN_PANE_V1',
+  'grid-template-columns:245px minmax(0,1fr)',
+  '.flowsheet-grid-container',
+  'position:sticky',
+  'flow-section-label',
+  'flow-section-scroll-fill',
+  'splitSectionRow',
+  'MutationObserver',
+], 'SPIRE frozen flowsheet pane');
+
 requireMarkers(fileRoute, [
   "app.post('/api/spire/patients/:patientId/flowsheet-workspace/file'",
   'prisma.$transaction',
@@ -138,6 +151,7 @@ for (const [label, source] of [
   ['SPIRE portal runtime', portalJs],
   ['SPIRE chart navigation', navigationJs],
   ['SPIRE inline user-master flowsheet', flowsheetJs],
+  ['SPIRE frozen flowsheet pane', frozenPaneJs],
 ]) {
   try { new Function(source); }
   catch (error) { failures.push(`${label} JavaScript syntax error: ${error instanceof Error ? error.message : String(error)}`); }
@@ -145,11 +159,13 @@ for (const [label, source] of [
 
 const navigationCount = (master.match(/spire-master-navigation\.js/g) || []).length;
 const flowsheetCount = (master.match(/spire-master-flowsheet-grid\.js/g) || []).length;
+const frozenPaneCount = (master.match(/spire-flowsheet-frozen-pane\.js/g) || []).length;
 if (navigationCount !== 1) failures.push(`SPIRE chart must publish navigation runtime exactly once; found ${navigationCount}`);
 if (flowsheetCount !== 1) failures.push(`SPIRE chart must publish flowsheet runtime exactly once; found ${flowsheetCount}`);
+if (frozenPaneCount !== 1) failures.push(`SPIRE chart must publish frozen-pane runtime exactly once; found ${frozenPaneCount}`);
 
 if (failures.length) {
   console.error('SPIRE portal/inline user-master flowsheet verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('SPIRE portal/inline flowsheet verified: explicit chart entry, original master grid geometry, direct typing in cells, optional suggestions beside the active box, no numeric popup, local staging, all-or-nothing File, and red amendments.');
+console.log('SPIRE portal/inline flowsheet verified: explicit chart entry, original master grid geometry, frozen task/group panes during horizontal scrolling, direct typing in cells, optional suggestions beside the active box, no numeric popup, local staging, all-or-nothing File, and red amendments.');
