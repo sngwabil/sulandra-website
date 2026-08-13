@@ -19,6 +19,7 @@ const flowsheetPath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js'
 const frozenPath = path.join(dist, 'assets', 'spire-flowsheet-frozen-pane.js');
 const screenPath = path.join(dist, 'assets', 'spire-screen-controls.js');
 const medicationPath = path.join(dist, 'assets', 'spire-medication-order-entry.js');
+const marTimelinePath = path.join(dist, 'assets', 'spire-mar-timeline.js');
 const screenCssPath = path.join(dist, 'assets', 'spire-screen-controls.css');
 
 const preferenceUrl = '/assets/spire-user-preferences.js?v=20260813-exact-workflow-1';
@@ -27,11 +28,12 @@ const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-s
 const frozenUrl = '/assets/spire-flowsheet-frozen-pane.js?v=20260813-frozen-pane-1';
 const screenUrl = '/assets/spire-screen-controls.js?v=20260813-live-controls-2';
 const medicationUrl = '/assets/spire-medication-order-entry.js?v=20260813-medication-orders-1';
+const marTimelineUrl = '/assets/spire-mar-timeline.js?v=20260813-mar-timeline-1';
 const screenCssUrl = '/assets/spire-screen-controls.css?v=20260813-live-controls-2';
 
 for (const file of [
   sourceEntry, entryPath, loginPath, stationPath, legacyStationPath, chatPath, masterPath,
-  loginRuntimePath, preferencePath, navigationPath, flowsheetPath, frozenPath, screenPath, medicationPath, screenCssPath,
+  loginRuntimePath, preferencePath, navigationPath, flowsheetPath, frozenPath, screenPath, medicationPath, marTimelinePath, screenCssPath,
 ]) await stat(file);
 
 await writeFile(entryPath, await readFile(sourceEntry, 'utf8'), 'utf8');
@@ -44,17 +46,18 @@ master = master
   .replace(/\s*<script src="\/assets\/spire-flowsheet-frozen-pane\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
   .replace(/\s*<script src="\/assets\/spire-screen-controls\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
   .replace(/\s*<script src="\/assets\/spire-medication-order-entry\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+  .replace(/\s*<script src="\/assets\/spire-mar-timeline\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
   .replace(/\s*<link[^>]+href="\/assets\/spire-screen-controls\.css(?:\?v=[^"']+)?"[^>]*>\s*/g, '\n');
 if (!master.includes('</head>') || !master.includes('</body>')) throw new Error('SPIRE master publication requires closing head/body tags');
 master = master.replace('</head>', `  <link rel="stylesheet" href="${screenCssUrl}">\n  <script src="${preferenceUrl}"></script>\n</head>`);
-master = master.replace('</body>', `  <script src="${navigationUrl}"></script>\n  <script src="${flowsheetUrl}"></script>\n  <script src="${frozenUrl}"></script>\n  <script src="${screenUrl}"></script>\n  <script src="${medicationUrl}"></script>\n</body>`);
+master = master.replace('</body>', `  <script src="${navigationUrl}"></script>\n  <script src="${flowsheetUrl}"></script>\n  <script src="${frozenUrl}"></script>\n  <script src="${screenUrl}"></script>\n  <script src="${medicationUrl}"></script>\n  <script src="${marTimelineUrl}"></script>\n</body>`);
 await writeFile(masterPath, master, 'utf8');
 
-const [entry, login, station, legacyStation, chat, publishedMaster, loginRuntime, preference, navigation, flowsheet, frozen, screen, medication] = await Promise.all([
+const [entry, login, station, legacyStation, chat, publishedMaster, loginRuntime, preference, navigation, flowsheet, frozen, screen, medication, marTimeline] = await Promise.all([
   readFile(entryPath, 'utf8'), readFile(loginPath, 'utf8'), readFile(stationPath, 'utf8'),
   readFile(legacyStationPath, 'utf8'), readFile(chatPath, 'utf8'), readFile(masterPath, 'utf8'),
   readFile(loginRuntimePath, 'utf8'), readFile(preferencePath, 'utf8'), readFile(navigationPath, 'utf8'),
-  readFile(flowsheetPath, 'utf8'), readFile(frozenPath, 'utf8'), readFile(screenPath, 'utf8'), readFile(medicationPath, 'utf8'),
+  readFile(flowsheetPath, 'utf8'), readFile(frozenPath, 'utf8'), readFile(screenPath, 'utf8'), readFile(medicationPath, 'utf8'), readFile(marTimelinePath, 'utf8'),
 ]);
 
 for (const marker of ['SPIRE_CANONICAL_LOGIN_ENTRY_V3', '/spire/login.html', 'window.location.search', 'window.location.hash']) {
@@ -84,6 +87,7 @@ for (const [pattern, label] of [
   [/src="\/assets\/spire-flowsheet-frozen-pane\.js(?:\?[^"']*)?"/g, 'frozen pane'],
   [/src="\/assets\/spire-screen-controls\.js(?:\?[^"']*)?"/g, 'live controls'],
   [/src="\/assets\/spire-medication-order-entry\.js(?:\?[^"']*)?"/g, 'medication order entry'],
+  [/src="\/assets\/spire-mar-timeline\.js(?:\?[^"']*)?"/g, 'MAR timeline'],
 ]) {
   const count = (publishedMaster.match(pattern) || []).length;
   if (count !== 1) throw new Error(`SPIRE master must publish ${label} exactly once; found ${count}`);
@@ -113,16 +117,19 @@ for (const marker of ['SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?s
 for (const marker of ['SPIRE_MEDICATION_ORDER_ENTRY_V1', '+ Add Medication Order', '/api/admin/spire/medication-orders', 'Save & Activate Order']) {
   if (!medication.includes(marker)) throw new Error(`SPIRE medication order entry runtime missing ${marker}`);
 }
+for (const marker of ['SPIRE_MAR_TIMELINE_V1', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications']) {
+  if (!marTimeline.includes(marker)) throw new Error(`SPIRE MAR timeline runtime missing ${marker}`);
+}
 for (const forbidden of ['Opening Staff Messaging Portal', 'Notifications: 3 unread reminders for current client.']) {
   if (screen.includes(forbidden) || publishedMaster.includes(forbidden)) throw new Error(`SPIRE still contains fake messaging/notification behavior: ${forbidden}`);
 }
 
 for (const [label, source] of [
   ['login shell', loginRuntime], ['shared preferences', preference], ['chart navigation', navigation],
-  ['Flowsheet', flowsheet], ['frozen pane', frozen], ['live controls', screen], ['medication order entry', medication],
+  ['Flowsheet', flowsheet], ['frozen pane', frozen], ['live controls', screen], ['medication order entry', medication], ['MAR timeline', marTimeline],
 ]) {
   try { new Function(source); }
   catch (error) { throw new Error(`SPIRE ${label} syntax error: ${error instanceof Error ? error.message : String(error)}`); }
 }
 
-console.log('SPIRE publication verified: authentication shell → Client Station → explicit client chart; remembered home/user preferences are scoped to the authenticated user; theme #21 is Client Station Classic; fullscreen is separate/default-on; medication order entry is published; Secure Chat and live In Basket controls contain no fake alerts.');
+console.log('SPIRE publication verified: authentication shell → Client Station → explicit client chart; remembered home/user preferences are scoped to the authenticated user; theme #21 is Client Station Classic; fullscreen is separate/default-on; medication order entry and MAR timeline are published; Secure Chat and live In Basket controls contain no fake alerts.');
