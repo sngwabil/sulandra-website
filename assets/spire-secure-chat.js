@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  // SPIRE_SECURE_CHAT_V1
-  // Uses the existing patient-scoped SPIRE message-thread, routing-pool and
+  // SPIRE_SECURE_CHAT_V2
+  // Uses the existing client-scoped SPIRE message-thread, routing-pool and
   // In Basket backend. No local/demo chat data is fabricated.
   const API = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
@@ -10,9 +10,9 @@
   const HOME_ID_KEY = 'spire:selected-service-home-id';
   const HOME_NAME_KEY = 'spire:selected-service-home-name';
   const HOME_ENTITY_KEY = 'spire:selected-service-home-entity';
-  const PATIENT_KEY = 'spire:patientId';
+  const CLIENT_KEY = 'spire:patientId'; // Existing backend/session key; visible terminology is Client.
   const params = new URLSearchParams(location.search);
-  const state = { patientId: '', homeId: '', companyId: '', patient: null, home: null, user: null, threads: [], pools: [], activeThreadId: '', active: null, detailTab: 'participants', pollTimer: null };
+  const state = { clientId: '', homeId: '', companyId: '', client: null, home: null, user: null, threads: [], pools: [], activeThreadId: '', active: null, detailTab: 'participants', pollTimer: null };
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -22,7 +22,7 @@
   const initials = (value) => clean(value).split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SH';
   const currentUserId = () => clean(state.user?.id || state.user?.userId || state.user?.sub);
   const currentUserName = () => clean(state.user?.displayName || state.user?.name || state.user?.fullName || state.user?.email) || 'Current user';
-  const patientName = () => clean(state.patient?.name || state.patient?.displayName || [state.patient?.preferredName || state.patient?.firstName, state.patient?.lastName].filter(Boolean).join(' ')) || 'Client';
+  const clientName = () => clean(state.client?.name || state.client?.displayName || [state.client?.preferredName || state.client?.firstName, state.client?.lastName].filter(Boolean).join(' ')) || 'Client';
 
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
@@ -57,11 +57,13 @@
   }
 
   function stationUrl() {
-    const query = new URLSearchParams({ company: state.companyId, spireHome: state.homeId });
-    return `/spire/patient-station.html?${query}`;
+    const query = new URLSearchParams();
+    if (state.companyId) query.set('company', state.companyId);
+    if (state.homeId) query.set('spireHome', state.homeId);
+    return `/spire/client-station.html${query.toString() ? `?${query}` : ''}`;
   }
   function chartUrl() {
-    const query = new URLSearchParams({ patientId: state.patientId, spireHome: state.homeId, company: state.companyId });
+    const query = new URLSearchParams({ patientId: state.clientId, spireHome: state.homeId, company: state.companyId });
     return `/spire/master.html?${query}`;
   }
   function loginUrl() {
@@ -83,17 +85,19 @@
   }
   function setStatus(message, kind = '') {
     const node = $('#chatStatus');
+    if (!node) return;
     node.textContent = message;
     node.className = `status${kind ? ` ${kind}` : ''}`;
   }
 
-  async function verifyPatientScope() {
+  async function verifyClientScope() {
     const data = await api(`/api/spire/network/service-homes/${encodeURIComponent(state.homeId)}/access`, { method: 'POST', body: JSON.stringify({}) });
     state.home = data?.home || null;
-    const patients = Array.isArray(data?.patients) ? data.patients : [];
-    state.patient = patients.find((patient) => clean(patient.patientId || patient.id) === state.patientId) || null;
-    if (!state.patient) throw Object.assign(new Error('This client is not available in the selected service home.'), { status: 403 });
-    $('#chatScope').textContent = `${patientName()} · ${state.home?.name || sessionStorage.getItem(HOME_NAME_KEY) || 'Service Home'}`;
+    const clients = Array.isArray(data?.patients) ? data.patients : [];
+    state.client = clients.find((client) => clean(client.patientId || client.id) === state.clientId) || null;
+    if (!state.client) throw Object.assign(new Error('This client is not available in the selected service home.'), { status: 403 });
+    state.companyId = clean(state.home?.legalEntityId || state.companyId);
+    $('#chatScope').textContent = `${clientName()} · ${state.home?.name || sessionStorage.getItem(HOME_NAME_KEY) || localStorage.getItem(HOME_NAME_KEY) || 'Service Home'}`;
   }
 
   async function loadPools() {
@@ -112,18 +116,12 @@
   }
 
   async function loadOverview({ keepSelection = true } = {}) {
-    const data = await api(`/api/spire/patients/${encodeURIComponent(state.patientId)}/communications/overview`);
+    const data = await api(`/api/spire/patients/${encodeURIComponent(state.clientId)}/communications/overview`);
     state.threads = Array.isArray(data?.threads) ? data.threads : [];
-    if (!keepSelection || !state.threads.some((thread) => clean(thread.id) === state.activeThreadId)) {
-      state.activeThreadId = state.threads[0]?.id ? clean(state.threads[0].id) : '';
-    }
+    if (!keepSelection || !state.threads.some((thread) => clean(thread.id) === state.activeThreadId)) state.activeThreadId = state.threads[0]?.id ? clean(state.threads[0].id) : '';
     renderConversations();
     if (state.activeThreadId) await loadThread(state.activeThreadId, { quiet: true });
-    else {
-      state.active = null;
-      renderMessages();
-      renderDetails();
-    }
+    else { state.active = null; renderMessages(); renderDetails(); }
   }
 
   function filteredThreads() {
@@ -140,7 +138,7 @@
       return;
     }
     host.innerHTML = threads.map((thread) => `<article class="conversation${clean(thread.id) === state.activeThreadId ? ' selected' : ''}" data-thread-id="${esc(thread.id)}">
-      <div class="conv-avatar">${esc(initials(thread.subject || patientName()))}</div>
+      <div class="conv-avatar">${esc(initials(thread.subject || clientName()))}</div>
       <div><div class="conv-subject">${esc(thread.subject || 'Clinical conversation')}</div><div class="conv-preview">${esc([thread.threadType || 'Clinical', thread.priority || 'Normal'].join(' · '))}</div></div>
       <div class="conv-time">${esc(shortTime(thread.updatedAt || thread.createdAt))}</div>
     </article>`).join('');
@@ -150,11 +148,9 @@
   async function loadThread(threadId, { quiet = false } = {}) {
     state.activeThreadId = clean(threadId);
     if (!quiet) setStatus('Loading secure conversation…');
-    const data = await api(`/api/spire/patients/${encodeURIComponent(state.patientId)}/communications/threads/${encodeURIComponent(state.activeThreadId)}`);
+    const data = await api(`/api/spire/patients/${encodeURIComponent(state.clientId)}/communications/threads/${encodeURIComponent(state.activeThreadId)}`);
     state.active = data || null;
-    renderConversations();
-    renderMessages();
-    renderDetails();
+    renderConversations(); renderMessages(); renderDetails();
     $('#replyText').disabled = false;
     $('#sendReply').disabled = !clean($('#replyText').value);
     if (!quiet) setStatus('Secure conversation loaded.', 'success');
@@ -165,18 +161,13 @@
     const host = $('#messageList');
     const thread = state.active?.thread || null;
     $('#activeThreadTitle').textContent = thread?.subject || (state.activeThreadId ? 'Clinical conversation' : 'Select a conversation');
-    $('#activeThreadMeta').textContent = thread ? `${patientName()} · ${thread.threadType || 'Clinical'} · ${thread.priority || 'Normal'} priority` : 'Patient-scoped secure clinical messages';
+    $('#activeThreadMeta').textContent = thread ? `${clientName()} · ${thread.threadType || 'Clinical'} · ${thread.priority || 'Normal'} priority` : 'Client-scoped secure clinical messages';
     if (!thread) {
       host.innerHTML = '<div class="empty">Choose a conversation on the left, or start a new conversation.</div>';
-      $('#replyText').disabled = true;
-      $('#sendReply').disabled = true;
-      return;
+      $('#replyText').disabled = true; $('#sendReply').disabled = true; return;
     }
     const rows = messages();
-    if (!rows.length) {
-      host.innerHTML = '<div class="empty">This conversation does not contain any messages yet.</div>';
-      return;
-    }
+    if (!rows.length) { host.innerHTML = '<div class="empty">This conversation does not contain any messages yet.</div>'; return; }
     host.innerHTML = rows.map((message) => {
       const mine = currentUserId() && clean(message.senderUserId) === currentUserId();
       return `<div class="message${mine ? ' mine' : ''}"><div class="bubble"><div class="sender">${esc(message.senderDisplayName || (mine ? currentUserName() : 'Clinical Team Member'))}</div><div>${esc(message.body || '').replace(/\n/g, '<br>')}</div><div class="message-time">${esc(fmtDateTime(message.createdAt))}</div></div></div>`;
@@ -186,7 +177,7 @@
 
   function poolName(poolId) {
     const pool = state.pools.find((item) => clean(item.id) === clean(poolId));
-    return pool?.name || pool?.displayName || (poolId ? `Routing pool ${String(poolId).slice(0, 8)}` : '');
+    return pool?.name || pool?.displayName || (poolId ? 'Clinical routing pool' : '');
   }
 
   function participantRecords() {
@@ -200,7 +191,7 @@
       for (const recipient of recipients) {
         const id = clean(recipient.userId);
         if (!id || map.has(`recipient:${id}`) || id === currentUserId()) continue;
-        map.set(`recipient:${id}`, { name: `Team member ${id.slice(0, 8)}`, meta: recipient.readAt ? 'Read' : recipient.status || 'Delivered' });
+        map.set(`recipient:${id}`, { name: 'Clinical Team Member', meta: recipient.readAt ? 'Read' : recipient.status || 'Delivered' });
       }
     }
     return [...map.values()];
@@ -213,7 +204,7 @@
     if (state.detailTab === 'details') {
       host.innerHTML = `<div class="section-title">Conversation Details</div>
         <div class="detail-card"><b>Subject</b><br>${esc(thread.subject || 'Clinical conversation')}</div>
-        <div class="detail-card"><b>Patient</b><br>${esc(patientName())}</div>
+        <div class="detail-card"><b>Client</b><br>${esc(clientName())}</div>
         <div class="detail-card"><b>Priority</b><br>${esc(thread.priority || 'NORMAL')}</div>
         <div class="detail-card"><b>Type</b><br>${esc(thread.threadType || 'CLINICAL')}</div>
         <div class="detail-card"><b>Messages</b><br>${messages().length}</div>
@@ -230,14 +221,11 @@
     $('#sendReply').disabled = true;
     setStatus('Sending secure reply…');
     try {
-      await api(`/api/spire/patients/${encodeURIComponent(state.patientId)}/communications/threads/${encodeURIComponent(state.activeThreadId)}/reply`, { method: 'POST', body: JSON.stringify({ body }) });
+      await api(`/api/spire/patients/${encodeURIComponent(state.clientId)}/communications/threads/${encodeURIComponent(state.activeThreadId)}/reply`, { method: 'POST', body: JSON.stringify({ body }) });
       $('#replyText').value = '';
       await loadOverview();
       setStatus('Secure reply sent and added to the clinical conversation.', 'success');
-    } catch (error) {
-      showError(error);
-      $('#sendReply').disabled = false;
-    }
+    } catch (error) { showError(error); $('#sendReply').disabled = false; }
   }
 
   function openNewConversation() {
@@ -255,29 +243,21 @@
     const subject = clean($('#newSubject').value);
     const body = clean($('#newBody').value);
     const priority = clean($('#newPriority').value) || 'NORMAL';
-    if (!recipientPoolId || !subject || !body) {
-      setStatus('Choose a routing pool and enter both a subject and message.', 'error');
-      return;
-    }
+    if (!recipientPoolId || !subject || !body) { setStatus('Choose a routing pool and enter both a subject and message.', 'error'); return; }
     $('#createConversation').disabled = true;
     setStatus('Starting secure conversation…');
     try {
-      const data = await api(`/api/spire/patients/${encodeURIComponent(state.patientId)}/communications/threads`, {
+      const data = await api(`/api/spire/patients/${encodeURIComponent(state.clientId)}/communications/threads`, {
         method: 'POST',
         body: JSON.stringify({ subject, body, priority, threadType: 'CLINICAL', messageType: 'CLINICAL', recipientPoolId, senderDisplayName: currentUserName() }),
       });
-      $('#newSubject').value = '';
-      $('#newBody').value = '';
-      $('#newPriority').value = 'NORMAL';
+      $('#newSubject').value = ''; $('#newBody').value = ''; $('#newPriority').value = 'NORMAL';
       closeNewConversation();
       state.activeThreadId = clean(data?.threadId);
       await loadOverview();
       setStatus('Secure conversation started and delivered to the selected clinical routing pool.', 'success');
-    } catch (error) {
-      showError(error);
-    } finally {
-      $('#createConversation').disabled = false;
-    }
+    } catch (error) { showError(error); }
+    finally { $('#createConversation').disabled = false; }
   }
 
   function showError(error) {
@@ -307,29 +287,26 @@
     }));
     $('#newConversationPanel').addEventListener('pointerdown', (event) => { if (event.target === $('#newConversationPanel')) closeNewConversation(); });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeNewConversation(); });
+    window.SpireUserPreferences?.apply?.();
   }
 
   function startPolling() {
     if (state.pollTimer) clearInterval(state.pollTimer);
-    state.pollTimer = setInterval(() => {
-      if (document.hidden) return;
-      loadOverview().catch(() => {});
-    }, 15000);
+    state.pollTimer = setInterval(() => { if (!document.hidden) loadOverview().catch(() => {}); }, 15000);
   }
 
   async function bootstrap() {
-    state.patientId = clean(params.get('patientId') || sessionStorage.getItem(PATIENT_KEY));
-    state.homeId = clean(params.get('spireHome') || params.get('home') || sessionStorage.getItem(HOME_ID_KEY));
-    state.companyId = clean(params.get('company') || sessionStorage.getItem(HOME_ENTITY_KEY) || sessionStorage.getItem(ENTITY_KEY) || localStorage.getItem(ENTITY_KEY));
-    if (!state.companyId || !state.homeId) { location.replace('/spire/portal.html'); return; }
-    if (!state.patientId) { location.replace(stationUrl()); return; }
+    state.clientId = clean(params.get('patientId') || sessionStorage.getItem(CLIENT_KEY));
+    state.homeId = clean(params.get('spireHome') || params.get('home') || sessionStorage.getItem(HOME_ID_KEY) || localStorage.getItem(HOME_ID_KEY));
+    state.companyId = clean(params.get('company') || sessionStorage.getItem(HOME_ENTITY_KEY) || localStorage.getItem(HOME_ENTITY_KEY) || sessionStorage.getItem(ENTITY_KEY) || localStorage.getItem(ENTITY_KEY));
+    if (!state.homeId || !state.clientId) { location.replace(stationUrl()); return; }
     try {
       state.user = await loadSession();
       wire();
-      await verifyPatientScope();
+      await verifyClientScope();
       await loadPools();
       await loadOverview({ keepSelection: false });
-      setStatus('Secure Chat is ready. Messages are patient-scoped and audited by SPIRE.', 'success');
+      setStatus('Secure Chat is ready. Messages are client-scoped and audited by SPIRE.', 'success');
       startPolling();
     } catch (error) {
       if (error.status === 401) { location.replace(loginUrl()); return; }
