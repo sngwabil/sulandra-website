@@ -103,3 +103,6 @@ catch (error) {
 await import('./fix-spire-accessibility-suite.mjs');
 // The flowsheet publication may show a friendly name/email, never a raw user ID.
 await import('./fix-spire-flowsheet-friendly-actor.mjs');
+// A narrow final source pass removes only the retired fake messaging/notification
+// alerts, labels Secure Chat, and adds display/accessibility preference #21.
+await import('./prepare-spire-master-live-controls.mjs');
