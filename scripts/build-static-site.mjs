@@ -7,8 +7,8 @@ const repositoryRoot = path.resolve(scriptDirectory, '..');
 const outputDirectory = path.join(repositoryRoot, 'dist-web');
 const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app';
 
-// Verify the standalone SPIRE architecture and normalize the authoritative
-// master source before publication. Neither step installs the legacy root shell.
+// Verify/normalize the canonical Client Station + chart architecture before
+// publication. Neither step installs the legacy root shell.
 await import('./install-spire-idempotent-shell.mjs');
 await import('./fix-spire-master-defects.mjs');
 
@@ -37,8 +37,8 @@ for (const directory of publicDirectories) {
 }
 
 // SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT is retained as a capability safeguard for
-// the older dedicated Results asset, even though the standalone master does not
-// load that asset into its root application shell.
+// the older dedicated Results asset, even though the standalone chart does not
+// load that asset into the root entry.
 const resultsWorkspacePath = path.join(outputDirectory, 'assets', 'spire-results-workspace.js');
 try {
   let source = await readFile(resultsWorkspacePath, 'utf8');
@@ -78,48 +78,54 @@ try {
 }
 
 // Canonical SPIRE publication contract:
-// - /spire.html is a redirect/entry only.
-// - /spire/master.html is the authoritative application.
+// - /spire.html launches /spire/client-station.html.
+// - Client Station restores the last authorized service home when possible.
+// - /spire/master.html is chart-only and is reached after explicit client selection.
 // - no legacy shell/runtime is injected into the root entry during publication.
 const spirePath = path.join(outputDirectory, 'spire.html');
+const spireStationPath = path.join(outputDirectory, 'spire', 'client-station.html');
 const spireMasterPath = path.join(outputDirectory, 'spire', 'master.html');
 const publishedSpireEntry = await readFile(spirePath, 'utf8');
-let publishedSpireMaster = await readFile(spireMasterPath, 'utf8');
-for (const marker of ['/spire/master.html', 'window.location.search', 'window.location.hash']) {
-  if (!publishedSpireEntry.includes(marker)) throw new Error(`Static publication regression: SPIRE canonical entry missing ${marker}`);
+const publishedSpireStation = await readFile(spireStationPath, 'utf8');
+const publishedSpireMaster = await readFile(spireMasterPath, 'utf8');
+
+for (const marker of [
+  'SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2', '/spire/client-station.html',
+  'window.location.search', 'window.location.hash',
+]) {
+  if (!publishedSpireEntry.includes(marker)) throw new Error(`Static publication regression: SPIRE canonical Client Station entry missing ${marker}`);
+}
+for (const forbidden of ['/spire/portal.html', '/spire/master.html']) {
+  if (publishedSpireEntry.includes(forbidden)) throw new Error(`Static publication regression: SPIRE root entry still targets ${forbidden}`);
 }
 for (const legacyAsset of [
-  'spire-app-v2.js',
-  'spire-canonical-bootstrap.js',
-  'spire-shell-resilience.js',
-  'spire-chart-ready.js',
-  'spire-deep-link.js',
-  'spire-home-care-redesign-loader.js',
-  'spire-clinical-workstation.css',
-  'spire-flowsheet-workspace-launcher.js',
+  'spire-app-v2.js', 'spire-canonical-bootstrap.js', 'spire-shell-resilience.js',
+  'spire-chart-ready.js', 'spire-deep-link.js', 'spire-home-care-redesign-loader.js',
+  'spire-clinical-workstation.css', 'spire-flowsheet-workspace-launcher.js',
 ]) {
-  if (publishedSpireEntry.includes(legacyAsset)) {
-    throw new Error(`Static publication regression: SPIRE canonical entry still loads legacy runtime ${legacyAsset}`);
-  }
-}
-
-// The standalone master owns its flowsheet DOM. Publish the requested DSP Daily
-// Documentation grid as a first-party master runtime, not as a legacy root-shell overlay.
-const masterFlowsheetRuntime = '/assets/spire-master-flowsheet-grid.js?v=20260813-dsp-daily-grid-1';
-if (!publishedSpireMaster.includes(masterFlowsheetRuntime)) {
-  if (!publishedSpireMaster.includes('</body>')) throw new Error('Static publication regression: standalone SPIRE master has no body close');
-  publishedSpireMaster = publishedSpireMaster.replace('</body>', `<script src="${masterFlowsheetRuntime}"></script>\n</body>`);
-  await writeFile(spireMasterPath, publishedSpireMaster, 'utf8');
+  if (publishedSpireEntry.includes(legacyAsset)) throw new Error(`Static publication regression: SPIRE canonical entry still loads legacy runtime ${legacyAsset}`);
 }
 
 for (const marker of [
+  'SPIRE_CLIENT_STATION_LISTS_V2', 'Client Station', 'Client Lists', 'Available Homes',
+  '/assets/spire-client-station.js?v=20260813-client-station-2',
+  '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1',
+]) {
+  if (!publishedSpireStation.includes(marker)) throw new Error(`Static publication regression: Client Station missing ${marker}`);
+}
+for (const marker of [
   '<html', '<head', '<body', '</html>',
   "window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'",
-  '/assets/sulandra-entity-context.js',
-  'SPIRE_MASTER_DEFECT_FIXES_V1',
-  masterFlowsheetRuntime,
+  '/assets/sulandra-entity-context.js', 'SPIRE_MASTER_DEFECT_FIXES_V1',
+  '21. Full-Screen Workspace', 'title="Secure Chat"',
 ]) {
-  if (!publishedSpireMaster.includes(marker)) throw new Error(`Static publication regression: standalone SPIRE master missing ${marker}`);
+  if (!publishedSpireMaster.includes(marker)) throw new Error(`Static publication regression: standalone SPIRE chart missing ${marker}`);
+}
+for (const forbidden of [
+  "alert('Opening Staff Messaging Portal...')",
+  "alert('Notifications: 3 unread reminders for current client.')",
+]) {
+  if (publishedSpireMaster.includes(forbidden)) throw new Error(`Static publication regression: SPIRE master still contains fake clinical alert behavior ${forbidden}`);
 }
 
 // The dedicated continuous flowsheet remains a separate focused charting surface.
@@ -197,14 +203,14 @@ const requiredPublishedFiles = [
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
   'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
-  'assets/spire-master-flowsheet-grid.js',
-  // Retain legacy capability assets as independently testable modules, but do not
-  // inject them into the canonical /spire.html entry.
+  'assets/spire-client-station.js', 'assets/spire-secure-chat.js', 'assets/spire-user-preferences.js',
+  'assets/spire-master-navigation.js', 'assets/spire-master-flowsheet-grid.js', 'assets/spire-flowsheet-frozen-pane.js',
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
   'assets/spire-results-workspace.js', 'assets/spire-chart-review-v2.js', 'assets/spire-clinical-workstation.css', 'assets/spire-flowsheet-workspace-launcher.js',
   'assets/spire-user-template-integration.css', 'assets/spire-user-template-integration.js', 'assets/spire-user-template-layout-fix.css', 'assets/spire-user-template-final-lock.css',
   'assets/spire-flowsheet-master.css', 'assets/spire-flowsheet-master.js',
-  'spire.html', 'spire/master.html', 'spire/flowsheets.html', 'spire-admin.html', 'services',
+  'spire.html', 'spire/client-station.html', 'spire/patient-station.html', 'spire/secure-chat.html',
+  'spire/master.html', 'spire/flowsheets.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
   try { await stat(path.join(outputDirectory, relative)); }
@@ -225,4 +231,4 @@ await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; /spire.html remains a clean redirect, /spire/master.html is authoritative, and the server-backed DSP Daily Documentation grid is published.');
+console.log('Static website published from canonical source files; /spire.html launches Client Station, the remembered authorized home can be restored, and /spire/master.html remains the explicit client chart.');
