@@ -124,15 +124,51 @@ const foundationRows:StandardRow[]=[
 ];
 
 const standardRows:StandardRow[]=[...dspDailyRows,...foundationRows];
+const rowKey=(group:string,name:string)=>`${group}\u0000${name}`;
 
 async function ensureRows(prisma:PrismaClient,a:AuthContext){
+  const existing=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(
+    `SELECT * FROM "SpireFlowsheetRow" WHERE "organizationId"=$1 AND "active"=TRUE ORDER BY "groupName","sortOrder","name"`,
+    a.organizationId,
+  );
+  const byKey=new Map<string,Record<string,unknown>>();
+  for(const row of existing){
+    byKey.set(rowKey(String(row.groupName??''),String(row.name??'')),row);
+  }
+
+  const ensured:Record<string,unknown>[]=[];
   let sort=100;
   for(const [group,name,dataType,unit,description,options] of standardRows){
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "SpireFlowsheetRow"("id","organizationId","name","groupName","dataType","unit","active","description","options","sortOrder","createdAt","updatedAt") SELECT gen_random_uuid()::text,$1,$2,$3,$4,$5,TRUE,$6,$7::jsonb,$8,NOW(),NOW() WHERE NOT EXISTS(SELECT 1 FROM "SpireFlowsheetRow" WHERE "organizationId"=$1 AND "groupName"=$3 AND "name"=$2 AND "active"=TRUE)`,
-      a.organizationId,name,group,dataType,unit,description,JSON.stringify(options.filter(Boolean)),sort++,
-    );
+    const key=rowKey(group,name);
+    let row=byKey.get(key);
+    if(!row){
+      const inserted=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(
+        `INSERT INTO "SpireFlowsheetRow"("id","organizationId","name","groupName","dataType","unit","active","description","options","sortOrder","createdAt","updatedAt") VALUES(gen_random_uuid()::text,$1,$2,$3,$4,$5,TRUE,$6,$7::jsonb,$8,NOW(),NOW()) RETURNING *`,
+        a.organizationId,name,group,dataType,unit,description,JSON.stringify(options.filter(Boolean)),sort,
+      );
+      row=inserted[0];
+      if(!row)throw Object.assign(new Error(`SPIRE could not create required flowsheet row: ${name}`),{status:500});
+      byKey.set(key,row);
+    }
+    ensured.push(row);
+    sort++;
   }
+
+  const merged=new Map<string,Record<string,unknown>>();
+  for(const row of existing)merged.set(String(row.id),row);
+  for(const row of ensured)merged.set(String(row.id),row);
+  return [...merged.values()].sort((left,right)=>{
+    const groupCompare=String(left.groupName??'').localeCompare(String(right.groupName??''));
+    if(groupCompare!==0)return groupCompare;
+    const sortCompare=Number(left.sortOrder??0)-Number(right.sortOrder??0);
+    if(sortCompare!==0)return sortCompare;
+    return String(left.name??'').localeCompare(String(right.name??''));
+  });
+}
+
+function configuredDspRowCount(rows:Array<Record<string,unknown>>){
+  const keys=new Set(rows.map((row)=>rowKey(String(row.groupName??''),String(row.name??''))));
+  return dspDailyRows.filter(([group,name])=>keys.has(rowKey(group,name))).length;
 }
 
 function dateValue(value:unknown){
@@ -149,18 +185,21 @@ export const registerSpireFlowsheetWorkspaceRoutes=(app:express.Express,prisma:P
   app.get('/api/spire/patients/:patientId/flowsheet-workspace',async(req,res,next)=>{try{
     const a=authOf(res),pid=req.params.patientId;
     await requirePatient(prisma,a,pid);
-    await ensureRows(prisma,a);
+    const rows=await ensureRows(prisma,a);
+    const configuredRows=configuredDspRowCount(rows);
+    if(configuredRows!==dspDailyRows.length){
+      throw Object.assign(new Error(`SPIRE flowsheet server bootstrap incomplete (${configuredRows}/${dspDailyRows.length} DSP rows ready)`),{status:500});
+    }
     const entity=entityId(a);
     const from=text(req.query.from,80)||new Date(Date.now()-24*60*60*1000).toISOString();
     const to=text(req.query.to,80)||new Date(Date.now()+60*60*1000).toISOString();
-    const [patient,rows,entries,goals]=await Promise.all([
+    const [patient,entries,goals]=await Promise.all([
       prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT * FROM "SpirePatient" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,a.organizationId,pid),
-      prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT * FROM "SpireFlowsheetRow" WHERE "organizationId"=$1 AND "active"=TRUE ORDER BY "groupName","sortOrder","name"`,a.organizationId),
       prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT e.*,r."name" AS "rowName",r."groupName",r."dataType",r."unit",CASE WHEN e."recordedById"=$1 THEN TRUE ELSE FALSE END AS "canEdit" FROM "SpireFlowsheetEntry" e JOIN "SpireFlowsheetRow" r ON r."id"=e."rowId" AND r."organizationId"=e."organizationId" WHERE e."organizationId"=$2 AND e."patientId"=$3 AND e."recordedAt">=$4::timestamptz AND e."recordedAt"<=$5::timestamptz ORDER BY e."recordedAt",r."groupName",r."sortOrder",r."name"`,a.userId,a.organizationId,pid,from,to),
       prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "id","title","frequency","desiredOutcome","progressPercent" FROM "SpireCarePlanGoal" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "patientId"=$3 AND "status"='ACTIVE' ORDER BY "createdAt","title"`,a.organizationId,entity,pid),
     ]);
     if(!patient[0])throw Object.assign(new Error('Patient was not found'),{status:404});
-    res.json({data:{patient:patient[0],rows,entries,goals,templateVersion:'20260813-dsp-daily-grid-1',viewer:{userId:a.userId,role:a.role,canWrite:writers.has(a.role),admin:isAdmin(a)},from,to}});
+    res.json({data:{patient:patient[0],rows,entries,goals,templateVersion:'20260813-dsp-daily-grid-3',serverRowCount:rows.length,dspDailyRowCount:configuredRows,viewer:{userId:a.userId,role:a.role,canWrite:writers.has(a.role),admin:isAdmin(a)},from,to}});
   }catch(e){next(e);}});
 
   app.post('/api/spire/patients/:patientId/flowsheet-workspace/entries',async(req,res,next)=>{try{
