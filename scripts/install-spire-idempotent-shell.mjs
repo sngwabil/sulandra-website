@@ -151,8 +151,7 @@ async function verifyStandaloneSpireArchitecture() {
   /*
    * The next build step applies production defect fixes and the 20-theme
    * accessibility runtime. Normalize only the existing accessibility function
-   * boundary here so that step is deterministic. This does not touch the
-   * flowsheet, MAR, chart, intake, or any other clinical workspace.
+   * boundary here so that step is deterministic.
    *
    * IMPORTANT: the defect/theme pass removes the legacy applyTheme() function.
    * The source master previously left `window.selectPresetTheme=applyTheme;`
@@ -209,8 +208,10 @@ try {
   process.exit(1);
 }
 
-// build-static-site.mjs imports this verifier first. Run the standalone master
-// defect pass and accessibility repair here so the source is fully normalized
-// before dist-web is copied. The repair is idempotent and does not touch any
-// clinical API, patient data, chart data, flowsheet data, MAR data, or intake.
+// build-static-site.mjs imports this verifier before dist-web is copied.
+// Normalize the standalone accessibility suite and make the DSP Daily
+// Documentation grid the sole Flowsheets renderer in the master source used
+// for this build. These transforms change presentation/runtime wiring only;
+// they do not alter patient, MAR, intake, or clinical database records.
 await import('./fix-spire-accessibility-suite.mjs');
+await import('./fix-spire-master-flowsheet-authority.mjs');
