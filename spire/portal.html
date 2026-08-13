@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>S.P.I.R.E. Clinical Access | Sulandra Health</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root{--navy:#073b66;--navy2:#0c5485;--blue:#0f78ad;--green:#247b5b;--gold:#d5aa36;--ink:#16364d;--muted:#607789;--line:#d5e1e9;--bg:#edf4f8;--panel:#fff;--soft:#f7fafc}
+    *{box-sizing:border-box}html,body{min-height:100%;margin:0;font-family:"Segoe UI",Arial,sans-serif;color:var(--ink);background:linear-gradient(145deg,#eaf3f8 0%,#f8fbfd 48%,#eef7f3 100%)}
+    button,input{font:inherit}.portal-topline{height:8px;background:linear-gradient(90deg,var(--navy),#0983ad,#40a47a)}
+    .portal-header{min-height:82px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:10px 28px;position:sticky;top:0;z-index:30;box-shadow:0 3px 12px rgba(24,62,86,.06)}
+    .brand{display:flex;align-items:center;gap:16px;min-width:0}.brand img{width:230px;max-width:42vw;height:56px;object-fit:contain;object-position:left center}.brand-copy{border-left:1px solid #dbe5eb;padding-left:16px}.brand-copy strong{display:block;color:var(--navy);font-size:18px}.brand-copy span{font-size:12px;color:var(--muted);font-weight:700}
+    .header-spacer{flex:1}.identity{display:flex;align-items:center;gap:10px;border:1px solid #d5e2ea;background:#f9fcfd;border-radius:999px;padding:7px 12px;max-width:360px}.identity-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--navy2);color:#fff;font-weight:900}.identity-copy{min-width:0}.identity-copy b,.identity-copy span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.identity-copy b{font-size:12px}.identity-copy span{font-size:10.5px;color:var(--muted)}.logout{border:0;background:transparent;color:#8a2630;font-weight:800;cursor:pointer;padding:8px}
+    .portal-shell{width:min(1280px,calc(100% - 32px));margin:0 auto;padding:28px 0 46px}.hero{background:linear-gradient(120deg,#083f6b 0%,#0c628d 58%,#26795c 100%);color:#fff;border-radius:22px;padding:28px 30px;box-shadow:0 18px 46px rgba(20,62,88,.16);position:relative;overflow:hidden}.hero:after{content:"";position:absolute;width:320px;height:320px;border:55px solid rgba(255,255,255,.06);border-radius:50%;right:-120px;top:-150px}.eyebrow{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#cbeafe}.hero h1{margin:6px 0 8px;font-size:clamp(26px,3.5vw,42px);line-height:1.05}.hero p{margin:0;max-width:850px;color:#e4f2f8;font-size:15px;line-height:1.55}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px;position:relative;z-index:2}.step{border:1px solid rgba(255,255,255,.28);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}.step-number{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.15);font-weight:900}.step strong{display:block;font-size:12px}.step span{display:block;font-size:10.5px;color:#d9ebf3}.step.active{background:#fff;color:var(--navy);border-color:#fff}.step.active span{color:#5f7889}.step.done{background:rgba(197,245,222,.18);border-color:rgba(197,245,222,.55)}
+    .portal-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:18px 0}.nav-btn{border:1px solid #bcd0dc;background:#fff;color:#164865;padding:8px 13px;border-radius:9px;font-weight:800;cursor:pointer}.nav-btn:hover:not(:disabled){background:#eaf6fb;border-color:#77abc4}.nav-btn:disabled{opacity:.45;cursor:not-allowed}.nav-btn.primary{background:var(--navy2);border-color:var(--navy2);color:#fff}.scope-chip{margin-left:auto;background:#fff;border:1px solid #d4e0e7;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:800;color:#456579;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .message{display:none;border-radius:10px;padding:10px 12px;margin:0 0 14px;font-size:12px;font-weight:800;border:1px solid #f1c98a;background:#fff8e8;color:#8b4b12}.message.show{display:block}.message.error{border-color:#f0b3b8;background:#fff1f2;color:#9f2430}.message.success{border-color:#a7d9be;background:#effbf4;color:#286649}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 34px rgba(25,62,84,.08);overflow:hidden}.panel[hidden]{display:none!important}.panel-head{padding:20px 22px 14px;border-bottom:1px solid #e3ebf0;display:flex;align-items:flex-end;gap:14px}.panel-head h2{margin:0;color:var(--navy);font-size:21px}.panel-head p{margin:5px 0 0;color:var(--muted);font-size:12.5px;line-height:1.45}.panel-head .head-spacer{flex:1}.search{min-width:280px;max-width:420px;width:34vw;height:42px;border:1px solid #b9ccd8;border-radius:9px;padding:0 12px;outline:none;color:var(--ink)}.search:focus{border-color:#2785ad;box-shadow:0 0 0 3px rgba(39,133,173,.12)}
+    .card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:18px 20px 22px}.choice-card{border:1px solid #d5e1e9;border-radius:14px;background:#fbfdfe;padding:16px;min-height:145px;display:flex;flex-direction:column;gap:9px;transition:.15s ease}.choice-card:hover{border-color:#8eb6cb;box-shadow:0 7px 20px rgba(25,72,100,.08);transform:translateY(-1px)}.choice-card.disabled{opacity:.62;background:#f5f7f8;transform:none}.choice-title{font-weight:900;color:#123f5e;font-size:16px}.choice-code{display:inline-flex;align-self:flex-start;border-radius:999px;background:#e8f3f8;color:#0e668e;padding:3px 7px;font-size:10px;font-weight:900}.choice-meta{font-size:11.5px;color:#61798a;line-height:1.45;flex:1}.choice-card button{align-self:flex-start;border:0;border-radius:8px;background:#0d6f9e;color:#fff;padding:8px 12px;font-weight:900;cursor:pointer}.choice-card button:disabled{background:#91a5b1;cursor:not-allowed}
+    .home-banner{margin:18px 20px 0;border:1px solid #b9d9c8;background:#f0faf5;border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center}.home-icon{width:42px;height:42px;border-radius:10px;background:#d8f1e4;display:grid;place-items:center;font-size:22px}.home-banner strong{display:block;color:#1d6248}.home-banner span{display:block;color:#5d7c6c;font-size:11px;margin-top:2px}
+    .patient-wrap{padding:16px 20px 22px}.patient-instructions{display:flex;align-items:center;gap:10px;background:#eef7fc;border:1px solid #c8dfec;border-radius:10px;padding:9px 11px;margin-bottom:12px;font-size:11.5px;color:#315c74}.patient-instructions b{color:#0a587d}.table-wrap{border:1px solid #d6e1e8;border-radius:12px;overflow:auto;background:#fff}.patient-table{width:100%;border-collapse:collapse;min-width:850px}.patient-table th,.patient-table td{padding:10px 11px;border-bottom:1px solid #e6edf1;text-align:left;font-size:12px}.patient-table th{background:#eef4f8;color:#31556d;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;z-index:2}.patient-row{cursor:default;user-select:none}.patient-row:hover{background:#f2f8fc}.patient-row.selected{background:#dfeffc;outline:2px solid #4c9bc0;outline-offset:-2px}.patient-row.requested{box-shadow:inset 5px 0 0 #d5a72f}.patient-name{font-weight:900;color:#123f5f}.mrn{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}.flag{display:inline-block;margin:2px 3px 2px 0;padding:2px 6px;border-radius:999px;background:#fff4dc;color:#8b5614;font-size:9.5px;font-weight:900}.station-footer{display:flex;align-items:center;gap:10px;margin-top:12px}.selected-label{font-size:11.5px;color:#577183;flex:1}.open-chart{border:0;border-radius:9px;background:#1b6e50;color:#fff;padding:9px 16px;font-weight:900;cursor:pointer}.open-chart:disabled{opacity:.45;cursor:not-allowed}
+    .loading{padding:34px;text-align:center;color:#637b8c;font-weight:800}.empty{padding:34px;text-align:center;color:#657e8e;border:1px dashed #b9ccd8;border-radius:12px;background:#f9fcfd;margin:18px 20px}.security-footer{margin-top:16px;font-size:11px;line-height:1.55;color:#68808f;padding:0 4px}.security-footer b{color:#3e6176}
+    @media(max-width:980px){.card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.portal-header{padding:9px 16px}.brand-copy{display:none}.identity-copy{display:none}.search{width:45vw}.steps{grid-template-columns:1fr}.step:not(.active){display:none}}
+    @media(max-width:650px){.portal-shell{width:min(100% - 18px,1280px);padding-top:16px}.hero{padding:22px 18px;border-radius:16px}.card-grid{grid-template-columns:1fr;padding:12px}.panel-head{align-items:stretch;flex-direction:column}.search{width:100%;max-width:none;min-width:0}.scope-chip{margin-left:0;max-width:100%}.brand img{width:190px}.portal-header{min-height:68px}.logout{padding:4px}.home-banner{margin:12px}.patient-wrap{padding:12px}}
+  </style>
+</head>
+<body data-spire-portal="SPIRE_PORTAL_WORKFLOW_V1">
+  <div class="portal-topline"></div>
+  <header class="portal-header">
+    <div class="brand">
+      <img src="/assets/mainlogo.png" alt="Sulandra Health">
+      <div class="brand-copy"><strong>S.P.I.R.E. Clinical Access</strong><span>Secure patient chart gateway</span></div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="identity" id="portalIdentity" aria-live="polite">
+      <div class="identity-avatar" id="portalAvatar">SH</div>
+      <div class="identity-copy"><b id="portalUserName">Verifying session…</b><span id="portalUserRole">Protected clinical access</span></div>
+    </div>
+    <button class="logout" id="portalLogout" type="button">Log Out</button>
+  </header>
+
+  <main class="portal-shell">
+    <section class="hero">
+      <div class="eyebrow">Sulandra Health · S.P.I.R.E.</div>
+      <h1>Clinical Access Portal</h1>
+      <p>Choose where you are working before opening a chart. SPIRE will not load a client automatically. A chart opens only after you enter a service home, select a client in Patient Station, and explicitly open that client.</p>
+      <div class="steps" aria-label="SPIRE access workflow">
+        <div class="step active" id="stepCompany"><div class="step-number">1</div><div><strong>Company</strong><span>Select your Sulandra company</span></div></div>
+        <div class="step" id="stepHome"><div class="step-number">2</div><div><strong>Service Home</strong><span>Choose your work location/unit</span></div></div>
+        <div class="step" id="stepPatient"><div class="step-number">3</div><div><strong>Patient Station</strong><span>Select and open a client</span></div></div>
+      </div>
+    </section>
+
+    <nav class="portal-nav" aria-label="SPIRE portal navigation">
+      <button class="nav-btn primary" id="navCompanies" type="button">Companies</button>
+      <button class="nav-btn" id="navHomes" type="button" disabled>Homes</button>
+      <button class="nav-btn" id="navClients" type="button" disabled>My Clients</button>
+      <span class="scope-chip" id="scopeChip">No clinical scope selected</span>
+    </nav>
+
+    <div class="message" id="portalMessage" role="status"></div>
+
+    <section class="panel" id="companyPanel">
+      <div class="panel-head"><div><h2>Select Company</h2><p>Select the Sulandra company you are working under. Only companies assigned to your account are shown.</p></div><div class="head-spacer"></div><input class="search" id="companySearch" type="search" autocomplete="off" placeholder="Search companies…"></div>
+      <div class="card-grid" id="companyGrid"><div class="loading">Loading authorized companies…</div></div>
+    </section>
+
+    <section class="panel" id="homePanel" hidden>
+      <div class="panel-head"><div><h2>Select Service Home</h2><p>Choose the service home/unit where you are working. Access to a home is verified and audited before Patient Station opens.</p></div><div class="head-spacer"></div><input class="search" id="homeSearch" type="search" autocomplete="off" placeholder="Search homes or addresses…"></div>
+      <div class="card-grid" id="homeGrid"><div class="loading">Loading service homes…</div></div>
+    </section>
+
+    <section class="panel" id="patientPanel" hidden>
+      <div class="panel-head"><div><h2>Patient Station · My Clients</h2><p>Clients assigned to the selected service home. Single-click selects a row. <b>Double-click opens the chart.</b></p></div><div class="head-spacer"></div><input class="search" id="patientSearch" type="search" autocomplete="off" placeholder="Search client, MRN, DOB…"></div>
+      <div class="home-banner"><div class="home-icon">🏠</div><div><strong id="stationHomeName">Selected Service Home</strong><span id="stationHomeMeta">Verified clinical scope</span></div></div>
+      <div class="patient-wrap">
+        <div class="patient-instructions"><span>🩺</span><span><b>No chart opens automatically.</b> Select a client to review the row, then double-click that client or use <b>Open Selected Chart</b>.</span></div>
+        <div class="table-wrap">
+          <table class="patient-table" aria-label="Clients in selected service home">
+            <thead><tr><th>Client</th><th>MRN</th><th>Date of Birth</th><th>Service Home</th><th>Program</th><th>Alerts</th></tr></thead>
+            <tbody id="patientTableBody"><tr><td colspan="6" class="loading">Loading clients…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="station-footer"><span class="selected-label" id="selectedClientLabel">No client selected.</span><button class="open-chart" id="openSelectedChart" type="button" disabled>Open Selected Chart</button></div>
+      </div>
+    </section>
+
+    <div class="security-footer"><b>Privacy & audit notice:</b> Company selection, service-home access, chart access, documentation, and amendments are subject to Sulandra Health role-based access controls and audit logging. Use SPIRE only for authorized care and operations.</div>
+  </main>
+
+  <script>window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app';</script>
+  <script src="/assets/spire-portal.js?v=20260813-portal-workflow-1"></script>
+</body>
+</html>

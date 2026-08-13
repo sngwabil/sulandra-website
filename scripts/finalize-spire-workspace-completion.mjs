@@ -1,11 +1,6 @@
-// Standalone S.P.I.R.E. publication finalizer.
-//
-// Historical versions of this script injected the legacy spire-app-v2/workspace
-// completion stack back into dist-web/spire.html after build-static-site.mjs had
-// already published the canonical redirect. That recreated a second SPIRE
-// frontend and allowed the retired continuous flowsheet renderer to compete with
-// /spire/master.html. The standalone master is now the only frontend authority.
-
+// Standalone S.P.I.R.E. portal/chart publication finalizer.
+// The public entry is the Clinical Access Portal. The master is chart-only and
+// is reached only after explicit company, home and patient selection.
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,90 +9,87 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const sourceEntryPath = path.join(root, 'spire.html');
 const publishedEntryPath = path.join(dist, 'spire.html');
+const publishedPortalPath = path.join(dist, 'spire', 'portal.html');
 const publishedMasterPath = path.join(dist, 'spire', 'master.html');
-const masterGridAssetPath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
-const masterGridVersion = '20260813-dsp-daily-grid-3';
-const masterGridUrl = `/assets/spire-master-flowsheet-grid.js?v=${masterGridVersion}`;
+const portalRuntimePath = path.join(dist, 'assets', 'spire-portal.js');
+const navigationRuntimePath = path.join(dist, 'assets', 'spire-master-navigation.js');
+const flowsheetRuntimePath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
+const navigationUrl = '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1';
+const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-file-on-command-1';
 
-// Restore the root entry from its canonical source at the final publication
-// stage. No later SPIRE finalizer is allowed to turn /spire.html into an app.
-const sourceEntry = await readFile(sourceEntryPath, 'utf8');
-await writeFile(publishedEntryPath, sourceEntry, 'utf8');
+for (const file of [publishedPortalPath, publishedMasterPath, portalRuntimePath, navigationRuntimePath, flowsheetRuntimePath]) {
+  await stat(file);
+}
+
+// Final publication always restores the root launcher from canonical source so
+// no post-build legacy finalizer can turn /spire.html back into a chart shell.
+await writeFile(publishedEntryPath, await readFile(sourceEntryPath, 'utf8'), 'utf8');
 
 let master = await readFile(publishedMasterPath, 'utf8');
-await stat(masterGridAssetPath);
-
-// Force a fresh browser/CDN generation of the authoritative DSP grid runtime.
-master = master.replace(
-  /\/assets\/spire-master-flowsheet-grid\.js\?v=[^"']+/g,
-  masterGridUrl,
-);
+master = master
+  .replace(/\s*<script src="\/assets\/spire-master-navigation\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+  .replace(/\s*<script src="\/assets\/spire-master-flowsheet-grid\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+if (!master.includes('</body>')) throw new Error('Standalone SPIRE master has no closing body tag');
+master = master.replace('</body>', `  <script src="${navigationUrl}"></script>\n  <script src="${flowsheetUrl}"></script>\n</body>`);
 await writeFile(publishedMasterPath, master, 'utf8');
 
-const entry = await readFile(publishedEntryPath, 'utf8');
-const finalMaster = await readFile(publishedMasterPath, 'utf8');
+const [entry, portal, finalMaster, portalRuntime, navigationRuntime, flowsheetRuntime] = await Promise.all([
+  readFile(publishedEntryPath, 'utf8'),
+  readFile(publishedPortalPath, 'utf8'),
+  readFile(publishedMasterPath, 'utf8'),
+  readFile(portalRuntimePath, 'utf8'),
+  readFile(navigationRuntimePath, 'utf8'),
+  readFile(flowsheetRuntimePath, 'utf8'),
+]);
 
-for (const marker of [
-  '/spire/master.html',
-  'window.location.search',
-  'window.location.hash',
-]) {
-  if (!entry.includes(marker)) {
-    throw new Error(`Canonical /spire.html entry is missing ${marker}`);
-  }
+for (const marker of ['/spire/portal.html', 'window.location.search', 'window.location.hash', 'SPIRE_CANONICAL_PORTAL_ENTRY_V1']) {
+  if (!entry.includes(marker)) throw new Error(`Canonical /spire.html portal entry is missing ${marker}`);
 }
-
 for (const legacyAsset of [
-  'spire-app-v2.js',
-  'spire-canonical-bootstrap.js',
-  'spire-shell-resilience.js',
-  'spire-chart-ready.js',
-  'spire-deep-link.js',
-  'spire-flowsheet-workspace-launcher.js',
-  'spire-workspace-completion.js',
-  'spire-workspace-stability.js',
-  'spire-workspace-polish.js',
-  'spire-note-cosigner-polish.js',
-  'spire-workspace-loop-guard.js',
-  'spire-workspace-loop-restore.js',
+  'spire-app-v2.js', 'spire-canonical-bootstrap.js', 'spire-shell-resilience.js',
+  'spire-chart-ready.js', 'spire-deep-link.js', 'spire-flowsheet-workspace-launcher.js',
+  'spire-workspace-completion.js', 'spire-workspace-stability.js', 'spire-workspace-polish.js',
+  'spire-note-cosigner-polish.js', 'spire-workspace-loop-guard.js', 'spire-workspace-loop-restore.js',
 ]) {
-  if (entry.includes(legacyAsset)) {
-    throw new Error(`Legacy SPIRE runtime re-entered canonical /spire.html: ${legacyAsset}`);
-  }
+  if (entry.includes(legacyAsset)) throw new Error(`Legacy SPIRE runtime re-entered /spire.html: ${legacyAsset}`);
 }
 
-for (const marker of [
-  'id="flowsheets-view"',
-  'SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1',
-  'window.SpireMasterFlowsheetGrid',
-  masterGridUrl,
-]) {
-  if (!finalMaster.includes(marker)) {
-    throw new Error(`Standalone SPIRE master flowsheet authority is missing ${marker}`);
-  }
+for (const marker of ['SPIRE_PORTAL_WORKFLOW_V1', 'Select Company', 'Select Service Home', 'Patient Station', '/assets/spire-portal.js?v=20260813-portal-workflow-1']) {
+  if (!portal.includes(marker)) throw new Error(`SPIRE portal is missing ${marker}`);
+}
+for (const marker of ['/api/entity-context', '/api/spire/network/service-homes', '/access', 'dblclick', 'Open Selected Chart']) {
+  if (!portalRuntime.includes(marker)) throw new Error(`SPIRE portal runtime is missing ${marker}`);
+}
+if (portalRuntime.includes('openSelectedChart();\n      }\n    }\n    setStep(\'patient\')')) {
+  throw new Error('SPIRE portal may not automatically open a patient after service-home selection');
 }
 
-// The compatibility loader may remain because existing master actions call it,
-// but it must delegate to the new grid and must never rebuild the retired UI.
+for (const marker of ['id="flowsheets-view"', navigationUrl, flowsheetUrl, 'window.SpireMasterFlowsheetGrid']) {
+  if (!finalMaster.includes(marker)) throw new Error(`Standalone SPIRE chart is missing ${marker}`);
+}
+if ((finalMaster.match(/spire-master-navigation\.js/g) || []).length !== 1) throw new Error('SPIRE master navigation runtime must be published exactly once');
+if ((finalMaster.match(/spire-master-flowsheet-grid\.js/g) || []).length !== 1) throw new Error('SPIRE master flowsheet runtime must be published exactly once');
+
+for (const marker of ['SPIRE_MASTER_EXPLICIT_PATIENT_GATE_V1', "if (!patientId || !homeId)", "headers.set('x-spire-home-id', homeId)", 'My Clients', 'Homes', 'Patient Station']) {
+  if (!navigationRuntime.includes(marker)) throw new Error(`SPIRE master explicit-patient navigation is missing ${marker}`);
+}
+for (const marker of ['SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1', 'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1', 'filePending', 'hasPending', 'Save Comment to Box', 'UNFILED AMENDMENT', 'Filed by']) {
+  if (!flowsheetRuntime.includes(marker)) throw new Error(`SPIRE File-based flowsheet runtime is missing ${marker}`);
+}
+for (const forbidden of ['setTimeout(() => saveCell', 'scheduleSave(cell)', "addEventListener('focusout',", "saveCell(cell, { force: true })"]) {
+  if (flowsheetRuntime.includes(forbidden)) throw new Error(`SPIRE flowsheet autosave behavior returned: ${forbidden}`);
+}
+
+// Existing master actions still call loadFlowsheetsView(). It must delegate to
+// the authoritative runtime and must never rebuild the retired continuous UI.
 const loaderStart = finalMaster.indexOf('  async function loadFlowsheetsView(groupOverride) {');
 const rendererStart = finalMaster.indexOf('  function renderFlowsheet(host) {', loaderStart);
-if (loaderStart < 0 || rendererStart < 0) {
-  throw new Error('Standalone SPIRE flowsheet compatibility loader could not be verified.');
-}
+if (loaderStart < 0 || rendererStart < 0) throw new Error('Standalone SPIRE flowsheet compatibility loader could not be verified');
 const loaderSource = finalMaster.slice(loaderStart, rendererStart);
-for (const forbidden of [
-  'Loading continuous flowsheet',
-  'renderFlowsheet(host);',
-  'state.flowColumns = keys.slice(-8)',
-]) {
-  if (loaderSource.includes(forbidden)) {
-    throw new Error(`Retired continuous flowsheet behavior is still reachable: ${forbidden}`);
-  }
-}
-if (!loaderSource.includes('window.SpireMasterFlowsheetGrid')) {
-  throw new Error('Flowsheets compatibility loader does not delegate to SpireMasterFlowsheetGrid.');
+if (!loaderSource.includes('window.SpireMasterFlowsheetGrid')) throw new Error('Master flowsheet loader does not delegate to SpireMasterFlowsheetGrid');
+for (const forbidden of ['Loading continuous flowsheet', 'renderFlowsheet(host);', 'state.flowColumns = keys.slice(-8)']) {
+  if (loaderSource.includes(forbidden)) throw new Error(`Retired continuous flowsheet behavior is still reachable: ${forbidden}`);
 }
 
-console.log(
-  'Final SPIRE publication verified: /spire.html is a redirect only, /spire/master.html is authoritative, and the server-backed DSP Daily Documentation grid is the sole master Flowsheets renderer.'
-);
+await import('./verify-spire-portal-workflow.mjs');
+console.log('Final SPIRE publication verified: login/session -> company -> service home -> Patient Station -> explicit chart; Flowsheets stage locally and file only on command.');

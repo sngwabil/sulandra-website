@@ -2,44 +2,24 @@ import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const scriptDirectory =
-  path.dirname(fileURLToPath(import.meta.url));
-
-const root =
-  path.resolve(scriptDirectory, '..');
-
-const masterPath =
-  path.join(root, 'spire', 'master.html');
-
-const entryPath =
-  path.join(root, 'spire.html');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const entryPath = path.join(root, 'spire.html');
+const portalPath = path.join(root, 'spire', 'portal.html');
+const masterPath = path.join(root, 'spire', 'master.html');
 
 async function requireFile(filePath, label) {
-  try {
-    await access(filePath);
-  } catch {
-    throw new Error(
-      `${label} is missing: ${filePath}`
-    );
-  }
+  try { await access(filePath); }
+  catch { throw new Error(`${label} is missing: ${filePath}`); }
 }
 
 function normalizeAccessibilityRuntime(masterHtml) {
   const startToken = 'function openAccessibilityModal';
   const endToken = 'window.openAccessibilityModal=openAccessibilityModal;';
-
   const startIndex = masterHtml.indexOf(startToken);
   const endStart = masterHtml.indexOf(endToken, startIndex);
-
-  if (startIndex === -1 || endStart === -1) {
-    throw new Error(
-      'Standalone SPIRE master accessibility runtime could not be located.'
-    );
-  }
-
+  if (startIndex === -1 || endStart === -1) throw new Error('Standalone SPIRE master accessibility runtime could not be located.');
   const lineStart = masterHtml.lastIndexOf('\n', startIndex) + 1;
   const endIndex = endStart + endToken.length;
-
   const normalized = `  function openAccessibilityModal(){
     const modal=$('#accessibilityModal');
     if(!modal)return;
@@ -51,167 +31,54 @@ function normalizeAccessibilityRuntime(masterHtml) {
     const avatar=$('#modalUserAvatarPreview',modal); if(avatar) avatar.textContent=initialFromName(name);
   }
   window.openAccessibilityModal=openAccessibilityModal;`;
-
-  return (
-    masterHtml.slice(0, lineStart) +
-    normalized +
-    masterHtml.slice(endIndex)
-  );
+  return masterHtml.slice(0, lineStart) + normalized + masterHtml.slice(endIndex);
 }
 
 function normalizeThemeCompatibilityAlias(masterHtml) {
-  const legacyAlias = 'window.selectPresetTheme=applyTheme;';
-  const canonicalAlias = 'window.selectPresetTheme=applyPresetTheme;';
-
-  if (masterHtml.includes(legacyAlias)) {
-    return masterHtml.replace(legacyAlias, canonicalAlias);
-  }
-
-  if (!masterHtml.includes(canonicalAlias)) {
-    throw new Error(
-      'Standalone SPIRE master preset-theme compatibility alias could not be located.'
-    );
-  }
-
+  if (masterHtml.includes('window.selectPresetTheme=applyTheme;')) return masterHtml.replace('window.selectPresetTheme=applyTheme;', 'window.selectPresetTheme=applyPresetTheme;');
+  if (!masterHtml.includes('window.selectPresetTheme=applyPresetTheme;')) throw new Error('Standalone SPIRE master preset-theme compatibility alias could not be located.');
   return masterHtml;
 }
 
-async function verifyStandaloneSpireArchitecture() {
-  await requireFile(
-    masterPath,
-    'Standalone S.P.I.R.E. master application'
-  );
-
-  await requireFile(
-    entryPath,
-    'Canonical S.P.I.R.E. entry page'
-  );
-
-  let [
-    masterHtml,
-    entryHtml
-  ] = await Promise.all([
-    readFile(masterPath, 'utf8'),
+async function verifyAndNormalize() {
+  await Promise.all([
+    requireFile(entryPath, 'Canonical S.P.I.R.E. entry page'),
+    requireFile(portalPath, 'S.P.I.R.E. Clinical Access Portal'),
+    requireFile(masterPath, 'Standalone S.P.I.R.E. chart master'),
+  ]);
+  const [entry, portal, originalMaster] = await Promise.all([
     readFile(entryPath, 'utf8'),
+    readFile(portalPath, 'utf8'),
+    readFile(masterPath, 'utf8'),
   ]);
 
-  if (
-    !/<html[\s>]/i.test(masterHtml) ||
-    !/<head[\s>]/i.test(masterHtml) ||
-    !/<body[\s>]/i.test(masterHtml) ||
-    !/<\/html>/i.test(masterHtml)
-  ) {
-    throw new Error(
-      '/spire/master.html does not appear to be a complete HTML application.'
-    );
+  if (!entry.includes('/spire/portal.html') || !entry.includes('window.location.search') || !entry.includes('window.location.hash')) {
+    throw new Error('/spire.html must launch /spire/portal.html while preserving query/hash context.');
+  }
+  if (!portal.includes('SPIRE_PORTAL_WORKFLOW_V1') || !portal.includes('Patient Station')) {
+    throw new Error('/spire/portal.html is not the canonical company/home/Patient Station gateway.');
+  }
+  if (!/<html[\s>]/i.test(originalMaster) || !/<body[\s>]/i.test(originalMaster) || !/<\/html>/i.test(originalMaster)) {
+    throw new Error('/spire/master.html does not appear to be a complete chart application.');
+  }
+  for (const legacy of ['spire-app-v2.js', 'spire-canonical-bootstrap.js', 'spire-shell-resilience.js', 'spire-chart-ready.js', 'spire-deep-link.js']) {
+    if (entry.includes(legacy)) throw new Error(`/spire.html still references legacy SPIRE runtime ${legacy}`);
   }
 
-  if (
-    !entryHtml.includes('/spire/master.html')
-  ) {
-    throw new Error(
-      '/spire.html is not configured to open /spire/master.html.'
-    );
-  }
+  let master = normalizeAccessibilityRuntime(originalMaster);
+  master = normalizeThemeCompatibilityAlias(master);
+  if (master.includes('window.selectPresetTheme=applyTheme;')) throw new Error('SPIRE master still contains the bootstrap-breaking applyTheme compatibility alias.');
+  if (master !== originalMaster) await writeFile(masterPath, master, 'utf8');
 
-  if (
-    !entryHtml.includes(
-      'window.location.search'
-    ) ||
-    !entryHtml.includes(
-      'window.location.hash'
-    )
-  ) {
-    throw new Error(
-      '/spire.html does not preserve SPIRE query/hash deep-link context.'
-    );
-  }
-
-  const legacyEntryAssets = [
-    'spire-app-v2.js',
-    'spire-canonical-bootstrap.js',
-    'spire-shell-resilience.js',
-    'spire-chart-ready.js',
-    'spire-deep-link.js',
-    'spire-home-care-redesign-loader.js',
-  ];
-
-  const legacyFound =
-    legacyEntryAssets.filter(
-      asset => entryHtml.includes(asset)
-    );
-
-  if (legacyFound.length) {
-    throw new Error(
-      '/spire.html still references legacy SPIRE runtime assets: ' +
-      legacyFound.join(', ')
-    );
-  }
-
-  /*
-   * The next build step applies production defect fixes and the 20-theme
-   * accessibility runtime. Normalize only the existing accessibility function
-   * boundary here so that step is deterministic.
-   *
-   * IMPORTANT: the defect/theme pass removes the legacy applyTheme() function.
-   * The source master previously left `window.selectPresetTheme=applyTheme;`
-   * below that removal point. In a published build that statement throws a
-   * ReferenceError before bootstrap() is registered, leaving the page stuck on
-   * literal HTML placeholders. Point the compatibility alias at the canonical
-   * applyPresetTheme() runtime before the defect/theme pass runs.
-   */
-  let normalizedMaster = normalizeAccessibilityRuntime(masterHtml);
-  normalizedMaster = normalizeThemeCompatibilityAlias(normalizedMaster);
-
-  if (normalizedMaster.includes('window.selectPresetTheme=applyTheme;')) {
-    throw new Error(
-      'Standalone SPIRE master still contains the bootstrap-breaking applyTheme compatibility alias.'
-    );
-  }
-
-  if (!normalizedMaster.includes('window.selectPresetTheme=applyPresetTheme;')) {
-    throw new Error(
-      'Standalone SPIRE master is missing the canonical preset-theme compatibility alias.'
-    );
-  }
-
-  if (normalizedMaster !== masterHtml) {
-    await writeFile(masterPath, normalizedMaster, 'utf8');
-    masterHtml = normalizedMaster;
-  }
-
-  console.log(
-    [
-      'Standalone S.P.I.R.E. architecture verified.',
-      'Master application:',
-      '/spire/master.html.',
-      'Canonical entry:',
-      '/spire.html -> /spire/master.html.',
-      'Deep-link context is preserved.',
-      'Accessibility runtime boundary normalized for the master defect/theme pass.',
-      'Preset-theme compatibility alias normalized so bootstrap remains reachable.',
-      'Legacy SpireEnsureShell installation is not required.',
-    ].join(' ')
-  );
+  console.log('S.P.I.R.E. source architecture verified: /spire.html -> Clinical Access Portal -> explicit company/home/client selection -> chart-only /spire/master.html.');
 }
 
-try {
-  await verifyStandaloneSpireArchitecture();
-} catch (error) {
-  console.error(
-    'Standalone S.P.I.R.E. verification failed:',
-    error instanceof Error
-      ? error.message
-      : error
-  );
-
+try { await verifyAndNormalize(); }
+catch (error) {
+  console.error('Standalone S.P.I.R.E. verification failed:', error instanceof Error ? error.message : error);
   process.exit(1);
 }
 
-// build-static-site.mjs imports this verifier before dist-web is copied.
-// Normalize the standalone accessibility suite and make the DSP Daily
-// Documentation grid the sole Flowsheets renderer in the master source used
-// for this build. These transforms change presentation/runtime wiring only;
-// they do not alter patient, MAR, intake, or clinical database records.
+// Preserve the existing accessibility/theme repair pass. It is independent of
+// clinical routing, patient scope and flowsheet persistence.
 await import('./fix-spire-accessibility-suite.mjs');
-await import('./fix-spire-master-flowsheet-authority.mjs');
