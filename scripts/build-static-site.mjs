@@ -7,10 +7,10 @@ const repositoryRoot = path.resolve(scriptDirectory, '..');
 const outputDirectory = path.join(repositoryRoot, 'dist-web');
 const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app';
 
-// The business-path installer exposes the canonical SpireEnsureShell hook before
-// this publication step. Make that same runtime idempotent before dist-web is
-// copied so a later DOM-ready/recovery callback cannot reconstruct an open chart.
+// Verify the standalone SPIRE architecture and normalize the authoritative
+// master source before publication. Neither step installs the legacy root shell.
 await import('./install-spire-idempotent-shell.mjs');
+await import('./fix-spire-master-defects.mjs');
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
@@ -36,12 +36,9 @@ for (const directory of publicDirectories) {
   }
 }
 
-// SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT: the Results workspace observes body child
-// mutations so it can enhance a newly opened Results tab. Its legacy tab-layout
-// pass appendChild()-ed every existing chart tab on every observer callback even
-// when order was already correct. Moving those nodes generated the next child-list
-// mutation and created the chart-opening CPU loop. Patch the final published asset
-// so it mutates tab order only when the actual key order differs.
+// SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT is retained as a capability safeguard for
+// the older dedicated Results asset, even though the standalone master does not
+// load that asset into its root application shell.
 const resultsWorkspacePath = path.join(outputDirectory, 'assets', 'spire-results-workspace.js');
 try {
   let source = await readFile(resultsWorkspacePath, 'utf8');
@@ -80,52 +77,41 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
+// Canonical SPIRE publication contract:
+// - /spire.html is a redirect/entry only.
+// - /spire/master.html is the authoritative application.
+// - no legacy shell/runtime is injected into the root entry during publication.
 const spirePath = path.join(outputDirectory, 'spire.html');
-try {
-  let spireHtml = await readFile(spirePath, 'utf8');
-  const version = '20260808-spire-workflow-13';
-  const versionFor = (asset) => {
-    if (asset === 'spire-results-workspace') return '20260811-spire-results-workspace-2';
-    if (asset === 'spire-chart-review-v2') return '20260812-spire-chart-review-v2-3';
-    if (asset === 'spire-screen-controls') return '20260811-spire-screen-controls-3';
-    if (asset === 'spire-clinical-workstation') return '20260811-spire-clinical-workstation-2';
-    return version;
-  };
-  const styles = [
-    'spire-workflow', 'spire-results-workspace', 'spire-chart-review-v2',
-    'spire-order-composer', 'spire-emar', 'spire-care-plan', 'spire-incidents',
-    'spire-assessments-flowsheets', 'spire-scheduling', 'spire-authorizations-evv',
-    'spire-documents-external-records', 'spire-communications-inbasket',
-    // Viewport protection stays immediately before the final clinical workstation skin.
-    'spire-screen-controls',
-    // Keep the workstation skin last so older module CSS cannot restore web-card spacing.
-    'spire-clinical-workstation',
-  ];
-  const scripts = styles.filter((asset) => asset !== 'spire-clinical-workstation');
-  for (const asset of styles) {
-    spireHtml = spireHtml.replace(new RegExp(`\\s*<link rel="stylesheet" href="\\/assets\\/${asset}\\.css(?:\\?v=[^"']+)?">\\s*`, 'g'), '');
+const spireMasterPath = path.join(outputDirectory, 'spire', 'master.html');
+const publishedSpireEntry = await readFile(spirePath, 'utf8');
+const publishedSpireMaster = await readFile(spireMasterPath, 'utf8');
+for (const marker of ['/spire/master.html', 'window.location.search', 'window.location.hash']) {
+  if (!publishedSpireEntry.includes(marker)) throw new Error(`Static publication regression: SPIRE canonical entry missing ${marker}`);
+}
+for (const legacyAsset of [
+  'spire-app-v2.js',
+  'spire-canonical-bootstrap.js',
+  'spire-shell-resilience.js',
+  'spire-chart-ready.js',
+  'spire-deep-link.js',
+  'spire-home-care-redesign-loader.js',
+  'spire-clinical-workstation.css',
+  'spire-flowsheet-workspace-launcher.js',
+]) {
+  if (publishedSpireEntry.includes(legacyAsset)) {
+    throw new Error(`Static publication regression: SPIRE canonical entry still loads legacy runtime ${legacyAsset}`);
   }
-  for (const asset of scripts) {
-    spireHtml = spireHtml.replace(new RegExp(`\\s*<script src="\\/assets\\/${asset}\\.js(?:\\?v=[^"']+)?"><\\/script>\\s*`, 'g'), '');
-  }
-  spireHtml = spireHtml.replace(/\s*<script src="\/assets\/spire-flowsheet-workspace-launcher\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '');
-  spireHtml = spireHtml
-    .replace('</head>', styles.map(asset => `<link rel="stylesheet" href="/assets/${asset}.css?v=${versionFor(asset)}">`).join('') + '</head>')
-    .replace('</body>', scripts.map(asset => `<script src="/assets/${asset}.js?v=${versionFor(asset)}"></script>`).join('') + '<script src="/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-2"></script></body>')
-    // The business-path installer pins app generation nine. The content of that
-    // runtime is hardened by install-spire-idempotent-shell.mjs after the pinning
-    // step, so publish it under a fresh URL or browsers may reuse the old pre-fix
-    // generation-nine bytes from cache.
-    .replace(/\/assets\/spire-app-v2\.js\?v=20260811-business-uat-9(?:&startup=[^"']+)?/g, '/assets/spire-app-v2.js?v=20260811-business-uat-9&startup=20260811-domready-1');
-  await writeFile(spirePath, spireHtml, 'utf8');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
+}
+for (const marker of [
+  '<html', '<head', '<body', '</html>',
+  "window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'",
+  '/assets/sulandra-entity-context.js',
+  'SPIRE_MASTER_DEFECT_FIXES_V1',
+]) {
+  if (!publishedSpireMaster.includes(marker)) throw new Error(`Static publication regression: standalone SPIRE master missing ${marker}`);
 }
 
-// The dedicated continuous flowsheet remains a separate focused charting surface,
-// but it now uses the uploaded S.P.I.R.E. master-template presentation and routes
-// its header actions back into the current patient chart. Keep this publication
-// transform idempotent so repeated local/CI builds never duplicate assets.
+// The dedicated continuous flowsheet remains a separate focused charting surface.
 const flowsheetPath = path.join(outputDirectory, 'spire', 'flowsheets.html');
 try {
   let html = await readFile(flowsheetPath, 'utf8');
@@ -200,11 +186,13 @@ const requiredPublishedFiles = [
   'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
   'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
   'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
+  // Retain legacy capability assets as independently testable modules, but do not
+  // inject them into the canonical /spire.html entry.
   'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
   'assets/spire-results-workspace.js', 'assets/spire-chart-review-v2.js', 'assets/spire-clinical-workstation.css', 'assets/spire-flowsheet-workspace-launcher.js',
   'assets/spire-user-template-integration.css', 'assets/spire-user-template-integration.js', 'assets/spire-user-template-layout-fix.css', 'assets/spire-user-template-final-lock.css',
   'assets/spire-flowsheet-master.css', 'assets/spire-flowsheet-master.js',
-  'spire.html', 'spire/flowsheets.html', 'spire-admin.html', 'services',
+  'spire.html', 'spire/master.html', 'spire/flowsheets.html', 'spire-admin.html', 'services',
 ];
 for (const relative of requiredPublishedFiles) {
   try { await stat(path.join(outputDirectory, relative)); }
@@ -216,35 +204,13 @@ if (!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) 
   throw new Error('Static publication regression: SPIRE Results workspace can recreate the chart-tab MutationObserver loop');
 }
 
-const publishedSpireHtml = await readFile(spirePath, 'utf8');
-const workstationHref = '/assets/spire-clinical-workstation.css?v=20260811-spire-clinical-workstation-2';
-const screenControlsHref = '/assets/spire-screen-controls.css?v=20260811-spire-screen-controls-3';
-if (!publishedSpireHtml.includes(workstationHref) || publishedSpireHtml.indexOf(workstationHref) < publishedSpireHtml.indexOf(screenControlsHref)) {
-  throw new Error('Static publication regression: SPIRE clinical workstation stylesheet is not the final presentation layer');
-}
-if (!publishedSpireHtml.includes('/assets/spire-chart-review-v2.js?v=20260812-spire-chart-review-v2-3')) {
-  throw new Error('Static publication regression: deterministic SPIRE Chart Review runtime is missing');
-}
-if (!publishedSpireHtml.includes('/assets/spire-flowsheet-workspace-launcher.js?v=20260812-spire-flowsheet-grid-2')) {
-  throw new Error('Static publication regression: SPIRE continuous flowsheet launcher is missing');
-}
 const publishedFlowsheetHtml = await readFile(flowsheetPath, 'utf8');
 if (!publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1') || !publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1')) {
   throw new Error('Static publication regression: uploaded master-template flowsheet presentation/navigation is missing');
-}
-const publishedClinicalWorkstation = await readFile(path.join(outputDirectory, 'assets', 'spire-clinical-workstation.css'), 'utf8');
-for (const marker of [
-  '--sp-ref-ribbon',
-  'grid-template-columns:clamp(230px,13.2vw,270px)',
-  'flex-direction:row!important',
-  '.spire-brand strong',
-  '#spireChartWorkspace.active',
-]) {
-  if (!publishedClinicalWorkstation.includes(marker)) throw new Error(`Static publication regression: reference workstation CSS missing ${marker}`);
 }
 
 await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
 
-console.log('Static website published from canonical source files; user master-template SPIRE, deterministic Chart Review, and master-styled continuous flowsheets are included.');
+console.log('Static website published from canonical source files; /spire.html remains a clean redirect and /spire/master.html is the authoritative standalone SPIRE workstation.');
