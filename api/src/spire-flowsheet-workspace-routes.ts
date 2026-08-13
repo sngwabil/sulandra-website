@@ -179,6 +179,66 @@ function dateValue(value:unknown){
   return d;
 }
 
+function badRequest(message:string){
+  return Object.assign(new Error(message),{status:400});
+}
+
+function rowOptions(row:Record<string,unknown>){
+  const raw=row.options;
+  if(Array.isArray(raw))return raw.map((option)=>String(option).trim()).filter(Boolean);
+  if(typeof raw==='string'){
+    try{
+      const parsed=JSON.parse(raw);
+      if(Array.isArray(parsed))return parsed.map((option)=>String(option).trim()).filter(Boolean);
+    }catch{
+      return [];
+    }
+  }
+  return [];
+}
+
+function validateEntryValues(row:Record<string,unknown>,rawNumeric:unknown,rawValue:unknown,rawComment:unknown){
+  const rowName=String(row.name??'Flowsheet row');
+  const dataType=String(row.dataType??'TEXT').trim().toUpperCase();
+  const comment=text(rawComment,4000)||null;
+  let numeric:number|null=null;
+  let value:string|null=null;
+
+  if(dataType==='NUMBER'){
+    if(rawValue!==undefined&&rawValue!==null&&text(rawValue,4000)){
+      throw badRequest(`${rowName} accepts numeric values only.`);
+    }
+    if(rawNumeric!==undefined&&rawNumeric!==null&&rawNumeric!==''){
+      numeric=Number(rawNumeric);
+      if(!Number.isFinite(numeric))throw badRequest(`${rowName} requires a valid numeric value.`);
+    }
+  }else{
+    if(rawNumeric!==undefined&&rawNumeric!==null&&rawNumeric!==''){
+      throw badRequest(`${rowName} does not accept a numeric-only value.`);
+    }
+    value=text(rawValue,4000)||null;
+
+    if(dataType==='SELECT'&&value){
+      const options=rowOptions(row);
+      if(options.length&&!options.includes(value)){
+        throw badRequest(`Choose an allowed value for ${rowName}: ${options.join(', ')}.`);
+      }
+    }
+
+    if(rowName==='BP (mmHg)'&&value){
+      const match=value.match(/^(\d{2,3})\s*\/\s*(\d{2,3})$/);
+      if(!match)throw badRequest('Blood pressure must be entered as systolic/diastolic, for example 120/80.');
+      const systolic=Number(match[1]);
+      const diastolic=Number(match[2]);
+      if(systolic<=diastolic)throw badRequest('Blood pressure systolic value must be greater than diastolic value.');
+      value=`${systolic}/${diastolic}`;
+    }
+  }
+
+  if(numeric==null&&!value&&!comment)throw badRequest('Enter a value or comment before saving.');
+  return{numeric,value,comment};
+}
+
 export const registerSpireFlowsheetWorkspaceRoutes=(app:express.Express,prisma:PrismaClient,deps:Deps)=>{
   const{authOf}=deps;
 
@@ -211,11 +271,7 @@ export const registerSpireFlowsheetWorkspaceRoutes=(app:express.Express,prisma:P
     const row=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT * FROM "SpireFlowsheetRow" WHERE "organizationId"=$1 AND "id"=$2 AND "active"=TRUE LIMIT 1`,a.organizationId,rowId);
     if(!row[0])throw Object.assign(new Error('Flowsheet row was not found'),{status:404});
     const recordedAt=dateValue(req.body?.recordedAt);
-    const numeric=req.body?.numericValue==null||req.body?.numericValue===''?null:Number(req.body.numericValue);
-    if(numeric!=null&&!Number.isFinite(numeric))throw Object.assign(new Error('Numeric value is invalid'),{status:400});
-    const value=text(req.body?.value,4000)||null;
-    const comment=text(req.body?.comment,4000)||null;
-    if(numeric==null&&!value&&!comment)throw Object.assign(new Error('Enter a value or comment before saving'),{status:400});
+    const{numeric,value,comment}=validateEntryValues(row[0],req.body?.numericValue,req.body?.value,req.body?.comment);
     const rows=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(
       `INSERT INTO "SpireFlowsheetEntry"("organizationId","legalEntityId","patientId","rowId","value","numericValue","recordedAt","recordedById","comment","source") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'SPIRE_FLOWSHEET') RETURNING *`,
       a.organizationId,entityId(a),pid,rowId,value,numeric,recordedAt,a.userId,comment,
@@ -228,14 +284,15 @@ export const registerSpireFlowsheetWorkspaceRoutes=(app:express.Express,prisma:P
     const a=authOf(res),pid=req.params.patientId;
     await requirePatient(prisma,a,pid,true);
     const entity=entityId(a);
-    const original=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT e.*,r."name" AS "rowName",r."groupName",r."dataType",r."unit" FROM "SpireFlowsheetEntry" e JOIN "SpireFlowsheetRow" r ON r."id"=e."rowId" AND r."organizationId"=e."organizationId" WHERE e."organizationId"=$1 AND e."patientId"=$2 AND e."id"=$3 LIMIT 1`,a.organizationId,pid,req.params.entryId);
+    const original=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT e.*,r."name" AS "rowName",r."groupName",r."dataType",r."unit",r."options" FROM "SpireFlowsheetEntry" e JOIN "SpireFlowsheetRow" r ON r."id"=e."rowId" AND r."organizationId"=e."organizationId" WHERE e."organizationId"=$1 AND e."patientId"=$2 AND e."id"=$3 LIMIT 1`,a.organizationId,pid,req.params.entryId);
     if(!original[0])throw Object.assign(new Error('Flowsheet entry was not found'),{status:404});
     if(String(original[0].recordedById||'')!==a.userId)throw Object.assign(new Error('Only the user who documented this flowsheet entry can edit it'),{status:403});
     const recordedAt=req.body?.recordedAt?dateValue(req.body.recordedAt):original[0].recordedAt;
-    const numeric=req.body?.numericValue===undefined?original[0].numericValue:(req.body.numericValue==null||req.body.numericValue===''?null:Number(req.body.numericValue));
-    if(numeric!=null&&!Number.isFinite(Number(numeric)))throw Object.assign(new Error('Numeric value is invalid'),{status:400});
-    const value=req.body?.value===undefined?original[0].value:(text(req.body.value,4000)||null);
-    const comment=req.body?.comment===undefined?original[0].comment:(text(req.body.comment,4000)||null);
+    const rawNumeric=req.body?.numericValue===undefined?original[0].numericValue:req.body.numericValue;
+    const rawValue=req.body?.value===undefined?original[0].value:req.body.value;
+    const rawComment=req.body?.comment===undefined?original[0].comment:req.body.comment;
+    const rowForValidation:Record<string,unknown>={name:original[0].rowName,dataType:original[0].dataType,unit:original[0].unit,options:original[0].options};
+    const{numeric,value,comment}=validateEntryValues(rowForValidation,rawNumeric,rawValue,rawComment);
     const updated=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(
       `UPDATE "SpireFlowsheetEntry" SET "value"=$1,"numericValue"=$2,"recordedAt"=$3,"comment"=$4,"updatedAt"=NOW() WHERE "organizationId"=$5 AND "patientId"=$6 AND "id"=$7 AND "recordedById"=$8 RETURNING *`,
       value,numeric,recordedAt,comment,a.organizationId,pid,req.params.entryId,a.userId,
