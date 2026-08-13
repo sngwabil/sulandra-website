@@ -7,8 +7,6 @@ const repositoryRoot = path.resolve(scriptDirectory, '..');
 const outputDirectory = path.join(repositoryRoot, 'dist-web');
 const railwayApiBase = 'https://sulandra-website-production-5fc4.up.railway.app';
 
-// Verify/normalize the canonical Client Station + chart architecture before
-// publication. Neither step installs the legacy root shell.
 await import('./install-spire-idempotent-shell.mjs');
 await import('./fix-spire-master-defects.mjs');
 
@@ -29,16 +27,10 @@ for (const entry of await readdir(repositoryRoot, { withFileTypes: true })) {
   await cp(path.join(repositoryRoot, entry.name), path.join(outputDirectory, entry.name));
 }
 for (const directory of publicDirectories) {
-  try {
-    await cp(path.join(repositoryRoot, directory), path.join(outputDirectory, directory), { recursive: true });
-  } catch (error) {
-    if (error?.code !== 'ENOENT') throw error;
-  }
+  try { await cp(path.join(repositoryRoot, directory), path.join(outputDirectory, directory), { recursive: true }); }
+  catch (error) { if (error?.code !== 'ENOENT') throw error; }
 }
 
-// SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT is retained as a capability safeguard for
-// the older dedicated Results asset, even though the standalone chart does not
-// load that asset into the root entry.
 const resultsWorkspacePath = path.join(outputDirectory, 'assets', 'spire-results-workspace.js');
 try {
   let source = await readFile(resultsWorkspacePath, 'utf8');
@@ -50,209 +42,70 @@ try {
   }
   if (!source.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) throw new Error('SPIRE Results workspace idempotent tab-layout patch is missing');
   await writeFile(resultsWorkspacePath, source, 'utf8');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
-}
+} catch (error) { if (error?.code !== 'ENOENT') throw error; }
 
 const loginPath = path.join(outputDirectory, 'employee-login.html');
 try {
   let loginHtml = await readFile(loginPath, 'utf8');
-  loginHtml = loginHtml.replace(
-    '<form id="form" autocomplete="on">',
-    '<form id="form" autocomplete="on" method="post" action="https://sulandra-website-production-5fc4.up.railway.app/api/auth/login">',
-  );
+  loginHtml = loginHtml.replace('<form id="form" autocomplete="on">','<form id="form" autocomplete="on" method="post" action="https://sulandra-website-production-5fc4.up.railway.app/api/auth/login">');
   await writeFile(loginPath, loginHtml, 'utf8');
-  const loginRuntimeCandidates = [
-    path.join(outputDirectory, 'assets', 'employee-login-railway.js'),
-    path.join(outputDirectory, 'employee-login-railway.js'),
-  ];
-  let loginRuntime = '';
-  for (const candidate of loginRuntimeCandidates) {
-    try { loginRuntime = await readFile(candidate, 'utf8'); if (loginRuntime) break; } catch {}
-  }
-  if (!loginRuntime.includes('event.preventDefault()') || !loginRuntime.includes('/api/auth/login')) {
-    throw new Error('Employee login runtime is incomplete in dist-web');
-  }
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
-}
+  const loginRuntimeCandidates=[path.join(outputDirectory,'assets','employee-login-railway.js'),path.join(outputDirectory,'employee-login-railway.js')];
+  let loginRuntime='';
+  for (const candidate of loginRuntimeCandidates) { try { loginRuntime=await readFile(candidate,'utf8'); if(loginRuntime) break; } catch {} }
+  if (!loginRuntime.includes('event.preventDefault()') || !loginRuntime.includes('/api/auth/login')) throw new Error('Employee login runtime is incomplete in dist-web');
+} catch (error) { if (error?.code !== 'ENOENT') throw error; }
 
-// Canonical SPIRE publication contract:
-// - /spire.html launches /spire/client-station.html.
-// - Client Station restores the last authorized service home when possible.
-// - /spire/master.html is chart-only and is reached after explicit client selection.
-// - dynamic preference #21, Secure Chat and live notifications are runtime-owned
-//   capabilities and therefore are verified in their published JS, not by brittle
-//   string rewriting inside the authoritative 200KB chart HTML.
-const spirePath = path.join(outputDirectory, 'spire.html');
-const spireStationPath = path.join(outputDirectory, 'spire', 'client-station.html');
-const spireMasterPath = path.join(outputDirectory, 'spire', 'master.html');
-const publishedSpireEntry = await readFile(spirePath, 'utf8');
-const publishedSpireStation = await readFile(spireStationPath, 'utf8');
-const publishedSpireMaster = await readFile(spireMasterPath, 'utf8');
+const spirePath=path.join(outputDirectory,'spire.html');
+const spireStationPath=path.join(outputDirectory,'spire','client-station.html');
+const spireMasterPath=path.join(outputDirectory,'spire','master.html');
+const publishedSpireEntry=await readFile(spirePath,'utf8');
+const publishedSpireStation=await readFile(spireStationPath,'utf8');
+const publishedSpireMaster=await readFile(spireMasterPath,'utf8');
+for (const marker of ['SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2','/spire/client-station.html','window.location.search','window.location.hash']) if(!publishedSpireEntry.includes(marker)) throw new Error(`Static publication regression: SPIRE canonical Client Station entry missing ${marker}`);
+for (const forbidden of ['/spire/portal.html','/spire/master.html']) if(publishedSpireEntry.includes(forbidden)) throw new Error(`Static publication regression: SPIRE root entry still targets ${forbidden}`);
+for (const legacyAsset of ['spire-app-v2.js','spire-canonical-bootstrap.js','spire-shell-resilience.js','spire-chart-ready.js','spire-deep-link.js','spire-home-care-redesign-loader.js','spire-clinical-workstation.css','spire-flowsheet-workspace-launcher.js']) if(publishedSpireEntry.includes(legacyAsset)) throw new Error(`Static publication regression: SPIRE canonical entry still loads legacy runtime ${legacyAsset}`);
+for (const marker of ['SPIRE_CLIENT_STATION_LISTS_V2','Client Station','Client Lists','Available Homes','/assets/spire-client-station.js?v=20260813-client-station-2','/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1']) if(!publishedSpireStation.includes(marker)) throw new Error(`Static publication regression: Client Station missing ${marker}`);
+for (const marker of ['<html','<head','<body','</html>',"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1']) if(!publishedSpireMaster.includes(marker)) throw new Error(`Static publication regression: standalone SPIRE chart missing ${marker}`);
 
-for (const marker of [
-  'SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2', '/spire/client-station.html',
-  'window.location.search', 'window.location.hash',
-]) {
-  if (!publishedSpireEntry.includes(marker)) throw new Error(`Static publication regression: SPIRE canonical Client Station entry missing ${marker}`);
-}
-for (const forbidden of ['/spire/portal.html', '/spire/master.html']) {
-  if (publishedSpireEntry.includes(forbidden)) throw new Error(`Static publication regression: SPIRE root entry still targets ${forbidden}`);
-}
-for (const legacyAsset of [
-  'spire-app-v2.js', 'spire-canonical-bootstrap.js', 'spire-shell-resilience.js',
-  'spire-chart-ready.js', 'spire-deep-link.js', 'spire-home-care-redesign-loader.js',
-  'spire-clinical-workstation.css', 'spire-flowsheet-workspace-launcher.js',
-]) {
-  if (publishedSpireEntry.includes(legacyAsset)) throw new Error(`Static publication regression: SPIRE canonical entry still loads legacy runtime ${legacyAsset}`);
-}
-
-for (const marker of [
-  'SPIRE_CLIENT_STATION_LISTS_V2', 'Client Station', 'Client Lists', 'Available Homes',
-  '/assets/spire-client-station.js?v=20260813-client-station-2',
-  '/assets/spire-user-preferences.js?v=20260813-workspace-prefs-1',
-]) {
-  if (!publishedSpireStation.includes(marker)) throw new Error(`Static publication regression: Client Station missing ${marker}`);
-}
-for (const marker of [
-  '<html', '<head', '<body', '</html>',
-  "window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'",
-  '/assets/sulandra-entity-context.js', 'SPIRE_MASTER_DEFECT_FIXES_V1',
-]) {
-  if (!publishedSpireMaster.includes(marker)) throw new Error(`Static publication regression: standalone SPIRE chart missing ${marker}`);
-}
-
-// The dedicated continuous flowsheet remains a separate focused charting surface.
-const flowsheetPath = path.join(outputDirectory, 'spire', 'flowsheets.html');
+const flowsheetPath=path.join(outputDirectory,'spire','flowsheets.html');
 try {
-  let html = await readFile(flowsheetPath, 'utf8');
-  html = html
-    .replace(/\s*<link rel="stylesheet" href="\/assets\/spire-flowsheet-master\.css(?:\?v=[^"']+)?">\s*/g, '')
-    .replace(/\s*<script src="\/assets\/spire-flowsheet-master\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '')
-    .replace('</head>', '<link rel="stylesheet" href="/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1"></head>')
-    .replace('</body>', '<script src="/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1"></script></body>');
-  await writeFile(flowsheetPath, html, 'utf8');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
-}
+  let html=await readFile(flowsheetPath,'utf8');
+  html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/spire-flowsheet-master\.css(?:\?v=[^"']+)?">\s*/g,'').replace(/\s*<script src="\/assets\/spire-flowsheet-master\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'').replace('</head>','<link rel="stylesheet" href="/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1"></head>').replace('</body>','<script src="/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1"></script></body>');
+  await writeFile(flowsheetPath,html,'utf8');
+} catch(error){ if(error?.code!=='ENOENT') throw error; }
 
-const educationPath = path.join(outputDirectory, 'education-portal.html');
-try {
-  let html = await readFile(educationPath, 'utf8');
-  html = html
-    .replace("const API='',TK='sulandra:employee:access-token',SK='sulandra:employee:session';", `const API='${railwayApiBase}',TK='sulandra:employee:access-token',SK='sulandra:employee:session';`)
-    .replace(/<img src="\/favicon-48x48\.png" alt="Sulandra Health Logo">/g, '<img src="/assets/mainlogo.png" alt="Sulandra Health Logo">')
-    .replace(/href="\/intranet\.HTML"/g, 'href="/intranet.html"');
-  await writeFile(educationPath, html, 'utf8');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
-}
-
-const educationEnhancementsPath = path.join(outputDirectory, 'assets', 'education-portal-enhancements.js');
-try {
-  let html = await readFile(educationEnhancementsPath, 'utf8');
-  html = html.replace("const API='',TK='sulandra:employee:access-token';", `const API='${railwayApiBase}',TK='sulandra:employee:access-token';`);
-  await writeFile(educationEnhancementsPath, html, 'utf8');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
-}
-
-const timeAttendancePath = path.join(outputDirectory, 'time-attendance.html');
-try {
-  let html = await readFile(timeAttendancePath, 'utf8');
-  html = html.replace(/const API_BASE\s*=\s*['"][^'"]*['"]/g, `const API_BASE='${railwayApiBase}'`);
-  await writeFile(timeAttendancePath, html, 'utf8');
-} catch (error) {
-  if (error?.code !== 'ENOENT') throw error;
-}
+const educationPath=path.join(outputDirectory,'education-portal.html');
+try { let html=await readFile(educationPath,'utf8'); html=html.replace("const API='',TK='sulandra:employee:access-token',SK='sulandra:employee:session';",`const API='${railwayApiBase}',TK='sulandra:employee:access-token',SK='sulandra:employee:session';`).replace(/<img src="\/favicon-48x48\.png" alt="Sulandra Health Logo">/g,'<img src="/assets/mainlogo.png" alt="Sulandra Health Logo">').replace(/href="\/intranet\.HTML"/g,'href="/intranet.html"'); await writeFile(educationPath,html,'utf8'); } catch(error){ if(error?.code!=='ENOENT') throw error; }
+const educationEnhancementsPath=path.join(outputDirectory,'assets','education-portal-enhancements.js');
+try { let html=await readFile(educationEnhancementsPath,'utf8'); html=html.replace("const API='',TK='sulandra:employee:access-token';",`const API='${railwayApiBase}',TK='sulandra:employee:access-token';`); await writeFile(educationEnhancementsPath,html,'utf8'); } catch(error){ if(error?.code!=='ENOENT') throw error; }
+const timeAttendancePath=path.join(outputDirectory,'time-attendance.html');
+try { let html=await readFile(timeAttendancePath,'utf8'); html=html.replace(/const API_BASE\s*=\s*['"][^'"]*['"]/g,`const API_BASE='${railwayApiBase}'`); await writeFile(timeAttendancePath,html,'utf8'); } catch(error){ if(error?.code!=='ENOENT') throw error; }
 
 await import('./install-employee-self-service-frontend.mjs');
-await rm(path.join(outputDirectory, 'time-attendance.txt'), { force: true });
+await rm(path.join(outputDirectory,'time-attendance.txt'),{force:true});
 
-// Admin is deliberately not rewritten after publication. admin.html is copied as-is;
-// assets/admin-company-context.js owns the canonical navigation registry and loads
-// the canonical Admin shell/dashboard modules at runtime.
-const publishedAdminPath = path.join(outputDirectory, 'admin.html');
-const publishedAdmin = await readFile(publishedAdminPath, 'utf8');
-for (const marker of [
-  '/assets/admin-company-context.js?v=20260809-admin-company-context-2',
-  'careers-admin-workflow.js?v=20260809-hiring-provisioning-2',
-  'admin-railway.js?v=20260804-admin-clean-4',
-]) {
-  if (!publishedAdmin.includes(marker)) throw new Error(`Canonical Admin publication failed; missing ${marker}`);
-}
+const publishedAdminPath=path.join(outputDirectory,'admin.html');
+const publishedAdmin=await readFile(publishedAdminPath,'utf8');
+for (const marker of ['/assets/admin-company-context.js?v=20260809-admin-company-context-2','careers-admin-workflow.js?v=20260809-hiring-provisioning-2','admin-railway.js?v=20260804-admin-clean-4']) if(!publishedAdmin.includes(marker)) throw new Error(`Canonical Admin publication failed; missing ${marker}`);
 
-const requiredPublishedFiles = [
-  'admin.html', 'admin-railway.js', 'enterprise-apps.html', 'employee-login.html', 'employee-portal.html', 'employee-portal-railway.js',
-  'my-work.html', 'notifications.html',
-  'careers.html', 'applygeneral.html', 'applydsp.html', 'applylpn.html', 'applydoo.html',
-  'employee360.html', 'education-portal.html', 'time-attendance.html', 'scheduling.html', 'intranet.html',
-  'course-player.html', 'education-certificate.html', 'education-catalog.json',
-  'intranet.HTML', 'policies.html', 'news.html', 'feedback.html', 'payroll.html',
-  'benefits.html', 'employee-directory.html', 'leadership.html', 'support.html',
-  'health-safety.html', 'careers-admin-workflow.js', 'interview-admin-scheduler.js',
-  'favicon-48x48.png', 'assets/mainlogo.png',
-  'assets/admin-shell.css', 'assets/admin-shell.js',
-  'assets/admin-live-dashboard.js', 'assets/admin-enterprise-apps-launcher.js', 'assets/admin-company-settings.js', 'assets/admin-analog-clock.js',
-  'assets/admin-service-home-management-v2.js', 'assets/admin-dashboard-cleanup.js', 'assets/admin-achieved-archive-fix.js',
-  'assets/admin-client-service-requests.js', 'assets/admin-company-context.js', 'assets/sulandra-entity-context.js', 'assets/employee-work-crosslinks.js',
-  'assets/education-runtime.js', 'assets/education-course.css', 'assets/education-portal-enhancements.js',
-  'assets/spire-client-station.js', 'assets/spire-secure-chat.js', 'assets/spire-user-preferences.js',
-  'assets/spire-master-navigation.js', 'assets/spire-master-flowsheet-grid.js', 'assets/spire-flowsheet-frozen-pane.js',
-  'assets/spire-screen-controls.css', 'assets/spire-screen-controls.js',
-  'assets/spire-results-workspace.js', 'assets/spire-chart-review-v2.js', 'assets/spire-clinical-workstation.css', 'assets/spire-flowsheet-workspace-launcher.js',
-  'assets/spire-user-template-integration.css', 'assets/spire-user-template-integration.js', 'assets/spire-user-template-layout-fix.css', 'assets/spire-user-template-final-lock.css',
-  'assets/spire-flowsheet-master.css', 'assets/spire-flowsheet-master.js',
-  'spire.html', 'spire/client-station.html', 'spire/patient-station.html', 'spire/secure-chat.html',
-  'spire/master.html', 'spire/flowsheets.html', 'spire-admin.html', 'services',
+const requiredPublishedFiles=[
+  'admin.html','admin-railway.js','enterprise-apps.html','employee-login.html','employee-portal.html','employee-portal-railway.js','my-work.html','notifications.html','careers.html','applygeneral.html','applydsp.html','applylpn.html','applydoo.html','employee360.html','education-portal.html','time-attendance.html','scheduling.html','intranet.html','course-player.html','education-certificate.html','education-catalog.json','intranet.HTML','policies.html','news.html','feedback.html','payroll.html','benefits.html','employee-directory.html','leadership.html','support.html','health-safety.html','careers-admin-workflow.js','interview-admin-scheduler.js','favicon-48x48.png','assets/mainlogo.png','assets/admin-shell.css','assets/admin-shell.js','assets/admin-live-dashboard.js','assets/admin-enterprise-apps-launcher.js','assets/admin-company-settings.js','assets/admin-analog-clock.js','assets/admin-service-home-management-v2.js','assets/admin-dashboard-cleanup.js','assets/admin-achieved-archive-fix.js','assets/admin-client-service-requests.js','assets/admin-company-context.js','assets/sulandra-entity-context.js','assets/employee-work-crosslinks.js','assets/education-runtime.js','assets/education-course.css','assets/education-portal-enhancements.js','assets/spire-client-station.js','assets/spire-secure-chat.js','assets/spire-user-preferences.js','assets/spire-master-navigation.js','assets/spire-master-flowsheet-grid.js','assets/spire-flowsheet-frozen-pane.js','assets/spire-screen-controls.css','assets/spire-screen-controls.js','assets/spire-medication-order-entry.js','assets/spire-mar-timeline.js','assets/spire-results-workspace.js','assets/spire-chart-review-v2.js','assets/spire-clinical-workstation.css','assets/spire-flowsheet-workspace-launcher.js','assets/spire-user-template-integration.css','assets/spire-user-template-integration.js','assets/spire-user-template-layout-fix.css','assets/spire-user-template-final-lock.css','assets/spire-flowsheet-master.css','assets/spire-flowsheet-master.js','spire.html','spire/client-station.html','spire/patient-station.html','spire/secure-chat.html','spire/master.html','spire/flowsheets.html','spire-admin.html','services'
 ];
-for (const relative of requiredPublishedFiles) {
-  try { await stat(path.join(outputDirectory, relative)); }
-  catch { throw new Error(`Static publication regression: missing ${relative}`); }
-}
+for (const relative of requiredPublishedFiles) { try { await stat(path.join(outputDirectory,relative)); } catch { throw new Error(`Static publication regression: missing ${relative}`); } }
 
-// Verify dynamic SPIRE capabilities in the runtime files that actually own them.
-const publishedSpirePreferences = await readFile(path.join(outputDirectory, 'assets', 'spire-user-preferences.js'), 'utf8');
-for (const marker of [
-  'SPIRE_USER_WORKSPACE_PREFERENCES_V2',
-  '21. Full-Screen Workspace',
-  'spire:accessibility:fullscreen',
-  'spire:accessibility:preset',
-  'requestFullscreen',
-]) {
-  if (!publishedSpirePreferences.includes(marker)) throw new Error(`Static publication regression: shared SPIRE preference runtime missing ${marker}`);
-}
-
-const publishedSpireScreenControls = await readFile(path.join(outputDirectory, 'assets', 'spire-screen-controls.js'), 'utf8');
-for (const marker of [
-  'SPIRE_SCREEN_CONTROLS_LIVE_V2',
-  '/api/spire/inbasket-v2?status=OPEN',
-  '/spire/secure-chat.html',
-  'Secure Chat',
-  'Alerts & Reminders',
-]) {
-  if (!publishedSpireScreenControls.includes(marker)) throw new Error(`Static publication regression: live SPIRE chart controls missing ${marker}`);
-}
-for (const forbidden of [
-  'Opening Staff Messaging Portal',
-  'Notifications: 3 unread reminders for current client.',
-]) {
-  if (publishedSpireScreenControls.includes(forbidden)) throw new Error(`Static publication regression: live SPIRE chart controls contain fake behavior ${forbidden}`);
-}
-
-const publishedResultsWorkspace = await readFile(path.join(outputDirectory, 'assets', 'spire-results-workspace.js'), 'utf8');
-if (!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) {
-  throw new Error('Static publication regression: SPIRE Results workspace can recreate the chart-tab MutationObserver loop');
-}
-
-const publishedFlowsheetHtml = await readFile(flowsheetPath, 'utf8');
-if (!publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1') || !publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1')) {
-  throw new Error('Static publication regression: uploaded master-template flowsheet presentation/navigation is missing');
-}
+const publishedSpirePreferences=await readFile(path.join(outputDirectory,'assets','spire-user-preferences.js'),'utf8');
+for (const marker of ['SPIRE_USER_WORKSPACE_PREFERENCES_V2','21. Full-Screen Workspace','spire:accessibility:fullscreen','spire:accessibility:preset','requestFullscreen']) if(!publishedSpirePreferences.includes(marker)) throw new Error(`Static publication regression: shared SPIRE preference runtime missing ${marker}`);
+const publishedSpireScreenControls=await readFile(path.join(outputDirectory,'assets','spire-screen-controls.js'),'utf8');
+for (const marker of ['SPIRE_SCREEN_CONTROLS_LIVE_V2','/api/spire/inbasket-v2?status=OPEN','/spire/secure-chat.html','Secure Chat','Alerts & Reminders']) if(!publishedSpireScreenControls.includes(marker)) throw new Error(`Static publication regression: live SPIRE chart controls missing ${marker}`);
+for (const forbidden of ['Opening Staff Messaging Portal','Notifications: 3 unread reminders for current client.']) if(publishedSpireScreenControls.includes(forbidden)) throw new Error(`Static publication regression: live SPIRE chart controls contain fake behavior ${forbidden}`);
+const publishedMarTimeline=await readFile(path.join(outputDirectory,'assets','spire-mar-timeline.js'),'utf8');
+for (const marker of ['SPIRE_MAR_TIMELINE_V1','Go to Now','Medication / Order','Completed / Inactive Medications']) if(!publishedMarTimeline.includes(marker)) throw new Error(`Static publication regression: SPIRE MAR timeline missing ${marker}`);
+const publishedResultsWorkspace=await readFile(path.join(outputDirectory,'assets','spire-results-workspace.js'),'utf8');
+if(!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) throw new Error('Static publication regression: SPIRE Results workspace can recreate the chart-tab MutationObserver loop');
+const publishedFlowsheetHtml=await readFile(flowsheetPath,'utf8');
+if(!publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.css?v=20260812-spire-flowsheet-master-1')||!publishedFlowsheetHtml.includes('/assets/spire-flowsheet-master.js?v=20260812-spire-flowsheet-master-1')) throw new Error('Static publication regression: uploaded master-template flowsheet presentation/navigation is missing');
 
 await import('./verify-enterprise-apps-launchpad.mjs');
 await import('./verify-admin-company-settings-backend.mjs');
 await import('./verify-admin-canonical-source.mjs');
-
-console.log('Static website published from canonical source files; /spire.html launches Client Station, the remembered authorized home can be restored, /spire/master.html remains the explicit client chart, and display/full-screen/Secure Chat/notification capabilities are verified in their live runtimes.');
+console.log('Static website published from canonical source files; /spire.html launches Client Station, /spire/master.html remains the explicit client chart, and SPIRE medication order entry/MAR timeline are published and verified.');
