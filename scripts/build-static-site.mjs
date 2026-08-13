@@ -100,7 +100,7 @@ const publishedSpireScreenControls=await readFile(path.join(outputDirectory,'ass
 for (const marker of ['SPIRE_SCREEN_CONTROLS_LIVE_V2','/api/spire/inbasket-v2?status=OPEN','/spire/secure-chat.html','Secure Chat','Alerts & Reminders']) if(!publishedSpireScreenControls.includes(marker)) throw new Error(`Static publication regression: live SPIRE chart controls missing ${marker}`);
 for (const forbidden of ['Opening Staff Messaging Portal','Notifications: 3 unread reminders for current client.']) if(publishedSpireScreenControls.includes(forbidden)) throw new Error(`Static publication regression: live SPIRE chart controls contain fake behavior ${forbidden}`);
 const publishedMarTimeline=await readFile(path.join(outputDirectory,'assets','spire-mar-timeline.js'),'utf8');
-for (const marker of ['SPIRE_MAR_TIMELINE_V2','Go to Now','Medication / Order','Completed / Inactive Medications']) if(!publishedMarTimeline.includes(marker)) throw new Error(`Static publication regression: SPIRE MAR timeline missing ${marker}`);
+for (const marker of ['SPIRE_MAR_TIMELINE_V3','Go to Now','Medication / Order','Completed / Inactive Medications']) if(!publishedMarTimeline.includes(marker)) throw new Error(`Static publication regression: SPIRE MAR timeline missing ${marker}`);
 const publishedResultsWorkspace=await readFile(path.join(outputDirectory,'assets','spire-results-workspace.js'),'utf8');
 if(!publishedResultsWorkspace.includes('SPIRE_RESULTS_IDEMPOTENT_TAB_LAYOUT')) throw new Error('Static publication regression: SPIRE Results workspace can recreate the chart-tab MutationObserver loop');
 const publishedFlowsheetHtml=await readFile(flowsheetPath,'utf8');
