@@ -130,8 +130,12 @@ catch (error) {
   process.exit(1);
 }
 
-// Preserve and extend the existing accessibility/theme repair pass.
+// Preserve the existing profile/accessibility functions and repair only their
+// obsolete compatibility aliases.
 await import('./fix-spire-accessibility-suite.mjs');
 // Remove internal actor IDs from user-visible Flowsheet filing metadata and keep
 // Client Station terminology synchronized before dist-web is copied.
 await import('./fix-spire-flowsheet-friendly-actor.mjs');
+// Prepare the authoritative master source for publication: remove the two fake
+// clinical alerts, label Messaging as Secure Chat, and add accessibility item 21.
+await import('./prepare-spire-master-live-controls.mjs');
