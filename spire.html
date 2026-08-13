@@ -6,22 +6,18 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>S.P.I.R.E. Clinical Access | Sulandra Health</title>
+  <title>S.P.I.R.E. Client Station | Sulandra Health</title>
   <link rel="icon" href="/favicon.ico">
   <script>
-    // SPIRE_CANONICAL_PORTAL_ENTRY_V1
-    // SPIRE_CANONICAL_MASTER_ENTRY_V1 is retained only as a build-compatibility
-    // marker for an older UAT installer. /spire/master.html is chart-only and
-    // must never be launched here; Patient Station is the only chart gateway.
+    // SPIRE_CANONICAL_CLIENT_STATION_ENTRY_V2
     (() => {
-      const destination = '/spire/portal.html' + window.location.search + window.location.hash;
+      const destination = '/spire/client-station.html' + window.location.search + window.location.hash;
       window.location.replace(destination);
     })();
   </script>
-  <noscript><meta http-equiv="refresh" content="0;url=/spire/portal.html"></noscript>
+  <noscript><meta http-equiv="refresh" content="0;url=/spire/client-station.html"></noscript>
 </head>
 <body>
-  <p>Opening the Sulandra Health S.P.I.R.E. Clinical Access Portal… <a href="/spire/portal.html">Continue to S.P.I.R.E.</a></p>
-  <!-- /spire/master.html is chart-only and is reached only after explicit company, home, and client selection in Patient Station. -->
+  <p>Opening S.P.I.R.E. Client Station… <a href="/spire/client-station.html">Continue to Client Station</a></p>
 </body>
 </html>
