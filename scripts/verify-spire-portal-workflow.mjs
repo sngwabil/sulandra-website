@@ -58,7 +58,7 @@ requireMarkers(portalJs, [
 
 requireMarkers(master, [
   '/assets/spire-master-navigation.js?v=20260813-portal-workflow-1',
-  '/assets/spire-master-flowsheet-grid.js?v=20260813-user-master-layout-1',
+  '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-suggestions-1',
   'id="flowsheets-view"',
   'class="flowsheet-sub-toolbar"',
   'class="flowsheet-main-layout"',
@@ -84,10 +84,16 @@ requireMarkers(flowsheetJs, [
   'SPIRE_FLOWSHEET_FILE_WORKFLOW_V1',
   'SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2',
   'SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1',
+  'SPIRE_FLOWSHEET_INLINE_ENTRY_V3',
   'restoreAuthoritativeToolbar',
   '#flowsheetTbody',
   '.flowsheet-table',
   'Residential HPC Flowsheet',
+  'data-flow-editor',
+  'suggestionsForRow',
+  'isNumericRow',
+  'positionPopoverBesideCell',
+  'Suggestions only',
   '/flowsheet-workspace/file',
   'filePending',
   'hasPending',
@@ -95,7 +101,7 @@ requireMarkers(flowsheetJs, [
   'is-draft-amendment',
   'filed-amendment',
   'Nothing was filed:',
-], 'SPIRE user-master staged transactional flowsheet');
+], 'SPIRE inline user-master staged transactional flowsheet');
 forbidMarkers(flowsheetJs, [
   'flow-file-toolbar',
   'flow-layout',
@@ -106,7 +112,9 @@ forbidMarkers(flowsheetJs, [
   "addEventListener('focusout'",
   'saveCell(cell, { force: true })',
   '/flowsheet-workspace/entries/${encodeURIComponent(draft.entryId)}',
-], 'SPIRE user-master staged transactional flowsheet');
+  'valueInput.disabled = readonly || options.length > 0',
+  'choose one of the configured options',
+], 'SPIRE inline user-master staged transactional flowsheet');
 
 requireMarkers(fileRoute, [
   "app.post('/api/spire/patients/:patientId/flowsheet-workspace/file'",
@@ -115,6 +123,11 @@ requireMarkers(fileRoute, [
   'FLOWSHEET_ENTRY_FILED',
   'FLOWSHEET_ENTRY_AMENDED',
   'Only the user who originally filed this flowsheet entry can amend it',
+  'SELECT/options are advisory suggestions',
+], 'SPIRE transactional File backend');
+forbidMarkers(fileRoute, [
+  'Choose an allowed value for',
+  'options.includes(value)',
 ], 'SPIRE transactional File backend');
 requireMarkers(injector, [
   "import { registerSpireFlowsheetFileRoutes } from './spire-flowsheet-file-routes.js';",
@@ -124,7 +137,7 @@ requireMarkers(injector, [
 for (const [label, source] of [
   ['SPIRE portal runtime', portalJs],
   ['SPIRE chart navigation', navigationJs],
-  ['SPIRE user-master flowsheet', flowsheetJs],
+  ['SPIRE inline user-master flowsheet', flowsheetJs],
 ]) {
   try { new Function(source); }
   catch (error) { failures.push(`${label} JavaScript syntax error: ${error instanceof Error ? error.message : String(error)}`); }
@@ -136,7 +149,7 @@ if (navigationCount !== 1) failures.push(`SPIRE chart must publish navigation ru
 if (flowsheetCount !== 1) failures.push(`SPIRE chart must publish flowsheet runtime exactly once; found ${flowsheetCount}`);
 
 if (failures.length) {
-  console.error('SPIRE portal/user-master flowsheet verification failed:\n- ' + failures.join('\n- '));
+  console.error('SPIRE portal/inline user-master flowsheet verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('SPIRE portal/user-master flowsheet verified: explicit chart entry, original master grid geometry, local staging, popup value-to-box behavior, all-or-nothing File, and red amendments.');
+console.log('SPIRE portal/inline flowsheet verified: explicit chart entry, original master grid geometry, direct typing in cells, optional suggestions beside the active box, no numeric popup, local staging, all-or-nothing File, and red amendments.');
