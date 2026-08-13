@@ -1,13 +1,12 @@
 (() => {
   'use strict';
 
-  // SPIRE_USER_WORKSPACE_PREFERENCES_V1
-  // SPIRE_USER_WORKSPACE_PREFERENCES_V2 compatibility marker for current publication verifiers.
-  // 21. Full-Screen Workspace is injected into the existing 20-item suite by fix-spire-accessibility-suite.mjs.
-  // Shared by the chart, Client Station and Secure Chat. These keys intentionally
-  // match the existing master accessibility suite so every SPIRE surface inherits
-  // the same saved look-and-feel.
-  const KEYS = Object.freeze({
+  // SPIRE_USER_WORKSPACE_PREFERENCES_V3
+  // Compatibility markers retained for older publication checks:
+  // SPIRE_USER_WORKSPACE_PREFERENCES_V2 / 21. Full-Screen Workspace
+  // Theme #21 is now the Client Station visual theme. Fullscreen is a separate
+  // persistent workspace preference and remains default-on until the user exits.
+  const BASE_KEYS = Object.freeze({
     preset: 'spire:accessibility:preset',
     mode: 'spire:accessibility:mode',
     custom: 'spire:accessibility:custom-colors',
@@ -15,6 +14,7 @@
     fontSize: 'spire:accessibility:font-size',
     fullscreen: 'spire:accessibility:fullscreen'
   });
+  const SESSION_KEY = 'sulandra:employee:session';
 
   const PRESETS = Object.freeze({
     classicRed: { title:'#0f172a', toolbar:'#990000', background:'#f0f4f8', card:'#ffffff', text:'#000000' },
@@ -36,23 +36,75 @@
     coralSunset: { title:'#9f1239', toolbar:'#ea580c', background:'#fff1f2', card:'#ffffff', text:'#881337' },
     mintFresh: { title:'#065f46', toolbar:'#0d9488', background:'#ecfdf5', card:'#ffffff', text:'#064e3b' },
     royalAmethyst: { title:'#4c1d95', toolbar:'#6d28d9', background:'#f5f3ff', card:'#ffffff', text:'#3b0764' },
-    solarizedLight: { title:'#073642', toolbar:'#268bd2', background:'#fdf6e3', card:'#eee8d5', text:'#073642' }
+    solarizedLight: { title:'#073642', toolbar:'#268bd2', background:'#fdf6e3', card:'#eee8d5', text:'#073642' },
+    clientStation: { title:'#990000', toolbar:'#990000', background:'#eaf7fb', card:'#ffffff', text:'#173c50' }
   });
 
-  const get = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
-  const set = (key, value) => { try { localStorage.setItem(key, String(value)); } catch {} };
-  const parseJson = (value) => { try { return value ? JSON.parse(value) : null; } catch { return null; } };
+  let navigating = false;
+  let deliberateFullscreenExit = false;
+
+  function readSession() {
+    for (const storage of [sessionStorage, localStorage]) {
+      try {
+        const value = JSON.parse(storage.getItem(SESSION_KEY) || 'null');
+        if (value && typeof value === 'object') return value;
+      } catch {}
+    }
+    return {};
+  }
+
+  function userScope() {
+    const session = readSession();
+    const user = session.user || session.session || session;
+    return String(user.id || user.userId || user.sub || user.email || user.username || 'anonymous').trim().toLowerCase();
+  }
+
+  function scopedKey(base) {
+    const scope = userScope();
+    return scope && scope !== 'anonymous' ? `${base}:user:${scope}` : base;
+  }
+
+  function getPreference(name) {
+    const base = BASE_KEYS[name] || name;
+    const scoped = scopedKey(base);
+    try {
+      const value = localStorage.getItem(scoped);
+      if (value != null) return value;
+      const legacy = localStorage.getItem(base);
+      if (legacy != null && scoped !== base) localStorage.setItem(scoped, legacy);
+      return legacy;
+    } catch { return null; }
+  }
+
+  function setPreference(name, value) {
+    const base = BASE_KEYS[name] || name;
+    const scoped = scopedKey(base);
+    try {
+      localStorage.setItem(scoped, String(value));
+      // Keep the legacy key synchronized because older SPIRE inline handlers read it.
+      localStorage.setItem(base, String(value));
+    } catch {}
+  }
+
+  function removePreference(name) {
+    const base = BASE_KEYS[name] || name;
+    try {
+      localStorage.removeItem(scopedKey(base));
+      localStorage.removeItem(base);
+    } catch {}
+  }
+
+  function parseJson(value) { try { return value ? JSON.parse(value) : null; } catch { return null; } }
 
   function currentPalette() {
-    const mode = get(KEYS.mode);
-    if (mode === 'custom') {
-      const custom = parseJson(get(KEYS.custom));
+    if (getPreference('mode') === 'custom') {
+      const custom = parseJson(getPreference('custom'));
       if (custom) return {
         title: custom.title || '#0f172a', toolbar: custom.toolbar || '#990000',
         background: custom.background || '#f0f4f8', card:'#ffffff', text: custom.text || '#000000'
       };
     }
-    return PRESETS[get(KEYS.preset) || 'classicRed'] || PRESETS.classicRed;
+    return PRESETS[getPreference('preset') || 'classicRed'] || PRESETS.classicRed;
   }
 
   function applyVisualPreferences() {
@@ -69,40 +121,65 @@
     root.style.setProperty('--spire-card-bg', palette.card);
     root.style.setProperty('--spire-text', palette.text);
 
-    const fontSize = get(KEYS.fontSize) || '13px';
+    const fontSize = getPreference('fontSize') || '13px';
     if (['12px','13px','14px','16px'].includes(fontSize)) root.style.setProperty('--base-font-size', fontSize);
 
-    const cursor = get(KEYS.cursor) || 'default';
+    const cursor = getPreference('cursor') || 'default';
     let style = document.getElementById('spireSharedCursorStyle');
     if (cursor === 'default') style?.remove();
     else if (['crosshair','help','pointer'].includes(cursor)) {
       if (!style) { style = document.createElement('style'); style.id = 'spireSharedCursorStyle'; document.head.appendChild(style); }
       style.textContent = `body, body * { cursor:${cursor} !important; }`;
     }
-    document.documentElement.dataset.spirePreset = get(KEYS.preset) || 'classicRed';
+    root.dataset.spirePreset = getPreference('preset') || 'classicRed';
+  }
+
+  function setPreset(name) {
+    const preset = PRESETS[name] ? name : 'classicRed';
+    setPreference('preset', preset);
+    setPreference('mode', 'preset');
+    removePreference('custom');
+    applyVisualPreferences();
+    return preset;
+  }
+
+  function setCustomColors(values) {
+    setPreference('custom', JSON.stringify(values || {}));
+    setPreference('mode', 'custom');
+    applyVisualPreferences();
+  }
+
+  function fullscreenDocument() {
+    try {
+      if (window.top && window.top !== window && window.top.document) return window.top.document;
+    } catch {}
+    return document;
   }
 
   function fullscreenPreferred() {
-    const stored = get(KEYS.fullscreen);
-    // Full-screen workstation is the SPIRE default; the user may explicitly turn it off.
+    const stored = getPreference('fullscreen');
     return stored == null ? true : stored !== '0';
   }
 
   function syncFullscreenButtons() {
-    const active = Boolean(document.fullscreenElement);
+    const targetDocument = fullscreenDocument();
+    const active = Boolean(targetDocument.fullscreenElement);
     document.querySelectorAll('[data-spire-fullscreen-control],#spireFullscreenControl').forEach((button) => {
       button.textContent = active ? '🗗' : '⛶';
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      button.setAttribute('aria-label', active ? 'Exit full screen' : 'Open SPIRE full screen');
+      button.setAttribute('aria-label', active ? 'Exit full screen' : 'Open S.P.I.R.E. full screen');
       button.setAttribute('title', active ? 'Exit full screen' : (fullscreenPreferred() ? 'Full screen preferred' : 'Open full screen'));
     });
   }
 
   async function requestFullscreen({ persist = true } = {}) {
-    if (persist) set(KEYS.fullscreen, '1');
-    if (document.fullscreenElement || !document.documentElement.requestFullscreen) { syncFullscreenButtons(); return Boolean(document.fullscreenElement); }
+    if (persist) setPreference('fullscreen', '1');
+    const targetDocument = fullscreenDocument();
+    if (targetDocument.fullscreenElement) { syncFullscreenButtons(); return true; }
+    const element = targetDocument.documentElement;
+    if (!element?.requestFullscreen) { syncFullscreenButtons(); return false; }
     try {
-      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      await element.requestFullscreen({ navigationUI: 'hide' });
       syncFullscreenButtons();
       return true;
     } catch {
@@ -112,26 +189,28 @@
   }
 
   async function exitFullscreen({ persist = true } = {}) {
-    if (persist) set(KEYS.fullscreen, '0');
-    if (document.fullscreenElement && document.exitFullscreen) {
-      try { await document.exitFullscreen(); } catch {}
+    if (persist) setPreference('fullscreen', '0');
+    deliberateFullscreenExit = true;
+    const targetDocument = fullscreenDocument();
+    if (targetDocument.fullscreenElement && targetDocument.exitFullscreen) {
+      try { await targetDocument.exitFullscreen(); } catch {}
     }
+    deliberateFullscreenExit = false;
     syncFullscreenButtons();
   }
 
   async function toggleFullscreenPreference() {
-    if (document.fullscreenElement) return exitFullscreen({ persist: true });
+    const targetDocument = fullscreenDocument();
+    if (targetDocument.fullscreenElement) return exitFullscreen({ persist: true });
     return requestFullscreen({ persist: true });
   }
 
   function armPreferredFullscreen() {
-    if (!fullscreenPreferred() || document.fullscreenElement) return;
-    // Browsers do not permit a page to silently enter native fullscreen after a
-    // reload/navigation. Try once, then use the user's very next gesture to honor
-    // the saved preference without a popup or a second click.
+    const targetDocument = fullscreenDocument();
+    if (!fullscreenPreferred() || targetDocument.fullscreenElement) return;
     requestFullscreen({ persist: false }).catch(() => {});
     const reenter = () => {
-      if (fullscreenPreferred() && !document.fullscreenElement) requestFullscreen({ persist: false }).catch(() => {});
+      if (fullscreenPreferred() && !fullscreenDocument().fullscreenElement) requestFullscreen({ persist: false }).catch(() => {});
       document.removeEventListener('pointerdown', reenter, true);
       document.removeEventListener('keydown', reenter, true);
     };
@@ -145,9 +224,19 @@
       button.dataset.spireFullscreenBound = 'true';
       button.addEventListener('click', (event) => {
         event.preventDefault();
+        event.stopPropagation();
         toggleFullscreenPreference().catch(() => {});
       });
     });
+    syncFullscreenButtons();
+  }
+
+  function handleFullscreenChange() {
+    const targetDocument = fullscreenDocument();
+    if (!targetDocument.fullscreenElement && !navigating && !deliberateFullscreenExit && fullscreenPreferred()) {
+      // Escape/browser exit means the user deliberately returned to browser mode.
+      setPreference('fullscreen', '0');
+    }
     syncFullscreenButtons();
   }
 
@@ -158,8 +247,14 @@
   }
 
   window.SpireUserPreferences = Object.freeze({
-    keys: KEYS,
+    keys: BASE_KEYS,
     presets: PRESETS,
+    userScope,
+    getPreference,
+    setPreference,
+    removePreference,
+    setPreset,
+    setCustomColors,
     apply: applyAll,
     applyVisualPreferences,
     fullscreenPreferred,
@@ -167,13 +262,15 @@
     exitFullscreen,
     toggleFullscreenPreference,
     syncFullscreenButtons,
-    setFullscreenPreferred(value) { set(KEYS.fullscreen, value ? '1' : '0'); syncFullscreenButtons(); },
+    armPreferredFullscreen,
+    setFullscreenPreferred(value) { setPreference('fullscreen', value ? '1' : '0'); syncFullscreenButtons(); }
   });
   window.toggleSpireFullscreenPreference = toggleFullscreenPreference;
 
-  document.addEventListener('fullscreenchange', syncFullscreenButtons);
+  try { fullscreenDocument().addEventListener('fullscreenchange', handleFullscreenChange); } catch {}
+  window.addEventListener('beforeunload', () => { navigating = true; });
   window.addEventListener('storage', (event) => {
-    if (Object.values(KEYS).includes(event.key)) applyVisualPreferences();
+    if (Object.values(BASE_KEYS).some((base) => event.key === base || event.key?.startsWith(`${base}:user:`))) applyVisualPreferences();
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyAll, { once: true });
   else applyAll();
