@@ -208,3 +208,9 @@ try {
 
   process.exit(1);
 }
+
+// build-static-site.mjs imports this verifier first. Run the standalone master
+// defect pass and accessibility repair here so the source is fully normalized
+// before dist-web is copied. The repair is idempotent and does not touch any
+// clinical API, patient data, chart data, flowsheet data, MAR data, or intake.
+await import('./fix-spire-accessibility-suite.mjs');
