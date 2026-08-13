@@ -179,7 +179,7 @@ export const registerSpireFoundationRoutes = (app:express.Express,prisma:PrismaC
     'plan':'SpireCarePlan','medications':'SpireMedicationOrder','mar':'SpireMedicationAdministration','orders':'SpireOrder','care-plan':'SpireCarePlan','assessments':'SpireAssessment','vitals':'SpireVitalSign','incidents':'SpireIncident','authorizations':'SpireServiceAuthorization','documents':'SpireClinicalDocument','external':'SpireExternalRecord','communications':'SpireClinicalMessage','timeline':'SpireClinicalAuditEvent'
   };
   app.get('/api/spire/patients/:patientId/:section',async(req,res,next)=>{try{
-    const auth=authOf(res); await requirePatient(prisma,auth,req.params.patientId); const table=simpleMap[req.params.section]; if(!table){res.json({data:{items:[]}});return;}
+    const auth=authOf(res); await requirePatient(prisma,auth,req.params.patientId); const table=simpleMap[req.params.section]; if(!table){next();return;}
     const patientColumn=table==='SpireClinicalAuditEvent'?'clientId':'patientId';
     const rows=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT * FROM "${table}" WHERE "organizationId"=$1 AND "${patientColumn}"=$2 ORDER BY COALESCE("createdAt",NOW()) DESC LIMIT 500`,auth.organizationId,req.params.patientId).catch(()=>[]); await logAccess(prisma,auth,req.params.patientId,'VIEW_SECTION',req.params.section); res.json({data:{items:rows}});
   }catch(e){next(e);}});
