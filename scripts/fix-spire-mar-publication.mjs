@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BUILD = '20260814-mar-v5-live-1';
+const BUILD = '20260814-mar-v4-classic-color-1';
 const MAR_ASSET = `/assets/spire-mar-timeline.js?v=${BUILD}`;
 const MAR_STYLE = `/assets/spire-mar-epic-v5.css?v=${BUILD}`;
 const STATION_ASSET = `/assets/spire-client-station.js?v=${BUILD}`;
@@ -199,4 +199,4 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   return next;
 });
 
-console.log(`SPIRE MAR V5 publication fixed end-to-end: Epic-style medication rows and colorful icon controls use ${MAR_STYLE}; observer loop protection remains active; master/final publisher use ${MAR_ASSET}; login, Client Station, and chart URLs use ${BUILD}.`);
+console.log(`SPIRE MAR classic-color publication fixed end-to-end: previous Medication / Order grid layout restored with stronger card color and compact top-of-cell status markers via ${MAR_STYLE}; observer loop protection remains active; master/final publisher use ${MAR_ASSET}; login, Client Station, and chart URLs use ${BUILD}.`);
