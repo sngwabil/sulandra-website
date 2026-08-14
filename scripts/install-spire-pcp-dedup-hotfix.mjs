@@ -29,6 +29,7 @@ const CLIENT_IDENTIFICATION_STYLE = `<style id="${CLIENT_IDENTIFICATION_STYLE_ID
   .client-row td{height:56px!important}
   .spire-client-preview-photo{width:46px!important;height:46px!important;min-width:46px!important;border:2px solid #fff!important;outline:1px solid #87b6c8!important;box-shadow:0 1px 4px rgba(14,84,116,.16)!important}
 </style>`;
+const CHART_LOGOUT_BUTTON = `<button type="button" id="spireChartLogout" title="Log out of S.P.I.R.E." aria-label="Log out of S.P.I.R.E." style="background:#a31919;color:#fff;padding:4px 10px;border:1px solid #ff9999;border-radius:2px;font-weight:700;cursor:pointer;white-space:nowrap" onclick="['sulandra:employee:access-token','sulandra_token','token','accessToken','sulandra:employee:session','spire:patientId'].forEach(function(k){sessionStorage.removeItem(k);localStorage.removeItem(k);});window.top.location.replace('/employee-login.html');">Logout</button>`;
 
 const hotfix = await readFile(hotfixPath, 'utf8');
 if (!hotfix.includes(MARKER)) throw new Error(`SPIRE PCP dedup hotfix is missing ${MARKER}`);
@@ -84,6 +85,9 @@ master = master.replace(/\s*<script\s+src=["']\/assets\/spire-pcp-dedup-hotfix\.
 master = master.replace(/\s*<script\s+src=["']\/assets\/spire-client-photo-display\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
 master = master.replace(new RegExp(`\\s*<style id=["']${CLIENT_IDENTIFICATION_STYLE_ID}["'][\\s\\S]*?<\\/style>\\s*`, 'gi'), '\n');
 master = master.replace(/\/assets\/spire-chart-profile-images\.js\?v=[^"']+/g, PROFILE_FIXED_URL);
+master = master.replace(/\s*<span>🔒 Log Out<\/span>\s*/g, '\n');
+master = master.replace(/\s*<span>❓ Help Desk<\/span>\s*/g, '\n');
+master = master.replace(/<span\s+style=["']background:\s*#a31919;\s*padding:\s*3px 8px;\s*border:\s*1px solid #ff9999;["']>SpireCare<\/span>/g, CHART_LOGOUT_BUTTON);
 if (!master.includes('</body>')) throw new Error('SPIRE master is missing </body>');
 master = master.replace('</body>', `  ${CLIENT_IDENTIFICATION_STYLE}\n  <script src="${CLIENT_PHOTO_URL}"></script>\n  <script src="${HOTFIX_URL}"></script>\n</body>`);
 await writeFile(masterPath, master, 'utf8');
@@ -115,5 +119,9 @@ const stationClientPhotoCount = (clientStation.match(/\/assets\/spire-client-pho
 if (stationClientPhotoCount !== 1) throw new Error(`SPIRE Client Station must publish the isolated client photo runtime exactly once; found ${stationClientPhotoCount}`);
 if (!master.includes(`id="${CLIENT_IDENTIFICATION_STYLE_ID}"`)) throw new Error('SPIRE chart is missing the enlarged client identification style');
 if (!clientStation.includes(`id="${CLIENT_IDENTIFICATION_STYLE_ID}"`)) throw new Error('SPIRE Client Station is missing the enlarged client identification style');
+if (master.includes('❓ Help Desk')) throw new Error('SPIRE chart still publishes the retired Help Desk control');
+if (master.includes('<span>🔒 Log Out</span>')) throw new Error('SPIRE chart still publishes the retired text-only logout control');
+if ((master.match(/id="spireChartLogout"/g) || []).length !== 1) throw new Error('SPIRE chart must publish exactly one red Logout control');
+if (!master.includes("window.top.location.replace('/employee-login.html')")) throw new Error('SPIRE chart Logout control is not routed to the employee sign-in page');
 
-console.log(`SPIRE PCP provider card deduplication remains active via ${HOTFIX_URL}. Chart profile photos continue using the existing Safari-safe runtime ${PROFILE_FIXED_URL}. The isolated patient photo display runtime ${CLIENT_PHOTO_URL} remains separate from MAR/eMAR, while ${CLIENT_IDENTIFICATION_STYLE_ID} enlarges client photos for faster visual identification in the chart and Client Station.`);
+console.log(`SPIRE PCP provider card deduplication remains active via ${HOTFIX_URL}. Chart profile photos continue using the existing Safari-safe runtime ${PROFILE_FIXED_URL}. The isolated patient photo display runtime ${CLIENT_PHOTO_URL} remains separate from MAR/eMAR, ${CLIENT_IDENTIFICATION_STYLE_ID} enlarges client photos for faster visual identification, and the chart header now exposes one red Logout control with Help Desk removed.`);
