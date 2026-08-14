@@ -21,6 +21,7 @@ type ProfileImageRow = {
   kind: 'CLIENT' | 'PCP';
   providerName: string | null;
   mimeType: string;
+  imageData?: Buffer;
   sha256: string;
   sizeBytes: number;
   updatedAt: Date | string;
@@ -172,6 +173,9 @@ const metadataOf = (row: ProfileImageRow | undefined) => row ? {
   sha256: row.sha256,
   sizeBytes: Number(row.sizeBytes),
   updatedAt: row.updatedAt,
+  ...(row.imageData?.length
+    ? { dataUrl: `data:${row.mimeType};base64,${row.imageData.toString('base64')}` }
+    : {}),
 } : null;
 
 export const registerSpireProfileImageRoutes = (
@@ -186,13 +190,17 @@ export const registerSpireProfileImageRoutes = (
       const auth = authOf(res);
       const patientId = req.params.patientId;
       await requireScope(prisma, auth, patientId);
+      // Return the already-authorized image bytes with the metadata as data URLs.
+      // This keeps Safari/iPad from having to perform a second protected image fetch
+      // after the chart shell has already authenticated and resolved the patient.
       const rows = await prisma.$queryRawUnsafe<ProfileImageRow[]>(
-        `SELECT "id","kind","providerName","mimeType","sha256","sizeBytes","updatedAt"
+        `SELECT "id","kind","providerName","mimeType","imageData","sha256","sizeBytes","updatedAt"
          FROM "SpireChartProfileImage"
          WHERE "organizationId"=$1 AND "patientId"=$2`,
         auth.organizationId,
         patientId,
       );
+      res.setHeader('Cache-Control', 'private, no-store');
       res.json({
         data: {
           client: metadataOf(rows.find((row) => row.kind === 'CLIENT')),
