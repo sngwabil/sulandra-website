@@ -1,29 +1,29 @@
 /* SPIRE_MAR_EPIC_V5
-   Presentation-only enhancement for the existing audited SPIRE MAR V4 runtime.
-   It keeps the canonical eMAR API, click actions, permissions, and server-stamped
-   administration times intact while presenting medication rows like a compact
-   clinical MAR: order header, segmented time rail, status pills, and colorful tools.
+   Classic-layout presentation layer for the audited SPIRE MAR V4 runtime.
+   This intentionally preserves the previous fixed Medication / Order column and
+   hourly grid the user preferred. It adds stronger card color, bolder clinical
+   hierarchy, colorful toolbar icons, and compact status strips that occupy only
+   the TOP of each administration box like the reference MAR.
 */
 
 #mar-view .spire-mar-v4{
-  --spire-mar-slot-width:82px;
-  --spire-mar-rail-width:1968px;
-  background:#edf6fb;
+  background:#eaf4f9;
 }
 
-/* Compact colorful MAR toolbar */
+/* Keep the previous compact toolbar, but give each action a clear colored icon. */
 #mar-view .spire-mar-commandbar{
   min-height:34px;
   padding:3px 7px;
   gap:4px;
-  background:linear-gradient(180deg,#f8fdff 0%,#e4f1f7 100%);
-  border-bottom:1px solid #9fbfce;
+  background:linear-gradient(180deg,#fbfeff 0%,#e2f0f7 100%);
+  border-bottom:1px solid #8eb4c7;
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.8);
 }
 #mar-view .spire-mar-title{
-  color:#0879b7;
+  color:#0878b5;
   font-size:15px;
   font-weight:900;
-  margin-right:3px;
+  margin-right:4px;
 }
 #mar-view .spire-mar-command{
   display:inline-flex;
@@ -31,19 +31,19 @@
   gap:4px;
   min-height:27px;
   padding:3px 7px;
-  border:1px solid #a1bcc9;
-  border-radius:2px;
-  background:linear-gradient(180deg,#ffffff,#e9f1f5);
-  color:#284f62;
+  border:1px solid #9ebbc9;
+  border-radius:3px;
+  background:linear-gradient(180deg,#ffffff,#e8f1f5);
+  color:#244e62;
   font-size:10.5px;
-  font-weight:700;
+  font-weight:800;
   line-height:1;
-  box-shadow:0 1px 1px rgba(24,73,96,.08);
+  box-shadow:0 1px 1px rgba(28,70,91,.08);
 }
 #mar-view .spire-mar-command:hover{
-  background:#e0f1f9;
-  border-color:#5a9ab8;
-  color:#075f91;
+  background:#dff2fa;
+  border-color:#4f96b8;
+  color:#075d8f;
 }
 #mar-view .spire-mar-command::before{
   display:inline-grid;
@@ -51,237 +51,239 @@
   width:15px;
   height:15px;
   flex:0 0 15px;
-  border-radius:2px;
+  border-radius:3px;
   border:1px solid currentColor;
   background:#fff;
   font-size:9px;
   font-weight:900;
   line-height:1;
 }
-#mar-view [data-mar-command="report"]::before{content:"▤";color:#3575a8;background:#e8f3fb}
-#mar-view [data-mar-command="note"]::before{content:"✎";color:#b06b19;background:#fff4d8}
-#mar-view [data-mar-command="messages"]::before{content:"●";color:#6d4aa2;background:#f1eafd}
-#mar-view [data-mar-command="legend"]::before{content:"◆";color:#1d8b6f;background:#e4f8f1}
-#mar-view [data-mar-command="actions"]::before{content:"✓";color:#2d7f39;background:#eaf6e9}
-#mar-view [data-mar-command="links"]::before{content:"↔";color:#2c72b7;background:#e7f1fc}
-#mar-view [data-mar-command="now"]::before{content:"◷";color:#0879b7;background:#e5f6fd}
-#mar-view [data-mar-command="details"]::before{content:"⌄";color:#7b5ca5;background:#f1ecf8}
-#mar-view [data-mar-command="admins"]::before{content:"▦";color:#9a5a27;background:#fff1df}
+#mar-view [data-mar-command="report"]::before{content:"▤";color:#2f74ae;background:#e8f3ff}
+#mar-view [data-mar-command="note"]::before{content:"✎";color:#b66d12;background:#fff2d4}
+#mar-view [data-mar-command="messages"]::before{content:"●";color:#7347a6;background:#f2e9ff}
+#mar-view [data-mar-command="legend"]::before{content:"◆";color:#16846d;background:#e4f8f0}
+#mar-view [data-mar-command="actions"]::before{content:"✓";color:#2d7e3b;background:#e8f7e9}
+#mar-view [data-mar-command="links"]::before{content:"↔";color:#2c72b7;background:#e8f1fc}
+#mar-view [data-mar-command="now"]::before{content:"◷";color:#0879b7;background:#e4f7ff}
+#mar-view [data-mar-command="details"]::before{content:"⌄";color:#7a56a4;background:#f2ebfb}
+#mar-view [data-mar-command="admins"]::before{content:"▦";color:#9b5c20;background:#fff0dc}
 #mar-view .spire-mar-command.primary{
   border-color:#3f91b8;
-  background:linear-gradient(180deg,#f8fdff,#dff1f9);
-  color:#086e9d;
+  background:linear-gradient(180deg,#fbfeff,#d9eff9);
+  color:#086d9d;
 }
 
-/* Reference-like filters and legend */
 #mar-view .spire-mar-filterbar{
   min-height:31px;
   padding:2px 7px;
-  background:#e9f4f9;
-  border-bottom:1px solid #adc9d7;
+  background:#e7f3f8;
+  border-bottom:1px solid #a4c3d2;
 }
 #mar-view .spire-mar-filter{
   height:28px;
   padding:3px 9px;
   font-size:10.5px;
-  font-weight:700;
-  color:#355f72;
+  font-weight:800;
+  color:#315e73;
 }
 #mar-view .spire-mar-filter.active{
   background:#fff;
-  color:#0876ad;
-  border:1px solid #91b7ca;
+  color:#0875ad;
+  border:1px solid #8fb4c7;
   border-bottom:3px solid #1687bb;
 }
 #mar-view .spire-mar-legend{
   min-height:27px;
   background:#fbfdfe;
-  border-bottom:1px solid #c0d6e1;
+  border-bottom:1px solid #bed4df;
+  font-weight:700;
 }
 
-/* One medication = one order header + one segmented time rail + one detail footer. */
+/* RESTORED PREVIOUS LAYOUT: do not replace the V4 grid geometry.
+   The Medication / Order column remains on the left and the hourly cells stay beside it. */
 #mar-view .spire-mar-scroll{
-  background:#edf6fb;
+  background:#eaf4f9;
+}
+#mar-view .spire-mar-medication-header{
+  background:linear-gradient(180deg,#f8fcfe,#eaf3f8)!important;
+  color:#234f67!important;
+  font-weight:900!important;
+  border-right:1px solid #9fbcca!important;
 }
 #mar-view .spire-mar-time-header{
-  grid-template-columns:repeat(24,var(--spire-mar-slot-width))!important;
-  width:var(--spire-mar-rail-width)!important;
-  min-width:var(--spire-mar-rail-width)!important;
-  height:34px!important;
   background:#f7fbfd!important;
   border-bottom:1px solid #9fbcca!important;
 }
-#mar-view .spire-mar-medication-header{display:none!important}
 #mar-view .spire-mar-time-label{
-  min-width:var(--spire-mar-slot-width);
   background:#f7fbfd!important;
-  color:#42677a!important;
-  border-right:1px solid #c4d8e2!important;
+  color:#3e6578!important;
+  border-right:1px solid #c2d7e1!important;
+  font-size:10.5px!important;
+  font-weight:800!important;
+}
+#mar-view .spire-mar-time-label.current{
+  background:#dff2fb!important;
+  color:#0879b7!important;
+  border-bottom:3px solid #168bc1!important;
+  font-size:12.5px!important;
+}
+
+/* Stronger medication cards without changing their dimensions/placement. */
+#mar-view .spire-mar-medication-row{
+  margin-top:5px!important;
+  border-color:#9fc2d2!important;
+  background:#fff!important;
+  box-shadow:0 2px 5px rgba(21,73,99,.10)!important;
+}
+#mar-view .spire-mar-medication-summary{
+  background:linear-gradient(135deg,#ffffff 0%,#eef9ff 72%,#e4f5fc 100%)!important;
+  border-left:5px solid #168ec4!important;
+  border-right:1px solid #9fc2d2!important;
+  color:#244a5d!important;
+}
+#mar-view .spire-mar-medication-row:nth-of-type(even) .spire-mar-medication-summary{
+  background:linear-gradient(135deg,#ffffff 0%,#f3f7ff 72%,#e9f0ff 100%)!important;
+  border-left-color:#496fc0!important;
+}
+#mar-view .spire-mar-med-name{
+  color:#0579b9!important;
+  font-size:12.5px!important;
+  font-weight:900!important;
+  letter-spacing:.05px!important;
+}
+#mar-view .spire-mar-med-details{
+  color:#31566a!important;
   font-size:10.5px!important;
   font-weight:700!important;
 }
-#mar-view .spire-mar-time-label.current{
-  background:#e2f2fb!important;
-  color:#0879b7!important;
-  border-bottom:3px solid #168bc1!important;
-  font-size:13px!important;
-}
-
-#mar-view .spire-mar-medication-row{
-  width:var(--spire-mar-rail-width)!important;
-  min-width:var(--spire-mar-rail-width)!important;
-  margin:6px 0 8px!important;
-  border:1px solid #abc7d5!important;
-  border-left:0!important;
-  border-right:0!important;
-  background:#fff!important;
-  box-shadow:0 1px 2px rgba(19,61,82,.07)!important;
-}
-#mar-view .spire-mar-grid-row{
-  display:grid!important;
-  grid-template-columns:repeat(24,var(--spire-mar-slot-width))!important;
-  width:var(--spire-mar-rail-width)!important;
-  min-width:var(--spire-mar-rail-width)!important;
-}
-#mar-view .spire-mar-medication-summary{
-  grid-column:1 / -1!important;
-  position:relative!important;
-  left:auto!important;
-  z-index:1!important;
-  min-height:50px!important;
-  padding:6px 10px 5px!important;
-  border-left:4px solid #32a0d1!important;
-  border-right:0!important;
-  border-bottom:1px solid #b9d1dc!important;
-  background:linear-gradient(180deg,#ffffff 0%,#f8fcfe 100%)!important;
-  white-space:normal!important;
-}
-#mar-view .spire-mar-med-name{
-  display:inline!important;
-  color:#0878b5!important;
-  font-size:12px!important;
-  font-weight:800!important;
-  line-height:1.3!important;
-}
-#mar-view .spire-mar-med-details{
-  display:inline!important;
-  margin:0 0 0 5px!important;
-  color:#334f5f!important;
-  font-size:10.5px!important;
-  line-height:1.3!important;
-}
-#mar-view .spire-mar-med-details::before{content:" · ";color:#8499a4}
 #mar-view .spire-mar-med-instructions{
-  display:block!important;
-  margin-top:4px!important;
-  color:#536b77!important;
+  color:#536d7b!important;
   font-size:9.5px!important;
-  font-style:normal!important;
-  line-height:1.25!important;
+  font-style:italic!important;
+  font-weight:600!important;
 }
-#mar-view .spire-mar-due-list{display:none!important}
+#mar-view .spire-mar-due-list{
+  display:inline-block!important;
+  margin-top:4px!important;
+  padding:2px 5px!important;
+  border-left:3px solid #147eb6!important;
+  background:#e7f5fc!important;
+  color:#075f91!important;
+  font-size:9.5px!important;
+  font-weight:900!important;
+}
 
-/* Segmented medication timeline: pale rail with status pills, matching the reference. */
+/* Hour boxes remain pale and open. A status occupies only the TOP strip. */
 #mar-view .spire-mar-hour-cell{
-  min-width:var(--spire-mar-slot-width)!important;
-  min-height:54px!important;
-  padding:5px 4px!important;
-  border:0!important;
+  position:relative!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+  align-items:stretch!important;
+  min-height:58px!important;
+  padding:4px!important;
+  background:#e5f2f8!important;
+  color:#315d70!important;
   border-right:2px solid #fff!important;
-  background:#dfeef5!important;
-  color:#355d70!important;
   box-shadow:none!important;
   cursor:pointer!important;
 }
-#mar-view .spire-mar-hour-cell:nth-of-type(odd){background:#e7f3f8!important}
 #mar-view .spire-mar-hour-cell:hover:not(:disabled){
-  background:#d0e8f3!important;
+  background:#d5ebf5!important;
   box-shadow:inset 0 0 0 2px #188dbd!important;
 }
 #mar-view .spire-mar-hour-cell:focus-visible{
-  outline:3px solid #0b78b2!important;
+  outline:3px solid #0a78b2!important;
   outline-offset:-3px!important;
   z-index:3!important;
 }
-#mar-view .spire-mar-hour-cell:disabled{cursor:not-allowed!important;opacity:.66!important}
+#mar-view .spire-mar-hour-cell:disabled{
+  cursor:not-allowed!important;
+  opacity:.68!important;
+}
 #mar-view .spire-mar-cell-label{
-  display:inline-flex!important;
+  display:flex!important;
   align-items:center!important;
   justify-content:center!important;
-  min-width:0!important;
-  max-width:72px!important;
+  width:100%!important;
+  max-width:none!important;
   min-height:20px!important;
-  padding:3px 6px!important;
+  padding:2px 5px!important;
+  margin:0!important;
   border-radius:3px!important;
   border:1px solid transparent!important;
   font-size:9.5px!important;
-  font-weight:800!important;
+  font-weight:900!important;
   line-height:1.05!important;
   text-align:center!important;
   white-space:normal!important;
 }
 #mar-view .spire-mar-hour-cell.blank .spire-mar-cell-label{display:none!important}
+#mar-view .spire-mar-cell-sub{
+  display:flex!important;
+  justify-content:center!important;
+  margin:1px 0 0!important;
+  padding:0 2px!important;
+  font-size:8.5px!important;
+  font-weight:800!important;
+  line-height:1.05!important;
+}
+
+/* Status colors live on the top marker only; the rest of the cell stays open. */
 #mar-view .spire-mar-hour-cell.due,
 #mar-view .spire-mar-hour-cell.overdue,
 #mar-view .spire-mar-hour-cell.given,
 #mar-view .spire-mar-hour-cell.held,
 #mar-view .spire-mar-hour-cell.refused,
-#mar-view .spire-mar-hour-cell.missed{background:#dfeef5!important;color:#315b6e!important}
+#mar-view .spire-mar-hour-cell.missed{
+  background:#e5f2f8!important;
+}
 #mar-view .spire-mar-hour-cell.due .spire-mar-cell-label{
-  background:linear-gradient(180deg,#176bd4,#0e54b5)!important;
-  border-color:#093f91!important;
+  background:linear-gradient(180deg,#1b70d7,#0e56b8)!important;
+  border-color:#083e8f!important;
   color:#fff!important;
   box-shadow:0 1px 2px rgba(4,57,128,.28)!important;
 }
 #mar-view .spire-mar-hour-cell.overdue .spire-mar-cell-label{
-  background:linear-gradient(180deg,#176bd4,#0e54b5)!important;
-  border:2px solid #d8323d!important;
+  background:linear-gradient(180deg,#1b70d7,#0e56b8)!important;
+  border:2px solid #d52f3b!important;
   color:#fff!important;
-  box-shadow:0 0 0 1px #fff,0 1px 3px rgba(154,25,35,.26)!important;
+  box-shadow:0 0 0 1px #fff,0 1px 3px rgba(154,25,35,.25)!important;
 }
 #mar-view .spire-mar-hour-cell.given .spire-mar-cell-label{
-  background:linear-gradient(180deg,#eaf7bd,#cce88f)!important;
-  border-color:#8eaf50!important;
-  color:#345511!important;
+  background:linear-gradient(180deg,#e8f7b8,#cce98d)!important;
+  border-color:#8cab4e!important;
+  color:#2f5210!important;
+}
+#mar-view .spire-mar-hour-cell.given .spire-mar-cell-sub{
+  color:#44651e!important;
 }
 #mar-view .spire-mar-hour-cell.held .spire-mar-cell-label{
-  background:linear-gradient(180deg,#fff4cf,#ffe6a2)!important;
-  border-color:#d6a436!important;
-  color:#755006!important;
+  background:linear-gradient(180deg,#fff4c9,#ffe39b)!important;
+  border-color:#d3a12f!important;
+  color:#745006!important;
 }
 #mar-view .spire-mar-hour-cell.refused .spire-mar-cell-label,
 #mar-view .spire-mar-hour-cell.missed .spire-mar-cell-label{
-  background:linear-gradient(180deg,#fbe3ea,#f4cbd7)!important;
-  border-color:#d494a7!important;
-  color:#832840!important;
-}
-#mar-view .spire-mar-cell-sub{
-  margin-top:2px!important;
-  color:inherit!important;
-  font-size:8.5px!important;
-  font-weight:700!important;
+  background:linear-gradient(180deg,#fbe1e9,#f3c6d3)!important;
+  border-color:#cf879c!important;
+  color:#81263e!important;
 }
 
+/* Footer stays compact but gets clearer hierarchy. */
 #mar-view .spire-mar-row-meta{
-  position:relative!important;
-  left:auto!important;
-  width:var(--spire-mar-rail-width)!important;
-  min-width:var(--spire-mar-rail-width)!important;
-  min-height:25px!important;
-  padding:4px 9px!important;
-  display:grid!important;
-  grid-template-columns:1fr 1fr 1fr!important;
-  align-items:center!important;
-  gap:12px!important;
-  background:#fbfdfe!important;
-  border-top:1px solid #d5e4eb!important;
-  color:#667a84!important;
+  background:linear-gradient(180deg,#ffffff,#f4f9fc)!important;
+  border-top:1px solid #d1e1e8!important;
+  color:#607883!important;
   font-size:9px!important;
+  font-weight:600!important;
 }
-#mar-view .spire-mar-row-meta span:nth-child(2){text-align:center}
-#mar-view .spire-mar-row-meta span:nth-child(3){text-align:right}
+#mar-view .spire-mar-row-meta b{
+  color:#284f63!important;
+  font-weight:900!important;
+}
 
-/* Make every administration choice visibly distinct in the action picker. */
+/* Make every administration choice visibly distinct in the existing action picker. */
 #mar-view .spire-mar-status{
   position:relative;
   min-height:42px!important;
@@ -290,6 +292,7 @@
   border:1px solid #abc2cd!important;
   border-top-width:4px!important;
   color:#355768!important;
+  font-weight:900!important;
 }
 #mar-view .spire-mar-status::before{
   display:block;
@@ -315,6 +318,7 @@
 #mar-view .spire-mar-status[data-mar-status="HELD"].selected{background:#ffedbd!important;border-color:#d0a034!important;color:#704a04!important}
 #mar-view .spire-mar-status[data-mar-status="MISSED"].selected{background:#eadff5!important;border-color:#8964ad!important;color:#5d3a82!important}
 #mar-view .spire-mar-status[data-mar-status="PRN_GIVEN"].selected{background:#dcedf8!important;border-color:#4787ae!important;color:#185a81!important}
+
 #mar-view .spire-mar-action-context div:nth-child(3){background:#eef8e7!important;border-color:#b7d29f!important}
 #mar-view .spire-mar-action-context div:nth-child(3) b{color:#3f6b24!important}
 #mar-view .spire-mar-server-time-note{
@@ -323,22 +327,20 @@
   color:#365b23!important;
 }
 
-/* Dark theme compatibility */
-:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-medication-summary,
-:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-row-meta{
-  background:#292c32!important;
-  color:#e8edf1!important;
-  border-color:#555b66!important;
-}
-:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-hour-cell,
-:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-hour-cell:nth-of-type(odd){
-  background:#34383f!important;
-  border-right-color:#292c32!important;
-}
-:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-command::before{background:#24272c!important}
+/* Preserve the existing dark theme without flattening the status colors. */
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-commandbar,
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-filterbar,
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-legend{background:#292d34!important;border-color:#555d68!important;color:#e1e8ec!important}
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-command{background:#363b43!important;color:#e6edf1!important;border-color:#626b76!important}
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-medication-summary{background:linear-gradient(135deg,#2b3037,#24333d)!important;border-color:#438fb2!important;color:#e5edf1!important}
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-med-name{color:#73d8ff!important}
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-med-details,
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-med-instructions{color:#d0dce2!important}
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-hour-cell{background:#343a42!important;border-right-color:#24282e!important}
+:root[data-spire-preset="darkClinicalSummary"] #mar-view .spire-mar-row-meta{background:#2b3037!important;color:#ced9de!important;border-color:#555d68!important}
 
 @media(max-width:1100px){
-  #mar-view .spire-mar-commandbar{overflow-x:auto;white-space:nowrap}
-  #mar-view .spire-mar-command{flex:0 0 auto}
-  #mar-view .spire-mar-medication-summary{min-height:56px!important}
+  #mar-view .spire-mar-commandbar{overflow-x:auto}
+  #mar-view .spire-mar-filterbar{align-items:flex-start;flex-direction:column}
+  #mar-view .spire-mar-filter-actions{width:100%;overflow-x:auto}
 }
