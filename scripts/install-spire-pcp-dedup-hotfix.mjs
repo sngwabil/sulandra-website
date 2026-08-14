@@ -26,7 +26,9 @@ const clientPhotoRuntime = await readFile(clientPhotoRuntimePath, 'utf8');
 if (!clientPhotoRuntime.includes(CLIENT_PHOTO_MARKER)) throw new Error(`SPIRE client photo runtime is missing ${CLIENT_PHOTO_MARKER}`);
 if (!clientPhotoRuntime.includes('stationClientBody')) throw new Error('SPIRE client photo runtime does not decorate Client Station');
 if (!clientPhotoRuntime.includes('#avatarDisplay')) throw new Error('SPIRE client photo runtime does not protect the chart avatar');
-if (/MAR|emar\/events|spire-mar/i.test(clientPhotoRuntime)) throw new Error('SPIRE client photo display runtime must remain isolated from MAR/eMAR code');
+if (clientPhotoRuntime.includes("document.querySelector('#mar-view')") || clientPhotoRuntime.includes('/emar/events') || clientPhotoRuntime.includes('data-mar-')) {
+  throw new Error('SPIRE client photo display runtime must remain isolated from MAR/eMAR internals');
+}
 
 // iPad/iPhone Safari can invalidate or fail to repaint blob: image URLs inside the
 // nested SPIRE chart shell after DOM reconciliation. The authenticated API fetch is
