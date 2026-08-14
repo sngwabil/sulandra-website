@@ -28,7 +28,8 @@ if(!api.includes("/api/admin/employee-files/folders")){
 }
 
 const documentInsertMarker='      await prisma.$executeRawUnsafe(\n        `INSERT INTO "EmployeeDocument"';
-if(api.includes(documentInsertMarker) && !api.includes('await ensureEmployeeFolder(auth, req.params.employeeId);\n      await prisma.$executeRawUnsafe(\n        `INSERT INTO "EmployeeDocument"')){
+const folderBeforeDocumentMarker='await ensureEmployeeFolder(auth, req.params.employeeId);\n      await prisma.$executeRawUnsafe(\n        `INSERT INTO "EmployeeDocument"';
+if(api.includes(documentInsertMarker) && !api.includes(folderBeforeDocumentMarker)){
   api=api.replace(documentInsertMarker,'      await ensureEmployeeFolder(auth, req.params.employeeId);\n'+documentInsertMarker);
 }
 
@@ -37,7 +38,10 @@ if(!app.includes('Employee Files')){
   if(!app.includes(renderAnchor)) throw new Error('Employee documents render anchor changed');
   app=app.replace("let state=null;","let state=null;let fileFolders={rootFolder:'Employee Files',folders:[]};");
   app=app.replace("async function refresh(){const root=document.getElementById('employee-documents-admin');if(root)root.innerHTML='<div class=\"adoc-empty\">Loading document center…</div>';state=await api('/api/admin/employee-documents/dashboard');render()}","async function refresh(){const root=document.getElementById('employee-documents-admin');if(root)root.innerHTML='<div class=\"adoc-empty\">Loading document center…</div>';[state,fileFolders]=await Promise.all([api('/api/admin/employee-documents/dashboard'),api('/api/admin/employee-files/folders')]);render()}");
-  app=app.replace('<div class="adoc-head"><div><h2>Employee 360 Documents & E-Signatures</h2><p>Manage templates, assignments, signatures and completion history.</p></div><button id="adoc-refresh">Refresh</button></div>', '<div class="adoc-head"><div><h2>Employee Files</h2><p>Automatic employee personnel folders, secure files, templates, assignments, signatures and completion history.</p></div><button id="adoc-refresh">Refresh</button></div><div class="adoc-card" style="margin-bottom:16px"><h3>📁 Employee Files</h3><div class="adoc-list">${(fileFolders.folders||[]).length?(fileFolders.folders||[]).map(f=>`<div class="adoc-row"><div class="adoc-row-head"><strong>📂 ${esc(f.folderName)}</strong><span>${esc(f.documentCount||0)} files</span></div><p>${esc(f.email||'')}</p></div>`).join(''):'<div class="adoc-empty">Employee folders are created automatically when employees are active in this company.</div>'}</div></div>');
+  const oldHeader='<div class="adoc-head"><div><h2>Employee 360 Documents & E-Signatures</h2><p>Manage templates, assignments, signatures and completion history.</p></div><button id="adoc-refresh">Refresh</button></div>';
+  const employeeFilesPanel=`<div class="adoc-head"><div><h2>Employee Files</h2><p>Automatic employee personnel folders, secure files, templates, assignments, signatures and completion history.</p></div><button id="adoc-refresh">Refresh</button></div><div class="adoc-card" style="margin-bottom:16px"><h3>📁 Employee Files</h3><div class="adoc-list">\${(fileFolders.folders||[]).length?(fileFolders.folders||[]).map(f=>\`<div class="adoc-row"><div class="adoc-row-head"><strong>📂 \${esc(f.folderName)}</strong><span>\${esc(f.documentCount||0)} files</span></div><p>\${esc(f.email||'')}</p></div>\`).join(''):'<div class="adoc-empty">Employee folders are created automatically when employees are active in this company.</div>'}</div></div>`;
+  if(!app.includes(oldHeader)) throw new Error('Employee documents header anchor changed');
+  app=app.replace(oldHeader,employeeFilesPanel);
 }
 
 await writeFile(apiPath,api,'utf8');
