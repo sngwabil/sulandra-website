@@ -287,6 +287,17 @@
     document.body.appendChild(script);
   }
 
-  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); installClientIntakeDialogGuard(); loadEmployeeDirectoryEnhancer(); loadEmployeeWorkCrosslinks(); });
+  function loadSpireMarEnhancer() {
+    const pathname = location.pathname.toLowerCase().replace(/\/+$/, '');
+    const eligible = pathname.endsWith('/spire/master.html') || pathname.endsWith('/spire/master') || pathname.endsWith('/spire.html');
+    if (!eligible || document.querySelector('script[data-sulandra-spire-mar-enhancer]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/spire-mar-timeline.js?v=20260814-mar-v4';
+    script.dataset.sulandraSpireMarEnhancer = 'true';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
+  const render = () => ready.then(() => { installSwitcher(); installPageDeepLinks(); installClientIntakeDialogGuard(); loadEmployeeDirectoryEnhancer(); loadEmployeeWorkCrosslinks(); loadSpireMarEnhancer(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render, { once: true }); else render();
 })();
