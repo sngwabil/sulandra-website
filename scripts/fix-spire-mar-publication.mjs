@@ -21,6 +21,21 @@ function requireContains(source, needle, label) {
   if (!source.includes(needle)) throw new Error(`${label} is missing ${needle}`);
 }
 
+// Keep the later accessibility publication pass aligned with this exact MAR build.
+// build-static-site imports install-spire-idempotent-shell, which imports this suite
+// after the pre-build fixer, so its marAsset must not overwrite the cache-busted URL.
+const accessibilitySuite = await edit('scripts/fix-spire-accessibility-suite.mjs', (source) => {
+  const next = source.replace(
+    /const marAsset = ['"]\/assets\/spire-mar-timeline\.js\?v=[^'"]+['"];/,
+    `const marAsset = '${MAR_ASSET}';`,
+  );
+  if (!next.includes(`const marAsset = '${MAR_ASSET}';`)) {
+    throw new Error('SPIRE accessibility MAR asset anchor is missing');
+  }
+  return next;
+});
+requireContains(accessibilitySuite, MAR_ASSET, 'SPIRE accessibility publication pass');
+
 const master = await edit('spire/master.html', (source) => {
   let next = source.replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
   if (!next.includes('</body>')) throw new Error('SPIRE master body close is missing');
