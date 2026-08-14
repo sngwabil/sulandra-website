@@ -4,19 +4,29 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const masterPath = path.join(root, 'spire', 'master.html');
+const clientStationPath = path.join(root, 'spire', 'client-station.html');
 const hotfixPath = path.join(root, 'assets', 'spire-pcp-dedup-hotfix.js');
 const profileRuntimePath = path.join(root, 'assets', 'spire-chart-profile-images.js');
+const clientPhotoRuntimePath = path.join(root, 'assets', 'spire-client-photo-display.js');
 const buildStaticPath = path.join(root, 'scripts', 'build-static-site.mjs');
 const publishedSyntaxPath = path.join(root, 'scripts', 'verify-published-spire-syntax.mjs');
 const HOTFIX_URL = '/assets/spire-pcp-dedup-hotfix.js?v=20260814-pcp-dedup-1';
 const PROFILE_FIXED_URL = '/assets/spire-chart-profile-images.js?v=20260814-chart-photo-db-3-dataurl';
+const CLIENT_PHOTO_URL = '/assets/spire-client-photo-display.js?v=20260814-client-photo-display-1';
 const MARKER = 'SPIRE_PCP_CARD_DEDUP_V1';
 const PROFILE_DATA_URL_MARKER = 'SPIRE_PROFILE_IMAGE_DATA_URL_V1';
+const CLIENT_PHOTO_MARKER = 'SPIRE_CLIENT_PHOTO_DISPLAY_V1';
 
 const hotfix = await readFile(hotfixPath, 'utf8');
 if (!hotfix.includes(MARKER)) throw new Error(`SPIRE PCP dedup hotfix is missing ${MARKER}`);
 if (!hotfix.includes("[data-spire-pcp-photo]{display:none!important}")) throw new Error('SPIRE PCP dedup hotfix does not suppress the retired PCP card');
 if (!hotfix.includes("canonicalRows.slice(1)")) throw new Error('SPIRE PCP dedup hotfix does not collapse duplicate canonical PCP rows');
+
+const clientPhotoRuntime = await readFile(clientPhotoRuntimePath, 'utf8');
+if (!clientPhotoRuntime.includes(CLIENT_PHOTO_MARKER)) throw new Error(`SPIRE client photo runtime is missing ${CLIENT_PHOTO_MARKER}`);
+if (!clientPhotoRuntime.includes('stationClientBody')) throw new Error('SPIRE client photo runtime does not decorate Client Station');
+if (!clientPhotoRuntime.includes('#avatarDisplay')) throw new Error('SPIRE client photo runtime does not protect the chart avatar');
+if (/MAR|emar\/events|spire-mar/i.test(clientPhotoRuntime)) throw new Error('SPIRE client photo display runtime must remain isolated from MAR/eMAR code');
 
 // iPad/iPhone Safari can invalidate or fail to repaint blob: image URLs inside the
 // nested SPIRE chart shell after DOM reconciliation. The authenticated API fetch is
@@ -56,10 +66,17 @@ await writeFile(profileRuntimePath, profileRuntime, 'utf8');
 
 let master = await readFile(masterPath, 'utf8');
 master = master.replace(/\s*<script\s+src=["']\/assets\/spire-pcp-dedup-hotfix\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
+master = master.replace(/\s*<script\s+src=["']\/assets\/spire-client-photo-display\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
 master = master.replace(/\/assets\/spire-chart-profile-images\.js\?v=[^"']+/g, PROFILE_FIXED_URL);
 if (!master.includes('</body>')) throw new Error('SPIRE master is missing </body>');
-master = master.replace('</body>', `  <script src="${HOTFIX_URL}"></script>\n</body>`);
+master = master.replace('</body>', `  <script src="${CLIENT_PHOTO_URL}"></script>\n  <script src="${HOTFIX_URL}"></script>\n</body>`);
 await writeFile(masterPath, master, 'utf8');
+
+let clientStation = await readFile(clientStationPath, 'utf8');
+clientStation = clientStation.replace(/\s*<script\s+src=["']\/assets\/spire-client-photo-display\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
+if (!clientStation.includes('</body>')) throw new Error('SPIRE Client Station is missing </body>');
+clientStation = clientStation.replace('</body>', `  <script src="${CLIENT_PHOTO_URL}"></script>\n</body>`);
+await writeFile(clientStationPath, clientStation, 'utf8');
 
 // The publication verifier receives the cache-busted profile asset URL from the
 // earlier MAR publication pass. Keep its expected URL aligned with the Safari-safe
@@ -75,5 +92,9 @@ if (pcpCount !== 1) throw new Error(`SPIRE master must publish the PCP dedup hot
 const profileCount = (master.match(/\/assets\/spire-chart-profile-images\.js\?v=/g) || []).length;
 if (profileCount !== 1) throw new Error(`SPIRE master must publish the chart profile runtime exactly once; found ${profileCount}`);
 if (!master.includes(PROFILE_FIXED_URL)) throw new Error('SPIRE master did not publish the Safari-safe chart profile image runtime');
+const masterClientPhotoCount = (master.match(/\/assets\/spire-client-photo-display\.js\?v=/g) || []).length;
+if (masterClientPhotoCount !== 1) throw new Error(`SPIRE master must publish the isolated client photo runtime exactly once; found ${masterClientPhotoCount}`);
+const stationClientPhotoCount = (clientStation.match(/\/assets\/spire-client-photo-display\.js\?v=/g) || []).length;
+if (stationClientPhotoCount !== 1) throw new Error(`SPIRE Client Station must publish the isolated client photo runtime exactly once; found ${stationClientPhotoCount}`);
 
-console.log(`SPIRE PCP provider card deduplication remains active via ${HOTFIX_URL}. Chart profile photos now render from authenticated image bytes as persistent data URLs via ${PROFILE_FIXED_URL}, avoiding Safari/nested-frame blob URL invalidation while keeping PostgreSQL as the patient-scoped source of truth.`);
+console.log(`SPIRE PCP provider card deduplication remains active via ${HOTFIX_URL}. Chart profile photos continue using the existing Safari-safe runtime ${PROFILE_FIXED_URL}. The isolated patient photo display runtime ${CLIENT_PHOTO_URL} now decorates Client Station and protects the chart avatar without touching MAR/eMAR rendering.`);
