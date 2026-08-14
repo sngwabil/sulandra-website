@@ -3,11 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BUILD = '20260814-mar-v4-live-2';
+const BUILD = '20260814-mar-v4-live-3';
 const MAR_ASSET = `/assets/spire-mar-timeline.js?v=${BUILD}`;
 const STATION_ASSET = `/assets/spire-client-station.js?v=${BUILD}`;
 const LOGIN_ASSET = `/assets/spire-login.js?v=${BUILD}`;
 const MARKER = 'SPIRE_MAR_PUBLICATION_CACHE_BUST_V2';
+const RUNTIME_MARKER = 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1';
 
 async function edit(relative, transform) {
   const file = path.join(root, relative);
@@ -20,6 +21,37 @@ async function edit(relative, transform) {
 function requireContains(source, needle, label) {
   if (!source.includes(needle)) throw new Error(`${label} is missing ${needle}`);
 }
+
+// The V4 runtime observes the entire chart because the legacy master can replace
+// sections after async patient data loads. The PCP renderer previously wrote the
+// same text/src values on every observer callback. Those writes create new DOM
+// mutations, which immediately retriggered the observer and could pin Chrome's
+// main thread until it reported "Page Unresponsive". Make the renderer truly
+// idempotent and stop observing characterData; child replacement is sufficient
+// for the legacy master lifecycle and avoids a self-sustaining mutation storm.
+const marRuntime = await edit('assets/spire-mar-timeline.js', (source) => {
+  let next = source;
+  const oldPhotoRender = `    if (image) {\n      image.src = stored;\n      image.hidden = !stored;\n    }\n    if (initials) {\n      initials.textContent = pcpInitials();\n      initials.hidden = Boolean(stored);\n    }\n    if (name) name.textContent = clean(document.querySelector('#displayPCP')?.textContent) || 'Primary Care Provider';`;
+  const newPhotoRender = `    if (image) {\n      if (stored) {\n        if (image.getAttribute('src') !== stored) image.setAttribute('src', stored);\n      } else if (image.hasAttribute('src')) {\n        image.removeAttribute('src');\n      }\n      const shouldHideImage = !stored;\n      if (image.hidden !== shouldHideImage) image.hidden = shouldHideImage;\n    }\n    if (initials) {\n      const nextInitials = pcpInitials();\n      if (initials.textContent !== nextInitials) initials.textContent = nextInitials;\n      const shouldHideInitials = Boolean(stored);\n      if (initials.hidden !== shouldHideInitials) initials.hidden = shouldHideInitials;\n    }\n    if (name) {\n      const nextName = clean(document.querySelector('#displayPCP')?.textContent) || 'Primary Care Provider';\n      if (name.textContent !== nextName) name.textContent = nextName;\n    }`;
+
+  if (next.includes(oldPhotoRender)) next = next.replace(oldPhotoRender, newPhotoRender);
+  next = next.replace(
+    "mutationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });",
+    "mutationObserver.observe(document.body, { childList: true, subtree: true });",
+  );
+  if (!next.includes(RUNTIME_MARKER)) {
+    next = next.replace('// SPIRE_MAR_TIMELINE_V4', `// SPIRE_MAR_TIMELINE_V4\n  // ${RUNTIME_MARKER}`);
+  }
+
+  if (!next.includes('if (initials.textContent !== nextInitials) initials.textContent = nextInitials;')) {
+    throw new Error('SPIRE MAR PCP renderer could not be made idempotent');
+  }
+  if (!next.includes("mutationObserver.observe(document.body, { childList: true, subtree: true });")) {
+    throw new Error('SPIRE MAR mutation observer could not be narrowed');
+  }
+  return next;
+});
+requireContains(marRuntime, RUNTIME_MARKER, 'SPIRE MAR runtime');
 
 const accessibilitySuite = await edit('scripts/fix-spire-accessibility-suite.mjs', (source) => {
   const next = source.replace(
@@ -133,7 +165,12 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
     if (!next.includes(stationMarker)) throw new Error('Published SPIRE station marker anchor is missing');
     next = next.replace(stationMarker, `${stationMarker}\n  '${MARKER}', \"query.set('workspaceBuild', '${BUILD}')\",`);
   }
+  if (!next.includes(RUNTIME_MARKER)) {
+    const contractAnchor = "  'SPIRE_MAR_PUBLICATION_CACHE_BUST_V2',";
+    if (!next.includes(contractAnchor)) throw new Error('Published SPIRE MAR runtime marker anchor is missing');
+    next = next.replace(contractAnchor, `${contractAnchor}\n  '${RUNTIME_MARKER}',`);
+  }
   return next;
 });
 
-console.log(`SPIRE MAR publication fixed end-to-end: master and final dist-web publisher use ${MAR_ASSET}; login, platform/foundation/business verification, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
+console.log(`SPIRE MAR publication fixed end-to-end: observer loop removed; master and final dist-web publisher use ${MAR_ASSET}; login, platform/foundation/business verification, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
