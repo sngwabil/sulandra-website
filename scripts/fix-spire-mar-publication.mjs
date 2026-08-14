@@ -53,6 +53,23 @@ const platformContractFixer = await edit('scripts/fix-platform-integration-spire
 });
 requireContains(platformContractFixer, LOGIN_ASSET, 'Platform SPIRE contract normalizer');
 
+// verify-spire-foundation runs after final publication. It must validate the active
+// cache-busted login shell rather than the retired 20260813 URL. Also require the final
+// master to carry this V4 MAR URL so CI proves what the browser will actually receive.
+const foundationVerifier = await edit('scripts/verify-spire-foundation.mjs', (source) => {
+  let next = source.replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
+  if (!next.includes(MAR_ASSET)) {
+    const anchor = "has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title=\"Secure Chat\"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js','/assets/spire-mar-timeline.js'], 'SPIRE master chart');";
+    if (!next.includes(anchor)) throw new Error('SPIRE foundation master marker anchor is missing');
+    next = next.replace(anchor, `has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js','${MAR_ASSET}'], 'SPIRE master chart');`);
+  }
+  if (!next.includes(LOGIN_ASSET)) throw new Error('SPIRE foundation login asset anchor is missing');
+  if (!next.includes(MAR_ASSET)) throw new Error('SPIRE foundation MAR asset anchor is missing');
+  return next;
+});
+requireContains(foundationVerifier, LOGIN_ASSET, 'SPIRE foundation verifier');
+requireContains(foundationVerifier, MAR_ASSET, 'SPIRE foundation verifier');
+
 const master = await edit('spire/master.html', (source) => {
   let next = source.replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
   if (!next.includes('</body>')) throw new Error('SPIRE master body close is missing');
@@ -119,4 +136,4 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   return next;
 });
 
-console.log(`SPIRE MAR publication fixed end-to-end: master and final dist-web publisher use ${MAR_ASSET}; login, generated platform contract, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
+console.log(`SPIRE MAR publication fixed end-to-end: master and final dist-web publisher use ${MAR_ASSET}; login, generated platform contract, foundation verification, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
