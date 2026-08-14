@@ -60,7 +60,7 @@ const marRuntime = await edit('assets/spire-mar-timeline.js', (source) => {
 
   // PCP photos are now patient-scoped secure clinical documents. Prevent the MAR
   // presentation enhancer from recreating its old localStorage/template row.
-  next = next.replaceAll('installPcpPhoto();', 'void 0; // PCP photo handled by SPIRE_CHART_PROFILE_IMAGES_V1');
+  next = next.replaceAll('installPcpPhoto();', 'void 0; /* PCP photo handled by SPIRE_CHART_PROFILE_IMAGES_V1 */');
 
   if (!next.includes(RUNTIME_MARKER)) {
     next = next.replace('// SPIRE_MAR_TIMELINE_V4', `// SPIRE_MAR_TIMELINE_V4\n  // ${RUNTIME_MARKER}`);
