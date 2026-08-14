@@ -42,10 +42,6 @@ const finalizer = await edit('scripts/finalize-spire-client-station-publication.
 requireContains(finalizer, MAR_ASSET, 'SPIRE final publication pass');
 requireContains(finalizer, LOGIN_ASSET, 'SPIRE final publication pass');
 
-// finalize-platform-navigation later imports this normalizer, which writes the SPIRE
-// contract back into verify-platform-integration.mjs. Keep that generated contract on
-// the same login build or a later verification pass will incorrectly fail and can hide
-// the successful MAR publication.
 const platformContractFixer = await edit('scripts/fix-platform-integration-spire-contract.mjs', (source) => {
   const next = source.replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
   if (!next.includes(LOGIN_ASSET)) throw new Error('Platform SPIRE contract login asset anchor is missing');
@@ -53,9 +49,6 @@ const platformContractFixer = await edit('scripts/fix-platform-integration-spire
 });
 requireContains(platformContractFixer, LOGIN_ASSET, 'Platform SPIRE contract normalizer');
 
-// verify-spire-foundation runs after final publication. It must validate the active
-// cache-busted login shell rather than the retired 20260813 URL. Also require the final
-// master to carry this V4 MAR URL so CI proves what the browser will actually receive.
 const foundationVerifier = await edit('scripts/verify-spire-foundation.mjs', (source) => {
   let next = source.replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
   if (!next.includes(MAR_ASSET)) {
@@ -69,6 +62,13 @@ const foundationVerifier = await edit('scripts/verify-spire-foundation.mjs', (so
 });
 requireContains(foundationVerifier, LOGIN_ASSET, 'SPIRE foundation verifier');
 requireContains(foundationVerifier, MAR_ASSET, 'SPIRE foundation verifier');
+
+const businessVerifier = await edit('scripts/verify-production-business-uat.mjs', (source) => {
+  const next = source.replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
+  if (!next.includes(LOGIN_ASSET)) throw new Error('Production business UAT SPIRE login asset anchor is missing');
+  return next;
+});
+requireContains(businessVerifier, LOGIN_ASSET, 'Production business UAT verifier');
 
 const master = await edit('spire/master.html', (source) => {
   let next = source.replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
@@ -136,4 +136,4 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   return next;
 });
 
-console.log(`SPIRE MAR publication fixed end-to-end: master and final dist-web publisher use ${MAR_ASSET}; login, generated platform contract, foundation verification, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
+console.log(`SPIRE MAR publication fixed end-to-end: master and final dist-web publisher use ${MAR_ASSET}; login, platform/foundation/business verification, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
