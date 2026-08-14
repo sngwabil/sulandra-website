@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BUILD = '20260814-chart-photos-mar-fix-1';
+const BUILD = '20260814-chart-photo-db-1';
 const MAR_ASSET = `/assets/spire-mar-timeline.js?v=${BUILD}`;
 const MAR_STYLE = `/assets/spire-mar-epic-v5.css?v=${BUILD}`;
 const PROFILE_ASSET = `/assets/spire-chart-profile-images.js?v=${BUILD}`;
@@ -12,7 +12,7 @@ const LOGIN_ASSET = `/assets/spire-login.js?v=${BUILD}`;
 const MARKER = 'SPIRE_MAR_PUBLICATION_CACHE_BUST_V2';
 const RUNTIME_MARKER = 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1';
 const STYLE_MARKER = 'SPIRE_MAR_EPIC_V5';
-const PROFILE_MARKER = 'SPIRE_CHART_PROFILE_IMAGES_V1';
+const PROFILE_MARKER = 'SPIRE_CHART_PROFILE_IMAGES_V2';
 
 async function edit(relative, transform) {
   const file = path.join(root, relative);
@@ -34,9 +34,9 @@ requireContains(marStyle, '.spire-mar-status[data-mar-status="GIVEN"]', 'SPIRE M
 
 const profileRuntime = await readFile(path.join(root, 'assets/spire-chart-profile-images.js'), 'utf8');
 requireContains(profileRuntime, PROFILE_MARKER, 'SPIRE chart profile image runtime');
-requireContains(profileRuntime, '/documents?category=', 'SPIRE chart profile image runtime');
-requireContains(profileRuntime, '/versions', 'SPIRE chart profile image runtime');
-requireContains(profileRuntime, 'patient-scoped secure clinical documents', 'SPIRE chart profile image runtime');
+requireContains(profileRuntime, '/profile-images', 'SPIRE chart profile image runtime');
+requireContains(profileRuntime, 'patient-scoped chart database records', 'SPIRE chart profile image runtime');
+requireContains(profileRuntime, 'providerName', 'SPIRE chart profile image runtime');
 
 // Keep the MAR runtime idempotent, remove the obsolete browser-local PCP-photo
 // installer, and repair the medication-order variable used by the live action dialog.
@@ -58,9 +58,9 @@ const marRuntime = await edit('assets/spire-mar-timeline.js', (source) => {
     `\n            medicationOrderId: medicationId,\n            scheduledFor:`,
   );
 
-  // PCP photos are now patient-scoped secure clinical documents. Prevent the MAR
-  // presentation enhancer from recreating its old localStorage/template row.
-  next = next.replaceAll('installPcpPhoto();', 'void 0; /* PCP photo handled by SPIRE_CHART_PROFILE_IMAGES_V1 */');
+  // PCP photos are now patient-scoped database records. Prevent the MAR
+  // presentation enhancer from recreating its retired localStorage/template row.
+  next = next.replaceAll('installPcpPhoto();', 'void 0; /* PCP photo handled by SPIRE_CHART_PROFILE_IMAGES_V2 */');
 
   if (!next.includes(RUNTIME_MARKER)) {
     next = next.replace('// SPIRE_MAR_TIMELINE_V4', `// SPIRE_MAR_TIMELINE_V4\n  // ${RUNTIME_MARKER}`);
@@ -185,7 +185,12 @@ const loginHtml = await edit('spire/login.html', (source) => source.replace(
 requireContains(loginHtml, LOGIN_ASSET, 'SPIRE login HTML');
 
 await edit('scripts/build-static-site.mjs', (source) => {
-  let next = source.replaceAll('/assets/spire-client-station.js?v=20260813-client-station-2', STATION_ASSET);
+  let next = source
+    .replaceAll('/assets/spire-client-station.js?v=20260813-client-station-2', STATION_ASSET)
+    .replaceAll('SPIRE_CHART_PROFILE_IMAGES_V1', PROFILE_MARKER)
+    .replaceAll('patient-scoped secure clinical documents', 'patient-scoped chart database records')
+    .replaceAll('SPIRE_CLIENT_PROFILE_PHOTO', '/profile-images')
+    .replaceAll('SPIRE_PCP_PROFILE_PHOTO', 'providerName');
   const oldMarkers = "for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1'])";
   if (next.includes(oldMarkers)) {
     next = next.replace(oldMarkers, `for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1','${MARKER}','${MAR_ASSET}','${MAR_STYLE}','${PROFILE_ASSET}'])`);
@@ -199,19 +204,24 @@ await edit('scripts/build-static-site.mjs', (source) => {
   if (!next.includes('const publishedSpireProfileImages=')) {
     const anchor = "const publishedResultsWorkspace=await readFile(path.join(outputDirectory,'assets','spire-results-workspace.js'),'utf8');";
     if (!next.includes(anchor)) throw new Error('Static build profile-image verification anchor is missing');
-    next = next.replace(anchor, `const publishedSpireProfileImages=await readFile(path.join(outputDirectory,'assets','spire-chart-profile-images.js'),'utf8');\nfor (const marker of ['${PROFILE_MARKER}','patient-scoped secure clinical documents','SPIRE_CLIENT_PROFILE_PHOTO','SPIRE_PCP_PROFILE_PHOTO']) if(!publishedSpireProfileImages.includes(marker)) throw new Error(\`Static publication regression: SPIRE chart profile images missing \${marker}\`);\n${anchor}`);
+    next = next.replace(anchor, `const publishedSpireProfileImages=await readFile(path.join(outputDirectory,'assets','spire-chart-profile-images.js'),'utf8');\nfor (const marker of ['${PROFILE_MARKER}','patient-scoped chart database records','/profile-images','providerName']) if(!publishedSpireProfileImages.includes(marker)) throw new Error(\`Static publication regression: SPIRE chart profile images missing \${marker}\`);\n${anchor}`);
   }
   if (!next.includes(MAR_ASSET)) throw new Error('Static build verification could not be upgraded to the MAR publication contract');
   if (!next.includes(MAR_STYLE)) throw new Error('Static build verification could not be upgraded to the MAR stylesheet contract');
   if (!next.includes(PROFILE_ASSET)) throw new Error('Static build verification could not be upgraded to the chart-photo publication contract');
   if (!next.includes('assets/spire-chart-profile-images.js')) throw new Error('Static build required-file list is missing the chart profile image runtime');
+  if (!next.includes(PROFILE_MARKER) || !next.includes('/profile-images')) throw new Error('Static build chart-photo verification still targets retired object-storage photos');
   return next;
 });
 
 await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   let next = source
     .replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET)
-    .replaceAll('/assets/spire-client-station.js?v=20260813-client-station-2', STATION_ASSET);
+    .replaceAll('/assets/spire-client-station.js?v=20260813-client-station-2', STATION_ASSET)
+    .replaceAll('SPIRE_CHART_PROFILE_IMAGES_V1', PROFILE_MARKER)
+    .replaceAll('SPIRE_CLIENT_PROFILE_PHOTO', '/profile-images')
+    .replaceAll('SPIRE_PCP_PROFILE_PHOTO', 'providerName')
+    .replaceAll("'/documents?category='", "'/profile-images'");
   const assetAnchor = "  ['assets/spire-client-station.js', 'Client Station runtime'],";
   if (!next.includes("['assets/spire-mar-timeline.js', 'SPIRE MAR V4 runtime']")) {
     if (!next.includes(assetAnchor)) throw new Error('Published SPIRE browser-assets anchor is missing');
@@ -243,9 +253,10 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   }
   if (!next.includes("const profileImagesJs = await read('assets/spire-chart-profile-images.js');")) {
     if (!next.includes(marRuntimeAnchor)) throw new Error('Published SPIRE profile-image verification anchor is missing');
-    next = next.replace(marRuntimeAnchor, `const profileImagesJs = await read('assets/spire-chart-profile-images.js');\nrequireMarkers(profileImagesJs, ['${PROFILE_MARKER}', 'SPIRE_CLIENT_PROFILE_PHOTO', 'SPIRE_PCP_PROFILE_PHOTO', '/documents?category='], 'SPIRE chart profile image runtime');\n\n${marRuntimeAnchor}`);
+    next = next.replace(marRuntimeAnchor, `const profileImagesJs = await read('assets/spire-chart-profile-images.js');\nrequireMarkers(profileImagesJs, ['${PROFILE_MARKER}', '/profile-images', 'providerName', 'patient-scoped chart database records'], 'SPIRE chart profile image runtime');\n\n${marRuntimeAnchor}`);
   }
+  if (!next.includes(PROFILE_MARKER) || !next.includes('/profile-images')) throw new Error('Published SPIRE syntax verifier still targets retired object-storage photos');
   return next;
 });
 
-console.log(`SPIRE chart-photo/MAR publication fixed end-to-end: client and PCP photos are patient-scoped secure clinical documents via ${PROFILE_ASSET}; duplicate legacy PCP presentation is disabled; MAR action uses the defined medication order id; classic-color MAR remains on ${MAR_STYLE}; login, Client Station, and chart URLs use ${BUILD}.`);
+console.log(`SPIRE chart-photo/MAR publication fixed end-to-end: client and PCP photos use patient-scoped PostgreSQL profile records via ${PROFILE_ASSET}; no employee object-storage configuration is required for chart avatars; duplicate legacy PCP presentation is disabled; MAR action uses the defined medication order id; classic-color MAR remains on ${MAR_STYLE}; login, Client Station, and chart URLs use ${BUILD}.`);
