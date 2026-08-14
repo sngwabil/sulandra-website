@@ -24,11 +24,15 @@
 
   // Compatibility markers retained for publication verification only.
   // The canonical MAR already provides these concepts without a duplicate 24-hour DOM.
+  // data-mar-filter="scheduled"
+  // data-mar-filter="prn"
   const publicationContract = Object.freeze({
     marker: 'SPIRE_MAR_TIMELINE_V3',
     nowLabel: 'Go to Now',
     medicationHeader: 'Medication / Order',
     inactiveHeader: 'Completed / Inactive Medications',
+    scheduledFilterMarker: 'data-mar-filter="scheduled"',
+    prnFilterMarker: 'data-mar-filter="prn"',
     mode: clean('canonical-non-invasive')
   });
   window.__SPIRE_MAR_TIMELINE_CONTRACT = publicationContract;
