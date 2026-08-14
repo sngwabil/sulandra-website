@@ -155,7 +155,7 @@ ${bindAnchor}`;
 function normalizeEmployeePortalNewTab(source) {
   if (source.includes(`${newTabContract}:employee-static`)) return source;
   const anchor = '<a id="employeeStaticSpire" class="portal-link" href="/spire.html" hidden>';
-  const replacement = `<a id="employeeStaticSpire" class="portal-link" href="/spire.html" target="_blank" rel="noopener noreferrer" data-spire-new-tab="${newTabContract}:employee-static" hidden>`;
+  const replacement = `<a id="employeeStaticSpire" class="portal-link" href="/spire.html" hidden target="_blank" rel="noopener noreferrer" data-spire-new-tab="${newTabContract}:employee-static">`;
   return replaceRequired(source, anchor, replacement, 'Employee Portal static SPIRE new-tab link');
 }
 
