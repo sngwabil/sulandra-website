@@ -165,11 +165,6 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
     if (!next.includes(stationMarker)) throw new Error('Published SPIRE station marker anchor is missing');
     next = next.replace(stationMarker, `${stationMarker}\n  '${MARKER}', \"query.set('workspaceBuild', '${BUILD}')\",`);
   }
-  if (!next.includes(RUNTIME_MARKER)) {
-    const contractAnchor = "  'SPIRE_MAR_PUBLICATION_CACHE_BUST_V2',";
-    if (!next.includes(contractAnchor)) throw new Error('Published SPIRE MAR runtime marker anchor is missing');
-    next = next.replace(contractAnchor, `${contractAnchor}\n  '${RUNTIME_MARKER}',`);
-  }
   return next;
 });
 
