@@ -21,37 +21,37 @@ function requireContains(source, needle, label) {
   if (!source.includes(needle)) throw new Error(`${label} is missing ${needle}`);
 }
 
-// Keep the later accessibility publication pass aligned with this exact MAR build.
-// build-static-site imports install-spire-idempotent-shell, which imports this suite
-// after the pre-build fixer, so its marAsset must not overwrite the cache-busted URL.
 const accessibilitySuite = await edit('scripts/fix-spire-accessibility-suite.mjs', (source) => {
   const next = source.replace(
     /const marAsset = ['"]\/assets\/spire-mar-timeline\.js\?v=[^'"]+['"];/,
     `const marAsset = '${MAR_ASSET}';`,
   );
-  if (!next.includes(`const marAsset = '${MAR_ASSET}';`)) {
-    throw new Error('SPIRE accessibility MAR asset anchor is missing');
-  }
+  if (!next.includes(`const marAsset = '${MAR_ASSET}';`)) throw new Error('SPIRE accessibility MAR asset anchor is missing');
   return next;
 });
 requireContains(accessibilitySuite, MAR_ASSET, 'SPIRE accessibility publication pass');
 
-// This finalizer runs after dist-web is built and was the piece restoring the retired
-// MAR URL. Pin it to the same build so the last publication pass cannot undo V4.
 const finalizer = await edit('scripts/finalize-spire-client-station-publication.mjs', (source) => {
-  let next = source
+  const next = source
     .replace(/const marTimelineUrl = ['"]\/assets\/spire-mar-timeline\.js\?v=[^'"]+['"];/, `const marTimelineUrl = '${MAR_ASSET}';`)
     .replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
-  if (!next.includes(`const marTimelineUrl = '${MAR_ASSET}';`)) {
-    throw new Error('SPIRE final publication MAR URL anchor is missing');
-  }
-  if (!next.includes(LOGIN_ASSET)) {
-    throw new Error('SPIRE final publication login URL anchor is missing');
-  }
+  if (!next.includes(`const marTimelineUrl = '${MAR_ASSET}';`)) throw new Error('SPIRE final publication MAR URL anchor is missing');
+  if (!next.includes(LOGIN_ASSET)) throw new Error('SPIRE final publication login URL anchor is missing');
   return next;
 });
 requireContains(finalizer, MAR_ASSET, 'SPIRE final publication pass');
 requireContains(finalizer, LOGIN_ASSET, 'SPIRE final publication pass');
+
+// finalize-platform-navigation later imports this normalizer, which writes the SPIRE
+// contract back into verify-platform-integration.mjs. Keep that generated contract on
+// the same login build or a later verification pass will incorrectly fail and can hide
+// the successful MAR publication.
+const platformContractFixer = await edit('scripts/fix-platform-integration-spire-contract.mjs', (source) => {
+  const next = source.replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
+  if (!next.includes(LOGIN_ASSET)) throw new Error('Platform SPIRE contract login asset anchor is missing');
+  return next;
+});
+requireContains(platformContractFixer, LOGIN_ASSET, 'Platform SPIRE contract normalizer');
 
 const master = await edit('spire/master.html', (source) => {
   let next = source.replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
@@ -95,7 +95,7 @@ const loginHtml = await edit('spire/login.html', (source) => source.replace(
 requireContains(loginHtml, LOGIN_ASSET, 'SPIRE login HTML');
 
 await edit('scripts/build-static-site.mjs', (source) => {
-  let next = source
+  const next = source
     .replaceAll('/assets/spire-client-station.js?v=20260813-client-station-2', STATION_ASSET)
     .replace("for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1'])", `for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1','${MARKER}','${MAR_ASSET}'])`);
   if (!next.includes(MAR_ASSET)) throw new Error('Static build verification could not be upgraded to the MAR V4 publication contract');
@@ -119,4 +119,4 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   return next;
 });
 
-console.log(`SPIRE MAR publication fixed end-to-end: master and the final dist-web publisher use ${MAR_ASSET}; login and Client Station URLs carry ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
+console.log(`SPIRE MAR publication fixed end-to-end: master and final dist-web publisher use ${MAR_ASSET}; login, generated platform contract, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
