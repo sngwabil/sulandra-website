@@ -3,12 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BUILD = '20260814-mar-v4-live-3';
+const BUILD = '20260814-mar-v5-live-1';
 const MAR_ASSET = `/assets/spire-mar-timeline.js?v=${BUILD}`;
+const MAR_STYLE = `/assets/spire-mar-epic-v5.css?v=${BUILD}`;
 const STATION_ASSET = `/assets/spire-client-station.js?v=${BUILD}`;
 const LOGIN_ASSET = `/assets/spire-login.js?v=${BUILD}`;
 const MARKER = 'SPIRE_MAR_PUBLICATION_CACHE_BUST_V2';
 const RUNTIME_MARKER = 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1';
+const STYLE_MARKER = 'SPIRE_MAR_EPIC_V5';
 
 async function edit(relative, transform) {
   const file = path.join(root, relative);
@@ -22,13 +24,16 @@ function requireContains(source, needle, label) {
   if (!source.includes(needle)) throw new Error(`${label} is missing ${needle}`);
 }
 
-// The V4 runtime observes the entire chart because the legacy master can replace
-// sections after async patient data loads. The PCP renderer previously wrote the
-// same text/src values on every observer callback. Those writes create new DOM
-// mutations, which immediately retriggered the observer and could pin Chrome's
-// main thread until it reported "Page Unresponsive". Make the renderer truly
-// idempotent and stop observing characterData; child replacement is sufficient
-// for the legacy master lifecycle and avoids a self-sustaining mutation storm.
+const marStyle = await readFile(path.join(root, 'assets/spire-mar-epic-v5.css'), 'utf8');
+requireContains(marStyle, STYLE_MARKER, 'SPIRE MAR Epic V5 stylesheet');
+requireContains(marStyle, '[data-mar-command="report"]::before', 'SPIRE MAR Epic V5 stylesheet');
+requireContains(marStyle, '.spire-mar-hour-cell.due .spire-mar-cell-label', 'SPIRE MAR Epic V5 stylesheet');
+requireContains(marStyle, '.spire-mar-status[data-mar-status="GIVEN"]', 'SPIRE MAR Epic V5 stylesheet');
+
+// Keep the MAR runtime idempotent. The legacy master can replace chart sections
+// asynchronously, so the runtime observes child replacement. It must never write
+// the same PCP photo/text values during every observer callback or Chrome can enter
+// a self-sustaining mutation loop and report the page as unresponsive.
 const marRuntime = await edit('assets/spire-mar-timeline.js', (source) => {
   let next = source;
   const oldPhotoRender = `    if (image) {\n      image.src = stored;\n      image.hidden = !stored;\n    }\n    if (initials) {\n      initials.textContent = pcpInitials();\n      initials.hidden = Boolean(stored);\n    }\n    if (name) name.textContent = clean(document.querySelector('#displayPCP')?.textContent) || 'Primary Care Provider';`;
@@ -86,14 +91,18 @@ const foundationVerifier = await edit('scripts/verify-spire-foundation.mjs', (so
   if (!next.includes(MAR_ASSET)) {
     const anchor = "has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title=\"Secure Chat\"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js','/assets/spire-mar-timeline.js'], 'SPIRE master chart');";
     if (!next.includes(anchor)) throw new Error('SPIRE foundation master marker anchor is missing');
-    next = next.replace(anchor, `has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js','${MAR_ASSET}'], 'SPIRE master chart');`);
+    next = next.replace(anchor, `has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js','${MAR_ASSET}','${MAR_STYLE}'], 'SPIRE master chart');`);
+  } else if (!next.includes(MAR_STYLE)) {
+    next = next.replace(`'${MAR_ASSET}'`, `'${MAR_ASSET}','${MAR_STYLE}'`);
   }
   if (!next.includes(LOGIN_ASSET)) throw new Error('SPIRE foundation login asset anchor is missing');
   if (!next.includes(MAR_ASSET)) throw new Error('SPIRE foundation MAR asset anchor is missing');
+  if (!next.includes(MAR_STYLE)) throw new Error('SPIRE foundation MAR style anchor is missing');
   return next;
 });
 requireContains(foundationVerifier, LOGIN_ASSET, 'SPIRE foundation verifier');
 requireContains(foundationVerifier, MAR_ASSET, 'SPIRE foundation verifier');
+requireContains(foundationVerifier, MAR_STYLE, 'SPIRE foundation verifier');
 
 const businessVerifier = await edit('scripts/verify-production-business-uat.mjs', (source) => {
   const next = source.replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
@@ -103,13 +112,18 @@ const businessVerifier = await edit('scripts/verify-production-business-uat.mjs'
 requireContains(businessVerifier, LOGIN_ASSET, 'Production business UAT verifier');
 
 const master = await edit('spire/master.html', (source) => {
-  let next = source.replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
+  let next = source
+    .replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
+    .replace(/\s*<link\s+rel=["']stylesheet["']\s+href=["']\/assets\/spire-mar-epic-v5\.css(?:\?v=[^"']*)?["']\s*\/?>(?:\s*)/gi, '\n');
+  if (!next.includes('</head>')) throw new Error('SPIRE master head close is missing');
   if (!next.includes('</body>')) throw new Error('SPIRE master body close is missing');
+  next = next.replace('</head>', `  <link rel="stylesheet" href="${MAR_STYLE}">\n</head>`);
   next = next.replace('</body>', `  <!-- ${MARKER} -->\n  <script src="${MAR_ASSET}"></script>\n</body>`);
   return next;
 });
 requireContains(master, MARKER, 'SPIRE master');
 requireContains(master, MAR_ASSET, 'SPIRE master');
+requireContains(master, MAR_STYLE, 'SPIRE master');
 
 const stationRuntime = await edit('assets/spire-client-station.js', (source) => {
   let next = source.replace(/\n\s*query\.set\('workspaceBuild',\s*'[^']*'\);/g, '');
@@ -144,10 +158,15 @@ const loginHtml = await edit('spire/login.html', (source) => source.replace(
 requireContains(loginHtml, LOGIN_ASSET, 'SPIRE login HTML');
 
 await edit('scripts/build-static-site.mjs', (source) => {
-  const next = source
-    .replaceAll('/assets/spire-client-station.js?v=20260813-client-station-2', STATION_ASSET)
-    .replace("for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1'])", `for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1','${MARKER}','${MAR_ASSET}'])`);
-  if (!next.includes(MAR_ASSET)) throw new Error('Static build verification could not be upgraded to the MAR V4 publication contract');
+  let next = source.replaceAll('/assets/spire-client-station.js?v=20260813-client-station-2', STATION_ASSET);
+  const oldMarkers = "for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1'])";
+  if (next.includes(oldMarkers)) {
+    next = next.replace(oldMarkers, `for (const marker of ['<html','<head','<body','</html>',\"window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app'\",'/assets/sulandra-entity-context.js','SPIRE_MASTER_DEFECT_FIXES_V1','${MARKER}','${MAR_ASSET}','${MAR_STYLE}'])`);
+  } else if (next.includes(MAR_ASSET) && !next.includes(MAR_STYLE)) {
+    next = next.replace(`'${MAR_ASSET}'`, `'${MAR_ASSET}','${MAR_STYLE}'`);
+  }
+  if (!next.includes(MAR_ASSET)) throw new Error('Static build verification could not be upgraded to the MAR V5 publication contract');
+  if (!next.includes(MAR_STYLE)) throw new Error('Static build verification could not be upgraded to the MAR V5 stylesheet contract');
   return next;
 });
 
@@ -164,8 +183,20 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   if (!next.includes(`'${MARKER}'`)) {
     if (!next.includes(stationMarker)) throw new Error('Published SPIRE station marker anchor is missing');
     next = next.replace(stationMarker, `${stationMarker}\n  '${MARKER}', \"query.set('workspaceBuild', '${BUILD}')\",`);
+  } else {
+    next = next.replace(/query\.set\('workspaceBuild', '[^']+'\)/g, `query.set('workspaceBuild', '${BUILD}')`);
+  }
+  if (!next.includes("const marEpicStyle = await read('assets/spire-mar-epic-v5.css');")) {
+    const preferenceAnchor = "const preferences = await read('assets/spire-user-preferences.js');";
+    if (!next.includes(preferenceAnchor)) throw new Error('Published SPIRE style verification anchor is missing');
+    next = next.replace(preferenceAnchor, `const marEpicStyle = await read('assets/spire-mar-epic-v5.css');\nrequireMarkers(marEpicStyle, ['${STYLE_MARKER}', '[data-mar-command=\\\"report\\\"]::before', '.spire-mar-hour-cell.due .spire-mar-cell-label'], 'SPIRE MAR Epic V5 styling');\n\n${preferenceAnchor}`);
+  }
+  const marRuntimeAnchor = "const chatJs = await read('assets/spire-secure-chat.js');";
+  if (!next.includes("const marJs = await read('assets/spire-mar-timeline.js');")) {
+    if (!next.includes(marRuntimeAnchor)) throw new Error('Published SPIRE MAR runtime verification anchor is missing');
+    next = next.replace(marRuntimeAnchor, `const marJs = await read('assets/spire-mar-timeline.js');\nrequireMarkers(marJs, ['${RUNTIME_MARKER}', 'data-mar-status=\\\"GIVEN\\\"', 'administeredAt'], 'SPIRE MAR V4 runtime');\n\n${marRuntimeAnchor}`);
   }
   return next;
 });
 
-console.log(`SPIRE MAR publication fixed end-to-end: observer loop removed; master and final dist-web publisher use ${MAR_ASSET}; login, platform/foundation/business verification, and Client Station use ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
+console.log(`SPIRE MAR V5 publication fixed end-to-end: Epic-style medication rows and colorful icon controls use ${MAR_STYLE}; observer loop protection remains active; master/final publisher use ${MAR_ASSET}; login, Client Station, and chart URLs use ${BUILD}.`);
