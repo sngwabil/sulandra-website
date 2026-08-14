@@ -208,7 +208,7 @@ export const registerSpireProfileImageRoutes = (
       const patientId = req.params.patientId;
       const kind = kindOf(req.params.kind);
       await requireScope(prisma, auth, patientId);
-      const rows = await prisma.$queryRawUnsafe<Array<ProfileImageRow & { imageData: Buffer }>>(
+      const rows = await prisma.$queryRawUnsafe<Array<ProfileImageRow & { imageData: Uint8Array | Buffer }>>(
         `SELECT "id","kind","providerName","mimeType","imageData","sha256","sizeBytes","updatedAt"
          FROM "SpireChartProfileImage"
          WHERE "organizationId"=$1 AND "patientId"=$2 AND "kind"=$3
@@ -219,11 +219,20 @@ export const registerSpireProfileImageRoutes = (
       );
       const image = rows[0];
       if (!image) throw Object.assign(new Error('Profile image was not found'), { status: 404 });
+
+      // Prisma Bytes values are Uint8Array in current Prisma clients. Express does
+      // not guarantee raw-binary semantics for a generic Uint8Array, so normalize
+      // the database value to a Node Buffer before sending it. Without this step,
+      // the endpoint can carry an image/* content type while the body is serialized
+      // data, which Safari/Chrome correctly show as a broken image.
+      const imageBytes = Buffer.isBuffer(image.imageData)
+        ? image.imageData
+        : Buffer.from(image.imageData);
       res.setHeader('Content-Type', image.mimeType);
-      res.setHeader('Content-Length', String(image.imageData.length));
+      res.setHeader('Content-Length', String(imageBytes.length));
       res.setHeader('Cache-Control', 'private, no-store');
       res.setHeader('ETag', `"${image.sha256}"`);
-      res.send(image.imageData);
+      res.send(imageBytes);
     } catch (error) { next(error); }
   });
 
