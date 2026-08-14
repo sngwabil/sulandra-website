@@ -39,7 +39,7 @@
     mintFresh:{title:'#065f46',toolbar:'#0d9488',background:'#ecfdf5',card:'#ffffff',text:'#064e3b'},
     royalAmethyst:{title:'#4c1d95',toolbar:'#6d28d9',background:'#f5f3ff',card:'#ffffff',text:'#3b0764'},
     solarizedLight:{title:'#073642',toolbar:'#268bd2',background:'#fdf6e3',card:'#eee8d5',text:'#073642'},
-    clientStation: { title:'#990000', toolbar:'#990000', background:'#eaf7fb',card:'#ffffff',text:'#173c50',cyan:'#5bd0e7',cyan2:'#dff8fc',ice:'#eaf7fb',panel:'#f8fdff',line:'#b7d3df',line2:'#d4e4eb',nav:'#082f49',nav2:'#0b4f73',purple:'#7c3db5'},
+    clientStation:{title:'#0f172a',toolbar:'#f4510b',background:'#eaf7fb',card:'#ffffff',text:'#173c50',cyan:'#5bd0e7',cyan2:'#dff8fc',ice:'#eaf7fb',panel:'#f8fdff',line:'#b7d3df',line2:'#d4e4eb',nav:'#082f49',nav2:'#0b4f73',purple:'#7c3db5'},
     darkClinicalSummary:{title:'#15171b',toolbar:'#25282d',background:'#202329',card:'#292c32',text:'#f4f5f7',cyan:'#16d7ee',cyan2:'#103b43',ice:'#202329',panel:'#292c32',line:'#555b66',line2:'#3c414a',nav:'#17191d',nav2:'#24272c',purple:'#ef5cc7'}
   });
 
