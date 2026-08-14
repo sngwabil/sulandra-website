@@ -1,29 +1,26 @@
 (() => {
   'use strict';
 
-  // SPIRE_CHART_PROFILE_IMAGES_V1
-  // Client and PCP photos are stored as patient-scoped clinical documents in the
-  // existing secure S.P.I.R.E. object store. Nothing in this module uses a shared
-  // template photo or browser localStorage for clinical profile images.
+  // SPIRE_CHART_PROFILE_IMAGES_V2
+  // Client and PCP photos are stored as small patient-scoped chart database records.
+  // They do not depend on optional employee object storage, shared templates, or
+  // browser localStorage, and therefore survive refreshes and different devices.
 
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
-  const CLIENT_CATEGORY = 'SPIRE_CLIENT_PROFILE_PHOTO';
-  const PCP_CATEGORY = 'SPIRE_PCP_PROFILE_PHOTO';
-  const CLIENT_TITLE = 'Client Profile Photo';
-  const PCP_TITLE_PREFIX = 'Primary Care Provider Photo';
   const MAX_INPUT_BYTES = 12 * 1024 * 1024;
 
   let currentPatient = '';
-  let clientObjectUrl = '';
-  let pcpObjectUrl = '';
-  let clientDocumentId = '';
-  let pcpDocumentId = '';
   let refreshTimer = 0;
   let observer = null;
   let refreshing = false;
+  const state = {
+    client: { objectUrl: '', sha256: '' },
+    pcp: { objectUrl: '', sha256: '', providerName: '' },
+  };
 
   const clean = (value) => String(value ?? '').trim();
+  const providerKey = (value) => clean(value).toLowerCase().replace(/\s+/g, ' ');
 
   function token() {
     for (const storage of [sessionStorage, localStorage]) {
@@ -49,6 +46,15 @@
 
   function pcpName() {
     return clean(document.querySelector('#displayPCP')?.textContent) || 'Primary Care Provider';
+  }
+
+  function pcpNameIsReady() {
+    const value = pcpName();
+    return Boolean(value)
+      && !/^primary care provider$/i.test(value)
+      && !/^—$/.test(value)
+      && !/^\[.*\]$/.test(value)
+      && !/^\[pcp\b/i.test(value);
   }
 
   function initials(value, fallback = '—') {
@@ -84,11 +90,12 @@
     return payload?.data ?? payload;
   }
 
-  async function fetchPhotoBlob(patient, documentId) {
+  async function fetchPhotoBlob(patient, kind, sha256) {
     const headers = new Headers({ Accept: 'image/*' });
     const accessToken = token();
     if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-    const response = await fetch(`${API_BASE}/api/spire/patients/${encodeURIComponent(patient)}/documents/${encodeURIComponent(documentId)}/content`, {
+    const version = sha256 ? `?v=${encodeURIComponent(sha256)}` : '';
+    const response = await fetch(`${API_BASE}/api/spire/patients/${encodeURIComponent(patient)}/profile-images/${encodeURIComponent(kind)}/content${version}`, {
       headers,
       cache: 'no-store',
     });
@@ -96,33 +103,12 @@
     return response.blob();
   }
 
-  async function listPhotoDocuments(patient, category) {
-    const data = await apiJson(`/api/spire/patients/${encodeURIComponent(patient)}/documents?category=${encodeURIComponent(category)}`);
-    return Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-  }
-
-  function pcpDocumentTitle() {
-    return `${PCP_TITLE_PREFIX} — ${pcpName()}`.slice(0, 250);
-  }
-
-  function chooseDocument(documents, kind) {
-    if (kind === 'client') {
-      return documents.find((document) => clean(document.title) === CLIENT_TITLE) || null;
-    }
-    const exactTitle = pcpDocumentTitle();
-    return documents.find((document) => clean(document.title) === exactTitle) || null;
-  }
-
   function revokeUrl(kind) {
-    const value = kind === 'client' ? clientObjectUrl : pcpObjectUrl;
-    if (value) URL.revokeObjectURL(value);
-    if (kind === 'client') {
-      clientObjectUrl = '';
-      clientDocumentId = '';
-    } else {
-      pcpObjectUrl = '';
-      pcpDocumentId = '';
-    }
+    const slot = state[kind];
+    if (slot.objectUrl) URL.revokeObjectURL(slot.objectUrl);
+    slot.objectUrl = '';
+    slot.sha256 = '';
+    if (kind === 'pcp') slot.providerName = '';
   }
 
   function ensureStyles() {
@@ -163,7 +149,7 @@
     console.info('[SPIRE profile images]', message);
   }
 
-  function renderClientPhoto(url, documentId) {
+  function renderClientPhoto(url, sha256) {
     const avatar = document.querySelector('#avatarDisplay');
     if (!avatar) return;
     if (!url) {
@@ -172,12 +158,13 @@
       return;
     }
     const existing = avatar.querySelector('img[data-spire-durable-client-photo]');
-    if (existing && existing.dataset.documentId === documentId && existing.src === url) return;
-    avatar.innerHTML = `<img data-spire-durable-client-photo data-document-id="${String(documentId).replace(/["<>]/g, '')}" src="${url}" alt="${patientName().replace(/["<>]/g, '')} profile photo">`;
+    if (existing && existing.dataset.imageSha === sha256 && existing.src === url) return;
+    avatar.innerHTML = `<img data-spire-durable-client-photo data-image-sha="${String(sha256).replace(/["<>]/g, '')}" src="${url}" alt="${patientName().replace(/["<>]/g, '')} profile photo">`;
     avatar.title = 'Client chart photo — click to update';
   }
 
   function removeLegacyPcpPhoto() {
+    window.__SPIRE_DISABLE_LEGACY_PCP_PHOTO = true;
     document.querySelectorAll('[data-spire-pcp-photo]').forEach((node) => node.remove());
     const legacyKey = `spire:pcp-photo:${patientId() || 'unselected'}`;
     try { localStorage.removeItem(legacyKey); } catch (_) {}
@@ -196,6 +183,9 @@
     }
 
     let row = group.querySelector('[data-spire-chart-pcp-photo]');
+    const duplicates = Array.from(group.querySelectorAll('[data-spire-chart-pcp-photo]'));
+    duplicates.slice(1).forEach((node) => node.remove());
+    row = duplicates[0] || row;
     if (!row) {
       row = document.createElement('div');
       row.className = 'spire-chart-pcp-row';
@@ -215,6 +205,10 @@
       const input = row.querySelector('[data-spire-pcp-photo-input]');
       const openPicker = (event) => {
         event?.preventDefault();
+        if (!pcpNameIsReady()) {
+          window.alert('Wait for this client’s PCP information to finish loading, then upload the PCP photo.');
+          return;
+        }
         input?.click();
       };
       row.querySelector('[data-spire-pcp-photo-button]')?.addEventListener('click', openPicker);
@@ -235,7 +229,7 @@
     return row;
   }
 
-  function renderPcpPhoto(url, documentId) {
+  function renderPcpPhoto(url, sha256) {
     const row = ensurePcpRow();
     if (!row) return;
     const button = row.querySelector('[data-spire-pcp-photo-button]');
@@ -247,11 +241,11 @@
       if (initialsNode) initialsNode.hidden = false;
       return;
     }
-    if (!existing || existing.dataset.documentId !== documentId || existing.src !== url) {
+    if (!existing || existing.dataset.imageSha !== sha256 || existing.src !== url) {
       existing?.remove();
       const image = document.createElement('img');
       image.dataset.spireDurablePcpPhoto = '1';
-      image.dataset.documentId = documentId;
+      image.dataset.imageSha = sha256;
       image.alt = `${pcpName()} photo`;
       image.src = url;
       button.insertBefore(image, button.firstChild);
@@ -290,7 +284,7 @@
 
   function compressImage(file) {
     return new Promise((resolve, reject) => {
-      if (!file.type.startsWith('image/')) return reject(new Error('Choose a JPG, PNG, or WebP image.'));
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return reject(new Error('Choose a JPG, PNG, or WebP image.'));
       if (file.size > MAX_INPUT_BYTES) return reject(new Error('Choose an image smaller than 12 MB.'));
       const reader = new FileReader();
       reader.onerror = () => reject(new Error('Unable to read that image.'));
@@ -318,41 +312,24 @@
   async function savePhoto(kind, file, busyNode) {
     const patient = patientId();
     if (!patient) return window.alert('Open a client chart before uploading a photo.');
+    if (kind === 'pcp' && !pcpNameIsReady()) {
+      return window.alert('Wait for this client’s PCP information to finish loading, then upload the PCP photo.');
+    }
     busyNode?.classList.add('spire-chart-photo-saving');
     try {
       const dataBase64 = await compressImage(file);
-      const category = kind === 'client' ? CLIENT_CATEGORY : PCP_CATEGORY;
-      const title = kind === 'client' ? CLIENT_TITLE : pcpDocumentTitle();
-      const documents = await listPhotoDocuments(patient, category);
-      const existing = chooseDocument(documents, kind);
-      if (existing?.id) {
-        await apiJson(`/api/spire/patients/${encodeURIComponent(patient)}/documents/${encodeURIComponent(existing.id)}/versions`, {
-          method: 'POST',
-          body: JSON.stringify({
-            dataBase64,
-            mimeType: 'image/jpeg',
-            changeReason: kind === 'client' ? 'Updated client chart profile photo' : `Updated PCP photo for ${pcpName()}`,
-          }),
-        });
-      } else {
-        await apiJson(`/api/spire/patients/${encodeURIComponent(patient)}/documents`, {
-          method: 'POST',
-          body: JSON.stringify({
-            title,
-            category,
-            mimeType: 'image/jpeg',
-            dataBase64,
-            description: kind === 'client'
-              ? 'Current S.P.I.R.E. client chart profile photograph.'
-              : `Primary care provider photograph for this client chart: ${pcpName()}.`,
-            sensitivity: 'CLINICAL',
-            source: 'SPIRE_CHART_PROFILE',
-          }),
-        });
-      }
+      await apiJson(`/api/spire/patients/${encodeURIComponent(patient)}/profile-images/${kind}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          dataBase64,
+          mimeType: 'image/jpeg',
+          ...(kind === 'pcp' ? { providerName: pcpName() } : {}),
+        }),
+      });
       showMessage(kind === 'client'
-        ? 'Client photo saved securely to this client chart.'
-        : 'PCP photo saved securely to this client chart.', 'success');
+        ? 'Client photo saved to this client chart.'
+        : 'PCP photo saved to this client chart.', 'success');
+      revokeUrl(kind);
       await refresh(true);
     } catch (error) {
       const message = error?.status === 403
@@ -364,37 +341,37 @@
     }
   }
 
-  async function loadKind(kind, patient) {
-    const category = kind === 'client' ? CLIENT_CATEGORY : PCP_CATEGORY;
-    const documents = await listPhotoDocuments(patient, category);
-    const document = chooseDocument(documents, kind);
-    if (!document?.id) {
+  async function loadKind(kind, patient, metadata) {
+    const slot = state[kind];
+    if (!metadata?.sha256) {
       revokeUrl(kind);
       if (kind === 'pcp') renderPcpPhoto('', '');
       else renderClientPhoto('', '');
       return;
     }
 
-    const currentId = kind === 'client' ? clientDocumentId : pcpDocumentId;
-    const currentUrl = kind === 'client' ? clientObjectUrl : pcpObjectUrl;
-    if (currentId === String(document.id) && currentUrl) {
-      if (kind === 'client') renderClientPhoto(currentUrl, currentId);
-      else renderPcpPhoto(currentUrl, currentId);
+    if (kind === 'pcp') {
+      const currentProvider = pcpName();
+      if (!pcpNameIsReady() || providerKey(metadata.providerName) !== providerKey(currentProvider)) {
+        revokeUrl('pcp');
+        renderPcpPhoto('', '');
+        return;
+      }
+    }
+
+    if (slot.sha256 === String(metadata.sha256) && slot.objectUrl) {
+      if (kind === 'client') renderClientPhoto(slot.objectUrl, slot.sha256);
+      else renderPcpPhoto(slot.objectUrl, slot.sha256);
       return;
     }
 
-    const blob = await fetchPhotoBlob(patient, document.id);
+    const blob = await fetchPhotoBlob(patient, kind, metadata.sha256);
     revokeUrl(kind);
-    const url = URL.createObjectURL(blob);
-    if (kind === 'client') {
-      clientObjectUrl = url;
-      clientDocumentId = String(document.id);
-      renderClientPhoto(url, clientDocumentId);
-    } else {
-      pcpObjectUrl = url;
-      pcpDocumentId = String(document.id);
-      renderPcpPhoto(url, pcpDocumentId);
-    }
+    slot.objectUrl = URL.createObjectURL(blob);
+    slot.sha256 = String(metadata.sha256);
+    if (kind === 'pcp') slot.providerName = clean(metadata.providerName);
+    if (kind === 'client') renderClientPhoto(slot.objectUrl, slot.sha256);
+    else renderPcpPhoto(slot.objectUrl, slot.sha256);
   }
 
   async function refresh(force = false) {
@@ -415,14 +392,17 @@
 
     refreshing = true;
     try {
+      const metadata = await apiJson(`/api/spire/patients/${encodeURIComponent(patient)}/profile-images`);
       await Promise.all([
-        loadKind('client', patient).catch((error) => console.warn('[SPIRE profile images] client photo load failed', error)),
-        loadKind('pcp', patient).catch((error) => console.warn('[SPIRE profile images] PCP photo load failed', error)),
+        loadKind('client', patient, metadata?.client).catch((error) => console.warn('[SPIRE profile images] client photo load failed', error)),
+        loadKind('pcp', patient, metadata?.pcp).catch((error) => console.warn('[SPIRE profile images] PCP photo load failed', error)),
       ]);
       if (force) {
         ensurePcpRow();
         ensureClientPhotoInput();
       }
+    } catch (error) {
+      console.warn('[SPIRE profile images] profile metadata load failed', error);
     } finally {
       refreshing = false;
     }
@@ -454,10 +434,8 @@
       revokeUrl('pcp');
     });
     window.__SPIRE_CHART_PROFILE_IMAGES = Object.freeze({
-      marker: 'SPIRE_CHART_PROFILE_IMAGES_V1',
-      storage: 'patient-scoped secure clinical documents',
-      clientCategory: CLIENT_CATEGORY,
-      pcpCategory: PCP_CATEGORY,
+      marker: 'SPIRE_CHART_PROFILE_IMAGES_V2',
+      storage: 'patient-scoped PostgreSQL chart profile records',
       refresh: () => refresh(true),
     });
   }
