@@ -52,6 +52,7 @@ requireMarkers(secureChat, [
 const browserAssets = [
   ['assets/spire-login.js', 'SPIRE login/SSO shell runtime'],
   ['assets/spire-client-station.js', 'Client Station runtime'],
+  ['assets/spire-mar-timeline.js', 'SPIRE MAR V4 runtime'],
   ['assets/spire-secure-chat.js', 'Secure Chat runtime'],
   ['assets/spire-user-preferences.js', 'Authenticated-user SPIRE preferences'],
   ['assets/spire-screen-controls.js', 'SPIRE live screen controls'],
@@ -77,6 +78,20 @@ requireMarkers(stationJs, [
   '/api/spire/inbasket-v2?status=OPEN', '/spire/secure-chat.html', 'localStorage.setItem(HOME_ID_KEY',
 ], 'SPIRE Client Station runtime');
 forbidMarkers(stationJs, ['/spire/portal.html', 'openChart(state.clients[0]'], 'SPIRE Client Station runtime');
+
+const marJs = await read('assets/spire-mar-timeline.js');
+requireMarkers(marJs, [
+  'SPIRE_MAR_OBSERVER_LOOP_FIX_V1',
+  "['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']",
+  '/emar/events', 'administeredAt', 'Record Given',
+], 'SPIRE MAR V4 runtime');
+
+const marEpicStyle = await read('assets/spire-mar-epic-v5.css');
+requireMarkers(marEpicStyle, [
+  'SPIRE_MAR_EPIC_V5', '[data-mar-command="report"]::before',
+  '.spire-mar-hour-cell.due .spire-mar-cell-label',
+  '.spire-mar-status[data-mar-status="GIVEN"]',
+], 'SPIRE MAR Epic V5 styling');
 
 const chatJs = await read('assets/spire-secure-chat.js');
 requireMarkers(chatJs, [
@@ -132,4 +147,4 @@ if (failures.length) {
   console.error('Published SPIRE JavaScript/integration verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log(`Published SPIRE syntax verified across ${browserAssets.length} browser runtimes: login/SSO is canonical, Client Station is first workspace, theme #21 is Client Station Classic, fullscreen is separate, Secure Chat/In Basket are live, and intake/chart integrations remain present.`);
+console.log(`Published SPIRE syntax verified across ${browserAssets.length} browser runtimes: login/SSO is canonical, Client Station is first workspace, MAR actions and Epic V5 styling are published, theme #21 is Client Station Classic, fullscreen is separate, Secure Chat/In Basket are live, and intake/chart integrations remain present.`);
