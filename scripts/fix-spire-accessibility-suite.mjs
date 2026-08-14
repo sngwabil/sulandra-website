@@ -11,6 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const target = path.join(root, 'spire', 'master.html');
 const marker = 'SPIRE_ACCESSIBILITY_SUITE_RUNTIME_V4';
 const preferenceAsset = '/assets/spire-user-preferences.js?v=20260813-exact-workflow-1';
+const marAsset = '/assets/spire-mar-timeline.js?v=20260814-mar-v4-live-1';
 let html = await readFile(target, 'utf8');
 
 html = html
@@ -33,6 +34,14 @@ if (!html.includes(preferenceAsset)) {
   if (!html.includes('</head>')) throw new Error('SPIRE master head close is missing');
   html = html.replace('</head>', `  <script src="${preferenceAsset}"></script>\n</head>`);
 }
+
+// The MAR workstation is a first-class part of the canonical chart and must be loaded
+// directly by /spire/master.html. Do not rely on a secondary cached helper to inject it.
+// Strip any previous direct version first so every production build emits exactly one
+// cache-busted MAR runtime reference.
+html = html.replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
+if (!html.includes('</body>')) throw new Error('SPIRE master body close is missing');
+html = html.replace('</body>', `  <script src="${marAsset}"></script>\n</body>`);
 
 if (!html.includes('21. Client Station Classic')) {
   const twentieth = `<div class="theme-card" onclick="applyPresetTheme('solarizedLight')"><b>20. Solarized Light Clean</b><br><span style="font-size: 11px; color: #64748b;">Soft cream base with contrasting navy</span></div>`;
@@ -147,6 +156,7 @@ for (const forbidden of [
 }
 for (const required of [
   preferenceAsset,
+  marAsset,
   '21. Client Station Classic',
   "applyPresetTheme('clientStation')",
   'title="Secure Chat"',
@@ -156,4 +166,7 @@ for (const required of [
   if (!html.includes(required)) throw new Error(`SPIRE accessibility correction is missing: ${required}`);
 }
 
-console.log('SPIRE accessibility verified: 21 visual themes with Client Station Classic as #21; authenticated-user persistence remains shared; fullscreen is separate/default-on; fake messaging and notification alerts are removed.');
+const marReferences = html.match(/\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?/g) || [];
+if (marReferences.length !== 1) throw new Error(`SPIRE master must publish exactly one direct MAR runtime; found ${marReferences.length}`);
+
+console.log('SPIRE accessibility verified: 21 visual themes with Client Station Classic as #21; authenticated-user persistence remains shared; fullscreen is separate/default-on; fake messaging and notification alerts are removed; canonical chart directly loads the cache-busted MAR V4 runtime.');
