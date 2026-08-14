@@ -91,16 +91,22 @@ const requireScope = async (
   if (!(await allowed(prisma, auth, patientId))) {
     throw Object.assign(new Error('This chart is outside your authorized clinical scope'), { status: 403 });
   }
+
+  // The live SPIRE workspace uses the canonical SpirePatient UUID as patientId.
+  // SpireClientProfile is a legacy clinical-profile projection whose clientId can
+  // differ from that UUID, so it must not be used to decide whether a live chart
+  // exists. Match the same canonical identity source used by the foundation chart
+  // routes so profile-photo reads/writes resolve the chart that is already open.
   const rows = await prisma.$queryRawUnsafe<Array<{ exists: boolean }>>(
     `SELECT EXISTS(
-       SELECT 1 FROM "SpireClientProfile"
-       WHERE "organizationId"=$1 AND "clientId"=$2 AND "active"=TRUE
+       SELECT 1 FROM "SpirePatient"
+       WHERE "organizationId"=$1 AND "id"=$2 AND "active"=TRUE
      ) AS exists`,
     auth.organizationId,
     patientId,
   );
   if (rows[0]?.exists !== true) {
-    throw Object.assign(new Error('Client chart was not found'), { status: 404 });
+    throw Object.assign(new Error('Patient chart was not found'), { status: 404 });
   }
 };
 
