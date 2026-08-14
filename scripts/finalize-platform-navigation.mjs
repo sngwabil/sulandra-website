@@ -85,5 +85,9 @@ await import('./finalize-spire-client-station-publication.mjs');
 // Normalize only that obsolete section after the canonical SPIRE publication so
 // the broad platform verifier checks the current login/Client Station contract.
 await import('./fix-platform-integration-spire-contract.mjs');
+// Publish the approved standalone chart as the direct target of authorized SPIRE launchers.
+// /spire.html remains the authenticated Client Station entry, while the launch buttons can
+// open /spire/master.html directly because the master itself still enforces session auth.
+await import('./publish-spire-standalone-launch.mjs');
 await import('./verify-employee-work-center.mjs');
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, SPIRE is finalized by one Client Station publication owner, and the broad platform verifier now checks the authenticated SPIRE workflow.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, SPIRE Client Station remains the secure canonical entry, and authorized launchers publish the standalone live master chart directly.');
