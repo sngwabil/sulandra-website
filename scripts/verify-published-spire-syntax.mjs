@@ -73,7 +73,7 @@ requireMarkers(loginJs, [
 
 const stationJs = await read('assets/spire-client-station.js');
 requireMarkers(stationJs, [
-  'SPIRE_CLIENT_STATION_LISTS_V2', '/api/spire/network/service-homes', '/access',
+  'SPIRE_CLIENT_STATION_LISTS_V3', '/api/spire/network/service-homes', '/access',
   '/api/spire/inbasket-v2?status=OPEN', '/spire/secure-chat.html', 'localStorage.setItem(HOME_ID_KEY',
 ], 'SPIRE Client Station runtime');
 forbidMarkers(stationJs, ['/spire/portal.html', 'openChart(state.clients[0]'], 'SPIRE Client Station runtime');
@@ -90,8 +90,8 @@ requireMarkers(preferences, [
   'SPIRE_USER_WORKSPACE_PREFERENCES_V3', 'clientStation:', 'spire:accessibility:preset',
   'spire:accessibility:fullscreen', 'requestFullscreen', 'fullscreenPreferred', 'userScope',
 ], 'SPIRE authenticated-user preferences');
-if (!preferences.includes("clientStation: { title:'#990000', toolbar:'#990000', background:'#eaf7fb'")) {
-  failures.push('SPIRE theme #21 is not the Client Station red/cyan/ice workstation palette');
+if (!preferences.includes("clientStation:{title:'#0f172a',toolbar:'#f4510b',background:'#eaf7fb'")) {
+  failures.push('SPIRE theme #21 is not the current Client Station navy/orange/cyan/ice workstation palette');
 }
 
 const controls = await read('assets/spire-screen-controls.js');
