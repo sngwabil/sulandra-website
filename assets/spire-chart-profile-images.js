@@ -1,10 +1,11 @@
 (() => {
   'use strict';
 
-  // SPIRE_CHART_PROFILE_IMAGES_V2
-  // Client and PCP photos are stored as small patient-scoped chart database records.
-  // They do not depend on optional employee object storage, shared templates, or
-  // browser localStorage, and therefore survive refreshes and different devices.
+  // SPIRE_CHART_PROFILE_IMAGES_V3
+  // Patient-scoped client and PCP photos are stored in PostgreSQL and loaded
+  // through authenticated chart endpoints. The client avatar in master.html is
+  // an <img>, so durable photos must update its src directly rather than trying
+  // to render a nested <img> inside it.
 
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
@@ -35,7 +36,12 @@
   function patientId() {
     const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
     const query = new URLSearchParams(location.search);
-    return hash.get('patient') || query.get('patientId') || sessionStorage.getItem('spire:patientId') || '';
+    return hash.get('patient')
+      || hash.get('patientId')
+      || query.get('patient')
+      || query.get('patientId')
+      || sessionStorage.getItem('spire:patientId')
+      || '';
   }
 
   function patientName() {
@@ -65,6 +71,12 @@
       .map((part) => part[0]?.toUpperCase())
       .join('');
     return result || fallback;
+  }
+
+  function initialsDataUrl(value, fallback = 'SS') {
+    const label = initials(value, fallback).replace(/[<>&"']/g, '');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="64" fill="#dceef7"/><circle cx="64" cy="64" r="61" fill="none" stroke="#7eafc5" stroke-width="2"/><text x="64" y="73" text-anchor="middle" font-family="Arial,sans-serif" font-size="38" font-weight="700" fill="#176780">${label}</text></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   }
 
   async function apiJson(path, options = {}) {
@@ -99,8 +111,14 @@
       headers,
       cache: 'no-store',
     });
-    if (!response.ok) throw new Error(`Unable to load chart photo (${response.status})`);
-    return response.blob();
+    if (!response.ok) {
+      const error = new Error(`Unable to load chart photo (${response.status})`);
+      error.status = response.status;
+      throw error;
+    }
+    const blob = await response.blob();
+    if (!blob.type.startsWith('image/')) throw new Error('The saved chart photo did not return image content.');
+    return blob;
   }
 
   function revokeUrl(kind) {
@@ -116,11 +134,11 @@
     const style = document.createElement('style');
     style.id = 'spireChartProfileImageStyles';
     style.textContent = `
-      #avatarDisplay{border-radius:50%!important;overflow:hidden!important;aspect-ratio:1/1!important;width:54px!important;height:54px!important;min-width:54px!important;background:#dceef7!important;border:2px solid #fff!important;outline:1px solid #7eafc5!important;color:#176780!important;font-weight:900!important}
-      #avatarDisplay>img{width:100%!important;height:100%!important;object-fit:cover!important;border-radius:50%!important;display:block!important}
+      #avatarDisplay{border-radius:50%!important;overflow:hidden!important;aspect-ratio:1/1!important;width:54px!important;height:54px!important;min-width:54px!important;object-fit:cover!important;object-position:center!important;display:block!important;background:#dceef7!important;border:2px solid #fff!important;outline:1px solid #7eafc5!important;color:#176780!important;font-weight:900!important}
+      #avatarDisplay[data-spire-durable-client-photo="1"]{object-fit:cover!important;object-position:center!important}
       .spire-chart-pcp-row{display:flex!important;align-items:center!important;gap:7px!important;margin:4px 0 5px!important;padding:5px!important;border:1px solid #bdd7e3!important;border-radius:4px!important;background:linear-gradient(135deg,#f8fdff,#eef8fc)!important}
       .spire-chart-pcp-photo{position:relative!important;width:42px!important;height:42px!important;min-width:42px!important;border-radius:50%!important;border:2px solid #fff!important;outline:1px solid #78a9c0!important;overflow:hidden!important;padding:0!important;background:#d9edf6!important;color:#156789!important;display:grid!important;place-items:center!important;cursor:pointer!important;font-size:10px!important;font-weight:900!important}
-      .spire-chart-pcp-photo img{width:100%!important;height:100%!important;object-fit:cover!important;border-radius:50%!important;display:block!important}
+      .spire-chart-pcp-photo img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:50%!important;display:block!important}
       .spire-chart-pcp-photo i{position:absolute;right:-1px;bottom:-1px;width:15px;height:15px;border-radius:50%;display:grid;place-items:center;background:#0878b5;color:#fff;font-size:11px;font-style:normal;border:1px solid #fff}
       .spire-chart-pcp-copy{min-width:0;display:flex;flex-direction:column;line-height:1.15}
       .spire-chart-pcp-copy>b{font-size:9px!important;text-transform:uppercase!important;color:#59717e!important}
@@ -151,21 +169,55 @@
 
   function renderClientPhoto(url, sha256) {
     const avatar = document.querySelector('#avatarDisplay');
-    if (!avatar) return;
-    if (!url) {
-      const durable = avatar.querySelector('img[data-spire-durable-client-photo]');
-      if (durable) avatar.textContent = initials(patientName(), 'SS');
-      return;
+    if (!avatar) return false;
+
+    // master.html currently defines #avatarDisplay as an <img>. Older code treated
+    // it like a div and inserted another <img> inside it; browsers ignore children
+    // of an image element, which is why saves succeeded while the placeholder stayed.
+    if (avatar instanceof HTMLImageElement) {
+      if (!url) {
+        avatar.removeAttribute('data-spire-durable-client-photo');
+        avatar.removeAttribute('data-image-sha');
+        avatar.src = initialsDataUrl(patientName(), 'SS');
+        avatar.alt = `${patientName()} profile placeholder`;
+        avatar.title = 'Client chart photo — click to upload';
+        return true;
+      }
+      if (avatar.dataset.spireDurableClientPhoto === '1'
+        && avatar.dataset.imageSha === String(sha256)
+        && avatar.src === url) return true;
+      avatar.src = url;
+      avatar.dataset.spireDurableClientPhoto = '1';
+      avatar.dataset.imageSha = String(sha256);
+      avatar.alt = `${patientName()} profile photo`;
+      avatar.title = 'Client chart photo — click to update';
+      return true;
     }
-    const existing = avatar.querySelector('img[data-spire-durable-client-photo]');
-    if (existing && existing.dataset.imageSha === sha256 && existing.src === url) return;
-    avatar.innerHTML = `<img data-spire-durable-client-photo data-image-sha="${String(sha256).replace(/["<>]/g, '')}" src="${url}" alt="${patientName().replace(/["<>]/g, '')} profile photo">`;
+
+    // Compatibility for any future theme that makes #avatarDisplay a container.
+    if (!url) {
+      avatar.replaceChildren();
+      avatar.textContent = initials(patientName(), 'SS');
+      avatar.removeAttribute('data-image-sha');
+      return true;
+    }
+    let image = avatar.querySelector('img[data-spire-durable-client-photo]');
+    if (!image) {
+      avatar.replaceChildren();
+      image = document.createElement('img');
+      image.dataset.spireDurableClientPhoto = '1';
+      avatar.appendChild(image);
+    }
+    image.dataset.imageSha = String(sha256);
+    image.src = url;
+    image.alt = `${patientName()} profile photo`;
     avatar.title = 'Client chart photo — click to update';
+    return true;
   }
 
   function removeLegacyPcpPhoto() {
     window.__SPIRE_DISABLE_LEGACY_PCP_PHOTO = true;
-    document.querySelectorAll('[data-spire-pcp-photo]').forEach((node) => node.remove());
+    document.querySelectorAll('[data-spire-pcp-photo]:not([data-spire-chart-pcp-photo] [data-spire-pcp-photo-button])').forEach((node) => node.remove());
     const legacyKey = `spire:pcp-photo:${patientId() || 'unselected'}`;
     try { localStorage.removeItem(legacyKey); } catch (_) {}
   }
@@ -182,10 +234,9 @@
       originalLine.dataset.spirePcpOriginalLine = '1';
     }
 
-    let row = group.querySelector('[data-spire-chart-pcp-photo]');
     const duplicates = Array.from(group.querySelectorAll('[data-spire-chart-pcp-photo]'));
     duplicates.slice(1).forEach((node) => node.remove());
-    row = duplicates[0] || row;
+    let row = duplicates[0] || null;
     if (!row) {
       row = document.createElement('div');
       row.className = 'spire-chart-pcp-row';
@@ -231,26 +282,27 @@
 
   function renderPcpPhoto(url, sha256) {
     const row = ensurePcpRow();
-    if (!row) return;
+    if (!row) return false;
     const button = row.querySelector('[data-spire-pcp-photo-button]');
-    if (!button) return;
+    if (!button) return false;
     const existing = button.querySelector('img[data-spire-durable-pcp-photo]');
     const initialsNode = button.querySelector('[data-spire-pcp-initials]');
     if (!url) {
       existing?.remove();
       if (initialsNode) initialsNode.hidden = false;
-      return;
+      return true;
     }
-    if (!existing || existing.dataset.imageSha !== sha256 || existing.src !== url) {
-      existing?.remove();
-      const image = document.createElement('img');
+    let image = existing;
+    if (!image) {
+      image = document.createElement('img');
       image.dataset.spireDurablePcpPhoto = '1';
-      image.dataset.imageSha = sha256;
-      image.alt = `${pcpName()} photo`;
-      image.src = url;
       button.insertBefore(image, button.firstChild);
     }
+    image.dataset.imageSha = String(sha256);
+    image.alt = `${pcpName()} photo`;
+    image.src = url;
     if (initialsNode) initialsNode.hidden = true;
+    return true;
   }
 
   function ensureClientPhotoInput() {
@@ -315,10 +367,12 @@
     if (kind === 'pcp' && !pcpNameIsReady()) {
       return window.alert('Wait for this client’s PCP information to finish loading, then upload the PCP photo.');
     }
+
+    let persisted = false;
     busyNode?.classList.add('spire-chart-photo-saving');
     try {
       const dataBase64 = await compressImage(file);
-      await apiJson(`/api/spire/patients/${encodeURIComponent(patient)}/profile-images/${kind}`, {
+      const saved = await apiJson(`/api/spire/patients/${encodeURIComponent(patient)}/profile-images/${kind}`, {
         method: 'PUT',
         body: JSON.stringify({
           dataBase64,
@@ -326,15 +380,22 @@
           ...(kind === 'pcp' ? { providerName: pcpName() } : {}),
         }),
       });
-      showMessage(kind === 'client'
-        ? 'Client photo saved to this client chart.'
-        : 'PCP photo saved to this client chart.', 'success');
+      persisted = true;
+
+      // Do not claim success until the persisted bytes have been fetched back through
+      // the authenticated chart endpoint and actually assigned to the visible avatar.
       revokeUrl(kind);
-      await refresh(true);
+      await loadKind(kind, patient, saved);
+      showMessage(kind === 'client'
+        ? 'Client photo saved and displayed on this client chart.'
+        : 'PCP photo saved and displayed on this client chart.', 'success');
+      scheduleRefresh(350);
     } catch (error) {
-      const message = error?.status === 403
-        ? 'Your role can view this chart but does not have permission to change clinical profile photos.'
-        : (error?.message || 'The chart photo could not be saved.');
+      const message = persisted
+        ? 'The photo was saved to the chart, but SPIRE could not display it. Refresh the chart and try again.'
+        : error?.status === 403
+          ? 'Your role can view this chart but does not have permission to change clinical profile photos.'
+          : (error?.message || 'The chart photo could not be saved.');
       window.alert(message);
     } finally {
       busyNode?.classList.remove('spire-chart-photo-saving');
@@ -429,12 +490,13 @@
     observeSidebar();
     refresh(true);
     window.addEventListener('hashchange', () => scheduleRefresh(220));
+    window.addEventListener('popstate', () => scheduleRefresh(220));
     window.addEventListener('beforeunload', () => {
       revokeUrl('client');
       revokeUrl('pcp');
     });
     window.__SPIRE_CHART_PROFILE_IMAGES = Object.freeze({
-      marker: 'SPIRE_CHART_PROFILE_IMAGES_V2',
+      marker: 'SPIRE_CHART_PROFILE_IMAGES_V3',
       storage: 'patient-scoped PostgreSQL chart profile records',
       refresh: () => refresh(true),
     });
