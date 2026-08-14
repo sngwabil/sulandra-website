@@ -36,6 +36,23 @@ const accessibilitySuite = await edit('scripts/fix-spire-accessibility-suite.mjs
 });
 requireContains(accessibilitySuite, MAR_ASSET, 'SPIRE accessibility publication pass');
 
+// This finalizer runs after dist-web is built and was the piece restoring the retired
+// MAR URL. Pin it to the same build so the last publication pass cannot undo V4.
+const finalizer = await edit('scripts/finalize-spire-client-station-publication.mjs', (source) => {
+  let next = source
+    .replace(/const marTimelineUrl = ['"]\/assets\/spire-mar-timeline\.js\?v=[^'"]+['"];/, `const marTimelineUrl = '${MAR_ASSET}';`)
+    .replaceAll('/assets/spire-login.js?v=20260813-exact-workflow-1', LOGIN_ASSET);
+  if (!next.includes(`const marTimelineUrl = '${MAR_ASSET}';`)) {
+    throw new Error('SPIRE final publication MAR URL anchor is missing');
+  }
+  if (!next.includes(LOGIN_ASSET)) {
+    throw new Error('SPIRE final publication login URL anchor is missing');
+  }
+  return next;
+});
+requireContains(finalizer, MAR_ASSET, 'SPIRE final publication pass');
+requireContains(finalizer, LOGIN_ASSET, 'SPIRE final publication pass');
+
 const master = await edit('spire/master.html', (source) => {
   let next = source.replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
   if (!next.includes('</body>')) throw new Error('SPIRE master body close is missing');
@@ -102,4 +119,4 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   return next;
 });
 
-console.log(`SPIRE MAR publication fixed: canonical master directly loads ${MAR_ASSET}; login and Client Station URLs carry ${BUILD} so stale chart HTML cannot survive a reopen; syntax verification now checks the MAR runtime.`);
+console.log(`SPIRE MAR publication fixed end-to-end: master and the final dist-web publisher use ${MAR_ASSET}; login and Client Station URLs carry ${BUILD}; stale chart HTML cannot survive a reopen; syntax verification checks the MAR runtime.`);
