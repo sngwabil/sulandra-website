@@ -1,7 +1,9 @@
 (() => {
   'use strict';
 
+  // SPIRE_CHART_PROFILE_IMAGES_V2
   // SPIRE_CHART_PROFILE_IMAGES_V3
+  // patient-scoped chart database records
   // Patient-scoped client and PCP photos are stored in PostgreSQL and loaded
   // through authenticated chart endpoints. The client avatar in master.html is
   // an <img>, so durable photos must update its src directly rather than trying
@@ -140,7 +142,7 @@
       .spire-chart-pcp-photo{position:relative!important;width:42px!important;height:42px!important;min-width:42px!important;border-radius:50%!important;border:2px solid #fff!important;outline:1px solid #78a9c0!important;overflow:hidden!important;padding:0!important;background:#d9edf6!important;color:#156789!important;display:grid!important;place-items:center!important;cursor:pointer!important;font-size:10px!important;font-weight:900!important}
       .spire-chart-pcp-photo img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:50%!important;display:block!important}
       .spire-chart-pcp-photo i{position:absolute;right:-1px;bottom:-1px;width:15px;height:15px;border-radius:50%;display:grid;place-items:center;background:#0878b5;color:#fff;font-size:11px;font-style:normal;border:1px solid #fff}
-      .spire-chart-pcp-copy{min-width:0;display:flex;flex-direction:column;line-height:1.15}
+      .spire-chart-pcp-copy{min-width:0;display:flex!important;flex-direction:column;line-height:1.15}
       .spire-chart-pcp-copy>b{font-size:9px!important;text-transform:uppercase!important;color:#59717e!important}
       .spire-chart-pcp-copy>span{margin-top:2px;font-size:10.5px!important;font-weight:900!important;color:#126ea1!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .spire-chart-pcp-copy>button{align-self:flex-start;margin-top:3px;padding:1px 5px;border:1px solid #91b4c5;background:#fff;color:#176c94;border-radius:2px;font-size:8.5px;font-weight:800;cursor:pointer}
@@ -194,7 +196,6 @@
       return true;
     }
 
-    // Compatibility for any future theme that makes #avatarDisplay a container.
     if (!url) {
       avatar.replaceChildren();
       avatar.textContent = initials(patientName(), 'SS');
@@ -217,7 +218,7 @@
 
   function removeLegacyPcpPhoto() {
     window.__SPIRE_DISABLE_LEGACY_PCP_PHOTO = true;
-    document.querySelectorAll('[data-spire-pcp-photo]:not([data-spire-chart-pcp-photo] [data-spire-pcp-photo-button])').forEach((node) => node.remove());
+    document.querySelectorAll('[data-spire-pcp-photo]').forEach((node) => node.remove());
     const legacyKey = `spire:pcp-photo:${patientId() || 'unselected'}`;
     try { localStorage.removeItem(legacyKey); } catch (_) {}
   }
@@ -382,8 +383,6 @@
       });
       persisted = true;
 
-      // Do not claim success until the persisted bytes have been fetched back through
-      // the authenticated chart endpoint and actually assigned to the visible avatar.
       revokeUrl(kind);
       await loadKind(kind, patient, saved);
       showMessage(kind === 'client'
