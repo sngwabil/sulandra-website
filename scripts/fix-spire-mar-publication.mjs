@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BUILD = '20260814-chart-photo-db-1';
+const BUILD = '20260814-chart-photo-db-2';
 const MAR_ASSET = `/assets/spire-mar-timeline.js?v=${BUILD}`;
 const MAR_STYLE = `/assets/spire-mar-epic-v5.css?v=${BUILD}`;
 const PROFILE_ASSET = `/assets/spire-chart-profile-images.js?v=${BUILD}`;
@@ -13,6 +13,8 @@ const MARKER = 'SPIRE_MAR_PUBLICATION_CACHE_BUST_V2';
 const RUNTIME_MARKER = 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1';
 const STYLE_MARKER = 'SPIRE_MAR_EPIC_V5';
 const PROFILE_MARKER = 'SPIRE_CHART_PROFILE_IMAGES_V2';
+const PROFILE_RUNTIME_MARKER = 'SPIRE_CHART_PROFILE_IMAGES_V4';
+const PROFILE_RESTORE_MARKER = 'SPIRE_SAVED_CLIENT_PHOTO_WINS_V1';
 
 async function edit(relative, transform) {
   const file = path.join(root, relative);
@@ -32,8 +34,58 @@ requireContains(marStyle, '[data-mar-command="report"]::before', 'SPIRE MAR Epic
 requireContains(marStyle, '.spire-mar-hour-cell.due .spire-mar-cell-label', 'SPIRE MAR Epic V5 stylesheet');
 requireContains(marStyle, '.spire-mar-status[data-mar-status="GIVEN"]', 'SPIRE MAR Epic V5 stylesheet');
 
-const profileRuntime = await readFile(path.join(root, 'assets/spire-chart-profile-images.js'), 'utf8');
+const profileRuntime = await edit('assets/spire-chart-profile-images.js', (source) => {
+  let next = source;
+
+  if (!next.includes(PROFILE_RUNTIME_MARKER)) {
+    const markerAnchor = next.includes('// SPIRE_CHART_PROFILE_IMAGES_V3')
+      ? '// SPIRE_CHART_PROFILE_IMAGES_V3'
+      : '// SPIRE_CHART_PROFILE_IMAGES_V2';
+    if (!next.includes(markerAnchor)) throw new Error('SPIRE profile image runtime version marker anchor is missing');
+    next = next.replace(markerAnchor, `${markerAnchor}\n  // ${PROFILE_RUNTIME_MARKER}`);
+  }
+
+  // master.html uses a DIV avatar today, while older publication variants used an IMG.
+  // Mark the avatar container itself after a durable photo is rendered so legacy chart
+  // refresh code can never replace the saved database photo with intake initials/logo.
+  const emptyDivAvatar = `    if (!url) {\n      avatar.replaceChildren();\n      avatar.textContent = initials(patientName(), 'SS');\n      avatar.removeAttribute('data-image-sha');\n      return true;\n    }`;
+  const durableEmptyDivAvatar = `    if (!url) {\n      avatar.replaceChildren();\n      avatar.textContent = initials(patientName(), 'SS');\n      avatar.removeAttribute('data-spire-durable-client-photo');\n      avatar.removeAttribute('data-image-sha');\n      return true;\n    }`;
+  if (next.includes(emptyDivAvatar)) next = next.replace(emptyDivAvatar, durableEmptyDivAvatar);
+
+  const divRender = `    image.dataset.imageSha = String(sha256);\n    image.src = url;\n    image.alt = \`${'${patientName()}'} profile photo\`;\n    avatar.title = 'Client chart photo — click to update';\n    return true;`;
+  const durableDivRender = `    avatar.dataset.spireDurableClientPhoto = '1';\n    avatar.dataset.imageSha = String(sha256);\n    image.dataset.imageSha = String(sha256);\n    image.src = url;\n    image.alt = \`${'${patientName()}'} profile photo\`;\n    avatar.title = 'Client chart photo — click to update';\n    return true;`;
+  if (next.includes(divRender) && !next.includes("avatar.dataset.spireDurableClientPhoto = '1';\n    avatar.dataset.imageSha = String(sha256);\n    image.dataset.imageSha")) {
+    next = next.replace(divRender, durableDivRender);
+  }
+
+  // The standalone chart still has legacy admission-summary code that can rewrite
+  // #avatarDisplay after the durable image loaded. Reassert the already-fetched blob
+  // immediately on any sidebar DOM rewrite, then do the normal metadata refresh.
+  if (!next.includes(PROFILE_RESTORE_MARKER)) {
+    const scheduleAnchor = `  function scheduleRefresh(delay = 120) {`;
+    if (!next.includes(scheduleAnchor)) throw new Error('SPIRE profile image refresh anchor is missing');
+    const restoreHelper = `  // ${PROFILE_RESTORE_MARKER}\n  function restoreSavedClientPhoto() {\n    if (!state.client.objectUrl || !state.client.sha256) return;\n    const avatar = document.querySelector('#avatarDisplay');\n    if (!avatar) return;\n    const durableChild = avatar.querySelector?.('img[data-spire-durable-client-photo="1"]');\n    const durableImgElement = avatar instanceof HTMLImageElement\n      && avatar.dataset.spireDurableClientPhoto === '1'\n      && avatar.dataset.imageSha === state.client.sha256\n      && avatar.src === state.client.objectUrl;\n    const durableDiv = !(avatar instanceof HTMLImageElement)\n      && avatar.dataset.spireDurableClientPhoto === '1'\n      && avatar.dataset.imageSha === state.client.sha256\n      && durableChild?.dataset.imageSha === state.client.sha256;\n    if (!durableImgElement && !durableDiv) renderClientPhoto(state.client.objectUrl, state.client.sha256);\n  }\n\n`;
+    next = next.replace(scheduleAnchor, `${restoreHelper}${scheduleAnchor}`);
+  }
+
+  const observerOld = `    observer = new MutationObserver((mutations) => {\n      if (mutations.some((mutation) => mutation.type === 'childList')) scheduleRefresh(180);\n    });`;
+  const observerNew = `    observer = new MutationObserver((mutations) => {\n      if (mutations.some((mutation) => mutation.type === 'childList')) {\n        restoreSavedClientPhoto();\n        scheduleRefresh(180);\n      }\n    });`;
+  if (next.includes(observerOld)) next = next.replace(observerOld, observerNew);
+
+  next = next.replace(
+    "      marker: 'SPIRE_CHART_PROFILE_IMAGES_V3',",
+    `      marker: '${PROFILE_RUNTIME_MARKER}',`,
+  );
+
+  if (!next.includes(PROFILE_RUNTIME_MARKER)) throw new Error('SPIRE profile image V4 marker was not installed');
+  if (!next.includes(PROFILE_RESTORE_MARKER)) throw new Error('SPIRE saved-photo restore guard was not installed');
+  if (!next.includes("avatar.dataset.spireDurableClientPhoto = '1'")) throw new Error('SPIRE DIV avatar durable marker was not installed');
+  if (!next.includes('restoreSavedClientPhoto();')) throw new Error('SPIRE sidebar observer does not restore the saved photo');
+  return next;
+});
 requireContains(profileRuntime, PROFILE_MARKER, 'SPIRE chart profile image runtime');
+requireContains(profileRuntime, PROFILE_RUNTIME_MARKER, 'SPIRE chart profile image runtime');
+requireContains(profileRuntime, PROFILE_RESTORE_MARKER, 'SPIRE chart profile image runtime');
 requireContains(profileRuntime, '/profile-images', 'SPIRE chart profile image runtime');
 requireContains(profileRuntime, 'patient-scoped chart database records', 'SPIRE chart profile image runtime');
 requireContains(profileRuntime, 'providerName', 'SPIRE chart profile image runtime');
@@ -141,6 +193,15 @@ const master = await edit('spire/master.html', (source) => {
     .replace(/\s*<script\s+src=["']\/assets\/spire-mar-timeline\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-chart-profile-images\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<link\s+rel=["']stylesheet["']\s+href=["']\/assets\/spire-mar-epic-v5\.css(?:\?v=[^"']*)?["']\s*\/?>(?:\s*)/gi, '\n');
+
+  const legacyAvatarRender = `    const photo = s.photoUrl || s.profilePhotoUrl || s.imageUrl || '';\n    const avatar = $('#avatarDisplay');\n    if (avatar) {\n      avatar.innerHTML = photo ? \`<img src="\${esc(photo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:4px">\` : esc(initialFromName(patientName()));\n    }`;
+  const guardedAvatarRender = `    const photo = s.photoUrl || s.profilePhotoUrl || s.imageUrl || '';\n    const avatar = $('#avatarDisplay');\n    const durablePhoto = avatar?.querySelector?.('img[data-spire-durable-client-photo="1"]');\n    if (avatar && avatar.dataset.spireDurableClientPhoto !== '1' && !durablePhoto) {\n      avatar.innerHTML = photo ? \`<img src="\${esc(photo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:4px">\` : esc(initialFromName(patientName()));\n    }`;
+  if (next.includes(legacyAvatarRender)) next = next.replaceAll(legacyAvatarRender, guardedAvatarRender);
+
+  const legacyPhotoHandlers = `    $('#avatarBox')?.addEventListener('click',()=>$('#photoUpload')?.click());\n    $('#photoUpload')?.addEventListener('change',previewClientPhoto);`;
+  const guardedPhotoHandlers = `    $('#avatarBox')?.addEventListener('click',()=>{if(!window.__SPIRE_CHART_PROFILE_IMAGES)$('#photoUpload')?.click();});\n    $('#photoUpload')?.addEventListener('change',(event)=>{if(!window.__SPIRE_CHART_PROFILE_IMAGES)previewClientPhoto(event);});`;
+  if (next.includes(legacyPhotoHandlers)) next = next.replace(legacyPhotoHandlers, guardedPhotoHandlers);
+
   if (!next.includes('</head>')) throw new Error('SPIRE master head close is missing');
   if (!next.includes('</body>')) throw new Error('SPIRE master body close is missing');
   next = next.replace('</head>', `  <link rel="stylesheet" href="${MAR_STYLE}">\n</head>`);
@@ -151,6 +212,8 @@ requireContains(master, MARKER, 'SPIRE master');
 requireContains(master, MAR_ASSET, 'SPIRE master');
 requireContains(master, MAR_STYLE, 'SPIRE master');
 requireContains(master, PROFILE_ASSET, 'SPIRE master');
+requireContains(master, 'avatar.dataset.spireDurableClientPhoto', 'SPIRE master durable-photo guard');
+requireContains(master, 'if(!window.__SPIRE_CHART_PROFILE_IMAGES)', 'SPIRE master legacy photo-handler guard');
 
 const stationRuntime = await edit('assets/spire-client-station.js', (source) => {
   let next = source.replace(/\n\s*query\.set\('workspaceBuild',\s*'[^']*'\);/g, '');
@@ -204,7 +267,12 @@ await edit('scripts/build-static-site.mjs', (source) => {
   if (!next.includes('const publishedSpireProfileImages=')) {
     const anchor = "const publishedResultsWorkspace=await readFile(path.join(outputDirectory,'assets','spire-results-workspace.js'),'utf8');";
     if (!next.includes(anchor)) throw new Error('Static build profile-image verification anchor is missing');
-    next = next.replace(anchor, `const publishedSpireProfileImages=await readFile(path.join(outputDirectory,'assets','spire-chart-profile-images.js'),'utf8');\nfor (const marker of ['${PROFILE_MARKER}','patient-scoped chart database records','/profile-images','providerName']) if(!publishedSpireProfileImages.includes(marker)) throw new Error(\`Static publication regression: SPIRE chart profile images missing \${marker}\`);\n${anchor}`);
+    next = next.replace(anchor, `const publishedSpireProfileImages=await readFile(path.join(outputDirectory,'assets','spire-chart-profile-images.js'),'utf8');\nfor (const marker of ['${PROFILE_MARKER}','${PROFILE_RUNTIME_MARKER}','${PROFILE_RESTORE_MARKER}','patient-scoped chart database records','/profile-images','providerName']) if(!publishedSpireProfileImages.includes(marker)) throw new Error(\`Static publication regression: SPIRE chart profile images missing \${marker}\`);\n${anchor}`);
+  } else {
+    next = next.replace(
+      /for \(const marker of \['SPIRE_CHART_PROFILE_IMAGES_V2',[^\n]+/,
+      `for (const marker of ['${PROFILE_MARKER}','${PROFILE_RUNTIME_MARKER}','${PROFILE_RESTORE_MARKER}','patient-scoped chart database records','/profile-images','providerName']) if(!publishedSpireProfileImages.includes(marker)) throw new Error(\`Static publication regression: SPIRE chart profile images missing \${marker}\`);`,
+    );
   }
   if (!next.includes(MAR_ASSET)) throw new Error('Static build verification could not be upgraded to the MAR publication contract');
   if (!next.includes(MAR_STYLE)) throw new Error('Static build verification could not be upgraded to the MAR stylesheet contract');
@@ -253,10 +321,15 @@ await edit('scripts/verify-published-spire-syntax.mjs', (source) => {
   }
   if (!next.includes("const profileImagesJs = await read('assets/spire-chart-profile-images.js');")) {
     if (!next.includes(marRuntimeAnchor)) throw new Error('Published SPIRE profile-image verification anchor is missing');
-    next = next.replace(marRuntimeAnchor, `const profileImagesJs = await read('assets/spire-chart-profile-images.js');\nrequireMarkers(profileImagesJs, ['${PROFILE_MARKER}', '/profile-images', 'providerName', 'patient-scoped chart database records'], 'SPIRE chart profile image runtime');\n\n${marRuntimeAnchor}`);
+    next = next.replace(marRuntimeAnchor, `const profileImagesJs = await read('assets/spire-chart-profile-images.js');\nrequireMarkers(profileImagesJs, ['${PROFILE_MARKER}', '${PROFILE_RUNTIME_MARKER}', '${PROFILE_RESTORE_MARKER}', '/profile-images', 'providerName', 'patient-scoped chart database records'], 'SPIRE chart profile image runtime');\n\n${marRuntimeAnchor}`);
+  } else {
+    next = next.replace(
+      /requireMarkers\(profileImagesJs, \[[^\]]+\], 'SPIRE chart profile image runtime'\);/,
+      `requireMarkers(profileImagesJs, ['${PROFILE_MARKER}', '${PROFILE_RUNTIME_MARKER}', '${PROFILE_RESTORE_MARKER}', '/profile-images', 'providerName', 'patient-scoped chart database records'], 'SPIRE chart profile image runtime');`,
+    );
   }
-  if (!next.includes(PROFILE_MARKER) || !next.includes('/profile-images')) throw new Error('Published SPIRE syntax verifier still targets retired object-storage photos');
+  if (!next.includes(PROFILE_MARKER) || !next.includes(PROFILE_RUNTIME_MARKER) || !next.includes(PROFILE_RESTORE_MARKER) || !next.includes('/profile-images')) throw new Error('Published SPIRE syntax verifier still targets retired or overwrite-prone chart photos');
   return next;
 });
 
-console.log(`SPIRE chart-photo/MAR publication fixed end-to-end: client and PCP photos use patient-scoped PostgreSQL profile records via ${PROFILE_ASSET}; no employee object-storage configuration is required for chart avatars; duplicate legacy PCP presentation is disabled; MAR action uses the defined medication order id; classic-color MAR remains on ${MAR_STYLE}; login, Client Station, and chart URLs use ${BUILD}.`);
+console.log(`SPIRE chart-photo/MAR publication fixed end-to-end: client and PCP photos use patient-scoped PostgreSQL profile records via ${PROFILE_ASSET}; saved client photos are protected from legacy avatar rewrites; no employee object-storage configuration is required for chart avatars; duplicate legacy PCP presentation is disabled; MAR action uses the defined medication order id; classic-color MAR remains on ${MAR_STYLE}; login, Client Station, and chart URLs use ${BUILD}.`);
