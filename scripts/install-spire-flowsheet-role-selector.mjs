@@ -6,12 +6,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const masterPath = path.join(dist, 'spire', 'master.html');
 const selectorPath = path.join(dist, 'assets', 'spire-flowsheet-role-selector.js');
-const selectorUrl = '/assets/spire-flowsheet-role-selector.js?v=20260815-role-selector-2';
+const selectorUrl = '/assets/spire-flowsheet-role-selector.js?v=20260815-role-selector-3';
 
 await Promise.all([stat(masterPath), stat(selectorPath)]);
 
 const selector = await readFile(selectorPath, 'utf8');
-for (const marker of ['SPIRE_FLOWSHEET_ROLE_SELECTOR_V1', '20260815-role-selector-2', 'Nurse Flowsheets', 'spire:flowsheet:selected-role', 'SpireFlowsheetRoleSelector']) {
+for (const marker of ['SPIRE_FLOWSHEET_ROLE_SELECTOR_V1', '20260815-role-selector-3', 'Nurse Flowsheets', 'ensureUnfilteredBaseForNurse', 'spire:flowsheet:selected-role', 'SpireFlowsheetRoleSelector']) {
   if (!selector.includes(marker)) throw new Error(`SPIRE flowsheet role selector missing ${marker}`);
 }
 try { new Function(selector); }
@@ -31,4 +31,4 @@ await writeFile(masterPath, master, 'utf8');
 const published = await readFile(masterPath, 'utf8');
 if (!published.includes(selectorUrl)) throw new Error('SPIRE master publication lost the flowsheet role selector');
 
-console.log('SPIRE flowsheet role selector published: the master dropdown can switch DSP Daily Documentation, Nurse Flowsheets, and All Clinical Flowsheets without replacing the authoritative filing grid.');
+console.log('SPIRE flowsheet role selector published: Nurse view clears inherited DSP filters and hides DSP task categories while preserving the authoritative filing grid.');

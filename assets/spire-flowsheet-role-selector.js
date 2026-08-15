@@ -6,7 +6,7 @@
   // flowsheet without replacing its server-backed grid, staged File workflow,
   // audit behavior, or inline entry controls.
 
-  const VERSION = '20260815-role-selector-2';
+  const VERSION = '20260815-role-selector-3';
   const ROLE_KEY = 'spire:flowsheet:selected-role';
   const ROLE_DEFS = Object.freeze({
     dsp: { label: 'DSP Daily Documentation' },
@@ -126,6 +126,28 @@
     return String(groupName || '').trim().toLowerCase() === 'nurse flowsheets';
   }
 
+  function forceHidden(node, hidden) {
+    if (!(node instanceof HTMLElement)) return;
+    if (hidden) node.style.setProperty('display', 'none', 'important');
+    else node.style.removeProperty('display');
+  }
+
+  function ensureUnfilteredBaseForNurse() {
+    if (activeRole !== 'nurse') return false;
+    const tree = $('#flowsheetTreeMenu');
+    const all = $('[data-category="all"]', tree || document);
+    const selected = $('[data-category].selected', tree || document);
+    if (!all || selected === all) return false;
+
+    // The authoritative grid owns category filtering. A DSP category left active
+    // (for example Behavioral & Elopement Support) can reduce the Nurse view to
+    // only the nursing rows whose text happens to match that DSP filter. Always
+    // return the base grid to Show All Tasks before applying the Nurse role scope.
+    all.click();
+    window.setTimeout(scheduleApply, 0);
+    return true;
+  }
+
   function applyGridScope() {
     const tbody = $('#flowsheetTbody');
     if (!tbody) return;
@@ -137,7 +159,7 @@
         groupName = row.textContent?.trim() || '';
         groupVisible = activeRole === 'all' || (activeRole === 'nurse' ? isNurseGroup(groupName) : !isNurseGroup(groupName));
       }
-      row.hidden = !groupVisible;
+      forceHidden(row, !groupVisible);
     }
 
     const header = $('#headerTimeRow th:first-child');
@@ -149,9 +171,10 @@
     if (!tree) return;
     const nurseOnly = activeRole === 'nurse';
     $$('[data-category]', tree).forEach((item) => {
-      item.hidden = nurseOnly && item.dataset.category !== 'all';
+      const keepVisible = !nurseOnly || item.dataset.category === 'all';
+      forceHidden(item, !keepVisible);
     });
-    $$('hr', tree).forEach((separator) => { separator.hidden = nurseOnly; });
+    $$('hr', tree).forEach((separator) => forceHidden(separator, nurseOnly));
 
     let note = $('#spireRoleScopeNote', tree);
     if (nurseOnly) {
@@ -160,7 +183,7 @@
         note.id = 'spireRoleScopeNote';
         tree.appendChild(note);
       }
-      const message = 'Nurse view: all RN / LPN flowsheet rows are shown. Use Search Task to find a nursing item.';
+      const message = 'Nurse view: RN / LPN flowsheet rows only. DSP task categories are hidden; use Search Task to find a nursing item.';
       if (note.textContent !== message) note.textContent = message;
     } else {
       note?.remove();
@@ -179,6 +202,7 @@
 
   function applyRoleView() {
     ensureDropdown();
+    if (ensureUnfilteredBaseForNurse()) return;
     applyTreeScope();
     applyGridScope();
     syncLabel();
@@ -203,10 +227,12 @@
     sessionStorage.setItem(ROLE_KEY, activeRole);
     closeMenu();
 
-    // The authoritative grid owns category state. Reset it through its existing
-    // control rather than reaching into or replacing the filing runtime.
-    const all = $('#flowsheetTreeMenu [data-category="all"]');
-    if (all && !all.classList.contains('selected')) all.click();
+    // Nurse and All Clinical are role-level views, so they must never inherit a
+    // narrower DSP task category from the previous screen state.
+    if (activeRole !== 'dsp') {
+      const all = $('#flowsheetTreeMenu [data-category="all"]');
+      all?.click();
+    }
     scheduleApply();
     window.setTimeout(scheduleApply, 0);
   }
