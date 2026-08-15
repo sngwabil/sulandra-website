@@ -40,8 +40,14 @@
 
   function saveAuthenticatedSession(token, session) {
     const encoded = JSON.stringify(session);
+    const role = String(session?.role || session?.user?.role || "").toUpperCase();
     window.sessionStorage.setItem(TOKEN_KEY, token);
     window.sessionStorage.setItem(SESSION_KEY, encoded);
+    if (ADMIN_LANDING_ROLES.has(role)) {
+      window.localStorage.removeItem(TOKEN_KEY);
+      window.localStorage.removeItem(SESSION_KEY);
+      return;
+    }
     window.localStorage.setItem(TOKEN_KEY, token);
     window.localStorage.setItem(SESSION_KEY, encoded);
   }
