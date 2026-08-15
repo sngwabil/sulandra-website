@@ -1,0 +1,1 @@
+Validation-only marker after hardening Employee 360 mobile tab switching. This branch exists only to trigger isolated CI and will not be merged.
