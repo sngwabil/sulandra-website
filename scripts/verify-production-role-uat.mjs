@@ -74,7 +74,7 @@ for(const marker of [
   "$('newHouse').hidden=!state.context.elevated",
 ])expect(residentialHtml.includes(marker),`Assigned-home manager frontend scope missing ${marker}`);
 expect(homeManagerInstaller.includes('appointed managers see only their assigned/managed homes'),'Home Manager installer lacks assigned-home scope contract');
-expect(apiPackage.includes('install-home-manager-residential-scope.mjs'),'API build/typecheck pipeline does not install Home Manager residential scope');
+expect(!apiPackage.includes('install-home-manager-residential-scope.mjs'),'Home Manager backend scope must live in canonical API source rather than depend on an API build-time rewrite');
 
 for(const label of ['DSP','Medication-Certified DSP','LPN','RN','Delegating Nurse','House Manager','Program Manager','Home Health Clinician','Scheduler','NMT Dispatcher','NMT Driver','HR Manager','Administrator','Director of Operations','CEO','Auditor'])expect(testSource.includes(`label:'${label}'`),`Production UAT is missing persona ${label}`);
 expect((testSource.match(/page\.goto\(/g)||[]).length===1&&testSource.includes("page.goto('/employee-login.html')"),'Role browser UAT must begin navigation only from Employee Login');
