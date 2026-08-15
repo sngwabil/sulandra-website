@@ -13,6 +13,7 @@ const publishedSyntaxPath = path.join(root, 'scripts', 'verify-published-spire-s
 const HOTFIX_URL = '/assets/spire-pcp-dedup-hotfix.js?v=20260814-pcp-dedup-1';
 const PROFILE_FIXED_URL = '/assets/spire-chart-profile-images.js?v=20260814-chart-photo-db-3-dataurl';
 const CLIENT_PHOTO_URL = '/assets/spire-client-photo-display.js?v=20260814-client-photo-display-1';
+const ENTITY_CONTEXT_URL = '/assets/sulandra-entity-context.js?v=20260815-main-tab-icons-1';
 const MARKER = 'SPIRE_PCP_CARD_DEDUP_V1';
 const PROFILE_DATA_URL_MARKER = 'SPIRE_PROFILE_IMAGE_DATA_URL_V1';
 const CLIENT_PHOTO_MARKER = 'SPIRE_CLIENT_PHOTO_DISPLAY_V1';
@@ -85,6 +86,7 @@ master = master.replace(/\s*<script\s+src=["']\/assets\/spire-pcp-dedup-hotfix\.
 master = master.replace(/\s*<script\s+src=["']\/assets\/spire-client-photo-display\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
 master = master.replace(new RegExp(`\\s*<style id=["']${CLIENT_IDENTIFICATION_STYLE_ID}["'][\\s\\S]*?<\\/style>\\s*`, 'gi'), '\n');
 master = master.replace(/\/assets\/spire-chart-profile-images\.js\?v=[^"']+/g, PROFILE_FIXED_URL);
+master = master.replace(/\/assets\/sulandra-entity-context\.js\?v=[^"']+/g, ENTITY_CONTEXT_URL);
 master = master.replace(/\s*<span>🔒 Log Out<\/span>\s*/g, '\n');
 master = master.replace(/\s*<span>❓ Help Desk<\/span>\s*/g, '\n');
 master = master.replace(/<span\s+style=["']background:\s*#a31919;\s*padding:\s*3px 8px;\s*border:\s*1px solid #ff9999;["']>SpireCare<\/span>/g, CHART_LOGOUT_BUTTON);
@@ -113,6 +115,9 @@ if (pcpCount !== 1) throw new Error(`SPIRE master must publish the PCP dedup hot
 const profileCount = (master.match(/\/assets\/spire-chart-profile-images\.js\?v=/g) || []).length;
 if (profileCount !== 1) throw new Error(`SPIRE master must publish the chart profile runtime exactly once; found ${profileCount}`);
 if (!master.includes(PROFILE_FIXED_URL)) throw new Error('SPIRE master did not publish the Safari-safe chart profile image runtime');
+const entityContextCount = (master.match(/\/assets\/sulandra-entity-context\.js\?v=/g) || []).length;
+if (entityContextCount !== 1) throw new Error(`SPIRE master must publish the entity context runtime exactly once; found ${entityContextCount}`);
+if (!master.includes(ENTITY_CONTEXT_URL)) throw new Error('SPIRE master did not publish the cache-busted main-tab icon runtime');
 const masterClientPhotoCount = (master.match(/\/assets\/spire-client-photo-display\.js\?v=/g) || []).length;
 if (masterClientPhotoCount !== 1) throw new Error(`SPIRE master must publish the isolated client photo runtime exactly once; found ${masterClientPhotoCount}`);
 const stationClientPhotoCount = (clientStation.match(/\/assets\/spire-client-photo-display\.js\?v=/g) || []).length;
@@ -124,4 +129,4 @@ if (master.includes('<span>🔒 Log Out</span>')) throw new Error('SPIRE chart s
 if ((master.match(/id="spireChartLogout"/g) || []).length !== 1) throw new Error('SPIRE chart must publish exactly one red Logout control');
 if (!master.includes("window.top.location.replace('/employee-login.html')")) throw new Error('SPIRE chart Logout control is not routed to the employee sign-in page');
 
-console.log(`SPIRE PCP provider card deduplication remains active via ${HOTFIX_URL}. Chart profile photos continue using the existing Safari-safe runtime ${PROFILE_FIXED_URL}. The isolated patient photo display runtime ${CLIENT_PHOTO_URL} remains separate from MAR/eMAR, ${CLIENT_IDENTIFICATION_STYLE_ID} enlarges client photos for faster visual identification, and the chart header now exposes one red Logout control with Help Desk removed.`);
+console.log(`SPIRE PCP provider card deduplication remains active via ${HOTFIX_URL}. Chart profile photos continue using the existing Safari-safe runtime ${PROFILE_FIXED_URL}. The isolated patient photo display runtime ${CLIENT_PHOTO_URL} remains separate from MAR/eMAR, ${CLIENT_IDENTIFICATION_STYLE_ID} enlarges client photos for faster visual identification, the chart entity context is cache-busted via ${ENTITY_CONTEXT_URL}, and the chart header now exposes one red Logout control with Help Desk removed.`);
