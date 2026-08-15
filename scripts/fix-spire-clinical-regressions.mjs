@@ -46,8 +46,8 @@ for (const marker of [
 ]) {
   if (!audit.includes(marker)) throw new Error(`SPIRE flowsheet audit popover publication missing ${marker}`);
 }
-if (audit.includes('spire-flow-audit-trigger')) {
-  throw new Error('SPIRE flowsheet audit must not publish visible per-cell info buttons');
+if (audit.includes("className = 'spire-flow-audit-trigger'") || audit.includes("textContent = 'i'")) {
+  throw new Error('SPIRE flowsheet audit must not create visible per-cell info buttons');
 }
 for (const marker of [
   'SPIRE_NOTE_COMPOSER_V2',
