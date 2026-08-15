@@ -3,6 +3,7 @@
 
   const MARKER = 'SPIRE_ADAPTIVE_CHART_TABS_V1';
   const PINNED_MARKER = 'SPIRE_PINNED_CORE_TABS_V1';
+  const LDA_MARKER = 'SPIRE_LDA_TAB_SHELL_V1';
   const BAR_ID = 'mainChartTabs';
   const MORE_ID = 'spireChartMoreTab';
   const MENU_ID = 'spireChartMoreMenu';
@@ -10,7 +11,8 @@
   const PATH = location.pathname.toLowerCase().replace(/\/+$/, '');
   const PINNED_VIEWS = ['summary-view', 'flowsheets-view', 'mar-view', 'notes-view'];
   const ROW_CONTROLS_URL = '/assets/spire-medication-row-controls.js?v=20260815-med-row-controls-1';
-  const SUMMARY_OVERVIEW_URL = '/assets/spire-summary-overview.js?v=20260815-summary-overview-v2';
+  const SUMMARY_OVERVIEW_URL = '/assets/spire-summary-overview.js?v=20260815-summary-overview-v3';
+  const LDA_WORKSPACE_URL = '/assets/spire-lda-workspace.js?v=20260815-lda-workspace-v1';
 
   if (!PATH.endsWith('/spire/master.html') && !PATH.endsWith('/spire/master')) return;
   if (window.__SPIRE_ADAPTIVE_CHART_TABS === MARKER) return;
@@ -65,6 +67,29 @@
     loadScriptOnce('spireSummaryOverviewRuntime', SUMMARY_OVERVIEW_URL);
   }
 
+  function installLdaShell(bar) {
+    if (!bar || window.__SPIRE_LDA_TAB_SHELL === LDA_MARKER) return;
+    window.__SPIRE_LDA_TAB_SHELL = LDA_MARKER;
+    let tab = bar.querySelector(':scope > .chart-tab[data-view="lda-view"]');
+    if (!tab) {
+      tab = document.createElement('div');
+      tab.className = 'chart-tab';
+      tab.dataset.view = 'lda-view';
+      tab.innerHTML = '<span aria-hidden="true" style="color:#34857f;margin-right:4px">◉</span>LDA';
+      const notes = bar.querySelector(':scope > .chart-tab[data-view="notes-view"]');
+      if (notes) notes.after(tab); else bar.appendChild(tab);
+    }
+    const center = document.querySelector('.center-content');
+    if (center && !document.getElementById('lda-view')) {
+      const host = document.createElement('div');
+      host.id = 'lda-view';
+      host.className = 'workspace-view';
+      host.style.padding = '0';
+      center.appendChild(host);
+    }
+    loadScriptOnce('spireLdaWorkspaceRuntime', LDA_WORKSPACE_URL);
+  }
+
   function installStyles() {
     if (document.getElementById('spire-adaptive-chart-tabs-style')) return;
     const style = document.createElement('style');
@@ -81,6 +106,7 @@
       }
       #${BAR_ID} .chart-tab[data-view="flowsheets-view"]::before,
       #${MENU_ID} [data-view="flowsheets-view"]::before{margin-right:5px!important}
+      #${MENU_ID} [data-view="lda-view"]::before{content:'◉';display:inline-block;color:#34857f;font-size:13px;line-height:1;margin-right:3px}
       #${MORE_ID}{appearance:none;-webkit-appearance:none;font:inherit;color:inherit;border:0;border-left:1px solid #c4d1df;background:#eef4fb;cursor:pointer;white-space:nowrap;padding-left:11px!important;padding-right:11px!important;display:inline-flex!important;align-items:center;gap:5px}
       #${MORE_ID}:hover,#${MORE_ID}:focus-visible{background:#dbeafe!important;outline:none}
       #${MORE_ID} .spire-more-count{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#d9e5f3;color:#294a66;font-size:10px;font-weight:800}
@@ -101,6 +127,7 @@
     const bar = document.getElementById(BAR_ID);
     if (!bar) return false;
     installStyles();
+    installLdaShell(bar);
     loadMedicationRowControls();
     loadSummaryOverview();
 
@@ -284,7 +311,7 @@
       if (mutations.some((mutation) => mutation.type === 'attributes' && mutation.attributeName === 'class')) scheduleLayout();
     }).observe(bar, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
-    console.debug(`[${PINNED_MARKER}] Summary → Flowsheets → MAR → Notes pinned; remaining tabs usage-ranked.`);
+    console.debug(`[${PINNED_MARKER}] Summary → Flowsheets → MAR → Notes pinned; remaining tabs usage-ranked, including LDA.`);
     scheduleLayout();
     window.setTimeout(scheduleLayout, 250);
     window.setTimeout(scheduleLayout, 900);
