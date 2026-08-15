@@ -52,6 +52,7 @@ jobs:
             doo="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/doo.html || true)"
             ceo="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/ceo.html || true)"
             home_manager="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-manager.html || true)"
+            residential="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/scls-residential.html || true)"
             if grep -q "$contract" <<<"$portal" \
               && grep -q "$contract" <<<"$runtime" \
               && grep -q "$contract" <<<"$guard" \
@@ -65,8 +66,11 @@ jobs:
               && grep -Fq 'ownerMain: "/admin.html"' <<<"$roles" \
               && grep -Fq 'data-role-workspace="DOO"' <<<"$doo" \
               && grep -Fq 'data-role-workspace="CEO"' <<<"$ceo" \
-              && grep -Fq 'data-role-workspace="HOUSE_MANAGER"' <<<"$home_manager"; then
-              echo "Exact dedicated role-workspace production contract is live."
+              && grep -Fq 'data-role-workspace="HOUSE_MANAGER"' <<<"$home_manager" \
+              && grep -Fq 'canManageStaff' <<<"$residential" \
+              && grep -Fq "const validTabs=new Set(['residents','staff','tasks','handoff','log'])" <<<"$residential" \
+              && grep -Fq "history.replaceState(null,'','#'+state.tab)" <<<"$residential"; then
+              echo "Exact dedicated role-workspace and assigned-home manager production contract is live."
               exit 0
             fi
             echo "Waiting for dedicated role-workspace production deployment (${attempt}/60)..."
