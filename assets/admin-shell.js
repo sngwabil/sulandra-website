@@ -11,7 +11,7 @@
     {title:'Live local headlines for Dayton and the Miami Valley are loading…',link:'/news.html',source:'Sulandra News'},
     {title:'News ticker refreshes automatically as local headlines update.',link:'/news.html',source:'Live News'},
   ];
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const sourceName = item => item.author || item.source || String(item.title || '').split(' - ').slice(-1)[0] || 'Local News';
   const headline = item => {
     const raw = String(item.title || 'Local news update').trim();
