@@ -60,7 +60,35 @@ const newActions = `<div class="snc-top-actions"><button type="button" class="sn
 ui = replaceOnce(ui, oldActions, newActions, 'draft reader actions');
 
 const oldReaderBindings = `    document.getElementById('sncNewFromReader')?.addEventListener('click', newNote);\n    document.getElementById('sncEditDraft')?.addEventListener('click', () => editDraft(note));\n  }\n\n  function editDraft(note) {`;
-const newReaderBindings = `    document.getElementById('sncNewFromReader')?.addEventListener('click', newNote);\n    document.getElementById('sncEditDraft')?.addEventListener('click', () => editDraft(note));\n    document.getElementById('sncSignDraftFromReader')?.addEventListener('click', () => void signDraftFromReader(note));\n  }\n\n  async function signDraftFromReader(note) {\n    // SPIRE_NOTE_READER_SIGN_AND_FILE_V1\n    const id = clean(note?.id);\n    if (!id || clean(note?.status).toUpperCase() === 'SIGNED') return;\n    const unresolved = unresolvedPromptCount(note?.body);\n    const warning = unresolved\n      ? `This draft still contains \${unresolved} unresolved template prompt\${unresolved === 1 ? '' : 's'}. Sign and file it anyway?`\n      : 'Sign and file this draft as part of the permanent clinical record?';\n    if (!window.confirm(warning)) return;\n    const button = document.getElementById('sncSignDraftFromReader');\n    const oldText = button?.textContent || 'Sign & File';\n    if (button) { button.disabled = true; button.textContent = 'Filing…'; }\n    try {\n      await api(`/api/spire/patients/\${encodeURIComponent(state.patientId)}/note-composer/notes/\${encodeURIComponent(id)}/sign`, { method:'POST', body:JSON.stringify({}) });\n      await loadNotes();\n      openReader(id);\n    } catch (error) {\n      window.alert(error?.message || 'Unable to sign and file this draft.');\n    } finally {\n      if (button?.isConnected) { button.disabled = false; button.textContent = oldText; }\n    }\n  }\n\n  function editDraft(note) {`;
+const newReaderBindings = [
+  "    document.getElementById('sncNewFromReader')?.addEventListener('click', newNote);",
+  "    document.getElementById('sncEditDraft')?.addEventListener('click', () => editDraft(note));",
+  "    document.getElementById('sncSignDraftFromReader')?.addEventListener('click', () => void signDraftFromReader(note));",
+  '  }',
+  '',
+  '  async function signDraftFromReader(note) {',
+  '    // SPIRE_NOTE_READER_SIGN_AND_FILE_V1',
+  "    const id = clean(note?.id);",
+  "    if (!id || clean(note?.status).toUpperCase() === 'SIGNED') return;",
+  '    const unresolved = unresolvedPromptCount(note?.body);',
+  "    const warning = unresolved ? 'This draft still contains ' + unresolved + ' unresolved template prompt' + (unresolved === 1 ? '' : 's') + '. Sign and file it anyway?' : 'Sign and file this draft as part of the permanent clinical record?';",
+  '    if (!window.confirm(warning)) return;',
+  "    const button = document.getElementById('sncSignDraftFromReader');",
+  "    const oldText = button?.textContent || 'Sign & File';",
+  "    if (button) { button.disabled = true; button.textContent = 'Filing…'; }",
+  '    try {',
+  "      await api('/api/spire/patients/' + encodeURIComponent(state.patientId) + '/note-composer/notes/' + encodeURIComponent(id) + '/sign', { method:'POST', body:JSON.stringify({}) });",
+  '      await loadNotes();',
+  '      openReader(id);',
+  '    } catch (error) {',
+  "      window.alert(error?.message || 'Unable to sign and file this draft.');",
+  '    } finally {',
+  '      if (button?.isConnected) { button.disabled = false; button.textContent = oldText; }',
+  '    }',
+  '  }',
+  '',
+  '  function editDraft(note) {',
+].join('\n');
 ui = replaceOnce(ui, oldReaderBindings, newReaderBindings, 'reader sign-and-file binding');
 ui = ui.replace(`<button type="button" class="snc-tab \${mode === 'final' ? 'active' : ''}" data-snc-mode="final">Final Filed Note</button>`, `<button type="button" class="snc-tab \${mode === 'final' ? 'active' : ''}" data-snc-mode="final">\${signed ? 'Final Filed Note' : 'Draft Note'}</button>`);
 
