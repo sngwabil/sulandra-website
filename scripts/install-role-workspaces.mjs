@@ -26,7 +26,7 @@ await patch('employee-portal-railway.js', (source) => {
   if (!source.includes('function installRoleWorkspaceLauncher(session)')) {
     const anchor = '  function installApplicationLaunchers(session) {';
     if (!source.includes(anchor)) throw new Error('Employee Portal launcher anchor changed');
-    const helper = `  function installRoleWorkspaceLauncher(session) {\n    const role = String(session.role || "").toUpperCase();\n    const workspace = roleWorkspaceRoutes.get(role);\n    if (!workspace) return;\n    const [label, href] = workspace;\n    const quick = document.querySelector(".page-hero .quick-actions");\n    if (quick && !document.getElementById("employeeRoleWorkspaceLauncher")) {\n      quick.appendChild(launcher(label, href, `Open the ${label} workspace`, "employeeRoleWorkspaceLauncher"));\n    }\n    appendNavLink("employeeRoleWorkspaceNav", label, href);\n  }\n\n`;
+    const helper = `  function installRoleWorkspaceLauncher(session) {\n    const role = String(session.role || "").toUpperCase();\n    const workspace = roleWorkspaceRoutes.get(role);\n    if (!workspace) return;\n    const [label, href] = workspace;\n    const quick = document.querySelector(".page-hero .quick-actions");\n    if (quick && !document.getElementById("employeeRoleWorkspaceLauncher")) {\n      quick.appendChild(launcher(label, href, "Open the " + label + " workspace", "employeeRoleWorkspaceLauncher"));\n    }\n    appendNavLink("employeeRoleWorkspaceNav", label, href);\n  }\n\n`;
     source = source.replace(anchor, `${helper}${anchor}`);
   }
   const roleAnchor = '    const role = String(session.role || "").toUpperCase();\n\n    quick.appendChild(launcher("Workforce"';
