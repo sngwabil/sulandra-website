@@ -6,7 +6,7 @@
   // flowsheet without replacing its server-backed grid, staged File workflow,
   // audit behavior, or inline entry controls.
 
-  const VERSION = '20260815-role-selector-1';
+  const VERSION = '20260815-role-selector-2';
   const ROLE_KEY = 'spire:flowsheet:selected-role';
   const ROLE_DEFS = Object.freeze({
     dsp: { label: 'DSP Daily Documentation' },
@@ -108,12 +108,17 @@
       menu.setAttribute('role', 'menu');
       dropdown.appendChild(menu);
     }
-    menu.innerHTML = menuHtml();
-    $$('[data-flow-role]', menu).forEach((button) => button.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      selectRole(button.dataset.flowRole || 'dsp');
-    }));
+    if (menu.dataset.spireRoleSelectorWired !== 'true') {
+      menu.dataset.spireRoleSelectorWired = 'true';
+      menu.innerHTML = menuHtml();
+      menu.addEventListener('click', (event) => {
+        const button = event.target instanceof Element ? event.target.closest('[data-flow-role]') : null;
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        selectRole(button.dataset.flowRole || 'dsp');
+      });
+    }
     return dropdown;
   }
 
@@ -155,7 +160,8 @@
         note.id = 'spireRoleScopeNote';
         tree.appendChild(note);
       }
-      note.textContent = 'Nurse view: all RN / LPN flowsheet rows are shown. Use Search Task to find a nursing item.';
+      const message = 'Nurse view: all RN / LPN flowsheet rows are shown. Use Search Task to find a nursing item.';
+      if (note.textContent !== message) note.textContent = message;
     } else {
       note?.remove();
     }

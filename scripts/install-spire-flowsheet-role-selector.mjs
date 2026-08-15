@@ -6,12 +6,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const masterPath = path.join(dist, 'spire', 'master.html');
 const selectorPath = path.join(dist, 'assets', 'spire-flowsheet-role-selector.js');
-const selectorUrl = '/assets/spire-flowsheet-role-selector.js?v=20260815-role-selector-1';
+const selectorUrl = '/assets/spire-flowsheet-role-selector.js?v=20260815-role-selector-2';
 
 await Promise.all([stat(masterPath), stat(selectorPath)]);
 
 const selector = await readFile(selectorPath, 'utf8');
-for (const marker of ['SPIRE_FLOWSHEET_ROLE_SELECTOR_V1', 'Nurse Flowsheets', 'spire:flowsheet:selected-role', 'SpireFlowsheetRoleSelector']) {
+for (const marker of ['SPIRE_FLOWSHEET_ROLE_SELECTOR_V1', '20260815-role-selector-2', 'Nurse Flowsheets', 'spire:flowsheet:selected-role', 'SpireFlowsheetRoleSelector']) {
   if (!selector.includes(marker)) throw new Error(`SPIRE flowsheet role selector missing ${marker}`);
 }
 try { new Function(selector); }
