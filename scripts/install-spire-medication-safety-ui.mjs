@@ -11,12 +11,22 @@ const SAFETY_URL = '/assets/spire-mar-safety-verifier.js?v=20260815-mar-safety-v
 const MAR_MARKER = 'SPIRE_MAR_ORDER_CONTEXT_V1';
 const MAR_GLUCOSE_MARKER = 'SPIRE_MAR_SAFETY_GLUCOSE_V1';
 const RESUME_MARKER = 'SPIRE_MED_ORDER_RESUME_REBUILDS_SCHEDULE_V1';
+const PRN_INTERVAL_MARKER = 'SPIRE_MED_ORDER_SINGLE_PRN_INTERVAL_V1';
 
 let orderRuntime = await readFile(path.join(root, ORDER_REL), 'utf8');
 if (!orderRuntime.includes('SPIRE_MEDICATION_ORDER_ENTRY_V2')) throw new Error('Medication order V2 runtime marker is missing');
 if (!orderRuntime.includes('frequencyCode')) throw new Error('Medication order V2 runtime is missing structured frequency logic');
 if (!orderRuntime.includes('data-scale-toggle')) throw new Error('Medication order V2 runtime is missing sliding-scale editor');
 if (!orderRuntime.includes('Manage Orders')) throw new Error('Medication order V2 runtime is missing medication management');
+
+// PRN has its own explicit minimum-dose-interval field; do not show the Every-N-hours
+// interval control at the same time.
+if (!orderRuntime.includes(PRN_INTERVAL_MARKER)) {
+  const oldInterval = "    m.querySelector('[data-interval-wrap]').hidden=!(every||prn);";
+  const newInterval = `    // ${PRN_INTERVAL_MARKER}\n    m.querySelector('[data-interval-wrap]').hidden=!every;`;
+  if (!orderRuntime.includes(oldInterval)) throw new Error('Medication order V2 PRN interval anchor is missing');
+  orderRuntime = orderRuntime.replace(oldInterval, newInterval);
+}
 
 // Resuming a held order makes it ACTIVE first, then re-saves the same structured order
 // so the backend rebuilds only its future MAR schedule. Past administrations stay intact.
@@ -25,9 +35,10 @@ if (!orderRuntime.includes(RESUME_MARKER)) {
   const newChange = `  // ${RESUME_MARKER}\n  async function changeStatus(order,status){const reason=prompt(\`${'${status===\'DISCONTINUED\'?\'Discontinue\':status===\'HELD\'?\'Hold\':\'Resume\'} ${order.name}'}: enter the reason.\`);if(!clean(reason))return;try{await api(\`/api/spire/medication-orders-v2/${'${encodeURIComponent(order.id)}'}/status\`,{method:'POST',body:JSON.stringify({status,reason:clean(reason)})});if(status==='ACTIVE'){const resumePayload=orderToPayload(order,clean(order.linkedOrderGroupId)||undefined);resumePayload.changeReason=\`Order resumed: ${'${clean(reason)}'}\`;await api(\`/api/spire/medication-orders-v2/${'${encodeURIComponent(order.id)}'}\`,{method:'PATCH',body:JSON.stringify(resumePayload)});}await loadOrders();renderManage(ensureManageModal());}catch(e){alert(e.message||'Unable to change medication order status.');}}`;
   if (!orderRuntime.includes(oldChange)) throw new Error('Medication order V2 resume scheduling anchor is missing');
   orderRuntime = orderRuntime.replace(oldChange, newChange);
-  await writeFile(path.join(root, ORDER_REL), orderRuntime, 'utf8');
 }
 if (!orderRuntime.includes(RESUME_MARKER)) throw new Error('Medication order V2 resume scheduling guard was not installed');
+if (!orderRuntime.includes(PRN_INTERVAL_MARKER)) throw new Error('Medication order V2 single-PRN-interval guard was not installed');
+await writeFile(path.join(root, ORDER_REL), orderRuntime, 'utf8');
 new Function(orderRuntime);
 
 const safetyRuntime = await readFile(path.join(root, SAFETY_REL), 'utf8');
@@ -92,5 +103,6 @@ if (!finalMar.includes(MAR_MARKER)) throw new Error('Published MAR runtime is mi
 if (!finalMar.includes(MAR_GLUCOSE_MARKER)) throw new Error('Published MAR runtime is missing sliding-scale glucose safety payload');
 const finalOrder = await readFile(path.join(dist, ORDER_REL), 'utf8');
 if (!finalOrder.includes(RESUME_MARKER)) throw new Error('Published medication order runtime is missing resume schedule reconstruction');
+if (!finalOrder.includes(PRN_INTERVAL_MARKER)) throw new Error('Published medication order runtime has duplicate PRN interval controls');
 
-console.log(`SPIRE medication ordering V2 published via ${ORDER_URL}; MAR second-verifier published via ${SAFETY_URL}; held/resumed scheduling and sliding-scale glucose server verification are enforced.`);
+console.log(`SPIRE medication ordering V2 published via ${ORDER_URL}; MAR second-verifier published via ${SAFETY_URL}; held/resumed scheduling, single PRN interval control, and sliding-scale glucose server verification are enforced.`);
