@@ -11,4 +11,5 @@ html=html
 if(!html.includes('</body>'))throw new Error('Unable to install live Employee Portal integration');
 html=html.replace('</body>','<script src="/assets/employee-role-navigation-guard.js?v=20260810-role-uat-1"></script>\n<script src="/assets/employee-portal-deep-integration.js?v=20260807-live-modules-1"></script>\n</body>');
 await writeFile(target,html,'utf8');
-console.log('Employee Portal demo workflows are redirected to live modules and protected role navigation keeps Scheduling on the dedicated Scheduling workspace.');
+await import('./install-role-workspaces.mjs');
+console.log('Employee Portal demo workflows are redirected to live modules, protected role navigation remains active, and dedicated role workspaces are installed before static publication.');
