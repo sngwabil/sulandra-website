@@ -65,7 +65,23 @@ expect(testSource.includes('representative mobile production UAT'),'Production U
 expect(config.includes("https://www.sulandrahealth.com"),'Role UAT Playwright config is not pinned to the live production website');
 expect(config.includes('workers: 1'),'Production UAT is not serialized for deterministic role testing');
 
-for(const marker of [contract,'Wait for exact production role-UAT deployment','https://www.sulandrahealth.com/employee-portal.html','https://www.sulandrahealth.com/assets/employee-login-railway.js','https://www.sulandrahealth.com/assets/employee-role-navigation-guard.js','https://www.sulandrahealth.com/admin-railway.js','["ADMINISTRATOR", "CEO", "DOO"]','playwright.role-uat.config.mjs'])expect(workflow.includes(marker),`Production Role UAT workflow missing ${marker}`);
+for(const marker of [
+  contract,
+  'Wait for exact production role-UAT deployment',
+  'https://www.sulandrahealth.com/employee-portal.html',
+  'https://www.sulandrahealth.com/assets/employee-login-railway.js',
+  'https://www.sulandrahealth.com/assets/employee-role-navigation-guard.js',
+  'https://www.sulandrahealth.com/admin-railway.js',
+  'https://www.sulandrahealth.com/assets/role-workspace.js',
+  'https://www.sulandrahealth.com/doo.html',
+  'https://www.sulandrahealth.com/ceo.html',
+  'https://www.sulandrahealth.com/home-manager.html',
+  'function landingForRole(role)',
+  'role !== "ADMINISTRATOR"',
+  'Manage My Home Team',
+  'ownerMain: "/admin.html"',
+  'playwright.role-uat.config.mjs',
+])expect(workflow.includes(marker),`Production Role UAT workflow missing ${marker}`);
 expect(pkg.includes('verify:role-uat'),'package.json does not expose the production role-UAT verifier');
 
 for(const rel of ['employee-portal-railway.js','assets/employee-role-navigation-guard.js','assets/employee-login-railway.js','employee-login-railway.js','assets/role-workspace.js','assets/admin-role-workspaces-link.js','playwright.role-uat.config.mjs','tests/production-role-uat.spec.mjs']){
