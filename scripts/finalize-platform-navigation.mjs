@@ -49,7 +49,9 @@ async function installOwnerProfileCanonicalNavigation() {
         if(!source.includes(marker)) throw new Error(`Canonical Admin settings marker missing in ${path.relative(root,target)}`);
         source=source.replace(marker,`${profile}\n${marker}`);
       }
-      source=source.replace('/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1','/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v2');
+      source=source
+        .replace('/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1','/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v3')
+        .replace('/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v2','/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v3');
       await writeFile(target,source,'utf8');
     }catch(error){if(error?.code!=='ENOENT')throw error}
   }
