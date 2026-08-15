@@ -21,6 +21,7 @@ const cleanRoutePages = new Map([
   ['benefits','benefits.html'],['employee-directory','employee-directory.html'],['leadership','leadership.html'],['support','support.html'],
   ['it-request','support.html'],['time-attendance','time-attendance.html'],['scheduling','scheduling.html'],['my-work','my-work.html'],
   ['notifications','notifications.html'],['incident-reporting','health-safety.html'],['health-safety','health-safety.html'],
+  ['admin-profile','admin-profile.html'],
 ]);
 
 async function walk(directory) {
@@ -44,15 +45,28 @@ async function installOwnerProfileCanonicalNavigation() {
   for(const target of targets){
     try{
       let source=await readFile(target,'utf8');
-      if(source.includes("href:'/admin-profile.html'")) continue;
-      if(!source.includes(marker)) throw new Error(`Canonical Admin settings marker missing in ${path.relative(root,target)}`);
-      source=source.replace(marker,`${profile}\n${marker}`);
+      if(!source.includes("href:'/admin-profile.html'")) {
+        if(!source.includes(marker)) throw new Error(`Canonical Admin settings marker missing in ${path.relative(root,target)}`);
+        source=source.replace(marker,`${profile}\n${marker}`);
+      }
+      source=source.replace('/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1','/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v2');
       await writeFile(target,source,'utf8');
     }catch(error){if(error?.code!=='ENOENT')throw error}
   }
 }
 
+async function publishOwnerProfile() {
+  const source=path.join(root,'admin-profile.html');
+  const published=path.join(dist,'admin-profile.html');
+  await cp(source,published);
+  const html=await readFile(published,'utf8');
+  for(const marker of ['My Executive Profile | Sulandra Health',"api('/api/owner/profile')",'sulandra:employee:access-token']) {
+    if(!html.includes(marker)) throw new Error(`Owner profile publication missing ${marker}`);
+  }
+}
+
 await installOwnerProfileCanonicalNavigation();
+await publishOwnerProfile();
 
 for (const file of await walk(dist)) {
   // Admin owns navigation in assets/admin-company-context.js. Generic route
@@ -107,4 +121,9 @@ await import('./fix-platform-integration-spire-contract.mjs');
 // open /spire/master.html directly because the master itself still enforces session auth.
 await import('./publish-spire-standalone-launch.mjs');
 await import('./verify-employee-work-center.mjs');
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected and now includes the live owner profile route through its single navigation registry, SPIRE Client Station remains the secure canonical entry, and authorized launchers publish the standalone live master chart directly.');
+
+const finalOwnerProfile=await readFile(path.join(dist,'admin-profile.html'),'utf8');
+if(!finalOwnerProfile.includes("api('/api/owner/profile')")) throw new Error('Final static owner profile lost its live API wiring');
+await stat(path.join(dist,'admin-profile','index.html'));
+
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, the owner profile is explicitly published at /admin-profile.html and /admin-profile/, and authorized SPIRE launchers publish the standalone live master chart directly.');
