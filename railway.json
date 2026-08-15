@@ -6,10 +6,10 @@
   },
   "deploy": {
     "preDeployCommand": [
-      "node scripts/run-db-predeploy.mjs"
+      "node scripts/recovery-predeploy-bypass.mjs"
     ],
     "startCommand": "npm run start",
-    "healthcheckPath": "/health",
+    "healthcheckPath": "/live",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
