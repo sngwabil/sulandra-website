@@ -37,9 +37,37 @@ function replaceExactHref(html, from, to) {
   return html.replace(new RegExp(`href=(['"])${escaped}\\1`,'g'),`href="${to}"`);
 }
 
+async function installAdminProfileNavigation() {
+  const adminPath=path.join(dist,'admin.html');
+  try {
+    let html=await readFile(adminPath,'utf8');
+    if(!html.includes('id="myProfileHeaderLink"')) {
+      const anchor='<span class="pill hide-mobile" id="livePill">Live: connecting…</span>';
+      if(!html.includes(anchor)) throw new Error('Admin header anchor for My Profile link was not found');
+      html=html.replace(anchor,`${anchor}\n        <a class="btn-cta secondary hide-mobile" id="myProfileHeaderLink" href="admin-profile.html">My Profile</a>`);
+    }
+    if(!html.includes('id="myProfileTopNavLink"')) {
+      const anchor='<li><a data-module="settings">Settings</a></li>';
+      if(!html.includes(anchor)) throw new Error('Admin top-navigation anchor for My Profile link was not found');
+      html=html.replace(anchor,`<li><a id="myProfileTopNavLink" href="admin-profile.html">My Profile</a></li>\n        ${anchor}`);
+    }
+    if(!html.includes('id="myProfileSideLink"')) {
+      const anchor='<button class="side-btn" type="button" data-module="settings">Settings <small>Roles & Address</small></button>';
+      if(!html.includes(anchor)) throw new Error('Admin sidebar anchor for My Profile link was not found');
+      html=html.replace(anchor,`<button class="side-btn" id="myProfileSideLink" type="button" onclick="window.location.href='admin-profile.html'">My Profile <small>Owner & DON</small></button>\n          ${anchor}`);
+    }
+    await writeFile(adminPath,html,'utf8');
+  } catch(error) {
+    if(error?.code!=='ENOENT') throw error;
+  }
+}
+
+await installAdminProfileNavigation();
+
 for (const file of await walk(dist)) {
   // Admin owns navigation in assets/admin-company-context.js. Generic route
-  // normalization must never rewrite the canonical Admin publication.
+  // normalization must never rewrite the canonical Admin publication. The one
+  // targeted My Profile insertion above is intentionally limited and verified.
   if (path.basename(file).toLowerCase() === 'admin.html') continue;
   let html=await readFile(file,'utf8');
   const original=html;
@@ -90,4 +118,4 @@ await import('./fix-platform-integration-spire-contract.mjs');
 // open /spire/master.html directly because the master itself still enforces session auth.
 await import('./publish-spire-standalone-launch.mjs');
 await import('./verify-employee-work-center.mjs');
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, SPIRE Client Station remains the secure canonical entry, and authorized launchers publish the standalone live master chart directly.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected except for the verified live My Profile entry, SPIRE Client Station remains the secure canonical entry, and authorized launchers publish the standalone live master chart directly.');

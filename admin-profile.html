@@ -1,18 +1,227 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Administrator Profile | S.P.I.R.E.</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My Executive Profile | Sulandra Health</title>
+<meta name="description" content="Live Sulandra Health owner and clinical leadership profile." />
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
 <style>
-:root{--navy:#102f50;--blue:#1d6b9c;--gold:#d6af5f;--bg:#f4f7fb;--card:#fff;--text:#14213d;--muted:#68798c;--border:#dce6ee;--danger:#a33232;--success:#247542}*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}button,input{font:inherit}.shell{min-height:100vh;display:grid;grid-template-columns:250px 1fr}.side{background:var(--navy);color:#fff;padding:22px 16px;display:flex;flex-direction:column;gap:24px}.brand{display:flex;gap:11px;align-items:center}.mark{width:42px;height:42px;border-radius:12px;background:var(--gold);color:var(--navy);display:grid;place-items:center;font-weight:900;font-size:22px}.brand small{display:block;color:#c8d6e4}.nav{display:grid;gap:8px}.nav a{color:#dce7ef;text-decoration:none;padding:12px;border-radius:10px}.nav a.active,.nav a:hover{background:rgba(255,255,255,.12);color:white}.security{margin-top:auto;padding:13px;background:rgba(255,255,255,.08);border-radius:11px;font-size:12px;color:#d5e1eb}.main{min-width:0}.top{height:72px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 24px}.top h1{font-size:20px;margin:0;flex:1}.badge{background:#eef5f9;color:#315874;padding:8px 11px;border-radius:999px;font-size:12px;font-weight:800}.logout{border:1px solid var(--border);background:#fff;padding:9px 12px;border-radius:9px;font-weight:800;cursor:pointer}.content{padding:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1000px}.card{background:#fff;border:1px solid var(--border);border-radius:15px;box-shadow:0 6px 18px rgba(20,50,78,.05)}.card h2{margin:0;padding:18px 20px;border-bottom:1px solid var(--border);font-size:20px}.body{padding:20px}.identity{display:grid;gap:12px}.item span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em;font-weight:800}.item strong{display:block;margin-top:4px}.form{display:grid;gap:14px}label{display:grid;gap:6px;font-size:13px;font-weight:800}input{width:100%;padding:11px;border:1px solid var(--border);border-radius:9px;background:#fff}.primary{border:0;background:var(--navy);color:#fff;padding:12px;border-radius:9px;font-weight:850;cursor:pointer}.msg{display:none;padding:10px;border-radius:9px;font-size:13px}.msg.show{display:block}.msg.good{background:#effcf3;color:var(--success)}.msg.bad{background:#fff0f0;color:var(--danger)}.rules{font-size:12px;color:var(--muted);line-height:1.5}@media(max-width:800px){.shell{grid-template-columns:1fr}.side{display:none}.grid{grid-template-columns:1fr}.top{padding:0 14px}.content{padding:15px}}
+:root{--navy:#0b2f52;--navy2:#123f69;--blue:#0b78bb;--sky:#eaf6ff;--gold:#d8ae54;--gold2:#f2d78e;--bg:#f3f7fb;--card:#fff;--text:#15243a;--muted:#687b90;--border:#dbe6ef;--success:#167044;--successBg:#e9f8f0;--warn:#8a5b08;--warnBg:#fff5d9;--danger:#a43333;--dangerBg:#fff0f0;--shadow:0 12px 30px rgba(24,55,83,.09)}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;font-family:"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}button,a{font:inherit}.shell{min-height:100vh;display:grid;grid-template-columns:260px minmax(0,1fr)}.side{background:linear-gradient(180deg,#0a2b4a,#103b61);color:#fff;padding:24px 17px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh}.brand{display:flex;gap:12px;align-items:center;padding:2px 4px}.brand-mark{width:44px;height:44px;border-radius:13px;background:linear-gradient(145deg,var(--gold2),var(--gold));color:#153b5d;display:grid;place-items:center;font-weight:950;font-size:22px;box-shadow:0 8px 20px rgba(0,0,0,.14)}.brand strong{font-size:16px;letter-spacing:.02em}.brand small{display:block;color:#c9d9e7;margin-top:2px}.nav{display:grid;gap:8px}.nav a{color:#d9e6f0;text-decoration:none;padding:12px 13px;border-radius:11px;font-weight:750}.nav a:hover,.nav a.active{background:rgba(255,255,255,.11);color:#fff}.side-note{margin-top:auto;padding:14px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.07);border-radius:13px;color:#cfe0ed;font-size:12px;line-height:1.55}.side-note strong{color:#fff;display:block;margin-bottom:4px}.main{min-width:0}.top{min-height:72px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:12px 26px;position:sticky;top:0;z-index:20}.top-title{flex:1;min-width:0}.top-title strong{display:block;font-size:18px}.top-title span{display:block;color:var(--muted);font-size:12px;margin-top:2px}.btn{border:1px solid var(--border);background:#fff;color:var(--navy);padding:9px 13px;border-radius:9px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn:hover{background:#f7fbff;border-color:#bdd6e7}.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}.btn.danger{color:#8d2d2d}.content{max-width:1220px;margin:0 auto;padding:28px}.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#0b345b 0%,#0b6796 68%,#0a8da4 100%);color:#fff;border-radius:22px;box-shadow:0 18px 44px rgba(10,62,96,.22);padding:30px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:center}.hero:after{content:"";position:absolute;width:230px;height:230px;border:32px solid rgba(255,255,255,.08);border-radius:50%;right:-70px;top:-100px}.avatar{width:92px;height:92px;border-radius:24px;background:linear-gradient(145deg,#f6df9d,#d7aa4f);color:#113c5e;display:grid;place-items:center;font-size:31px;font-weight:950;box-shadow:0 12px 28px rgba(0,0,0,.18);position:relative;z-index:1}.hero-copy{position:relative;z-index:1;min-width:0}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:900;color:#bfe5f5}.hero h1{margin:5px 0 4px;font-size:31px;line-height:1.15}.hero-title{font-size:16px;color:#e7f6fd;font-weight:700}.hero-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.hero-badge{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.11);padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800}.hero-badge.gold{background:rgba(239,203,115,.18);border-color:rgba(239,203,115,.4);color:#ffefc2}.hero-actions{display:grid;gap:9px;position:relative;z-index:1;min-width:155px}.hero-actions .btn{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff}.hero-actions .btn:hover{background:rgba(255,255,255,.2)}.status-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}.stat{background:#fff;border:1px solid var(--border);border-radius:15px;padding:15px 16px;box-shadow:var(--shadow)}.stat span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900}.stat strong{display:block;font-size:16px;margin-top:5px;color:var(--navy)}.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.75fr);gap:18px}.stack{display:grid;gap:18px}.card{background:var(--card);border:1px solid var(--border);border-radius:17px;box-shadow:var(--shadow);overflow:hidden}.card-head{padding:17px 19px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;justify-content:space-between}.card-head h2{margin:0;font-size:18px;color:#173d5e}.card-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.card-body{padding:18px}.appointment-list,.employment-list,.credential-list,.hire-list{display:grid;gap:11px}.appointment,.employment,.credential,.hire{border:1px solid #dce8f1;border-radius:14px;padding:14px;background:#fbfdff}.appointment-top,.employment-top,.credential-top,.hire-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.appointment h3,.employment h3,.credential h3,.hire h3{margin:0;color:#143b5c;font-size:15px}.appointment .company,.employment .company,.credential .company,.hire .company{color:#4f6f87;font-size:12px;font-weight:800;margin-top:3px}.scope{margin:9px 0 0;color:#5e7181;font-size:13px}.details{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}.chip{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;background:#eef5fa;color:#365b77;border:1px solid #d8e6f0;font-size:11px;font-weight:850}.chip.success{background:var(--successBg);border-color:#c9ead8;color:var(--success)}.chip.warn{background:var(--warnBg);border-color:#f0dda3;color:var(--warn)}.chip.danger{background:var(--dangerBg);border-color:#f0cccc;color:var(--danger)}.chip.gold{background:#fff8e8;border-color:#ead8ac;color:#725617}.flag{padding:5px 9px;border-radius:999px;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.04em}.flag.active{background:var(--successBg);color:var(--success)}.flag.pending{background:var(--warnBg);color:var(--warn)}.flag.neutral{background:#eef4f8;color:#4a6478}.identity-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.identity-item{padding:12px;border:1px solid #e1eaf1;border-radius:12px;background:#fcfdff}.identity-item span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900}.identity-item strong{display:block;margin-top:4px;font-size:13px;overflow-wrap:anywhere}.governance{display:grid;gap:10px}.governance-row{display:flex;gap:10px;align-items:flex-start;padding:11px;border:1px solid #e0eaf1;border-radius:12px;background:#fcfdff}.check{flex:0 0 auto;width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:var(--successBg);color:var(--success);font-weight:950}.governance-row strong{display:block;font-size:13px}.governance-row p{margin:2px 0 0;color:var(--muted);font-size:12px}.doo-callout{border:1px solid #ead7aa;background:linear-gradient(145deg,#fffdf7,#fff7e5);border-radius:14px;padding:15px}.doo-callout strong{color:#654c18}.doo-callout p{margin:6px 0 0;color:#755f37;font-size:12px}.loading{padding:30px;text-align:center;color:var(--muted)}.spinner{width:30px;height:30px;border:3px solid #dce8f0;border-top-color:var(--blue);border-radius:50%;margin:0 auto 10px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.error{display:none;margin:18px 0;background:#fff4f4;border:1px solid #f2caca;color:#8a3030;padding:13px 15px;border-radius:12px}.error.show{display:block}.empty{padding:18px;border:1px dashed #cbdbe7;border-radius:12px;text-align:center;color:var(--muted);font-size:13px}.footer-note{margin-top:20px;text-align:center;color:#7c8d9b;font-size:11px}.hidden{display:none!important}
+@media(max-width:1020px){.shell{grid-template-columns:1fr}.side{display:none}.layout{grid-template-columns:1fr}.status-strip{grid-template-columns:repeat(2,1fr)}.top{top:0}.content{padding:18px}.hero{grid-template-columns:auto 1fr}.hero-actions{grid-column:1/-1;display:flex;flex-wrap:wrap}.hero-actions .btn{flex:1}}
+@media(max-width:620px){.top{padding:10px 13px}.top-title span{display:none}.content{padding:12px}.hero{padding:21px 17px;grid-template-columns:1fr;text-align:center}.avatar{margin:0 auto}.hero-meta{justify-content:center}.hero-actions{display:grid}.hero h1{font-size:25px}.status-strip{grid-template-columns:1fr 1fr}.stat{padding:12px}.identity-grid{grid-template-columns:1fr}.appointment-top,.employment-top,.credential-top,.hire-top{display:grid}.top .btn.secondary-action{display:none}}
 </style>
 </head>
 <body>
-<div class="shell"><aside class="side"><div class="brand"><div class="mark">S</div><div><strong>S.P.I.R.E.</strong><small>Administration Center</small></div></div><nav class="nav"><a href="spire-demo.html">Clinical Preview</a><a href="admin-users.html">Users & Access</a><a class="active" href="admin-profile.html">My Profile</a></nav><div class="security">Administrator-only preview · Browser-local development data · No real PHI</div></aside><main class="main"><header class="top"><h1>Administrator Profile</h1><span class="badge">admin@sulandrahealth.com</span><button class="logout" id="logout">Sign out</button></header><div class="content"><div class="grid"><section class="card"><h2>Profile</h2><div class="body identity"><div class="item"><span>Name</span><strong>Sulpitius Gwabil</strong></div><div class="item"><span>Email</span><strong>admin@sulandrahealth.com</strong></div><div class="item"><span>Role</span><strong>Administrator</strong></div><div class="item"><span>Access</span><strong>Users, clinical preview, organization administration</strong></div></div></section><section class="card"><h2>Change password</h2><form id="passwordForm" class="body form"><label>Current password<input id="current" type="password" autocomplete="current-password" required /></label><label>New password<input id="next" type="password" autocomplete="new-password" required /></label><label>Confirm new password<input id="confirm" type="password" autocomplete="new-password" required /></label><div class="rules">Use at least 12 characters with uppercase, lowercase, number, and special character.</div><button class="primary" type="submit">Change Password</button><div id="msg" class="msg"></div></form></section></div></div></main></div>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark">S</div><div><strong>Sulandra Health</strong><small>Executive Administration</small></div></div>
+    <nav class="nav" aria-label="Executive profile navigation">
+      <a href="/admin.html">Admin Console</a>
+      <a href="/spire-admin.html">Admin S.P.I.R.E.</a>
+      <a class="active" href="/admin-profile.html">My Profile</a>
+      <a href="/admin.html#employees">Employee 360</a>
+      <a href="/education-portal.html">Learning Center</a>
+    </nav>
+    <div class="side-note"><strong>Live enterprise record</strong>This page reads your authenticated owner and clinical leadership appointments directly from the Sulandra production API.</div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div class="top-title"><strong>My Executive Profile</strong><span>Ownership, clinical appointments, company assignments, and credential status</span></div>
+      <button class="btn secondary-action" id="refreshBtn" type="button">↻ Refresh</button>
+      <a class="btn secondary-action" href="/admin.html">Admin Console</a>
+      <button class="btn danger" id="signOutBtn" type="button">Sign Out</button>
+    </header>
+
+    <div class="content">
+      <div class="error" id="errorBox" role="alert"></div>
+
+      <section class="hero" aria-labelledby="profileName">
+        <div class="avatar" id="profileInitials">SG</div>
+        <div class="hero-copy">
+          <div class="eyebrow">Enterprise Owner · Executive Clinical Leadership</div>
+          <h1 id="profileName">Loading profile…</h1>
+          <div class="hero-title" id="profilePrimaryTitle">Connecting to Sulandra Health…</div>
+          <div class="hero-meta">
+            <span class="hero-badge gold" id="ownerBadge">Owner clearance</span>
+            <span class="hero-badge" id="profileEmail">—</span>
+            <span class="hero-badge" id="hirePathBadge">Internal appointment</span>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <a class="btn" href="/admin.html#employees">Open Employee 360</a>
+          <a class="btn" href="/spire-admin.html">Open Admin S.P.I.R.E.</a>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-label="Profile summary">
+        <div class="stat"><span>Ownership</span><strong id="ownershipStat">Loading…</strong></div>
+        <div class="stat"><span>Clinical appointments</span><strong id="appointmentStat">—</strong></div>
+        <div class="stat"><span>Company assignments</span><strong id="employmentStat">—</strong></div>
+        <div class="stat"><span>RN verification</span><strong id="credentialStat">—</strong></div>
+      </section>
+
+      <div id="loading" class="card loading"><div class="spinner"></div>Loading your live leadership profile…</div>
+
+      <div id="profileContent" class="layout hidden">
+        <div class="stack">
+          <section class="card">
+            <div class="card-head"><div><h2>Leadership Appointments</h2><p>Formal ownership and clinical appointments recorded outside the Careers applicant workflow.</p></div><span class="flag active">Active</span></div>
+            <div class="card-body"><div class="appointment-list" id="appointmentList"></div></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><div><h2>Company & Employment Assignments</h2><p>Your operational relationship to each Sulandra legal entity.</p></div></div>
+            <div class="card-body"><div class="employment-list" id="employmentList"></div></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><div><h2>Credential Status</h2><p>Clinical credentials are shown exactly as recorded by the production system.</p></div></div>
+            <div class="card-body"><div class="credential-list" id="credentialList"></div></div>
+          </section>
+        </div>
+
+        <div class="stack">
+          <section class="card">
+            <div class="card-head"><div><h2>Identity & Authority</h2><p>Enterprise identity for this authenticated account.</p></div></div>
+            <div class="card-body"><div class="identity-grid" id="identityGrid"></div></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><div><h2>Internal Appointment Record</h2><p>Your leadership profile was not created as a self-application.</p></div></div>
+            <div class="card-body governance" id="governancePanel"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><div><h2>Separate Hire Positions</h2><p>Leadership positions intentionally not assigned to your owner profile.</p></div></div>
+            <div class="card-body"><div class="hire-list" id="separateHireList"></div></div>
+          </section>
+        </div>
+      </div>
+
+      <div class="footer-note">Sulandra Health · Executive profile data is retrieved from the authenticated production API and is not browser-local mock data.</div>
+    </div>
+  </main>
+</div>
+
 <script>
-const ADMIN_EMAIL='admin@sulandrahealth.com',ADMIN_KEY='spire-admin-credential-v1',SESSION_KEY='spire-admin-session';let session=null;try{session=JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch{}if(!session||session.email!==ADMIN_EMAIL)location.replace('employee-login.html');const enc=new TextEncoder();
-function b64ToBytes(v){const s=atob(v),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}function bytesToB64(bytes){let s='';bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s)}async function derive(password,salt){const key=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},key,256);return bytesToB64(new Uint8Array(bits))}function validPassword(p){return p.length>=12&&/[A-Z]/.test(p)&&/[a-z]/.test(p)&&/[0-9]/.test(p)&&/[^A-Za-z0-9]/.test(p)}
-const msg=document.getElementById('msg');document.getElementById('passwordForm').onsubmit=async e=>{e.preventDefault();msg.className='msg';const current=document.getElementById('current').value,next=document.getElementById('next').value,confirm=document.getElementById('confirm').value;let credential=null;try{credential=JSON.parse(localStorage.getItem(ADMIN_KEY)||'null')}catch{}if(!credential){msg.textContent='No administrator credential was found on this browser.';msg.className='msg show bad';return}const currentVerifier=await derive(current,b64ToBytes(credential.salt));if(currentVerifier!==credential.verifier){msg.textContent='Current password is incorrect.';msg.className='msg show bad';return}if(!validPassword(next)){msg.textContent='New password does not meet all requirements.';msg.className='msg show bad';return}if(next!==confirm){msg.textContent='New passwords do not match.';msg.className='msg show bad';return}const salt=crypto.getRandomValues(new Uint8Array(16));const verifier=await derive(next,salt);localStorage.setItem(ADMIN_KEY,JSON.stringify({email:ADMIN_EMAIL,salt:bytesToB64(salt),verifier,updatedAt:new Date().toISOString(),temporary:false}));e.target.reset();msg.textContent='Password changed successfully.';msg.className='msg show good'};
-document.getElementById('logout').onclick=()=>{localStorage.removeItem(SESSION_KEY);location.assign('employee-login.html')};
+(function(){
+  'use strict';
+  const API_BASE='https://sulandra-website-production-5fc4.up.railway.app';
+  const TOKEN_KEY='sulandra:employee:access-token';
+  const SESSION_KEY='sulandra:employee:session';
+  const $=(id)=>document.getElementById(id);
+  const token=()=>sessionStorage.getItem(TOKEN_KEY)||localStorage.getItem(TOKEN_KEY)||'';
+  const esc=(value)=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+  const title=(value)=>String(value||'').toLowerCase().replaceAll('_',' ').replace(/(^|\s)\S/g,(c)=>c.toUpperCase());
+  const date=(value)=>{if(!value)return 'Not recorded';const parsed=new Date(value);return Number.isNaN(parsed.getTime())?String(value):parsed.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});};
+  const statusClass=(value)=>{const status=String(value||'').toUpperCase();if(status==='VERIFIED'||status==='ACTIVE')return 'success';if(status==='PENDING_VERIFICATION'||status==='PENDING')return 'warn';if(status==='EXPIRED'||status==='INACTIVE')return 'danger';return '';};
+  const signOut=()=>{sessionStorage.removeItem(TOKEN_KEY);sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESSION_KEY);location.replace('/employee-login.html');};
+  const goToLogin=()=>location.replace('/employee-login.html?returnTo='+encodeURIComponent('/admin-profile.html'));
+
+  async function api(path){
+    if(!token()){goToLogin();throw new Error('Sign-in required.');}
+    const response=await fetch(API_BASE+path,{cache:'no-store',headers:{Accept:'application/json',Authorization:'Bearer '+token()}});
+    const payload=await response.json().catch(()=>({}));
+    if(response.status===401){signOut();throw new Error('Your session expired. Sign in again.');}
+    if(!response.ok)throw new Error(payload.error||payload.message||`Unable to load profile (${response.status}).`);
+    return payload.data!==undefined?payload.data:payload;
+  }
+
+  function renderAppointments(items){
+    const root=$('appointmentList');
+    if(!items.length){root.innerHTML='<div class="empty">No active leadership appointments were returned.</div>';return;}
+    root.innerHTML=items.map((item)=>`<article class="appointment">
+      <div class="appointment-top"><div><h3>${esc(item.title||'Leadership appointment')}</h3><div class="company">${esc(item.legalEntityName||item.legalEntityCode||'Sulandra Health')}</div></div><span class="flag active">${esc(title(item.status||'ACTIVE'))}</span></div>
+      <p class="scope">${esc(item.scopeText||'')}</p>
+      <div class="details"><span class="chip gold">${esc(title(item.appointmentType||'Appointment'))}</span><span class="chip">Effective ${esc(date(item.effectiveDate))}</span><span class="chip">${esc(title(item.source||'INTERNAL_APPOINTMENT'))}</span>${item.credentialLabel?`<span class="chip ${statusClass(item.credentialVerificationStatus)}">${esc(item.credentialLabel)} · ${esc(title(item.credentialVerificationStatus))}</span>`:''}</div>
+    </article>`).join('');
+  }
+
+  function renderEmployments(items){
+    const root=$('employmentList');
+    if(!items.length){root.innerHTML='<div class="empty">No active company assignments were returned.</div>';return;}
+    root.innerHTML=items.map((item)=>`<article class="employment">
+      <div class="employment-top"><div><h3>${esc(item.jobTitle||'Company assignment')}</h3><div class="company">${esc(item.legalEntityName||item.legalEntityCode||'Sulandra Health')}${item.departmentName?' · '+esc(item.departmentName):''}</div></div><span class="flag ${String(item.status).toUpperCase()==='ACTIVE'?'active':'neutral'}">${esc(title(item.status||'ACTIVE'))}</span></div>
+      <div class="details"><span class="chip">${esc(title(item.employmentType||'EMPLOYEE'))}</span>${item.primaryEmployment?'<span class="chip gold">Primary enterprise assignment</span>':''}<span class="chip">Start ${esc(date(item.startsAt))}</span><span class="chip">${esc(title(item.source||''))}</span></div>
+    </article>`).join('');
+  }
+
+  function renderCredentials(appointments){
+    const credentials=appointments.filter((item)=>item.credentialLabel);
+    const root=$('credentialList');
+    if(!credentials.length){root.innerHTML='<div class="empty">No clinical credential requirement is attached to this profile.</div>';return;}
+    root.innerHTML=credentials.map((item)=>`<article class="credential">
+      <div class="credential-top"><div><h3>${esc(item.credentialLabel)}</h3><div class="company">Required for ${esc(item.title)} · ${esc(item.legalEntityName||'Sulandra Health')}</div></div><span class="flag ${String(item.credentialVerificationStatus).toUpperCase()==='VERIFIED'?'active':String(item.credentialVerificationStatus).toUpperCase()==='PENDING_VERIFICATION'?'pending':'neutral'}">${esc(title(item.credentialVerificationStatus))}</span></div>
+      <p class="scope">Verification status is controlled by the enterprise credential record. This page does not mark credentials verified on its own.</p>
+    </article>`).join('');
+  }
+
+  function renderSeparateHires(items){
+    const root=$('separateHireList');
+    if(!items.length){root.innerHTML='<div class="empty">No separate leadership hire is currently recorded.</div>';return;}
+    root.innerHTML=items.map((item)=>`<div class="doo-callout"><strong>${esc(item.title||item.code||'Separate hire')}</strong><p>${esc(item.legalEntityCode||'')} · Staffing plan: ${esc(title(item.staffingPlan||'SEPARATE_HIRE'))}. Assigned to owner: ${item.assignedToOwner?'Yes':'No'}.</p></div>`).join('');
+  }
+
+  function renderGovernance(profile){
+    const rows=[
+      ['Internal executive appointment',profile.hiringPath==='INTERNAL_APPOINTMENT','Your owner and clinical leadership roles originate from an internal appointment record.'],
+      ['No Careers applicant record',profile.careersApplicationCreated===false,'Your leadership appointment did not create a public Careers application.'],
+      ['No self-interview required',profile.interviewRequired===false,'No interview workflow is attached to this internal owner appointment.'],
+      ['No self-offer letter required',profile.offerRequired===false,'No employee offer workflow was used to establish ownership or clinical appointment authority.']
+    ];
+    $('governancePanel').innerHTML=rows.map(([label,ok,copy])=>`<div class="governance-row"><div class="check">${ok?'✓':'!'}</div><div><strong>${esc(label)}</strong><p>${esc(copy)}</p></div></div>`).join('');
+  }
+
+  function renderIdentity(profile){
+    const items=[['Full name',profile.displayName],['Email',profile.email],['Enterprise clearance',title(profile.clearance)],['Hiring path',title(profile.hiringPath)],['Internal hire',profile.internalHire?'Yes':'No'],['Organization ID',profile.organizationId]];
+    $('identityGrid').innerHTML=items.map(([label,value])=>`<div class="identity-item"><span>${esc(label)}</span><strong>${esc(value||'—')}</strong></div>`).join('');
+  }
+
+  function render(profile){
+    const appointments=Array.isArray(profile.appointments)?profile.appointments:[];
+    const employments=Array.isArray(profile.employments)?profile.employments:[];
+    const separate=Array.isArray(profile.separateHireRoles)?profile.separateHireRoles:[];
+    const primary=employments.find((item)=>item.primaryEmployment)||employments[0];
+    const rnCredentials=appointments.filter((item)=>String(item.credentialLabel||'').toUpperCase()==='RN');
+    const rnVerified=rnCredentials.length>0&&rnCredentials.every((item)=>String(item.credentialVerificationStatus).toUpperCase()==='VERIFIED');
+    const rnPending=rnCredentials.some((item)=>String(item.credentialVerificationStatus).toUpperCase()==='PENDING_VERIFICATION');
+
+    $('profileName').textContent=profile.displayName||'Sulpitius Ndeh Gwabil';
+    $('profileEmail').textContent=profile.email||'admin@sulandrahealth.com';
+    $('profilePrimaryTitle').textContent=primary?.jobTitle||appointments.find((a)=>a.appointmentKey==='ENTERPRISE_DON')?.title||'Enterprise Clinical Leadership';
+    $('profileInitials').textContent=String(profile.displayName||'SG').split(/\s+/).filter(Boolean).slice(0,2).map((part)=>part[0]).join('').toUpperCase()||'SG';
+    $('ownerBadge').textContent=title(profile.clearance||'ENTERPRISE_OWNER');
+    $('hirePathBadge').textContent=title(profile.hiringPath||'INTERNAL_APPOINTMENT');
+    $('ownershipStat').textContent=appointments.some((a)=>a.appointmentType==='OWNERSHIP')?'Owner / Founder':'Not returned';
+    $('appointmentStat').textContent=String(appointments.length);
+    $('employmentStat').textContent=String(employments.length);
+    $('credentialStat').textContent=rnVerified?'Verified':rnPending?'Pending verification':rnCredentials.length?'Review required':'Not attached';
+
+    renderAppointments(appointments);
+    renderEmployments(employments);
+    renderCredentials(appointments);
+    renderSeparateHires(separate);
+    renderIdentity(profile);
+    renderGovernance(profile);
+    $('loading').classList.add('hidden');
+    $('profileContent').classList.remove('hidden');
+  }
+
+  async function load(){
+    $('errorBox').classList.remove('show');
+    $('refreshBtn').disabled=true;
+    try{render(await api('/api/owner/profile'));}
+    catch(error){$('loading').classList.add('hidden');$('errorBox').textContent=error.message||'Unable to load your executive profile.';$('errorBox').classList.add('show');}
+    finally{$('refreshBtn').disabled=false;}
+  }
+
+  $('signOutBtn').addEventListener('click',signOut);
+  $('refreshBtn').addEventListener('click',load);
+  if(!token())goToLogin();else load();
+})();
 </script>
-</body></html>
+</body>
+</html>
