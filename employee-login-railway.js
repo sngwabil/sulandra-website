@@ -8,6 +8,25 @@
   const message = document.getElementById("msg");
   const usernamePanel = document.getElementById("usernameRecoveryPanel");
   const passwordPanel = document.getElementById("passwordRecoveryPanel");
+  const mfaPanel = document.getElementById("mfaPanel");
+  const mfaCode = document.getElementById("mfaCode");
+  const mfaHint = document.getElementById("mfaHint");
+  const resendMfaCode = document.getElementById("resendMfaCode");
+  const signInButton = document.getElementById("signInButton");
+  let mfaChallengeId = "";
+
+  // Remove any legacy credential query parameters left by an older broken form submission.
+  try {
+    const current = new URL(window.location.href);
+    let changed = false;
+    for (const key of ["username", "email", "password", "mfaCode", "mfaChallengeId"]) {
+      if (current.searchParams.has(key)) {
+        current.searchParams.delete(key);
+        changed = true;
+      }
+    }
+    if (changed) window.history.replaceState({}, document.title, current.pathname + current.search + current.hash);
+  } catch {}
 
   function showMessage(text, type) {
     message.textContent = text;
@@ -58,6 +77,25 @@
     panel.querySelector("input")?.focus();
   }
 
+  function resetMfaChallenge() {
+    mfaChallengeId = "";
+    mfaCode.value = "";
+    mfaPanel.classList.remove("open");
+    mfaHint.textContent = "Enter the 6-digit security code sent to your phone.";
+    signInButton.textContent = "Sign In";
+  }
+
+  function showMfaChallenge(payload) {
+    mfaChallengeId = String(payload.mfaChallengeId || "");
+    mfaCode.value = "";
+    mfaPanel.classList.add("open");
+    const destination = payload.maskedPhone ? ` ${payload.maskedPhone}` : " your phone";
+    mfaHint.textContent = `We sent a 6-digit security code to${destination}. The code expires in 5 minutes.`;
+    signInButton.textContent = "Verify & Sign In";
+    showMessage("Password accepted. Enter the security code from your phone to finish signing in.", "success");
+    requestAnimationFrame(() => mfaCode.focus());
+  }
+
   async function recoveryRequest(path, body, button) {
     clearMessage();
     button.disabled = true;
@@ -81,11 +119,63 @@
     }
   }
 
+  async function performLogin(options = {}) {
+    const resend = Boolean(options.resend);
+    clearMessage();
+    closeRecoveryPanels();
+    const email = document.getElementById("email").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+    const code = mfaCode.value.replace(/\D/g, "").slice(0, 6);
+    if (!email || !password) return showMessage("Enter your employee email and password.", "error");
+    if (mfaChallengeId && !resend && code.length !== 6) return showMessage("Enter the 6-digit security code sent to your phone.", "error");
+
+    signInButton.disabled = true;
+    resendMfaCode.disabled = true;
+    try {
+      const body = { email, password };
+      if (mfaChallengeId && !resend) {
+        body.mfaChallengeId = mfaChallengeId;
+        body.mfaCode = code;
+      }
+      const response = await fetch(API_BASE + "/api/auth/login", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (payload.mfaRequired && payload.mfaMethod === "sms" && payload.mfaChallengeId) {
+        clearAuthenticatedSession();
+        showMfaChallenge(payload);
+        return;
+      }
+      if (!response.ok) {
+        clearAuthenticatedSession();
+        if (payload.mfaRequired && payload.mfaMethod === "sms") mfaPanel.classList.add("open");
+        throw new Error(payload.error || "Unable to sign in.");
+      }
+
+      const session = payload.session || payload.data || payload;
+      const token = session.accessToken || session.bearerToken || session.token;
+      if (!token) throw new Error("The server did not return an access token.");
+      saveAuthenticatedSession(token, session);
+      const requestedTarget = safeReturnTarget();
+      const role = String(session.role || "").toUpperCase();
+      window.location.assign(requestedTarget || (ADMIN_LANDING_ROLES.has(role) ? "admin.html" : "employee-portal.html"));
+    } catch (error) {
+      showMessage(error.message || "Unable to sign in.", "error");
+    } finally {
+      signInButton.disabled = false;
+      resendMfaCode.disabled = false;
+    }
+  }
+
   document.getElementById("clear").addEventListener("click", () => {
     document.getElementById("email").value = "";
     document.getElementById("password").value = "";
     document.getElementById("recoveryEmail").value = "";
     document.getElementById("recoveryUsername").value = "";
+    resetMfaChallenge();
     closeRecoveryPanels(); clearMessage();
   });
   document.getElementById("forgotUsername").addEventListener("click", () => {
@@ -109,34 +199,16 @@
     if (!username) return showMessage("Enter your Sulandra employee username or email.", "error");
     recoveryRequest("/api/auth/forgot-password", { username }, document.getElementById("sendPasswordRecovery"));
   });
+  resendMfaCode.addEventListener("click", () => {
+    resetMfaChallenge();
+    performLogin({ resend: true });
+  });
+  mfaCode.addEventListener("input", () => {
+    mfaCode.value = mfaCode.value.replace(/\D/g, "").slice(0, 6);
+  });
 
   document.getElementById("form").addEventListener("submit", async (event) => {
-    event.preventDefault(); clearMessage(); closeRecoveryPanels();
-    const email = document.getElementById("email").value.trim().toLowerCase();
-    const password = document.getElementById("password").value;
-    if (!email || !password) return showMessage("Enter your employee email and password.", "error");
-    const submitButton = event.submitter;
-    if (submitButton) submitButton.disabled = true;
-    try {
-      const response = await fetch(API_BASE + "/api/auth/login", {
-        method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "Unable to sign in.");
-      const session = payload.session || payload.data || payload;
-      const token = session.accessToken || session.bearerToken || session.token;
-      if (!token) throw new Error("The server did not return an access token.");
-      saveAuthenticatedSession(token, session);
-      const requestedTarget = safeReturnTarget();
-      const role = String(session.role || "").toUpperCase();
-      window.location.assign(requestedTarget || (ADMIN_LANDING_ROLES.has(role) ? "admin.html" : "employee-portal.html"));
-    } catch (error) {
-      clearAuthenticatedSession();
-      showMessage(error.message || "Unable to sign in.", "error");
-    } finally {
-      if (submitButton) submitButton.disabled = false;
-    }
+    event.preventDefault();
+    await performLogin();
   });
 })();
