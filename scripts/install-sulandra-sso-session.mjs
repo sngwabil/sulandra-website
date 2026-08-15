@@ -6,9 +6,9 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dist=path.join(root,'dist-web');
 const marker='/assets/sulandra-sso-session.js?v=20260815-privileged-session-1';
 const internalNames=new Set([
-  // Admin itself owns SSO from assets/admin-shell.js; the routes launched from
-  // Admin receive the shared SSO runtime so privileged tab-only/idle security
-  // continues while moving between workspaces.
+  // Admin owns SSO from assets/admin-shell.js; the routes launched from Admin
+  // receive the shared SSO runtime so privileged tab-only/idle security continues
+  // while moving between workspaces. Canonical Admin HTML is not rewritten here.
   'employee-portal.html','employee360.html','education.html','education-portal.html','course-player.html','education-certificate.html',
   'time-attendance.html','intranet.html','intranet-control.html','policies.html','news.html','feedback.html','payroll.html','benefits.html',
   'employee-directory.html','leadership.html','support.html','health-safety.html','spire.html','spire-admin.html','spire-workspace.html',
