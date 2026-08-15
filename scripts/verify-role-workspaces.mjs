@@ -26,7 +26,8 @@ for (const [role, file] of Object.entries(roleFiles)) {
   const html = await read(file);
   expect(html.includes(`data-role-workspace="${role}"`), `${file} is not bound to ${role}`);
   expect(html.includes('/assets/role-workspace.js?v=20260815-role-workspaces-1'), `${file} does not load the shared role workspace runtime`);
-  expect(runtime.includes(`"${role}"`) && runtime.includes(`/${file}`), `Role workspace runtime is missing ${role} → ${file}`);
+  const runtimeHasRole = runtime.includes(`${role}:`) || runtime.includes(`"${role}"`) || runtime.includes(`'${role}'`);
+  expect(runtimeHasRole && runtime.includes(`/${file}`), `Role workspace runtime is missing ${role} → ${file}`);
 }
 
 expect(directory.includes('data-role-workspace-directory="true"'), 'Owner role-workspace directory is not Admin-only runtime bound');
