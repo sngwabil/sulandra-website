@@ -71,8 +71,6 @@ await installOwnerProfileCanonicalNavigation();
 await publishOwnerProfile();
 
 for (const file of await walk(dist)) {
-  // Admin owns navigation in assets/admin-company-context.js. Generic route
-  // normalization must never rewrite the canonical Admin publication.
   if (path.basename(file).toLowerCase() === 'admin.html') continue;
   let html=await readFile(file,'utf8');
   const original=html;
@@ -114,24 +112,17 @@ try{
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
 await import('./finalize-spire-client-station-publication.mjs');
-// verify-platform-integration historically expected /spire.html -> /spire/master.html.
-// Normalize only that obsolete section after the canonical SPIRE publication so
-// the broad platform verifier checks the current login/Client Station contract.
 await import('./fix-platform-integration-spire-contract.mjs');
-// Publish the approved standalone chart as the direct target of authorized SPIRE launchers.
-// /spire.html remains the authenticated Client Station entry, while the launch buttons can
-// open /spire/master.html directly because the master itself still enforces session auth.
 await import('./publish-spire-standalone-launch.mjs');
-// Add the role/template chooser only after the canonical master and standalone launch
-// publication are finished, so later publication passes cannot remove the selector.
 await import('./install-spire-flowsheet-role-selector.mjs');
-// Publish responsive activity tabs last so screen-width overflow and the More menu
-// cannot be removed by an earlier SPIRE publication pass.
 await import('./install-spire-adaptive-chart-tabs.mjs');
+// Medication ordering publishes only to the final static distribution. It does not
+// rewrite canonical SPIRE source or the existing MAR runtime during finalization.
+await import('./publish-spire-medication-safety-dist.mjs');
 await import('./verify-employee-work-center.mjs');
 
 const finalOwnerProfile=await readFile(path.join(dist,'admin-profile.html'),'utf8');
 if(!finalOwnerProfile.includes("api('/api/owner/profile')")) throw new Error('Final static owner profile lost its live API wiring');
 await stat(path.join(dist,'admin-profile','index.html'));
 
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, the owner profile is explicitly published at /admin-profile.html and /admin-profile/, the SPIRE role flowsheet selector and adaptive chart-tab More menu are published after the standalone chart, and authorized SPIRE launchers publish the standalone live master chart directly.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, the owner profile is published, SPIRE role/adaptive navigation remains intact, and medication ordering V2 is added only to the final static distribution.');
