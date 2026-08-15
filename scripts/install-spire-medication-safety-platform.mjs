@@ -9,6 +9,7 @@ const emarRoutesPath = path.join(root, 'api', 'src', 'spire-emar-routes.ts');
 const IMPORT = "import { registerMedicationSafetyRoutes } from './spire-medication-safety-routes.js';";
 const REGISTRATION = 'registerMedicationSafetyRoutes(app, prisma, { authOf });';
 const READ_MARKER = 'SPIRE_MEDICATION_SAFETY_AUTHORIZED_READ_V1';
+const RESUME_MARKER = 'SPIRE_MEDICATION_RESUME_REBUILDS_MAR_V1';
 
 let source = await readFile(bootstrapPath, 'utf8');
 
@@ -25,16 +26,11 @@ if (!source.includes(REGISTRATION)) {
   source = source.replace(registrationAnchor, `${REGISTRATION}\n${registrationAnchor}`);
 }
 
-if (!source.includes(IMPORT) || !source.includes(REGISTRATION)) {
-  throw new Error('SPIRE medication safety routes were not installed into the API bootstrap');
-}
+if (!source.includes(IMPORT) || !source.includes(REGISTRATION)) throw new Error('SPIRE medication safety routes were not installed into the API bootstrap');
 await writeFile(bootstrapPath, source, 'utf8');
 
 let safetyRoutes = await readFile(safetyRoutesPath, 'utf8');
 
-// Keep physician/order-management authority separate from MAR safety-read authority.
-// Qualified DSPs and assigned clinical staff may run the safety check for clients in
-// their own selected company without gaining create/edit/discontinue order access.
 if (!safetyRoutes.includes(READ_MARKER)) {
   const accessAnchor = `const ensureOrderAccess = (auth: AuthContext) => {\n  if (!orderRoles.has(roleOf(auth))) {\n    throw Object.assign(new Error('Medication order entry requires an authorized nurse or administrator role.'), { status: 403 });\n  }\n};`;
   if (!safetyRoutes.includes(accessAnchor)) throw new Error('Medication safety authorized-read anchor is missing');
@@ -52,17 +48,25 @@ const newSafetyStart = `  app.post('/api/spire/medication-safety/check', async (
 if (safetyRoutes.includes(oldSafetyStart)) safetyRoutes = safetyRoutes.replace(oldSafetyStart, newSafetyStart);
 if (!safetyRoutes.includes('await ensureMedicationReadAccess(prisma, auth, input.clientId);')) throw new Error('MAR safety check was not scoped to the assigned client');
 
-// Editing a held medication may update its definition, but it must not recreate future
-// due doses until the order is resumed. Active orders continue to rebuild their future MAR.
 const unconditionalSchedule = '      await generateFutureAdministrations(prisma, auth, req.params.orderId, { ...input, dueTimes });\n      const updated = await getOrder(prisma, auth, req.params.orderId);';
 const guardedSchedule = `      if (String(existing.status) === 'ACTIVE') {\n        await generateFutureAdministrations(prisma, auth, req.params.orderId, { ...input, dueTimes });\n      } else {\n        await prisma.$executeRawUnsafe(\n          \`DELETE FROM "SpireMedicationAdministration"\n           WHERE "organizationId"=$1 AND "medicationOrderId"=$2 AND "scheduledFor">=NOW()\n             AND "status" IN ('SCHEDULED','DUE')\`,\n          auth.organizationId, req.params.orderId,\n        );\n      }\n      const updated = await getOrder(prisma, auth, req.params.orderId);`;
 if (safetyRoutes.includes(unconditionalSchedule)) safetyRoutes = safetyRoutes.replace(unconditionalSchedule, guardedSchedule);
 if (!safetyRoutes.includes("if (String(existing.status) === 'ACTIVE')")) throw new Error('Medication safety installer could not protect held-order scheduling');
-if (!safetyRoutes.includes(READ_MARKER)) throw new Error('Medication safety authorized-read guard was not installed');
+
+if (!safetyRoutes.includes(RESUME_MARKER)) {
+  const helperAnchor = `function orderResponse(row: Record<string, unknown>) {\n  return {\n    ...row,\n    dueTimes: jsonArray(row.dueTimes),\n    daysOfWeek: jsonArray(row.daysOfWeek),\n    slidingScale: jsonArray(row.slidingScale),\n    holdParameters: jsonArray(row.holdParameters),\n    administrationDetails: jsonObject(row.administrationDetails),\n    linkedOrderRule: jsonObject(row.linkedOrderRule),\n  };\n}`;
+  if (!safetyRoutes.includes(helperAnchor)) throw new Error('Medication resume helper anchor is missing');
+  const helper = `${helperAnchor}\n\n// ${RESUME_MARKER}\nfunction structuredInputFromOrder(row: Record<string, unknown>) {\n  return orderSchema.parse({\n    clientId: String(row.clientId), name: String(row.name), activeIngredient: row.activeIngredient ?? undefined,\n    dose: String(row.dose), doseAmount: row.doseAmount == null ? undefined : Number(row.doseAmount), doseUnit: row.doseUnit ?? undefined, route: String(row.route),\n    scheduleMode: row.scheduleMode || 'SCHEDULED', frequencyCode: row.frequencyCode || 'CUSTOM_TIMES', frequency: String(row.frequency || 'Custom times'),\n    dueTimes: jsonArray(row.dueTimes), intervalHours: row.intervalHours == null ? undefined : Number(row.intervalHours), daysOfWeek: jsonArray(row.daysOfWeek),\n    prnReason: row.prnReason ?? undefined, maxDosesPer24Hours: row.maxDosesPer24Hours == null ? undefined : Number(row.maxDosesPer24Hours), maxDailyDoseMg: row.maxDailyDoseMg == null ? undefined : Number(row.maxDailyDoseMg),\n    startDate: row.startDate, endDate: row.endDate ?? undefined, instructions: row.instructions ?? undefined, administrationDetails: jsonObject(row.administrationDetails),\n    holdParameters: jsonArray(row.holdParameters), slidingScale: jsonArray(row.slidingScale), linkedOrderGroupId: row.linkedOrderGroupId ?? undefined, linkedOrderRule: jsonObject(row.linkedOrderRule),\n    prescriberName: row.prescriberName ?? undefined, prescriberCredentials: row.prescriberCredentials ?? undefined, prescriberOrderDate: row.prescriberOrderDate ?? undefined, orderSource: row.orderSource ?? undefined,\n  });\n}`;
+  safetyRoutes = safetyRoutes.replace(helperAnchor, helper);
+}
+
+const resumeAnchor = `      const updated = await getOrder(prisma, auth, req.params.orderId);\n      await snapshotRevision(prisma, auth, updated, input.status, input.reason);`;
+const resumeReplacement = `      const updated = await getOrder(prisma, auth, req.params.orderId);\n      if (input.status === 'ACTIVE') {\n        const resumedInput = structuredInputFromOrder(updated);\n        await generateFutureAdministrations(prisma, auth, req.params.orderId, resumedInput);\n      }\n      await snapshotRevision(prisma, auth, updated, input.status, input.reason);`;
+if (safetyRoutes.includes(resumeAnchor)) safetyRoutes = safetyRoutes.replace(resumeAnchor, resumeReplacement);
+if (!safetyRoutes.includes('const resumedInput = structuredInputFromOrder(updated);')) throw new Error('Medication resume MAR schedule rebuild was not installed');
+if (!safetyRoutes.includes(READ_MARKER) || !safetyRoutes.includes(RESUME_MARKER)) throw new Error('Medication safety guards were not fully installed');
 await writeFile(safetyRoutesPath, safetyRoutes, 'utf8');
 
-// The browser performs an interactive second check, but the eMAR write endpoint must
-// independently enforce hard stops so a direct API call cannot bypass order safety.
 let emar = await readFile(emarRoutesPath, 'utf8');
 const SAFETY_IMPORT = "import { assertMedicationAdministrationSafe } from './spire-medication-administration-safety.js';";
 if (!emar.includes(SAFETY_IMPORT)) {
@@ -70,22 +74,17 @@ if (!emar.includes(SAFETY_IMPORT)) {
   if (!emar.includes(zodImport)) throw new Error('eMAR safety installer: zod import anchor is missing');
   emar = emar.replace(zodImport, `${zodImport}\n${SAFETY_IMPORT}`);
 }
-
 if (!emar.includes('bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()')) {
   const schemaAnchor = 'witnessUserId:z.string().optional().nullable()});';
   if (!emar.includes(schemaAnchor)) throw new Error('eMAR safety installer: event schema anchor is missing');
   emar = emar.replace(schemaAnchor, 'witnessUserId:z.string().optional().nullable(),bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()});');
 }
-
 if (!emar.includes('await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);')) {
   const parseAnchor = 'const b=eventSchema.parse(req.body);const med=';
   if (!emar.includes(parseAnchor)) throw new Error('eMAR safety installer: event parse anchor is missing');
   emar = emar.replace(parseAnchor, 'const b=eventSchema.parse(req.body);await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);const med=');
 }
-
-for (const marker of [SAFETY_IMPORT, 'bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()', 'await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);']) {
-  if (!emar.includes(marker)) throw new Error(`eMAR safety installer is missing ${marker}`);
-}
+for (const marker of [SAFETY_IMPORT, 'bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()', 'await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);']) if (!emar.includes(marker)) throw new Error(`eMAR safety installer is missing ${marker}`);
 await writeFile(emarRoutesPath, emar, 'utf8');
 
-console.log('SPIRE structured medication ordering installed; order authority remains nurse/admin scoped, assigned medication staff can run safety checks, held-order scheduling is protected, and eMAR writes enforce the server-side safety backstop.');
+console.log('SPIRE structured medication ordering installed; order authority remains nurse/admin scoped, assigned medication staff can run safety checks, held/resumed MAR schedules are server-managed, and eMAR writes enforce the server-side safety backstop.');
