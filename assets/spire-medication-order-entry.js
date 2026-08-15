@@ -50,3 +50,39 @@
   function install(){const found=panel();if(!found||!found.panel)return false;if(found.panel.querySelector('[data-spire-add-medication-order]'))return true;styles();const b=document.createElement('button');b.type='button';b.className='spire-add-med-order';b.dataset.spireAddMedicationOrder='true';b.textContent='+ Add Medication Order';if(!canOrder()){b.disabled=true;b.title='Authorized nurse or administrator role required';}b.addEventListener('click',open);found.title.insertAdjacentElement('afterend',b);return true;}
   if(!install()){const o=new MutationObserver(()=>{if(install())o.disconnect();});o.observe(document.documentElement,{childList:true,subtree:true});}
 })();
+
+(() => {
+  'use strict';
+  // SPIRE_MEDICATION_ORDER_V2_COMPAT_LOADER_V1
+  if (window.__SPIRE_MEDICATION_ORDER_V2_LOADER) return;
+  window.__SPIRE_MEDICATION_ORDER_V2_LOADER = true;
+  const V2_URL = '/assets/spire-medication-order-entry-v2.js?v=20260815-med-order-v2-layer-1';
+  const SAFETY_URL = '/assets/spire-mar-safety-verifier.js?v=20260815-mar-safety-v2-layer-1';
+
+  function removeLegacyUi() {
+    document.querySelectorAll('[data-spire-add-medication-order]').forEach((button) => {
+      if (!button.closest('[data-spire-med-order-actions]')) button.remove();
+    });
+    const modal = document.getElementById('spireMedicationOrderModal');
+    if (modal && !modal.querySelector('.spire-med-card')) modal.remove();
+    const style = document.getElementById('spireMedicationOrderEntryStyles');
+    if (style && !document.querySelector('[data-spire-med-order-actions]')) style.remove();
+  }
+
+  const cleanupObserver = new MutationObserver(removeLegacyUi);
+  cleanupObserver.observe(document.documentElement, { childList: true, subtree: true });
+  removeLegacyUi();
+
+  function loadOnce(id, src) {
+    if (document.getElementById(id)) return;
+    const script = document.createElement('script');
+    script.id = id;
+    script.src = src;
+    script.async = false;
+    script.addEventListener('load', removeLegacyUi, { once: true });
+    document.head.appendChild(script);
+  }
+
+  loadOnce('spireMedicationOrderV2Layer', V2_URL);
+  loadOnce('spireMarSafetyVerifierV2Layer', SAFETY_URL);
+})();
