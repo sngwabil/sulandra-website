@@ -70,8 +70,22 @@
     `;
     document.head.appendChild(style);
   }
+
+  function installSpireMainTabIcons() {
+    const pathname = location.pathname.toLowerCase().replace(/\/+$/, '');
+    if (!pathname.endsWith('/spire/master.html') && !pathname.endsWith('/spire/master')) return;
+    if (!document.getElementById('mainChartTabs') || document.getElementById('spire-main-tab-icons')) return;
+    const style = document.createElement('style');
+    style.id = 'spire-main-tab-icons';
+    style.textContent = `
+      #mainChartTabs .chart-tab[data-view="flowsheets-view"]::before{content:'▦';display:inline-block;margin-right:4px;color:#2f7f9f;font-size:14px;line-height:1;vertical-align:-1px}
+      #mainChartTabs .chart-tab[data-view="mar-view"]::before{content:'+';display:inline-grid;place-items:center;width:14px;height:14px;margin-right:4px;border-radius:50%;background:#7d4db3;color:#fff;font-family:Arial,sans-serif;font-size:11px;font-weight:800;line-height:14px;vertical-align:-2px}
+    `;
+    document.head.appendChild(style);
+  }
   installSignaturePlatformBar();
   installCompactWorkspaceHeader();
+  installSpireMainTabIcons();
 
   async function loadContext() {
     const accessToken = token();
