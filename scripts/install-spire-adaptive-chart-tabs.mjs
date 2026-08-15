@@ -40,4 +40,8 @@ for (const required of [assetUrl, 'data-view="flowsheets-view"', 'data-view="mar
   if (!finalMaster.includes(required)) throw new Error(`Final SPIRE adaptive chart tab publication is missing ${required}`);
 }
 
-console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: responsive More menu, usage-ranked visible tabs, and medication-style MAR icon.`);
+// Medication ordering V2 and the MAR safety verifier must publish after the chart's
+// other late finalizers so cache-busting and dialog context cannot be overwritten.
+await import('./install-spire-medication-safety-ui.mjs');
+
+console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: responsive More menu, usage-ranked visible tabs, and medication-style MAR icon. Medication ordering V2 and MAR safety verification were published afterward.`);
