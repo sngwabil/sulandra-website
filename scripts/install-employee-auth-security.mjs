@@ -69,14 +69,17 @@ if(!source.includes(smsLoginMarker)){
     const smsMfa = credentials.mfaChallengeId || credentials.mfaCode
       ? await verifyEmployeeSmsLoginMfa(prisma, { ...smsMfaInput, challengeId: credentials.mfaChallengeId, code: credentials.mfaCode })
       : await beginEmployeeSmsLoginMfa(prisma, smsMfaInput);
-    if (smsMfa.required && 'challengeIssued' in smsMfa && smsMfa.challengeIssued) {
+    const issuedChallengeId = 'challengeId' in smsMfa ? String(smsMfa.challengeId || '') : '';
+    const issuedMaskedPhone = 'maskedPhone' in smsMfa ? String(smsMfa.maskedPhone || '') : '';
+    const issuedExpiresIn = 'expiresIn' in smsMfa ? Number(smsMfa.expiresIn || 300) : 300;
+    if (smsMfa.required && issuedChallengeId) {
       await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: 'SMS verification challenge issued', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
       res.status(202).json({
         mfaRequired: true,
         mfaMethod: 'sms',
-        mfaChallengeId: smsMfa.challengeId,
-        maskedPhone: smsMfa.maskedPhone,
-        expiresIn: smsMfa.expiresIn,
+        mfaChallengeId: issuedChallengeId,
+        maskedPhone: issuedMaskedPhone,
+        expiresIn: issuedExpiresIn,
         message: 'A 6-digit security code was sent to your phone.',
       });
       return;
