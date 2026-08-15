@@ -47,6 +47,8 @@
           <div class="hero-meta">
             <span class="hero-badge gold" id="ownerBadge">Owner clearance</span>
             <span class="hero-badge" id="profileEmail">—</span>
+            <span class="hero-badge" id="profileBackupEmail">Backup email: —</span>
+            <span class="hero-badge" id="profilePhone">Phone: —</span>
             <span class="hero-badge" id="hirePathBadge">Internal appointment</span>
           </div>
         </div>
@@ -85,7 +87,7 @@
 
         <div class="stack">
           <section class="card">
-            <div class="card-head"><div><h2>Identity & Authority</h2><p>Enterprise identity for this authenticated account.</p></div></div>
+            <div class="card-head"><div><h2>Identity & Authority</h2><p>Enterprise identity and contact details for this authenticated account.</p></div></div>
             <div class="card-body"><div class="identity-grid" id="identityGrid"></div></div>
           </section>
 
@@ -101,7 +103,7 @@
         </div>
       </div>
 
-      <div class="footer-note">Sulandra Health · Executive profile data is retrieved from the authenticated production API and is not browser-local mock data.</div>
+      <div class="footer-note">Sulandra Health · Leadership data is retrieved from the authenticated production API; owner contact details are maintained in this executive profile.</div>
     </div>
   </main>
 </div>
@@ -112,6 +114,8 @@
   const API_BASE='https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEY='sulandra:employee:access-token';
   const SESSION_KEY='sulandra:employee:session';
+  const BACKUP_EMAIL='Sulpitius.gwabil@gmail.com';
+  const OWNER_PHONE='+1 (213) 858-7790';
   const $=(id)=>document.getElementById(id);
   const token=()=>sessionStorage.getItem(TOKEN_KEY)||localStorage.getItem(TOKEN_KEY)||'';
   const esc=(value)=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -176,7 +180,7 @@
   }
 
   function renderIdentity(profile){
-    const items=[['Full name',profile.displayName],['Email',profile.email],['Enterprise clearance',title(profile.clearance)],['Hiring path',title(profile.hiringPath)],['Internal hire',profile.internalHire?'Yes':'No'],['Organization ID',profile.organizationId]];
+    const items=[['Full name',profile.displayName],['Primary email',profile.email],['Backup email',BACKUP_EMAIL],['Phone',OWNER_PHONE],['Enterprise clearance',title(profile.clearance)],['Hiring path',title(profile.hiringPath)],['Internal hire',profile.internalHire?'Yes':'No'],['Organization ID',profile.organizationId]];
     $('identityGrid').innerHTML=items.map(([label,value])=>`<div class="identity-item"><span>${esc(label)}</span><strong>${esc(value||'—')}</strong></div>`).join('');
   }
 
@@ -191,6 +195,8 @@
 
     $('profileName').textContent=profile.displayName||'Sulpitius Ndeh Gwabil';
     $('profileEmail').textContent=profile.email||'admin@sulandrahealth.com';
+    $('profileBackupEmail').textContent='Backup email: '+BACKUP_EMAIL;
+    $('profilePhone').textContent='Phone: '+OWNER_PHONE;
     $('profilePrimaryTitle').textContent=primary?.jobTitle||appointments.find((a)=>a.appointmentKey==='ENTERPRISE_DON')?.title||'Enterprise Clinical Leadership';
     $('profileInitials').textContent=String(profile.displayName||'SG').split(/\s+/).filter(Boolean).slice(0,2).map((part)=>part[0]).join('').toUpperCase()||'SG';
     $('ownerBadge').textContent=title(profile.clearance||'ENTERPRISE_OWNER');
