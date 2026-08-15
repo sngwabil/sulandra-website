@@ -123,7 +123,50 @@ const foundationRows:StandardRow[]=[
   ['Medication / Treatment','Treatment / PRN Effectiveness','TEXT',null,'Treatment completion or PRN effectiveness observation linked to the care plan/order.',[]],
 ];
 
-const standardRows:StandardRow[]=[...dspDailyRows,...foundationRows];
+const nurseFlowsheetRows:StandardRow[]=[
+  ['Nurse Flowsheets','Skilled Visit Type','SELECT',null,'Identify the home-health or waiver nursing visit context.',['START_OF_CARE','ROUTINE_SKILLED_NURSING','RECERTIFICATION','RESUMPTION_OF_CARE','PRN_VISIT','SUPERVISORY_VISIT','CHANGE_OF_CONDITION']],
+  ['Nurse Flowsheets','Visit / Patient Status','SELECT',null,'Overall patient status for this nursing contact.',['STABLE','IMPROVING','DECLINING','ACUTE_CHANGE','TRANSFERRED_TO_HIGHER_LEVEL_OF_CARE']],
+  ['Nurse Flowsheets','General Appearance','SELECT',null,'General appearance and observed distress.',['NO_ACUTE_DISTRESS','MILD_DISTRESS','MODERATE_DISTRESS','SEVERE_DISTRESS','FATIGUED','DIAPHORETIC','OTHER']],
+  ['Nurse Flowsheets','Level of Consciousness','SELECT',null,'Current level of consciousness.',['ALERT','DROWSY','LETHARGIC','RESPONDS_TO_VOICE','RESPONDS_TO_PAIN','UNRESPONSIVE']],
+  ['Nurse Flowsheets','Orientation','SELECT',null,'Orientation and cognitive status.',['ORIENTED_X4','ORIENTED_X3','ORIENTED_X2','ORIENTED_X1','CONFUSED_BASELINE','ACUTE_CONFUSION']],
+  ['Nurse Flowsheets','Pain Score','NUMBER','0-10','Patient-reported or observed pain intensity.',[]],
+  ['Nurse Flowsheets','Pain Location / Description','TEXT',null,'Pain location, quality, pattern, aggravating/relieving factors and relevant observations.',[]],
+  ['Nurse Flowsheets','Respiratory Effort','SELECT',null,'Observed work of breathing.',['UNLABORED','MILDLY_LABORED','LABORED','ACCESSORY_MUSCLE_USE','RESPIRATORY_DISTRESS']],
+  ['Nurse Flowsheets','Lung Sounds / Respiratory Assessment','TEXT',null,'Breath sounds, cough, sputum, dyspnea and other respiratory findings as applicable.',[]],
+  ['Nurse Flowsheets','Oxygen Therapy','SELECT',null,'Current oxygen use and delivery status.',['ROOM_AIR','NASAL_CANNULA','MASK','TRACH_COLLAR','OTHER_DEVICE','NOT_APPLICABLE']],
+  ['Nurse Flowsheets','Oxygen Flow Rate','NUMBER','L/min','Ordered oxygen flow rate when oxygen is in use.',[]],
+  ['Nurse Flowsheets','Cardiac / Circulatory Assessment','TEXT',null,'Heart/circulatory findings including rhythm observations, perfusion, pulses and symptoms as applicable.',[]],
+  ['Nurse Flowsheets','Edema','SELECT',null,'Peripheral edema assessment.',['NONE','TRACE','1_PLUS','2_PLUS','3_PLUS','4_PLUS']],
+  ['Nurse Flowsheets','Capillary Refill','SELECT',null,'Peripheral perfusion screening.',['LESS_THAN_2_SECONDS','2_TO_3_SECONDS','GREATER_THAN_3_SECONDS','NOT_ASSESSED']],
+  ['Nurse Flowsheets','GI / Abdominal Assessment','TEXT',null,'Abdominal assessment, nausea/vomiting, bowel sounds, ostomy and other gastrointestinal findings.',[]],
+  ['Nurse Flowsheets','Bowel Status','SELECT',null,'Bowel pattern compared with baseline.',['BASELINE','CONSTIPATION','DIARRHEA','INCONTINENCE','NO_BM_CONCERN','OSTOMY','OTHER']],
+  ['Nurse Flowsheets','GU / Urinary Assessment','TEXT',null,'Urinary pattern, continence, dysuria, urine characteristics and other genitourinary findings.',[]],
+  ['Nurse Flowsheets','Skin Integrity','SELECT',null,'Overall skin integrity assessment.',['INTACT','AT_RISK','REDNESS','OPEN_AREA','WOUND_PRESENT','PRESSURE_INJURY','OTHER']],
+  ['Nurse Flowsheets','Wound / Incision Observation','TEXT',null,'Brief wound or incision observation; use the dedicated wound-care module for measurements, staging and treatment details.',[]],
+  ['Nurse Flowsheets','Nutrition / Appetite','SELECT',null,'Nutrition and appetite status compared with baseline.',['GOOD','FAIR','POOR','NPO','ENTERAL_FEEDING','CHANGE_FROM_BASELINE']],
+  ['Nurse Flowsheets','Hydration Status','SELECT',null,'Hydration assessment.',['ADEQUATE','AT_RISK','DEHYDRATION_CONCERN','FLUID_RESTRICTION','OTHER']],
+  ['Nurse Flowsheets','Blood Glucose','NUMBER','mg/dL','Point-of-care or patient-reported blood glucose when ordered or clinically indicated.',[]],
+  ['Nurse Flowsheets','Diabetes / Insulin Monitoring','TEXT',null,'Diabetes management observations, insulin teaching, symptoms and follow-up needs.',[]],
+  ['Nurse Flowsheets','Medication Reconciliation','SELECT',null,'Medication reconciliation status for the visit.',['COMPLETED_NO_DISCREPANCY','COMPLETED_DISCREPANCY_FOUND','PARTIAL','NOT_COMPLETED','NOT_APPLICABLE']],
+  ['Nurse Flowsheets','Medication Changes / Concerns','TEXT',null,'New, changed, discontinued or concerning medications and actions taken.',[]],
+  ['Nurse Flowsheets','Medication Teaching / Adherence','TEXT',null,'Medication education, adherence assessment, patient/caregiver understanding and barriers.',[]],
+  ['Nurse Flowsheets','Foley / Urinary Catheter Status','TEXT',null,'Catheter type, patency, drainage, site observation and nursing care when applicable.',[]],
+  ['Nurse Flowsheets','Feeding Tube / Enteral Status','TEXT',null,'Tube site, patency, feeding tolerance, flushes and relevant nursing observations when applicable.',[]],
+  ['Nurse Flowsheets','IV / PICC / Infusion Status','TEXT',null,'Vascular access site, patency, infusion status, dressing and complications when applicable.',[]],
+  ['Nurse Flowsheets','Mobility / Fall Risk','SELECT',null,'Current mobility and fall-risk status.',['INDEPENDENT_LOW_RISK','ASSISTIVE_DEVICE','SUPERVISION_REQUIRED','ONE_PERSON_ASSIST','TWO_PERSON_ASSIST','HIGH_FALL_RISK','BEDBOUND']],
+  ['Nurse Flowsheets','Safety / Home Environment','TEXT',null,'Clinically relevant home-safety, equipment, infection-control or caregiver concerns and interventions.',[]],
+  ['Nurse Flowsheets','Skilled Nursing Intervention','TEXT',null,'Skilled assessment, treatment, procedure, monitoring or intervention performed during the visit.',[]],
+  ['Nurse Flowsheets','Patient / Caregiver Education','TEXT',null,'Teaching provided, method used, teach-back/return demonstration and educational needs.',[]],
+  ['Nurse Flowsheets','Response to Intervention','TEXT',null,'Patient response, tolerance, effectiveness and reassessment following nursing intervention.',[]],
+  ['Nurse Flowsheets','Provider / Physician Notification','TEXT',null,'Provider notification, reason, time, response and follow-up instructions when applicable.',[]],
+  ['Nurse Flowsheets','New / Changed Orders','TEXT',null,'New or changed orders received or identified during the visit and required follow-up.',[]],
+  ['Nurse Flowsheets','Change of Condition / Escalation','SELECT',null,'Escalation status for clinically meaningful changes.',['NO_CHANGE','MONITOR_AND_FOLLOW_UP','PROVIDER_NOTIFIED','URGENT_VISIT_RECOMMENDED','EMS_911_ACTIVATED','ED_HOSPITAL_TRANSFER']],
+  ['Nurse Flowsheets','Care Plan / Goal Progress','TEXT',null,'Progress toward active nursing goals, barriers and care-plan updates needed.',[]],
+  ['Nurse Flowsheets','Next Visit Focus','TEXT',null,'Priority assessment, treatment, teaching or follow-up planned for the next nursing visit.',[]],
+  ['Nurse Flowsheets','RN / LPN Narrative','TEXT',null,'Concise skilled nursing narrative supporting the clinical picture, interventions, response and coordination of care.',[]],
+];
+
+const standardRows:StandardRow[]=[...dspDailyRows,...foundationRows,...nurseFlowsheetRows];
 const rowKey=(group:string,name:string)=>`${group}\u0000${name}`;
 
 async function ensureRows(prisma:PrismaClient,a:AuthContext){
@@ -259,7 +302,7 @@ export const registerSpireFlowsheetWorkspaceRoutes=(app:express.Express,prisma:P
       prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "id","title","frequency","desiredOutcome","progressPercent" FROM "SpireCarePlanGoal" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "patientId"=$3 AND "status"='ACTIVE' ORDER BY "createdAt","title"`,a.organizationId,entity,pid),
     ]);
     if(!patient[0])throw Object.assign(new Error('Patient was not found'),{status:404});
-    res.json({data:{patient:patient[0],rows,entries,goals,templateVersion:'20260813-dsp-daily-grid-3',serverRowCount:rows.length,dspDailyRowCount:configuredRows,viewer:{userId:a.userId,role:a.role,canWrite:writers.has(a.role),admin:isAdmin(a)},from,to}});
+    res.json({data:{patient:patient[0],rows,entries,goals,templateVersion:'20260815-nurse-flowsheet-grid-1',serverRowCount:rows.length,dspDailyRowCount:configuredRows,viewer:{userId:a.userId,role:a.role,canWrite:writers.has(a.role),admin:isAdmin(a)},from,to}});
   }catch(e){next(e);}});
 
   app.post('/api/spire/patients/:patientId/flowsheet-workspace/entries',async(req,res,next)=>{try{
