@@ -52,7 +52,8 @@ for (const source of [loginAsset, loginRoot]) {
 expect(admin.includes('role !== "ADMINISTRATOR"') && admin.includes('role === "DOO" ? "doo.html"'), 'admin.html controller is not owner-only');
 expect(adminHtml.includes('/assets/admin-role-workspaces-link.js?v=20260815-role-workspaces-1'), 'Admin portal does not publish Role Workspaces navigation');
 expect(adminLink.includes('adminRoleWorkspacesLink') && adminLink.includes('/role-workspaces.html'), 'Admin Role Workspaces link runtime is incomplete');
-expect(installer.includes('Owner-only Admin main-page guard was not installed') && installer.includes('Manage My Home Team') === false, 'Role workspace installer guard is missing or incorrectly duplicates workspace content');
+expect(installer.includes('Owner-only Admin main-page guard was not installed'), 'Role workspace installer does not enforce the owner-only Admin guard');
+expect(installer.includes("await patch('tests/production-role-uat.spec.mjs'"), 'Role workspace installer does not keep production role UAT aligned with the dedicated role pages');
 
 for (const relative of ['assets/role-workspace.js', 'assets/admin-role-workspaces-link.js', 'scripts/install-role-workspaces.mjs']) {
   try {
