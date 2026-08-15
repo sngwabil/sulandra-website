@@ -122,10 +122,13 @@ await import('./fix-platform-integration-spire-contract.mjs');
 // /spire.html remains the authenticated Client Station entry, while the launch buttons can
 // open /spire/master.html directly because the master itself still enforces session auth.
 await import('./publish-spire-standalone-launch.mjs');
+// Add the role/template chooser only after the canonical master and standalone launch
+// publication are finished, so later publication passes cannot remove the selector.
+await import('./install-spire-flowsheet-role-selector.mjs');
 await import('./verify-employee-work-center.mjs');
 
 const finalOwnerProfile=await readFile(path.join(dist,'admin-profile.html'),'utf8');
 if(!finalOwnerProfile.includes("api('/api/owner/profile')")) throw new Error('Final static owner profile lost its live API wiring');
 await stat(path.join(dist,'admin-profile','index.html'));
 
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, the owner profile is explicitly published at /admin-profile.html and /admin-profile/, and authorized SPIRE launchers publish the standalone live master chart directly.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, the owner profile is explicitly published at /admin-profile.html and /admin-profile/, the SPIRE role flowsheet selector is published after the standalone chart, and authorized SPIRE launchers publish the standalone live master chart directly.');
