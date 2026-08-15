@@ -43,4 +43,6 @@ for (const relative of files) {
   await writeFile(target, source, 'utf8');
 }
 
-console.log('Admin session bounce removed and Administrator/CEO/DOO share the canonical Admin landing contract.');
+await import('./install-admin-overflow-and-hiring-scope.mjs');
+
+console.log('Admin session bounce removed, Administrator/CEO/DOO share the canonical Admin landing contract, and responsive company-scoped hiring UI is installed.');
