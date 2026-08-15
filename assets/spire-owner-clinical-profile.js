@@ -1,11 +1,11 @@
 (() => {
   'use strict';
 
-  // SPIRE_OWNER_CLINICAL_PROFILE_SYNC_V1
+  // SPIRE_OWNER_CLINICAL_PROFILE_SYNC_V2
   // Keeps professional/clinical identity separate from the authenticated RBAC role.
   // The login may remain ADMINISTRATOR for authorization while visible SPIRE identity
   // comes from the auditable internal owner/leadership appointment record.
-  const MARKER = 'SPIRE_OWNER_CLINICAL_PROFILE_SYNC_V1';
+  const MARKER = 'SPIRE_OWNER_CLINICAL_PROFILE_SYNC_V2';
   if (window[MARKER]) return;
   window[MARKER] = true;
 
@@ -140,6 +140,8 @@
     applying = true;
     try {
       const identity = canonicalIdentity;
+
+      // Master chart identity.
       const topName = document.getElementById('topUserNameDisplay');
       setText(topName, identity.displayNameWithCredentials);
       const topAvatar = document.getElementById('topUserAvatarDisplay');
@@ -151,6 +153,19 @@
         const aria = `Open profile and accessibility settings for ${identity.displayNameWithCredentials}`;
         if (trigger.getAttribute('aria-label') !== aria) trigger.setAttribute('aria-label', aria);
       }
+
+      // Client Station identity. This intentionally replaces only the visible login
+      // label/avatar; authentication, RBAC and API attribution stay bound to the token.
+      const stationUser = document.getElementById('stationUser');
+      setText(stationUser, identity.displayNameWithCredentials);
+      if (stationUser) {
+        stationUser.title = `${identity.primaryTitle} · signed in with enterprise owner clearance`;
+        stationUser.setAttribute('aria-label', `${identity.displayNameWithCredentials}, ${identity.primaryTitle}`);
+      }
+      const stationAvatar = document.getElementById('stationAvatar');
+      if (stationAvatar && !stationAvatar.querySelector('img')) setText(stationAvatar, initials(identity.displayName));
+      const stationIdentity = stationUser?.closest('.identity');
+      if (stationIdentity) stationIdentity.title = `${identity.displayNameWithCredentials} — ${identity.primaryTitle}`;
 
       const modal = document.getElementById('accessibilityModal');
       if (modal) {
@@ -208,9 +223,9 @@
   function watchForProfileChanges() {
     if (observer) return;
     observer = new MutationObserver(scheduleApply);
-    // Child replacement is what matters here: SPIRE rebuilds the profile modal and
-    // note-author workspaces dynamically. Avoid observing style/class writes so the
-    // canonical sync cannot create an observer feedback loop.
+    // Child replacement is what matters here: SPIRE rebuilds the profile modal,
+    // Client Station identity, and note-author workspaces dynamically. Avoid
+    // observing style/class writes so the sync cannot create a feedback loop.
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
@@ -218,6 +233,7 @@
     canonicalIdentity = await loadCanonicalIdentity();
     if (!canonicalIdentity) return;
     window.SPIRE_CANONICAL_CLINICAL_IDENTITY = Object.freeze({ ...canonicalIdentity });
+    window.dispatchEvent(new CustomEvent('spire:canonical-identity-ready', { detail: window.SPIRE_CANONICAL_CLINICAL_IDENTITY }));
     wrapAccessibilityLauncher();
     applyCanonicalIdentity();
     watchForProfileChanges();
