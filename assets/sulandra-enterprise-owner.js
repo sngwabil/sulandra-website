@@ -2,6 +2,7 @@
   'use strict';
   const OWNER_EMAIL = 'admin@sulandrahealth.com';
   const OWNER_NAME = 'Sulpitius Ndeh Gwabil';
+  const OWNER_DISPLAY_NAME = 'Sulpitius Gwabil';
   const PROFILE_PATH = '/admin-profile.html';
   const sessionKeys = ['sulandra:employee:session','sulandraSession','employeeSession','session','authSession'];
   const stores = [sessionStorage, localStorage];
@@ -29,42 +30,60 @@
     });
   };
 
-  const installHeaderProfileLink = () => {
-    const tools = document.querySelector('.header-tools');
-    if (!tools) return;
-    let link = document.getElementById('sulandraOwnerProfileLink');
-    if (!link) {
-      link = document.createElement('a');
-      link.id = 'sulandraOwnerProfileLink';
-      link.href = PROFILE_PATH;
-      link.className = 'btn-cta secondary';
-      link.textContent = 'My Profile';
-      link.title = 'Open Owner & Director of Nursing profile';
-      link.setAttribute('aria-label', 'Open My Executive Profile');
-      const identity = document.getElementById('adminEmailPill');
-      if (identity?.nextSibling) tools.insertBefore(link, identity.nextSibling);
-      else if (identity) tools.appendChild(link);
-      else tools.prepend(link);
-    }
-    const identity = document.getElementById('adminEmailPill');
-    if (identity) {
-      identity.textContent = OWNER_NAME;
-      identity.title = 'Enterprise Owner — open My Profile';
-      identity.style.cursor = 'pointer';
-      identity.setAttribute('role', 'link');
-      identity.setAttribute('tabindex', '0');
-      identity.setAttribute('aria-label', `${OWNER_NAME}, Enterprise Owner. Open My Profile`);
-      if (identity.dataset.ownerProfileBound !== 'true') {
-        identity.dataset.ownerProfileBound = 'true';
-        const openProfile = () => window.location.assign(PROFILE_PATH);
-        identity.addEventListener('click', openProfile);
-        identity.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            openProfile();
-          }
-        });
+  const installProfileChipStyles = () => {
+    if (document.getElementById('sulandraOwnerProfileChipStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'sulandraOwnerProfileChipStyles';
+    style.textContent = `
+      #adminEmailPill.sulandra-owner-profile-chip{
+        display:inline-flex!important;align-items:center!important;gap:8px!important;
+        min-width:0!important;max-width:176px!important;height:42px!important;
+        padding:4px 10px 4px 5px!important;border:1px solid #d8e4ee!important;
+        border-radius:999px!important;background:#fff!important;color:#17324d!important;
+        box-shadow:0 2px 8px rgba(15,57,88,.06)!important;cursor:pointer!important;
+        transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease!important;
       }
+      #adminEmailPill.sulandra-owner-profile-chip:hover{
+        border-color:#8fb9d5!important;box-shadow:0 5px 14px rgba(15,76,116,.12)!important;
+        transform:translateY(-1px)!important;
+      }
+      #adminEmailPill .owner-profile-avatar{
+        flex:0 0 30px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+        background:linear-gradient(145deg,#0a5f96,#118fc2);color:#fff;font-size:10px;font-weight:950;
+        letter-spacing:.03em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);
+      }
+      #adminEmailPill .owner-profile-copy{min-width:0;display:block;line-height:1.05;text-align:left}
+      #adminEmailPill .owner-profile-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:900;color:#17324d}
+      #adminEmailPill .owner-profile-role{display:block;margin-top:3px;font-size:9px;font-weight:850;color:#6c8294;letter-spacing:.02em;white-space:nowrap}
+      #adminEmailPill .owner-profile-chevron{flex:0 0 auto;color:#668097;font-size:11px;margin-left:1px}
+      @media(max-width:1120px){#adminEmailPill.sulandra-owner-profile-chip{max-width:145px!important}#adminEmailPill .owner-profile-role{display:none}}
+    `;
+    document.head.appendChild(style);
+  };
+
+  const configureHeaderProfileChip = () => {
+    // Remove the old standalone My Profile button that caused the Admin tools to wrap.
+    document.getElementById('sulandraOwnerProfileLink')?.remove();
+    installProfileChipStyles();
+
+    const identity = document.getElementById('adminEmailPill');
+    if (!identity) return;
+    identity.classList.add('sulandra-owner-profile-chip');
+    identity.innerHTML = `<span class="owner-profile-avatar" aria-hidden="true">SG</span><span class="owner-profile-copy"><span class="owner-profile-name">${OWNER_DISPLAY_NAME}</span><span class="owner-profile-role">Owner • DON</span></span><span class="owner-profile-chevron" aria-hidden="true">›</span>`;
+    identity.title = `${OWNER_NAME} — Enterprise Owner & Director of Nursing`;
+    identity.setAttribute('role', 'link');
+    identity.setAttribute('tabindex', '0');
+    identity.setAttribute('aria-label', `${OWNER_NAME}, Enterprise Owner and Director of Nursing. Open My Profile`);
+    if (identity.dataset.ownerProfileBound !== 'true') {
+      identity.dataset.ownerProfileBound = 'true';
+      const openProfile = () => window.location.assign(PROFILE_PATH);
+      identity.addEventListener('click', openProfile);
+      identity.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openProfile();
+        }
+      });
     }
   };
 
@@ -91,7 +110,7 @@
     });
   };
 
-  const apply = () => { applyIdentity(); installHeaderProfileLink(); installProfileStatus(); };
+  const apply = () => { applyIdentity(); configureHeaderProfileChip(); installProfileStatus(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, { once:true }); else apply();
   let attempts = 0;
   const timer = setInterval(() => { apply(); if (++attempts >= 20) clearInterval(timer); }, 500);
