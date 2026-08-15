@@ -2,11 +2,14 @@
   'use strict';
 
   const MARKER = 'SPIRE_ADAPTIVE_CHART_TABS_V1';
+  const PINNED_MARKER = 'SPIRE_PINNED_CORE_TABS_V1';
   const BAR_ID = 'mainChartTabs';
   const MORE_ID = 'spireChartMoreTab';
   const MENU_ID = 'spireChartMoreMenu';
   const STORAGE_PREFIX = 'spire:chart-tab-usage:v1:';
   const PATH = location.pathname.toLowerCase().replace(/\/+$/, '');
+  const PINNED_VIEWS = ['summary-view', 'flowsheets-view', 'mar-view', 'notes-view'];
+  const ROW_CONTROLS_URL = '/assets/spire-medication-row-controls.js?v=20260815-med-row-controls-1';
 
   if (!PATH.endsWith('/spire/master.html') && !PATH.endsWith('/spire/master')) return;
   if (window.__SPIRE_ADAPTIVE_CHART_TABS === MARKER) return;
@@ -34,10 +37,23 @@
     return String(tab?.dataset?.view || '').trim();
   }
 
+  function isPinned(tab) {
+    return PINNED_VIEWS.includes(tabView(tab));
+  }
+
   function recordUsage(view) {
     if (!view) return;
     usage[view] = Math.min(99999, Number(usage[view] || 0) + 1);
     saveUsage();
+  }
+
+  function loadMedicationRowControls() {
+    if (document.getElementById('spireMedicationRowControlsRuntime')) return;
+    const script = document.createElement('script');
+    script.id = 'spireMedicationRowControlsRuntime';
+    script.src = ROW_CONTROLS_URL;
+    script.async = false;
+    document.head.appendChild(script);
   }
 
   function installStyles() {
@@ -76,6 +92,7 @@
     const bar = document.getElementById(BAR_ID);
     if (!bar) return false;
     installStyles();
+    loadMedicationRowControls();
 
     const originalTabs = () => Array.from(bar.querySelectorAll(':scope > .chart-tab')).filter((tab) => tab.id !== MORE_ID);
     originalTabs().forEach((tab, index) => {
@@ -143,11 +160,17 @@
 
     function rankedTabs() {
       const tabs = originalTabs();
-      return tabs.slice().sort((a, b) => {
+      // SPIRE_PINNED_CORE_TABS_V1: Summary, Flowsheets, MAR, and Notes always occupy
+      // positions 1-4. Usage ranking applies only to the remaining activities.
+      const byView = new Map(tabs.map((tab) => [tabView(tab), tab]));
+      const pinned = PINNED_VIEWS.map((view) => byView.get(view)).filter(Boolean);
+      const pinnedSet = new Set(pinned);
+      const adaptive = tabs.filter((tab) => !pinnedSet.has(tab)).sort((a, b) => {
         const diff = score(b, tabs.length) - score(a, tabs.length);
         if (diff) return diff;
         return Number(a.dataset.spireBaseIndex || 0) - Number(b.dataset.spireBaseIndex || 0);
       });
+      return [...pinned, ...adaptive];
     }
 
     function rebuildMenu(hiddenTabs) {
@@ -220,9 +243,9 @@
 
         const active = ranked.find((tab) => tab.classList.contains('active'));
         if (active && !visible.includes(active)) {
-          const replaceIndex = visible.length - 1;
+          // Never displace Summary/Flowsheets/MAR/Notes just to surface a less-used active tab.
+          const replaceIndex = [...visible].map((tab, index) => ({ tab, index })).reverse().find(({ tab }) => !isPinned(tab))?.index ?? -1;
           if (replaceIndex >= 0) visible.splice(replaceIndex, 1, active);
-          else visible.push(active);
         }
 
         const visibleSet = new Set(visible);
@@ -254,6 +277,7 @@
       if (mutations.some((mutation) => mutation.type === 'attributes' && mutation.attributeName === 'class')) scheduleLayout();
     }).observe(bar, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
+    console.debug(`[${PINNED_MARKER}] Summary → Flowsheets → MAR → Notes pinned; remaining tabs usage-ranked.`);
     scheduleLayout();
     window.setTimeout(scheduleLayout, 250);
     window.setTimeout(scheduleLayout, 900);
