@@ -1,13 +1,15 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const masterPath = path.join(dist, 'spire', 'master.html');
+const ownerProfileSyncPath = path.join(dist, 'assets', 'spire-owner-clinical-profile.js');
+const ownerProfileSyncUrl = '/assets/spire-owner-clinical-profile.js?v=20260814-owner-clinical-profile-1';
 const contract = 'SPIRE_STANDALONE_PUBLIC_LAUNCH_V1';
 
-const master = await readFile(masterPath, 'utf8');
+let master = await readFile(masterPath, 'utf8');
 for (const marker of [
   'S.P.I.R.E. STANDALONE MASTER',
   'function requireSession()',
@@ -16,6 +18,27 @@ for (const marker of [
 ]) {
   if (!master.includes(marker)) throw new Error(`Standalone SPIRE launch aborted: master chart missing ${marker}`);
 }
+
+await stat(ownerProfileSyncPath);
+const ownerProfileSync = await readFile(ownerProfileSyncPath, 'utf8');
+for (const marker of [
+  'SPIRE_OWNER_CLINICAL_PROFILE_SYNC_V1',
+  '/api/owner/profile',
+  'professionalTitle',
+  'securityRole',
+]) {
+  if (!ownerProfileSync.includes(marker)) throw new Error(`SPIRE owner clinical profile runtime missing ${marker}`);
+}
+try { new Function(ownerProfileSync); }
+catch (error) { throw new Error(`SPIRE owner clinical profile runtime syntax error: ${error instanceof Error ? error.message : String(error)}`); }
+
+master = master
+  .replace(/\s*<script src="\/assets\/spire-owner-clinical-profile\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
+  .replace('</body>', `  <script src="${ownerProfileSyncUrl}"></script>\n</body>`);
+if ((master.match(/src="\/assets\/spire-owner-clinical-profile\.js(?:\?[^"']*)?"/g) || []).length !== 1) {
+  throw new Error('SPIRE master must publish the owner clinical profile sync exactly once');
+}
+await writeFile(masterPath, master, 'utf8');
 
 async function patch(relative, transform) {
   const filePath = path.join(dist, relative);
@@ -63,4 +86,7 @@ for (const [relative, marker] of [
   if (!published.includes(marker)) throw new Error(`Standalone SPIRE launch marker missing from ${relative}`);
 }
 
-console.log('Standalone live SPIRE publication unlocked: authorized launchers now open /spire/master.html directly; the master page still enforces Sulandra session authentication and clinical scope.');
+const publishedMaster = await readFile(masterPath, 'utf8');
+if (!publishedMaster.includes(ownerProfileSyncUrl)) throw new Error('Standalone SPIRE master is missing canonical owner clinical profile sync');
+
+console.log('Standalone live SPIRE publication unlocked: authorized launchers open /spire/master.html directly; the master enforces Sulandra session authentication and clinical scope, and owner professional identity is synced separately from RBAC permissions.');
