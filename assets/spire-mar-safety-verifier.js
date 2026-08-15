@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  // SPIRE_MAR_SAFETY_VERIFIER_V1
+  // SPIRE_MAR_SAFETY_VERIFIER_V2
   const API = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token','sulandra_token','token','accessToken'];
   const clean = value => String(value ?? '').trim();
@@ -12,13 +12,15 @@
     return clean(hash.get('patient') || query.get('patientId') || sessionStorage.getItem('spire:patientId'));
   };
   const orderCache = new Map();
+  const actionContext = { medicationOrderId: '', scheduledFor: '' };
+  const priorFetch = window.fetch.bind(window);
 
   async function api(path, options={}) {
     const headers = new Headers(options.headers || {});
     headers.set('Accept','application/json');
     if(options.body != null && !headers.has('Content-Type')) headers.set('Content-Type','application/json');
     if(token()) headers.set('Authorization',`Bearer ${token()}`);
-    const response = await fetch(API + path,{...options,headers,cache:'no-store'});
+    const response = await window.fetch(API + path,{...options,headers,cache:'no-store'});
     const payload = await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(payload.error || payload.message || `Request failed (${response.status})`);
     return payload.data ?? payload;
@@ -31,6 +33,35 @@
       @media(max-width:700px){.spire-mar-safety-grid{grid-template-columns:1fr}}
     `;document.head.appendChild(style);
   }
+
+  function captureMedicationContext(target) {
+    const button = target instanceof Element ? target.closest('[data-mar-med]') : null;
+    if(!button) return;
+    actionContext.medicationOrderId = clean(button.dataset.marMed);
+    actionContext.scheduledFor = clean(button.dataset.marScheduled);
+  }
+  document.addEventListener('pointerdown', event => captureMedicationContext(event.target), true);
+  document.addEventListener('click', event => captureMedicationContext(event.target), true);
+
+  // Keep the established MAR runtime untouched. Augment only the outgoing eMAR POST
+  // with the glucose entered in this verifier so the server can independently enforce
+  // sliding-scale safety at the write boundary.
+  window.fetch = async (input, init={}) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : String(input?.url || '');
+    const method = clean(init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    if(method === 'POST' && /\/api\/spire\/patients\/[^/]+\/emar\/events(?:\?|$)/.test(url) && init.body) {
+      try {
+        const dialog=document.querySelector('[data-spire-mar-dialog]');
+        const glucose=clean(dialog?.querySelector('[data-spire-bg]')?.value);
+        const body=typeof init.body==='string'?JSON.parse(init.body):null;
+        if(body && typeof body==='object') {
+          if(glucose!=='') body.bloodGlucose=Number(glucose);
+          init={...init,body:JSON.stringify(body)};
+        }
+      } catch {}
+    }
+    return priorFetch(input,init);
+  };
 
   async function order(orderId) {
     if(orderCache.has(orderId)) return orderCache.get(orderId);
@@ -53,16 +84,14 @@
     dialog.querySelectorAll('[data-mar-status]').forEach(button=>button.classList.toggle('selected',button.dataset.marStatus==='PRN_GIVEN'));
     const wrap=dialog.querySelector('[data-mar-reason-wrap]');if(wrap)wrap.hidden=false;
     const label=dialog.querySelector('[data-mar-indication]');if(label)label.textContent='PRN indication / reason';
-    const reason=dialog.querySelector('[data-mar-reason]');if(reason && !reason.placeholder)reason.placeholder=clean(medOrder.prnReason)||'Document the indication for this PRN dose';
+    const reason=dialog.querySelector('[data-mar-reason]');if(reason)reason.placeholder=clean(medOrder.prnReason)||'Document the indication for this PRN dose';
     const save=dialog.querySelector('[data-mar-save]');if(save)save.textContent='Check & Record PRN Dose';
   }
 
-  function scaleMatch(scale,bg) {
-    return (Array.isArray(scale)?scale:[]).find(row=>Number.isFinite(Number(row.min))&&Number.isFinite(Number(row.max))&&bg>=Number(row.min)&&bg<=Number(row.max));
-  }
+  function scaleMatch(scale,bg) { return (Array.isArray(scale)?scale:[]).find(row=>Number.isFinite(Number(row.min))&&Number.isFinite(Number(row.max))&&bg>=Number(row.min)&&bg<=Number(row.max)); }
 
   function renderOrderSafety(dialog,medOrder) {
-    const box=ensureBox(dialog);const scale=Array.isArray(medOrder.slidingScale)?medOrder.slidingScale:[];
+    const box=ensureBox(dialog), scale=Array.isArray(medOrder.slidingScale)?medOrder.slidingScale:[];
     box.innerHTML=`<div class="spire-mar-safety-title">SPIRE medication safety verification</div>
       ${medOrder.prnReason?`<div class="spire-mar-safety-rule"><b>PRN indication:</b> ${esc(medOrder.prnReason)}</div>`:''}
       ${medOrder.intervalHours?`<div class="spire-mar-safety-rule"><b>Minimum interval:</b> ${esc(medOrder.intervalHours)} hours</div>`:''}
@@ -72,63 +101,51 @@
       ${scale.length?`<div class="spire-mar-safety-grid"><label>Current blood glucose<input type="number" min="0" max="2000" step="1" data-spire-bg placeholder="Enter glucose"></label><div class="spire-mar-safety-dose" data-spire-scale-dose>Enter glucose to calculate the ordered scale dose.</div></div>`:''}
       <div class="spire-mar-safety-issues" data-spire-safety-issues></div>`;
     setPrnDialog(dialog,medOrder);
-    if(scale.length){
-      const bg=box.querySelector('[data-spire-bg]'),dose=box.querySelector('[data-spire-scale-dose]');
-      bg.addEventListener('input',()=>{
-        const value=Number(bg.value);if(!Number.isFinite(value)){dose.textContent='Enter glucose to calculate the ordered scale dose.';return;}
-        const row=scaleMatch(scale,value);if(!row){dose.textContent='No ordered range covers this glucose value — follow notification instructions.';return;}
-        dose.textContent=`Ordered scale dose: ${row.dose} ${row.doseUnit||'units'}${row.instruction?` — ${row.instruction}`:''}`;
-        const doseInput=dialog.querySelector('[data-mar-dose]');if(doseInput)doseInput.value=`${row.dose} ${row.doseUnit||'units'}`;
-      });
-    }
+    if(scale.length){const bg=box.querySelector('[data-spire-bg]'),dose=box.querySelector('[data-spire-scale-dose]');bg.addEventListener('input',()=>{const value=Number(bg.value);if(!Number.isFinite(value)){dose.textContent='Enter glucose to calculate the ordered scale dose.';return;}const row=scaleMatch(scale,value);if(!row){dose.textContent='No ordered range covers this glucose value — follow notification instructions.';return;}dose.textContent=`Ordered scale dose: ${row.dose} ${row.doseUnit||'units'}${row.instruction?` — ${row.instruction}`:''}`;const doseInput=dialog.querySelector('[data-mar-dose]');if(doseInput)doseInput.value=`${row.dose} ${row.doseUnit||'units'}`;});}
   }
 
   async function enhance(dialog) {
     if(dialog.dataset.spireSafetyEnhanced==='1') return;
-    const orderId=clean(dialog.dataset.medicationOrderId);if(!orderId)return;
+    const orderId=clean(dialog.dataset.medicationOrderId || actionContext.medicationOrderId);if(!orderId)return;
+    dialog.dataset.medicationOrderId=orderId;
+    dialog.dataset.scheduledFor=clean(dialog.dataset.scheduledFor || actionContext.scheduledFor);
     dialog.dataset.spireSafetyEnhanced='1';styles();const box=ensureBox(dialog);box.innerHTML='<div class="spire-mar-safety-title">SPIRE medication safety verification</div><div class="spire-mar-safety-checking">Loading the active medication order…</div>';
     try{renderOrderSafety(dialog,await order(orderId));}catch(error){box.innerHTML=`<div class="spire-mar-safety-title">SPIRE medication safety verification</div><div class="spire-mar-safety-issue block">Unable to load the active order for safety verification: ${esc(error.message)}</div>`;}
   }
 
   function renderIssues(dialog,result) {
-    const host=ensureBox(dialog).querySelector('[data-spire-safety-issues]')||ensureBox(dialog);const issues=Array.isArray(result.issues)?result.issues:[];
-    const markup=issues.map(issue=>`<div class="spire-mar-safety-issue ${issue.severity==='BLOCK'?'block':'warning'}">${esc(issue.message)}</div>`).join('');
-    host.innerHTML=markup || '<div class="spire-mar-safety-rule"><b>Second check passed:</b> no order-defined safety conflicts detected.</div>';
+    const host=ensureBox(dialog).querySelector('[data-spire-safety-issues]')||ensureBox(dialog),issues=Array.isArray(result.issues)?result.issues:[];
+    host.innerHTML=issues.map(issue=>`<div class="spire-mar-safety-issue ${issue.severity==='BLOCK'?'block':'warning'}">${esc(issue.message)}</div>`).join('') || '<div class="spire-mar-safety-rule"><b>Second check passed:</b> no order-defined safety conflicts detected.</div>';
   }
 
-  async function preflight(button,dialog) {
+  async function preflight(dialog) {
     const orderId=clean(dialog.dataset.medicationOrderId);if(!orderId)throw new Error('Medication order identity is missing from this MAR action.');
-    const status=clean(dialog.dataset.status||'GIVEN');const giving=['GIVEN','PRN_GIVEN'].includes(status);
-    if(!giving)return {safeToProceed:true,requiresAcknowledgement:false,issues:[]};
+    const status=clean(dialog.dataset.status||'GIVEN');if(!['GIVEN','PRN_GIVEN'].includes(status))return {safeToProceed:true,requiresAcknowledgement:false,issues:[]};
     const payload={clientId:patientId(),medicationOrderId:orderId,scheduledFor:clean(dialog.dataset.scheduledFor)||undefined,status,administeredDose:clean(dialog.querySelector('[data-mar-dose]')?.value)||undefined,administeredRoute:clean(dialog.querySelector('[data-mar-route]')?.value)||undefined,prnIndication:clean(dialog.querySelector('[data-mar-reason]')?.value)||undefined};
     const bg=dialog.querySelector('[data-spire-bg]');if(bg&&clean(bg.value)!=='')payload.bloodGlucose=Number(bg.value);
     return api('/api/spire/medication-safety/check',{method:'POST',body:JSON.stringify(payload)});
   }
 
-  function allowOriginalSave(button) {
-    button.dataset.spireSafetyApproved='1';button.disabled=false;button.click();
-  }
+  function allowOriginalSave(button) { button.dataset.spireSafetyApproved='1';button.disabled=false;button.click(); }
 
   document.addEventListener('click',async event=>{
     const button=event.target instanceof Element?event.target.closest('[data-mar-save]'):null;if(!button)return;
     const dialog=button.closest('[data-spire-mar-dialog]');if(!dialog||!clean(dialog.dataset.medicationOrderId))return;
     if(button.dataset.spireSafetyApproved==='1'){delete button.dataset.spireSafetyApproved;return;}
     const status=clean(dialog.dataset.status||'GIVEN');if(!['GIVEN','PRN_GIVEN'].includes(status))return;
-    event.preventDefault();event.stopImmediatePropagation();
-    const oldText=button.textContent;button.disabled=true;button.textContent='Safety check…';
-    try{
-      const result=await preflight(button,dialog);renderIssues(dialog,result);
-      const blocks=(result.issues||[]).some(issue=>issue.severity==='BLOCK');
-      if(blocks){button.disabled=false;button.textContent=oldText;return;}
-      if(result.requiresAcknowledgement){
-        const box=ensureBox(dialog);let review=box.querySelector('[data-spire-safety-review]');if(!review){review=document.createElement('div');review.className='spire-mar-safety-review';review.dataset.spireSafetyReview='1';review.innerHTML='<label><input type="checkbox" data-spire-safety-ack> I reviewed the medication safety warning and confirmed this administration matches the active order.</label><button type="button" data-spire-safety-continue disabled>Continue administration</button>';box.appendChild(review);const ack=review.querySelector('[data-spire-safety-ack]'),go=review.querySelector('[data-spire-safety-continue]');ack.addEventListener('change',()=>go.disabled=!ack.checked);go.addEventListener('click',()=>{review.remove();allowOriginalSave(button);});}
-        button.disabled=false;button.textContent=oldText;return;
-      }
-      allowOriginalSave(button);
-    }catch(error){const box=ensureBox(dialog);let host=box.querySelector('[data-spire-safety-issues]');if(!host){host=document.createElement('div');host.dataset.spireSafetyIssues='1';box.appendChild(host);}host.innerHTML=`<div class="spire-mar-safety-issue block">Safety verification could not complete: ${esc(error.message||'Unknown error')}</div>`;button.disabled=false;button.textContent=oldText;}
+    event.preventDefault();event.stopImmediatePropagation();const oldText=button.textContent;button.disabled=true;button.textContent='Safety check…';
+    try{const result=await preflight(dialog);renderIssues(dialog,result);const blocks=(result.issues||[]).some(issue=>issue.severity==='BLOCK');if(blocks){button.disabled=false;button.textContent=oldText;return;}if(result.requiresAcknowledgement){const box=ensureBox(dialog);let review=box.querySelector('[data-spire-safety-review]');if(!review){review=document.createElement('div');review.className='spire-mar-safety-review';review.dataset.spireSafetyReview='1';review.innerHTML='<label><input type="checkbox" data-spire-safety-ack> I reviewed the medication safety warning and confirmed this administration matches the active order.</label><button type="button" data-spire-safety-continue disabled>Continue administration</button>';box.appendChild(review);const ack=review.querySelector('[data-spire-safety-ack]'),go=review.querySelector('[data-spire-safety-continue]');ack.addEventListener('change',()=>go.disabled=!ack.checked);go.addEventListener('click',()=>{review.remove();allowOriginalSave(button);});}button.disabled=false;button.textContent=oldText;return;}allowOriginalSave(button);}catch(error){const box=ensureBox(dialog);let host=box.querySelector('[data-spire-safety-issues]');if(!host){host=document.createElement('div');host.dataset.spireSafetyIssues='1';box.appendChild(host);}host.innerHTML=`<div class="spire-mar-safety-issue block">Safety verification could not complete: ${esc(error.message||'Unknown error')}</div>`;button.disabled=false;button.textContent=oldText;}
   },true);
 
-  const observer=new MutationObserver(mutations=>{for(const mutation of mutations){for(const node of mutation.addedNodes){if(!(node instanceof Element))continue;const dialog=node.matches?.('[data-spire-mar-dialog]')?node:node.querySelector?.('[data-spire-mar-dialog]');if(dialog)void enhance(dialog);}}});
+  function syncPrnFrequencyUi(root=document) {
+    const modal=root.querySelector?.('#spireMedicationOrderModal');if(!modal)return;
+    const frequency=modal.querySelector('[data-frequency]'),interval=modal.querySelector('[data-interval-wrap]');if(!frequency||!interval)return;
+    if(frequency.value==='PRN') interval.hidden=true;
+  }
+  document.addEventListener('change',event=>{if(event.target instanceof Element&&event.target.matches('[data-frequency]'))queueMicrotask(()=>syncPrnFrequencyUi(document));},true);
+
+  const observer=new MutationObserver(mutations=>{for(const mutation of mutations){for(const node of mutation.addedNodes){if(!(node instanceof Element))continue;const dialog=node.matches?.('[data-spire-mar-dialog]')?node:node.querySelector?.('[data-spire-mar-dialog]');if(dialog)void enhance(dialog);if(node.id==='spireMedicationOrderModal'||node.querySelector?.('#spireMedicationOrderModal'))syncPrnFrequencyUi(node.ownerDocument||document);}}});
   observer.observe(document.documentElement,{childList:true,subtree:true});
   document.querySelectorAll('[data-spire-mar-dialog]').forEach(dialog=>void enhance(dialog));
+  syncPrnFrequencyUi(document);
 })();
