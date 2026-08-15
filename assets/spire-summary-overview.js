@@ -1,19 +1,19 @@
 (() => {
   'use strict';
-  // SPIRE_SUMMARY_OVERVIEW_V2
-  if (window.__SPIRE_SUMMARY_OVERVIEW_V2) return;
-  window.__SPIRE_SUMMARY_OVERVIEW_V2 = true;
+  // SPIRE_SUMMARY_OVERVIEW_V3
+  if (window.__SPIRE_SUMMARY_OVERVIEW_V3) return;
+  window.__SPIRE_SUMMARY_OVERVIEW_V3 = true;
 
   const clean = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
   const text = (selector) => clean(document.querySelector(selector)?.textContent || '');
   const withoutPrefix = (value, prefix) => clean(value).replace(new RegExp(`^${prefix}\\s*:?\\s*`, 'i'), '').trim();
 
   function installStyles() {
-    if (document.getElementById('spire-summary-overview-v2-style')) return;
+    if (document.getElementById('spire-summary-overview-v3-style')) return;
     const style = document.createElement('style');
-    style.id = 'spire-summary-overview-v2-style';
+    style.id = 'spire-summary-overview-v3-style';
     style.textContent = `
-      #overview-tab .epic-overview-container.spire-summary-overview-v2{
+      #overview-tab .epic-overview-container.spire-summary-overview-v3{
         display:grid!important;grid-template-columns:minmax(0,1.12fr) minmax(320px,.88fr);gap:10px!important;
         align-items:start;padding:10px 10px 22px!important;background:#edf2f7;
       }
@@ -40,15 +40,17 @@
       #overview-tab .spire-summary-safety>.epic-section-header{border-left-color:#d5a218!important;background:#fffaf0!important;color:#644a0b!important}
       #overview-tab .spire-summary-problems{grid-column:1/-1;order:2}
       #overview-tab .spire-summary-problems>.epic-section-header{border-left-color:#b43f72!important;background:#fff8fb!important}
-      #overview-tab .spire-summary-guardian{order:3}
+      #overview-tab .spire-summary-guardian{grid-column:1!important;grid-row:4!important;order:3!important}
       #overview-tab .spire-summary-guardian>.epic-section-header{border-left-color:#487db8!important}
-      #overview-tab .spire-summary-person{order:4}
+      #overview-tab .spire-summary-person{grid-column:2!important;grid-row:4 / span 2!important;order:4!important}
       #overview-tab .spire-summary-person>.epic-section-header{border-left-color:#7d5bb3!important;background:#fbf9ff!important}
-      #overview-tab .spire-summary-isp{order:5}
+      #overview-tab .spire-summary-lda{grid-column:1!important;grid-row:5!important;order:4!important}
+      #overview-tab .spire-summary-lda>.epic-section-header{border-left-color:#34857f!important;background:#f6fffe!important}
+      #overview-tab .spire-summary-isp{grid-column:1!important;grid-row:6!important;order:5!important}
       #overview-tab .spire-summary-isp>.epic-section-header{border-left-color:#4c9a68!important;background:#f8fff9!important}
-      #overview-tab .spire-summary-emergency{order:6}
+      #overview-tab .spire-summary-emergency{grid-column:2!important;grid-row:6!important;order:6!important}
       #overview-tab .spire-summary-emergency>.epic-section-header{border-left-color:#c95555!important;background:#fff9f9!important}
-      #overview-tab .spire-summary-team{grid-column:1/-1;order:7}
+      #overview-tab .spire-summary-team{grid-column:1/-1!important;grid-row:7!important;order:7!important}
       #overview-tab .spire-summary-team>.epic-section-header{border-left-color:#268f86!important;background:#f7fffd!important}
       #overview-tab .spire-summary-other{order:8}
 
@@ -72,14 +74,15 @@
       #overview-tab .spire-summary-card .doc-table tbody tr:nth-child(even) td{background:#fafcfe!important}
       #overview-tab .spire-summary-problems .doc-table tbody td:nth-child(2){font-weight:900;color:#26735a;white-space:nowrap}
       #overview-tab .spire-summary-team .doc-table tbody td:first-child{font-weight:800;color:#174c69}
+      #overview-tab .spire-summary-lda-body{padding:8px!important;background:#fff!important;min-height:250px;display:flex;align-items:center;justify-content:center}
 
       @media (max-width:1180px){
-        #overview-tab .epic-overview-container.spire-summary-overview-v2{grid-template-columns:1fr!important}
-        #overview-tab .spire-summary-card{grid-column:1!important}
+        #overview-tab .epic-overview-container.spire-summary-overview-v3{grid-template-columns:1fr!important}
+        #overview-tab .spire-summary-card,#overview-tab .spire-summary-guardian,#overview-tab .spire-summary-person,#overview-tab .spire-summary-lda,#overview-tab .spire-summary-isp,#overview-tab .spire-summary-emergency,#overview-tab .spire-summary-team{grid-column:1!important;grid-row:auto!important;order:initial!important}
         #overview-tab .spire-summary-snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       }
       @media (max-width:760px){
-        #overview-tab .epic-overview-container.spire-summary-overview-v2{padding:6px!important;gap:7px!important}
+        #overview-tab .epic-overview-container.spire-summary-overview-v3{padding:6px!important;gap:7px!important}
         #overview-tab .spire-summary-snapshot-grid{grid-template-columns:1fr}
         #overview-tab .spire-summary-safety .epic-section-body{grid-template-columns:1fr!important}
         #overview-tab .spire-summary-fact{grid-template-columns:1fr!important;gap:3px!important}
@@ -127,6 +130,20 @@
     );
     card.appendChild(grid);
     container.prepend(card);
+  }
+
+  function makeLdaAvatar(container) {
+    let card = container.querySelector('#spireSummaryLdaAvatar');
+    if (!card) {
+      card = document.createElement('section');
+      card.id = 'spireSummaryLdaAvatar';
+      card.className = 'epic-section-card spire-summary-card spire-summary-lda';
+      card.innerHTML = '<div class="epic-section-header"><span>◉ LDA / Wound Avatar</span><span>Front & Back</span></div><div class="epic-section-body spire-summary-lda-body" id="spireSummaryLdaAvatarBody"><div style="padding:16px;color:#6c8090">Loading active LDAs…</div></div>';
+      const guardian = container.querySelector(':scope > .spire-summary-guardian');
+      if (guardian) guardian.after(card); else container.appendChild(card);
+    }
+    const body = card.querySelector('#spireSummaryLdaAvatarBody');
+    if (body && window.SPIRE_LDA?.renderCompact) window.SPIRE_LDA.renderCompact(body);
   }
 
   function segmentNodes(row) {
@@ -212,9 +229,11 @@
     enhancing = true;
     try {
       installStyles();
-      container.classList.add('spire-summary-overview-v2');
-      [...container.querySelectorAll(':scope > .epic-section-card')].forEach(enhanceCard);
+      container.classList.remove('spire-summary-overview-v2');
+      container.classList.add('spire-summary-overview-v3');
+      [...container.querySelectorAll(':scope > .epic-section-card:not(#spireSummaryLdaAvatar)')].forEach(enhanceCard);
       makeSnapshot(container);
+      makeLdaAvatar(container);
     } finally {
       enhancing = false;
     }
@@ -231,6 +250,11 @@
     const overview = event.target instanceof Element ? event.target.closest('[data-sumtab="overview-tab"]') : null;
     if (summary || overview) schedule(30);
   }, true);
+  document.addEventListener('spire:lda-ready', () => schedule(0));
+  document.addEventListener('spire:lda-updated', () => {
+    const body = document.getElementById('spireSummaryLdaAvatarBody');
+    if (body && window.SPIRE_LDA?.renderCompact) window.SPIRE_LDA.renderCompact(body);
+  });
 
   new MutationObserver((mutations) => {
     if (enhancing) return;
