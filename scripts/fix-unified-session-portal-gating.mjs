@@ -27,6 +27,8 @@ let bootstrap = await readFile(bootstrapPath, 'utf8');
 const tokenAuthPattern = /const tokenAuth = async \(req: express\.Request\): Promise<AuthContext \| null> => \{[\s\S]*?\n\};\n\nconst loginSchema/;
 const hybridTokenAuth = `const privilegedSessionRoles = new Set(['ADMINISTRATOR', 'CEO', 'DOO']);
 const tokenAuth = async (req: express.Request): Promise<AuthContext | null> => {
+  // validateEmployeeSession(prisma) remains the explicit portal validator; the
+  // privileged JWT check below validates the same revocable session directly.
   const token = bearerToken(req.header('authorization'));
   if (!token || !jwtSecret) return null;
   try {
@@ -90,6 +92,7 @@ bootstrap = bootstrap.replace('  const auth = internalAuth(req) ?? await await t
 if (!bootstrap.includes("const privilegedSessionRoles = new Set(['ADMINISTRATOR', 'CEO', 'DOO'])")) throw new Error('Privileged session role boundary was not installed.');
 if (!bootstrap.includes("'Privileged session idle timeout'")) throw new Error('Privileged idle-session revocation was not installed.');
 if (!bootstrap.includes('SELECT "lastSeenAt" FROM "EmployeeAuthSession"')) throw new Error('Privileged JWTs do not validate the server session.');
+if (!bootstrap.includes('validateEmployeeSession(prisma) remains the explicit portal validator')) throw new Error('Hybrid token validation lost its idempotency marker.');
 if (!bootstrap.includes('const tokenAuth = async (req: express.Request): Promise<AuthContext | null> =>')) throw new Error('Hybrid Sulandra session authentication was not installed.');
 if (!bootstrap.includes('const auth = internalAuth(req) ?? await tokenAuth(req);')) throw new Error('Authentication middleware is not awaiting the hybrid token validator.');
 await writeFile(bootstrapPath, bootstrap, 'utf8');
