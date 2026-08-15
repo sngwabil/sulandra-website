@@ -48,20 +48,31 @@ jobs:
             login="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-login-railway.js || true)"
             guard="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-role-navigation-guard.js || true)"
             admin="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/admin-railway.js || true)"
+            roles="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/role-workspace.js || true)"
+            doo="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/doo.html || true)"
+            ceo="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/ceo.html || true)"
+            home_manager="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-manager.html || true)"
             if grep -q "$contract" <<<"$portal" \
               && grep -q "$contract" <<<"$runtime" \
               && grep -q "$contract" <<<"$guard" \
               && grep -q 'ADMIN_LANDING_ROLES' <<<"$login" \
-              && grep -q '"CEO"' <<<"$login" \
-              && grep -q '"DOO"' <<<"$login" \
-              && grep -Fq '["ADMINISTRATOR", "CEO", "DOO"]' <<<"$admin"; then
-              echo "Exact role-UAT production contract is live."
+              && grep -q 'function landingForRole(role)' <<<"$login" \
+              && grep -Fq 'if (role === "DOO") return "doo.html";' <<<"$login" \
+              && grep -Fq 'if (role === "CEO") return "ceo.html";' <<<"$login" \
+              && grep -Fq 'role !== "ADMINISTRATOR"' <<<"$admin" \
+              && grep -Fq 'role === "DOO" ? "doo.html"' <<<"$admin" \
+              && grep -Fq 'Manage My Home Team' <<<"$roles" \
+              && grep -Fq 'ownerMain: "/admin.html"' <<<"$roles" \
+              && grep -Fq 'data-role-workspace="DOO"' <<<"$doo" \
+              && grep -Fq 'data-role-workspace="CEO"' <<<"$ceo" \
+              && grep -Fq 'data-role-workspace="HOUSE_MANAGER"' <<<"$home_manager"; then
+              echo "Exact dedicated role-workspace production contract is live."
               exit 0
             fi
-            echo "Waiting for role-UAT production deployment (${attempt}/60)..."
+            echo "Waiting for dedicated role-workspace production deployment (${attempt}/60)..."
             sleep 15
           done
-          echo "Timed out waiting for the exact production role-UAT deployment." >&2
+          echo "Timed out waiting for the exact dedicated role-workspace production deployment." >&2
           exit 1
 
       - name: Install Playwright browser runtime
