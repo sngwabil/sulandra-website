@@ -7,6 +7,7 @@
   const MENU_ID = 'adminTopNavigationOverflowMenu';
   const STYLE_ID = 'adminTopNavigationOverflowStyles';
   let resizeObserver = null;
+  let entityObserver = null;
   let layoutFrame = 0;
 
   const topNav = () => document.getElementById('topModuleNav');
@@ -192,6 +193,11 @@
       resizeObserver?.disconnect();
       resizeObserver = new ResizeObserver(scheduleLayout);
       resizeObserver.observe(nav);
+    }
+    if (document.body && 'MutationObserver' in window) {
+      entityObserver?.disconnect();
+      entityObserver = new MutationObserver(scheduleLayout);
+      entityObserver.observe(document.body, { attributes:true, attributeFilter:['data-legal-entity-code'] });
     }
 
     window.addEventListener('resize', scheduleLayout, { passive:true });
