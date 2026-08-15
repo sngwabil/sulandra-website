@@ -77,6 +77,22 @@ for (const [name, source] of [['clinical regression runtime', runtime], ['flowsh
 }
 
 let master = await readFile(masterPath, 'utf8');
+
+// The client is already identified persistently in the left chart sidebar. The
+// old toolbar-level client tab duplicated that identity and contained a visual
+// close glyph with no action. Remove the visible tab while retaining one hidden
+// compatibility target so older runtime code can still update #tabClientName
+// without throwing or reintroducing the redundant UI.
+const legacyClientTabPattern = /\s*<div class="client-tab">\s*<span id="tabClientName">[\s\S]*?<\/span>\s*<span>✖<\/span>\s*<\/div>/g;
+const legacyClientTabs = master.match(legacyClientTabPattern) || [];
+if (legacyClientTabs.length !== 1) {
+  throw new Error(`SPIRE client toolbar tab removal expected exactly one legacy client tab; found ${legacyClientTabs.length}`);
+}
+master = master.replace(
+  legacyClientTabPattern,
+  '\n        <div id="legacyClientTabHook" class="client-tab" hidden aria-hidden="true" style="display:none!important"><span id="tabClientName"></span></div>',
+);
+
 master = master
   .replace(/\s*<script src="\/assets\/spire-clinical-regression-runtime\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
   .replace(/\s*<script src="\/assets\/spire-flowsheet-audit-popover\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
@@ -97,6 +113,12 @@ for (const [name, pattern, url] of checks) {
 if (/src="\/assets\/spire-note-workflow\.js(?:\?[^"']*)?"/.test(master)) {
   throw new Error('Legacy SPIRE note modal is still published alongside Note Composer V2');
 }
+if (!master.includes('id="legacyClientTabHook"') || !master.includes('id="tabClientName"')) {
+  throw new Error('SPIRE hidden legacy client-tab compatibility hook was not published');
+}
+if (/<div class="client-tab">\s*<span id="tabClientName">[\s\S]*?<span>✖<\/span>/.test(master)) {
+  throw new Error('SPIRE still publishes the redundant visible client-name tab and fake close control');
+}
 
 await writeFile(masterPath, master, 'utf8');
 
@@ -106,5 +128,8 @@ for (const required of [runtimeUrl, auditUrl, noteUrl]) {
 }
 if (!published.includes('id="notes-view"')) throw new Error('Final SPIRE master lost the Notes view host');
 if (!published.includes('id="flowsheets-view"')) throw new Error('Final SPIRE master lost the Flowsheets view host');
+if (!published.includes('id="legacyClientTabHook"') || !published.includes('style="display:none!important"')) {
+  throw new Error('Final SPIRE master lost the hidden legacy client-tab compatibility hook');
+}
 
-console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit hover/press-and-hold retained, legacy note modal removed, and Note Composer V2 now supports direct draft filing plus backward-compatible filed-note history.');
+console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit hover/press-and-hold retained, legacy note modal removed, Note Composer V2 supports draft filing/history, and the redundant toolbar client-name tab/fake close control is removed from view.');
