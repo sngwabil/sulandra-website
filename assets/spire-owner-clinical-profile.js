@@ -16,6 +16,7 @@
   let canonicalIdentity = null;
   let observer = null;
   let applying = false;
+  let scheduled = false;
 
   const clean = (value) => String(value ?? '').trim();
   const esc = (value) => clean(value).replace(/[&<>"']/g, (ch) => ({
@@ -113,12 +114,25 @@
       if (saveArea) saveArea.insertAdjacentElement('beforebegin', note);
       else profileTab?.appendChild(note);
     }
-    if (note) {
-      const status = identity.credentialStatuses.length
-        ? identity.credentialStatuses.map(titleCase).join(', ')
-        : 'Recorded';
-      note.innerHTML = `<b>Synced from Executive Profile</b> · ${esc(identity.primaryTitle)}${identity.credentialText ? ` · ${esc(identity.credentialText)} credential status: ${esc(status)}` : ''}. System permissions are managed separately from your professional title.`;
+    if (!note) return;
+    const status = identity.credentialStatuses.length
+      ? identity.credentialStatuses.map(titleCase).join(', ')
+      : 'Recorded';
+    const html = `<b>Synced from Executive Profile</b> · ${esc(identity.primaryTitle)}${identity.credentialText ? ` · ${esc(identity.credentialText)} credential status: ${esc(status)}` : ''}. System permissions are managed separately from your professional title.`;
+    if (note.dataset.canonicalHtml !== html) {
+      note.innerHTML = html;
+      note.dataset.canonicalHtml = html;
     }
+  }
+
+  function markCanonicalInput(input) {
+    if (!input || input.dataset.canonicalOwnerProfile === 'true') return;
+    input.dataset.canonicalOwnerProfile = 'true';
+    input.readOnly = true;
+    input.setAttribute('aria-readonly', 'true');
+    input.title = 'Synced from your Sulandra Health Executive Profile';
+    input.style.background = '#f4f9fc';
+    input.style.color = '#173f58';
   }
 
   function applyCanonicalIdentity() {
@@ -132,8 +146,10 @@
       if (topAvatar && !topAvatar.querySelector('img')) setText(topAvatar, initials(identity.displayName));
       const trigger = document.querySelector('.user-profile-trigger');
       if (trigger) {
-        trigger.title = `${identity.displayNameWithCredentials} — ${identity.primaryTitle}`;
-        trigger.setAttribute('aria-label', `Open profile and accessibility settings for ${identity.displayNameWithCredentials}`);
+        const triggerTitle = `${identity.displayNameWithCredentials} — ${identity.primaryTitle}`;
+        if (trigger.title !== triggerTitle) trigger.title = triggerTitle;
+        const aria = `Open profile and accessibility settings for ${identity.displayNameWithCredentials}`;
+        if (trigger.getAttribute('aria-label') !== aria) trigger.setAttribute('aria-label', aria);
       }
 
       const modal = document.getElementById('accessibilityModal');
@@ -142,14 +158,8 @@
         const credentialInput = modal.querySelector('#inputClinicianCredentials');
         setValue(nameInput, identity.displayName);
         setValue(credentialInput, identity.professionalTitle);
-        for (const input of [nameInput, credentialInput]) {
-          if (!input) continue;
-          input.readOnly = true;
-          input.setAttribute('aria-readonly', 'true');
-          input.title = 'Synced from your Sulandra Health Executive Profile';
-          input.style.background = '#f4f9fc';
-          input.style.color = '#173f58';
-        }
+        markCanonicalInput(nameInput);
+        markCanonicalInput(credentialInput);
         const preview = modal.querySelector('#modalUserAvatarPreview');
         if (preview && !preview.querySelector('img')) setText(preview, initials(identity.displayName));
         installCanonicalStatus(modal, identity);
@@ -185,16 +195,23 @@
     window.openAccessibilityModal = wrapped;
   }
 
+  function scheduleApply() {
+    if (scheduled || !canonicalIdentity) return;
+    scheduled = true;
+    window.requestAnimationFrame(() => {
+      scheduled = false;
+      wrapAccessibilityLauncher();
+      applyCanonicalIdentity();
+    });
+  }
+
   function watchForProfileChanges() {
     if (observer) return;
-    observer = new MutationObserver(() => {
-      if (!canonicalIdentity) return;
-      window.requestAnimationFrame(() => {
-        wrapAccessibilityLauncher();
-        applyCanonicalIdentity();
-      });
-    });
-    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+    observer = new MutationObserver(scheduleApply);
+    // Child replacement is what matters here: SPIRE rebuilds the profile modal and
+    // note-author workspaces dynamically. Avoid observing style/class writes so the
+    // canonical sync cannot create an observer feedback loop.
+    observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
   async function start() {
