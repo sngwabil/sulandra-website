@@ -5,17 +5,63 @@
   const NEWS_REFRESH_MS = 10 * 60 * 1000;
   const NEWS_RSS = 'https://news.google.com/rss/search?q=Dayton%20Ohio%20when%3A1d&hl=en-US&gl=US&ceid=US%3Aen';
   const NEWS_JSON = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(NEWS_RSS);
+  const ADMIN_API_ORIGIN = 'https://sulandra-website-production-5fc4.up.railway.app';
+  const ENTITY_SCOPED_ADMIN_PATHS = ['/api/admin/dashboard', '/api/admin/applications', '/api/admin/job-openings'];
   const fallback = [
     {title:'Live local headlines for Dayton and the Miami Valley are loading…',link:'/news.html',source:'Sulandra News'},
     {title:'News ticker refreshes automatically as local headlines update.',link:'/news.html',source:'Live News'},
   ];
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const sourceName = item => item.author || item.source || String(item.title || '').split(' - ').slice(-1)[0] || 'Local News';
   const headline = item => {
     const raw = String(item.title || 'Local news update').trim();
     const parts = raw.split(' - ');
     return parts.length > 1 ? parts.slice(0, -1).join(' - ') : raw;
   };
+
+  function installEntityScopedAdminFetch() {
+    if (window.__sulandraAdminEntityScopedFetchInstalled) return;
+    window.__sulandraAdminEntityScopedFetchInstalled = true;
+    const nativeFetch = window.fetch.bind(window);
+
+    window.fetch = async (input, init = {}) => {
+      const requestUrl = typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input?.url;
+      if (!requestUrl) return nativeFetch(input, init);
+
+      let parsed;
+      try { parsed = new URL(requestUrl, window.location.href); }
+      catch { return nativeFetch(input, init); }
+
+      const entityScoped = parsed.origin === ADMIN_API_ORIGIN
+        && ENTITY_SCOPED_ADMIN_PATHS.some(path => parsed.pathname === path || parsed.pathname.startsWith(`${path}/`));
+      if (!entityScoped) return nativeFetch(input, init);
+
+      try {
+        if (!window.SulandraCompanyContext?.current?.()?.id) {
+          await window.SulandraCompanyContext?.initialize?.();
+        }
+      } catch {
+        // Preserve the original request when company context is temporarily unavailable.
+      }
+
+      const entityHeaders = window.SulandraCompanyContext?.headers?.() || {};
+      const entityId = entityHeaders['X-Legal-Entity-Id'];
+      if (!entityId) return nativeFetch(input, init);
+
+      const sourceHeaders = input instanceof Request ? input.headers : undefined;
+      const headers = new Headers(init.headers || sourceHeaders || {});
+      if (!headers.has('X-Legal-Entity-Id')) headers.set('X-Legal-Entity-Id', entityId);
+
+      if (input instanceof Request) {
+        return nativeFetch(new Request(input, {...init, headers}));
+      }
+      return nativeFetch(input, {...init, headers});
+    };
+  }
 
   function ensureCanonicalSso() {
     if (window.SulandraSSO || document.querySelector('script[data-canonical-admin-sso]')) return;
@@ -24,6 +70,15 @@
     script.dataset.canonicalAdminSso = 'true';
     script.async = false;
     document.head.appendChild(script);
+  }
+
+  function ensureNavigationOverflow() {
+    if (document.querySelector('script[data-admin-navigation-overflow]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/admin-navigation-overflow.js?v=20260815-admin-nav-overflow-1';
+    script.dataset.adminNavigationOverflow = 'true';
+    script.async = false;
+    document.body.appendChild(script);
   }
 
   function ensureModuleHosts() {
@@ -88,9 +143,11 @@
   }
 
   function mount() {
+    installEntityScopedAdminFetch();
     ensureCanonicalSso();
     ensureModuleHosts();
     ensurePlatformBar();
+    ensureNavigationOverflow();
     updateWeatherClock();
     window.setTimeout(updateWeatherClock, 250);
     window.setTimeout(updateWeatherClock, 900);
