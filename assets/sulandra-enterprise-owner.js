@@ -1,5 +1,19 @@
 (() => {
   'use strict';
+
+  // This canonical Admin asset is loaded for every administrator. Keep the
+  // provider-workspace context bridge available even when the signed-in user is
+  // not the enterprise owner; owner-specific identity work remains below.
+  const installAdminOperationalContext = () => {
+    if (document.querySelector('script[data-sulandra-admin-operational-context]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/admin-operational-context.js?v=20260815-approved-operations-1';
+    script.dataset.sulandraAdminOperationalContext = 'true';
+    script.async = false;
+    document.head.appendChild(script);
+  };
+  installAdminOperationalContext();
+
   const OWNER_EMAIL = 'admin@sulandrahealth.com';
   const OWNER_NAME = 'Sulpitius Ndeh Gwabil';
   const OWNER_DISPLAY_NAME = 'Sulpitius Gwabil';
@@ -62,7 +76,6 @@
   };
 
   const configureHeaderProfileChip = () => {
-    // Remove the old standalone My Profile button that caused the Admin tools to wrap.
     document.getElementById('sulandraOwnerProfileLink')?.remove();
     installProfileChipStyles();
 
