@@ -14,4 +14,5 @@ if(!source.includes(careersRegister))throw new Error('Careers registration ancho
 source=source.replace(careersRegister,`${routeRegister}\n${careersRegister}`);
 await writeFile(target,source,'utf8');
 await import('./install-employee-compliance-production-worker.mjs');
-console.log('Employee session, MFA, login-history, per-portal administration, and production compliance escalation routes are installed.');
+await import('./install-privileged-session-security.mjs');
+console.log('Employee session, MFA, login-history, per-portal administration, privileged Admin session security, and production compliance escalation routes are installed.');
