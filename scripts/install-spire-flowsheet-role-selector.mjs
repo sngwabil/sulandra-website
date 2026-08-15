@@ -74,4 +74,6 @@ if (!published.includes(gridUrl)) throw new Error('SPIRE master publication lost
 if (!published.includes(selectorUrl)) throw new Error('SPIRE master publication lost the flowsheet role selector');
 if (!published.includes(nurseNavigationUrl)) throw new Error('SPIRE master publication lost the nurse task/scroll runtime');
 
-console.log('SPIRE flowsheet publication now preserves confirmed filed values across File and full reloads, queries the visible/custom column range, and retains Nurse-specific task navigation with viewport scrolling.');
+await import('./fix-spire-clinical-regressions.mjs');
+
+console.log('SPIRE flowsheet publication now preserves confirmed filed values across File and full reloads, queries the visible/custom column range, retains Nurse-specific task navigation with viewport scrolling, and applies the final clinical attribution/MAR/Notes regression guard.');
