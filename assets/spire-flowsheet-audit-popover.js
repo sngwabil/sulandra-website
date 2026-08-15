@@ -7,15 +7,18 @@
   const POPOVER_ID = 'spireFlowsheetAuditPopover';
   const STYLE_ID = 'spireFlowsheetAuditPopoverStyle';
   const directory = new Map();
+  const workspaceCache = new Map();
   let identityPromise = null;
   let activeCell = null;
   let pinned = false;
   let decorateQueued = false;
+  let suppressNextClick = false;
 
   const clean = (value) => String(value ?? '').trim();
   const esc = (value) => clean(value).replace(/[&<>"']/g, (char) => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;',
   }[char]));
+  const asArray = (value) => Array.isArray(value) ? value : [];
 
   function token() {
     for (const storage of [sessionStorage, localStorage]) {
@@ -37,6 +40,24 @@
     return payload?.data ?? payload;
   }
 
+  function patientId() {
+    const query = new URLSearchParams(location.search);
+    const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+    return clean(hash.get('patient') || query.get('patientId') || sessionStorage.getItem('spire:patientId'));
+  }
+
+  function isoMinute(value) {
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) return '';
+    date.setSeconds(0, 0);
+    return date.toISOString();
+  }
+
+  function formatDate(value) {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : '';
+  }
+
   function label(identity = {}) {
     const explicit = clean(identity.displayLabel);
     if (explicit) return explicit;
@@ -50,6 +71,7 @@
       identityPromise = api('/api/spire/clinical-identity').then((value) => {
         const id = clean(value?.id || value?.userId);
         if (id) directory.set(id, value);
+        if (value?.email) directory.set(clean(value.email), value);
         return value || null;
       }).catch(() => null);
     }
@@ -64,19 +86,23 @@
   async function resolveAuthor(authorToken) {
     const candidate = clean(authorToken).replace(/^by\s+/i, '').replace(/^Filed by\s+/i, '');
     if (!candidate) return '';
-    if (!looksLikeUserId(candidate) && !candidate.includes('@')) return candidate;
     if (directory.has(candidate)) return label(directory.get(candidate));
     const identity = await currentIdentity();
     if (identity && [identity.id, identity.userId, identity.email].map(clean).includes(candidate)) return label(identity);
     if (looksLikeUserId(candidate)) {
       try {
         const result = await api(`/api/spire/clinical-users?ids=${encodeURIComponent(candidate)}`);
-        const items = Array.isArray(result?.items) ? result.items : Array.isArray(result) ? result : [];
+        const items = asArray(result?.items || result);
         if (items[0]) {
           directory.set(candidate, items[0]);
+          if (items[0]?.email) directory.set(clean(items[0].email), items[0]);
           return label(items[0]);
         }
       } catch {}
+    }
+    if (candidate.includes('@')) {
+      const current = await currentIdentity();
+      if (current && clean(current.email).toLowerCase() === candidate.toLowerCase()) return label(current);
     }
     return candidate;
   }
@@ -87,8 +113,7 @@
     style.id = STYLE_ID;
     style.textContent = `
       #flowsheets-view [data-flow-cell].spire-flow-filed-cell{position:relative!important}
-      #flowsheets-view .spire-flow-audit-trigger{position:absolute;right:2px;top:2px;z-index:8;width:17px;height:17px;padding:0;border:1px solid #477899;border-radius:50%;background:#edf7ff;color:#0b4f7d;font:bold 11px/15px Arial,sans-serif;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center}
-      #flowsheets-view .spire-flow-audit-trigger:hover,#flowsheets-view .spire-flow-audit-trigger:focus{outline:2px solid rgba(14,116,180,.28);background:#d8efff}
+      #flowsheets-view [data-flow-cell].spire-flow-filed-cell:hover{box-shadow:inset 0 0 0 1px rgba(38,105,148,.32)}
       #${POPOVER_ID}{position:fixed;z-index:12000;display:none;width:min(360px,calc(100vw - 20px));background:#fff;border:1px solid #426b89;border-radius:5px;box-shadow:0 10px 32px rgba(15,23,42,.32);font-family:"Segoe UI",Arial,sans-serif;color:#173247;overflow:hidden}
       #${POPOVER_ID}.open{display:block}
       #${POPOVER_ID} .sfa-head{display:flex;align-items:center;gap:8px;padding:7px 9px;background:linear-gradient(#dcecf7,#c6ddeb);border-bottom:1px solid #8ca8bc;color:#113f60;font-weight:800;font-size:12px}
@@ -98,7 +123,6 @@
       #${POPOVER_ID} .sfa-value{padding:6px 8px;border-bottom:1px solid #e1e8ed;overflow-wrap:anywhere}
       #${POPOVER_ID} .sfa-value.author{font-weight:800;color:#0b4f7d}
       #${POPOVER_ID} .sfa-foot{padding:6px 8px;background:#f8fafc;color:#607383;font-size:10px;border-top:1px solid #dbe3e8}
-      @media (pointer:coarse){#flowsheets-view .spire-flow-audit-trigger{width:22px;height:22px;font-size:13px;line-height:20px;right:3px;top:3px}}
     `;
     document.head.appendChild(style);
   }
@@ -116,27 +140,54 @@
   }
 
   function titlePart(title, patterns) {
-    const text = clean(title);
+    const value = clean(title);
     for (const pattern of patterns) {
-      const match = text.match(pattern);
+      const match = value.match(pattern);
       if (match?.[1]) return clean(match[1]);
     }
     return '';
   }
 
-  function readAudit(cell) {
+  async function fetchEntry(cell) {
+    const pid = patientId();
+    const rowId = clean(cell?.dataset?.rowId);
+    const flowTime = clean(cell?.dataset?.flowTime);
+    const minute = isoMinute(flowTime);
+    if (!pid || !rowId || !minute) return null;
+
+    const key = `${pid}|${minute}`;
+    if (!workspaceCache.has(key)) {
+      const center = new Date(minute);
+      const from = new Date(center.getTime() - 90 * 1000).toISOString();
+      const to = new Date(center.getTime() + 90 * 1000).toISOString();
+      const request = api(`/api/spire/patients/${encodeURIComponent(pid)}/flowsheet-workspace?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+        .then((data) => asArray(data?.entries || data))
+        .catch(() => []);
+      workspaceCache.set(key, request);
+    }
+
+    const entries = await workspaceCache.get(key);
+    const matches = entries.filter((entry) => clean(entry?.rowId) === rowId && isoMinute(entry?.recordedAt) === minute);
+    matches.sort((a, b) => new Date(a?.createdAt || a?.updatedAt || a?.recordedAt || 0) - new Date(b?.createdAt || b?.updatedAt || b?.recordedAt || 0));
+    return matches[matches.length - 1] || null;
+  }
+
+  function readAudit(cell, entry = null) {
     const raw = clean(cell?.getAttribute('title'));
     const parts = raw.split(' · ').map(clean).filter(Boolean);
-    const status = parts.find((part) => /^(Filed|Filed amendment|Unfiled|Unfiled amendment|Completed|Modified)$/i.test(part)) || (raw ? 'Filed' : '');
-    const author = titlePart(raw, [/(?:^| · )Filed by\s+([^·]+?)(?=\s+·|$)/i, /(?:^| · )by\s+([^·]+?)(?=\s+·|$)/i]);
-    const recordedFor = titlePart(raw, [/(?:^| · )Recorded for\s+([^·]+?)(?=\s+·|$)/i]);
-    const filedAt = titlePart(raw, [/(?:^| · )Filed at\s+([^·]+?)(?=\s+·|$)/i, /(?:^| · )documented\s+([^·]+?)(?=\s+·|$)/i]);
-    const amendedAt = titlePart(raw, [/(?:^| · )Last amended\s+([^·]+?)(?=\s+·|$)/i]);
-    const comment = titlePart(raw, [/(?:^| · )Comment:\s*([^·]+?)(?=\s+·|$)/i]);
-    const recordedIso = clean(cell?.dataset?.flowTime);
-    let recorded = recordedFor;
-    if (!recorded && recordedIso && !Number.isNaN(new Date(recordedIso).getTime())) recorded = new Date(recordedIso).toLocaleString();
-    return { raw, status, author, recordedFor:recorded, filedAt, amendedAt, comment };
+    const createdAt = clean(entry?.documentedAt || entry?.createdAt);
+    const updatedAt = clean(entry?.updatedAt);
+    const createdMs = createdAt ? new Date(createdAt).getTime() : NaN;
+    const updatedMs = updatedAt ? new Date(updatedAt).getTime() : NaN;
+    const amended = Number.isFinite(createdMs) && Number.isFinite(updatedMs) && updatedMs - createdMs > 2000;
+    const status = amended ? 'Filed amendment' : (parts.find((part) => /^(Filed|Filed amendment|Completed|Modified)$/i.test(part)) || (entry || raw ? 'Filed' : ''));
+    const domAuthor = clean(cell?.querySelector?.('.flow-entry-author')?.textContent);
+    const author = clean(entry?.recordedById || entry?.recordedByDisplayName || domAuthor || titlePart(raw, [/(?:^| · )Filed by\s+([^·]+?)(?=\s+·|$)/i, /(?:^| · )by\s+([^·]+?)(?=\s+·|$)/i]));
+    const recordedFor = formatDate(entry?.recordedAt) || titlePart(raw, [/(?:^| · )Recorded for\s+([^·]+?)(?=\s+·|$)/i]) || formatDate(cell?.dataset?.flowTime);
+    const filedAt = formatDate(createdAt) || titlePart(raw, [/(?:^| · )Filed at\s+([^·]+?)(?=\s+·|$)/i, /(?:^| · )documented\s+([^·]+?)(?=\s+·|$)/i]);
+    const amendedAt = amended ? formatDate(updatedAt) : titlePart(raw, [/(?:^| · )Last amended\s+([^·]+?)(?=\s+·|$)/i]);
+    const comment = clean(entry?.comment) || titlePart(raw, [/(?:^| · )Comment:\s*([^·]+?)(?=\s+·|$)/i]);
+    return { raw, status, author, recordedFor, filedAt, amendedAt, comment };
   }
 
   function positionPopover(cell) {
@@ -144,7 +195,7 @@
     const rect = cell.getBoundingClientRect();
     const width = Math.min(360, window.innerWidth - 20);
     const estimatedHeight = Math.min(300, popover.offsetHeight || 220);
-    let left = rect.left + Math.min(rect.width, 30);
+    let left = rect.left + Math.min(rect.width, 24);
     if (left + width > window.innerWidth - 10) left = window.innerWidth - width - 10;
     if (left < 10) left = 10;
     let top = rect.bottom + 7;
@@ -153,29 +204,35 @@
     popover.style.top = `${Math.round(top)}px`;
   }
 
-  async function show(cell, pin = false) {
-    if (!cell) return;
-    const audit = readAudit(cell);
-    if (!audit.raw || /^(Empty|Unfiled)$/i.test(audit.raw)) return;
-    activeCell = cell;
-    if (pin) pinned = true;
+  function renderPopover(cell, audit, authorText = 'Resolving author and credentials…') {
     const popover = ensurePopover();
-    popover.innerHTML = `<div class="sfa-head"><span>ⓘ Flowsheet Audit</span><span class="sfa-filed">${esc(audit.status || 'Filed')}</span></div>
+    popover.innerHTML = `<div class="sfa-head"><span>Flowsheet Audit</span><span class="sfa-filed">${esc(audit.status || 'Filed')}</span></div>
       <div class="sfa-grid">
-        <div class="sfa-label">Filed by</div><div class="sfa-value author">Resolving clinician…</div>
+        <div class="sfa-label">Filed by</div><div class="sfa-value author">${esc(authorText)}</div>
         <div class="sfa-label">Recorded for</div><div class="sfa-value">${esc(audit.recordedFor || 'Not available')}</div>
         <div class="sfa-label">Filed at</div><div class="sfa-value">${esc(audit.filedAt || 'Not available')}</div>
         ${audit.amendedAt ? `<div class="sfa-label">Last amended</div><div class="sfa-value">${esc(audit.amendedAt)}</div>` : ''}
         ${audit.comment ? `<div class="sfa-label">Comment</div><div class="sfa-value">${esc(audit.comment)}</div>` : ''}
       </div>
-      <div class="sfa-foot">Audit attribution is tied to the filed flowsheet entry, not the person currently viewing the chart.${pinned ? ' Tap outside this card to close.' : ''}</div>`;
+      <div class="sfa-foot">Hover over a filed value to review its audit trail. On touch devices, press and hold the filed value. A normal tap continues to open charting/editing.</div>`;
     popover.classList.add('open');
     positionPopover(cell);
+  }
+
+  async function show(cell, pin = false) {
+    if (!cell) return;
+    const preliminary = readAudit(cell);
+    if (!preliminary.raw || /^(Empty|Unfiled|Click to chart)$/i.test(preliminary.raw)) return;
+    activeCell = cell;
+    if (pin) pinned = true;
+    renderPopover(cell, preliminary);
+
+    const entry = await fetchEntry(cell);
+    if (activeCell !== cell) return;
+    const audit = readAudit(cell, entry);
     const author = await resolveAuthor(audit.author);
     if (activeCell !== cell) return;
-    const authorNode = popover.querySelector('.sfa-value.author');
-    if (authorNode) authorNode.textContent = author || 'Author unavailable';
-    positionPopover(cell);
+    renderPopover(cell, audit, author || 'Author unavailable');
   }
 
   function hide(force = false) {
@@ -187,41 +244,64 @@
 
   function filed(cell) {
     const title = clean(cell.getAttribute('title'));
-    if (!title || /^Empty$/i.test(title) || /^Unfiled/i.test(title)) return false;
-    return /Filed|documented|\bby\b|Completed|Modified/i.test(title);
+    if (!title || /^Empty$/i.test(title) || /^Unfiled/i.test(title) || /^Click to chart$/i.test(title)) return false;
+    return Boolean(clean(cell.querySelector('.flow-entry-author')?.textContent)) || /Filed|Documented|Completed|Modified|\bby\b/i.test(title);
   }
 
   function decorateCell(cell) {
     if (!(cell instanceof HTMLElement) || !filed(cell)) return;
     cell.classList.add('spire-flow-filed-cell');
-    if (!cell.querySelector(':scope > .spire-flow-audit-trigger')) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'spire-flow-audit-trigger';
-      button.textContent = 'i';
-      button.setAttribute('aria-label', 'View flowsheet filing audit details');
-      button.title = 'View filing audit details';
-      button.addEventListener('pointerdown', (event) => event.stopPropagation());
-      button.addEventListener('click', (event) => {
-        event.preventDefault(); event.stopPropagation();
-        const same = activeCell === cell && pinned;
-        if (same) hide(true); else { pinned = true; void show(cell, true); }
-      });
-      button.addEventListener('focus', () => void show(cell, false));
-      cell.appendChild(button);
-    }
-    if (cell.dataset.spireAuditHoverBound !== '1') {
-      cell.dataset.spireAuditHoverBound = '1';
-      cell.addEventListener('pointerenter', (event) => {
-        if (event.pointerType === 'touch') return;
-        void show(cell, false);
-      });
-      cell.addEventListener('pointerleave', () => { if (!pinned) hide(true); });
-      cell.addEventListener('focusin', () => void show(cell, false));
-      cell.addEventListener('focusout', (event) => {
-        if (!cell.contains(event.relatedTarget) && !pinned) hide(true);
-      });
-    }
+    cell.querySelectorAll(':scope > .spire-flow-audit-trigger').forEach((node) => node.remove());
+    if (cell.dataset.spireAuditHoverBound === '2') return;
+    cell.dataset.spireAuditHoverBound = '2';
+    cell.setAttribute('aria-description', 'Filed flowsheet value. Hover for audit details; on touch press and hold.');
+
+    let holdTimer = null;
+    let startX = 0;
+    let startY = 0;
+    const cancelHold = () => {
+      if (holdTimer) clearTimeout(holdTimer);
+      holdTimer = null;
+    };
+
+    cell.addEventListener('pointerenter', (event) => {
+      if (event.pointerType === 'touch') return;
+      void show(cell, false);
+    });
+    cell.addEventListener('pointerleave', () => { if (!pinned) hide(true); });
+    cell.addEventListener('focusin', () => void show(cell, false));
+    cell.addEventListener('focusout', (event) => {
+      if (!cell.contains(event.relatedTarget) && !pinned) hide(true);
+    });
+
+    cell.addEventListener('pointerdown', (event) => {
+      if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+      cancelHold();
+      startX = event.clientX;
+      startY = event.clientY;
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
+        suppressNextClick = true;
+        pinned = true;
+        void show(cell, true);
+      }, 420);
+    }, true);
+    cell.addEventListener('pointermove', (event) => {
+      if (!holdTimer) return;
+      if (Math.hypot(event.clientX - startX, event.clientY - startY) > 12) cancelHold();
+    }, true);
+    cell.addEventListener('pointerup', cancelHold, true);
+    cell.addEventListener('pointercancel', cancelHold, true);
+    cell.addEventListener('contextmenu', (event) => {
+      if (pinned && activeCell === cell) event.preventDefault();
+    });
+    cell.addEventListener('click', (event) => {
+      if (!suppressNextClick) return;
+      suppressNextClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      event.stopPropagation();
+    }, true);
   }
 
   function decorate() {
@@ -253,5 +333,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
   else start();
 
-  window.SpireFlowsheetAuditPopover = Object.freeze({ version:'20260815-audit-popover-1', refresh:queueDecorate });
+  window.SpireFlowsheetAuditPopover = Object.freeze({ version:'20260815-audit-popover-2', refresh:queueDecorate });
 })();
