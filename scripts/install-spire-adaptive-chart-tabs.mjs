@@ -5,37 +5,42 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const assetRelative = 'assets/spire-adaptive-chart-tabs.js';
-const assetUrl = '/assets/spire-adaptive-chart-tabs.js?v=20260815-adaptive-tabs-2';
+const assetUrl = '/assets/spire-adaptive-chart-tabs.js?v=20260815-adaptive-tabs-3';
 const marker = 'SPIRE_ADAPTIVE_CHART_TABS_V1';
+const ldaRelative = 'assets/spire-lda-workspace.js';
+const ldaMarker = 'SPIRE_LDA_WORKSPACE_V1';
+const ldaUrl = '/assets/spire-lda-workspace.js?v=20260815-lda-workspace-v1';
 const summaryRelative = 'assets/spire-summary-overview.js';
-const summaryMarker = 'SPIRE_SUMMARY_OVERVIEW_V2';
-const summaryUrl = '/assets/spire-summary-overview.js?v=20260815-summary-overview-v2';
+const summaryMarker = 'SPIRE_SUMMARY_OVERVIEW_V3';
+const summaryUrl = '/assets/spire-summary-overview.js?v=20260815-summary-overview-v3';
 
 const runtimePath = path.join(root, assetRelative);
 const runtime = await readFile(runtimePath, 'utf8');
 if (!runtime.includes(marker)) throw new Error(`SPIRE adaptive chart tabs runtime is missing ${marker}`);
-if (!runtime.includes("id = 'spireChartMoreTab'") && !runtime.includes("MORE_ID = 'spireChartMoreTab'")) throw new Error('SPIRE adaptive chart tabs runtime is missing the More menu control');
+if (!runtime.includes("MORE_ID = 'spireChartMoreTab'")) throw new Error('SPIRE adaptive chart tabs runtime is missing the More menu control');
 if (!runtime.includes('ResizeObserver')) throw new Error('SPIRE adaptive chart tabs runtime is missing responsive width observation');
 if (!runtime.includes('spire:chart-tab-usage:v1:')) throw new Error('SPIRE adaptive chart tabs runtime is missing per-user usage ranking');
-if (!runtime.includes("data:image/svg+xml")) throw new Error('SPIRE adaptive chart tabs runtime is missing the medication-style MAR icon');
-if (!runtime.includes(summaryUrl)) throw new Error(`SPIRE adaptive chart tabs runtime is missing Summary Overview V2 loader ${summaryUrl}`);
+if (!runtime.includes('data:image/svg+xml')) throw new Error('SPIRE adaptive chart tabs runtime is missing the medication-style MAR icon');
+if (!runtime.includes('SPIRE_LDA_TAB_SHELL_V1') || !runtime.includes(ldaUrl)) throw new Error('SPIRE adaptive runtime is missing the LDA tab/workspace loader');
+if (!runtime.includes(summaryUrl)) throw new Error('SPIRE adaptive runtime is missing Summary Overview V3 loader');
 new Function(runtime);
 
-const summaryRuntimePath = path.join(root, summaryRelative);
-const summaryRuntime = await readFile(summaryRuntimePath, 'utf8');
-if (!summaryRuntime.includes(summaryMarker)) throw new Error(`SPIRE Summary Overview runtime is missing ${summaryMarker}`);
-new Function(summaryRuntime);
+for (const [relative, requiredMarker] of [[ldaRelative, ldaMarker],[summaryRelative, summaryMarker]]) {
+  const sourcePath = path.join(root, relative);
+  const source = await readFile(sourcePath, 'utf8');
+  if (!source.includes(requiredMarker)) throw new Error(`${relative} is missing ${requiredMarker}`);
+  new Function(source);
+  const publishedPath = path.join(dist, relative);
+  await stat(publishedPath);
+  const published = await readFile(publishedPath, 'utf8');
+  if (!published.includes(requiredMarker)) throw new Error(`Published ${relative} is stale`);
+  new Function(published);
+}
 
 const distRuntimePath = path.join(dist, assetRelative);
 await stat(distRuntimePath);
 const publishedRuntime = await readFile(distRuntimePath, 'utf8');
-if (!publishedRuntime.includes(marker)) throw new Error('Published SPIRE adaptive chart tabs runtime is stale');
-if (!publishedRuntime.includes(summaryUrl)) throw new Error('Published SPIRE adaptive chart tabs runtime does not load Summary Overview V2');
-
-const distSummaryPath = path.join(dist, summaryRelative);
-await stat(distSummaryPath);
-const publishedSummary = await readFile(distSummaryPath, 'utf8');
-if (!publishedSummary.includes(summaryMarker)) throw new Error('Published SPIRE Summary Overview runtime is stale');
+if (!publishedRuntime.includes(marker) || !publishedRuntime.includes(ldaUrl) || !publishedRuntime.includes(summaryUrl)) throw new Error('Published SPIRE adaptive chart runtime is stale');
 
 async function publishMaster(masterPath) {
   let html = await readFile(masterPath, 'utf8');
@@ -55,4 +60,4 @@ for (const required of [assetUrl, 'data-view="flowsheets-view"', 'data-view="mar
   if (!finalMaster.includes(required)) throw new Error(`Final SPIRE adaptive chart tab publication is missing ${required}`);
 }
 
-console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: responsive More menu, usage-ranked visible tabs, medication-style MAR icon, and Summary Overview V2 loader.`);
+console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, and Summary LDA avatar.`);
