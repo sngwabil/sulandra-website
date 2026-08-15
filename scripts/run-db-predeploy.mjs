@@ -7,30 +7,35 @@ const lockKey = 'sulandra-db-predeploy';
 const ownerToken = randomUUID();
 const lockRetryMs = 1500;
 const leaseMs = 20 * 60 * 1000;
+const maxLeaseWaitMs = 5 * 60 * 1000;
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-function childEnvironment() {
-  const env = { ...process.env };
-  const rawDatabaseUrl = env.DATABASE_URL;
-
-  if (!rawDatabaseUrl) return env;
+function constrainedDatabaseUrl(rawDatabaseUrl) {
+  if (!rawDatabaseUrl) return rawDatabaseUrl;
 
   try {
     const databaseUrl = new URL(rawDatabaseUrl);
     if (databaseUrl.protocol === 'postgres:' || databaseUrl.protocol === 'postgresql:') {
-      if (!databaseUrl.searchParams.has('connection_limit')) {
-        databaseUrl.searchParams.set('connection_limit', '1');
-      }
+      databaseUrl.searchParams.set('connection_limit', '1');
       if (!databaseUrl.searchParams.has('pool_timeout')) {
-        databaseUrl.searchParams.set('pool_timeout', '60');
+        databaseUrl.searchParams.set('pool_timeout', '15');
       }
-      env.DATABASE_URL = databaseUrl.toString();
+      if (!databaseUrl.searchParams.has('connect_timeout')) {
+        databaseUrl.searchParams.set('connect_timeout', '10');
+      }
+      return databaseUrl.toString();
     }
   } catch {
     console.warn('[db:predeploy] DATABASE_URL could not be normalized; using the configured value unchanged.');
   }
 
+  return rawDatabaseUrl;
+}
+
+function childEnvironment() {
+  const env = { ...process.env };
+  env.DATABASE_URL = constrainedDatabaseUrl(env.DATABASE_URL);
   return env;
 }
 
@@ -53,7 +58,10 @@ function isConnectionPressure(error) {
 }
 
 async function withPrisma(operation) {
-  const prisma = new PrismaClient();
+  const datasourceUrl = constrainedDatabaseUrl(process.env.DATABASE_URL);
+  const prisma = datasourceUrl
+    ? new PrismaClient({ datasourceUrl })
+    : new PrismaClient();
   try {
     return await operation(prisma);
   } finally {
@@ -93,7 +101,12 @@ async function tryAcquireLease() {
 
 async function acquireLease() {
   console.log('[db:predeploy] waiting for Sulandra deployment lease...');
-  while (true) {
+  const startedAt = Date.now();
+  let attempts = 0;
+  let connectionPressureSeen = false;
+
+  while (Date.now() - startedAt < maxLeaseWaitMs) {
+    attempts += 1;
     try {
       if (await tryAcquireLease()) {
         console.log('[db:predeploy] acquired deployment lease without holding an idle database connection.');
@@ -101,11 +114,26 @@ async function acquireLease() {
       }
     } catch (error) {
       if (!isConnectionPressure(error)) throw error;
-      console.warn('[db:predeploy] database is at connection capacity; retrying lease acquisition.');
+      connectionPressureSeen = true;
+      if (attempts === 1 || attempts % 10 === 0) {
+        console.warn('[db:predeploy] database is at connection capacity; waiting for a slot.');
+      }
     }
 
     await wait(lockRetryMs);
   }
+
+  if (connectionPressureSeen) {
+    throw new Error(
+      `[db:predeploy] database connection capacity did not recover within ${Math.round(maxLeaseWaitMs / 1000)} seconds. `
+      + 'Reduce active Prisma pool usage or use a pooled DATABASE_URL before redeploying.',
+    );
+  }
+
+  throw new Error(
+    `[db:predeploy] another Sulandra deployment held the database lease for more than ${Math.round(maxLeaseWaitMs / 1000)} seconds. `
+    + 'Allow that deployment to finish or cancel the stale Railway deployment before retrying.',
+  );
 }
 
 async function releaseLease() {
