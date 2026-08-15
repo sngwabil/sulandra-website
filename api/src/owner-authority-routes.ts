@@ -158,7 +158,7 @@ export function registerOwnerAuthorityRoutes({ app, prisma, authOf }: Dependenci
     await upsertEmployment(
       sulandraHealth.id,
       executiveDepartmentId,
-      'Owner / Founder & Enterprise Director of Nursing',
+      'Owner / Founder, Chief Executive Officer & Enterprise Director of Nursing',
       'OWNER',
       true,
     );
@@ -219,6 +219,16 @@ export function registerOwnerAuthorityRoutes({ app, prisma, authOf }: Dependenci
       'NOT_REQUIRED',
     );
     await upsertAppointment(
+      'CHIEF_EXECUTIVE_OFFICER',
+      'OWNERSHIP',
+      'Chief Executive Officer (CEO)',
+      sulandraHealth.id,
+      'Chief executive leadership of Sulandra Health and its enterprise companies',
+      null,
+      'NOT_REQUIRED',
+      { executiveTitleCode: 'CEO', displayAsCredentialSuffix: true },
+    );
+    await upsertAppointment(
       'ENTERPRISE_DON',
       'EXECUTIVE_CLINICAL',
       'Enterprise Director of Nursing',
@@ -252,8 +262,8 @@ export function registerOwnerAuthorityRoutes({ app, prisma, authOf }: Dependenci
     await prisma.$executeRawUnsafe(
       `INSERT INTO "EmployeeManagementProfile"
          ("userId","organizationId","displayName","department","jobTitle","employmentStatus","hireDate","notes","createdAt","updatedAt")
-       VALUES ($1,$2,$3,'Executive / Clinical Leadership','Enterprise Director of Nursing','ACTIVE',CURRENT_DATE,
-               'Internal owner/executive clinical appointment. DODD Director of Operations is intentionally a separate hire.',NOW(),NOW())
+       VALUES ($1,$2,$3,'Executive / Clinical Leadership','Chief Executive Officer & Enterprise Director of Nursing','ACTIVE',CURRENT_DATE,
+               'Internal owner/chief executive/executive clinical appointment. DODD Director of Operations is intentionally a separate hire.',NOW(),NOW())
        ON CONFLICT ("userId") DO UPDATE SET
          "displayName"=EXCLUDED."displayName","department"=EXCLUDED."department","jobTitle"=EXCLUDED."jobTitle",
          "employmentStatus"='ACTIVE',"notes"=EXCLUDED."notes","updatedAt"=NOW()`,
