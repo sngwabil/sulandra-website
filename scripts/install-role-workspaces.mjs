@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ROLE_WORKSPACE_VERSION = '20260815-role-workspaces-1';
+const ROLE_WORKSPACE_VERSION = '20260815-role-workspaces-2';
 
 async function patch(relative, transform) {
   const target = path.join(root, relative);
@@ -58,6 +58,14 @@ await patch('admin-railway.js', (source) => {
   return source;
 });
 
+await patch('assets/admin-company-context.js', (source) => {
+  if (source.includes("{key:'role-workspaces',label:'Role Workspaces'")) return source;
+  const anchor = "      {key:'company-files',label:'Company Files',sub:'Official Records',kind:'route',href:'/company-documents.html'},\n";
+  if (!source.includes(anchor)) throw new Error('Canonical Admin Company Files navigation anchor changed');
+  const roleTab = "      {key:'role-workspaces',label:'Role Workspaces',sub:'Preview Role HTML',kind:'route',href:'/role-workspaces.html'},\n";
+  return source.replace(anchor, `${anchor}${roleTab}`);
+});
+
 await patch('admin.html', (html) => {
   html = html.replace(/\s*<script src="\/assets\/admin-role-workspaces-link\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
   const context = '<script src="/assets/admin-company-context.js?v=20260809-admin-company-context-2"></script>';
@@ -78,4 +86,4 @@ await patch('tests/production-role-uat.spec.mjs', (source) => {
   return source;
 });
 
-console.log('Role workspaces installed: every employee role has a dedicated HTML workspace, Home Manager gets a home-team tab, CEO/DOO use dedicated executive workspaces, DOO receives all separate administrative HTML except owner admin.html, and Admin receives the owner-only Role Workspaces directory.');
+console.log('Role workspaces installed: every employee role has a dedicated HTML workspace, Home Manager gets a home-team tab, CEO/DOO use dedicated executive workspaces, DOO receives all separate administrative HTML except owner admin.html, and Owner Admin receives a Role Workspaces menu tab and directory.');
