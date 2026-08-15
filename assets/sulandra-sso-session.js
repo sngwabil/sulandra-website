@@ -3,14 +3,20 @@
   const TOKEN_KEY='sulandra:employee:access-token';
   const SESSION_KEY='sulandra:employee:session';
   const API='https://sulandra-website-production-5fc4.up.railway.app';
+  const PRIVILEGED_ROLES=new Set(['ADMINISTRATOR','CEO','DOO']);
   const nativeFetch=window.fetch.bind(window);
 
   const parse=value=>{try{return JSON.parse(value||'null')}catch{return null}};
+  const roleOf=session=>String(session?.role||session?.user?.role||session?.profile?.role||'').toUpperCase();
   const readToken=()=>sessionStorage.getItem(TOKEN_KEY)||localStorage.getItem(TOKEN_KEY)||'';
   const readSession=()=>parse(sessionStorage.getItem(SESSION_KEY))||parse(localStorage.getItem(SESSION_KEY));
   const writeSession=(token,session)=>{
-    if(token){sessionStorage.setItem(TOKEN_KEY,token);localStorage.setItem(TOKEN_KEY,token)}
-    if(session){const encoded=JSON.stringify(session);sessionStorage.setItem(SESSION_KEY,encoded);localStorage.setItem(SESSION_KEY,encoded)}
+    const privileged=PRIVILEGED_ROLES.has(roleOf(session));
+    if(token)sessionStorage.setItem(TOKEN_KEY,token);
+    if(session)sessionStorage.setItem(SESSION_KEY,JSON.stringify(session));
+    if(privileged){localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESSION_KEY);return}
+    if(token)localStorage.setItem(TOKEN_KEY,token);
+    if(session)localStorage.setItem(SESSION_KEY,JSON.stringify(session));
   };
   const clear=()=>{sessionStorage.removeItem(TOKEN_KEY);sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(TOKEN_KEY);localStorage.removeItem(SESSION_KEY)};
   const expired=session=>{
@@ -18,11 +24,21 @@
     if(session.expiresAt){const t=Date.parse(session.expiresAt);if(Number.isFinite(t))return t<=Date.now()+15000;}
     return false;
   };
+  const loadPrivilegedGuard=session=>{
+    if(!PRIVILEGED_ROLES.has(roleOf(session)))return;
+    if(document.querySelector('script[data-sulandra-admin-session-security]'))return;
+    const script=document.createElement('script');
+    script.src='/assets/admin-session-security.js?v=20260815-privileged-session-1';
+    script.async=false;
+    script.dataset.sulandraAdminSessionSecurity='true';
+    (document.head||document.documentElement).appendChild(script);
+  };
 
   const token=readToken();
   const session=readSession();
   if(token&&session&&!expired(session))writeSession(token,session);
   else if(session&&expired(session))clear();
+  loadPrivilegedGuard(readSession());
 
   window.SulandraSSO={
     token:readToken,
