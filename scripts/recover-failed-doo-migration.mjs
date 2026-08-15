@@ -26,10 +26,10 @@ const migrationNames = [
   '20260811121500_spire_external_connectivity_foundation',
   '20260811234000_spire_chart_access_audit_hardening',
 ];
-const prisma = new PrismaClient();
 
-try {
-  for (const migrationName of migrationNames) {
+async function migrationState(migrationName) {
+  const prisma = new PrismaClient();
+  try {
     const rows = await prisma.$queryRawUnsafe(
       `SELECT "finished_at", "rolled_back_at"
          FROM "_prisma_migrations"
@@ -38,26 +38,31 @@ try {
         LIMIT 1`,
       migrationName,
     );
-
-    const latest = rows[0];
-    const isFailed = latest && !latest.finished_at && !latest.rolled_back_at;
-
-    if (!isFailed) {
-      console.log(`No failed migration state requires recovery for ${migrationName}.`);
-      continue;
-    }
-
-    console.log(`Marking failed migration ${migrationName} as rolled back before retry.`);
-    const result = spawnSync(
-      process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      ['prisma', 'migrate', 'resolve', '--rolled-back', migrationName],
-      { stdio: 'inherit', env: process.env },
-    );
-
-    if (result.status !== 0) {
-      throw new Error(`Unable to resolve failed migration ${migrationName}.`);
-    }
+    return rows[0];
+  } finally {
+    // Release the inspection connection before spawning Prisma CLI. Railway can run
+    // this predeploy while Postgres is near its connection ceiling.
+    await prisma.$disconnect().catch(() => undefined);
   }
-} finally {
-  await prisma.$disconnect();
+}
+
+for (const migrationName of migrationNames) {
+  const latest = await migrationState(migrationName);
+  const isFailed = latest && !latest.finished_at && !latest.rolled_back_at;
+
+  if (!isFailed) {
+    console.log(`No failed migration state requires recovery for ${migrationName}.`);
+    continue;
+  }
+
+  console.log(`Marking failed migration ${migrationName} as rolled back before retry.`);
+  const result = spawnSync(
+    process.platform === 'win32' ? 'npx.cmd' : 'npx',
+    ['prisma', 'migrate', 'resolve', '--rolled-back', migrationName],
+    { stdio: 'inherit', env: process.env },
+  );
+
+  if (result.status !== 0) {
+    throw new Error(`Unable to resolve failed migration ${migrationName}.`);
+  }
 }
