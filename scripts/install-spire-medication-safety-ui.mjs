@@ -9,12 +9,25 @@ const SAFETY_REL = 'assets/spire-mar-safety-verifier.js';
 const ORDER_URL = '/assets/spire-medication-order-entry.js?v=20260815-med-order-v2';
 const SAFETY_URL = '/assets/spire-mar-safety-verifier.js?v=20260815-mar-safety-v1';
 const MAR_MARKER = 'SPIRE_MAR_ORDER_CONTEXT_V1';
+const MAR_GLUCOSE_MARKER = 'SPIRE_MAR_SAFETY_GLUCOSE_V1';
+const RESUME_MARKER = 'SPIRE_MED_ORDER_RESUME_REBUILDS_SCHEDULE_V1';
 
-const orderRuntime = await readFile(path.join(root, ORDER_REL), 'utf8');
+let orderRuntime = await readFile(path.join(root, ORDER_REL), 'utf8');
 if (!orderRuntime.includes('SPIRE_MEDICATION_ORDER_ENTRY_V2')) throw new Error('Medication order V2 runtime marker is missing');
 if (!orderRuntime.includes('frequencyCode')) throw new Error('Medication order V2 runtime is missing structured frequency logic');
 if (!orderRuntime.includes('data-scale-toggle')) throw new Error('Medication order V2 runtime is missing sliding-scale editor');
 if (!orderRuntime.includes('Manage Orders')) throw new Error('Medication order V2 runtime is missing medication management');
+
+// Resuming a held order makes it ACTIVE first, then re-saves the same structured order
+// so the backend rebuilds only its future MAR schedule. Past administrations stay intact.
+if (!orderRuntime.includes(RESUME_MARKER)) {
+  const oldChange = "  async function changeStatus(order,status){const reason=prompt(`${status==='DISCONTINUED'?'Discontinue':status==='HELD'?'Hold':'Resume'} ${order.name}: enter the reason.`);if(!clean(reason))return;try{await api(`/api/spire/medication-orders-v2/${encodeURIComponent(order.id)}/status`,{method:'POST',body:JSON.stringify({status,reason:clean(reason)})});await loadOrders();renderManage(ensureManageModal());}catch(e){alert(e.message||'Unable to change medication order status.');}}";
+  const newChange = `  // ${RESUME_MARKER}\n  async function changeStatus(order,status){const reason=prompt(\`${'${status===\'DISCONTINUED\'?\'Discontinue\':status===\'HELD\'?\'Hold\':\'Resume\'} ${order.name}'}: enter the reason.\`);if(!clean(reason))return;try{await api(\`/api/spire/medication-orders-v2/${'${encodeURIComponent(order.id)}'}/status\`,{method:'POST',body:JSON.stringify({status,reason:clean(reason)})});if(status==='ACTIVE'){const resumePayload=orderToPayload(order,clean(order.linkedOrderGroupId)||undefined);resumePayload.changeReason=\`Order resumed: ${'${clean(reason)}'}\`;await api(\`/api/spire/medication-orders-v2/${'${encodeURIComponent(order.id)}'}\`,{method:'PATCH',body:JSON.stringify(resumePayload)});}await loadOrders();renderManage(ensureManageModal());}catch(e){alert(e.message||'Unable to change medication order status.');}}`;
+  if (!orderRuntime.includes(oldChange)) throw new Error('Medication order V2 resume scheduling anchor is missing');
+  orderRuntime = orderRuntime.replace(oldChange, newChange);
+  await writeFile(path.join(root, ORDER_REL), orderRuntime, 'utf8');
+}
+if (!orderRuntime.includes(RESUME_MARKER)) throw new Error('Medication order V2 resume scheduling guard was not installed');
 new Function(orderRuntime);
 
 const safetyRuntime = await readFile(path.join(root, SAFETY_REL), 'utf8');
@@ -30,9 +43,15 @@ async function patchMarRuntime(file) {
     if (!source.includes(anchor)) throw new Error(`MAR order-context anchor is missing in ${path.relative(root, file)}`);
     source = source.replace(anchor, `${anchor}\n    // ${MAR_MARKER}\n    dialog.dataset.medicationOrderId = medicationId;\n    dialog.dataset.scheduledFor = scheduledFor || cell.scheduledFor || '';`);
   }
+  if (!source.includes(MAR_GLUCOSE_MARKER)) {
+    const bodyAnchor = "            note: note || null,\n          }),";
+    if (!source.includes(bodyAnchor)) throw new Error(`MAR glucose safety anchor is missing in ${path.relative(root, file)}`);
+    source = source.replace(bodyAnchor, `            note: note || null,\n            // ${MAR_GLUCOSE_MARKER}\n            bloodGlucose: (() => { const value = clean(dialog.querySelector('[data-spire-bg]')?.value); return value === '' ? null : Number(value); })(),\n          }),`);
+  }
   if (!source.includes(MAR_MARKER) || !source.includes('dialog.dataset.medicationOrderId = medicationId')) {
     throw new Error(`MAR medication-order context was not installed in ${path.relative(root, file)}`);
   }
+  if (!source.includes(MAR_GLUCOSE_MARKER)) throw new Error(`MAR glucose safety payload was not installed in ${path.relative(root, file)}`);
   new Function(source);
   await writeFile(file, source, 'utf8');
 }
@@ -70,5 +89,8 @@ for (const required of [ORDER_URL, SAFETY_URL, 'data-view="mar-view"', 'data-vie
 }
 const finalMar = await readFile(path.join(dist, 'assets', 'spire-mar-timeline.js'), 'utf8');
 if (!finalMar.includes(MAR_MARKER)) throw new Error('Published MAR runtime is missing medication-order context');
+if (!finalMar.includes(MAR_GLUCOSE_MARKER)) throw new Error('Published MAR runtime is missing sliding-scale glucose safety payload');
+const finalOrder = await readFile(path.join(dist, ORDER_REL), 'utf8');
+if (!finalOrder.includes(RESUME_MARKER)) throw new Error('Published medication order runtime is missing resume schedule reconstruction');
 
-console.log(`SPIRE medication ordering V2 published via ${ORDER_URL}; MAR second-verifier published via ${SAFETY_URL}.`);
+console.log(`SPIRE medication ordering V2 published via ${ORDER_URL}; MAR second-verifier published via ${SAFETY_URL}; held/resumed scheduling and sliding-scale glucose server verification are enforced.`);
