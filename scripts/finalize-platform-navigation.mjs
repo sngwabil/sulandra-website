@@ -37,53 +37,26 @@ function replaceExactHref(html, from, to) {
   return html.replace(new RegExp(`href=(['"])${escaped}\\1`,'g'),`href="${to}"`);
 }
 
-function insertAdminLink(html, id, anchorPattern, markup, label) {
-  if(html.includes(`id="${id}"`)||html.includes(`id='${id}'`)) return html;
-  if(!anchorPattern.test(html)) {
-    console.warn(`[navigation] Admin ${label} anchor was not found; continuing without aborting the static build.`);
-    return html;
-  }
-  anchorPattern.lastIndex=0;
-  return html.replace(anchorPattern,(anchor)=>`${anchor}\n${markup}`);
-}
-
-async function installAdminProfileNavigation() {
-  const adminPath=path.join(dist,'admin.html');
-  try {
-    let html=await readFile(adminPath,'utf8');
-    html=insertAdminLink(
-      html,
-      'myProfileHeaderLink',
-      /<span\b[^>]*\bid=["']livePill["'][^>]*>[\s\S]*?<\/span>/i,
-      '        <a class="btn-cta secondary hide-mobile" id="myProfileHeaderLink" href="admin-profile.html">My Profile</a>',
-      'header',
-    );
-    html=insertAdminLink(
-      html,
-      'myProfileTopNavLink',
-      /<ul\b[^>]*\bid=["']topModuleNav["'][^>]*>/i,
-      '        <li><a id="myProfileTopNavLink" href="admin-profile.html">My Profile</a></li>',
-      'top navigation',
-    );
-    html=insertAdminLink(
-      html,
-      'myProfileSideLink',
-      /<div\b[^>]*\bid=["']sideModuleNav["'][^>]*>/i,
-      '          <button class="side-btn" id="myProfileSideLink" type="button" onclick="window.location.href=\'admin-profile.html\'">My Profile <small>Owner & DON</small></button>',
-      'sidebar',
-    );
-    await writeFile(adminPath,html,'utf8');
-  } catch(error) {
-    if(error?.code!=='ENOENT') throw error;
+async function installOwnerProfileCanonicalNavigation() {
+  const targets=[path.join(root,'assets','admin-company-context.js'),path.join(dist,'assets','admin-company-context.js')];
+  const marker="      {key:'settings',label:'Settings',sub:'Company Settings',kind:'module'},";
+  const profile="      {key:'my-profile',label:'My Profile',sub:'Owner & DON',kind:'route',href:'/admin-profile.html'},";
+  for(const target of targets){
+    try{
+      let source=await readFile(target,'utf8');
+      if(source.includes("href:'/admin-profile.html'")) continue;
+      if(!source.includes(marker)) throw new Error(`Canonical Admin settings marker missing in ${path.relative(root,target)}`);
+      source=source.replace(marker,`${profile}\n${marker}`);
+      await writeFile(target,source,'utf8');
+    }catch(error){if(error?.code!=='ENOENT')throw error}
   }
 }
 
-await installAdminProfileNavigation();
+await installOwnerProfileCanonicalNavigation();
 
 for (const file of await walk(dist)) {
   // Admin owns navigation in assets/admin-company-context.js. Generic route
-  // normalization must never rewrite the canonical Admin publication. The one
-  // targeted My Profile insertion above is intentionally limited to navigation.
+  // normalization must never rewrite the canonical Admin publication.
   if (path.basename(file).toLowerCase() === 'admin.html') continue;
   let html=await readFile(file,'utf8');
   const original=html;
@@ -134,4 +107,4 @@ await import('./fix-platform-integration-spire-contract.mjs');
 // open /spire/master.html directly because the master itself still enforces session auth.
 await import('./publish-spire-standalone-launch.mjs');
 await import('./verify-employee-work-center.mjs');
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected except for the live My Profile navigation entry, SPIRE Client Station remains the secure canonical entry, and authorized launchers publish the standalone live master chart directly.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected and now includes the live owner profile route through its single navigation registry, SPIRE Client Station remains the secure canonical entry, and authorized launchers publish the standalone live master chart directly.');
