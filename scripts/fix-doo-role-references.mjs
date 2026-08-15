@@ -34,4 +34,5 @@ async function walk(directory) {
 }
 
 await walk(root);
-console.log(`Director of Operations role enforcement applied to ${updated} TypeScript file(s).`);
+await import('./install-spire-medication-safety-platform.mjs');
+console.log(`Director of Operations role enforcement applied to ${updated} TypeScript file(s); SPIRE medication safety routes installed.`);
