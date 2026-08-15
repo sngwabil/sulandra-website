@@ -14,6 +14,7 @@
   const $ = (id) => document.getElementById(id);
   const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  let dashboardRequestSequence = 0;
 
   const state = {
     dashboard: {}, applications: [], openings: [], weather: {},
@@ -53,7 +54,19 @@
     catch { return {}; }
   }
   async function api(path) {
-    const response = await fetch(API + path, { cache:'no-store', headers:{ Accept:'application/json', ...(token() ? { Authorization:`Bearer ${token()}` } : {}) } });
+    const companyContext = window.SulandraCompanyContext;
+    if (!companyContext?.current?.()?.id) {
+      try { await companyContext?.initialize?.(); } catch {}
+    }
+    const entityHeaders = companyContext?.headers?.() || {};
+    const response = await fetch(API + path, {
+      cache:'no-store',
+      headers:{
+        Accept:'application/json',
+        ...(token() ? { Authorization:`Bearer ${token()}` } : {}),
+        ...entityHeaders,
+      },
+    });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || payload.message || `Request failed (${response.status})`);
     return payload.data ?? payload;
@@ -110,16 +123,22 @@
   }
 
   async function loadDashboardData() {
+    const requestId = ++dashboardRequestSequence;
     setSystemState('Connecting');
     try {
       const [dashboard, applications, openings] = await Promise.all([
         api('/api/admin/dashboard').catch(() => ({})), api('/api/admin/applications?limit=200').catch(() => []), api('/api/admin/job-openings').catch(() => []),
       ]);
+      if (requestId !== dashboardRequestSequence) return;
       state.dashboard = dashboard || {};
       state.applications = Array.isArray(applications) ? applications : applications?.items || [];
       state.openings = Array.isArray(openings) ? openings : openings?.items || [];
       setSystemState('Live');
-    } catch (error) { state.dashboard.error = error.message; setSystemState('Limited'); }
+    } catch (error) {
+      if (requestId !== dashboardRequestSequence) return;
+      state.dashboard.error = error.message;
+      setSystemState('Limited');
+    }
     renderWidgets();
   }
 
@@ -303,6 +322,7 @@
   function initialize() {
     installStyles(); renderDashboard(); installEdgeDrawers(); installModulePersistence(); installSlideObserver();
     loadWeather(); loadDashboardData();
+    window.addEventListener('sulandra:company-change', loadDashboardData);
     setInterval(updateClock,1000); setInterval(checkAlarms,1000); setInterval(loadDashboardData,60000); setInterval(loadWeather,10*60*1000);
   }
 
