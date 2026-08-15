@@ -10,14 +10,15 @@ const expect=(condition,label)=>{if(!condition)failures.push(label)};
 const contract='20260810-role-uat-1';
 
 // Normalize the same source files Railway publishes before validating the role contract.
+await import('./install-home-manager-residential-scope.mjs');
 await import('./install-role-workspaces.mjs');
 await import('./verify-role-workspaces.mjs');
 
-const [portal,runtime,guard,portalInstaller,loginHtml,loginAsset,loginRoot,adminFixer,nmt,testSource,config,workflow,pkg,roleRuntime,roleDirectory]=await Promise.all([
+const [portal,runtime,guard,portalInstaller,loginHtml,loginAsset,loginRoot,adminFixer,nmt,testSource,config,workflow,pkg,roleRuntime,roleDirectory,residentialApi,residentialHtml,homeManagerInstaller,apiPackage]=await Promise.all([
   read('employee-portal.html'),read('employee-portal-railway.js'),read('assets/employee-role-navigation-guard.js'),read('scripts/install-employee-portal-deep-integration.mjs'),
   read('employee-login.html'),read('assets/employee-login-railway.js'),read('employee-login-railway.js'),read('scripts/fix-admin-session-bounce.mjs'),
   read('api/src/nmt-dispatch-routes.ts'),read('tests/production-role-uat.spec.mjs'),read('playwright.role-uat.config.mjs'),read('.github/workflows/production-role-uat.yml'),read('package.json'),
-  read('assets/role-workspace.js'),read('role-workspaces.html'),
+  read('assets/role-workspace.js'),read('role-workspaces.html'),read('api/src/scls-residential-routes.ts'),read('scls-residential.html'),read('scripts/install-home-manager-residential-scope.mjs'),read('api/package.json'),
 ]);
 
 expect(portal.includes(`sulandra-role-uat-contract\" content=\"${contract}`)||portal.includes(`sulandra-role-uat-contract" content="${contract}`),'Employee Portal lacks production role-UAT contract marker');
@@ -37,7 +38,7 @@ for(const marker of [
   'const roleWorkspaceRoutes = new Map([','employeeRoleWorkspaceLauncher','employeeRoleWorkspaceNav','const executiveAdminRoles = new Set(["ADMINISTRATOR"]);',
 ])expect(runtime.includes(marker),`Employee Portal runtime missing UAT behavior: ${marker}`);
 expect(guard.includes(contract)&&guard.includes("['employeeSchedulingLauncher', '/scheduling.html']")&&guard.includes("['employeeSchedulingNav', '/scheduling.html']"),'Protected employee Scheduling navigation guard is incomplete');
-expect(portalInstaller.includes('employee-role-navigation-guard.js?v=20260810-role-uat-1')&&portalInstaller.includes("install-role-workspaces.mjs"),'Employee Portal publisher does not install protected navigation plus role workspaces');
+expect(portalInstaller.includes('employee-role-navigation-guard.js?v=20260810-role-uat-1')&&portalInstaller.includes("install-home-manager-residential-scope.mjs")&&portalInstaller.includes("install-role-workspaces.mjs"),'Employee Portal publisher does not install protected navigation, assigned-home manager controls and role workspaces');
 
 for(const source of [loginAsset,loginRoot]){
   expect(source.includes('ADMIN_LANDING_ROLES'),'Login runtime lacks centralized privileged-session roles');
@@ -56,10 +57,30 @@ expect(roleRuntime.includes('Manage My Home Team')&&roleRuntime.includes('/scls-
 expect(roleRuntime.includes('All Administrative HTML Workspaces — Owner Admin excluded'),'DOO role workspace does not publish the administrative HTML collection');
 expect(roleDirectory.includes('data-role-workspace-directory="true"'),'Owner Admin role directory is missing');
 
+for(const marker of [
+  'const staffManagementRoles=new Set<UserRole>([...managementRoles,UserRole.HOUSE_MANAGER]);',
+  'const ensureStaffManager=',
+  'h."managerUserId"=$3',
+  'OR h."managerUserId"=$4 OR EXISTS',
+  'canManageStaff:owner(a)||staffManagementRoles.has(a.role)',
+  "homes/:homeId/staff',async(req,res,next)=>{try{const a=authOf(res);ensureStaffManager(a);",
+  "homes/:homeId/staff/:userId',async(req,res,next)=>{try{const a=authOf(res);ensureStaffManager(a);",
+])expect(residentialApi.includes(marker),`Assigned-home manager backend scope missing ${marker}`);
+expect(!residentialApi.includes('const managementRoles=new Set<UserRole>([UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.DELEGATING_NURSE,UserRole.RN,UserRole.HOUSE_MANAGER'),'HOUSE_MANAGER must not become globally elevated residential management');
+for(const marker of [
+  "const validTabs=new Set(['residents','staff','tasks','handoff','log'])",
+  'state.context.canManageStaff?',
+  "history.replaceState(null,'','#'+state.tab)",
+  "$('newHouse').hidden=!state.context.elevated",
+])expect(residentialHtml.includes(marker),`Assigned-home manager frontend scope missing ${marker}`);
+expect(homeManagerInstaller.includes('appointed managers see only their assigned/managed homes'),'Home Manager installer lacks assigned-home scope contract');
+expect(apiPackage.includes('install-home-manager-residential-scope.mjs'),'API build/typecheck pipeline does not install Home Manager residential scope');
+
 for(const label of ['DSP','Medication-Certified DSP','LPN','RN','Delegating Nurse','House Manager','Program Manager','Home Health Clinician','Scheduler','NMT Dispatcher','NMT Driver','HR Manager','Administrator','Director of Operations','CEO','Auditor'])expect(testSource.includes(`label:'${label}'`),`Production UAT is missing persona ${label}`);
 expect((testSource.match(/page\.goto\(/g)||[]).length===1&&testSource.includes("page.goto('/employee-login.html')"),'Role browser UAT must begin navigation only from Employee Login');
 expect(testSource.includes("p.role==='DOO'")&&testSource.includes("/doo\\.html"),'Production UAT does not verify the DOO dedicated landing');
 expect(testSource.includes("p.role==='CEO'")&&testSource.includes("/ceo\\.html"),'Production UAT does not verify the CEO dedicated landing');
+expect(testSource.includes("key==='houseManager'")&&testSource.includes("Manage My Home Team"),'Production UAT does not verify Home Manager role workspace and staff management entry');
 expect(testSource.includes('UAT blocks live mutations'),'Production UAT does not explicitly block non-login backend mutations');
 expect(testSource.includes('representative mobile production UAT'),'Production UAT lacks representative mobile role coverage');
 expect(config.includes("https://www.sulandrahealth.com"),'Role UAT Playwright config is not pinned to the live production website');
@@ -76,17 +97,19 @@ for(const marker of [
   'https://www.sulandrahealth.com/doo.html',
   'https://www.sulandrahealth.com/ceo.html',
   'https://www.sulandrahealth.com/home-manager.html',
+  'https://www.sulandrahealth.com/scls-residential.html',
   'function landingForRole(role)',
   'role !== "ADMINISTRATOR"',
   'Manage My Home Team',
   'ownerMain: "/admin.html"',
+  'canManageStaff',
   'playwright.role-uat.config.mjs',
 ])expect(workflow.includes(marker),`Production Role UAT workflow missing ${marker}`);
 expect(pkg.includes('verify:role-uat'),'package.json does not expose the production role-UAT verifier');
 
-for(const rel of ['employee-portal-railway.js','assets/employee-role-navigation-guard.js','assets/employee-login-railway.js','employee-login-railway.js','assets/role-workspace.js','assets/admin-role-workspaces-link.js','playwright.role-uat.config.mjs','tests/production-role-uat.spec.mjs']){
+for(const rel of ['employee-portal-railway.js','assets/employee-role-navigation-guard.js','assets/employee-login-railway.js','employee-login-railway.js','assets/role-workspace.js','assets/admin-role-workspaces-link.js','scripts/install-home-manager-residential-scope.mjs','playwright.role-uat.config.mjs','tests/production-role-uat.spec.mjs']){
   try{await access(path.join(root,rel));const result=spawnSync(process.execPath,['--check',path.join(root,rel)],{encoding:'utf8'});if(result.status!==0)failures.push(`${rel} syntax check failed: ${(result.stderr||result.stdout||'').trim()}`);}catch{}
 }
 
 if(failures.length){console.error('Production role UAT contract verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('Production role UAT verified: role/company gating remains enforced, every occupiable role has a dedicated workspace, Home Manager receives assigned-home team operations, Owner Administrator alone lands on admin.html, CEO/DOO receive dedicated privileged workspaces, and DOO receives all separate administrative HTML except the owner main page.');
+console.log('Production role UAT verified: role/company gating remains enforced, every occupiable role has a dedicated workspace, appointed Home Managers can manage staff only in their assigned/managed home, Owner Administrator alone lands on admin.html, CEO/DOO receive dedicated privileged workspaces, and DOO receives all separate administrative HTML except the owner main page.');
