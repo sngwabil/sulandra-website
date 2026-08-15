@@ -22,6 +22,9 @@ type IdentityRow = {
 
 type AppointmentRow = {
   userId: string;
+  appointmentKey: string;
+  appointmentType: string;
+  title: string;
   credentialLabel: string | null;
   credentialVerificationStatus: string | null;
 };
@@ -50,6 +53,7 @@ const roleCredential = (role: string) => {
     case 'LPN': return 'LPN';
     case 'DSP': return 'DSP';
     case 'HOUSE_MANAGER': return 'House Manager';
+    case 'CEO': return 'CEO';
     default: return '';
   }
 };
@@ -69,10 +73,10 @@ async function resolveIdentities(prisma: PrismaClient, auth: AuthContext, reques
   );
 
   const appointments = await prisma.$queryRawUnsafe<AppointmentRow[]>(
-    `SELECT "userId","credentialLabel","credentialVerificationStatus"
+    `SELECT "userId","appointmentKey","appointmentType","title","credentialLabel","credentialVerificationStatus"
        FROM "LeadershipAppointment"
       WHERE "organizationId"=$1 AND "userId"=ANY($2::text[])
-        AND "status"='ACTIVE' AND NULLIF("credentialLabel",'') IS NOT NULL
+        AND "status"='ACTIVE'
       ORDER BY CASE "credentialVerificationStatus" WHEN 'VERIFIED' THEN 0 WHEN 'PENDING_VERIFICATION' THEN 1 ELSE 2 END,
                CASE "appointmentType" WHEN 'EXECUTIVE_CLINICAL' THEN 0 WHEN 'ENTITY_CLINICAL' THEN 1 ELSE 2 END,
                "updatedAt" DESC`,
@@ -81,9 +85,18 @@ async function resolveIdentities(prisma: PrismaClient, auth: AuthContext, reques
   ).catch(() => [] as AppointmentRow[]);
 
   const credentialByUser = new Map<string, string>();
+  const executiveSuffixesByUser = new Map<string, string[]>();
   for (const appointment of appointments) {
+    const userId = String(appointment.userId);
     const label = text(appointment.credentialLabel, 80);
-    if (label && !credentialByUser.has(String(appointment.userId))) credentialByUser.set(String(appointment.userId), label);
+    if (label && !credentialByUser.has(userId)) credentialByUser.set(userId, label);
+
+    const appointmentKey = text(appointment.appointmentKey, 120).toUpperCase();
+    const title = text(appointment.title, 250);
+    if (appointmentKey === 'CHIEF_EXECUTIVE_OFFICER' || /\bchief executive officer\b|\bCEO\b/i.test(title)) {
+      const existing = executiveSuffixesByUser.get(userId) || [];
+      if (!existing.includes('CEO')) executiveSuffixesByUser.set(userId, [...existing, 'CEO']);
+    }
   }
 
   return users.map((row) => {
@@ -98,10 +111,12 @@ async function resolveIdentities(prisma: PrismaClient, auth: AuthContext, reques
       || [firstName, middleName, lastName].filter(Boolean).join(' ')
       || text(row.email, 300)
       || row.id;
-    const credentials = credentialByUser.get(row.id)
+    const baseCredential = credentialByUser.get(row.id)
       || text(record.credentials, 80)
       || text(record.credential, 80)
       || roleCredential(row.role);
+    const suffixes = executiveSuffixesByUser.get(row.id) || [];
+    const credentials = [...new Set([baseCredential, ...suffixes].map((value) => text(value, 80)).filter(Boolean))].join(', ');
     const role = String(row.role || '');
     const displayLabel = credentials && !displayName.toUpperCase().endsWith(`, ${credentials.toUpperCase()}`)
       ? `${displayName}, ${credentials}`
