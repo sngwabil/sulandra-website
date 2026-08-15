@@ -10,6 +10,7 @@
   const PATH = location.pathname.toLowerCase().replace(/\/+$/, '');
   const PINNED_VIEWS = ['summary-view', 'flowsheets-view', 'mar-view', 'notes-view'];
   const ROW_CONTROLS_URL = '/assets/spire-medication-row-controls.js?v=20260815-med-row-controls-1';
+  const SUMMARY_OVERVIEW_URL = '/assets/spire-summary-overview.js?v=20260815-summary-overview-v2';
 
   if (!PATH.endsWith('/spire/master.html') && !PATH.endsWith('/spire/master')) return;
   if (window.__SPIRE_ADAPTIVE_CHART_TABS === MARKER) return;
@@ -47,13 +48,21 @@
     saveUsage();
   }
 
-  function loadMedicationRowControls() {
-    if (document.getElementById('spireMedicationRowControlsRuntime')) return;
+  function loadScriptOnce(id, src) {
+    if (document.getElementById(id)) return;
     const script = document.createElement('script');
-    script.id = 'spireMedicationRowControlsRuntime';
-    script.src = ROW_CONTROLS_URL;
+    script.id = id;
+    script.src = src;
     script.async = false;
     document.head.appendChild(script);
+  }
+
+  function loadMedicationRowControls() {
+    loadScriptOnce('spireMedicationRowControlsRuntime', ROW_CONTROLS_URL);
+  }
+
+  function loadSummaryOverview() {
+    loadScriptOnce('spireSummaryOverviewRuntime', SUMMARY_OVERVIEW_URL);
   }
 
   function installStyles() {
@@ -93,6 +102,7 @@
     if (!bar) return false;
     installStyles();
     loadMedicationRowControls();
+    loadSummaryOverview();
 
     const originalTabs = () => Array.from(bar.querySelectorAll(':scope > .chart-tab')).filter((tab) => tab.id !== MORE_ID);
     originalTabs().forEach((tab, index) => {
@@ -160,8 +170,6 @@
 
     function rankedTabs() {
       const tabs = originalTabs();
-      // SPIRE_PINNED_CORE_TABS_V1: Summary, Flowsheets, MAR, and Notes always occupy
-      // positions 1-4. Usage ranking applies only to the remaining activities.
       const byView = new Map(tabs.map((tab) => [tabView(tab), tab]));
       const pinned = PINNED_VIEWS.map((view) => byView.get(view)).filter(Boolean);
       const pinnedSet = new Set(pinned);
@@ -243,7 +251,6 @@
 
         const active = ranked.find((tab) => tab.classList.contains('active'));
         if (active && !visible.includes(active)) {
-          // Never displace Summary/Flowsheets/MAR/Notes just to surface a less-used active tab.
           const replaceIndex = [...visible].map((tab, index) => ({ tab, index })).reverse().find(({ tab }) => !isPinned(tab))?.index ?? -1;
           if (replaceIndex >= 0) visible.splice(replaceIndex, 1, active);
         }
