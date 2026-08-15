@@ -10,7 +10,7 @@ const auditPath = path.join(dist, 'assets', 'spire-flowsheet-audit-popover.js');
 const notePath = path.join(dist, 'assets', 'spire-note-composer-v2.js');
 
 const runtimeUrl = '/assets/spire-clinical-regression-runtime.js?v=20260815-clinical-regression-2';
-const auditUrl = '/assets/spire-flowsheet-audit-popover.js?v=20260815-flowsheet-audit-popover-1';
+const auditUrl = '/assets/spire-flowsheet-audit-popover.js?v=20260815-flowsheet-audit-popover-2';
 const noteUrl = '/assets/spire-note-composer-v2.js?v=20260815-note-composer-v2-1';
 
 await Promise.all([stat(masterPath), stat(runtimePath), stat(auditPath), stat(notePath)]);
@@ -41,9 +41,13 @@ for (const marker of [
   'Recorded for',
   'Filed at',
   '/api/spire/clinical-users?ids=',
-  'spire-flow-audit-trigger',
+  '/flowsheet-workspace?from=',
+  'press and hold',
 ]) {
   if (!audit.includes(marker)) throw new Error(`SPIRE flowsheet audit popover publication missing ${marker}`);
+}
+if (audit.includes('spire-flow-audit-trigger')) {
+  throw new Error('SPIRE flowsheet audit must not publish visible per-cell info buttons');
 }
 for (const marker of [
   'SPIRE_NOTE_COMPOSER_V2',
@@ -96,4 +100,4 @@ for (const required of [runtimeUrl, auditUrl, noteUrl]) {
 if (!published.includes('id="notes-view"')) throw new Error('Final SPIRE master lost the Notes view host');
 if (!published.includes('id="flowsheets-view"')) throw new Error('Final SPIRE master lost the Flowsheets view host');
 
-console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit popover added, legacy note modal removed, and inline provenance-aware Note Composer V2 layered over the validated chart shell.');
+console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit popover uses hover/press-and-hold without visible info buttons, legacy note modal removed, and inline provenance-aware Note Composer V2 layered over the validated chart shell.');
