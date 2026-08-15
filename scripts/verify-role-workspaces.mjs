@@ -15,10 +15,10 @@ const roleFiles = Object.freeze({
   DRIVER: 'driver.html', GENERAL: 'general-employee.html',
 });
 
-const [schema, runtime, css, directory, portal, loginAsset, loginRoot, admin, adminHtml, adminLink, installer] = await Promise.all([
+const [schema, runtime, css, directory, portal, loginAsset, loginRoot, admin, adminHtml, adminContext, adminLink, installer] = await Promise.all([
   read('prisma/schema.prisma'), read('assets/role-workspace.js'), read('assets/role-workspace.css'), read('role-workspaces.html'),
   read('employee-portal-railway.js'), read('assets/employee-login-railway.js'), read('employee-login-railway.js'), read('admin-railway.js'),
-  read('admin.html'), read('assets/admin-role-workspaces-link.js'), read('scripts/install-role-workspaces.mjs'),
+  read('admin.html'), read('assets/admin-company-context.js'), read('assets/admin-role-workspaces-link.js'), read('scripts/install-role-workspaces.mjs'),
 ]);
 
 for (const role of ['ADMINISTRATOR', ...Object.keys(roleFiles)]) expect(schema.includes(`  ${role}`), `Prisma UserRole is missing ${role}`);
@@ -51,8 +51,10 @@ for (const source of [loginAsset, loginRoot]) {
   expect(source.includes('if (role === "CEO") return "ceo.html";'), 'CEO login does not land on ceo.html');
 }
 expect(admin.includes('role !== "ADMINISTRATOR"') && admin.includes('role === "DOO" ? "doo.html"'), 'admin.html controller is not owner-only');
-expect(adminHtml.includes('/assets/admin-role-workspaces-link.js?v=20260815-role-workspaces-1'), 'Admin portal does not publish Role Workspaces navigation');
-expect(adminLink.includes('adminRoleWorkspacesLink') && adminLink.includes('/role-workspaces.html'), 'Admin Role Workspaces link runtime is incomplete');
+expect(adminHtml.includes('/assets/admin-role-workspaces-link.js?v=20260815-role-workspaces-2'), 'Admin portal does not publish the cache-busted Role Workspaces navigation');
+expect(adminContext.includes("{key:'role-workspaces',label:'Role Workspaces',sub:'Preview Role HTML',kind:'route',href:'/role-workspaces.html'}"), 'Canonical Admin navigation does not include the Role Workspaces menu tab');
+expect(adminLink.includes('adminRoleWorkspacesTopLink') && adminLink.includes('topMenuTab: true') && adminLink.includes('/role-workspaces.html'), 'Admin Role Workspaces compatibility menu runtime is incomplete');
+expect(installer.includes("await patch('assets/admin-company-context.js'"), 'Role workspace installer does not keep canonical Admin navigation aligned');
 expect(installer.includes('Owner-only Admin main-page guard was not installed'), 'Role workspace installer does not enforce the owner-only Admin guard');
 expect(installer.includes("await patch('tests/production-role-uat.spec.mjs'"), 'Role workspace installer does not keep production role UAT aligned with the dedicated role pages');
 
@@ -68,4 +70,4 @@ if (failures.length) {
   console.error('Role workspace verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Role workspaces verified: all 15 employee/leadership roles have dedicated HTML, Home Manager has assigned-home team operations, DOO has every separate administrative HTML except owner admin.html, CEO/DOO have dedicated landings, and Owner Admin can preview every role workspace.');
+console.log('Role workspaces verified: all 15 employee/leadership roles have dedicated HTML, Owner Admin has a top/side Role Workspaces menu tab opening the full role directory, Home Manager has assigned-home team operations, DOO has every separate administrative HTML except owner admin.html, and CEO/DOO have dedicated landings.');
