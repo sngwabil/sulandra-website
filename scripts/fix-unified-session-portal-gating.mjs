@@ -87,14 +87,18 @@ if (tokenAuthPattern.test(bootstrap) && !bootstrap.includes('const privilegedSes
   bootstrap = bootstrap.replace(tokenAuthPattern, hybridTokenAuth);
 }
 bootstrap = bootstrap.replace('  const auth = internalAuth(req) ?? tokenAuth(req);', '  const auth = internalAuth(req) ?? await tokenAuth(req);');
+bootstrap = bootstrap.replace('  const auth = internal ?? tokenAuth(req);', '  const auth = internal ?? await tokenAuth(req);');
 bootstrap = bootstrap.replace('  const auth = internalAuth(req) ?? await await tokenAuth(req);', '  const auth = internalAuth(req) ?? await tokenAuth(req);');
+bootstrap = bootstrap.replace('  const auth = internal ?? await await tokenAuth(req);', '  const auth = internal ?? await tokenAuth(req);');
 
 if (!bootstrap.includes("const privilegedSessionRoles = new Set(['ADMINISTRATOR', 'CEO', 'DOO'])")) throw new Error('Privileged session role boundary was not installed.');
 if (!bootstrap.includes("'Privileged session idle timeout'")) throw new Error('Privileged idle-session revocation was not installed.');
 if (!bootstrap.includes('SELECT "lastSeenAt" FROM "EmployeeAuthSession"')) throw new Error('Privileged JWTs do not validate the server session.');
 if (!bootstrap.includes('validateEmployeeSession(prisma) remains the explicit portal validator')) throw new Error('Hybrid token validation lost its idempotency marker.');
 if (!bootstrap.includes('const tokenAuth = async (req: express.Request): Promise<AuthContext | null> =>')) throw new Error('Hybrid Sulandra session authentication was not installed.');
-if (!bootstrap.includes('const auth = internalAuth(req) ?? await tokenAuth(req);')) throw new Error('Authentication middleware is not awaiting the hybrid token validator.');
+const awaitsHybridAuth = bootstrap.includes('const auth = internalAuth(req) ?? await tokenAuth(req);')
+  || bootstrap.includes('const auth = internal ?? await tokenAuth(req);');
+if (!awaitsHybridAuth) throw new Error('Authentication middleware is not awaiting the hybrid token validator.');
 await writeFile(bootstrapPath, bootstrap, 'utf8');
 
-console.log('Unified Sulandra SSO hardened: normal roles stay JWT-fast; Administrator/CEO/DOO sessions are tab-only, server-revocable, and idle-limited.');
+console.log('Unified Sulandra SSO hardened: normal roles stay JWT-fast; Administrator/CEO/DOO sessions are tab-only, server-revocable, idle-limited, and compatible with scoped mobile OAuth.');
