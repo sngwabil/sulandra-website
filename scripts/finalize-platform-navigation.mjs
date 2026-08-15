@@ -116,13 +116,10 @@ await import('./fix-platform-integration-spire-contract.mjs');
 await import('./publish-spire-standalone-launch.mjs');
 await import('./install-spire-flowsheet-role-selector.mjs');
 await import('./install-spire-adaptive-chart-tabs.mjs');
-// Medication ordering publishes only to the final static distribution. It does not
-// rewrite canonical SPIRE source or the existing MAR runtime during finalization.
-await import('./publish-spire-medication-safety-dist.mjs');
 await import('./verify-employee-work-center.mjs');
 
 const finalOwnerProfile=await readFile(path.join(dist,'admin-profile.html'),'utf8');
 if(!finalOwnerProfile.includes("api('/api/owner/profile')")) throw new Error('Final static owner profile lost its live API wiring');
 await stat(path.join(dist,'admin-profile','index.html'));
 
-console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, the owner profile is published, SPIRE role/adaptive navigation remains intact, and medication ordering V2 is added only to the final static distribution.');
+console.log('Static platform navigation normalized for non-Admin surfaces; canonical Admin navigation is protected, the owner profile is published, and SPIRE role/adaptive navigation remains intact. Medication V2 static publication is isolated from this pass.');
