@@ -1,4 +1,4 @@
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,10 +8,15 @@ const masterPath = path.join(dist, 'spire', 'master.html');
 const runtimePath = path.join(dist, 'assets', 'spire-clinical-regression-runtime.js');
 const auditPath = path.join(dist, 'assets', 'spire-flowsheet-audit-popover.js');
 const notePath = path.join(dist, 'assets', 'spire-note-composer-v2.js');
+const noteSourcePath = path.join(root, 'assets', 'spire-note-composer-v2.js');
 
 const runtimeUrl = '/assets/spire-clinical-regression-runtime.js?v=20260815-clinical-regression-2';
 const auditUrl = '/assets/spire-flowsheet-audit-popover.js?v=20260815-flowsheet-audit-popover-2';
-const noteUrl = '/assets/spire-note-composer-v2.js?v=20260815-note-composer-v2-1';
+const noteUrl = '/assets/spire-note-composer-v2.js?v=20260815-note-composer-v2-2';
+
+// Keep Static publication on the same compatibility layer as the API build.
+await import('./fix-spire-note-filing-history.mjs');
+await copyFile(noteSourcePath, notePath);
 
 await Promise.all([stat(masterPath), stat(runtimePath), stat(auditPath), stat(notePath)]);
 
@@ -60,6 +65,8 @@ for (const marker of [
   'pasteEventCount',
   'templateSnapshot',
   'Sign & File',
+  'sncSignDraftFromReader',
+  'SPIRE_NOTE_READER_SIGN_AND_FILE_V1',
 ]) {
   if (!note.includes(marker)) throw new Error(`SPIRE Note Composer V2 publication missing ${marker}`);
 }
@@ -100,4 +107,4 @@ for (const required of [runtimeUrl, auditUrl, noteUrl]) {
 if (!published.includes('id="notes-view"')) throw new Error('Final SPIRE master lost the Notes view host');
 if (!published.includes('id="flowsheets-view"')) throw new Error('Final SPIRE master lost the Flowsheets view host');
 
-console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit popover uses hover/press-and-hold without visible info buttons, legacy note modal removed, and inline provenance-aware Note Composer V2 layered over the validated chart shell.');
+console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit hover/press-and-hold retained, legacy note modal removed, and Note Composer V2 now supports direct draft filing plus backward-compatible filed-note history.');
