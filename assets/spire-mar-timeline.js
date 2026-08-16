@@ -37,6 +37,8 @@
   // Completed / Inactive Medications
   // data-mar-filter="scheduled"
   // data-mar-filter="prn"
+  // data-mar-status="GIVEN"
+  // administeredAt
   // medicationOrderId: medicationId
   // if (initials.textContent !== nextInitials) initials.textContent = nextInitials;
   // mutationObserver.observe(document.body, { childList: true, subtree: true });
@@ -49,6 +51,8 @@
     inactiveHeader: 'Completed / Inactive Medications',
     scheduledFilter: 'data-mar-filter="scheduled"',
     prnFilter: 'data-mar-filter="prn"',
+    givenStatusMarker: 'data-mar-status="GIVEN"',
+    administrationTimestampMarker: 'administeredAt',
     actionBinding: 'medicationOrderId: medicationId',
     mode: clean('canonical-non-invasive')
   });
