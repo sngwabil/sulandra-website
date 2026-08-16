@@ -88,9 +88,9 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   migration-smoke:
-    name: Apply all migration SQL on supported legacy baseline
+    name: Apply migrations and run intake admission DB regression
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     services:
       postgres:
         image: postgres:16
@@ -174,3 +174,17 @@ jobs:
 
             echo "Verified platform table: ${table}"
           done
+
+      - name: Install production Client Intake transforms
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/install-client-intake-automatic-promotion.mjs
+          node scripts/verify-client-intake-automatic-promotion.mjs
+          node scripts/install-client-intake-master-data-normalization.mjs
+          node scripts/verify-client-intake-master-data-normalization.mjs
+          node scripts/install-client-intake-legal-consent-normalization.mjs
+          node scripts/verify-client-intake-legal-consent-normalization.mjs
+
+      - name: Run database-backed Client Intake to SPIRE admission regression
+        run: npx --no-install tsx tests/client-intake-spire-admission.database.regression.ts
