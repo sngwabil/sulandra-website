@@ -1,13 +1,14 @@
 (() => {
   'use strict';
 
-  // SPIRE_MAR_MOUSE_NAV_V1
-  if (window.__SPIRE_MAR_MOUSE_NAV_V1) return;
-  window.__SPIRE_MAR_MOUSE_NAV_V1 = true;
+  // SPIRE_MAR_MOUSE_NAV_V2
+  if (window.__SPIRE_MAR_MOUSE_NAV_V2) return;
+  window.__SPIRE_MAR_MOUSE_NAV_V2 = true;
 
   const HOUR_SCROLL_FRACTION = 0.66;
   let observer = null;
   let pan = null;
+  let decorateQueued = false;
 
   function ensureStyles() {
     if (document.getElementById('spireMarMouseNavigationStyles')) return;
@@ -15,8 +16,8 @@
     style.id = 'spireMarMouseNavigationStyles';
     style.textContent = `
       #mar-view .spire-mar-overdue-queue{min-width:0!important;max-width:100%!important;overflow:hidden!important}
-      #mar-view .spire-mar-overdue-head{min-height:28px!important;padding:4px 9px!important}
-      #mar-view .spire-mar-overdue-head>span:not(.spacer){display:none!important}
+      #mar-view .spire-mar-overdue-head{min-height:28px!important;padding:4px 9px!important;display:flex!important;align-items:center!important;justify-content:flex-start!important}
+      #mar-view .spire-mar-overdue-head>span{display:none!important}
       #mar-view .spire-mar-overdue-list{
         display:grid!important;
         grid-template-columns:repeat(auto-fit,minmax(190px,1fr))!important;
@@ -28,14 +29,17 @@
         overflow-y:auto!important;
         overflow-x:hidden!important;
         overscroll-behavior:contain!important;
-        scrollbar-gutter:stable!important;
+        scrollbar-gutter:stable both-edges!important;
+        scrollbar-width:auto!important;
         padding:6px 9px!important;
       }
+      #mar-view .spire-mar-overdue-list::-webkit-scrollbar{width:12px;height:12px}
+      #mar-view .spire-mar-overdue-list::-webkit-scrollbar-thumb{border-radius:8px}
       #mar-view .spire-mar-overdue-item{min-width:0!important;max-width:none!important;width:auto!important}
-      #mar-view [data-mar-scroll]{scrollbar-width:auto!important;overscroll-behavior:contain!important}
+      #mar-view [data-mar-scroll]{scrollbar-width:auto!important;overscroll-behavior:contain!important;scrollbar-gutter:stable!important}
       #mar-view [data-mar-scroll]::-webkit-scrollbar{height:12px;width:12px}
       #mar-view [data-mar-scroll]::-webkit-scrollbar-thumb{border-radius:8px}
-      #mar-view .spire-mar-time-header{cursor:grab}
+      #mar-view .spire-mar-time-header{cursor:grab;user-select:none}
       #mar-view .spire-mar-time-header.spire-mar-panning{cursor:grabbing}
       #mar-view .spire-mar-hour-nav{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto}
       #mar-view .spire-mar-hour-nav .spire-mar-command{width:28px;padding:3px 5px;font-size:13px;line-height:1}
@@ -47,14 +51,13 @@
   }
 
   function compactOverdueHeader(host) {
-    const head = host.querySelector('.spire-mar-overdue-head');
-    if (!head) return;
-    const strong = head.querySelector('strong');
-    if (strong) {
-      const match = String(strong.textContent || '').match(/\d+/);
-      strong.textContent = match ? `Prior-day overdue: ${match[0]}` : 'Prior-day overdue';
-    }
-    head.querySelectorAll('span:not(.spacer)').forEach((node) => node.remove());
+    const strong = host.querySelector('.spire-mar-overdue-head strong');
+    if (!strong) return;
+    const current = String(strong.textContent || '').trim();
+    if (/^Prior-day overdue:\s*\d+$/i.test(current)) return;
+    const match = current.match(/\d+/);
+    const next = match ? `Prior-day overdue: ${match[0]}` : 'Prior-day overdue';
+    if (current !== next) strong.textContent = next;
   }
 
   function ensureHourNavigation(host) {
@@ -79,6 +82,15 @@
     ensureHourNavigation(host);
   }
 
+  function scheduleDecorate(host) {
+    if (decorateQueued) return;
+    decorateQueued = true;
+    requestAnimationFrame(() => {
+      decorateQueued = false;
+      decorate(host);
+    });
+  }
+
   function horizontalStep(scroll) {
     return Math.max(260, Math.round(scroll.clientWidth * HOUR_SCROLL_FRACTION));
   }
@@ -100,9 +112,8 @@
 
     const overdue = event.target.closest('.spire-mar-overdue-list');
     if (overdue) {
-      const verticalOverflow = overdue.scrollHeight > overdue.clientHeight + 2;
-      const horizontalOverflow = overdue.scrollWidth > overdue.clientWidth + 2;
-      if (horizontalOverflow && !verticalOverflow) {
+      if (overdue.scrollHeight > overdue.clientHeight + 2) return;
+      if (overdue.scrollWidth > overdue.clientWidth + 2) {
         overdue.scrollLeft += event.deltaX || event.deltaY;
         event.preventDefault();
       }
@@ -110,12 +121,12 @@
     }
 
     const scroll = event.target.closest('[data-mar-scroll]');
-    if (!scroll || !host.contains(scroll)) return;
-    if (scroll.scrollWidth <= scroll.clientWidth + 2) return;
+    if (!scroll || !host.contains(scroll) || scroll.scrollWidth <= scroll.clientWidth + 2) return;
 
-    const verticalOverflow = scroll.scrollHeight > scroll.clientHeight + 2;
+    const overHeader = Boolean(event.target.closest('.spire-mar-time-header'));
     const trackpadHorizontal = Math.abs(event.deltaX) > Math.abs(event.deltaY);
-    const useHorizontal = event.shiftKey || trackpadHorizontal || !verticalOverflow;
+    const verticalOverflow = scroll.scrollHeight > scroll.clientHeight + 2;
+    const useHorizontal = overHeader || event.shiftKey || trackpadHorizontal || !verticalOverflow;
     if (!useHorizontal) return;
 
     const delta = trackpadHorizontal ? event.deltaX : event.deltaY;
@@ -154,9 +165,20 @@
     pan = null;
   }
 
+  function mutationNeedsDecorate(mutations) {
+    return mutations.some((mutation) => {
+      if (mutation.type !== 'childList' || !mutation.addedNodes.length) return false;
+      return Array.from(mutation.addedNodes).some((node) => {
+        if (!(node instanceof Element)) return false;
+        return node.matches?.('.spire-mar-v4,.spire-mar-overdue-queue,.spire-mar-filter-actions')
+          || Boolean(node.querySelector?.('.spire-mar-overdue-head,.spire-mar-filter-actions,[data-mar-scroll]'));
+      });
+    });
+  }
+
   function bind(host) {
-    if (!host || host.dataset.spireMarMouseNavigation === '1') return;
-    host.dataset.spireMarMouseNavigation = '1';
+    if (!host || host.dataset.spireMarMouseNavigation === '2') return;
+    host.dataset.spireMarMouseNavigation = '2';
     ensureStyles();
     decorate(host);
 
@@ -167,7 +189,9 @@
     host.addEventListener('pointerup', endPan);
     host.addEventListener('pointercancel', endPan);
 
-    observer = new MutationObserver(() => decorate(host));
+    observer = new MutationObserver((mutations) => {
+      if (mutationNeedsDecorate(mutations)) scheduleDecorate(host);
+    });
     observer.observe(host, { childList: true, subtree: true });
   }
 
@@ -179,12 +203,16 @@
   }
 
   window.__SPIRE_MAR_MOUSE_NAV_CONTRACT = Object.freeze({
-    marker: 'SPIRE_MAR_MOUSE_NAV_V1',
+    marker: 'SPIRE_MAR_MOUSE_NAV_V2',
+    observerLoopGuard: true,
+    idempotentHeaderCompaction: true,
+    requestAnimationFrameThrottle: true,
     overdueGridVerticalScroll: true,
     compactOverdueHeader: true,
     mouseWheelHorizontalWhenNeeded: true,
     shiftWheelHorizontal: true,
     trackpadHorizontal: true,
+    headerWheelHorizontal: true,
     headerDragPan: true,
     hourArrowControls: true,
     scopedObserver: '#mar-view',
