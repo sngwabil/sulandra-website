@@ -10,11 +10,10 @@ const auditPath = path.join(dist, 'assets', 'spire-flowsheet-audit-popover.js');
 const notePath = path.join(dist, 'assets', 'spire-note-composer-v2.js');
 const noteSourcePath = path.join(root, 'assets', 'spire-note-composer-v2.js');
 
-const runtimeUrl = '/assets/spire-clinical-regression-runtime.js?v=20260815-clinical-regression-2';
+const runtimeUrl = '/assets/spire-clinical-regression-runtime.js?v=20260816-clinical-regression-2';
 const auditUrl = '/assets/spire-flowsheet-audit-popover.js?v=20260815-flowsheet-audit-popover-2';
 const noteUrl = '/assets/spire-note-composer-v2.js?v=20260815-note-composer-v2-2';
 
-// Keep Static publication on the same compatibility layer as the API build.
 await import('./fix-spire-note-filing-history.mjs');
 await copyFile(noteSourcePath, notePath);
 
@@ -27,17 +26,21 @@ const [runtime, audit, note] = await Promise.all([
 ]);
 
 for (const marker of [
-  'SPIRE_CLINICAL_REGRESSION_RUNTIME_V1',
+  'SPIRE_CLINICAL_REGRESSION_RUNTIME_V2',
   '/api/spire/clinical-identity',
   '/api/spire/clinical-users?ids=',
   'Filed by',
   'Recorded for',
-  'Scheduled Medications',
-  'PRN Medications',
-  'Continuous / Infusion Medications',
-  'One-Time Medications',
+  "scope: 'flowsheets-only'",
+  "document.getElementById('flowsheets-view')",
 ]) {
   if (!runtime.includes(marker)) throw new Error(`SPIRE clinical regression runtime missing ${marker}`);
+}
+if (runtime.includes('repairMarSections') || runtime.includes('document.querySelector(\'#mar-view')) {
+  throw new Error('SPIRE clinical regression runtime must not inspect, regroup, or rewrite MAR/eMAR');
+}
+if (runtime.includes('observer.observe(document.body')) {
+  throw new Error('SPIRE clinical regression runtime must not observe the entire document');
 }
 for (const marker of [
   'SPIRE_FLOWSHEET_AUDIT_POPOVER_V1',
@@ -77,12 +80,6 @@ for (const [name, source] of [['clinical regression runtime', runtime], ['flowsh
 }
 
 let master = await readFile(masterPath, 'utf8');
-
-// The client is already identified persistently in the left chart sidebar. The
-// old toolbar-level client tab duplicated that identity and contained a visual
-// close glyph with no action. Remove the visible tab while retaining one hidden
-// compatibility target so older runtime code can still update #tabClientName
-// without throwing or reintroducing the redundant UI.
 const legacyClientTabPattern = /\s*<div class="client-tab">\s*<span id="tabClientName">[\s\S]*?<\/span>\s*<span>✖<\/span>\s*<\/div>/g;
 const legacyClientTabs = master.match(legacyClientTabPattern) || [];
 if (legacyClientTabs.length !== 1) {
@@ -132,4 +129,4 @@ if (!published.includes('id="legacyClientTabHook"') || !published.includes('styl
   throw new Error('Final SPIRE master lost the hidden legacy client-tab compatibility hook');
 }
 
-console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit hover/press-and-hold retained, legacy note modal removed, Note Composer V2 supports draft filing/history, and the redundant toolbar client-name tab/fake close control is removed from view.');
+console.log('SPIRE final clinical repair published non-destructively: clinician attribution is flowsheet-only, MAR/eMAR remains owned by the canonical master renderer, filed-cell audit hover/press-and-hold is retained, Note Composer V2 remains active, and the redundant toolbar client-name tab is hidden.');
