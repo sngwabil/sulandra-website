@@ -36,9 +36,4 @@ for (const relative of targetFiles) {
   }
 }
 
-// Run after the earlier MAR publication normalizer. This intentionally restores the
-// proven single-renderer MAR architecture and cache-busts the browser away from the
-// invasive duplicate timeline runtime that can lock the chart.
-await import('./stabilize-spire-mar-runtime.mjs');
-
-console.log('SPIRE Epic theme suite installed: Altitude, Lavender, Verdant, Deep Blue, Amethyst, Carbon, Dark Room, and High Contrast are published across Client Station, chart, Secure Chat, and Flowsheets; canonical MAR stability guard applied.');
+console.log('SPIRE Epic theme suite installed: Altitude, Lavender, Verdant, Deep Blue, Amethyst, Carbon, Dark Room, and High Contrast are published across Client Station, chart, Secure Chat, and Flowsheets.');
