@@ -7,21 +7,23 @@ const dist = path.join(root, 'dist-web');
 const sourcePath = path.join(root, 'assets', 'spire-global-chart-search.js');
 const publishedPath = path.join(dist, 'assets', 'spire-global-chart-search.js');
 const masterPath = path.join(dist, 'spire', 'master.html');
-const searchUrl = '/assets/spire-global-chart-search.js?v=20260816-chart-search-1';
+const searchUrl = '/assets/spire-global-chart-search.js?v=20260816-chart-search-2';
 
 await Promise.all([stat(sourcePath), stat(masterPath)]);
 await copyFile(sourcePath, publishedPath);
 
 const runtime = await readFile(publishedPath, 'utf8');
 for (const marker of [
-  'SPIRE_GLOBAL_CHART_SEARCH_V2',
+  'SPIRE_GLOBAL_CHART_SEARCH_V3',
   'Allergy:',
   'Diagnosis:',
   'Latest Vitals / Baseline',
   'visibleClinicalMatches',
-  'structuredStoryboardMatches',
+  'visibleMarMatches',
+  'emarMatches',
+  '/emar?date=',
   'window.handleChartSearch = enhancedChartSearch',
-  '20260816-chart-search-1',
+  '20260816-chart-search-2',
 ]) {
   if (!runtime.includes(marker)) throw new Error(`SPIRE global chart search runtime missing ${marker}`);
 }
@@ -40,4 +42,4 @@ if (!master.includes('id="globalChartSearchInput"')) throw new Error('SPIRE mast
 if (!master.includes('oninput="handleChartSearch(this.value)"')) throw new Error('SPIRE master search input is no longer wired to the replaceable global handler');
 
 await writeFile(masterPath, master, 'utf8');
-console.log('SPIRE global chart search published: current-chart allergies, diagnoses, precautions, providers and baseline/vitals are searchable before the existing authorized client/chart-review fallback.');
+console.log('SPIRE global chart search published: visible MAR and canonical eMAR medications plus current-chart allergies, diagnoses, precautions, providers and baseline/vitals are searchable before the authorized client/chart-review fallback.');
