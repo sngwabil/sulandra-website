@@ -74,17 +74,53 @@ if (!emar.includes(SAFETY_IMPORT)) {
   if (!emar.includes(zodImport)) throw new Error('eMAR safety installer: zod import anchor is missing');
   emar = emar.replace(zodImport, `${zodImport}\n${SAFETY_IMPORT}`);
 }
-if (!emar.includes('bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()')) {
-  const schemaAnchor = 'witnessUserId:z.string().optional().nullable()});';
-  if (!emar.includes(schemaAnchor)) throw new Error('eMAR safety installer: event schema anchor is missing');
-  emar = emar.replace(schemaAnchor, 'witnessUserId:z.string().optional().nullable(),bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()});');
+
+const hasBloodGlucose = /bloodGlucose\s*:\s*z\.number\(\)\.finite\(\)\.min\(0\)\.max\(2000\)\.optional\(\)\.nullable\(\)/.test(emar);
+if (!hasBloodGlucose) {
+  const compactSchemaAnchor = 'witnessUserId:z.string().optional().nullable()});';
+  const formattedSchemaAnchor = /(witnessUserId\s*:\s*z\.string\(\)\.optional\(\)\.nullable\(\),?)(\s*\n\s*\}\);)/;
+  if (emar.includes(compactSchemaAnchor)) {
+    emar = emar.replace(
+      compactSchemaAnchor,
+      'witnessUserId:z.string().optional().nullable(),bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()});',
+    );
+  } else if (formattedSchemaAnchor.test(emar)) {
+    emar = emar.replace(
+      formattedSchemaAnchor,
+      `$1\n  bloodGlucose: z.number().finite().min(0).max(2000).optional().nullable(),$2`,
+    );
+  } else {
+    throw new Error('eMAR safety installer: event schema anchor is missing');
+  }
 }
-if (!emar.includes('await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);')) {
-  const parseAnchor = 'const b=eventSchema.parse(req.body);const med=';
-  if (!emar.includes(parseAnchor)) throw new Error('eMAR safety installer: event parse anchor is missing');
-  emar = emar.replace(parseAnchor, 'const b=eventSchema.parse(req.body);await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);const med=');
+
+const compactSafetyCall = 'await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);';
+const formattedSafetyCall = 'await assertMedicationAdministrationSafe(prisma, auth.organizationId, patientId, body);';
+if (!emar.includes(compactSafetyCall) && !emar.includes(formattedSafetyCall)) {
+  const compactParseAnchor = 'const b=eventSchema.parse(req.body);const med=';
+  const formattedParseAnchor = 'const body = eventSchema.parse(req.body);';
+  if (emar.includes(compactParseAnchor)) {
+    emar = emar.replace(
+      compactParseAnchor,
+      `const b=eventSchema.parse(req.body);${compactSafetyCall}const med=`,
+    );
+  } else if (emar.includes(formattedParseAnchor)) {
+    emar = emar.replace(
+      formattedParseAnchor,
+      `${formattedParseAnchor}\n      ${formattedSafetyCall}`,
+    );
+  } else {
+    throw new Error('eMAR safety installer: event parse anchor is missing');
+  }
 }
-for (const marker of [SAFETY_IMPORT, 'bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()', 'await assertMedicationAdministrationSafe(prisma,a.organizationId,patientId,b);']) if (!emar.includes(marker)) throw new Error(`eMAR safety installer is missing ${marker}`);
+
+if (!emar.includes(SAFETY_IMPORT)) throw new Error(`eMAR safety installer is missing ${SAFETY_IMPORT}`);
+if (!/bloodGlucose\s*:\s*z\.number\(\)\.finite\(\)\.min\(0\)\.max\(2000\)\.optional\(\)\.nullable\(\)/.test(emar)) {
+  throw new Error('eMAR safety installer is missing blood-glucose administration safety input');
+}
+if (!emar.includes(compactSafetyCall) && !emar.includes(formattedSafetyCall)) {
+  throw new Error('eMAR safety installer is missing the server-side administration safety check');
+}
 await writeFile(emarRoutesPath, emar, 'utf8');
 
 console.log('SPIRE structured medication ordering installed; order authority remains nurse/admin scoped, assigned medication staff can run safety checks, held/resumed MAR schedules are server-managed, and eMAR writes enforce the server-side safety backstop.');
