@@ -1,4 +1,4 @@
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +19,9 @@ const medicationPolicyUrl = '/assets/spire-medication-management-policy.js?v=202
 const medicationOrderRelative = 'assets/spire-medication-order-entry.js';
 const medicationOrderMarker = 'SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V4';
 const medicationOrderUrl = '/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-4';
+const marGuidanceRelative = 'assets/spire-mar-action-guidance.js';
+const marGuidanceMarker = 'SPIRE_MAR_ACTION_GUIDANCE_V1';
+const marGuidanceUrl = '/assets/spire-mar-action-guidance.js?v=20260816-mar-action-guidance-1';
 
 const runtimePath = path.join(root, assetRelative);
 const runtime = await readFile(runtimePath, 'utf8');
@@ -68,6 +71,19 @@ const publishedMedicationOrder = await readFile(publishedMedicationOrderPath, 'u
 if (!publishedMedicationOrder.includes(medicationOrderMarker)) throw new Error('Published SPIRE medication order loader is stale');
 new Function(publishedMedicationOrder);
 
+const marGuidancePath = path.join(root, marGuidanceRelative);
+const marGuidance = await readFile(marGuidancePath, 'utf8');
+for (const required of [marGuidanceMarker, 'Not due yet', 'Older MAR occurrence', 'This is not an early-administration warning', 'genericErrorReplacement: true', 'wholeDocumentObserver: false']) {
+  if (!marGuidance.includes(required)) throw new Error(`SPIRE MAR action guidance is missing ${required}`);
+}
+if (marGuidance.includes('observe(document.documentElement') || marGuidance.includes('observe(document.body')) throw new Error('SPIRE MAR action guidance must not observe the whole document');
+new Function(marGuidance);
+const publishedMarGuidancePath = path.join(dist, marGuidanceRelative);
+await copyFile(marGuidancePath, publishedMarGuidancePath);
+const publishedMarGuidance = await readFile(publishedMarGuidancePath, 'utf8');
+if (!publishedMarGuidance.includes(marGuidanceMarker)) throw new Error('Published SPIRE MAR action guidance is stale');
+new Function(publishedMarGuidance);
+
 const distRuntimePath = path.join(dist, assetRelative);
 await stat(distRuntimePath);
 const publishedRuntime = await readFile(distRuntimePath, 'utf8');
@@ -78,17 +94,21 @@ async function publishMaster(masterPath) {
   html = html
     .replace(/\s*<script\s+src=["']\/assets\/spire-medication-management-policy\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-medication-order-entry\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
+    .replace(/\s*<script\s+src=["']\/assets\/spire-mar-action-guidance\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-adaptive-chart-tabs\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
   if (!html.includes('</body>')) throw new Error(`SPIRE adaptive chart tabs could not find </body> in ${path.relative(root, masterPath)}`);
-  html = html.replace('</body>', `  <script src="${medicationPolicyUrl}"></script>\n  <script src="${medicationOrderUrl}"></script>\n  <script src="${assetUrl}"></script>\n</body>`);
+  html = html.replace('</body>', `  <script src="${medicationPolicyUrl}"></script>\n  <script src="${medicationOrderUrl}"></script>\n  <script src="${assetUrl}"></script>\n  <script src="${marGuidanceUrl}"></script>\n</body>`);
   const adaptiveCount = (html.match(/\/assets\/spire-adaptive-chart-tabs\.js\?v=/g) || []).length;
   if (adaptiveCount !== 1) throw new Error(`SPIRE adaptive chart tabs must publish exactly once in ${path.relative(root, masterPath)}; found ${adaptiveCount}`);
   const policyCount = (html.match(/\/assets\/spire-medication-management-policy\.js\?v=/g) || []).length;
   if (policyCount !== 1) throw new Error(`SPIRE medication management policy must publish exactly once in ${path.relative(root, masterPath)}; found ${policyCount}`);
   const orderCount = (html.match(/\/assets\/spire-medication-order-entry\.js\?v=/g) || []).length;
   if (orderCount !== 1) throw new Error(`SPIRE medication order loader must publish exactly once in ${path.relative(root, masterPath)}; found ${orderCount}`);
+  const guidanceCount = (html.match(/\/assets\/spire-mar-action-guidance\.js\?v=/g) || []).length;
+  if (guidanceCount !== 1) throw new Error(`SPIRE MAR action guidance must publish exactly once in ${path.relative(root, masterPath)}; found ${guidanceCount}`);
   if (html.indexOf(medicationPolicyUrl) > html.indexOf(medicationOrderUrl)) throw new Error('SPIRE medication management policy must load before the medication order loader');
   if (html.indexOf(medicationOrderUrl) > html.indexOf(assetUrl)) throw new Error('SPIRE medication order loader must load before adaptive chart tabs');
+  if (html.indexOf(assetUrl) > html.indexOf(marGuidanceUrl)) throw new Error('SPIRE MAR action guidance must load after the chart navigation runtime');
   await writeFile(masterPath, html, 'utf8');
 }
 
@@ -96,8 +116,8 @@ await publishMaster(path.join(root, 'spire', 'master.html'));
 await publishMaster(path.join(dist, 'spire', 'master.html'));
 
 const finalMaster = await readFile(path.join(dist, 'spire', 'master.html'), 'utf8');
-for (const required of [medicationPolicyUrl, medicationOrderUrl, assetUrl, 'data-view="flowsheets-view"', 'data-view="mar-view"', 'id="mainChartTabs"']) {
+for (const required of [medicationPolicyUrl, medicationOrderUrl, assetUrl, marGuidanceUrl, 'data-view="flowsheets-view"', 'data-view="mar-view"', 'id="mainChartTabs"']) {
   if (!finalMaster.includes(required)) throw new Error(`Final SPIRE adaptive chart tab publication is missing ${required}`);
 }
 
-console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, and per-medication Manage controls retired by ${medicationPolicyUrl}.`);
+console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, per-medication Manage controls retired by ${medicationPolicyUrl}, and clear MAR timing/server-rejection guidance via ${marGuidanceUrl}.`);
