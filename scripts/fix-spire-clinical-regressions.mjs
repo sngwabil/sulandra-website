@@ -6,11 +6,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const masterPath = path.join(dist, 'spire', 'master.html');
 const runtimePath = path.join(dist, 'assets', 'spire-clinical-regression-runtime.js');
+const marPath = path.join(dist, 'assets', 'spire-mar-timeline.js');
 const auditPath = path.join(dist, 'assets', 'spire-flowsheet-audit-popover.js');
 const notePath = path.join(dist, 'assets', 'spire-note-composer-v2.js');
 const noteSourcePath = path.join(root, 'assets', 'spire-note-composer-v2.js');
 
-const runtimeUrl = '/assets/spire-clinical-regression-runtime.js?v=20260815-clinical-regression-2';
+const runtimeUrl = '/assets/spire-clinical-regression-runtime.js?v=20260816-clinical-regression-3';
+const marUrl = '/assets/spire-mar-timeline.js?v=20260816-approved-mar-v4-1';
 const auditUrl = '/assets/spire-flowsheet-audit-popover.js?v=20260815-flowsheet-audit-popover-2';
 const noteUrl = '/assets/spire-note-composer-v2.js?v=20260815-note-composer-v2-2';
 
@@ -18,26 +20,31 @@ const noteUrl = '/assets/spire-note-composer-v2.js?v=20260815-note-composer-v2-2
 await import('./fix-spire-note-filing-history.mjs');
 await copyFile(noteSourcePath, notePath);
 
-await Promise.all([stat(masterPath), stat(runtimePath), stat(auditPath), stat(notePath)]);
+await Promise.all([stat(masterPath), stat(runtimePath), stat(marPath), stat(auditPath), stat(notePath)]);
 
-const [runtime, audit, note] = await Promise.all([
+const [runtime, mar, audit, note] = await Promise.all([
   readFile(runtimePath, 'utf8'),
+  readFile(marPath, 'utf8'),
   readFile(auditPath, 'utf8'),
   readFile(notePath, 'utf8'),
 ]);
 
 for (const marker of [
-  'SPIRE_CLINICAL_REGRESSION_RUNTIME_V1',
+  'SPIRE_CLINICAL_REGRESSION_RUNTIME_V2',
   '/api/spire/clinical-identity',
   '/api/spire/clinical-users?ids=',
   'Filed by',
   'Recorded for',
-  'Scheduled Medications',
-  'PRN Medications',
-  'Continuous / Infusion Medications',
-  'One-Time Medications',
 ]) {
   if (!runtime.includes(marker)) throw new Error(`SPIRE clinical regression runtime missing ${marker}`);
+}
+for (const marker of [
+  'SPIRE_MAR_TIMELINE_V4',
+  'SPIRE_MAR_EPIC_PRESENTATION_V2',
+  'SPIRE_MAR_OBSERVER_LOOP_FIX_V1',
+  'medicationOrderId: medicationId',
+]) {
+  if (!mar.includes(marker)) throw new Error(`SPIRE approved MAR V4 publication missing ${marker}`);
 }
 for (const marker of [
   'SPIRE_FLOWSHEET_AUDIT_POPOVER_V1',
@@ -71,7 +78,7 @@ for (const marker of [
   if (!note.includes(marker)) throw new Error(`SPIRE Note Composer V2 publication missing ${marker}`);
 }
 
-for (const [name, source] of [['clinical regression runtime', runtime], ['flowsheet audit popover', audit], ['Note Composer V2', note]]) {
+for (const [name, source] of [['clinical regression runtime', runtime], ['approved MAR V4 runtime', mar], ['flowsheet audit popover', audit], ['Note Composer V2', note]]) {
   try { new Function(source); }
   catch (error) { throw new Error(`SPIRE ${name} syntax error: ${error instanceof Error ? error.message : String(error)}`); }
 }
@@ -93,7 +100,11 @@ master = master.replace(
   '\n        <div id="legacyClientTabHook" class="client-tab" hidden aria-hidden="true" style="display:none!important"><span id="tabClientName"></span></div>',
 );
 
+// Force fresh browser URLs for both the restored approved MAR and the flowsheet-only
+// clinical repair runtime. Earlier deployments reused the same asset URLs while the
+// file contents changed, which allowed browsers/CDNs to keep serving the regressed MAR.
 master = master
+  .replace(/\/assets\/spire-mar-timeline\.js(?:\?v=[^"']+)?/g, marUrl)
   .replace(/\s*<script src="\/assets\/spire-clinical-regression-runtime\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
   .replace(/\s*<script src="\/assets\/spire-flowsheet-audit-popover\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
   .replace(/\s*<script src="\/assets\/spire-note-workflow\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n')
@@ -101,6 +112,7 @@ master = master
   .replace('</body>', `  <script src="${runtimeUrl}"></script>\n  <script src="${auditUrl}"></script>\n  <script src="${noteUrl}"></script>\n</body>`);
 
 const checks = [
+  ['approved MAR V4 runtime', /src="\/assets\/spire-mar-timeline\.js(?:\?[^"']*)?"/g, marUrl],
   ['clinical regression runtime', /src="\/assets\/spire-clinical-regression-runtime\.js(?:\?[^"']*)?"/g, runtimeUrl],
   ['flowsheet audit popover', /src="\/assets\/spire-flowsheet-audit-popover\.js(?:\?[^"']*)?"/g, auditUrl],
   ['Note Composer V2', /src="\/assets\/spire-note-composer-v2\.js(?:\?[^"']*)?"/g, noteUrl],
@@ -123,7 +135,7 @@ if (/<div class="client-tab">\s*<span id="tabClientName">[\s\S]*?<span>✖<\/spa
 await writeFile(masterPath, master, 'utf8');
 
 const published = await readFile(masterPath, 'utf8');
-for (const required of [runtimeUrl, auditUrl, noteUrl]) {
+for (const required of [marUrl, runtimeUrl, auditUrl, noteUrl]) {
   if (!published.includes(required)) throw new Error(`Final SPIRE master publication missing ${required}`);
 }
 if (!published.includes('id="notes-view"')) throw new Error('Final SPIRE master lost the Notes view host');
@@ -132,4 +144,4 @@ if (!published.includes('id="legacyClientTabHook"') || !published.includes('styl
   throw new Error('Final SPIRE master lost the hidden legacy client-tab compatibility hook');
 }
 
-console.log('SPIRE final clinical repair published non-destructively: clinician attribution/MAR runtime preserved, filed-cell audit hover/press-and-hold retained, legacy note modal removed, Note Composer V2 supports draft filing/history, and the redundant toolbar client-name tab/fake close control is removed from view.');
+console.log('SPIRE final clinical repair published non-destructively: approved MAR V4 is restored on a fresh cache-busted URL; clinical regression runtime is flowsheets-only and cannot rewrite MAR; filed-cell audit hover/press-and-hold is retained; legacy note modal is removed; Note Composer V2 supports draft filing/history; and the redundant toolbar client-name tab/fake close control is removed from view.');
