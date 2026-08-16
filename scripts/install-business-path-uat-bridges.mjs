@@ -9,6 +9,7 @@ const root = path.resolve(
 
 const contract = '20260810-business-uat-1';
 const homeHealthRailGeneration = '20260810-home-health-rail-stability-2';
+const marObserverMarker = 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1';
 
 const canonicalApi =
   'https://sulandra-website-production-5fc4.up.railway.app';
@@ -283,6 +284,57 @@ await update('spire.html', source => {
 
 /*
  * --------------------------------------------------------------------------
+ * S.P.I.R.E. MAR observer safety + publication contract
+ * --------------------------------------------------------------------------
+ *
+ * Production Business Path UAT validates the canonical source before build:web,
+ * while build:web later republishes the same MAR runtime. Keep the observer fix
+ * deterministic in this shared installer so both paths see the exact same safe
+ * contract: root-only observation on #mar-view and no whole-document observer.
+ * --------------------------------------------------------------------------
+ */
+
+await update('assets/spire-mar-timeline.js', source => {
+  let next = source;
+
+  if (!next.includes(marObserverMarker)) {
+    const marker = '  // SPIRE_MAR_TIMELINE_V4\n';
+    if (!next.includes(marker)) {
+      throw new Error('SPIRE MAR Timeline V4 marker is missing; cannot install observer safety contract');
+    }
+    next = next.replace(marker, `${marker}  // ${marObserverMarker}\n`);
+  }
+
+  const rootOnlyObserver = 'mutationObserver.observe(host, { childList: true });';
+  for (const legacyObserver of [
+    'mutationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });',
+    'mutationObserver.observe(document.body, { childList: true, subtree: true });',
+    'mutationObserver.observe(document.documentElement, { childList: true, subtree: true, characterData: true });',
+    'mutationObserver.observe(document.documentElement, { childList: true, subtree: true });',
+    'mutationObserver.observe(host, { childList: true, subtree: true, characterData: true });',
+    'mutationObserver.observe(host, { childList: true, subtree: true });',
+  ]) {
+    next = next.replace(legacyObserver, rootOnlyObserver);
+  }
+
+  if (!next.includes(marObserverMarker)) {
+    throw new Error('SPIRE MAR observer safety marker was not installed');
+  }
+  if (!next.includes(rootOnlyObserver)) {
+    throw new Error('SPIRE MAR observer is not root-only on #mar-view');
+  }
+  if (
+    next.includes('mutationObserver.observe(document.body') ||
+    next.includes('mutationObserver.observe(document.documentElement')
+  ) {
+    throw new Error('SPIRE MAR must not observe the whole document');
+  }
+
+  return next;
+});
+
+/*
+ * --------------------------------------------------------------------------
  * SCLS Residential → Task Board
  * --------------------------------------------------------------------------
  */
@@ -502,6 +554,7 @@ if (skippedFrontendSources.length) {
       'Company Documents compliance continuity,',
       'guarded Workforce navigation,',
       'Employee Portal production contract marker,',
+      'root-only SPIRE MAR observer safety,',
       'and canonical SPIRE Client Station entry.',
     ].join(' ')
   );
