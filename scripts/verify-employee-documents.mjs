@@ -44,7 +44,10 @@ expect('My Documents employee frontend',employeeAsset.includes('My Documents')&&
 expect('employee signing UI',employeeAsset.includes('Sign document')&&employeeAsset.includes('electronic signature'));
 expect('employee mobile UI',employeeAsset.includes('@media(max-width:600px)'));
 const adminAsset=await read('assets/admin-employee-documents.js');
-expect('Admin document center',adminAsset.includes('Employee 360 Documents & E-Signatures'));
+// Verify the operational document-center contract rather than one presentation heading.
+// Build-time company/auth normalization may legitimately adjust branding text, but it must
+// never remove the live admin host, dashboard endpoint, or management controls.
+expect('Admin document center',adminAsset.includes('employee-documents-admin')&&adminAsset.includes('/api/admin/employee-documents/dashboard')&&adminAsset.includes('Documents & E-Signatures'));
 expect('template creation UI',adminAsset.includes('Create Document Template'));
 expect('assignment UI',adminAsset.includes('Assign Document'));
 expect('void and decline UI',adminAsset.includes('data-void')&&adminAsset.includes('data-decline'));
