@@ -18,16 +18,44 @@ const masterTargets = [
 ];
 
 const TIMELINE_MARKER = 'SPIRE_MAR_DUE_OVERDUE_SPLIT_V1';
+const ACTIVE_ORDER_MARKER = 'SPIRE_MAR_ACTIVE_ORDERS_ONLY_V1';
 const CONTINUITY_MARKER = 'SPIRE_MAR_CONTINUITY_V2';
 const FILTER_LAYOUT_MARKER = 'SPIRE_MAR_DUE_OVERDUE_FILTER_LAYOUT_V1';
-const TIMELINE_URL = '/assets/spire-mar-timeline.js?v=20260816-due-overdue-split-2';
+const TIMELINE_URL = '/assets/spire-mar-timeline.js?v=20260816-due-overdue-split-3';
 
 async function exists(file) {
   try { await stat(file); return true; } catch { return false; }
 }
 
+function patchActiveOrderFilter(source, label) {
+  if (source.includes(ACTIVE_ORDER_MARKER)) return source;
+  const anchor = "  function medicationMatchesFilter(med) {\n    switch (currentFilter) {";
+  if (!source.includes(anchor)) throw new Error(`${label}: MAR medication filter anchor not found`);
+  return source.replace(anchor, `  // ${ACTIVE_ORDER_MARKER}: current/future MAR grids contain only active medication orders.
+  // Historical dates remain viewable for audit history even after an order is later discontinued.
+  function currentMarOrderIsActive(med) {
+    if (currentDate < localDateInput()) return true;
+    const status = clean(
+      med?.orderStatus
+      || med?.medicationOrderStatus
+      || med?.medicationOrder?.status
+      || med?.order?.status
+      || med?.status
+    ).toUpperCase();
+    if (['DISCONTINUED', 'COMPLETED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'INACTIVE', 'STOPPED', 'ENDED'].includes(status)) return false;
+    if (med?.active === false || med?.isActive === false || med?.isDiscontinued === true) return false;
+    if (med?.medicationOrder?.active === false || med?.medicationOrder?.isActive === false || med?.medicationOrder?.isDiscontinued === true) return false;
+    if (med?.order?.active === false || med?.order?.isActive === false || med?.order?.isDiscontinued === true) return false;
+    return true;
+  }
+
+  function medicationMatchesFilter(med) {
+    if (!currentMarOrderIsActive(med)) return false;
+    switch (currentFilter) {`);
+}
+
 function patchTimeline(source, label) {
-  if (source.includes(TIMELINE_MARKER)) return source;
+  if (source.includes(TIMELINE_MARKER)) return patchActiveOrderFilter(source, label);
   if (!source.includes('SPIRE_MAR_TIMELINE_V4')) throw new Error(`${label}: MAR Timeline V4 marker missing`);
 
   let next = source.replace(
@@ -109,7 +137,7 @@ function patchTimeline(source, label) {
       ${'${model.sub ? `<span class="spire-mar-cell-sub">${esc(model.sub)}</span>` : \'\'}'}
     </button>\`;`);
 
-  return next;
+  return patchActiveOrderFilter(next, label);
 }
 
 function patchContinuity(source, label) {
@@ -173,7 +201,7 @@ for (const file of masterTargets) {
   await writeFile(file, html, 'utf8');
 }
 
-const timelineRequirements = [TIMELINE_MARKER, 'data-mar-filter="due">Due</button>', 'data-mar-filter="overdue">Overdue</button>', "case 'overdue': return unresolvedOverdue(med);", 'currentDate < localDateInput(now)'];
+const timelineRequirements = [TIMELINE_MARKER, ACTIVE_ORDER_MARKER, 'currentMarOrderIsActive', "'DISCONTINUED'", 'data-mar-filter="due">Due</button>', 'data-mar-filter="overdue">Overdue</button>', "case 'overdue': return unresolvedOverdue(med);", 'currentDate < localDateInput(now)'];
 const continuityRequirements = [CONTINUITY_MARKER, 'Prior-day overdue occurrences', "priorOverdueQueue: 'overdue-filter-only'", '[data-mar-filter="overdue"].active'];
 
 const finalTimeline = await readFile(path.join(root, 'assets', 'spire-mar-timeline.js'), 'utf8');
@@ -204,4 +232,4 @@ if (await exists(publishedMasterPath)) {
 
 new Function(finalTimeline);
 new Function(finalContinuity);
-console.log('SPIRE MAR Due/Overdue split installed: Due and Overdue are separate visible filters, current selected-day overdue doses remain in the hourly grid, prior-day overdue history appears only when Overdue is selected, and the final published timeline/master are verified.');
+console.log('SPIRE MAR Due/Overdue split installed: Due and Overdue are separate visible filters, current/future MAR grids exclude discontinued/completed/inactive medication orders, historical dates preserve medication audit history, current selected-day overdue doses remain in the hourly grid, prior-day overdue history appears only when Overdue is selected, and the final published timeline/master are verified.');
