@@ -12,9 +12,14 @@ const continuityTargets = [
   path.join(root, 'assets', 'spire-mar-continuity.js'),
   path.join(dist, 'assets', 'spire-mar-continuity.js'),
 ];
+const masterTargets = [
+  path.join(root, 'spire', 'master.html'),
+  path.join(dist, 'spire', 'master.html'),
+];
 
 const TIMELINE_MARKER = 'SPIRE_MAR_DUE_OVERDUE_SPLIT_V1';
 const CONTINUITY_MARKER = 'SPIRE_MAR_CONTINUITY_V2';
+const TIMELINE_URL = '/assets/spire-mar-timeline.js?v=20260816-due-overdue-split-1';
 
 async function exists(file) {
   try { await stat(file); return true; } catch { return false; }
@@ -143,6 +148,13 @@ for (const file of continuityTargets) {
   const source = await readFile(file, 'utf8');
   const next = patchContinuity(source, path.relative(root, file));
   if (next !== source) await writeFile(file, next, 'utf8');
+}
+
+for (const file of masterTargets) {
+  if (!(await exists(file))) continue;
+  let html = await readFile(file, 'utf8');
+  html = html.replace(/\/assets\/spire-mar-timeline\.js(?:\?v=[^"']+)?/g, TIMELINE_URL);
+  await writeFile(file, html, 'utf8');
 }
 
 const finalTimeline = await readFile(path.join(root, 'assets', 'spire-mar-timeline.js'), 'utf8');
