@@ -5,8 +5,11 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const assetRelative = 'assets/spire-adaptive-chart-tabs.js';
-const assetUrl = '/assets/spire-adaptive-chart-tabs.js?v=20260815-adaptive-tabs-3';
+const assetUrl = '/assets/spire-adaptive-chart-tabs.js?v=20260816-adaptive-tabs-4';
 const marker = 'SPIRE_ADAPTIVE_CHART_TABS_V1';
+const rowControlsRelative = 'assets/spire-medication-row-controls.js';
+const rowControlsMarker = 'SPIRE_MEDICATION_ROW_CONTROLS_V2';
+const rowControlsUrl = '/assets/spire-medication-row-controls.js?v=20260816-medication-row-controls-v2';
 const ldaRelative = 'assets/spire-lda-workspace.js';
 const ldaMarker = 'SPIRE_LDA_WORKSPACE_V1';
 const ldaUrl = '/assets/spire-lda-workspace.js?v=20260815-lda-workspace-v1';
@@ -25,7 +28,11 @@ if (!runtime.includes('SPIRE_LDA_TAB_SHELL_V1') || !runtime.includes(ldaUrl)) th
 if (!runtime.includes(summaryUrl)) throw new Error('SPIRE adaptive runtime is missing Summary Overview V3 loader');
 new Function(runtime);
 
-for (const [relative, requiredMarker] of [[ldaRelative, ldaMarker],[summaryRelative, summaryMarker]]) {
+for (const [relative, requiredMarker] of [
+  [ldaRelative, ldaMarker],
+  [summaryRelative, summaryMarker],
+  [rowControlsRelative, rowControlsMarker],
+]) {
   const sourcePath = path.join(root, relative);
   const source = await readFile(sourcePath, 'utf8');
   if (!source.includes(requiredMarker)) throw new Error(`${relative} is missing ${requiredMarker}`);
@@ -40,15 +47,23 @@ for (const [relative, requiredMarker] of [[ldaRelative, ldaMarker],[summaryRelat
 const distRuntimePath = path.join(dist, assetRelative);
 await stat(distRuntimePath);
 const publishedRuntime = await readFile(distRuntimePath, 'utf8');
-if (!publishedRuntime.includes(marker) || !publishedRuntime.includes(ldaUrl) || !publishedRuntime.includes(summaryUrl)) throw new Error('Published SPIRE adaptive chart runtime is stale');
+if (!publishedRuntime.includes(marker) || !publishedRuntime.includes(ldaUrl) || !publishedRuntime.includes(summaryUrl)) {
+  throw new Error('Published SPIRE adaptive chart runtime is stale');
+}
 
 async function publishMaster(masterPath) {
   let html = await readFile(masterPath, 'utf8');
-  html = html.replace(/\s*<script\s+src=["']\/assets\/spire-adaptive-chart-tabs\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
+  html = html
+    .replace(/\s*<script\s+src=["']\/assets\/spire-adaptive-chart-tabs\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
+    .replace(/\s*<script\s+src=["']\/assets\/spire-medication-row-controls\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
+    .replace(/\s*<script\s+data-spire-medication-v1-guard(?:=["'][^"']*["'])?>[\s\S]*?<\/script>\s*/gi, '\n');
   if (!html.includes('</body>')) throw new Error(`SPIRE adaptive chart tabs could not find </body> in ${path.relative(root, masterPath)}`);
-  html = html.replace('</body>', `  <script src="${assetUrl}"></script>\n</body>`);
-  const count = (html.match(/\/assets\/spire-adaptive-chart-tabs\.js\?v=/g) || []).length;
-  if (count !== 1) throw new Error(`SPIRE adaptive chart tabs must publish exactly once in ${path.relative(root, masterPath)}; found ${count}`);
+  const scripts = `  <script data-spire-medication-v1-guard>window.__SPIRE_MEDICATION_ROW_CONTROLS_V1=true;</script>\n  <script src="${assetUrl}"></script>\n  <script src="${rowControlsUrl}"></script>\n`;
+  html = html.replace('</body>', `${scripts}</body>`);
+  const adaptiveCount = (html.match(/\/assets\/spire-adaptive-chart-tabs\.js\?v=/g) || []).length;
+  const rowCount = (html.match(/\/assets\/spire-medication-row-controls\.js\?v=/g) || []).length;
+  if (adaptiveCount !== 1) throw new Error(`SPIRE adaptive chart tabs must publish exactly once in ${path.relative(root, masterPath)}; found ${adaptiveCount}`);
+  if (rowCount !== 1) throw new Error(`SPIRE medication row controls must publish exactly once in ${path.relative(root, masterPath)}; found ${rowCount}`);
   await writeFile(masterPath, html, 'utf8');
 }
 
@@ -56,8 +71,8 @@ await publishMaster(path.join(root, 'spire', 'master.html'));
 await publishMaster(path.join(dist, 'spire', 'master.html'));
 
 const finalMaster = await readFile(path.join(dist, 'spire', 'master.html'), 'utf8');
-for (const required of [assetUrl, 'data-view="flowsheets-view"', 'data-view="mar-view"', 'id="mainChartTabs"']) {
+for (const required of [assetUrl, rowControlsUrl, 'data-view="flowsheets-view"', 'data-view="mar-view"', 'id="mainChartTabs"']) {
   if (!finalMaster.includes(required)) throw new Error(`Final SPIRE adaptive chart tab publication is missing ${required}`);
 }
 
-console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, and Summary LDA avatar.`);
+console.log(`SPIRE adaptive chart navigation published via ${assetUrl}; medication management uses cache-busted V2 row controls with the document-wide observer disabled.`);
