@@ -19,6 +19,9 @@ const flowsheetPath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js'
 const frozenPath = path.join(dist, 'assets', 'spire-flowsheet-frozen-pane.js');
 const screenPath = path.join(dist, 'assets', 'spire-screen-controls.js');
 const medicationPath = path.join(dist, 'assets', 'spire-medication-order-entry.js');
+const medicationV2Path = path.join(dist, 'assets', 'spire-medication-order-entry-v2.js');
+const medicationPolicyPath = path.join(dist, 'assets', 'spire-medication-management-policy.js');
+const medicationRowControlsPath = path.join(dist, 'assets', 'spire-medication-row-controls.js');
 const marTimelinePath = path.join(dist, 'assets', 'spire-mar-timeline.js');
 const screenCssPath = path.join(dist, 'assets', 'spire-screen-controls.css');
 
@@ -27,13 +30,15 @@ const navigationUrl = '/assets/spire-master-navigation.js?v=20260813-client-stat
 const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-suggestions-2';
 const frozenUrl = '/assets/spire-flowsheet-frozen-pane.js?v=20260813-frozen-pane-1';
 const screenUrl = '/assets/spire-screen-controls.js?v=20260813-live-controls-2';
-const medicationUrl = '/assets/spire-medication-order-entry.js?v=20260813-medication-orders-1';
+const medicationUrl = '/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-3';
 const marTimelineUrl = '/assets/spire-mar-timeline.js?v=20260813-mar-timeline-2';
 const screenCssUrl = '/assets/spire-screen-controls.css?v=20260813-live-controls-2';
 
 for (const file of [
   sourceEntry, entryPath, loginPath, stationPath, legacyStationPath, chatPath, masterPath,
-  loginRuntimePath, preferencePath, navigationPath, flowsheetPath, frozenPath, screenPath, medicationPath, marTimelinePath, screenCssPath,
+  loginRuntimePath, preferencePath, navigationPath, flowsheetPath, frozenPath, screenPath,
+  medicationPath, medicationV2Path, medicationPolicyPath, medicationRowControlsPath,
+  marTimelinePath, screenCssPath,
 ]) await stat(file);
 
 await writeFile(entryPath, await readFile(sourceEntry, 'utf8'), 'utf8');
@@ -53,11 +58,17 @@ master = master.replace('</head>', `  <link rel="stylesheet" href="${screenCssUr
 master = master.replace('</body>', `  <script src="${navigationUrl}"></script>\n  <script src="${flowsheetUrl}"></script>\n  <script src="${frozenUrl}"></script>\n  <script src="${screenUrl}"></script>\n  <script src="${medicationUrl}"></script>\n  <script src="${marTimelineUrl}"></script>\n</body>`);
 await writeFile(masterPath, master, 'utf8');
 
-const [entry, login, station, legacyStation, chat, publishedMaster, loginRuntime, preference, navigation, flowsheet, frozen, screen, medication, marTimeline] = await Promise.all([
+const [
+  entry, login, station, legacyStation, chat, publishedMaster, loginRuntime, preference,
+  navigation, flowsheet, frozen, screen, medication, medicationV2, medicationPolicy,
+  medicationRowControls, marTimeline,
+] = await Promise.all([
   readFile(entryPath, 'utf8'), readFile(loginPath, 'utf8'), readFile(stationPath, 'utf8'),
   readFile(legacyStationPath, 'utf8'), readFile(chatPath, 'utf8'), readFile(masterPath, 'utf8'),
   readFile(loginRuntimePath, 'utf8'), readFile(preferencePath, 'utf8'), readFile(navigationPath, 'utf8'),
-  readFile(flowsheetPath, 'utf8'), readFile(frozenPath, 'utf8'), readFile(screenPath, 'utf8'), readFile(medicationPath, 'utf8'), readFile(marTimelinePath, 'utf8'),
+  readFile(flowsheetPath, 'utf8'), readFile(frozenPath, 'utf8'), readFile(screenPath, 'utf8'),
+  readFile(medicationPath, 'utf8'), readFile(medicationV2Path, 'utf8'), readFile(medicationPolicyPath, 'utf8'),
+  readFile(medicationRowControlsPath, 'utf8'), readFile(marTimelinePath, 'utf8'),
 ]);
 
 for (const marker of ['SPIRE_CANONICAL_LOGIN_ENTRY_V3', '/spire/login.html', 'window.location.search', 'window.location.hash']) {
@@ -86,12 +97,13 @@ for (const [pattern, label] of [
   [/src="\/assets\/spire-master-flowsheet-grid\.js(?:\?[^"']*)?"/g, 'Flowsheet'],
   [/src="\/assets\/spire-flowsheet-frozen-pane\.js(?:\?[^"']*)?"/g, 'frozen pane'],
   [/src="\/assets\/spire-screen-controls\.js(?:\?[^"']*)?"/g, 'live controls'],
-  [/src="\/assets\/spire-medication-order-entry\.js(?:\?[^"']*)?"/g, 'medication order entry'],
+  [/src="\/assets\/spire-medication-order-entry\.js(?:\?[^"']*)?"/g, 'canonical medication order loader'],
   [/src="\/assets\/spire-mar-timeline\.js(?:\?[^"']*)?"/g, 'MAR timeline'],
 ]) {
   const count = (publishedMaster.match(pattern) || []).length;
   if (count !== 1) throw new Error(`SPIRE master must publish ${label} exactly once; found ${count}`);
 }
+if (!publishedMaster.includes(medicationUrl)) throw new Error('SPIRE master is not cache-pinned to the canonical medication order loader');
 
 for (const marker of [
   'SPIRE_USER_WORKSPACE_PREFERENCES_V4', 'clientStation:', 'spire:accessibility:preset',
@@ -114,9 +126,38 @@ for (const marker of ['SPIRE_FLOWSHEET_FROZEN_PANE_V1', 'MutationObserver']) {
 for (const marker of ['SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?status=OPEN', '/spire/secure-chat.html', 'Secure Chat', 'Alerts & Reminders']) {
   if (!screen.includes(marker)) throw new Error(`SPIRE live chart controls missing ${marker}`);
 }
-for (const marker of ['SPIRE_MEDICATION_ORDER_ENTRY_V1', '+ Add Medication Order', '/api/admin/spire/medication-orders', 'Save & Activate Order']) {
-  if (!medication.includes(marker)) throw new Error(`SPIRE medication order entry runtime missing ${marker}`);
+
+// Medication Orders has exactly one current owner. The published loader waits for
+// the Orders workspace and loads V2 once. The old per-row Manage runtime remains
+// as a disabled compatibility shim only.
+for (const marker of [
+  'SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3',
+  'spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-2',
+  "window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true",
+  "document.getElementById('manage-orders-view')",
+]) {
+  if (!medication.includes(marker)) throw new Error(`SPIRE canonical medication loader missing ${marker}`);
 }
+if (medication.includes('observe(document.documentElement')) throw new Error('SPIRE canonical medication loader must not observe the whole document');
+for (const marker of [
+  'SPIRE_MEDICATION_ORDER_ENTRY_V2',
+  '+ Add Medication Order',
+  'Manage Orders',
+  'data-spire-med-order-actions',
+  '/api/spire/medication-orders-v2/',
+]) {
+  if (!medicationV2.includes(marker)) throw new Error(`SPIRE medication Orders V2 runtime missing ${marker}`);
+}
+for (const marker of ['SPIRE_MEDICATION_TOP_MANAGE_ONLY_V1', 'window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true', '[data-spire-manage-medication-orders]']) {
+  if (!medicationPolicy.includes(marker)) throw new Error(`SPIRE medication management policy missing ${marker}`);
+}
+for (const marker of ['SPIRE_MEDICATION_ROW_CONTROLS_DISABLED_V2', 'window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true']) {
+  if (!medicationRowControls.includes(marker)) throw new Error(`SPIRE retired row-control shim missing ${marker}`);
+}
+if (medicationRowControls.includes('spire-med-row-manage\';') || medicationRowControls.includes('openManageFor(')) {
+  throw new Error('SPIRE retired row-control shim must not create per-medication Manage buttons');
+}
+
 for (const marker of ['SPIRE_MAR_TIMELINE_V3', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications']) {
   if (!marTimeline.includes(marker)) throw new Error(`SPIRE MAR timeline runtime missing ${marker}`);
 }
@@ -126,10 +167,13 @@ for (const forbidden of ['Opening Staff Messaging Portal', 'Notifications: 3 unr
 
 for (const [label, source] of [
   ['login shell', loginRuntime], ['shared preferences', preference], ['chart navigation', navigation],
-  ['Flowsheet', flowsheet], ['frozen pane', frozen], ['live controls', screen], ['medication order entry', medication], ['MAR timeline', marTimeline],
+  ['Flowsheet', flowsheet], ['frozen pane', frozen], ['live controls', screen],
+  ['canonical medication loader', medication], ['medication Orders V2', medicationV2],
+  ['medication management policy', medicationPolicy], ['retired medication row controls', medicationRowControls],
+  ['MAR timeline', marTimeline],
 ]) {
   try { new Function(source); }
   catch (error) { throw new Error(`SPIRE ${label} syntax error: ${error instanceof Error ? error.message : String(error)}`); }
 }
 
-console.log('SPIRE publication verified: authentication shell → Client Station → explicit client chart; remembered home/user preferences are scoped to the authenticated user; theme #21 is Client Station Classic; fullscreen is separate/default-on; medication order entry and MAR timeline are published; Secure Chat and live In Basket controls contain no fake alerts.');
+console.log('SPIRE publication verified: authentication shell → Client Station → explicit client chart; medication Orders has one canonical V2 owner with one styled top Add Medication Order + Manage Orders toolbar; per-medication Manage controls are retired; MAR remains independently published.');
