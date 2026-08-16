@@ -50,7 +50,7 @@ has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','tit
 // permanently disabled so it cannot create a competing Manage button.
 has(data.medOrderJs, ['SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3','spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-2',"window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true","document.getElementById('manage-orders-view')"], 'SPIRE canonical medication loader');
 forbids(data.medOrderJs, ['SPIRE_MEDICATION_ORDER_ENTRY_V1','observe(document.documentElement'], 'SPIRE canonical medication loader');
-has(data.medOrderV2Js, ['SPIRE_MEDICATION_ORDER_ENTRY_V2','+ Add Medication Order','Manage Orders','data-spire-med-order-actions','Save & Activate Order','/api/spire/medication-orders-v2/'], 'SPIRE medication Orders V2');
+has(data.medOrderV2Js, ['SPIRE_MEDICATION_ORDER_ENTRY_V2','+ Add Medication Order','Manage Orders','data-spire-med-order-actions','Validate & Activate Order','/api/spire/medication-orders-v2/'], 'SPIRE medication Orders V2');
 has(data.medPolicyJs, ['SPIRE_MEDICATION_TOP_MANAGE_ONLY_V1','window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true','[data-spire-manage-medication-orders]'], 'SPIRE medication management policy');
 has(data.medRowControlsJs, ['SPIRE_MEDICATION_ROW_CONTROLS_DISABLED_V2','window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true'], 'SPIRE retired medication row controls');
 forbids(data.medRowControlsJs, ['openManageFor(','ordersForPatient()','Medication management is still loading'], 'SPIRE retired medication row controls');
