@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const MAR_URL = '/assets/spire-mar-timeline.js?v=20260815-mar-canonical-stable-4';
+const MAR_URL = '/assets/spire-mar-timeline.js?v=20260815-mar-canonical-stable-5';
 const MARKER = 'SPIRE_MAR_CANONICAL_NON_INVASIVE_V2';
 const assetPath = path.join(root, 'assets', 'spire-mar-timeline.js');
 
@@ -88,19 +88,29 @@ await writeFile(assetPath, stableRuntime, 'utf8');
 const syntax = spawnSync(process.execPath, ['--check', assetPath], { encoding: 'utf8' });
 if (syntax.status !== 0) throw new Error(`Stable SPIRE MAR runtime syntax failed: ${(syntax.stderr || syntax.stdout || '').trim()}`);
 
-async function replaceMarUrl(relative) {
+async function replaceMarUrl(relative, required = true) {
   const filePath = path.join(root, relative);
   let source = await readFile(filePath, 'utf8');
+  const before = source;
   source = source.replace(/\/assets\/spire-mar-timeline\.js(?:\?v=[^"'\s<]*)?/g, MAR_URL);
+  if (required && source === before && !source.includes(MAR_URL)) {
+    throw new Error(`${relative} does not expose the MAR publication URL expected by the stability pass`);
+  }
   await writeFile(filePath, source, 'utf8');
   return source;
 }
 
+// fix-spire-mar-publication.mjs runs earlier in build:web and intentionally aligns
+// several verifier/finalizer files to its own cache key. Re-align ALL of those files
+// here so the stable runtime and the build guards agree on one cache-busted URL.
 const master = await replaceMarUrl('spire/master.html');
-if (!master.includes(MAR_URL)) throw new Error('SPIRE master did not receive stable MAR cache-busted runtime');
-
 const foundation = await replaceMarUrl('scripts/verify-spire-foundation.mjs');
-if (!foundation.includes(MAR_URL)) throw new Error('SPIRE foundation verifier did not receive stable MAR cache-busted runtime');
+const staticBuild = await replaceMarUrl('scripts/build-static-site.mjs');
+const finalizer = await replaceMarUrl('scripts/finalize-spire-client-station-publication.mjs');
+const accessibility = await replaceMarUrl('scripts/fix-spire-accessibility-suite.mjs');
+for (const [label, source] of [['master',master],['foundation verifier',foundation],['static build verifier',staticBuild],['finalizer',finalizer],['accessibility publisher',accessibility]]) {
+  if (!source.includes(MAR_URL)) throw new Error(`SPIRE ${label} did not receive stable MAR cache-busted runtime`);
+}
 
 const runtime = await readFile(assetPath, 'utf8');
 for (const required of [MARKER, 'SPIRE_MAR_TIMELINE_V4', 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications', 'data-mar-filter="scheduled"', 'data-mar-filter="prn"', 'data-mar-status="GIVEN"', "['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']", '/emar/events', 'administeredAt', 'Record Given', 'medicationOrderId: medicationId']) {
@@ -110,4 +120,4 @@ if (runtime.includes('new MutationObserver(') || runtime.includes('addEventListe
   throw new Error('Stable SPIRE MAR runtime became invasive again');
 }
 
-console.log(`SPIRE MAR stabilized: canonical master owns all live eMAR behavior; duplicate timeline rendering and document observers are disabled (${MAR_URL}).`);
+console.log(`SPIRE MAR stabilized: canonical master owns all live eMAR behavior; duplicate timeline rendering and document observers are disabled; publication guards aligned to ${MAR_URL}.`);
