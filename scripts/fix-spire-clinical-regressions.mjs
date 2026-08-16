@@ -10,6 +10,7 @@ const marPath = path.join(dist, 'assets', 'spire-mar-timeline.js');
 const auditPath = path.join(dist, 'assets', 'spire-flowsheet-audit-popover.js');
 const notePath = path.join(dist, 'assets', 'spire-note-composer-v2.js');
 const noteSourcePath = path.join(root, 'assets', 'spire-note-composer-v2.js');
+const foundationVerifierPath = path.join(root, 'scripts', 'verify-spire-foundation.mjs');
 
 const runtimeUrl = '/assets/spire-clinical-regression-runtime.js?v=20260816-clinical-regression-3';
 const marUrl = '/assets/spire-mar-timeline.js?v=20260816-approved-mar-v4-1';
@@ -20,7 +21,7 @@ const noteUrl = '/assets/spire-note-composer-v2.js?v=20260815-note-composer-v2-2
 await import('./fix-spire-note-filing-history.mjs');
 await copyFile(noteSourcePath, notePath);
 
-await Promise.all([stat(masterPath), stat(runtimePath), stat(marPath), stat(auditPath), stat(notePath)]);
+await Promise.all([stat(masterPath), stat(runtimePath), stat(marPath), stat(auditPath), stat(notePath), stat(foundationVerifierPath)]);
 
 const [runtime, mar, audit, note] = await Promise.all([
   readFile(runtimePath, 'utf8'),
@@ -133,6 +134,16 @@ if (/<div class="client-tab">\s*<span id="tabClientName">[\s\S]*?<span>✖<\/spa
 }
 
 await writeFile(masterPath, master, 'utf8');
+
+// The MAR publication pass temporarily pins the foundation verifier to its older
+// cache key. Restore the verifier to a URL-agnostic path so the fresh production
+// MAR cache key is accepted now and future build:web runs remain idempotent.
+let foundationVerifier = await readFile(foundationVerifierPath, 'utf8');
+foundationVerifier = foundationVerifier.replace(
+  /\/assets\/spire-mar-timeline\.js\?v=[^"']+/g,
+  '/assets/spire-mar-timeline.js',
+);
+await writeFile(foundationVerifierPath, foundationVerifier, 'utf8');
 
 const published = await readFile(masterPath, 'utf8');
 for (const required of [marUrl, runtimeUrl, auditUrl, noteUrl]) {
