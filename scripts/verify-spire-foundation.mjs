@@ -15,7 +15,7 @@ const syntax = (relative, label) => { const result = spawnSync(process.execPath,
 const files = {
   entry:'dist-web/spire.html', login:'dist-web/spire/login.html', station:'dist-web/spire/client-station.html', legacyStation:'dist-web/spire/patient-station.html', chat:'dist-web/spire/secure-chat.html', master:'dist-web/spire/master.html',
   loginJs:'dist-web/assets/spire-login.js', stationJs:'dist-web/assets/spire-client-station.js', chatJs:'dist-web/assets/spire-secure-chat.js', prefsJs:'dist-web/assets/spire-user-preferences.js', screenJs:'dist-web/assets/spire-screen-controls.js', masterNavJs:'dist-web/assets/spire-master-navigation.js',
-  medOrderJs:'dist-web/assets/spire-medication-order-entry.js', marTimelineJs:'dist-web/assets/spire-mar-timeline.js', flowJs:'dist-web/assets/spire-master-flowsheet-grid.js', commJs:'dist-web/assets/spire-communications-inbasket.js', workflowJs:'dist-web/assets/spire-workflow.js', cpoeJs:'dist-web/assets/spire-order-composer.js', emarJs:'dist-web/assets/spire-emar.js', careJs:'dist-web/assets/spire-care-plan.js', incidentJs:'dist-web/assets/spire-incidents.js',
+  medOrderJs:'dist-web/assets/spire-medication-order-entry.js', medOrderV2Js:'dist-web/assets/spire-medication-order-entry-v2.js', medPolicyJs:'dist-web/assets/spire-medication-management-policy.js', medRowControlsJs:'dist-web/assets/spire-medication-row-controls.js', marTimelineJs:'dist-web/assets/spire-mar-timeline.js', flowJs:'dist-web/assets/spire-master-flowsheet-grid.js', commJs:'dist-web/assets/spire-communications-inbasket.js', workflowJs:'dist-web/assets/spire-workflow.js', cpoeJs:'dist-web/assets/spire-order-composer.js', emarJs:'dist-web/assets/spire-emar.js', careJs:'dist-web/assets/spire-care-plan.js', incidentJs:'dist-web/assets/spire-incidents.js',
   homeRoutes:'api/src/spire-network-home-access-routes.ts', commRoutes:'api/src/spire-communications-inbasket-routes.ts', injector:'scripts/inject-clinical-routes.mjs'
 };
 const data = {}; for (const [key, relative] of Object.entries(files)) data[key] = await read(relative);
@@ -43,9 +43,19 @@ has(data.masterNavJs, ['SPIRE_MASTER_EXPLICIT_CLIENT_GATE_V2','/spire/client-sta
 forbids(data.masterNavJs, ['/spire/portal.html'], 'SPIRE chart navigation');
 has(data.flowJs, ['SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1','SPIRE Client Station before using Flowsheets'], 'SPIRE Flowsheet');
 forbids(data.flowJs, ["entry?.recordedByDisplayName || entry?.recordedById","entry?.recordedByDisplayName || entry?.recordedByName || entry?.recordedById",'SPIRE Patient Station before using Flowsheets'], 'SPIRE Flowsheet');
-has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js','/assets/spire-mar-timeline.js'], 'SPIRE master chart');
-has(data.medOrderJs, ['Add Medication Order','Save & Activate Order','/api/admin/spire/medication-orders'], 'SPIRE medication order entry');
-hasAny(data.marTimelineJs, ['SPIRE_MAR_TIMELINE_V3','SPIRE_MAR_TIMELINE_V2'], 'SPIRE MAR timeline runtime');
+has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-3','/assets/spire-mar-timeline.js'], 'SPIRE master chart');
+
+// Orders must have one canonical V2 owner. The compatibility loader is allowed
+// to load V2 only after the Orders view exists; the row-control enhancer is
+// permanently disabled so it cannot create a competing Manage button.
+has(data.medOrderJs, ['SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3','spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-2',"window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true","document.getElementById('manage-orders-view')"], 'SPIRE canonical medication loader');
+forbids(data.medOrderJs, ['SPIRE_MEDICATION_ORDER_ENTRY_V1','observe(document.documentElement'], 'SPIRE canonical medication loader');
+has(data.medOrderV2Js, ['SPIRE_MEDICATION_ORDER_ENTRY_V2','+ Add Medication Order','Manage Orders','data-spire-med-order-actions','Save & Activate Order','/api/spire/medication-orders-v2/'], 'SPIRE medication Orders V2');
+has(data.medPolicyJs, ['SPIRE_MEDICATION_TOP_MANAGE_ONLY_V1','window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true','[data-spire-manage-medication-orders]'], 'SPIRE medication management policy');
+has(data.medRowControlsJs, ['SPIRE_MEDICATION_ROW_CONTROLS_DISABLED_V2','window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true'], 'SPIRE retired medication row controls');
+forbids(data.medRowControlsJs, ['openManageFor(','ordersForPatient()','Medication management is still loading'], 'SPIRE retired medication row controls');
+
+hasAny(data.marTimelineJs, ['SPIRE_MAR_TIMELINE_V4','SPIRE_MAR_TIMELINE_V3','SPIRE_MAR_TIMELINE_V2'], 'SPIRE MAR timeline runtime');
 has(data.marTimelineJs, ['Go to Now','Medication / Order','Completed / Inactive Medications','data-mar-filter="scheduled"','data-mar-filter="prn"'], 'SPIRE MAR timeline');
 has(data.workflowJs, ['Start Encounter','New Clinical Note'], 'SPIRE workflow');
 has(data.cpoeJs, ['Order Composer','Sign & Place Order'], 'SPIRE CPOE');
@@ -58,8 +68,8 @@ has(data.commRoutes, ["app.get('/api/spire/inbasket-v2'",'/communications/overvi
 has(data.injector, ['registerSpireNetworkHomeAccessRoutes','registerSpireCommunicationsInBasketRoutes'], 'SPIRE route injector');
 
 for (const [relative, label] of [
-  ['dist-web/assets/spire-login.js','SPIRE login shell'],['dist-web/assets/spire-client-station.js','Client Station'],['dist-web/assets/spire-secure-chat.js','Secure Chat'],['dist-web/assets/spire-user-preferences.js','Shared preferences'],['dist-web/assets/spire-screen-controls.js','Chart controls'],['dist-web/assets/spire-master-navigation.js','Chart navigation'],['dist-web/assets/spire-master-flowsheet-grid.js','Flowsheet'],['dist-web/assets/spire-medication-order-entry.js','Medication order entry'],['dist-web/assets/spire-mar-timeline.js','MAR timeline']
+  ['dist-web/assets/spire-login.js','SPIRE login shell'],['dist-web/assets/spire-client-station.js','Client Station'],['dist-web/assets/spire-secure-chat.js','Secure Chat'],['dist-web/assets/spire-user-preferences.js','Shared preferences'],['dist-web/assets/spire-screen-controls.js','Chart controls'],['dist-web/assets/spire-master-navigation.js','Chart navigation'],['dist-web/assets/spire-master-flowsheet-grid.js','Flowsheet'],['dist-web/assets/spire-medication-order-entry.js','Canonical medication loader'],['dist-web/assets/spire-medication-order-entry-v2.js','Medication Orders V2'],['dist-web/assets/spire-medication-management-policy.js','Medication management policy'],['dist-web/assets/spire-medication-row-controls.js','Retired medication row controls'],['dist-web/assets/spire-mar-timeline.js','MAR timeline']
 ]) { await requireFile(relative); syntax(relative, label); }
 
 if (failures.length) { console.error('SPIRE corrected workflow verification failed:\n- ' + failures.join('\n- ')); process.exit(1); }
-console.log('SPIRE verified: SSO/system login → Client Station → remembered authorized home → explicit client chart; medication order entry and MAR timeline are published; theme #21/fullscreen/Secure Chat/live notifications remain intact.');
+console.log('SPIRE verified: SSO/system login → Client Station → remembered authorized home → explicit client chart; Orders uses one canonical V2 toolbar with Add Medication Order + Manage Orders, per-medication Manage is retired, and MAR remains independently published.');
