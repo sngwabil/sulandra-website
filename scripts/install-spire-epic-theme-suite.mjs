@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+await import('./optimize-spire-workspace-rendering.mjs');
+
 const marker = 'SPIRE_EPIC_THEME_SUITE_V1';
 const assetPath = path.join(root, 'assets', 'spire-epic-theme-suite.js');
 const targetFiles = [
