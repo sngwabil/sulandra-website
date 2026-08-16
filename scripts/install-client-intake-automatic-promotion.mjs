@@ -1,3 +1,4 @@
+import './fix-client-intake-medication-json.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
