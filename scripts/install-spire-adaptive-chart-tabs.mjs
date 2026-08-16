@@ -28,11 +28,12 @@ const marGuidanceRelative = 'assets/spire-mar-action-guidance.js';
 const marGuidanceMarker = 'SPIRE_MAR_ACTION_GUIDANCE_V2';
 const marGuidanceUrl = '/assets/spire-mar-action-guidance.js?v=20260816-mar-action-guidance-2';
 const marContinuityRelative = 'assets/spire-mar-continuity.js';
-const marContinuityMarker = 'SPIRE_MAR_CONTINUITY_V2';
-const marContinuityUrl = '/assets/spire-mar-continuity.js?v=20260816-mar-continuity-3';
+const marContinuityMarker = 'SPIRE_MAR_CONTINUITY_V3';
+const marContinuityUrl = '/assets/spire-mar-continuity.js?v=20260816-mar-continuity-4';
 const marMouseNavigationRelative = 'assets/spire-mar-mouse-navigation.js';
-const marMouseNavigationMarker = 'SPIRE_MAR_MOUSE_NAV_V1';
-const marMouseNavigationUrl = '/assets/spire-mar-mouse-navigation.js?v=20260816-mar-mouse-nav-1';
+const marMouseNavigationMarker = 'SPIRE_MAR_MOUSE_NAV_V3';
+const marMouseNavigationUrl = '/assets/spire-mar-mouse-navigation.js?v=20260816-mar-mouse-nav-3';
+const browserTitle = 'Spire Enterprise - Master Client Chart & Intake';
 
 const runtimePath = path.join(root, assetRelative);
 const runtime = await readFile(runtimePath, 'utf8');
@@ -110,12 +111,17 @@ const marContinuityPath = path.join(root, marContinuityRelative);
 const marContinuity = await readFile(marContinuityPath, 'utf8');
 for (const required of [
   marContinuityMarker,
+  'SPIRE_MAR_CONTINUITY_V2',
   'Today / Now',
   'Prior-day overdue occurrences',
   'Current-day scheduled doses remain independent',
   "priorOverdueQueue: 'overdue-filter-only'",
   '[data-mar-filter="overdue"].active',
   'blankScheduledCellsDisabled: true',
+  'compactOverdueHeader: true',
+  'overdueGridVerticalScroll: true',
+  'rootOnlyObserver: true',
+  'observerFeedbackLoopGuard: true',
   "scopedObserver: '#mar-view'",
   'wholeDocumentObserver: false',
   'includeOverdue=1',
@@ -125,8 +131,11 @@ for (const required of [
 if (marContinuity.includes('observe(document.documentElement') || marContinuity.includes('observe(document.body')) {
   throw new Error('SPIRE MAR continuity runtime must not observe the whole document');
 }
-if (!marContinuity.includes('marObserver.observe(host, { childList: true, subtree: true })')) {
-  throw new Error('SPIRE MAR continuity observer must stay scoped to #mar-view');
+if (!marContinuity.includes('marObserver.observe(host, { childList: true });')) {
+  throw new Error('SPIRE MAR continuity observer must be root-only on #mar-view');
+}
+if (marContinuity.includes('marObserver.observe(host, { childList: true, subtree: true })')) {
+  throw new Error('SPIRE MAR continuity observer must not observe its own nested decorations');
 }
 new Function(marContinuity);
 const publishedMarContinuityPath = path.join(dist, marContinuityRelative);
@@ -139,11 +148,14 @@ const marMouseNavigationPath = path.join(root, marMouseNavigationRelative);
 const marMouseNavigation = await readFile(marMouseNavigationPath, 'utf8');
 for (const required of [
   marMouseNavigationMarker,
+  'SPIRE_MAR_MOUSE_NAV_V2',
   'overdueGridVerticalScroll: true',
   'compactOverdueHeader: true',
   'mouseWheelHorizontalWhenNeeded: true',
   'headerDragPan: true',
   'hourArrowControls: true',
+  'rootOnlyObserver: true',
+  'observerLoopGuard: true',
   "scopedObserver: '#mar-view'",
   'wholeDocumentObserver: false',
 ]) {
@@ -152,8 +164,11 @@ for (const required of [
 if (marMouseNavigation.includes('observe(document.documentElement') || marMouseNavigation.includes('observe(document.body')) {
   throw new Error('SPIRE MAR mouse navigation must not observe the whole document');
 }
-if (!marMouseNavigation.includes('observer.observe(host, { childList: true, subtree: true })')) {
-  throw new Error('SPIRE MAR mouse navigation observer must stay scoped to #mar-view');
+if (!marMouseNavigation.includes('observer.observe(host, { childList: true });')) {
+  throw new Error('SPIRE MAR mouse navigation observer must be root-only on #mar-view');
+}
+if (marMouseNavigation.includes('observer.observe(host, { childList: true, subtree: true })')) {
+  throw new Error('SPIRE MAR mouse navigation observer must not observe its own nested controls');
 }
 new Function(marMouseNavigation);
 const publishedMarMouseNavigationPath = path.join(dist, marMouseNavigationRelative);
@@ -178,6 +193,8 @@ async function publishMaster(masterPath) {
     .replace(/\s*<script\s+src=["']\/assets\/spire-mar-continuity\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-mar-mouse-navigation\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-adaptive-chart-tabs\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
+
+  html = html.replace(/<title>[^<]*<\/title>/i, `<title>${browserTitle}</title>`);
 
   if (!html.includes('</body>')) {
     throw new Error(`SPIRE adaptive chart tabs could not find </body> in ${path.relative(root, masterPath)}`);
@@ -231,6 +248,7 @@ await publishMaster(path.join(dist, 'spire', 'master.html'));
 
 const finalMaster = await readFile(path.join(dist, 'spire', 'master.html'), 'utf8');
 for (const required of [
+  `<title>${browserTitle}</title>`,
   medicationPolicyUrl,
   medicationOrderUrl,
   assetUrl,
@@ -247,5 +265,5 @@ for (const required of [
 }
 
 console.log(
-  `SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, per-medication Manage controls retired by ${medicationPolicyUrl}, occurrence-aware MAR action guidance via ${marGuidanceUrl}, split Due/Overdue MAR continuity via ${marContinuityUrl}, and mouse wheel/drag/hour-arrow MAR navigation via ${marMouseNavigationUrl}.`,
+  `Spire adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, per-medication Manage controls retired by ${medicationPolicyUrl}, occurrence-aware MAR action guidance via ${marGuidanceUrl}, loop-safe split Due/Overdue MAR continuity via ${marContinuityUrl}, and loop-safe mouse wheel/drag/hour-arrow MAR navigation via ${marMouseNavigationUrl}.`,
 );
