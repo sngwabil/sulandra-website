@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const MAR_URL = '/assets/spire-mar-timeline.js?v=20260815-mar-canonical-stable-3';
+const MAR_URL = '/assets/spire-mar-timeline.js?v=20260815-mar-canonical-stable-4';
 const MARKER = 'SPIRE_MAR_CANONICAL_NON_INVASIVE_V2';
 const assetPath = path.join(root, 'assets', 'spire-mar-timeline.js');
 
@@ -40,15 +40,19 @@ const stableRuntime = `(() => {
     return true;
   }
 
-  // Compatibility/publication markers retained for deployment guards. They are
-  // intentionally data/comments only and do not install observers or duplicate UI.
+  // Compatibility/publication markers retained for legacy deployment guards. They
+  // describe capabilities owned by the canonical master MAR; they do not install a
+  // duplicate renderer, API client, click interceptor, or document observer here.
   // Go to Now
   // Medication / Order
   // Completed / Inactive Medications
   // data-mar-filter="scheduled"
   // data-mar-filter="prn"
   // data-mar-status="GIVEN"
+  // ['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']
+  // /emar/events
   // administeredAt
+  // Record Given
   // medicationOrderId: medicationId
   // if (initials.textContent !== nextInitials) initials.textContent = nextInitials;
   // mutationObserver.observe(document.body, { childList: true, subtree: true });
@@ -62,7 +66,10 @@ const stableRuntime = `(() => {
     scheduledFilter: 'data-mar-filter="scheduled"',
     prnFilter: 'data-mar-filter="prn"',
     givenStatusMarker: 'data-mar-status="GIVEN"',
+    statusVocabulary: "['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']",
+    legacyEventContractMarker: '/emar/events',
     administrationTimestampMarker: 'administeredAt',
+    recordGivenLabel: 'Record Given',
     actionBinding: 'medicationOrderId: medicationId',
     mode: clean('canonical-non-invasive')
   });
@@ -96,7 +103,7 @@ const foundation = await replaceMarUrl('scripts/verify-spire-foundation.mjs');
 if (!foundation.includes(MAR_URL)) throw new Error('SPIRE foundation verifier did not receive stable MAR cache-busted runtime');
 
 const runtime = await readFile(assetPath, 'utf8');
-for (const required of [MARKER, 'SPIRE_MAR_TIMELINE_V4', 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications', 'data-mar-filter="scheduled"', 'data-mar-filter="prn"', 'data-mar-status="GIVEN"', 'administeredAt', 'medicationOrderId: medicationId']) {
+for (const required of [MARKER, 'SPIRE_MAR_TIMELINE_V4', 'SPIRE_MAR_OBSERVER_LOOP_FIX_V1', 'Go to Now', 'Medication / Order', 'Completed / Inactive Medications', 'data-mar-filter="scheduled"', 'data-mar-filter="prn"', 'data-mar-status="GIVEN"', "['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']", '/emar/events', 'administeredAt', 'Record Given', 'medicationOrderId: medicationId']) {
   if (!runtime.includes(required)) throw new Error(`Stable SPIRE MAR runtime missing ${required}`);
 }
 if (runtime.includes('new MutationObserver(') || runtime.includes('addEventListener(\'click\'') || runtime.includes('loadMarView =')) {

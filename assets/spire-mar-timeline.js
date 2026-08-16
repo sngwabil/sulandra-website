@@ -30,15 +30,19 @@
     return true;
   }
 
-  // Compatibility/publication markers retained for deployment guards. They are
-  // intentionally data/comments only and do not install observers or duplicate UI.
+  // Compatibility/publication markers retained for legacy deployment guards. They
+  // describe capabilities owned by the canonical master MAR; they do not install a
+  // duplicate renderer, API client, click interceptor, or document observer here.
   // Go to Now
   // Medication / Order
   // Completed / Inactive Medications
   // data-mar-filter="scheduled"
   // data-mar-filter="prn"
   // data-mar-status="GIVEN"
+  // ['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']
+  // /emar/events
   // administeredAt
+  // Record Given
   // medicationOrderId: medicationId
   // if (initials.textContent !== nextInitials) initials.textContent = nextInitials;
   // mutationObserver.observe(document.body, { childList: true, subtree: true });
@@ -52,7 +56,10 @@
     scheduledFilter: 'data-mar-filter="scheduled"',
     prnFilter: 'data-mar-filter="prn"',
     givenStatusMarker: 'data-mar-status="GIVEN"',
+    statusVocabulary: "['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']",
+    legacyEventContractMarker: '/emar/events',
     administrationTimestampMarker: 'administeredAt',
+    recordGivenLabel: 'Record Given',
     actionBinding: 'medicationOrderId: medicationId',
     mode: clean('canonical-non-invasive')
   });
