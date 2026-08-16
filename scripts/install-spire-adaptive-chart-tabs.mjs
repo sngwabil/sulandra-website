@@ -20,8 +20,11 @@ const medicationOrderRelative = 'assets/spire-medication-order-entry.js';
 const medicationOrderMarker = 'SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V4';
 const medicationOrderUrl = '/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-4';
 const marGuidanceRelative = 'assets/spire-mar-action-guidance.js';
-const marGuidanceMarker = 'SPIRE_MAR_ACTION_GUIDANCE_V1';
-const marGuidanceUrl = '/assets/spire-mar-action-guidance.js?v=20260816-mar-action-guidance-1';
+const marGuidanceMarker = 'SPIRE_MAR_ACTION_GUIDANCE_V2';
+const marGuidanceUrl = '/assets/spire-mar-action-guidance.js?v=20260816-mar-action-guidance-2';
+const marContinuityRelative = 'assets/spire-mar-continuity.js';
+const marContinuityMarker = 'SPIRE_MAR_CONTINUITY_V1';
+const marContinuityUrl = '/assets/spire-mar-continuity.js?v=20260816-mar-continuity-1';
 
 const runtimePath = path.join(root, assetRelative);
 const runtime = await readFile(runtimePath, 'utf8');
@@ -29,12 +32,12 @@ if (!runtime.includes(marker)) throw new Error(`SPIRE adaptive chart tabs runtim
 if (!runtime.includes("MORE_ID = 'spireChartMoreTab'")) throw new Error('SPIRE adaptive chart tabs runtime is missing the More menu control');
 if (!runtime.includes('ResizeObserver')) throw new Error('SPIRE adaptive chart tabs runtime is missing responsive width observation');
 if (!runtime.includes('spire:chart-tab-usage:v1:')) throw new Error('SPIRE adaptive chart tabs runtime is missing per-user usage ranking');
-if (!runtime.includes('data:image/svg+xml')) throw new Error('SPIRE adaptive chart tabs runtime is missing the medication-style MAR icon');
+if (!runtime.includes('data:image/svg+xml')) throw new Error('SPIRE adaptive runtime is missing the medication-style MAR icon');
 if (!runtime.includes('SPIRE_LDA_TAB_SHELL_V1') || !runtime.includes(ldaUrl)) throw new Error('SPIRE adaptive runtime is missing the LDA tab/workspace loader');
 if (!runtime.includes(summaryUrl)) throw new Error('SPIRE adaptive runtime is missing Summary Overview V3 loader');
 new Function(runtime);
 
-for (const [relative, requiredMarker] of [[ldaRelative, ldaMarker],[summaryRelative, summaryMarker]]) {
+for (const [relative, requiredMarker] of [[ldaRelative, ldaMarker], [summaryRelative, summaryMarker]]) {
   const sourcePath = path.join(root, relative);
   const source = await readFile(sourcePath, 'utf8');
   if (!source.includes(requiredMarker)) throw new Error(`${relative} is missing ${requiredMarker}`);
@@ -73,10 +76,21 @@ new Function(publishedMedicationOrder);
 
 const marGuidancePath = path.join(root, marGuidanceRelative);
 const marGuidance = await readFile(marGuidancePath, 'utf8');
-for (const required of [marGuidanceMarker, 'Not due yet', 'Older MAR occurrence', 'This is not an early-administration warning', 'genericErrorReplacement: true', 'wholeDocumentObserver: false']) {
+for (const required of [
+  marGuidanceMarker,
+  'SPIRE_MAR_ACTION_GUIDANCE_V1',
+  'Not due yet',
+  'Past-due historical occurrence',
+  "today's scheduled doses are separate",
+  'todaySeparateFromHistory: true',
+  'genericErrorReplacement: true',
+  'wholeDocumentObserver: false',
+]) {
   if (!marGuidance.includes(required)) throw new Error(`SPIRE MAR action guidance is missing ${required}`);
 }
-if (marGuidance.includes('observe(document.documentElement') || marGuidance.includes('observe(document.body')) throw new Error('SPIRE MAR action guidance must not observe the whole document');
+if (marGuidance.includes('observe(document.documentElement') || marGuidance.includes('observe(document.body')) {
+  throw new Error('SPIRE MAR action guidance must not observe the whole document');
+}
 new Function(marGuidance);
 const publishedMarGuidancePath = path.join(dist, marGuidanceRelative);
 await copyFile(marGuidancePath, publishedMarGuidancePath);
@@ -84,10 +98,39 @@ const publishedMarGuidance = await readFile(publishedMarGuidancePath, 'utf8');
 if (!publishedMarGuidance.includes(marGuidanceMarker)) throw new Error('Published SPIRE MAR action guidance is stale');
 new Function(publishedMarGuidance);
 
+const marContinuityPath = path.join(root, marContinuityRelative);
+const marContinuity = await readFile(marContinuityPath, 'utf8');
+for (const required of [
+  marContinuityMarker,
+  'Today / Now',
+  'Past Due / Overdue from prior days',
+  'Current-day scheduled doses remain independent',
+  'blankScheduledCellsDisabled: true',
+  "scopedObserver: '#mar-view'",
+  'wholeDocumentObserver: false',
+  'includeOverdue=1',
+]) {
+  if (!marContinuity.includes(required)) throw new Error(`SPIRE MAR continuity runtime is missing ${required}`);
+}
+if (marContinuity.includes('observe(document.documentElement') || marContinuity.includes('observe(document.body')) {
+  throw new Error('SPIRE MAR continuity runtime must not observe the whole document');
+}
+if (!marContinuity.includes('marObserver.observe(host, { childList: true, subtree: true })')) {
+  throw new Error('SPIRE MAR continuity observer must stay scoped to #mar-view');
+}
+new Function(marContinuity);
+const publishedMarContinuityPath = path.join(dist, marContinuityRelative);
+await copyFile(marContinuityPath, publishedMarContinuityPath);
+const publishedMarContinuity = await readFile(publishedMarContinuityPath, 'utf8');
+if (!publishedMarContinuity.includes(marContinuityMarker)) throw new Error('Published SPIRE MAR continuity runtime is stale');
+new Function(publishedMarContinuity);
+
 const distRuntimePath = path.join(dist, assetRelative);
 await stat(distRuntimePath);
 const publishedRuntime = await readFile(distRuntimePath, 'utf8');
-if (!publishedRuntime.includes(marker) || !publishedRuntime.includes(ldaUrl) || !publishedRuntime.includes(summaryUrl)) throw new Error('Published SPIRE adaptive chart runtime is stale');
+if (!publishedRuntime.includes(marker) || !publishedRuntime.includes(ldaUrl) || !publishedRuntime.includes(summaryUrl)) {
+  throw new Error('Published SPIRE adaptive chart runtime is stale');
+}
 
 async function publishMaster(masterPath) {
   let html = await readFile(masterPath, 'utf8');
@@ -95,9 +138,23 @@ async function publishMaster(masterPath) {
     .replace(/\s*<script\s+src=["']\/assets\/spire-medication-management-policy\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-medication-order-entry\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-mar-action-guidance\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
+    .replace(/\s*<script\s+src=["']\/assets\/spire-mar-continuity\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n')
     .replace(/\s*<script\s+src=["']\/assets\/spire-adaptive-chart-tabs\.js(?:\?v=[^"']*)?["']><\/script>\s*/gi, '\n');
-  if (!html.includes('</body>')) throw new Error(`SPIRE adaptive chart tabs could not find </body> in ${path.relative(root, masterPath)}`);
-  html = html.replace('</body>', `  <script src="${medicationPolicyUrl}"></script>\n  <script src="${medicationOrderUrl}"></script>\n  <script src="${assetUrl}"></script>\n  <script src="${marGuidanceUrl}"></script>\n</body>`);
+
+  if (!html.includes('</body>')) {
+    throw new Error(`SPIRE adaptive chart tabs could not find </body> in ${path.relative(root, masterPath)}`);
+  }
+
+  html = html.replace(
+    '</body>',
+    `  <script src="${medicationPolicyUrl}"></script>\n`
+      + `  <script src="${medicationOrderUrl}"></script>\n`
+      + `  <script src="${assetUrl}"></script>\n`
+      + `  <script src="${marGuidanceUrl}"></script>\n`
+      + `  <script src="${marContinuityUrl}"></script>\n`
+      + '</body>',
+  );
+
   const adaptiveCount = (html.match(/\/assets\/spire-adaptive-chart-tabs\.js\?v=/g) || []).length;
   if (adaptiveCount !== 1) throw new Error(`SPIRE adaptive chart tabs must publish exactly once in ${path.relative(root, masterPath)}; found ${adaptiveCount}`);
   const policyCount = (html.match(/\/assets\/spire-medication-management-policy\.js\?v=/g) || []).length;
@@ -106,9 +163,22 @@ async function publishMaster(masterPath) {
   if (orderCount !== 1) throw new Error(`SPIRE medication order loader must publish exactly once in ${path.relative(root, masterPath)}; found ${orderCount}`);
   const guidanceCount = (html.match(/\/assets\/spire-mar-action-guidance\.js\?v=/g) || []).length;
   if (guidanceCount !== 1) throw new Error(`SPIRE MAR action guidance must publish exactly once in ${path.relative(root, masterPath)}; found ${guidanceCount}`);
-  if (html.indexOf(medicationPolicyUrl) > html.indexOf(medicationOrderUrl)) throw new Error('SPIRE medication management policy must load before the medication order loader');
-  if (html.indexOf(medicationOrderUrl) > html.indexOf(assetUrl)) throw new Error('SPIRE medication order loader must load before adaptive chart tabs');
-  if (html.indexOf(assetUrl) > html.indexOf(marGuidanceUrl)) throw new Error('SPIRE MAR action guidance must load after the chart navigation runtime');
+  const continuityCount = (html.match(/\/assets\/spire-mar-continuity\.js\?v=/g) || []).length;
+  if (continuityCount !== 1) throw new Error(`SPIRE MAR continuity must publish exactly once in ${path.relative(root, masterPath)}; found ${continuityCount}`);
+
+  if (html.indexOf(medicationPolicyUrl) > html.indexOf(medicationOrderUrl)) {
+    throw new Error('SPIRE medication management policy must load before the medication order loader');
+  }
+  if (html.indexOf(medicationOrderUrl) > html.indexOf(assetUrl)) {
+    throw new Error('SPIRE medication order loader must load before adaptive chart tabs');
+  }
+  if (html.indexOf(assetUrl) > html.indexOf(marGuidanceUrl)) {
+    throw new Error('SPIRE MAR action guidance must load after the chart navigation runtime');
+  }
+  if (html.indexOf(marGuidanceUrl) > html.indexOf(marContinuityUrl)) {
+    throw new Error('SPIRE MAR continuity must load after MAR action guidance');
+  }
+
   await writeFile(masterPath, html, 'utf8');
 }
 
@@ -116,8 +186,21 @@ await publishMaster(path.join(root, 'spire', 'master.html'));
 await publishMaster(path.join(dist, 'spire', 'master.html'));
 
 const finalMaster = await readFile(path.join(dist, 'spire', 'master.html'), 'utf8');
-for (const required of [medicationPolicyUrl, medicationOrderUrl, assetUrl, marGuidanceUrl, 'data-view="flowsheets-view"', 'data-view="mar-view"', 'id="mainChartTabs"']) {
-  if (!finalMaster.includes(required)) throw new Error(`Final SPIRE adaptive chart tab publication is missing ${required}`);
+for (const required of [
+  medicationPolicyUrl,
+  medicationOrderUrl,
+  assetUrl,
+  marGuidanceUrl,
+  marContinuityUrl,
+  'data-view="flowsheets-view"',
+  'data-view="mar-view"',
+  'id="mainChartTabs"',
+]) {
+  if (!finalMaster.includes(required)) {
+    throw new Error(`Final SPIRE adaptive chart tab publication is missing ${required}`);
+  }
 }
 
-console.log(`SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, per-medication Manage controls retired by ${medicationPolicyUrl}, and clear MAR timing/server-rejection guidance via ${marGuidanceUrl}.`);
+console.log(
+  `SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, per-medication Manage controls retired by ${medicationPolicyUrl}, occurrence-aware MAR action guidance via ${marGuidanceUrl}, and current-day/historical MAR continuity via ${marContinuityUrl}.`,
+);
