@@ -6,16 +6,17 @@
   // SPIRE_FLOWSHEET_TRANSACTIONAL_FILE_V2
   // SPIRE_USER_MASTER_FLOWSHEET_LAYOUT_V1
   // SPIRE_FLOWSHEET_INLINE_ENTRY_V3
+  // SPIRE_FLOWSHEET_FILED_HISTORY_VISIBILITY_V1
   // Preserve the user's authoritative master flowsheet DOM/layout. This runtime
   // supplies live data and behavior only. Cells remain directly editable; any
   // configured or task-derived choices are optional suggestions, never a gate.
 
-  const VERSION = '20260813-inline-suggestions-1';
+  const VERSION = '20260815-filed-history-visibility-1';
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
   const HOME_ID_KEY = 'spire:selected-service-home-id';
   const MIN_VISIBLE_COLUMNS = 6;
-  const MAX_VISIBLE_COLUMNS = 10;
+  const MAX_VISIBLE_COLUMNS = 32;
 
   const CATEGORY_DEFS = Object.freeze({
     all: { label: 'Show All Tasks', test: () => true },
@@ -36,6 +37,7 @@
     data: null,
     actor: null,
     columns: [],
+    selectedDate: '',
     category: 'all',
     search: '',
     drafts: new Map(),
@@ -64,6 +66,13 @@
 
   function fmtDate(value) {
     return new Date(value).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+  }
+
+  function localDateKey(value) {
+    const date = value instanceof Date ? new Date(value) : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const pad = (part) => String(part).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   }
 
   function currentPatientId() {
@@ -272,6 +281,43 @@
     saveColumns();
   }
 
+  function queryWindow() {
+    if (runtime.selectedDate) {
+      const start = new Date(`${runtime.selectedDate}T00:00:00`);
+      if (!Number.isNaN(start.getTime())) {
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        return { from: start.toISOString(), to: end.toISOString() };
+      }
+    }
+    if (runtime.columns.length) {
+      const valid = runtime.columns.map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getTime()));
+      if (valid.length) {
+        const min = new Date(Math.min(...valid.map((value) => value.getTime())));
+        const max = new Date(Math.max(...valid.map((value) => value.getTime())));
+        if (localDateKey(min) === localDateKey(max)) {
+          min.setHours(0, 0, 0, 0);
+          max.setHours(23, 59, 59, 999);
+          return { from: min.toISOString(), to: max.toISOString() };
+        }
+      }
+    }
+    return {
+      from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      to: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+    };
+  }
+
+  function mergeFiledEntryColumns() {
+    const entries = Array.isArray(runtime.data?.entries) ? runtime.data.entries : [];
+    const entryTimes = entries
+      .map((entry) => isoMinute(entry.recordedAt))
+      .filter((value) => value && (!runtime.selectedDate || localDateKey(value) === runtime.selectedDate));
+    if (!entryTimes.length) return;
+    runtime.columns = [...new Set([...runtime.columns, ...entryTimes])].sort().slice(-MAX_VISIBLE_COLUMNS);
+    saveColumns();
+  }
+
   function installCompatibilityStyle() {
     let style = $('#spireUserMasterFlowsheetStyle');
     if (style) return;
@@ -434,7 +480,6 @@
     const existing = entryFor(row.id, recordedAt);
     const readonly = runtime.data?.viewer?.canWrite !== true || (existing && existing.canEdit === false);
 
-    // Numeric cells are always typed directly in the grid. Never cover them with a selector.
     if (isNumericRow(row) || readonly) return closePopover();
 
     const suggestions = suggestionsForRow(row);
@@ -658,6 +703,7 @@
   function addColumn(value) {
     const column = isoMinute(value);
     if (!column) return;
+    runtime.selectedDate = localDateKey(column);
     runtime.columns = [...new Set([...runtime.columns, column])].sort().slice(-MAX_VISIBLE_COLUMNS);
     saveColumns();
     renderGrid();
@@ -673,23 +719,29 @@
     const parsed = new Date(answer);
     if (Number.isNaN(parsed.getTime())) return alert('Enter a valid date and time.');
     addColumn(parsed);
+    loadWorkspace({ preserveColumns: true, preserveStatus: true }).then(() => setStatus(`Showing ${localDateKey(parsed)} including filed observations.`, 'success'));
   }
 
-  function goToDate() {
-    const answer = prompt('Go to date (YYYY-MM-DD)', new Date().toISOString().slice(0, 10));
+  async function goToDate() {
+    const answer = prompt('Go to date (YYYY-MM-DD)', runtime.selectedDate || new Date().toISOString().slice(0, 10));
     if (!answer) return;
     const base = new Date(`${answer}T06:00:00`);
     if (Number.isNaN(base.getTime())) return alert('Enter a valid date.');
+    runtime.selectedDate = answer;
     runtime.columns = Array.from({ length: MIN_VISIBLE_COLUMNS }, (_, index) => isoMinute(new Date(base.getTime() + index * 3 * 60 * 60 * 1000)));
     saveColumns();
     renderGrid();
-    setStatus(`Showing ${answer}.`, 'success');
+    setStatus(`Loading filed observations for ${answer}…`, 'warn');
+    await loadWorkspace({ preserveColumns: true, preserveStatus: true });
+    const count = Array.isArray(runtime.data?.entries) ? runtime.data.entries.length : 0;
+    setStatus(`Showing ${answer} · ${count} filed observation${count === 1 ? '' : 's'} loaded.`, 'success');
   }
 
   function goToLastFiled() {
     const entries = Array.isArray(runtime.data?.entries) ? runtime.data.entries : [];
     const latest = entries.slice().sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt))[0];
-    if (!latest) return setStatus('No filed values in the current flowsheet window.', 'warn');
+    if (!latest) return setStatus('No filed values in the loaded date. Use Go to Date to load another day.', 'warn');
+    runtime.selectedDate = localDateKey(latest.recordedAt);
     addColumn(latest.recordedAt);
     requestAnimationFrame(() => {
       const selector = `[data-row-id="${CSS.escape(String(latest.rowId))}"][data-flow-time="${CSS.escape(isoMinute(latest.recordedAt))}"]`;
@@ -735,6 +787,12 @@
       runtime.drafts.clear();
       saveDraftStore();
       runtime.filing = false;
+      const filedTimes = Array.isArray(result?.entries) ? result.entries.map((entry) => isoMinute(entry.recordedAt)).filter(Boolean) : entries.map((entry) => isoMinute(entry.recordedAt)).filter(Boolean);
+      if (filedTimes.length) {
+        runtime.selectedDate = localDateKey(filedTimes[filedTimes.length - 1]);
+        runtime.columns = [...new Set([...runtime.columns, ...filedTimes])].sort().slice(-MAX_VISIBLE_COLUMNS);
+        saveColumns();
+      }
       await loadWorkspace({ preserveColumns: true, preserveStatus: true });
       setStatus(`${result?.count ?? entries.length} change${(result?.count ?? entries.length) === 1 ? '' : 's'} filed together · ${actorName()}.`, 'success');
     } catch (error) {
@@ -758,14 +816,24 @@
     try {
       await loadActor();
       loadDraftStore();
-      const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const to = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+      if (!preserveColumns && !runtime.columns.length) {
+        const stored = readStoredColumns();
+        if (stored.length) {
+          runtime.columns = stored;
+          runtime.selectedDate = localDateKey(stored[stored.length - 1]);
+        }
+      }
+      const { from, to } = queryWindow();
       runtime.data = await api(`/api/spire/patients/${encodeURIComponent(runtime.patientId)}/flowsheet-workspace?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
       if (!Array.isArray(runtime.data?.rows) || !runtime.data.rows.length) throw new Error('No active flowsheet rows are configured for this organization.');
       if (!preserveColumns || !runtime.columns.length) ensureColumns();
+      mergeFiledEntryColumns();
       restoreAuthoritativeToolbar();
       renderGrid();
-      if (!preserveStatus) setStatus(runtime.drafts.size ? 'Unfiled boxes restored. Press File when finished.' : `Ready · File as ${actorName()}.`, runtime.drafts.size ? 'warn' : '');
+      if (!preserveStatus) {
+        const loaded = Array.isArray(runtime.data?.entries) ? runtime.data.entries.length : 0;
+        setStatus(runtime.drafts.size ? 'Unfiled boxes restored. Press File when finished.' : `Ready · ${loaded} filed observation${loaded === 1 ? '' : 's'} loaded · File as ${actorName()}.`, runtime.drafts.size ? 'warn' : '');
+      }
     } catch (error) {
       restoreAuthoritativeToolbar();
       const tbody = $('#flowsheetTbody');
@@ -791,7 +859,7 @@
       filePending,
       hasPending: () => runtime.drafts.size > 0,
       pendingCount: () => runtime.drafts.size,
-      getState: () => ({ patientId: runtime.patientId, homeId: runtime.homeId, pending: runtime.drafts.size, category: runtime.category, columns: [...runtime.columns] }),
+      getState: () => ({ patientId: runtime.patientId, homeId: runtime.homeId, pending: runtime.drafts.size, category: runtime.category, columns: [...runtime.columns], selectedDate: runtime.selectedDate, filedEntries: Array.isArray(runtime.data?.entries) ? runtime.data.entries.length : 0 }),
     });
   }
 
