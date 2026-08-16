@@ -1,11 +1,10 @@
 (() => {
   'use strict';
 
-  // SPIRE_CLINICAL_REGRESSION_RUNTIME_V2
-  // This runtime is intentionally FLOWSHEET-ONLY. MAR/eMAR is owned exclusively
-  // by the canonical renderer in spire/master.html. Do not observe or rewrite MAR.
+  // SPIRE_CLINICAL_REGRESSION_RUNTIME_V1
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
+  const STYLE_ID = 'spireClinicalRegressionRuntimeStyle';
   let identityPromise = null;
   const directory = new Map();
   let repairQueued = false;
@@ -73,7 +72,8 @@
   }
 
   function filedAtFromTitle(title) {
-    const match = clean(title).match(/(?:documented|Filed at)\s+([^·]+?)(?=\s+·|$)/i);
+    const text = clean(title);
+    const match = text.match(/(?:documented|Filed at)\s+([^·]+?)(?=\s+·|$)/i);
     return clean(match?.[1]);
   }
 
@@ -132,36 +132,101 @@
     }
   }
 
+  function installStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+      #mar-view .spire-mar-restored-section{border-top:1px solid #96aec1;background:#fff}
+      #mar-view .spire-mar-restored-section:first-child{border-top:0}
+      #mar-view .spire-mar-restored-header{display:flex;align-items:center;gap:8px;min-height:28px;padding:5px 10px;background:linear-gradient(#dceaf5,#c8ddeb);border-bottom:1px solid #89a5bb;color:#123f61;font-size:12px;font-weight:800;position:sticky;left:0;z-index:5}
+      #mar-view .spire-mar-restored-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 5px;border:1px solid #87a4bb;border-radius:10px;background:#f8fbfd;font-size:10px}
+      #mar-view .spire-mar-restored-body{min-width:max-content}
+      #mar-view .spire-mar-restored-empty{width:320px;min-height:34px;padding:9px 12px;color:#61788a;font-size:11px;font-style:italic;background:#f8fafc;border-right:1px solid #c7d4df;box-sizing:border-box}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function marSectionKey(row) {
+    const tags = clean(row.dataset.filterTags).toLowerCase();
+    const text = clean(row.textContent).toLowerCase();
+    if (tags.includes('prn')) return 'prn';
+    if (tags.includes('continuous')) return 'continuous';
+    if (/\bone[- ]?time\b|\bonce\b|\bstat\b/.test(text)) return 'one-time';
+    return 'scheduled';
+  }
+
+  function makeMarSection(key, label, rows, showEmpty) {
+    const section = document.createElement('section');
+    section.className = 'spire-mar-restored-section';
+    section.dataset.marSection = key;
+    const header = document.createElement('div');
+    header.className = 'spire-mar-restored-header';
+    const title = document.createElement('span');
+    title.textContent = label;
+    const count = document.createElement('span');
+    count.className = 'spire-mar-restored-count';
+    count.textContent = String(rows.length);
+    header.append(title, count);
+    const body = document.createElement('div');
+    body.className = 'spire-mar-restored-body';
+    if (rows.length) rows.forEach((row) => body.appendChild(row));
+    else if (showEmpty) {
+      const empty = document.createElement('div');
+      empty.className = 'spire-mar-restored-empty';
+      empty.textContent = 'No active medications in this section.';
+      body.appendChild(empty);
+    }
+    section.append(header, body);
+    return section;
+  }
+
+  function repairMarSections() {
+    installStyle();
+    const list = document.querySelector('#mar-view .spire-mar-medication-list');
+    if (!list || list.dataset.spireStructuralSections === '1') return;
+    const rows = [...list.children].filter((node) => node.classList?.contains('spire-mar-medication-row'));
+    if (!rows.length) return;
+    const groups = new Map([
+      ['scheduled', []], ['prn', []], ['continuous', []], ['one-time', []],
+    ]);
+    rows.forEach((row) => groups.get(marSectionKey(row))?.push(row));
+    const activeFilter = clean(document.querySelector('#mar-view .spire-mar-filter.active')?.dataset.marFilter || 'all').toLowerCase();
+    const showEmpty = activeFilter === 'all';
+    const definitions = [
+      ['scheduled', 'Scheduled Medications'],
+      ['prn', 'PRN Medications'],
+      ['continuous', 'Continuous / Infusion Medications'],
+      ['one-time', 'One-Time Medications'],
+    ];
+    const fragment = document.createDocumentFragment();
+    for (const [key, label] of definitions) {
+      const sectionRows = groups.get(key) || [];
+      if (sectionRows.length || showEmpty) fragment.appendChild(makeMarSection(key, label, sectionRows, showEmpty));
+    }
+    list.replaceChildren(fragment);
+    list.dataset.spireStructuralSections = '1';
+  }
+
   async function repair() {
     repairQueued = false;
     try { await repairFlowsheetAttribution(); } catch {}
+    try { repairMarSections(); } catch {}
   }
 
   function queueRepair() {
     if (repairQueued) return;
     repairQueued = true;
-    setTimeout(repair, 60);
+    setTimeout(repair, 40);
   }
 
   const observer = new MutationObserver(queueRepair);
   const start = () => {
-    const flowsheetView = document.getElementById('flowsheets-view');
-    if (flowsheetView) {
-      observer.observe(flowsheetView, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['title'],
-      });
-    }
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['title', 'class'] });
     queueRepair();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
 
-  window.SpireClinicalRegressionRuntime = Object.freeze({
-    version: '20260816-clinical-regression-2',
-    scope: 'flowsheets-only',
-    repair: queueRepair,
-  });
+  window.SpireClinicalRegressionRuntime = Object.freeze({ version: '20260815-clinical-regression-1', repair: queueRepair });
 })();
