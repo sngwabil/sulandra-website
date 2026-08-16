@@ -30,7 +30,7 @@ const navigationUrl = '/assets/spire-master-navigation.js?v=20260813-client-stat
 const flowsheetUrl = '/assets/spire-master-flowsheet-grid.js?v=20260813-inline-suggestions-2';
 const frozenUrl = '/assets/spire-flowsheet-frozen-pane.js?v=20260813-frozen-pane-1';
 const screenUrl = '/assets/spire-screen-controls.js?v=20260813-live-controls-2';
-const medicationUrl = '/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-3';
+const medicationUrl = '/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-4';
 const marTimelineUrl = '/assets/spire-mar-timeline.js?v=20260813-mar-timeline-2';
 const screenCssUrl = '/assets/spire-screen-controls.css?v=20260813-live-controls-2';
 
@@ -127,14 +127,16 @@ for (const marker of ['SPIRE_SCREEN_CONTROLS_LIVE_V2', '/api/spire/inbasket-v2?s
   if (!screen.includes(marker)) throw new Error(`SPIRE live chart controls missing ${marker}`);
 }
 
-// Medication Orders has exactly one current owner. The published loader waits for
-// the Orders workspace and loads V2 once. The old per-row Manage runtime remains
-// as a disabled compatibility shim only.
+// Medication Orders has exactly one current owner. The V4 loader keeps the
+// exact V2 toolbar attached across Orders-view rerenders and observes only the
+// Orders workspace rather than the full SPIRE document.
 for (const marker of [
-  'SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3',
+  'SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V4',
   'spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-2',
   "window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true",
   "document.getElementById('manage-orders-view')",
+  'ordersObserver.observe(view, { childList: true, subtree: true })',
+  'restoreRetainedToolbar',
 ]) {
   if (!medication.includes(marker)) throw new Error(`SPIRE canonical medication loader missing ${marker}`);
 }
@@ -176,4 +178,4 @@ for (const [label, source] of [
   catch (error) { throw new Error(`SPIRE ${label} syntax error: ${error instanceof Error ? error.message : String(error)}`); }
 }
 
-console.log('SPIRE publication verified: authentication shell → Client Station → explicit client chart; medication Orders has one canonical V2 owner with one styled top Add Medication Order + Manage Orders toolbar; per-medication Manage controls are retired; MAR remains independently published.');
+console.log('SPIRE publication verified: authentication shell → Client Station → explicit client chart; medication Orders has one self-healing canonical V2 toolbar with Add Medication Order + Manage Orders; per-medication Manage controls are retired; MAR remains independently published.');
