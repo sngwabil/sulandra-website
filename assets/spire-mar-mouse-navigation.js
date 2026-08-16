@@ -3,9 +3,11 @@
 
   // SPIRE_MAR_MOUSE_NAV_V1 compatibility marker
   // SPIRE_MAR_MOUSE_NAV_V2
-  if (window.__SPIRE_MAR_MOUSE_NAV_V2) return;
+  // SPIRE_MAR_MOUSE_NAV_V3
+  if (window.__SPIRE_MAR_MOUSE_NAV_V3) return;
   window.__SPIRE_MAR_MOUSE_NAV_V1 = true;
   window.__SPIRE_MAR_MOUSE_NAV_V2 = true;
+  window.__SPIRE_MAR_MOUSE_NAV_V3 = true;
 
   const HOUR_SCROLL_FRACTION = 0.66;
   let observer = null;
@@ -167,20 +169,9 @@
     pan = null;
   }
 
-  function mutationNeedsDecorate(mutations) {
-    return mutations.some((mutation) => {
-      if (mutation.type !== 'childList' || !mutation.addedNodes.length) return false;
-      return Array.from(mutation.addedNodes).some((node) => {
-        if (!(node instanceof Element)) return false;
-        return node.matches?.('.spire-mar-v4,.spire-mar-overdue-queue,.spire-mar-filter-actions')
-          || Boolean(node.querySelector?.('.spire-mar-overdue-head,.spire-mar-filter-actions,[data-mar-scroll]'));
-      });
-    });
-  }
-
   function bind(host) {
-    if (!host || host.dataset.spireMarMouseNavigation === '2') return;
-    host.dataset.spireMarMouseNavigation = '2';
+    if (!host || host.dataset.spireMarMouseNavigation === '3') return;
+    host.dataset.spireMarMouseNavigation = '3';
     ensureStyles();
     decorate(host);
 
@@ -191,10 +182,10 @@
     host.addEventListener('pointerup', endPan);
     host.addEventListener('pointercancel', endPan);
 
-    observer = new MutationObserver((mutations) => {
-      if (mutationNeedsDecorate(mutations)) scheduleDecorate(host);
-    });
-    observer.observe(host, { childList: true, subtree: true });
+    // The MAR renderer replaces #mar-view content as a unit. Observe only that root
+    // replacement so our own nested controls can never trigger a feedback loop.
+    observer = new MutationObserver(() => scheduleDecorate(host));
+    observer.observe(host, { childList: true });
   }
 
   function install() {
@@ -205,8 +196,10 @@
   }
 
   window.__SPIRE_MAR_MOUSE_NAV_CONTRACT = Object.freeze({
-    marker: 'SPIRE_MAR_MOUSE_NAV_V2',
+    marker: 'SPIRE_MAR_MOUSE_NAV_V3',
+    compatibilityMarker: 'SPIRE_MAR_MOUSE_NAV_V2',
     observerLoopGuard: true,
+    rootOnlyObserver: true,
     idempotentHeaderCompaction: true,
     requestAnimationFrameThrottle: true,
     overdueGridVerticalScroll: true,
