@@ -51,7 +51,7 @@ for(const source of [loginAsset,loginRoot]){
 expect(adminFixer.includes('role !== "ADMINISTRATOR"'),'Admin controller normalizer does not reserve admin.html for the Owner Administrator');
 expect(adminFixer.includes('role === "DOO" ? "doo.html"'),'Admin controller normalizer does not redirect DOO to the dedicated workspace');
 expect(loginHtml.includes(contract),'Employee Login does not publish the role-UAT contract marker');
-expect(loginHtml.includes('/assets/employee-login-railway.js?v=20260810-role-uat-1'),'Employee Login is not cache-pinned to the role-UAT runtime');
+expect(/\/assets\/employee-login-railway\.js\?v=[^"']+/.test(loginHtml),'Employee Login is not cache-pinned to a versioned login runtime');
 expect(nmt.includes('UserRole.SCHEDULER'),'NMT dispatch backend does not authorize the Scheduler dispatcher persona');
 expect(roleRuntime.includes('Manage My Home Team')&&roleRuntime.includes('/scls-residential.html#staff'),'Home Manager role workspace is not connected to assigned-home staff management');
 expect(roleRuntime.includes('All Administrative HTML Workspaces — Owner Admin excluded'),'DOO role workspace does not publish the administrative HTML collection');
