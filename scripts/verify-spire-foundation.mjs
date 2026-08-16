@@ -43,12 +43,11 @@ has(data.masterNavJs, ['SPIRE_MASTER_EXPLICIT_CLIENT_GATE_V2','/spire/client-sta
 forbids(data.masterNavJs, ['/spire/portal.html'], 'SPIRE chart navigation');
 has(data.flowJs, ['SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1','SPIRE Client Station before using Flowsheets'], 'SPIRE Flowsheet');
 forbids(data.flowJs, ["entry?.recordedByDisplayName || entry?.recordedById","entry?.recordedByDisplayName || entry?.recordedByName || entry?.recordedById",'SPIRE Patient Station before using Flowsheets'], 'SPIRE Flowsheet');
-has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-3','/assets/spire-mar-timeline.js?v=20260814-chart-photo-db-2','/assets/spire-mar-epic-v5.css?v=20260814-chart-photo-db-2'], 'SPIRE master chart');
+has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-4','/assets/spire-mar-timeline.js?v=20260814-chart-photo-db-2','/assets/spire-mar-epic-v5.css?v=20260814-chart-photo-db-2'], 'SPIRE master chart');
 
-// Orders must have one canonical V2 owner. The compatibility loader is allowed
-// to load V2 only after the Orders view exists; the row-control enhancer is
-// permanently disabled so it cannot create a competing Manage button.
-has(data.medOrderJs, ['SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3','spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-2',"window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true","document.getElementById('manage-orders-view')"], 'SPIRE canonical medication loader');
+// Orders must have one canonical V2 owner. The loader keeps the exact V2
+// toolbar attached across Orders-view rerenders without observing the full page.
+has(data.medOrderJs, ['SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V4','spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-2',"window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true","document.getElementById('manage-orders-view')",'ordersObserver.observe(view, { childList: true, subtree: true })','restoreRetainedToolbar'], 'SPIRE canonical medication loader');
 forbids(data.medOrderJs, ['SPIRE_MEDICATION_ORDER_ENTRY_V1','observe(document.documentElement'], 'SPIRE canonical medication loader');
 has(data.medOrderV2Js, ['SPIRE_MEDICATION_ORDER_ENTRY_V2','+ Add Medication Order','Manage Orders','data-spire-med-order-actions','Validate & Activate Order','/api/spire/medication-orders-v2/'], 'SPIRE medication Orders V2');
 has(data.medPolicyJs, ['SPIRE_MEDICATION_TOP_MANAGE_ONLY_V1','window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true','[data-spire-manage-medication-orders]'], 'SPIRE medication management policy');
@@ -72,4 +71,4 @@ for (const [relative, label] of [
 ]) { await requireFile(relative); syntax(relative, label); }
 
 if (failures.length) { console.error('SPIRE corrected workflow verification failed:\n- ' + failures.join('\n- ')); process.exit(1); }
-console.log('SPIRE verified: SSO/system login → Client Station → remembered authorized home → explicit client chart; Orders uses one canonical V2 toolbar with Add Medication Order + Manage Orders, per-medication Manage is retired, and MAR remains independently published.');
+console.log('SPIRE verified: SSO/system login → Client Station → remembered authorized home → explicit client chart; Orders uses one self-healing canonical V2 toolbar with Add Medication Order + Manage Orders, per-medication Manage is retired, and MAR remains independently published.');
