@@ -43,7 +43,7 @@ has(data.masterNavJs, ['SPIRE_MASTER_EXPLICIT_CLIENT_GATE_V2','/spire/client-sta
 forbids(data.masterNavJs, ['/spire/portal.html'], 'SPIRE chart navigation');
 has(data.flowJs, ['SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1','SPIRE Client Station before using Flowsheets'], 'SPIRE Flowsheet');
 forbids(data.flowJs, ["entry?.recordedByDisplayName || entry?.recordedById","entry?.recordedByDisplayName || entry?.recordedByName || entry?.recordedById",'SPIRE Patient Station before using Flowsheets'], 'SPIRE Flowsheet');
-has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-3','/assets/spire-mar-timeline.js'], 'SPIRE master chart');
+has(data.master, ['<html','<body','S.P.I.R.E.','21. Client Station Classic','title="Secure Chat"','/assets/spire-user-preferences.js?v=20260813-exact-workflow-1','/assets/spire-screen-controls.js?v=20260813-live-controls-2','/assets/spire-master-navigation.js?v=20260813-client-station-2','/assets/spire-medication-order-entry.js?v=20260816-med-order-canonical-loader-3','/assets/spire-mar-timeline.js?v=20260814-chart-photo-db-2','/assets/spire-mar-epic-v5.css?v=20260814-chart-photo-db-2'], 'SPIRE master chart');
 
 // Orders must have one canonical V2 owner. The compatibility loader is allowed
 // to load V2 only after the Orders view exists; the row-control enhancer is
