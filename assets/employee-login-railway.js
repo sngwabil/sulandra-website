@@ -60,7 +60,8 @@
   }
 
   function safeReturnTarget() {
-    const requested = new URLSearchParams(window.location.search).get("returnTo");
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("returnTo") || params.get("return");
     if (!requested) return "";
     try {
       const resolved = new URL(requested, window.location.origin);
