@@ -19,7 +19,8 @@ const masterTargets = [
 
 const TIMELINE_MARKER = 'SPIRE_MAR_DUE_OVERDUE_SPLIT_V1';
 const CONTINUITY_MARKER = 'SPIRE_MAR_CONTINUITY_V2';
-const TIMELINE_URL = '/assets/spire-mar-timeline.js?v=20260816-due-overdue-split-1';
+const FILTER_LAYOUT_MARKER = 'SPIRE_MAR_DUE_OVERDUE_FILTER_LAYOUT_V1';
+const TIMELINE_URL = '/assets/spire-mar-timeline.js?v=20260816-due-overdue-split-2';
 
 async function exists(file) {
   try { await stat(file); return true; } catch { return false; }
@@ -136,6 +137,20 @@ function patchContinuity(source, label) {
   return next;
 }
 
+function installFilterLayout(html, label) {
+  const style = `  <style data-spire-mar-due-overdue-layout="${FILTER_LAYOUT_MARKER}">
+    /* Keep Due and Overdue independently visible even when the chart center is narrow between sidebars. */
+    #mar-view .spire-mar-filterbar{display:flex!important;align-items:center!important;gap:5px 8px!important;flex-wrap:wrap!important;height:auto!important;min-height:31px!important;overflow:visible!important}
+    #mar-view .spire-mar-filterset{display:flex!important;align-items:center!important;gap:0!important;flex:1 1 440px!important;min-width:0!important;flex-wrap:wrap!important;overflow:visible!important}
+    #mar-view .spire-mar-filter-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:4px!important;flex:1 1 430px!important;min-width:0!important;flex-wrap:wrap!important;margin-left:auto!important;overflow:visible!important}
+    #mar-view [data-mar-filter="due"],#mar-view [data-mar-filter="overdue"]{display:inline-flex!important;visibility:visible!important;opacity:1!important;flex:0 0 auto!important}
+  </style>`;
+  let next = html.replace(new RegExp(`\\s*<style[^>]*data-spire-mar-due-overdue-layout=["']${FILTER_LAYOUT_MARKER}["'][\\s\\S]*?<\\/style>\\s*`, 'g'), '\n');
+  if (!next.includes('</head>')) throw new Error(`${label}: cannot publish MAR Due/Overdue layout without </head>`);
+  next = next.replace('</head>', `${style}\n</head>`);
+  return next;
+}
+
 for (const file of timelineTargets) {
   if (!(await exists(file))) continue;
   const source = await readFile(file, 'utf8');
@@ -154,17 +169,39 @@ for (const file of masterTargets) {
   if (!(await exists(file))) continue;
   let html = await readFile(file, 'utf8');
   html = html.replace(/\/assets\/spire-mar-timeline\.js(?:\?v=[^"']+)?/g, TIMELINE_URL);
+  html = installFilterLayout(html, path.relative(root, file));
   await writeFile(file, html, 'utf8');
 }
 
+const timelineRequirements = [TIMELINE_MARKER, 'data-mar-filter="due">Due</button>', 'data-mar-filter="overdue">Overdue</button>', "case 'overdue': return unresolvedOverdue(med);", 'currentDate < localDateInput(now)'];
+const continuityRequirements = [CONTINUITY_MARKER, 'Prior-day overdue occurrences', "priorOverdueQueue: 'overdue-filter-only'", '[data-mar-filter="overdue"].active'];
+
 const finalTimeline = await readFile(path.join(root, 'assets', 'spire-mar-timeline.js'), 'utf8');
 const finalContinuity = await readFile(path.join(root, 'assets', 'spire-mar-continuity.js'), 'utf8');
-for (const required of [TIMELINE_MARKER, 'data-mar-filter="due">Due</button>', 'data-mar-filter="overdue">Overdue</button>', "case 'overdue': return unresolvedOverdue(med);", 'currentDate < localDateInput(now)']) {
+for (const required of timelineRequirements) {
   if (!finalTimeline.includes(required)) throw new Error(`Final MAR timeline missing ${required}`);
 }
-for (const required of [CONTINUITY_MARKER, 'Prior-day overdue occurrences', "priorOverdueQueue: 'overdue-filter-only'", '[data-mar-filter="overdue"].active']) {
+for (const required of continuityRequirements) {
   if (!finalContinuity.includes(required)) throw new Error(`Final MAR continuity missing ${required}`);
 }
+
+const publishedTimelinePath = path.join(dist, 'assets', 'spire-mar-timeline.js');
+if (await exists(publishedTimelinePath)) {
+  const publishedTimeline = await readFile(publishedTimelinePath, 'utf8');
+  for (const required of timelineRequirements) {
+    if (!publishedTimeline.includes(required)) throw new Error(`Published MAR timeline missing ${required}`);
+  }
+  new Function(publishedTimeline);
+}
+
+const publishedMasterPath = path.join(dist, 'spire', 'master.html');
+if (await exists(publishedMasterPath)) {
+  const publishedMaster = await readFile(publishedMasterPath, 'utf8');
+  for (const required of [TIMELINE_URL, FILTER_LAYOUT_MARKER]) {
+    if (!publishedMaster.includes(required)) throw new Error(`Published SPIRE master missing ${required}`);
+  }
+}
+
 new Function(finalTimeline);
 new Function(finalContinuity);
-console.log('SPIRE MAR Due/Overdue split installed: Due and Overdue are separate filters, current selected-day overdue doses remain in the hourly grid, and prior-day overdue history appears only when Overdue is selected.');
+console.log('SPIRE MAR Due/Overdue split installed: Due and Overdue are separate visible filters, current selected-day overdue doses remain in the hourly grid, prior-day overdue history appears only when Overdue is selected, and the final published timeline/master are verified.');
