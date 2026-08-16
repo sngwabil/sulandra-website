@@ -1,19 +1,18 @@
 (() => {
   'use strict';
 
-  // SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V2
-  // The legacy V1 order UI and its document-wide cleanup observer are retired.
-  // This compatibility asset now has one job: load the approved V2 medication
-  // order workspace exactly once and leave its top Add Medication Order and
-  // Manage Orders controls as the only medication-management entry points.
-  if (window.__SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V2) return;
-  window.__SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V2 = true;
+  // SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3
+  // One owner, one toolbar: load V2 only when the Orders workspace is actually
+  // rendered. This avoids both the legacy/V2 race and a document-wide observer
+  // sitting on SPIRE while the Orders view is closed.
+  if (window.__SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3) return;
+  window.__SPIRE_MEDICATION_ORDER_CANONICAL_LOADER_V3 = true;
 
-  const V2_URL = '/assets/spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-1';
+  const V2_URL = '/assets/spire-medication-order-entry-v2.js?v=20260816-med-order-v2-canonical-2';
   const SAFETY_URL = '/assets/spire-mar-safety-verifier.js?v=20260815-mar-safety-v2-layer-1';
+  let loading = false;
 
   function removeCompetingUi() {
-    // Remove only legacy/row-level controls. Never remove the V2 toolbar.
     document.querySelectorAll('.spire-med-row-manage').forEach((button) => button.remove());
     document.querySelectorAll('[data-spire-add-medication-order]').forEach((button) => {
       if (!button.closest('[data-spire-med-order-actions]')) button.remove();
@@ -27,12 +26,13 @@
     if (legacyStyle && !document.querySelector('[data-spire-med-order-actions]')) legacyStyle.remove();
   }
 
-  function loadOnce(id, src, onLoad) {
-    if (document.getElementById(id)) return;
-    const existing = [...document.scripts].find((script) => String(script.src || '').includes(src.split('?')[0]));
+  function loadScriptOnce(id, src, onLoad) {
+    if (document.getElementById(id)) return true;
+    const base = src.split('?')[0];
+    const existing = [...document.scripts].find((script) => String(script.src || '').includes(base));
     if (existing) {
       if (onLoad) window.setTimeout(onLoad, 0);
-      return;
+      return true;
     }
     const script = document.createElement('script');
     script.id = id;
@@ -40,16 +40,56 @@
     script.async = false;
     if (onLoad) script.addEventListener('load', onLoad, { once: true });
     document.head.appendChild(script);
+    return true;
   }
 
-  removeCompetingUi();
-  // Block the retired row-control enhancer even if an older cached adaptive-tab
-  // runtime tries to request it during this page session.
-  window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true;
+  function ordersPanelReady() {
+    const view = document.getElementById('manage-orders-view');
+    if (!view || !view.classList.contains('active')) return false;
+    return [...view.querySelectorAll('h1,h2,h3,h4,strong,div,span')]
+      .some((node) => String(node.textContent || '').trim() === 'Active Medication Orders');
+  }
 
-  loadOnce('spireMedicationOrderV2Canonical', V2_URL, () => {
+  function ensureCanonicalToolbar() {
+    if (!ordersPanelReady()) return false;
     removeCompetingUi();
-    window.setTimeout(removeCompetingUi, 150);
-  });
-  loadOnce('spireMarSafetyVerifierV2Canonical', SAFETY_URL);
+    if (document.querySelector('[data-spire-med-order-actions]')) return true;
+    if (loading) return false;
+    loading = true;
+    loadScriptOnce('spireMedicationOrderV2Canonical', V2_URL, () => {
+      loading = false;
+      removeCompetingUi();
+      window.setTimeout(removeCompetingUi, 120);
+    });
+    loadScriptOnce('spireMarSafetyVerifierV2Canonical', SAFETY_URL);
+    return true;
+  }
+
+  // Retire the per-row enhancer even if an older cached adaptive-tab runtime
+  // requests its asset during this session.
+  window.__SPIRE_MEDICATION_ROW_CONTROLS_V1 = true;
+  removeCompetingUi();
+
+  document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    const ordersTab = event.target.closest('.chart-tab[data-view="manage-orders-view"]');
+    if (!ordersTab) return;
+    window.setTimeout(ensureCanonicalToolbar, 0);
+    window.setTimeout(ensureCanonicalToolbar, 100);
+    window.setTimeout(ensureCanonicalToolbar, 350);
+  }, true);
+
+  // Handle reloads/deep links where Orders is already active without observing
+  // the entire SPIRE document.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      window.setTimeout(ensureCanonicalToolbar, 0);
+      window.setTimeout(ensureCanonicalToolbar, 300);
+      window.setTimeout(ensureCanonicalToolbar, 900);
+    }, { once: true });
+  } else {
+    window.setTimeout(ensureCanonicalToolbar, 0);
+    window.setTimeout(ensureCanonicalToolbar, 300);
+    window.setTimeout(ensureCanonicalToolbar, 900);
+  }
 })();
