@@ -1,12 +1,9 @@
 (() => {
   'use strict';
 
-  // SPIRE_GLOBAL_CHART_SEARCH_V2
-  // Extends the authoritative master search so clinical context already loaded in
-  // the active chart (allergies, diagnoses, precautions, baseline parameters,
-  // providers, etc.) is searchable before falling back to the legacy
-  // client/chart-review search.
-
+  // SPIRE_GLOBAL_CHART_SEARCH_V3
+  // Search is chart-wide: visible clinical context, live MAR, canonical eMAR,
+  // storyboard data, then the original authorized client/chart-review fallback.
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
   const originalSearch = typeof window.handleChartSearch === 'function' ? window.handleChartSearch.bind(window) : null;
@@ -15,7 +12,8 @@
   const asArray = (value) => Array.isArray(value) ? value : [];
   const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   let requestSequence = 0;
-  let cache = { patientId: '', loadedAt: 0, data: null, promise: null };
+  let storyboardCache = { patientId: '', loadedAt: 0, data: null, promise: null };
+  let emarCache = { key: '', loadedAt: 0, data: null, promise: null };
 
   function token() {
     for (const storage of [sessionStorage, localStorage]) {
@@ -41,6 +39,14 @@
     const query = new URLSearchParams(location.search);
     const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
     return clean(query.get('patientId') || hash.get('patient') || sessionStorage.getItem('spire:patientId'));
+  }
+
+  function selectedMarDate() {
+    const input = document.getElementById('marDatePicker');
+    if (input?.value) return input.value;
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
   }
 
   function includesQuery(value, query) {
@@ -89,21 +95,28 @@
     document.querySelectorAll('.spire-global-search-hit').forEach((node) => node.classList.remove('spire-global-search-hit'));
   }
 
+  function matchingMarRow(needle) {
+    const query = clean(needle).toLowerCase();
+    if (!query) return null;
+    return [...document.querySelectorAll('#mar-view .spire-mar-grid-row,#mar-view .spire-mar-medication-row,#mar-view .mar-med-row')]
+      .find((node) => clean(node.textContent).toLowerCase().includes(query)) || null;
+  }
+
   function flashResult(result, query) {
     clearHighlights();
     const nodes = [];
     const preferred = resolveTarget(result);
     if (preferred) nodes.push(preferred);
-
-    // Also illuminate the duplicate sidebar presentation when the same clinical
-    // fact is intentionally shown in both left and right chart rails.
     if (result.kind === 'allergy') {
       const left = document.getElementById('displayAllergies');
       const right = sidebarSection('Clinical Context');
       if (left) nodes.push(left);
       if (right) nodes.push(right);
     }
-
+    if (result.kind === 'medication') {
+      const row = matchingMarRow(result.medicationNeedle || query);
+      if (row) nodes.push(row);
+    }
     const unique = [...new Set(nodes)].filter(Boolean);
     unique.forEach((node) => node.classList.add('spire-global-search-hit'));
     const first = unique.find((node) => clean(node.textContent).toLowerCase().includes(query)) || unique[0];
@@ -112,7 +125,7 @@
   }
 
   function resultKey(result) {
-    return `${result.kind}|${result.target || ''}|${clean(result.label).toLowerCase()}`;
+    return `${result.kind}|${clean(result.label).toLowerCase()}`;
   }
 
   function dedupe(results) {
@@ -144,107 +157,119 @@
     for (const [kind, selector, label, sub] of definitions) {
       const node = document.querySelector(selector);
       const text = clean(node?.textContent);
-      if (!text || !text.toLowerCase().includes(query)) continue;
-      matches.push({ kind, label: `${label}: ${text}`, sub, target: selector });
+      if (text && text.toLowerCase().includes(query)) matches.push({ kind, label: `${label}: ${text}`, sub, target: selector });
     }
     for (const label of ['Clinical Context', 'Baseline / Parameters']) {
       const section = sidebarSection(label);
       const text = clean(section?.querySelector('.sidebar-section-body')?.textContent);
-      if (!text || !text.toLowerCase().includes(query)) continue;
-      matches.push({ kind: label === 'Clinical Context' ? 'clinical' : 'vital', label, sub: text, target: `sidebar:${label}` });
+      if (text && text.toLowerCase().includes(query)) matches.push({ kind: label === 'Clinical Context' ? 'clinical' : 'vital', label, sub: text, target: `sidebar:${label}` });
     }
     return matches;
+  }
+
+  function visibleMarMatches(query) {
+    const rows = [...document.querySelectorAll('#mar-view .spire-mar-grid-row,#mar-view .spire-mar-medication-row,#mar-view .mar-med-row')];
+    const results = [];
+    for (const row of rows) {
+      const text = clean(row.textContent);
+      if (!text || !text.toLowerCase().includes(query)) continue;
+      const nameNode = row.querySelector('.spire-mar-grid-med-name,.spire-mar-med-name,.mar-med-name');
+      const name = clean(nameNode?.textContent) || text.split(/\n|ACTIVE|SCHEDULED/i)[0].trim() || 'Medication';
+      results.push({ kind: 'medication', label: `Medication: ${name}`, sub: 'Current MAR / eMAR · visible medication', view: 'mar-view', medicationNeedle: name });
+    }
+    return results;
   }
 
   function structuredStoryboardMatches(storyboard, query) {
     const s = storyboard || {};
     const results = [];
-
     for (const allergy of asArray(s.allergies)) {
       if (!includesQuery(allergy, query)) continue;
       const name = clean(allergy?.substance || allergy?.name || allergy?.description || 'Allergy');
       const reaction = clean(allergy?.reaction || allergy?.reactionType || allergy?.severity || '');
       results.push({ kind: 'allergy', label: `Allergy: ${name}`, sub: reaction ? `Reaction / severity: ${reaction}` : 'Current chart · Clinical Context', target: '#displayAllergies' });
     }
-
     for (const diagnosis of asArray(s.diagnoses)) {
       if (!includesQuery(diagnosis, query)) continue;
       const name = clean(diagnosis?.name || diagnosis?.description || diagnosis?.code || 'Diagnosis');
       const details = [diagnosis?.code, diagnosis?.status].map(clean).filter((value) => value && value !== name).join(' · ');
       results.push({ kind: 'diagnosis', label: `Diagnosis: ${name}`, sub: details || 'Current chart · Clinical Context', target: 'sidebar:Clinical Context' });
     }
-
     for (const alert of asArray(s.riskAlerts)) {
       if (!includesQuery(alert, query)) continue;
       const label = clean(alert?.label || alert?.message || alert?.type || 'Safety alert');
       results.push({ kind: 'alert', label: `Safety / Alert: ${label}`, sub: clean(alert?.message || alert?.description || 'Current chart · Safety & Alerts'), target: '#displayPrecautions' });
     }
-
     for (const member of asArray(s.careTeam)) {
       if (!includesQuery(member, query)) continue;
       const name = clean(member?.displayName || member?.name || member?.fullName || 'Care team member');
       const role = clean(member?.role || member?.specialty || member?.title || 'Care Team');
       results.push({ kind: 'provider', label: `${role}: ${name}`, sub: 'Current chart · Treatment Team', target: '#displayPCP' });
     }
-
     const vitals = s.latestVitals && typeof s.latestVitals === 'object' ? s.latestVitals : {};
     for (const [key, value] of Object.entries(vitals)) {
-      if (!includesQuery(`${key} ${value}`, query)) continue;
-      results.push({ kind: 'vital', label: `${readableKey(key)}: ${clean(value)}`, sub: 'Current chart · Latest Vitals / Baseline', target: 'sidebar:Baseline / Parameters' });
+      if (includesQuery(`${key} ${value}`, query)) results.push({ kind: 'vital', label: `${readableKey(key)}: ${clean(value)}`, sub: 'Current chart · Latest Vitals / Baseline', target: 'sidebar:Baseline / Parameters' });
     }
-
-    if (includesQuery(s.codeStatus, query)) {
-      results.push({ kind: 'code', label: `Code Status: ${clean(s.codeStatus)}`, sub: 'Current chart · Demographics', target: '#displayCode' });
-    }
-
+    if (includesQuery(s.codeStatus, query)) results.push({ kind: 'code', label: `Code Status: ${clean(s.codeStatus)}`, sub: 'Current chart · Demographics', target: '#displayCode' });
     const appointment = s.nextAppointment;
     if (appointment && includesQuery(appointment, query)) {
       const label = clean(appointment?.title || appointment?.description || 'Upcoming Appointment');
       const when = clean(appointment?.startAt || appointment?.scheduledAt || appointment?.date || '');
       results.push({ kind: 'appointment', label: `Appointment: ${label}`, sub: when || 'Current chart · Timeline', target: 'sidebar:Upcoming Appointment' });
     }
-
-    const medications = [
-      ...asArray(s.medications),
-      ...asArray(s.activeMedications),
-    ];
-    for (const medication of medications) {
+    for (const medication of [...asArray(s.medications), ...asArray(s.activeMedications)]) {
       if (!includesQuery(medication, query)) continue;
       const name = clean(medication?.name || medication?.medicationName || medication?.display || medication?.description || 'Medication');
       const dose = clean(medication?.dose || medication?.doseText || medication?.sig || '');
-      results.push({ kind: 'medication', label: `Medication: ${name}`, sub: dose || 'Current chart · MAR / Orders', view: 'mar-view' });
+      results.push({ kind: 'medication', label: `Medication: ${name}`, sub: dose || 'Current chart · MAR / Orders', view: 'mar-view', medicationNeedle: name });
     }
+    return results;
+  }
 
+  function emarMatches(emar, query) {
+    const medications = asArray(emar?.medications || emar?.items || emar);
+    const results = [];
+    for (const medication of medications) {
+      if (!includesQuery(medication, query)) continue;
+      const name = clean(medication?.medicationName || medication?.name || medication?.display || medication?.description || 'Medication');
+      const details = [medication?.dose, medication?.route, medication?.frequency].map(clean).filter(Boolean).join(' · ');
+      results.push({ kind: 'medication', label: `Medication: ${name}`, sub: details || 'Canonical MAR / eMAR medication order', view: 'mar-view', medicationNeedle: name });
+    }
     return results;
   }
 
   async function storyboardFor(patientId) {
     const now = Date.now();
-    if (cache.patientId === patientId && cache.data && now - cache.loadedAt < 20000) return cache.data;
-    if (cache.patientId === patientId && cache.promise) return cache.promise;
-    cache = {
-      patientId,
-      loadedAt: 0,
-      data: null,
-      promise: api(`/api/spire/patients/${encodeURIComponent(patientId)}/storyboard`)
-        .then((data) => {
-          cache.data = data || {};
-          cache.loadedAt = Date.now();
-          cache.promise = null;
-          return cache.data;
-        })
-        .catch((error) => {
-          cache.promise = null;
-          throw error;
-        }),
-    };
-    return cache.promise;
+    if (storyboardCache.patientId === patientId && storyboardCache.data && now - storyboardCache.loadedAt < 20000) return storyboardCache.data;
+    if (storyboardCache.patientId === patientId && storyboardCache.promise) return storyboardCache.promise;
+    storyboardCache = { patientId, loadedAt: 0, data: null, promise: null };
+    storyboardCache.promise = api(`/api/spire/patients/${encodeURIComponent(patientId)}/storyboard`).then((data) => {
+      storyboardCache.data = data || {};
+      storyboardCache.loadedAt = Date.now();
+      storyboardCache.promise = null;
+      return storyboardCache.data;
+    }).catch((error) => { storyboardCache.promise = null; throw error; });
+    return storyboardCache.promise;
+  }
+
+  async function emarFor(patientId, date) {
+    const key = `${patientId}|${date}`;
+    const now = Date.now();
+    if (emarCache.key === key && emarCache.data && now - emarCache.loadedAt < 10000) return emarCache.data;
+    if (emarCache.key === key && emarCache.promise) return emarCache.promise;
+    emarCache = { key, loadedAt: 0, data: null, promise: null };
+    emarCache.promise = api(`/api/spire/patients/${encodeURIComponent(patientId)}/emar?date=${encodeURIComponent(date)}`).then((data) => {
+      emarCache.data = data || {};
+      emarCache.loadedAt = Date.now();
+      emarCache.promise = null;
+      return emarCache.data;
+    }).catch((error) => { emarCache.promise = null; throw error; });
+    return emarCache.promise;
   }
 
   function activateView(viewId) {
     if (!viewId) return;
-    const tab = document.querySelector(`#mainChartTabs .chart-tab[data-view="${viewId}"]`);
-    tab?.click();
+    document.querySelector(`#mainChartTabs .chart-tab[data-view="${viewId}"]`)?.click();
   }
 
   function renderResults(results, query) {
@@ -257,14 +282,12 @@
         <div class="spire-global-search-detail">${esc(result.sub || '')}</div>
       </div>`).join('');
     drop.style.display = 'block';
-    drop.querySelectorAll('[data-spire-global-search-index]').forEach((node) => {
-      node.addEventListener('click', () => {
-        const result = limited[Number(node.dataset.spireGlobalSearchIndex)];
-        drop.style.display = 'none';
-        activateView(result?.view);
-        window.setTimeout(() => flashResult(result || {}, query), result?.view ? 240 : 20);
-      });
-    });
+    drop.querySelectorAll('[data-spire-global-search-index]').forEach((node) => node.addEventListener('click', () => {
+      const result = limited[Number(node.dataset.spireGlobalSearchIndex)];
+      drop.style.display = 'none';
+      activateView(result?.view);
+      window.setTimeout(() => flashResult(result || {}, query), result?.view ? 500 : 20);
+    }));
   }
 
   async function enhancedChartSearch(rawQuery) {
@@ -272,34 +295,31 @@
     const drop = dropdown();
     const sequence = ++requestSequence;
     clearHighlights();
-
     if (query.length < 2) {
       if (originalSearch) return originalSearch(rawQuery);
       if (drop) { drop.style.display = 'none'; drop.innerHTML = ''; }
       return;
     }
 
-    const visible = visibleClinicalMatches(query);
-    if (visible.length) renderResults(dedupe(visible), query);
-
+    const visible = dedupe([...visibleMarMatches(query), ...visibleClinicalMatches(query)]);
+    if (visible.length) renderResults(visible, query);
     const patientId = currentPatientId();
-    if (!patientId) return originalSearch ? originalSearch(rawQuery) : undefined;
+    if (!patientId) return visible.length ? undefined : (originalSearch ? originalSearch(rawQuery) : undefined);
 
-    try {
-      const storyboard = await storyboardFor(patientId);
-      if (sequence !== requestSequence) return;
-      const structured = structuredStoryboardMatches(storyboard, query);
-      const combined = dedupe([...structured, ...visible]);
-      if (combined.length) {
-        renderResults(combined, query);
-        return;
-      }
-    } catch {
-      if (sequence !== requestSequence) return;
-      if (visible.length) return;
+    let gathered = [...visible];
+    const [storyResult, emarResult] = await Promise.allSettled([
+      storyboardFor(patientId),
+      emarFor(patientId, selectedMarDate()),
+    ]);
+    if (sequence !== requestSequence) return;
+    if (storyResult.status === 'fulfilled') gathered.push(...structuredStoryboardMatches(storyResult.value, query));
+    if (emarResult.status === 'fulfilled') gathered.push(...emarMatches(emarResult.value, query));
+    gathered = dedupe(gathered);
+    if (gathered.length) {
+      renderResults(gathered, query);
+      return;
     }
 
-    if (sequence !== requestSequence) return;
     if (originalSearch) return originalSearch(rawQuery);
     if (drop) {
       drop.innerHTML = '<div class="search-result-item spire-global-search-message">No matching authorized chart/client results.</div>';
@@ -310,8 +330,11 @@
   installStyle();
   window.handleChartSearch = enhancedChartSearch;
   window.SpireGlobalChartSearch = Object.freeze({
-    version: '20260816-chart-search-1',
+    version: '20260816-chart-search-2',
     search: enhancedChartSearch,
-    invalidate: () => { cache = { patientId: '', loadedAt: 0, data: null, promise: null }; },
+    invalidate: () => {
+      storyboardCache = { patientId: '', loadedAt: 0, data: null, promise: null };
+      emarCache = { key: '', loadedAt: 0, data: null, promise: null };
+    },
   });
 })();
