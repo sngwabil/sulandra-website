@@ -1,8 +1,10 @@
 (() => {
   'use strict';
 
+  // SPIRE_MAR_MOUSE_NAV_V1 compatibility marker
   // SPIRE_MAR_MOUSE_NAV_V2
   if (window.__SPIRE_MAR_MOUSE_NAV_V2) return;
+  window.__SPIRE_MAR_MOUSE_NAV_V1 = true;
   window.__SPIRE_MAR_MOUSE_NAV_V2 = true;
 
   const HOUR_SCROLL_FRACTION = 0.66;
