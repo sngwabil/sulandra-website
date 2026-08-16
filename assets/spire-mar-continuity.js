@@ -2,14 +2,19 @@
   'use strict';
 
   // SPIRE_MAR_CONTINUITY_V1
-  if (window.__SPIRE_MAR_CONTINUITY_V1) return;
+  // SPIRE_MAR_CONTINUITY_V2
+  // SPIRE_MAR_CONTINUITY_V3
+  // SPIRE_MAR_OVERDUE_SCROLL_V1
+  if (window.__SPIRE_MAR_CONTINUITY_V3) return;
   window.__SPIRE_MAR_CONTINUITY_V1 = true;
+  window.__SPIRE_MAR_CONTINUITY_V2 = true;
+  window.__SPIRE_MAR_CONTINUITY_V3 = true;
 
   const API_BASE = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEYS = ['sulandra:employee:access-token', 'sulandra_token', 'token', 'accessToken'];
   const cache = new Map();
   let marObserver = null;
-  let decorateTimer = 0;
+  let decorateFrame = 0;
   let pendingFocus = null;
 
   const clean = (value) => String(value ?? '').trim();
@@ -126,11 +131,11 @@
       .spire-mar-day-context strong{font-size:10.5px}
       .spire-mar-day-context .spacer{flex:1}
       .spire-mar-return-today{border:1px solid #1686b6;background:#fff;color:#0872a5;border-radius:2px;padding:4px 8px;font-size:9.5px;font-weight:800;cursor:pointer}
-      .spire-mar-overdue-queue{border-bottom:1px solid #cba1a1;background:#fff8f8}
-      .spire-mar-overdue-head{display:flex;align-items:center;gap:8px;padding:6px 9px;background:#fdeaea;border-bottom:1px solid #ddb1b1;color:#8c2020;font-size:10px}
-      .spire-mar-overdue-head strong{font-size:10.5px}.spire-mar-overdue-head .spacer{flex:1}
-      .spire-mar-overdue-list{display:flex;gap:6px;overflow-x:auto;padding:6px 9px}
-      .spire-mar-overdue-item{min-width:220px;max-width:300px;border:1px solid #d5b0b0;border-left:4px solid #c43c42;border-radius:2px;background:#fff;padding:6px 7px;color:#553333}
+      .spire-mar-overdue-queue{min-width:0;max-width:100%;overflow:hidden;border-bottom:1px solid #cba1a1;background:#fff8f8}
+      .spire-mar-overdue-head{display:flex;align-items:center;min-height:28px;padding:4px 9px;background:#fdeaea;border-bottom:1px solid #ddb1b1;color:#8c2020;font-size:10px}
+      .spire-mar-overdue-head strong{font-size:10.5px}
+      .spire-mar-overdue-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px;width:100%;max-width:100%;max-height:255px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;padding:6px 9px}
+      .spire-mar-overdue-item{min-width:0;max-width:none;border:1px solid #d5b0b0;border-left:4px solid #c43c42;border-radius:2px;background:#fff;padding:6px 7px;color:#553333}
       .spire-mar-overdue-item b{display:block;color:#8c2020;font-size:10px}.spire-mar-overdue-item span{display:block;margin-top:2px;font-size:9px;color:#6e4b4b}
       .spire-mar-overdue-item button{margin-top:5px;border:1px solid #b87b7b;background:#fff;color:#8c2020;border-radius:2px;padding:3px 6px;font-size:9px;font-weight:800;cursor:pointer}
       .spire-mar-continuity-error{padding:6px 9px;border-bottom:1px solid #d7bd75;background:#fff8df;color:#76590b;font-size:9.5px}
@@ -140,7 +145,7 @@
       :root[data-spire-preset="darkClinicalSummary"] .spire-mar-overdue-queue{background:#2f2528;border-color:#75444c}
       :root[data-spire-preset="darkClinicalSummary"] .spire-mar-overdue-head{background:#422c31;color:#ffb6bf;border-color:#75444c}
       :root[data-spire-preset="darkClinicalSummary"] .spire-mar-overdue-item{background:#30292c;color:#f0d8dc;border-color:#75444c;border-left-color:#ff697c}
-      @media(max-width:1100px){.spire-mar-day-context{flex-wrap:wrap}.spire-mar-overdue-list{max-width:100vw}}
+      @media(max-width:1100px){.spire-mar-day-context{flex-wrap:wrap}.spire-mar-overdue-list{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));max-width:100%;max-height:300px}}
     `;
     document.head.appendChild(style);
   }
@@ -167,7 +172,7 @@
 
     const today = localDateInput();
     input.max = today;
-    nowButton.textContent = 'Today / Now';
+    if (nowButton.textContent !== 'Today / Now') nowButton.textContent = 'Today / Now';
 
     let nav = actions.querySelector('[data-spire-mar-day-nav]');
     if (!nav) {
@@ -187,29 +192,52 @@
     if (next) next.disabled = date >= today;
   }
 
+  // Current-day scheduled doses remain independent from prior missed/overdue occurrences.
   function ensureDayContext(host) {
     const root = host.querySelector('.spire-mar-v4');
     const anchor = host.querySelector('.spire-mar-legend') || host.querySelector('.spire-mar-filterbar');
     if (!root || !anchor) return;
     const today = localDateInput();
     const date = selectedDate(host);
+    const mode = date === today ? 'current' : 'historical';
+    const signature = `${mode}:${date}`;
     let banner = host.querySelector('[data-spire-mar-day-context]');
     if (!banner) {
       banner = document.createElement('div');
       banner.dataset.spireMarDayContext = '1';
       anchor.insertAdjacentElement('afterend', banner);
     }
+    if (banner.dataset.spireMarDayContextSignature === signature) return;
+    banner.dataset.spireMarDayContextSignature = signature;
     if (date === today) {
       banner.className = 'spire-mar-day-context current';
-      banner.innerHTML = `<strong>Today — ${esc(displayDate(today))}</strong><span>Current-day scheduled doses remain independent from prior missed/overdue occurrences.</span>`;
+      banner.innerHTML = `<strong>Today — ${esc(displayDate(today))}</strong>`;
     } else {
       banner.className = 'spire-mar-day-context historical';
-      banner.innerHTML = `<strong>Historical MAR — ${esc(displayDate(date))}</strong><span>You are viewing a prior day. Its unresolved doses remain on that date and do not replace today's medication occurrences.</span><span class="spacer"></span><button type="button" class="spire-mar-return-today" data-spire-mar-day="today">Return to Today</button>`;
+      banner.innerHTML = `<strong>Historical MAR — ${esc(displayDate(date))}</strong><span class="spacer"></span><button type="button" class="spire-mar-return-today" data-spire-mar-day="today">Return to Today</button>`;
     }
   }
 
-  function overdueHtml(data) {
-    const rows = Array.isArray(data?.overdueOccurrences) ? data.overdueOccurrences : [];
+  function overdueRows(data) {
+    return Array.isArray(data?.overdueOccurrences) ? data.overdueOccurrences : [];
+  }
+
+  function overdueSignature(data) {
+    const rows = overdueRows(data);
+    const total = Number(data?.overdueCount ?? rows.length) || rows.length;
+    return JSON.stringify([total, ...rows.map((item) => [
+      clean(item.medicationOrderId),
+      clean(item.scheduledFor),
+      clean(item.name || item.medicationName),
+      clean(item.dose),
+      clean(item.route),
+      clean(item.frequency),
+    ])]);
+  }
+
+  // Prior-day overdue occurrences are presented only in the Overdue view with a compact clinical header.
+  function overdueHtml(data, signature) {
+    const rows = overdueRows(data);
     const total = Number(data?.overdueCount ?? rows.length) || rows.length;
     if (!rows.length) return '';
     const cards = rows.map((item) => {
@@ -223,9 +251,8 @@
         <button type="button" data-spire-mar-overdue-date="${esc(occurrenceDate(scheduledFor))}" data-spire-mar-overdue-med="${esc(medId)}" data-spire-mar-overdue-scheduled="${esc(scheduledFor)}">View this occurrence</button>
       </div>`;
     }).join('');
-    const hidden = Math.max(0, total - rows.length);
-    return `<section class="spire-mar-overdue-queue" data-spire-mar-overdue-queue>
-      <div class="spire-mar-overdue-head"><strong>Past Due / Overdue from prior days: ${total}</strong><span>These remain historical occurrences. They do not block today's MAR.</span><span class="spacer"></span>${hidden ? `<span>${hidden} additional older occurrence${hidden === 1 ? '' : 's'} not shown</span>` : ''}</div>
+    return `<section class="spire-mar-overdue-queue" data-spire-mar-overdue-queue data-spire-overdue-signature="${esc(signature)}">
+      <div class="spire-mar-overdue-head"><strong>Prior-day overdue: ${total}</strong></div>
       <div class="spire-mar-overdue-list">${cards}</div>
     </section>`;
   }
@@ -249,11 +276,13 @@
       if (!host.isConnected || selectedDate(host) !== localDateInput()) return;
       host.querySelector('[data-spire-mar-continuity-error]')?.remove();
       const existing = host.querySelector('[data-spire-mar-overdue-queue]');
-      const html = overdueHtml(data);
+      const signature = overdueSignature(data);
+      const html = overdueHtml(data, signature);
       if (!html) {
         existing?.remove();
         return;
       }
+      if (existing?.dataset.spireOverdueSignature === signature) return;
       const template = document.createElement('template');
       template.innerHTML = html.trim();
       const next = template.content.firstElementChild;
@@ -295,20 +324,23 @@
     ensureDayNavigation(host);
     ensureDayContext(host);
     void loadOverdue(host);
-    window.setTimeout(() => focusPendingOccurrence(host), 40);
+    if (pendingFocus) window.setTimeout(() => focusPendingOccurrence(host), 40);
   }
 
-  function scheduleDecorate(host, delay = 0) {
-    window.clearTimeout(decorateTimer);
-    decorateTimer = window.setTimeout(() => decorate(host), delay);
+  function scheduleDecorate(host) {
+    if (decorateFrame) cancelAnimationFrame(decorateFrame);
+    decorateFrame = requestAnimationFrame(() => {
+      decorateFrame = 0;
+      decorate(host);
+    });
   }
 
   function bindHost(host) {
     if (!host || marObserver) return;
-    marObserver = new MutationObserver((mutations) => {
-      if (mutations.some((mutation) => mutation.type === 'childList')) scheduleDecorate(host, 0);
-    });
-    marObserver.observe(host, { childList: true, subtree: true });
+    // Root-only observation is intentional. The MAR renderer replaces #mar-view content;
+    // continuity decorations occur below that root and must never retrigger themselves.
+    marObserver = new MutationObserver(() => scheduleDecorate(host));
+    marObserver.observe(host, { childList: true });
 
     host.addEventListener('click', (event) => {
       if (!(event.target instanceof Element)) return;
@@ -361,16 +393,21 @@
     const host = document.getElementById('mar-view');
     if (!host) return false;
     bindHost(host);
-    scheduleDecorate(host, 60);
+    scheduleDecorate(host);
     return true;
   }
 
   window.__SPIRE_MAR_CONTINUITY_CONTRACT = Object.freeze({
-    marker: 'SPIRE_MAR_CONTINUITY_V1',
+    marker: 'SPIRE_MAR_CONTINUITY_V3',
+    compatibilityMarker: 'SPIRE_MAR_CONTINUITY_V2',
     occurrenceOriented: true,
     todayIndependentOfHistory: true,
     priorOverdueQueue: true,
+    compactOverdueHeader: true,
+    overdueGridVerticalScroll: true,
     blankScheduledCellsDisabled: true,
+    rootOnlyObserver: true,
+    observerFeedbackLoopGuard: true,
     scopedObserver: '#mar-view',
     wholeDocumentObserver: false,
   });
