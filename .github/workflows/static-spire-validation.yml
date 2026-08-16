@@ -1,0 +1,42 @@
+name: SPIRE Static Validation
+
+on:
+  push:
+    branches:
+      - feature/spire-ehr-platform
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spire-static-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-static:
+    name: Build SPIRE static website
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Build static website
+        run: npm run build:web
+
+      - name: Verify SPIRE Orders assets
+        run: |
+          test -f dist-web/spire/master.html
+          test -f dist-web/assets/spire-medication-order-entry.js
+          test -f dist-web/assets/spire-medication-order-entry-v2.js
+          test -f dist-web/assets/spire-medication-management-policy.js
+          test -f dist-web/assets/spire-medication-row-controls.js
