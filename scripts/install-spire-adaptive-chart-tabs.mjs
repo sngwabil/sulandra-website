@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
+
+// Apply the MAR occurrence filter contract after the canonical MAR publisher has
+// restored Timeline V4, but before continuity is verified/copied into dist-web.
+await import('./install-spire-mar-due-overdue-split.mjs');
+
 const assetRelative = 'assets/spire-adaptive-chart-tabs.js';
 const assetUrl = '/assets/spire-adaptive-chart-tabs.js?v=20260815-adaptive-tabs-3';
 const marker = 'SPIRE_ADAPTIVE_CHART_TABS_V1';
@@ -23,8 +28,8 @@ const marGuidanceRelative = 'assets/spire-mar-action-guidance.js';
 const marGuidanceMarker = 'SPIRE_MAR_ACTION_GUIDANCE_V2';
 const marGuidanceUrl = '/assets/spire-mar-action-guidance.js?v=20260816-mar-action-guidance-2';
 const marContinuityRelative = 'assets/spire-mar-continuity.js';
-const marContinuityMarker = 'SPIRE_MAR_CONTINUITY_V1';
-const marContinuityUrl = '/assets/spire-mar-continuity.js?v=20260816-mar-continuity-1';
+const marContinuityMarker = 'SPIRE_MAR_CONTINUITY_V2';
+const marContinuityUrl = '/assets/spire-mar-continuity.js?v=20260816-mar-continuity-2';
 
 const runtimePath = path.join(root, assetRelative);
 const runtime = await readFile(runtimePath, 'utf8');
@@ -103,8 +108,10 @@ const marContinuity = await readFile(marContinuityPath, 'utf8');
 for (const required of [
   marContinuityMarker,
   'Today / Now',
-  'Past Due / Overdue from prior days',
+  'Prior-day overdue occurrences',
   'Current-day scheduled doses remain independent',
+  "priorOverdueQueue: 'overdue-filter-only'",
+  '[data-mar-filter="overdue"].active',
   'blankScheduledCellsDisabled: true',
   "scopedObserver: '#mar-view'",
   'wholeDocumentObserver: false',
@@ -202,5 +209,5 @@ for (const required of [
 }
 
 console.log(
-  `SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, per-medication Manage controls retired by ${medicationPolicyUrl}, occurrence-aware MAR action guidance via ${marGuidanceUrl}, and current-day/historical MAR continuity via ${marContinuityUrl}.`,
+  `SPIRE adaptive chart navigation published via ${assetUrl}: pinned core tabs, responsive More menu, MAR icon, LDA workspace loader, Summary LDA avatar, one self-healing top-level medication Orders toolbar via ${medicationOrderUrl}, per-medication Manage controls retired by ${medicationPolicyUrl}, occurrence-aware MAR action guidance via ${marGuidanceUrl}, and split Due/Overdue MAR continuity via ${marContinuityUrl}.`,
 );
