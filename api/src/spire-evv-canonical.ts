@@ -84,6 +84,8 @@ export async function loadCanonicalEvvSnapshot(
 export function validateCanonicalEvvSnapshot(snapshot: CanonicalEvvSnapshot) {
   const { visit, calls } = snapshot;
   const errors: string[] = [];
+  const visitLocation = evvText(visit.visitLocationType, 5);
+  const visitProcedure = evvText(visit.procedureCode, 120);
   const requireText = (key: string, label: string) => {
     if (!evvText(visit[key], 500)) errors.push(`${label} is required`);
   };
@@ -98,7 +100,7 @@ export function validateCanonicalEvvSnapshot(snapshot: CanonicalEvvSnapshot) {
   requireText('timeZone', 'Time zone');
   if (!visit.clockInAt) errors.push('Call-in/clock-in time is required');
   if (!visit.clockOutAt) errors.push('Call-out/clock-out time is required');
-  if (!['1', '2'].includes(evvText(visit.visitLocationType, 5))) {
+  if (!['1', '2'].includes(visitLocation)) {
     errors.push('Visit location type must be 1 (Home) or 2 (Community)');
   }
   const assignments = new Set(calls.map((call) => evvText(call.callAssignment, 40)));
@@ -106,10 +108,12 @@ export function validateCanonicalEvvSnapshot(snapshot: CanonicalEvvSnapshot) {
   if (!assignments.has('Call Out')) errors.push('Canonical Call Out evidence is required');
   for (const call of calls) {
     const assignment = evvText(call.callAssignment, 40) || 'EVV call';
+    const callLocation = evvText(call.visitLocationType, 5) || visitLocation;
+    const callProcedure = evvText(call.procedureCode, 120) || visitProcedure;
     if (!call.callDateTime) errors.push(`${assignment} date/time is required`);
     if (!evvText(call.callType, 40)) errors.push(`${assignment} type is required`);
-    if (!evvText(call.procedureCode, 120)) errors.push(`${assignment} procedure code is required`);
-    if (!['1', '2'].includes(evvText(call.visitLocationType, 5))) {
+    if (!callProcedure) errors.push(`${assignment} procedure code is required`);
+    if (!['1', '2'].includes(callLocation)) {
       errors.push(`${assignment} location type must be 1 (Home) or 2 (Community)`);
     }
   }
@@ -121,6 +125,8 @@ export function buildCanonicalOhioEvvVisitPayload(
   sequenceId: string,
 ) {
   const { visit, calls, changes } = snapshot;
+  const visitLocation = nullableText(visit.visitLocationType, 5);
+  const visitProcedure = nullableText(visit.procedureCode, 120);
   return {
     Schema: 'SPIRE_OHIO_ALT_EVV_CANONICAL_1_1',
     BusinessEntityMedicaidIdentifier: nullableText(visit.providerMedicaidId, 80),
@@ -132,7 +138,7 @@ export function buildCanonicalOhioEvvVisitPayload(
     VisitCancelledIndicator: String(visit.status || '').toUpperCase() === 'CANCELLED',
     Payer: nullableText(visit.payer, 120),
     PayerProgram: nullableText(visit.payerProgram, 120),
-    ProcedureCode: nullableText(visit.procedureCode, 120),
+    ProcedureCode: visitProcedure,
     Modifier1: nullableText(visit.modifier1, 40),
     TimeZone: nullableText(visit.timeZone, 80) || 'US/Eastern',
     AdjInDateTime: iso(visit.adjustedClockInAt),
@@ -146,10 +152,10 @@ export function buildCanonicalOhioEvvVisitPayload(
       CallDateTime: iso(call.callDateTime),
       CallAssignment: nullableText(call.callAssignment, 40),
       CallType: nullableText(call.callType, 40),
-      ProcedureCode: nullableText(call.procedureCode, 120),
+      ProcedureCode: visitProcedure || nullableText(call.procedureCode, 120),
       PatientIdentifierOnCall: nullableText(call.patientIdentifierOnCall, 120),
       MobileLogin: nullableText(call.mobileLogin, 120),
-      VisitLocationType: nullableText(call.visitLocationType, 5),
+      VisitLocationType: visitLocation || nullableText(call.visitLocationType, 5),
       CallLatitude: call.latitude == null ? null : Number(call.latitude),
       CallLongitude: call.longitude == null ? null : Number(call.longitude),
       TelephonyPIN: nullableText(call.telephonyPin, 120),
