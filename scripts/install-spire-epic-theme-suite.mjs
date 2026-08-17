@@ -20,7 +20,7 @@ for (const prerequisite of [
 }
 
 const marker = 'SPIRE_EPIC_THEME_SUITE_V1';
-const profilePhotoMarker = 'SPIRE_USER_PROFILE_PHOTO_V1';
+const profilePhotoMarker = 'SPIRE_USER_PROFILE_PHOTO_V2';
 const workstationMarker = 'SPIRE_WORKSTATION_RUNTIME_V4';
 const darkroomMarker = 'SPIRE_DARKROOM_CONTRAST_V2';
 const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
@@ -63,20 +63,20 @@ const assets = [
     label: 'user profile photo',
     file: 'assets/spire-user-profile-photo.js',
     src: '/assets/spire-user-profile-photo.js',
-    version: '20260817-user-profile-photo-1',
+    version: '20260817-user-profile-photo-2',
     attr: 'data-spire-user-profile-photo',
     marker: profilePhotoMarker,
-    required: [profilePhotoMarker, 'userAvatarUpload', 'spireUserProfile', 'FileReader', 'normalizeSpireBranding', 'SpireUserProfilePhoto'],
+    required: [profilePhotoMarker, 'userAvatarUpload', 'spireUserProfile', 'FileReader', 'normalizeSpireBranding', 'SpireUserProfilePhoto', 'stationAvatar', 'notes-editor-pane', 'data-spire-user-photo-ready'],
     forbidden: ['new MutationObserver'],
   },
   {
     label: 'workstation runtime',
     file: 'assets/spire-workstation-runtime-v4.js',
     src: '/assets/spire-workstation-runtime-v4.js',
-    version: '20260816-workstation-v4-1',
+    version: '20260817-workstation-v4-fullscreen-icon-2',
     attr: 'data-spire-workstation-runtime',
     marker: workstationMarker,
-    required: [workstationMarker, 'data-spire-app-fullscreen', 'SpireUserPreferences', 'applyWorkstationViewport', '.flowsheet-table tbody td:first-child'],
+    required: [workstationMarker, 'data-spire-app-fullscreen', 'SpireUserPreferences', 'applyWorkstationViewport', '.flowsheet-table tbody td:first-child', 'data:image/svg+xml', 'spireFullscreenControl'],
     forbidden: ['stopImmediatePropagation', 'ROOT.requestFullscreen'],
   },
   {
@@ -223,4 +223,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('Spire theme and user-profile assets installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
+console.log('Spire theme, profile-photo sync, and fullscreen-icon assets installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
