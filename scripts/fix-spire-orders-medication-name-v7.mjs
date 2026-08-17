@@ -44,3 +44,4 @@ console.log('SPIRE Orders medication-name v7 installed: Orders renders medicatio
 
 await import('./fix-spire-note-identity-presentation-v3.mjs');
 await import('./fix-spire-note-darkroom-theme-v4.mjs');
+await import('./fix-spire-client-station-darkroom-v8.mjs');
