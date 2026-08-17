@@ -26,7 +26,7 @@ const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
 const darkroomClinicalSurfacesMarker = 'SPIRE_DARKROOM_CLINICAL_SURFACES_V4';
 const darkroomChromaticDepthMarker = 'SPIRE_DARKROOM_CHROMATIC_DEPTH_V5';
 const darkroomFlowsheetLabelsMarker = 'SPIRE_DARKROOM_FLOWSHEET_LABELS_V6';
-const flowsheetFilterDropdownMarker = 'SPIRE_FLOWSHEET_FILTER_DROPDOWN_V7';
+const flowsheetFilterDropdownMarker = 'SPIRE_FLOWSHEET_SET_SELECTOR_V8';
 const ordersMedicationNameMarker = 'SPIRE_ORDERS_MEDICATION_NAME_V7';
 
 const masterPath = path.join(root, 'spire', 'master.html');
@@ -107,13 +107,13 @@ const assets = [
     visualOnly: true,
   },
   {
-    label: 'Flowsheet filter dropdown V7',
+    label: 'Flowsheet set selector V8',
     file: 'assets/spire-flowsheet-filter-dropdown-v7.js',
     src: '/assets/spire-flowsheet-filter-dropdown-v7.js',
-    version: '20260816-flowsheet-filter-dropdown-v7-1',
+    version: '20260816-flowsheet-set-selector-v8-1',
     attr: 'data-spire-flowsheet-filter-dropdown',
     marker: flowsheetFilterDropdownMarker,
-    required: [flowsheetFilterDropdownMarker, 'activeFlowsheetFilterName', 'flowsheetTreeMenu', 'spire:flowsheet-filter-change', 'SpireFlowsheetFilterDropdownV7'],
+    required: [flowsheetFilterDropdownMarker, 'activeFlowsheetFilterName', 'flowsheetTreeMenu', 'Nurse / Skilled Nursing', 'All Clinical Documentation', 'SpireFlowsheetSetSelectorV8'],
     forbidden: ['SpireMarTimelineContract', 'wakeCanonicalMarTimeline', 'loadCanonicalMarView'],
   },
 ];
@@ -187,4 +187,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 + clinical surfaces V4 + chromatic depth V5 + Flowsheet labels V6, functional Flowsheet filter dropdown V7, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
+console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 + clinical surfaces V4 + chromatic depth V5 + Flowsheet labels V6, Nurse/clinical Flowsheet set selector V8, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
