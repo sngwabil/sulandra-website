@@ -73,10 +73,10 @@ const assets = [
     label: 'workstation runtime',
     file: 'assets/spire-workstation-runtime-v4.js',
     src: '/assets/spire-workstation-runtime-v4.js',
-    version: '20260817-workstation-v4-fullscreen-icon-2',
+    version: '20260817-workstation-v4-viewport-fill-3',
     attr: 'data-spire-workstation-runtime',
     marker: workstationMarker,
-    required: [workstationMarker, 'data-spire-app-fullscreen', 'SpireUserPreferences', 'applyWorkstationViewport', '.flowsheet-table tbody td:first-child', 'data:image/svg+xml', 'spireFullscreenControl'],
+    required: [workstationMarker, 'SPIRE_CLIENT_STATION_VIEWPORT_FILL_V5', 'data-spire-app-fullscreen', 'SpireUserPreferences', 'applyWorkstationViewport', 'body[data-spire-client-station] .workspace', '.flowsheet-table tbody td:first-child', 'data:image/svg+xml', 'spireFullscreenControl'],
     forbidden: ['stopImmediatePropagation', 'ROOT.requestFullscreen'],
   },
   {
@@ -223,4 +223,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('Spire theme, profile-photo sync, and fullscreen-icon assets installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
+console.log('Spire theme, profile-photo sync, fullscreen-icon, and Client Station viewport assets installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
