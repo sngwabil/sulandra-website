@@ -1,48 +1,38 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const stationRuntimePath = path.join(root, 'assets', 'spire-client-station.js');
+const shellRuntimePath = path.join(root, 'assets', 'spire-unified-fullscreen-shell-v7.js');
 const stationHtmlPath = path.join(root, 'spire', 'client-station.html');
 const marker = 'SPIRE_UNIFIED_FULLSCREEN_SHELL_V7';
-const stationVersion = '20260817-unified-fullscreen-shell-v7-2';
+const shellVersion = '20260817-unified-fullscreen-shell-v7-3';
+const shellSrc = '/assets/spire-unified-fullscreen-shell-v7.js';
+const shellTag = `<script src="${shellSrc}?v=${shellVersion}" data-spire-unified-fullscreen-shell="${marker}"></script>`;
 
-let source = await readFile(stationRuntimePath, 'utf8');
-
-if (!source.includes(marker)) {
-  // Build:web may legitimately transform details inside navigateSpire() before this
-  // installer runs. Replace the canonical function boundary instead of requiring an
-  // exact historical implementation string.
-  const navigationPattern = /  function navigateSpire\(url\) \{[\s\S]*?\n  \}\n\n  function openChart/;
-  if (!navigationPattern.test(source)) {
-    throw new Error('Spire unified fullscreen shell v7 could not find navigateSpire() before openChart()');
-  }
-
-  const replacement = `  // ${marker}: Client Station remains the one top-level Spire document.\n  // Patient charts and Secure Chat always navigate inside this shell so browser\n  // fullscreen belongs to one continuous app session instead of separate pages.\n  function closeSpireWorkspace() {\n    const frame = document.getElementById('spireFullscreenRouteFrame');\n    if (frame) frame.remove();\n    window.SpireUserPreferences?.syncFullscreenButtons?.();\n  }\n\n  function getSpireWorkspaceFrame() {\n    let frame = document.getElementById('spireFullscreenRouteFrame');\n    if (frame) return frame;\n\n    frame = document.createElement('iframe');\n    frame.id = 'spireFullscreenRouteFrame';\n    frame.name = 'spireWorkspaceFrame';\n    frame.title = 'Spire clinical workspace';\n    frame.allowFullscreen = true;\n    frame.setAttribute('allow', 'fullscreen');\n    frame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;background:#081427;z-index:2147483000';\n    frame.addEventListener('load', () => {\n      try {\n        const childPath = frame.contentWindow?.location?.pathname || '';\n        // Chart-side Client Station navigation returns to the existing parent shell\n        // instead of creating a nested Client Station inside the workspace frame.\n        if (/\\/spire\\/client-station\\.html$/i.test(childPath)) {\n          closeSpireWorkspace();\n        }\n      } catch {}\n    });\n    document.body.appendChild(frame);\n    return frame;\n  }\n\n  function navigateSpire(url) {\n    const frame = getSpireWorkspaceFrame();\n    frame.src = url;\n  }\n\n  window.SpireClientStationShell = Object.freeze({\n    marker: '${marker}',\n    open: navigateSpire,\n    close: closeSpireWorkspace,\n    active: () => Boolean(document.getElementById('spireFullscreenRouteFrame'))\n  });\n\n  function openChart`;
-
-  source = source.replace(navigationPattern, replacement);
-}
-
+// The fullscreen shell is a standalone runtime. Do not rewrite the canonical
+// Client Station JavaScript during build:web: earlier installers may transform
+// that file, which made text-anchor patching brittle and caused Railway failures.
+await access(shellRuntimePath);
+const shellSource = await readFile(shellRuntimePath, 'utf8');
 for (const required of [
   marker,
-  'getSpireWorkspaceFrame',
-  'closeSpireWorkspace',
   'SpireClientStationShell',
+  'spireFullscreenRouteFrame',
+  "document.addEventListener('dblclick', interceptNavigation, true)",
+  "document.addEventListener('click', interceptNavigation, true)",
+  "document.addEventListener('keydown', interceptNavigation, true)",
   "frame.setAttribute('allow', 'fullscreen')",
-  'frame.src = url',
-  '/\\/spire\\/client-station\\.html$/i',
+  "frame.src = kind === 'chat'",
+  'closeSpireWorkspace',
 ]) {
-  if (!source.includes(required)) throw new Error(`Spire unified fullscreen shell v7 verification failed: missing ${required}`);
+  if (!shellSource.includes(required)) {
+    throw new Error(`Spire unified fullscreen shell v7 runtime missing ${required}`);
+  }
 }
 
-if (/function navigateSpire\(url\)[\s\S]*?location\.assign\(url\)/.test(source)) {
-  throw new Error('Spire unified fullscreen shell v7 verification failed: top-level chart navigation fallback still exists');
-}
-
-await writeFile(stationRuntimePath, source, 'utf8');
-const syntax = spawnSync(process.execPath, ['--check', stationRuntimePath], { encoding: 'utf8' });
+const syntax = spawnSync(process.execPath, ['--check', shellRuntimePath], { encoding: 'utf8' });
 if (syntax.status !== 0) {
   throw new Error(`Spire unified fullscreen shell v7 syntax failed: ${(syntax.stderr || syntax.stdout || '').trim()}`);
 }
@@ -50,17 +40,25 @@ if (syntax.status !== 0) {
 let stationHtml = await readFile(stationHtmlPath, 'utf8');
 const stationScriptPattern = /<script src="\/assets\/spire-client-station\.js(?:\?v=[^"]+)?"><\/script>/;
 if (!stationScriptPattern.test(stationHtml)) {
-  throw new Error('Spire unified fullscreen shell v7 could not find the Client Station runtime tag for cache publication');
+  throw new Error('Spire unified fullscreen shell v7 could not find the canonical Client Station runtime tag');
 }
+
+// Remove any previous publication, then mount the shell after Client Station.
+stationHtml = stationHtml.replace(
+  /\s*<script src="\/assets\/spire-unified-fullscreen-shell-v7\.js(?:\?v=[^"]+)?"[^>]*><\/script>\s*/g,
+  '\n'
+);
 stationHtml = stationHtml.replace(
   stationScriptPattern,
-  `<script src="/assets/spire-client-station.js?v=${stationVersion}"></script>`
+  (match) => `${match}\n  ${shellTag}`
 );
 await writeFile(stationHtmlPath, stationHtml, 'utf8');
 
 const verifiedHtml = await readFile(stationHtmlPath, 'utf8');
-if (!verifiedHtml.includes(`/assets/spire-client-station.js?v=${stationVersion}`)) {
-  throw new Error('Spire unified fullscreen shell v7 cache version was not published to Client Station');
+const stationAt = verifiedHtml.indexOf('/assets/spire-client-station.js');
+const shellAt = verifiedHtml.indexOf(`${shellSrc}?v=${shellVersion}`);
+if (stationAt < 0 || shellAt < 0 || shellAt <= stationAt || !verifiedHtml.includes(marker)) {
+  throw new Error('Spire unified fullscreen shell v7 was not published after Client Station runtime');
 }
 
-console.log('Spire unified fullscreen shell v7 installed: Client Station remains the top-level fullscreen owner while chart and chat navigation stay inside one continuous Spire shell.');
+console.log('Spire unified fullscreen shell v7 published as a standalone runtime: Client Station remains the fullscreen owner and chart/chat navigation stays inside one continuous Spire shell without build-time rewriting of Client Station JavaScript.');
