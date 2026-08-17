@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const assetPath = path.join(root, 'assets', 'spire-locked-app-session-v6.js');
 const marker = 'SPIRE_LOCKED_APP_SESSION_V6';
-const version = '20260817-locked-app-session-v6-1';
+const version = '20260817-locked-app-session-v6-2';
 const src = '/assets/spire-locked-app-session-v6.js';
 const tag = `<script src="${src}?v=${version}" data-spire-locked-app-session="${marker}"></script>`;
 const targets = [
@@ -26,6 +26,7 @@ for (const required of [
   'Return to Portal',
   'requestFullscreen',
   'data-spire-locked-app',
+  'data-spire-shell-child',
   '.client-table tbody td:last-child',
   '#stationLogout',
 ]) {
@@ -65,4 +66,4 @@ for (const relative of targets) {
   }
 }
 
-console.log('Spire locked app session v6 published: Client Station is full-viewport, Authorized is green, app-side minimize is removed, Return to Portal is installed, and native fullscreen re-arms on the next trusted interaction after reload.');
+console.log('Spire locked app session v6 published: Client Station owns the one fullscreen entry control, embedded chart/chat workspaces hide duplicate fullscreen controls, Authorized remains green, and Return to Portal is preserved.');
