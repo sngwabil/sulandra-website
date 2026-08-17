@@ -9,7 +9,7 @@ const gridPath = path.join(dist, 'assets', 'spire-master-flowsheet-grid.js');
 const selectorPath = path.join(dist, 'assets', 'spire-flowsheet-role-selector.js');
 const nurseNavigationPath = path.join(dist, 'assets', 'spire-nurse-flowsheet-navigation.js');
 const gridUrl = '/assets/spire-master-flowsheet-grid.js?v=20260815-filed-history-visibility-1';
-const selectorUrl = '/assets/spire-flowsheet-role-selector.js?v=20260815-role-selector-3';
+const selectorUrl = '/assets/spire-flowsheet-role-selector.js?v=20260817-role-selector-4';
 const nurseNavigationUrl = '/assets/spire-nurse-flowsheet-navigation.js?v=20260815-nurse-navigation-1';
 const filePersistenceMarker = 'SPIRE_FLOWSHEET_FILE_PERSISTENCE_V1';
 const filedHistoryMarker = 'SPIRE_FLOWSHEET_FILED_HISTORY_VISIBILITY_V1';
@@ -61,7 +61,7 @@ const [selector, nurseNavigation] = await Promise.all([
   readFile(selectorPath, 'utf8'),
   readFile(nurseNavigationPath, 'utf8'),
 ]);
-for (const marker of ['SPIRE_FLOWSHEET_ROLE_SELECTOR_V1', '20260815-role-selector-3', 'Nurse Flowsheets', 'ensureUnfilteredBaseForNurse', 'spire:flowsheet:selected-role', 'SpireFlowsheetRoleSelector']) {
+for (const marker of ['SPIRE_FLOWSHEET_ROLE_SELECTOR_V1', '20260817-role-selector-4', 'Nurse Flowsheets', 'ensureUnfilteredBaseForNurse', 'spire:flowsheet:selected-role', 'SpireFlowsheetRoleSelector']) {
   if (!selector.includes(marker)) throw new Error(`SPIRE flowsheet role selector missing ${marker}`);
 }
 for (const marker of ['SPIRE_NURSE_FLOWSHEET_NAVIGATION_V1', 'Nursing Task List', 'Respiratory & Oxygen', 'resizeScrollableWorkspace', 'SpireNurseFlowsheetNavigation']) {
