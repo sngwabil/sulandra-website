@@ -7,7 +7,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const assetRelative = 'assets/spire-darkroom-summary-notes-repair-v7.js';
 const assetPath = path.join(root, assetRelative);
 const marker = 'SPIRE_DARKROOM_GLOBAL_COVERAGE_V8';
-const assetUrl = '/assets/spire-darkroom-summary-notes-repair-v7.js?v=20260817-darkroom-global-v8-1';
+const compatibilityMarker = 'SPIRE_DARKROOM_SUMMARY_NOTES_REPAIR_V7';
+const assetUrl = '/assets/spire-darkroom-summary-notes-repair-v7.js?v=20260817-darkroom-global-v8-2';
 const targetPath = path.join(root, 'spire', 'master.html');
 
 await access(assetPath);
@@ -43,11 +44,13 @@ if (syntax.status !== 0) throw new Error(`SPIRE global Dark Room coverage syntax
 
 let html = await readFile(targetPath, 'utf8');
 if (!html.includes('</body>')) throw new Error('spire/master.html is missing </body>');
-const tag = `<script src="${assetUrl}" data-spire-darkroom-global-coverage="${marker}"></script>`;
+const tag = `<script src="${assetUrl}" data-spire-darkroom-global-coverage="${marker}" data-spire-darkroom-summary-notes-repair="${compatibilityMarker}"></script>`;
 html = html.replace(/\s*<script src="\/assets\/spire-darkroom-summary-notes-repair-v7\.js\?v=[^"]+"[^>]*><\/script>\s*/g, '\n');
 html = html.replace('</body>', `  ${tag}\n</body>`);
 await writeFile(targetPath, html, 'utf8');
 
 const verified = await readFile(targetPath, 'utf8');
-if (!verified.includes(assetUrl) || !verified.includes(marker)) throw new Error('SPIRE global Dark Room coverage was not published');
-console.log('SPIRE Theme #22 + Epic Dark Room global visual coverage V8 published last; MAR, Flowsheet, navigation and clinical behavior remain untouched.');
+if (!verified.includes(assetUrl) || !verified.includes(marker) || !verified.includes(compatibilityMarker)) {
+  throw new Error('SPIRE global Dark Room coverage was not published with compatibility marker');
+}
+console.log('SPIRE Theme #22 + Epic Dark Room global visual coverage V8 published last; V7 publication compatibility retained; MAR, Flowsheet, navigation and clinical behavior remain untouched.');
