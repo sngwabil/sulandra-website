@@ -2,10 +2,14 @@
   'use strict';
 
   // SPIRE_EPIC_THEME_SUITE_V1
-  // Eight visual presets inspired by the user-supplied Epic theme references.
-  // These are original SPIRE CSS/token implementations; no proprietary Epic source is copied.
+  // SPIRE_THEME_PICKER_SAFE_V2
+  // Available Themes — Clinical set (legacy build marker).
+  // Eight clinical palettes remain first; eleven distinct S.P.I.R.E. presets follow.
+  // Similar legacy palettes remain supported internally for saved preferences but are
+  // intentionally not duplicated in the visible picker.
   const BASE_KEY = 'spire:epic-theme-suite:preset';
   const SESSION_KEY = 'sulandra:employee:session';
+  const TOTAL_VISIBLE_THEMES = 19;
 
   const THEMES = Object.freeze({
     altitude: {
@@ -49,6 +53,20 @@
       warn: '#5b3500', warnTint: '#ffe45c', danger: '#9c0000', dangerTint: '#ffd5d5', success: '#005a20', successTint: '#d9ffe5'
     }
   });
+
+  const ADDITIONAL_THEMES = Object.freeze([
+    { key:'classicRed', label:'Classic S.P.I.R.E. Red', swatch:'#990000', description:'Signature dark title bar with deep red clinical toolbar.' },
+    { key:'midnightSlate', label:'Midnight Slate', swatch:'#334155', description:'Slate blue-gray workspace with an executive clinical feel.' },
+    { key:'warmSepia', label:'Warm Amber Sepia', swatch:'#b45309', description:'Low-glare amber and warm brown tones.' },
+    { key:'colorblindSafe', label:'Deuteranopia Safe', swatch:'#1d4ed8', description:'Blue and yellow palette with stronger color separation.' },
+    { key:'crimsonNight', label:'Crimson Night', swatch:'#7f1d1d', description:'Dark charcoal workspace with crimson highlights.' },
+    { key:'goldenSunrise', label:'Golden Sunrise', swatch:'#ca8a04', description:'Warm gold accents over soft cream surfaces.' },
+    { key:'cyberpunkNeon', label:'Cyber Neon', swatch:'#6d28d9', description:'Dark workspace with vivid blue and magenta accents.' },
+    { key:'retroVintage', label:'Vintage Chartroom', swatch:'#78716c', description:'Muted parchment, stone, and olive-inspired charting.' },
+    { key:'coralSunset', label:'Coral Sunset', swatch:'#ea580c', description:'Warm coral and orange accents on light surfaces.' },
+    { key:'solarizedLight', label:'Solarized Light', swatch:'#268bd2', description:'Soft cream base with balanced blue and navy contrast.' },
+    { key:'clientStation', label:'Client Station', swatch:'#5bd0e7', description:'Bright cyan workstation styling with compact chart navigation.' }
+  ]);
 
   const TOKEN_NAMES = [
     'title','toolbar','bg','card','panel','panel2','text','muted','line','accent','accent2','link','focus','active',
@@ -190,7 +208,7 @@
       :root[data-spire-epic-theme] .success,
       :root[data-spire-epic-theme] .given,
       :root[data-spire-epic-theme] .completed{border-color:var(--epic-success)!important}
-      :root[data-spire-epic-theme] .theme-card[data-spire-epic-theme-card]{position:relative;border:1px solid var(--epic-line, #cbd5e1)!important}
+      :root[data-spire-epic-theme] .theme-card[data-spire-epic-theme-card]{position:relative;border:1px solid var(--epic-line,#cbd5e1)!important}
       :root[data-spire-epic-theme] .theme-card[data-spire-epic-theme-card][aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--epic-accent)!important;background:var(--epic-active)!important}
       :root[data-spire-epic-theme="darkRoom"] .epic-section-card,
       :root[data-spire-epic-theme="darkRoom"] .sidebar-section,
@@ -211,14 +229,17 @@
       :root[data-spire-epic-theme="highContrast"] .doc-table td,
       :root[data-spire-epic-theme="highContrast"] .flow-grid th,
       :root[data-spire-epic-theme="highContrast"] .flow-grid td{border-width:2px!important}
-      #spireEpicThemeSuiteGroup{margin-top:14px;padding-top:12px;border-top:2px solid #cbd5e1}
-      #spireEpicThemeSuiteGroup .spire-epic-theme-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px}
-      #spireEpicThemeSuiteGroup .spire-epic-theme-heading b{font-size:12px}
-      #spireEpicThemeSuiteGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-      #spireEpicThemeSuiteGrid .theme-card{cursor:pointer;padding:8px;border-radius:4px;background:#fff;color:#0f172a}
-      #spireEpicThemeSuiteGrid .theme-card:hover{box-shadow:0 0 0 2px #94a3b8 inset}
-      #spireEpicThemeSuiteGrid .theme-card .swatch{display:inline-block;width:15px;height:15px;border:1px solid #64748b;vertical-align:-3px;margin-right:6px}
-      @media(max-width:720px){#spireEpicThemeSuiteGrid{grid-template-columns:1fr}}
+      #spireEpicThemeSuiteGroup{margin-top:4px}
+      #spireEpicThemeSuiteGroup .spire-theme-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 8px;padding:0 2px}
+      #spireEpicThemeSuiteGroup .spire-theme-heading b{font-size:12px;color:inherit}
+      #spireEpicThemeSuiteGroup .spire-theme-heading span{font-size:11px;color:#64748b}
+      #spireEpicThemeSuiteGroup .spire-theme-section+.spire-theme-section{margin-top:14px;padding-top:12px;border-top:2px solid #cbd5e1}
+      #spireEpicThemeSuiteGroup .spire-theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      #spireEpicThemeSuiteGroup .theme-card{appearance:none;width:100%;min-height:58px;cursor:pointer;padding:8px;border:1px solid #64748b;border-radius:4px;background:#fff;color:#0f172a;text-align:center}
+      #spireEpicThemeSuiteGroup .theme-card:hover{box-shadow:0 0 0 2px #94a3b8 inset}
+      #spireEpicThemeSuiteGroup .theme-card[aria-pressed="true"]{box-shadow:inset 0 0 0 2px #2563eb;background:#eff6ff}
+      #spireEpicThemeSuiteGroup .theme-card .swatch{display:inline-block;width:15px;height:15px;border:1px solid #64748b;vertical-align:-3px;margin-right:6px}
+      @media(max-width:720px){#spireEpicThemeSuiteGroup .spire-theme-grid{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
@@ -238,12 +259,23 @@
     root.style.setProperty('--spire-text', theme.text);
   }
 
+  function selectedLegacyTheme() {
+    try { return window.SpireUserPreferences?.getPreference?.('preset') || 'classicRed'; }
+    catch { return 'classicRed'; }
+  }
+
   function refreshThemeCards() {
-    const selected = getSelectedTheme();
+    const clinical = getSelectedTheme();
+    const legacy = selectedLegacyTheme();
     document.querySelectorAll('[data-spire-epic-theme-card]').forEach(card => {
-      const active = card.dataset.spireEpicThemeCard === selected;
+      const name = card.dataset.spireEpicThemeCard;
+      const active = name === clinical;
       card.setAttribute('aria-pressed', active ? 'true' : 'false');
-      card.setAttribute('title', active ? `${THEMES[selected]?.label || 'Theme'} is active` : `Apply ${THEMES[card.dataset.spireEpicThemeCard]?.label || 'theme'}`);
+      card.setAttribute('title', active ? `${THEMES[name]?.label || 'Theme'} is active` : `Apply ${THEMES[name]?.label || 'theme'}`);
+    });
+    document.querySelectorAll('[data-spire-legacy-theme-card]').forEach(card => {
+      const active = !clinical && card.dataset.spireLegacyThemeCard === legacy;
+      card.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
   }
 
@@ -256,7 +288,7 @@
     document.documentElement.dataset.spireEpicTheme = name;
     saveSelectedTheme(name);
     refreshThemeCards();
-    window.dispatchEvent(new CustomEvent('spire:theme-change', { detail: { family: 'epic-suite', name, label: theme.label } }));
+    window.dispatchEvent(new CustomEvent('spire:theme-change', { detail: { family: 'clinical-suite', name, label: theme.label } }));
     if (options.closeModal !== false) window.closeAccessibilityModal?.();
     return true;
   }
@@ -266,54 +298,119 @@
     delete root.dataset.spireEpicTheme;
     saveSelectedTheme('');
     for (const token of TOKEN_NAMES) root.style.removeProperty(`--epic-${token.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}`);
-    refreshThemeCards();
     if (options.restoreBase !== false) {
       try { window.SpireUserPreferences?.applyVisualPreferences?.(); } catch {}
     }
+    refreshThemeCards();
   }
 
-  function injectThemeCards() {
-    const tab = document.getElementById('accessPresetsTab');
-    if (!tab || document.getElementById('spireEpicThemeSuiteGroup')) return;
-    const intro = tab.querySelector('p');
-    if (intro && /20 distinct professional visual themes/i.test(intro.textContent || '')) {
-      intro.textContent = 'Choose from the existing S.P.I.R.E. presets or the eight Epic-style clinical themes below. Each choice is saved for the signed-in user.';
+  function applyLegacyTheme(name) {
+    if (!ADDITIONAL_THEMES.some(theme => theme.key === name)) return false;
+    clearTheme({ restoreBase: false });
+    try { window.SpireUserPreferences?.setPreset?.(name); } catch { return false; }
+    refreshThemeCards();
+    window.dispatchEvent(new CustomEvent('spire:theme-change', { detail: { family: 'spire-preset', name } }));
+    window.closeAccessibilityModal?.();
+    return true;
+  }
+
+  function clinicalDescription(name) {
+    if (name === 'darkRoom') return 'Deep navy, magenta, cyan and preserved clinical alerts.';
+    if (name === 'highContrast') return 'Accessibility-first black and white with strong focus states.';
+    if (name === 'altitude') return 'Airy cyan-blue clinical workspace with calm contrast.';
+    if (name === 'lavender') return 'Soft lavender workspace with restrained purple accents.';
+    if (name === 'verdant') return 'Green clinical palette with gentle mint-tinted surfaces.';
+    if (name === 'deepBlue') return 'Deep blue navigation with cool, readable clinical panels.';
+    if (name === 'amethyst') return 'Rich violet accents balanced with pale neutral surfaces.';
+    return 'Graphite and steel surfaces with restrained teal accents.';
+  }
+
+  function themeCard({ name, label, swatch, description, family }) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'theme-card';
+    card.setAttribute('aria-pressed', 'false');
+    if (family === 'clinical') {
+      card.dataset.spireEpicThemeCard = name;
+      card.addEventListener('click', event => { event.preventDefault(); applyTheme(name); });
+    } else {
+      card.dataset.spireLegacyThemeCard = name;
+      card.addEventListener('click', event => { event.preventDefault(); applyLegacyTheme(name); });
     }
+    card.innerHTML = `<b><span class="swatch" style="background:${swatch}"></span>${label}</b><br><span style="font-size:11px;color:#64748b">${description}</span>`;
+    return card;
+  }
+
+  function mountThemePicker() {
+    const tab = document.getElementById('accessPresetsTab');
+    if (!tab) return false;
+    const tabButton = document.getElementById('tabPresetBtn');
+    if (tabButton) tabButton.textContent = `${TOTAL_VISIBLE_THEMES} Distinct Themes`;
+    const intro = tab.querySelector('p');
+    if (intro) intro.textContent = `Choose from ${TOTAL_VISIBLE_THEMES} distinct S.P.I.R.E. themes. Similar palettes are merged so each visible choice is meaningfully different.`;
+
+    if (document.getElementById('spireEpicThemeSuiteGroup')) {
+      refreshThemeCards();
+      return true;
+    }
+
+    const legacyCards = [...tab.querySelectorAll('.theme-card')].filter(card => !card.dataset.spireEpicThemeCard);
+    const legacyGrid = legacyCards[0]?.parentElement;
+    if (legacyGrid) legacyGrid.style.display = 'none';
+
     const group = document.createElement('section');
     group.id = 'spireEpicThemeSuiteGroup';
-    group.innerHTML = `<div class="spire-epic-theme-heading"><b>Available Themes — Epic-style clinical set</b><span style="font-size:11px;color:#64748b">8 themes</span></div><div id="spireEpicThemeSuiteGrid"></div>`;
-    const grid = group.querySelector('#spireEpicThemeSuiteGrid');
-    for (const [name, theme] of Object.entries(THEMES)) {
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'theme-card';
-      card.dataset.spireEpicThemeCard = name;
-      card.setAttribute('aria-pressed', 'false');
-      card.innerHTML = `<b><span class="swatch" style="background:${theme.swatch}"></span>${theme.label}</b><br><span style="font-size:11px;color:#64748b">${name === 'darkRoom' ? 'Deep navy, magenta, cyan and preserved clinical alerts' : name === 'highContrast' ? 'Accessibility-first black/white with strong focus states' : 'Clinical workspace palette with semantic alert colors preserved'}</span>`;
-      card.addEventListener('click', event => { event.preventDefault(); applyTheme(name); });
-      grid.appendChild(card);
-    }
+    group.innerHTML = `
+      <section class="spire-theme-section">
+        <div class="spire-theme-heading"><b>Clinical Themes</b><span>8 themes</span></div>
+        <div class="spire-theme-grid" data-spire-clinical-grid></div>
+      </section>
+      <section class="spire-theme-section">
+        <div class="spire-theme-heading"><b>Additional S.P.I.R.E. Themes</b><span>11 themes</span></div>
+        <div class="spire-theme-grid" data-spire-additional-grid></div>
+      </section>`;
+
+    const clinicalGrid = group.querySelector('[data-spire-clinical-grid]');
+    Object.entries(THEMES).forEach(([name, theme]) => {
+      clinicalGrid.appendChild(themeCard({ name, label:theme.label, swatch:theme.swatch, description:clinicalDescription(name), family:'clinical' }));
+    });
+
+    const additionalGrid = group.querySelector('[data-spire-additional-grid]');
+    ADDITIONAL_THEMES.forEach(theme => {
+      additionalGrid.appendChild(themeCard({ name:theme.key, label:theme.label, swatch:theme.swatch, description:theme.description, family:'legacy' }));
+    });
+
     tab.appendChild(group);
     refreshThemeCards();
+    return true;
   }
 
   function restore() {
     ensureStyle();
-    injectThemeCards();
+    mountThemePicker();
     const selected = getSelectedTheme();
     if (selected) applyTheme(selected, { closeModal: false });
   }
 
-  document.addEventListener('click', event => {
-    const legacyCard = event.target.closest?.('.theme-card');
-    if (legacyCard && !legacyCard.dataset.spireEpicThemeCard && getSelectedTheme()) clearTheme({ restoreBase: false });
-  }, true);
-
-  const observer = new MutationObserver(() => injectThemeCards());
-  if (document.documentElement) observer.observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener('storage', event => { if (event.key === BASE_KEY || event.key === scopedKey()) restore(); });
+  // Intentionally no MutationObserver here. The picker mounts once at startup and
+  // on the explicit company-change event only; clinical chart DOM mutations are ignored.
+  window.addEventListener('storage', event => {
+    if (event.key === BASE_KEY || event.key === scopedKey()) restore();
+  });
   window.addEventListener('spire:company-change', restore);
 
-  window.SpireEpicThemes = Object.freeze({ themes: THEMES, getSelectedTheme, apply: applyTheme, clear: clearTheme, restore });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore, { once: true }); else restore();
+  window.SpireEpicThemes = Object.freeze({
+    themes: THEMES,
+    additionalThemes: ADDITIONAL_THEMES,
+    totalVisibleThemes: TOTAL_VISIBLE_THEMES,
+    getSelectedTheme,
+    apply: applyTheme,
+    applyLegacy: applyLegacyTheme,
+    clear: clearTheme,
+    restore,
+    mountThemePicker
+  });
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore, { once: true });
+  else restore();
 })();
