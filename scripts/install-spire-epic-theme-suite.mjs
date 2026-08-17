@@ -10,6 +10,7 @@ await import('./fix-spire-workspace-navigation.mjs');
 await import('./fix-spire-stable-workspace-selectors.mjs');
 await import('./fix-spire-workspace-performance.mjs');
 await import('./fix-spire-workstation-v4.mjs');
+await import('./fix-spire-mar-single-owner-v5.mjs');
 
 const marker = 'SPIRE_EPIC_THEME_SUITE_V1';
 const workstationMarker = 'SPIRE_WORKSTATION_RUNTIME_V4';
@@ -65,4 +66,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('SPIRE Epic theme suite and workstation runtime installed across Client Station, chart, Secure Chat, and Flowsheets.');
+console.log('SPIRE Epic theme suite, workstation runtime, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
