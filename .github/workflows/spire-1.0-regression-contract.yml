@@ -1,0 +1,38 @@
+name: SPIRE 1.0 Regression Contract
+
+on:
+  push:
+    branches:
+      - feature/spire-1.1
+  pull_request:
+    branches:
+      - feature/spire-ehr-platform
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spire-1-0-regression-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression-contract:
+    name: Frozen 1.0 invariants + 1.1 regulatory foundations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout full SPIRE history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch immutable SPIRE 1.0 release ref
+        run: git fetch origin refs/heads/release/spire-1.0:refs/remotes/origin/release/spire-1.0 --force
+
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enforce SPIRE 1.0 regression contract
+        run: node scripts/verify-spire-1.0-regression-contract.mjs
