@@ -35,7 +35,7 @@ const helper = `
     const group = spireFlowsheetText(row?.groupName || 'Other');
     const name = spireFlowsheetText(row?.name || '');
     const description = spireFlowsheetText(row?.description || '');
-    const text = `${group} ${name} ${description}`;
+    const text = group + ' ' + name + ' ' + description;
 
     if (setId === 'nurse') {
       return /(?:nurse|rn\\/?lpn|skilled nursing|clinical monitoring|assessment|pain|respiratory|lung|oxygen|cardiac|heart|gi\\b|gu\\b|gastro|urinary|skin|wound|foley|catheter|feeding tube|enteral|iv\\b|picc|vascular access|diabetes|blood glucose|insulin|medication reconciliation|treatment|intervention|patient education|provider notification|change of condition|escalation|care plan|narrative|neurolog|seizure|intake|output|mobility|fall risk|temperature|pulse|blood pressure|spo2|weight)/.test(text);
@@ -76,7 +76,7 @@ const helper = `
       .map(row => {
         const groupName = String(row.groupName || 'Other').trim();
         const rowName = String(row.name || '').trim();
-        return { ...row, name: groupName && rowName && !rowName.toLowerCase().startsWith(groupName.toLowerCase()) ? `${groupName} · ${rowName}` : rowName };
+        return { ...row, name: groupName && rowName && !rowName.toLowerCase().startsWith(groupName.toLowerCase()) ? groupName + ' · ' + rowName : rowName };
       });
   }
 `;
