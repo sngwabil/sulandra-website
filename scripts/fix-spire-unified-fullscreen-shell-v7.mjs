@@ -5,7 +5,9 @@ import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const stationRuntimePath = path.join(root, 'assets', 'spire-client-station.js');
+const stationHtmlPath = path.join(root, 'spire', 'client-station.html');
 const marker = 'SPIRE_UNIFIED_FULLSCREEN_SHELL_V7';
+const stationVersion = '20260817-unified-fullscreen-shell-v7-1';
 
 let source = await readFile(stationRuntimePath, 'utf8');
 
@@ -41,6 +43,22 @@ await writeFile(stationRuntimePath, source, 'utf8');
 const syntax = spawnSync(process.execPath, ['--check', stationRuntimePath], { encoding: 'utf8' });
 if (syntax.status !== 0) {
   throw new Error(`Spire unified fullscreen shell v7 syntax failed: ${(syntax.stderr || syntax.stdout || '').trim()}`);
+}
+
+let stationHtml = await readFile(stationHtmlPath, 'utf8');
+const stationScriptPattern = /<script src="\/assets\/spire-client-station\.js(?:\?v=[^"]+)?"><\/script>/;
+if (!stationScriptPattern.test(stationHtml)) {
+  throw new Error('Spire unified fullscreen shell v7 could not find the Client Station runtime tag for cache publication');
+}
+stationHtml = stationHtml.replace(
+  stationScriptPattern,
+  `<script src="/assets/spire-client-station.js?v=${stationVersion}"></script>`
+);
+await writeFile(stationHtmlPath, stationHtml, 'utf8');
+
+const verifiedHtml = await readFile(stationHtmlPath, 'utf8');
+if (!verifiedHtml.includes(`/assets/spire-client-station.js?v=${stationVersion}`)) {
+  throw new Error('Spire unified fullscreen shell v7 cache version was not published to Client Station');
 }
 
 console.log('Spire unified fullscreen shell v7 installed: Client Station remains the top-level fullscreen owner while chart and chat navigation stay inside one continuous Spire shell.');
