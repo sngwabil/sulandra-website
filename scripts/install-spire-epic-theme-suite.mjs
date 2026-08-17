@@ -34,8 +34,11 @@ const syntax = spawnSync(process.execPath, ['--check', assetPath], { encoding: '
 if (syntax.status !== 0) throw new Error(`SPIRE Epic theme suite syntax failed: ${(syntax.stderr || syntax.stdout || '').trim()}`);
 
 const workstationRuntime = await readFile(workstationAssetPath, 'utf8');
-for (const required of [workstationMarker, 'data-spire-app-fullscreen', 'requestFullscreen', '.flowsheet-table tbody td:first-child']) {
+for (const required of [workstationMarker, 'data-spire-app-fullscreen', 'SpireUserPreferences', 'applyWorkstationViewport', '.flowsheet-table tbody td:first-child']) {
   if (!workstationRuntime.includes(required)) throw new Error(`SPIRE workstation runtime missing ${required}`);
+}
+if (workstationRuntime.includes('stopImmediatePropagation') || workstationRuntime.includes('ROOT.requestFullscreen')) {
+  throw new Error('SPIRE workstation runtime must delegate browser-native fullscreen to the authenticated shell/preferences owner');
 }
 const workstationSyntax = spawnSync(process.execPath, ['--check', workstationAssetPath], { encoding: 'utf8' });
 if (workstationSyntax.status !== 0) throw new Error(`SPIRE workstation runtime syntax failed: ${(workstationSyntax.stderr || workstationSyntax.stdout || '').trim()}`);
