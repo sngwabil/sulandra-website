@@ -58,9 +58,3 @@ await writeFile(
 );
 
 console.log('Professional Human Resources footer applied to all applicant emails.');
-
-// The root Railway service runs `npm run build`, while the static website runs
-// `npm run build:web`. Publish the same visual-only Theme #22/Dark Room coverage
-// in the normal build path so SPIRE presentation cannot diverge by service.
-await import('./install-spire-darkroom-summary-notes-repair-v7.mjs');
-console.log('SPIRE global Dark Room coverage parity applied to the normal Railway build path.');
