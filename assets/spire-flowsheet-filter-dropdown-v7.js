@@ -1,25 +1,29 @@
 (() => {
   'use strict';
 
-  // SPIRE_FLOWSHEET_SET_SELECTOR_V8
-  // One interaction-only selector over the existing live Flowsheet grid.
-  // It does not fetch chart data, own MAR/Orders, or create a second Flowsheet renderer.
-  const MARKER = 'SPIRE_FLOWSHEET_SET_SELECTOR_V8';
-  const MENU_ID = 'spireFlowsheetSetSelectorV8Menu';
-  const HIDDEN_CLASS = 'spire-flowsheet-set-v8-hidden';
-  const SET_KEY = 'spire:flowsheet:selected-set:v8';
-  const CATEGORY_KEY = 'spire:flowsheet:selected-category:v8';
+  // SPIRE_FLOWSHEET_SET_SELECTOR_V9
+  // Authoritative selector for the existing live Flowsheet grid.
+  // This runtime never creates a second Flowsheet renderer and never owns MAR/Orders.
+  const MARKER = 'SPIRE_FLOWSHEET_SET_SELECTOR_V9';
+  const MENU_ID = 'spireFlowsheetSetSelectorV9Menu';
+  const HIDDEN_CLASS = 'spire-flowsheet-set-v9-hidden';
+  const SET_KEY = 'spire:flowsheet:selected-set:v9';
+  const CATEGORY_KEY = 'spire:flowsheet:selected-category:v9';
+  const ROOT = document.documentElement;
+
   let currentSet = readSession(SET_KEY, 'dsp');
   let currentCategory = readSession(CATEGORY_KEY, 'all');
   let menu = null;
   let raf = 0;
   let observer = null;
+  let labelObserver = null;
+  let enforcingLabel = false;
 
   const SETS = Object.freeze([
     ['dsp', 'DSP Daily Documentation', 'DSP, waiver and direct-care daily charting'],
     ['nurse', 'Nurse / Skilled Nursing', 'RN/LPN skilled assessment, intervention and follow-up'],
     ['all', 'All Clinical Documentation', 'Every available Flowsheet row for this client'],
-    ['vitals', 'Vitals & Clinical Monitoring', 'Vitals, pain, clinical surveillance and change monitoring'],
+    ['vitals', 'Vitals & Clinical Monitoring', 'Vitals, pain, surveillance and change monitoring'],
     ['respiratory', 'Respiratory / Oxygen', 'Respiratory status, lung sounds, oxygen and breathing support'],
     ['woundDevices', 'Wound / Skin / Lines & Devices', 'Skin, wounds, Foley, feeding tubes, IV/PICC and device checks'],
     ['diabetes', 'Diabetes / Blood Glucose', 'Glucose values, diabetes observations and insulin-related monitoring'],
@@ -43,6 +47,7 @@
   ]);
 
   const DSP_GROUPS = new Set([
+    'dsp daily documentation',
     'vitals & blood glucose',
     'adls & personal care support',
     'medication administration (emar)',
@@ -59,12 +64,20 @@
     'behavior / safety',
   ]);
 
-  const NURSE_FOUNDATION_GROUPS = new Set([
+  const NURSE_GROUPS = new Set([
     'nurse flowsheets',
-    'vitals',
-    'intake / output',
+    'nurse / skilled nursing',
     'clinical monitoring',
+    'vitals',
+    'vitals & clinical monitoring',
+    'respiratory / oxygen',
+    'wound / skin / lines & devices',
+    'diabetes / blood glucose',
+    'neurologic / seizure',
+    'intake / output',
+    'intake / output & elimination',
     'medication / treatment',
+    'mobility / fall risk',
   ]);
 
   function readSession(key, fallback) {
@@ -93,13 +106,20 @@
     return setDefinition(id)[1];
   }
 
+  function labelNode() {
+    return document.getElementById('activeFlowsheetFilterName');
+  }
+
   function dropdown() {
-    const label = document.getElementById('activeFlowsheetFilterName');
-    return label?.closest('.filter-dropdown') || null;
+    return labelNode()?.closest('.filter-dropdown') || null;
   }
 
   function tree() {
     return document.getElementById('flowsheetTreeMenu');
+  }
+
+  function flowsheetHost() {
+    return document.getElementById('flowsheets-view');
   }
 
   function categoryOptions() {
@@ -111,6 +131,31 @@
 
   function categoryLabel(category) {
     return categoryOptions().find(([id]) => id === category)?.[1] || 'Show All Tasks';
+  }
+
+  function desiredLabel() {
+    if (currentSet === 'dsp') return `${setLabel(currentSet)} - ${categoryLabel(currentCategory)}`;
+    return `${setLabel(currentSet)} - Show All`;
+  }
+
+  function enforceLabel() {
+    const label = labelNode();
+    if (!label) return;
+    const desired = desiredLabel();
+    if (label.textContent === desired) return;
+    enforcingLabel = true;
+    label.textContent = desired;
+    enforcingLabel = false;
+  }
+
+  function watchLabel() {
+    const label = labelNode();
+    if (!label) return;
+    if (labelObserver) labelObserver.disconnect();
+    labelObserver = new MutationObserver(() => {
+      if (!enforcingLabel) enforceLabel();
+    });
+    labelObserver.observe(label, { childList: true, characterData: true, subtree: true });
   }
 
   function classifyCategory(text) {
@@ -153,9 +198,16 @@
 
   function matchesSet(setId, groupName, rowText) {
     const group = normalize(groupName);
+    const text = normalize(`${groupName} ${rowText}`);
     if (setId === 'all') return true;
-    if (setId === 'dsp') return DSP_GROUPS.has(group);
-    if (setId === 'nurse') return NURSE_FOUNDATION_GROUPS.has(group);
+    if (setId === 'dsp') {
+      if (DSP_GROUPS.has(group)) return true;
+      return /(\badl\b|personal care|meal|dysphagia|behavior|elopement|community|outing|transport|isp|goal|sleep|wake|bowel|medication administration|emar)/.test(text);
+    }
+    if (setId === 'nurse') {
+      if (NURSE_GROUPS.has(group)) return true;
+      return /(clinical monitoring|pain|skin|wound|respiratory|oxygen|seizure|neurolog|mobility|transfer|reposition|catheter|foley|intake|output|urine|bowel|treatment|temperature|pulse|blood pressure|spo2|weight|blood glucose|diabetes|insulin|iv|picc|feeding tube)/.test(text);
+    }
     return matchesSpecialty(setId, groupName, rowText);
   }
 
@@ -178,7 +230,7 @@
   }
 
   function tableBodies() {
-    const host = document.getElementById('flowsheets-view');
+    const host = flowsheetHost();
     if (!host) return [];
     return Array.from(host.querySelectorAll('#flowsheetTable tbody,.flowsheet-table tbody,.flow-grid tbody,table tbody'))
       .filter((body, index, all) => all.indexOf(body) === index);
@@ -205,14 +257,18 @@
   function rowMatches(group, row) {
     const text = rowName(row);
     if (!matchesSet(currentSet, group, text)) return false;
-    if (currentCategory === 'all' || currentSet !== 'dsp') return true;
+    if (currentSet !== 'dsp' || currentCategory === 'all') return true;
     return classifyCategory(text) === currentCategory || classifyCategory(group) === currentCategory;
   }
 
   function filterRows() {
+    const host = flowsheetHost();
+    if (host) host.dataset.spireFlowsheetSet = currentSet;
+    let visibleCount = 0;
     for (const body of tableBodies()) {
       for (const segment of segments(body)) {
         const visibleChildren = segment.rows.filter((row) => rowMatches(segment.group, row));
+        visibleCount += visibleChildren.length;
         segment.rows.forEach((row) => row.classList.toggle(HIDDEN_CLASS, !visibleChildren.includes(row)));
         if (segment.header) {
           const groupOnlyMatch = !segment.rows.length && matchesSet(currentSet, segment.group, segment.group);
@@ -220,45 +276,43 @@
         }
       }
     }
+    ROOT.dataset.spireFlowsheetSet = currentSet;
+    return visibleCount;
   }
 
   function syncTree() {
-    tree()?.querySelectorAll('.tree-item[data-category]').forEach((item) => {
+    const treeNode = tree();
+    if (!treeNode) return;
+    treeNode.dataset.spireFlowsheetSet = currentSet;
+    treeNode.querySelectorAll('.tree-item[data-category]').forEach((item) => {
       const selected = currentSet === 'dsp' && item.dataset.category === currentCategory;
       item.classList.toggle('selected', selected);
       item.setAttribute('aria-current', selected ? 'true' : 'false');
-      item.setAttribute('title', currentSet === 'dsp' ? 'Filter DSP Daily Documentation' : 'Selecting this switches to DSP Daily Documentation');
+      item.setAttribute('title', currentSet === 'dsp' ? 'Filter DSP Daily Documentation' : 'Select a DSP task filter to return to DSP Daily Documentation');
     });
   }
 
-  function syncLabel() {
-    const label = document.getElementById('activeFlowsheetFilterName');
-    if (!label) return;
-    const suffix = currentSet === 'dsp' ? categoryLabel(currentCategory) : 'Show All';
-    label.textContent = `${setLabel(currentSet)} - ${suffix}`;
-  }
-
   function ensureStyle() {
-    if (document.getElementById('spireFlowsheetSetSelectorV8Style')) return;
+    if (document.getElementById('spireFlowsheetSetSelectorV9Style')) return;
     const style = document.createElement('style');
-    style.id = 'spireFlowsheetSetSelectorV8Style';
+    style.id = 'spireFlowsheetSetSelectorV9Style';
     style.textContent = `
       .${HIDDEN_CLASS}{display:none!important}
-      #flowsheets-view .filter-dropdown[data-spire-flowsheet-set-v8]{cursor:pointer;user-select:none;position:relative}
-      #flowsheets-view .filter-dropdown[data-spire-flowsheet-set-v8]:focus-visible{outline:2px solid #38bdf8!important;outline-offset:2px}
-      #flowsheets-view .filter-dropdown[data-spire-flowsheet-set-v8][aria-expanded="true"]{box-shadow:0 0 0 2px rgba(56,189,248,.36)!important}
-      #${MENU_ID}{position:fixed;z-index:12000;display:none;min-width:350px;max-width:min(470px,calc(100vw - 24px));padding:6px;background:#f8fafc;color:#0f172a;border:1px solid #94a3b8;border-radius:5px;box-shadow:0 14px 36px rgba(15,23,42,.34);font:600 12px/1.25 "Segoe UI",Arial,sans-serif}
+      #flowsheets-view .filter-dropdown[data-spire-flowsheet-set-v9]{cursor:pointer;user-select:none;position:relative}
+      #flowsheets-view .filter-dropdown[data-spire-flowsheet-set-v9]:focus-visible{outline:2px solid #38bdf8!important;outline-offset:2px}
+      #flowsheets-view .filter-dropdown[data-spire-flowsheet-set-v9][aria-expanded="true"]{box-shadow:0 0 0 2px rgba(56,189,248,.36)!important}
+      #${MENU_ID}{position:fixed;z-index:12000;display:none;width:min(390px,calc(100vw - 16px));max-height:min(470px,calc(100vh - 24px));overflow:auto;padding:5px;background:#f8fafc;color:#0f172a;border:1px solid #94a3b8;border-radius:5px;box-shadow:0 12px 30px rgba(15,23,42,.34);font:600 12px/1.22 "Segoe UI",Arial,sans-serif;overscroll-behavior:contain}
       #${MENU_ID}[data-open="true"]{display:block}
-      #${MENU_ID} .spire-flow-menu-title{padding:7px 10px 5px;color:#475569;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-      #${MENU_ID} .spire-flow-menu-divider{height:1px;background:#cbd5e1;margin:5px 4px}
-      #${MENU_ID} .spire-flow-option{display:grid;grid-template-columns:18px minmax(0,1fr);width:100%;gap:8px;border:0;border-radius:3px;background:transparent;color:inherit;padding:8px 10px;text-align:left;cursor:pointer;font:inherit}
+      #${MENU_ID} .spire-flow-menu-title{position:sticky;top:0;z-index:1;padding:6px 9px 4px;background:inherit;color:#475569;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+      #${MENU_ID} .spire-flow-menu-divider{height:1px;background:#cbd5e1;margin:4px}
+      #${MENU_ID} .spire-flow-option{display:grid;grid-template-columns:18px minmax(0,1fr);width:100%;gap:7px;border:0;border-radius:3px;background:transparent;color:inherit;padding:7px 9px;text-align:left;cursor:pointer;font:inherit}
       #${MENU_ID} .spire-flow-option:hover,#${MENU_ID} .spire-flow-option:focus-visible{background:#e2e8f0;outline:none}
       #${MENU_ID} .spire-flow-option[aria-selected="true"]{background:#dbeafe;color:#1e3a8a;box-shadow:inset 3px 0 0 #ec4899}
       #${MENU_ID} .spire-flow-check{width:15px;color:#0f766e;font-weight:900}
       #${MENU_ID} .spire-flow-option-copy{min-width:0}
       #${MENU_ID} .spire-flow-option-label{display:block;font-weight:700}
-      #${MENU_ID} .spire-flow-option-desc{display:block;margin-top:2px;color:#64748b;font-size:10px;font-weight:500;white-space:normal}
-      :root[data-spire-epic-theme="darkRoom"] #${MENU_ID}{background:#0b1729;color:#f3f6fb;border-color:#3d526d;box-shadow:0 18px 48px rgba(0,0,0,.68)}
+      #${MENU_ID} .spire-flow-option-desc{display:block;margin-top:1px;color:#64748b;font-size:10px;font-weight:500;white-space:normal}
+      :root[data-spire-epic-theme="darkRoom"] #${MENU_ID}{background:#0b1729;color:#f3f6fb;border-color:#3d526d;box-shadow:0 16px 40px rgba(0,0,0,.62)}
       :root[data-spire-epic-theme="darkRoom"] #${MENU_ID} .spire-flow-menu-title{color:#a8b8cc}
       :root[data-spire-epic-theme="darkRoom"] #${MENU_ID} .spire-flow-menu-divider{background:#31445c}
       :root[data-spire-epic-theme="darkRoom"] #${MENU_ID} .spire-flow-option:hover,
@@ -276,12 +330,17 @@
         <span class="spire-flow-check" aria-hidden="true">${id === currentSet ? '✓' : ''}</span>
         <span class="spire-flow-option-copy"><span class="spire-flow-option-label">${esc(label)}</span><span class="spire-flow-option-desc">${esc(description)}</span></span>
       </button>`).join('');
-    const categoryButtons = categoryOptions().map(([id, label]) => `
-      <button type="button" class="spire-flow-option spire-flow-category-option" role="option" data-category="${esc(id)}" aria-selected="${currentSet === 'dsp' && id === currentCategory ? 'true' : 'false'}">
-        <span class="spire-flow-check" aria-hidden="true">${currentSet === 'dsp' && id === currentCategory ? '✓' : ''}</span>
-        <span class="spire-flow-option-copy"><span class="spire-flow-option-label">${esc(label)}</span></span>
-      </button>`).join('');
-    return `<div class="spire-flow-menu-title">Flowsheet Sets</div>${setButtons}<div class="spire-flow-menu-divider"></div><div class="spire-flow-menu-title">DSP Task Filters</div>${categoryButtons}`;
+
+    const categorySection = currentSet === 'dsp' ? (() => {
+      const buttons = categoryOptions().map(([id, label]) => `
+        <button type="button" class="spire-flow-option spire-flow-category-option" role="option" data-category="${esc(id)}" aria-selected="${id === currentCategory ? 'true' : 'false'}">
+          <span class="spire-flow-check" aria-hidden="true">${id === currentCategory ? '✓' : ''}</span>
+          <span class="spire-flow-option-copy"><span class="spire-flow-option-label">${esc(label)}</span></span>
+        </button>`).join('');
+      return `<div class="spire-flow-menu-divider"></div><div class="spire-flow-menu-title">DSP Task Filters</div>${buttons}`;
+    })() : '';
+
+    return `<div class="spire-flow-menu-title">Flowsheet Sets</div>${setButtons}${categorySection}`;
   }
 
   function ensureMenu() {
@@ -303,67 +362,10 @@
 
   function syncMenu() {
     if (!menu) return;
-    menu.querySelectorAll('.spire-flow-set-option').forEach((button) => {
-      const selected = button.dataset.set === currentSet;
-      button.setAttribute('aria-selected', selected ? 'true' : 'false');
-      const check = button.querySelector('.spire-flow-check');
-      if (check) check.textContent = selected ? '✓' : '';
-    });
-    menu.querySelectorAll('.spire-flow-category-option').forEach((button) => {
-      const selected = currentSet === 'dsp' && button.dataset.category === currentCategory;
-      button.setAttribute('aria-selected', selected ? 'true' : 'false');
-      const check = button.querySelector('.spire-flow-check');
-      if (check) check.textContent = selected ? '✓' : '';
-    });
-  }
-
-  function applySelection({ setId = currentSet, category = currentCategory, close = true } = {}) {
-    const validSet = SETS.some(([id]) => id === setId) ? setId : 'dsp';
-    const validCategory = categoryOptions().some(([id]) => id === category) ? category : 'all';
-    currentSet = validSet;
-    currentCategory = currentSet === 'dsp' ? validCategory : 'all';
-    writeSession(SET_KEY, currentSet);
-    writeSession(CATEGORY_KEY, currentCategory);
-    window.__spireFlowsheetSet = currentSet;
-    window.__spireFlowsheetFilterCategory = currentCategory;
-    syncTree();
-    syncLabel();
-    filterRows();
-    syncMenu();
-    if (close) closeMenu();
-    document.dispatchEvent(new CustomEvent('spire:flowsheet-set-change', {
-      detail: { set: currentSet, setLabel: setLabel(currentSet), category: currentCategory, categoryLabel: categoryLabel(currentCategory) },
-    }));
-  }
-
-  function positionMenu() {
-    const trigger = dropdown();
-    if (!trigger || !menu) return;
-    const rect = trigger.getBoundingClientRect();
-    const width = Math.max(350, Math.min(Math.max(rect.width, 350), 470));
-    menu.style.width = `${Math.min(width, window.innerWidth - 16)}px`;
-    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - Math.min(width, window.innerWidth - 16) - 8))}px`;
-    menu.style.maxHeight = `${Math.max(180, window.innerHeight - 24)}px`;
-    menu.style.overflowY = 'auto';
-    const menuHeight = Math.min(menu.scrollHeight || 520, window.innerHeight - 24);
-    const below = rect.bottom + 5;
-    const top = below + menuHeight <= window.innerHeight - 8 ? below : Math.max(8, rect.top - menuHeight - 5);
-    menu.style.top = `${top}px`;
-    menu.style.maxHeight = `${Math.max(180, window.innerHeight - top - 8)}px`;
-  }
-
-  function openMenu() {
-    const trigger = dropdown();
-    if (!trigger) return;
-    ensureMenu();
-    trigger.setAttribute('aria-expanded', 'true');
-    menu.dataset.open = 'true';
-    syncMenu();
-    positionMenu();
-    requestAnimationFrame(() => {
-      const selected = Array.from(menu.querySelectorAll('.spire-flow-set-option')).find((button) => button.dataset.set === currentSet);
-      (selected || menu.querySelector('.spire-flow-option'))?.focus({ preventScroll: true });
-    });
+    const wasOpen = menu.dataset.open === 'true';
+    const html = menuHtml();
+    if (menu.innerHTML !== html) menu.innerHTML = html;
+    if (wasOpen) menu.dataset.open = 'true';
   }
 
   function closeMenu({ focusTrigger = false } = {}) {
@@ -373,9 +375,75 @@
     if (focusTrigger) trigger?.focus({ preventScroll: true });
   }
 
+  function positionMenu() {
+    const trigger = dropdown();
+    if (!trigger || !menu) return;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(Math.max(rect.width, 360), 390, window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    const top = Math.max(8, rect.bottom + 4);
+    const availableBelow = Math.max(140, window.innerHeight - top - 8);
+    menu.style.width = `${width}px`;
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.maxHeight = `${Math.min(470, availableBelow)}px`;
+  }
+
+  function openMenu() {
+    const trigger = dropdown();
+    if (!trigger) return;
+    ensureMenu();
+    syncMenu();
+    trigger.setAttribute('aria-expanded', 'true');
+    menu.dataset.open = 'true';
+    positionMenu();
+    requestAnimationFrame(() => {
+      const selected = menu.querySelector('.spire-flow-set-option[aria-selected="true"]');
+      (selected || menu.querySelector('.spire-flow-option'))?.focus({ preventScroll: true });
+    });
+  }
+
   function toggleMenu() {
     if (menu?.dataset.open === 'true') closeMenu();
     else openMenu();
+  }
+
+  function announceSelection() {
+    document.dispatchEvent(new CustomEvent('spire:flowsheet-set-change', {
+      detail: {
+        set: currentSet,
+        setLabel: setLabel(currentSet),
+        category: currentCategory,
+        categoryLabel: categoryLabel(currentCategory),
+      },
+    }));
+  }
+
+  function applySelection({ setId = currentSet, category = currentCategory, close = true } = {}) {
+    const validSet = SETS.some(([id]) => id === setId) ? setId : 'dsp';
+    const validCategory = categoryOptions().some(([id]) => id === category) ? category : 'all';
+    currentSet = validSet;
+    currentCategory = currentSet === 'dsp' ? validCategory : 'all';
+
+    writeSession(SET_KEY, currentSet);
+    writeSession(CATEGORY_KEY, currentCategory);
+    window.__spireFlowsheetSet = currentSet;
+    window.__spireFlowsheetFilterCategory = currentCategory;
+
+    if (close) closeMenu();
+    syncTree();
+    enforceLabel();
+    filterRows();
+    syncMenu();
+    announceSelection();
+
+    // Legacy Flowsheet code can repaint the old DSP label after a click. Reassert
+    // the authoritative selection after that repaint without rebuilding the grid.
+    queueMicrotask(enforceLabel);
+    requestAnimationFrame(() => {
+      enforceLabel();
+      filterRows();
+    });
   }
 
   function enhance() {
@@ -383,32 +451,30 @@
     if (!trigger) return;
     ensureStyle();
     trigger.removeAttribute('data-spire-filter-v7');
-    trigger.dataset.spireFlowsheetSetV8 = MARKER;
+    trigger.removeAttribute('data-spire-flowsheet-set-v8');
+    trigger.dataset.spireFlowsheetSetV9 = MARKER;
     trigger.setAttribute('role', 'button');
     trigger.setAttribute('tabindex', '0');
     trigger.setAttribute('aria-haspopup', 'listbox');
     if (!trigger.hasAttribute('aria-expanded')) trigger.setAttribute('aria-expanded', 'false');
+    watchLabel();
     syncTree();
-    syncLabel();
+    enforceLabel();
     filterRows();
   }
 
   function scheduleEnhance() {
     if (raf) cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => { raf = 0; enhance(); });
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      enhance();
+    });
   }
 
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
     const trigger = dropdown();
-
-    if (trigger && trigger.contains(target)) {
-      event.preventDefault();
-      event.stopPropagation();
-      toggleMenu();
-      return;
-    }
 
     const setOption = target.closest(`#${MENU_ID} .spire-flow-set-option`);
     if (setOption) {
@@ -423,6 +489,13 @@
       event.preventDefault();
       event.stopPropagation();
       applySelection({ setId: 'dsp', category: String(categoryOption.dataset.category || 'all') });
+      return;
+    }
+
+    if (trigger && trigger.contains(target)) {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleMenu();
       return;
     }
 
@@ -458,8 +531,12 @@
     }
   }, true);
 
-  window.addEventListener('resize', () => { if (menu?.dataset.open === 'true') positionMenu(); });
-  window.addEventListener('scroll', () => { if (menu?.dataset.open === 'true') positionMenu(); }, true);
+  window.addEventListener('resize', () => {
+    if (menu?.dataset.open === 'true') positionMenu();
+  });
+  window.addEventListener('scroll', () => {
+    if (menu?.dataset.open === 'true') positionMenu();
+  }, true);
   window.addEventListener('spire:theme-change', scheduleEnhance);
 
   function start() {
@@ -475,7 +552,7 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
 
-  window.SpireFlowsheetSetSelectorV8 = Object.freeze({
+  const api = Object.freeze({
     marker: MARKER,
     selectSet: (setId) => applySelection({ setId: String(setId || 'dsp'), category: 'all' }),
     selectDspCategory: (category) => applySelection({ setId: 'dsp', category: String(category || 'all') }),
@@ -484,4 +561,7 @@
     open: openMenu,
     close: closeMenu,
   });
+
+  window.SpireFlowsheetSetSelectorV9 = api;
+  window.SpireFlowsheetSetSelectorV8 = api;
 })();
