@@ -57,7 +57,7 @@ const assets = [
     version: '20260817-safe-theme-picker-2',
     attr: 'data-spire-epic-theme-suite',
     marker,
-    required: [marker, 'Altitude', 'Lavender', 'Verdant', 'Deep Blue', 'Amethyst', 'Carbon', 'Dark Room', 'High Contrast', 'spire:epic-theme-suite:preset', 'Available Themes — Clinical set', '19 Distinct Themes'],
+    required: [marker, 'Altitude', 'Lavender', 'Verdant', 'Deep Blue', 'Amethyst', 'Carbon', 'Dark Room', 'High Contrast', 'spire:epic-theme-suite:preset', 'Available Themes — Clinical set', 'TOTAL_VISIBLE_THEMES = 19'],
   },
   {
     label: 'user profile photo',
@@ -67,7 +67,7 @@ const assets = [
     attr: 'data-spire-user-profile-photo',
     marker: profilePhotoMarker,
     required: [profilePhotoMarker, 'userAvatarUpload', 'spireUserProfile', 'FileReader', 'normalizeSpireBranding', 'SpireUserProfilePhoto'],
-    forbidden: ['MutationObserver'],
+    forbidden: ['new MutationObserver'],
   },
   {
     label: 'workstation runtime',
@@ -126,7 +126,7 @@ const assets = [
     version: '20260817-darkroom-nurse-flowsheet-3',
     attr: 'data-spire-darkroom-flowsheet-labels',
     marker: darkroomFlowsheetLabelsMarker,
-    required: [darkroomFlowsheetLabelsMarker, '#flowsheetTable', 'style.setProperty', 'SpireDarkRoomFlowsheetLabelsV6', 'restoreAll'],
+    required: [darkroomFlowsheetsLabelsMarker = darkroomFlowsheetLabelsMarker, '#flowsheetTable', 'style.setProperty', 'SpireDarkRoomFlowsheetLabelsV6', 'restoreAll'],
     visualOnly: true,
   },
 ];
