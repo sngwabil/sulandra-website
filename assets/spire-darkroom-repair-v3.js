@@ -8,6 +8,7 @@
   const ROOT = document.documentElement;
   const STYLE_ID = 'spireDarkRoomRepairV3Style';
   const SUMMARY_TOUCH = 'spireDarkRoomRepairV3Touched';
+  const SUMMARY_SURFACE = 'spire-darkroom-v3-summary-surface';
   let raf = 0;
 
   function ensureStyle() {
@@ -60,7 +61,8 @@
       :root[data-spire-epic-theme="darkRoom"] body #summary-view :is(
         .epic-section-header,.summary-header,.snapshot-header,.clinical-snapshot-header,
         [class*="snapshot-header" i],[class*="snapshot-title" i]
-      ){
+      ),
+      :root[data-spire-epic-theme="darkRoom"] body #summary-view .${SUMMARY_SURFACE}{
         background:#101e36!important;background-image:none!important;
         color:#f2f5fb!important;-webkit-text-fill-color:#f2f5fb!important;
         border-color:#3a4a63!important;opacity:1!important;
@@ -68,8 +70,9 @@
       :root[data-spire-epic-theme="darkRoom"] body #summary-view :is(
         .epic-section-header,.summary-header,.snapshot-header,.clinical-snapshot-header,
         [class*="snapshot-header" i],[class*="snapshot-title" i]
-      ) *{
-        color:inherit!important;-webkit-text-fill-color:currentColor!important;opacity:1!important;
+      ) :is(h1,h2,h3,h4,h5,h6,p,span,strong,b,small,label),
+      :root[data-spire-epic-theme="darkRoom"] body #summary-view .${SUMMARY_SURFACE} :is(h1,h2,h3,h4,h5,h6,p,span,strong,b,small,label){
+        color:#f2f5fb!important;-webkit-text-fill-color:#f2f5fb!important;opacity:1!important;
       }
       :root[data-spire-epic-theme="darkRoom"] body #summary-view .spire-pill:not(.critical):not(.danger):not(.success):not(.warning){
         background:#13233d!important;color:#e8f1fa!important;-webkit-text-fill-color:#e8f1fa!important;border-color:#52627a!important;
@@ -89,9 +92,17 @@
     return (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
   }
 
-  function isBright(style) {
-    const rgb = parseRgb(style.backgroundColor);
-    return !!rgb && rgb.a >= 0.3 && luminance(rgb) >= 0.62;
+  function isBrightColor(value, minimumAlpha=0.3) {
+    const rgb = parseRgb(value);
+    return !!rgb && rgb.a >= minimumAlpha && luminance(rgb) >= 0.62;
+  }
+
+  function hasBrightBackground(style) {
+    if (isBrightColor(style.backgroundColor)) return true;
+    const image = String(style.backgroundImage || '');
+    if (!image || image === 'none') return false;
+    const colors = image.match(/rgba?\([^)]*\)/gi) || [];
+    return colors.some(color => isBrightColor(color, 0.2));
   }
 
   function isSemantic(element) {
@@ -113,12 +124,15 @@
       const rect = element.getBoundingClientRect();
       if (rect.width < 80 || rect.height < 18 || rect.width * rect.height < 1800) continue;
       const computed = getComputedStyle(element);
-      if (computed.display === 'none' || computed.visibility === 'hidden' || !isBright(computed)) continue;
+      if (computed.display === 'none' || computed.visibility === 'hidden' || !hasBrightBackground(computed)) continue;
       rememberStyle(element);
+      element.classList.add(SUMMARY_SURFACE);
       element.style.setProperty('background', '#0d1930', 'important');
       element.style.setProperty('background-image', 'none', 'important');
       element.style.setProperty('color', '#f2f5fb', 'important');
+      element.style.setProperty('-webkit-text-fill-color', '#f2f5fb', 'important');
       element.style.setProperty('border-color', '#3a4a63', 'important');
+      element.style.setProperty('opacity', '1', 'important');
     }
   }
 
@@ -127,6 +141,7 @@
       const original = element.dataset[SUMMARY_TOUCH] ?? '';
       if (original) element.setAttribute('style', original);
       else element.removeAttribute('style');
+      element.classList.remove(SUMMARY_SURFACE);
       delete element.dataset[SUMMARY_TOUCH];
     });
   }
