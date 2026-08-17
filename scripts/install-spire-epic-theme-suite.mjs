@@ -20,7 +20,7 @@ for (const prerequisite of [
 }
 
 const marker = 'SPIRE_EPIC_THEME_SUITE_V1';
-const profilePhotoMarker = 'SPIRE_USER_PROFILE_PHOTO_V2';
+const profilePhotoMarker = 'SPIRE_USER_PROFILE_PHOTO_V3';
 const workstationMarker = 'SPIRE_WORKSTATION_RUNTIME_V4';
 const darkroomMarker = 'SPIRE_DARKROOM_CONTRAST_V2';
 const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
@@ -63,7 +63,7 @@ const assets = [
     label: 'user profile photo',
     file: 'assets/spire-user-profile-photo.js',
     src: '/assets/spire-user-profile-photo.js',
-    version: '20260817-user-profile-photo-2',
+    version: '20260817-user-profile-photo-3',
     attr: 'data-spire-user-profile-photo',
     marker: profilePhotoMarker,
     required: [profilePhotoMarker, 'userAvatarUpload', 'spireUserProfile', 'FileReader', 'normalizeSpireBranding', 'SpireUserProfilePhoto', 'stationAvatar', 'notes-editor-pane', 'data-spire-user-photo-ready'],
