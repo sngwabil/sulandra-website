@@ -78,11 +78,17 @@ if (!emar.includes(SAFETY_IMPORT)) {
 const hasBloodGlucose = /bloodGlucose\s*:\s*z\.number\(\)\.finite\(\)\.min\(0\)\.max\(2000\)\.optional\(\)\.nullable\(\)/.test(emar);
 if (!hasBloodGlucose) {
   const compactSchemaAnchor = 'witnessUserId:z.string().optional().nullable()});';
+  const modernSchemaAnchor = '  witnessUserId: z.string().optional().nullable(),\n';
   const formattedSchemaAnchor = /(witnessUserId\s*:\s*z\.string\(\)\.optional\(\)\.nullable\(\),?)(\s*\n\s*\}\);)/;
   if (emar.includes(compactSchemaAnchor)) {
     emar = emar.replace(
       compactSchemaAnchor,
       'witnessUserId:z.string().optional().nullable(),bloodGlucose:z.number().finite().min(0).max(2000).optional().nullable()});',
+    );
+  } else if (emar.includes(modernSchemaAnchor)) {
+    emar = emar.replace(
+      modernSchemaAnchor,
+      `${modernSchemaAnchor}  bloodGlucose: z.number().finite().min(0).max(2000).optional().nullable(),\n`,
     );
   } else if (formattedSchemaAnchor.test(emar)) {
     emar = emar.replace(
