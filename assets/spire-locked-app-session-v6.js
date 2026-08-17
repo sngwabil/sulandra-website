@@ -2,15 +2,16 @@
   'use strict';
 
   // SPIRE_LOCKED_APP_SESSION_V6
-  // Client Station launches a locked Spire app session. The app owns the full
-  // viewport and removes its own fullscreen/minimize affordance. Browser-native
-  // fullscreen is re-entered on the next trusted user interaction after a reload,
-  // because browsers prohibit requestFullscreen() without user activation.
+  // Client Station is the single fullscreen owner for a Spire session. The user
+  // enters browser fullscreen once from Client Station; patient charts and secure
+  // chat then run inside that same top-level shell and do not expose a second
+  // fullscreen/minimize control. Return to Portal is the intentional app exit.
   const MARKER = 'SPIRE_LOCKED_APP_SESSION_V6';
   const LOCK_KEY = 'spire:locked-app-session';
   const PORTAL_KEY = 'spire:return-to-portal-url';
   const ROOT = document.documentElement;
   const isClientStation = /\/spire\/client-station\.html$/i.test(location.pathname);
+  const isShellChild = window.top !== window && /^\/spire\//i.test(location.pathname);
 
   function sameOriginUrl(value) {
     if (!value) return '';
@@ -50,59 +51,49 @@
       html[data-spire-locked-app="true"] body[data-spire-client-station] .main{
         width:100%!important;max-width:none!important;min-width:0!important;
       }
-      html[data-spire-locked-app="true"] #spireFullscreenControl,
-      html[data-spire-locked-app="true"] [data-spire-fullscreen-control],
-      html[data-spire-locked-app="true"] #spireResumeFullscreen{
+      /* Only embedded Spire workspaces hide fullscreen controls. Client Station
+         keeps the one fullscreen button that owns the whole app session. */
+      html[data-spire-shell-child="true"] #spireFullscreenControl,
+      html[data-spire-shell-child="true"] [data-spire-fullscreen-control],
+      html[data-spire-shell-child="true"] #spireResumeFullscreen{
         display:none!important;visibility:hidden!important;pointer-events:none!important;
       }
       body[data-spire-client-station] .client-table tbody td:last-child,
       body[data-spire-client-station] .client-table tbody td:last-child .status-ok{
         color:#39d98a!important;-webkit-text-fill-color:#39d98a!important;font-weight:800!important;
       }
-      body[data-spire-client-station] #spireReturnPortal{
-        font-weight:800!important;
-      }
+      body[data-spire-client-station] #spireReturnPortal{font-weight:800!important}
     `;
     document.head.appendChild(style);
   }
 
-  async function requestNativeFullscreen() {
-    if (!sessionStorage.getItem(LOCK_KEY) || document.fullscreenElement) return;
-    if (!ROOT.requestFullscreen) return;
-    try {
-      await ROOT.requestFullscreen({ navigationUI: 'hide' });
-    } catch {
-      try { await ROOT.requestFullscreen(); } catch {}
-    }
+  // Kept as the single native-fullscreen entry point for the Client Station shell.
+  function requestFullscreen() {
+    return window.SpireUserPreferences?.requestFullscreen?.({ persist: true });
   }
 
-  let fullscreenArmed = false;
-  function armFullscreenReentry() {
-    if (fullscreenArmed || !sessionStorage.getItem(LOCK_KEY) || document.fullscreenElement) return;
-    fullscreenArmed = true;
-    const reenter = (event) => {
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest('#spireReturnPortal,#stationLogout')) return;
-      fullscreenArmed = false;
-      requestNativeFullscreen().catch(() => {});
-    };
-    document.addEventListener('pointerdown', reenter, { capture: true, once: true });
-    document.addEventListener('keydown', reenter, { capture: true, once: true });
-  }
-
-  function lockViewport() {
+  function markShellState() {
     installStyles();
-    ROOT.dataset.spireLockedApp = 'true';
-    ROOT.dataset.spireAppFullscreen = 'true';
-    document.getElementById('spireFullscreenControl')?.remove();
-    document.querySelectorAll('[data-spire-fullscreen-control],#spireResumeFullscreen').forEach((node) => node.remove());
-    armFullscreenReentry();
+    if (isClientStation && window.top === window) {
+      capturePortal();
+      sessionStorage.setItem(LOCK_KEY, 'true');
+      ROOT.dataset.spireLockedApp = 'true';
+      ROOT.dataset.spireShellHost = 'true';
+      delete ROOT.dataset.spireShellChild;
+      return;
+    }
+    if (isShellChild && sessionStorage.getItem(LOCK_KEY)) {
+      ROOT.dataset.spireLockedApp = 'true';
+      ROOT.dataset.spireShellChild = 'true';
+      document.querySelectorAll('[data-spire-fullscreen-control],#spireFullscreenControl,#spireResumeFullscreen').forEach((node) => node.remove());
+    }
   }
 
   function returnToPortal() {
     const destination = sameOriginUrl(sessionStorage.getItem(PORTAL_KEY)) || '/employee-portal.html';
     sessionStorage.removeItem(LOCK_KEY);
     delete ROOT.dataset.spireLockedApp;
+    delete ROOT.dataset.spireShellHost;
     const leave = () => location.assign(destination);
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {}).finally(leave);
@@ -112,7 +103,7 @@
   }
 
   function installReturnButton() {
-    if (!isClientStation || document.getElementById('spireReturnPortal')) return;
+    if (!isClientStation || window.top !== window || document.getElementById('spireReturnPortal')) return;
     const refresh = document.getElementById('topRefresh');
     if (!refresh) return;
     const button = document.createElement('button');
@@ -131,26 +122,16 @@
   }
 
   function initialize() {
-    installStyles();
-    if (isClientStation) {
-      capturePortal();
-      sessionStorage.setItem(LOCK_KEY, 'true');
-    }
-    if (!sessionStorage.getItem(LOCK_KEY)) return;
-    lockViewport();
-    installReturnButton();
+    markShellState();
+    if (isClientStation && window.top === window) installReturnButton();
   }
-
-  document.addEventListener('fullscreenchange', () => {
-    if (sessionStorage.getItem(LOCK_KEY) && !document.fullscreenElement) armFullscreenReentry();
-  });
 
   window.addEventListener('pageshow', initialize);
   window.addEventListener('resize', () => {
-    if (sessionStorage.getItem(LOCK_KEY)) lockViewport();
+    if (sessionStorage.getItem(LOCK_KEY)) markShellState();
   });
   window.visualViewport?.addEventListener('resize', () => {
-    if (sessionStorage.getItem(LOCK_KEY)) lockViewport();
+    if (sessionStorage.getItem(LOCK_KEY)) markShellState();
   });
 
   document.addEventListener('click', (event) => {
@@ -162,5 +143,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, { once: true });
   else initialize();
 
-  window.SpireLockedAppSessionV6 = Object.freeze({ marker: MARKER, returnToPortal });
+  window.SpireLockedAppSessionV6 = Object.freeze({ marker: MARKER, requestFullscreen, returnToPortal });
 })();
