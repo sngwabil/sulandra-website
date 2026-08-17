@@ -1,15 +1,17 @@
 (() => {
   'use strict';
 
-  // SPIRE_USER_PROFILE_PHOTO_V1
-  // Isolated signed-in user profile-photo bridge for the Spire accessibility/profile modal.
-  // Intentionally event-driven: no MutationObserver and no clinical workspace ownership.
+  // SPIRE_USER_PROFILE_PHOTO_V2
+  // Isolated signed-in user profile-photo bridge for Spire profile, Client Station,
+  // top navigation, and current-user clinical note author surfaces.
+  // Intentionally event-driven/CSS-driven: no MutationObserver and no clinical workspace ownership.
 
   const LEGACY_PROFILE_KEY = 'spireUserProfile';
   const PHOTO_KEY = 'spire:user-profile-photo';
   const SESSION_KEY = 'sulandra:employee:session';
   const INPUT_ID = 'userAvatarUpload';
   const PREVIEW_ID = 'modalUserAvatarPreview';
+  const STYLE_ID = 'spireUserProfilePhotoStyle';
   const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
   const MAX_EDGE = 512;
 
@@ -69,33 +71,80 @@
     }
   }
 
-  function initials() {
-    const profile = readLegacyProfile();
-    const name = String(
-      document.getElementById('inputClinicianName')?.value ||
-      profile.name ||
-      ''
-    ).trim();
-    return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'UP';
+  function installStyles() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+      html[data-spire-user-photo-ready="true"] #modalUserAvatarPreview,
+      html[data-spire-user-photo-ready="true"] #topUserAvatarDisplay,
+      html[data-spire-user-photo-ready="true"] #stationAvatar,
+      html[data-spire-user-photo-ready="true"] #activeAuthorAvatar,
+      html[data-spire-user-photo-ready="true"] .notes-editor-pane .note-author-banner > .note-author-avatar,
+      html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar {
+        background-image:var(--spire-user-profile-photo)!important;
+        background-size:cover!important;
+        background-position:center!important;
+        background-repeat:no-repeat!important;
+        color:transparent!important;
+        -webkit-text-fill-color:transparent!important;
+        text-shadow:none!important;
+        font-size:0!important;
+        line-height:0!important;
+        overflow:hidden!important;
+      }
+      html[data-spire-user-photo-ready="true"] #modalUserAvatarPreview::before,
+      html[data-spire-user-photo-ready="true"] #modalUserAvatarPreview::after,
+      html[data-spire-user-photo-ready="true"] #topUserAvatarDisplay::before,
+      html[data-spire-user-photo-ready="true"] #topUserAvatarDisplay::after,
+      html[data-spire-user-photo-ready="true"] #stationAvatar::before,
+      html[data-spire-user-photo-ready="true"] #stationAvatar::after,
+      html[data-spire-user-photo-ready="true"] #activeAuthorAvatar::before,
+      html[data-spire-user-photo-ready="true"] #activeAuthorAvatar::after,
+      html[data-spire-user-photo-ready="true"] .notes-editor-pane .note-author-banner > .note-author-avatar::before,
+      html[data-spire-user-photo-ready="true"] .notes-editor-pane .note-author-banner > .note-author-avatar::after,
+      html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar::before,
+      html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar::after {
+        content:none!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function activatePhotoCss(dataUrl) {
+    if (!dataUrl) return;
+    installStyles();
+    document.documentElement.style.setProperty('--spire-user-profile-photo', `url(${JSON.stringify(dataUrl)})`);
+    document.documentElement.dataset.spireUserPhotoReady = 'true';
   }
 
   function paintPhoto(element, dataUrl) {
     if (!element || !dataUrl) return;
-    element.style.backgroundImage = `url("${dataUrl}")`;
+    element.style.backgroundImage = `url(${JSON.stringify(dataUrl)})`;
     element.style.backgroundSize = 'cover';
     element.style.backgroundPosition = 'center';
     element.style.backgroundRepeat = 'no-repeat';
     element.textContent = '';
-    element.dataset.avatarData = dataUrl;
+    element.dataset.spireCurrentUserPhoto = 'true';
     element.setAttribute('aria-label', 'Signed-in user profile photo');
+  }
+
+  function currentUserAvatarElements() {
+    return Array.from(document.querySelectorAll([
+      `#${PREVIEW_ID}`,
+      '#topUserAvatarDisplay',
+      '#stationAvatar',
+      '#activeAuthorAvatar',
+      '.notes-editor-pane .note-author-banner > .note-author-avatar',
+      '#accessibilityModal .note-author-banner > .note-author-avatar',
+    ].join(',')));
   }
 
   function restorePhoto() {
     const photo = savedPhoto();
     if (!photo) return false;
-    paintPhoto(document.getElementById(PREVIEW_ID), photo);
-    paintPhoto(document.getElementById('topUserAvatarDisplay'), photo);
-    paintPhoto(document.getElementById('activeAuthorAvatar'), photo);
+    activatePhotoCss(photo);
+    currentUserAvatarElements().forEach(element => paintPhoto(element, photo));
     return true;
   }
 
@@ -188,11 +237,10 @@
     showMessage('Processing profile photo…');
     try {
       const dataUrl = await optimizePhoto(file);
+      activatePhotoCss(dataUrl);
       paintPhoto(document.getElementById(PREVIEW_ID), dataUrl);
       if (!persistPhoto(dataUrl)) throw new Error('The photo could not be saved in this browser.');
 
-      // Reuse the existing Spire profile refresh when available so the same photo
-      // appears in the top navigation and clinical-note author badge immediately.
       try { window.loadUserProfile?.(); } catch {}
       restorePhoto();
       window.dispatchEvent(new CustomEvent('spire:user-profile-photo-change', {
@@ -221,17 +269,33 @@
     restorePhoto();
   }
 
-  function init() {
-    if (!document.getElementById('accessibilityModal')) return;
-    refreshProfileUi();
+  function scheduleRestore() {
+    for (const delay of [0, 120, 400, 1000, 2200]) {
+      setTimeout(() => restorePhoto(), delay);
+    }
+  }
 
-    // Explicit UI events only. No DOM observer: clinical chart rendering is left untouched.
+  function init() {
+    installStyles();
+    restorePhoto();
+    bindInput();
+    normalizeSpireBranding();
+    scheduleRestore();
+
     document.getElementById('tabProfileBtn')?.addEventListener('click', () => setTimeout(refreshProfileUi, 0));
     document.getElementById('tabPresetBtn')?.addEventListener('click', () => setTimeout(() => normalizeSpireBranding(), 0));
     document.querySelectorAll('.user-profile-trigger,[data-user-profile-trigger]').forEach(button => {
-      button.addEventListener('click', () => setTimeout(refreshProfileUi, 0));
+      button.addEventListener('click', () => scheduleRestore());
     });
 
+    document.addEventListener('click', event => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest('.chart-tab,.summary-sub-tab,#topStation,#openSelected,#openSecureChat,.user-profile-trigger,[data-user-profile-trigger]')) return;
+      scheduleRestore();
+    });
+
+    window.addEventListener('pageshow', scheduleRestore);
+    window.addEventListener('spire:user-profile-photo-change', () => restorePhoto());
     window.addEventListener('storage', event => {
       if (event.key === scopedPhotoKey() || event.key === PHOTO_KEY || event.key === LEGACY_PROFILE_KEY) restorePhoto();
     });
