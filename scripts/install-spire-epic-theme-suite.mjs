@@ -15,6 +15,7 @@ for (const prerequisite of [
   './fix-spire-mar-single-owner-v5.mjs',
   './fix-spire-orders-workspace-v6.mjs',
   './fix-spire-orders-medication-name-v7.mjs',
+  './fix-spire-flowsheet-set-renderer-v10.mjs',
 ]) {
   await import(prerequisite);
 }
@@ -26,7 +27,8 @@ const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
 const darkroomClinicalSurfacesMarker = 'SPIRE_DARKROOM_CLINICAL_SURFACES_V4';
 const darkroomChromaticDepthMarker = 'SPIRE_DARKROOM_CHROMATIC_DEPTH_V5';
 const darkroomFlowsheetLabelsMarker = 'SPIRE_DARKROOM_FLOWSHEET_LABELS_V6';
-const flowsheetFilterDropdownMarker = 'SPIRE_FLOWSHEET_SET_SELECTOR_V9';
+const flowsheetFilterDropdownMarker = 'SPIRE_FLOWSHEET_SET_SELECTOR_V10';
+const flowsheetNativeRendererMarker = 'SPIRE_FLOWSHEET_NATIVE_SET_RENDERER_V10';
 const ordersMedicationNameMarker = 'SPIRE_ORDERS_MEDICATION_NAME_V7';
 
 const masterPath = path.join(root, 'spire', 'master.html');
@@ -107,13 +109,13 @@ const assets = [
     visualOnly: true,
   },
   {
-    label: 'Flowsheet set selector V9',
+    label: 'Flowsheet set selector V10',
     file: 'assets/spire-flowsheet-filter-dropdown-v7.js',
     src: '/assets/spire-flowsheet-filter-dropdown-v7.js',
-    version: '20260817-flowsheet-set-selector-v9-1',
+    version: '20260817-flowsheet-set-selector-v10-1',
     attr: 'data-spire-flowsheet-filter-dropdown',
     marker: flowsheetFilterDropdownMarker,
-    required: [flowsheetFilterDropdownMarker, 'activeFlowsheetFilterName', 'flowsheetTreeMenu', 'Nurse / Skilled Nursing', 'All Clinical Documentation', 'SpireFlowsheetSetSelectorV9', 'desiredLabel', 'positionMenu'],
+    required: [flowsheetFilterDropdownMarker, 'activeFlowsheetFilterName', 'flowsheetTreeMenu', 'Nurse / Skilled Nursing', 'All Clinical Documentation', 'SpireFlowsheetSetSelectorV10', 'announceSelection', 'ensureTrigger'],
     forbidden: ['SpireMarTimelineContract', 'wakeCanonicalMarTimeline', 'loadCanonicalMarView'],
   },
 ];
@@ -150,6 +152,9 @@ for (const required of [
   'SPIRE_MAR_SINGLE_OWNER_V5',
   'SPIRE_ORDERS_WORKSPACE_RECOVERY_V6',
   ordersMedicationNameMarker,
+  flowsheetNativeRendererMarker,
+  'spireRowsForFlowsheetSet',
+  "document.addEventListener('spire:flowsheet-set-change'",
   'data-spire-orders-loading="true"',
   'data-spire-orders-live="true"',
   "m?.medicationName || m?.name || m?.displayName || m?.order?.medicationName || m?.order?.name || 'Medication'",
@@ -187,4 +192,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 + clinical surfaces V4 + chromatic depth V5 + Flowsheet labels V6, authoritative Flowsheet set selector V9, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
+console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 + clinical surfaces V4 + chromatic depth V5 + Flowsheet labels V6, native Flowsheet set renderer V10 + selector V10, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
