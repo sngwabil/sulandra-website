@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const masterPath = path.join(root, 'spire', 'master.html');
-const marker = 'SPIRE_WORKSPACE_PERFORMANCE_V2';
+const marker = 'SPIRE_WORKSPACE_PERFORMANCE_V3';
+const legacyMarker = 'SPIRE_WORKSPACE_PERFORMANCE_V2';
 const fullscreenMarker = 'SPIRE_FULLSCREEN_RESUME_V1';
 
 let source = await readFile(masterPath, 'utf8');
@@ -16,41 +17,73 @@ if (!source.includes('SPIRE_STABLE_WORKSPACE_SELECTOR_FIX_V1')) {
   throw new Error('Spire workspace performance guard requires the selector repair first');
 }
 
+// Migrate a workspace that was previously generated with V2. V2 obscured a valid
+// same-patient snapshot with a full-screen hydration mask, defeating instant restore.
+if (source.includes(legacyMarker) && !source.includes(marker)) {
+  source = source.replace(
+    /  \/\/ SPIRE_WORKSPACE_PERFORMANCE_V2: keep the client chart visually stable while authenticated data hydrates\.[\s\S]*?(?=  function stableLoadingMarkup\(label='Loading chart…'\) \{)/,
+    `  // ${marker}: restored chart/workspace content stays visible while live data revalidates.\n`
+  );
+  source = source
+    .replace("    setChartHydrationMask(true, 'Loading the selected client without exposing another chart…');\n", '')
+    .replace("      if(bootPatientId) setChartHydrationMask(true, 'Restoring the current client chart…');\n", '')
+    .replace("        if(restoredSnapshot && rememberedView==='summary-view') clearChartHydrationMask();\n", '')
+    .replace("        clearChartHydrationMask();\n        renderClientPicker();", '        renderClientPicker();')
+    .replace("      }else{\n        clearChartHydrationMask();\n      }", '      }')
+    .replace("      clearChartHydrationMask();\n      console.error('[S.P.I.R.E. Master]',error);", "      console.error('[S.P.I.R.E. Master]',error);");
+}
+
 if (!source.includes(marker)) {
   const ttlBefore = '  const CHART_SNAPSHOT_TTL_MS = 90 * 1000;';
   const ttlAfter = '  const CHART_SNAPSHOT_TTL_MS = 15 * 60 * 1000;';
-  if (!source.includes(ttlBefore)) throw new Error('Spire workspace performance guard could not find chart snapshot TTL');
-  source = source.replace(ttlBefore, ttlAfter);
+  if (source.includes(ttlBefore)) source = source.replace(ttlBefore, ttlAfter);
+  if (!source.includes(ttlAfter)) throw new Error('Spire workspace performance guard could not establish chart snapshot TTL');
 
   const gateBefore = '    if (!force && viewIsFresh(viewId) && hasLiveViewContent(target)) return Promise.resolve();';
-  const gateAfter = '    if (!force && hasLiveViewContent(target)) return Promise.resolve();';
-  if (!source.includes(gateBefore)) throw new Error('Spire workspace performance guard could not find tab revisit gate');
-  source = source.replace(gateBefore, gateAfter);
+  const gateV2 = '    if (!force && hasLiveViewContent(target)) return Promise.resolve();';
+  const gateAfter = "    if (!force && hasLiveViewContent(target) && target.dataset.spireRestored !== 'true') return Promise.resolve();";
+  if (source.includes(gateBefore)) source = source.replace(gateBefore, gateAfter);
+  else if (source.includes(gateV2)) source = source.replace(gateV2, gateAfter);
+  if (!source.includes(gateAfter)) throw new Error('Spire workspace performance guard could not establish persistent tab revisit gate');
+
+  const snapshotAnchor = `  function minimalAdmissionSnapshot() {`;
+  if (!source.includes(snapshotAnchor)) throw new Error('Spire workspace performance guard could not find snapshot helper anchor');
+  const workspaceSnapshotHelpers = `  // ${marker}: cache the rendered active workspace so a hard refresh never falls back to an empty template.\n  function workspaceSnapshotKey(viewId, patientId=state.patientId) {\n    return 'spire:workspace-snapshot:v1:' + selectedEntityId() + ':' + String(patientId || '') + ':' + String(viewId || 'summary-view');\n  }\n\n  function saveWorkspaceSnapshot(viewId, host) {\n    if (!state.patientId || !host || viewId === 'summary-view' || !hasLiveViewContent(host)) return;\n    try {\n      const snapshot = { version: 1, savedAt: Date.now(), patientId: String(state.patientId), entityId: selectedEntityId(), viewId: String(viewId), html: host.innerHTML };\n      const serialized = JSON.stringify(snapshot);\n      if (serialized.length <= 700000) sessionStorage.setItem(workspaceSnapshotKey(viewId), serialized);\n    } catch (error) {\n      console.warn('[Spire UX] workspace snapshot was not cached', error);\n    }\n  }\n\n  function restoreWorkspaceSnapshot(viewId, patientId=state.patientId) {\n    if (!viewId || viewId === 'summary-view' || !patientId) return false;\n    const host = document.getElementById(viewId);\n    if (!host) return false;\n    try {\n      const raw = sessionStorage.getItem(workspaceSnapshotKey(viewId, patientId));\n      if (!raw) return false;\n      const snapshot = JSON.parse(raw);\n      if (snapshot?.version !== 1 || String(snapshot.patientId) !== String(patientId) || snapshot.entityId !== selectedEntityId() || snapshot.viewId !== String(viewId)) return false;\n      if (!snapshot.savedAt || Date.now() - Number(snapshot.savedAt) > CHART_SNAPSHOT_TTL_MS || !snapshot.html) {\n        sessionStorage.removeItem(workspaceSnapshotKey(viewId, patientId));\n        return false;\n      }\n      host.innerHTML = snapshot.html;\n      host.dataset.spireLive = 'true';\n      host.dataset.spirePatientId = String(patientId);\n      host.dataset.spireRestored = 'true';\n      return true;\n    } catch (error) {\n      console.warn('[Spire UX] cached workspace could not be restored', error);\n      return false;\n    }\n  }\n\n`;
+  source = source.replace(snapshotAnchor, workspaceSnapshotHelpers + snapshotAnchor);
+
+  const markBefore = `  function markViewLive(viewId, fresh=true) {\n    const host = document.getElementById(viewId);\n    if (!host) return;\n    host.dataset.spireLive = 'true';\n    host.dataset.spirePatientId = String(state.patientId || '');\n    clearViewBusy(host);\n    if (fresh) viewLoadState.set(viewStateKey(viewId), { at: Date.now(), promise: null });\n  }`;
+  const markAfter = `  function markViewLive(viewId, fresh=true) {\n    const host = document.getElementById(viewId);\n    if (!host) return;\n    host.dataset.spireLive = 'true';\n    host.dataset.spirePatientId = String(state.patientId || '');\n    delete host.dataset.spireRestored;\n    clearViewBusy(host);\n    if (fresh) viewLoadState.set(viewStateKey(viewId), { at: Date.now(), promise: null });\n    if (fresh && viewId !== 'summary-view') saveWorkspaceSnapshot(viewId, host);\n  }`;
+  if (source.includes(markBefore)) source = source.replace(markBefore, markAfter);
+  if (!source.includes(markAfter)) throw new Error('Spire workspace performance guard could not make workspace snapshots persistent');
+
+  const notesLoadBefore = `    if (!state.patientId) return showError(host,'Select a client first.');\n    const data = await api(\`/api/spire/patients/${'${encodeURIComponent(state.patientId)}'}/chart-review-v2?category=notes\`);`;
+  const notesLoadAfter = `    if (!state.patientId) return showError(host,'Select a client first.');\n    if(!hasLiveViewContent(host)) host.innerHTML = stableLoadingMarkup('Loading clinical notes…');\n    const data = await api(\`/api/spire/patients/${'${encodeURIComponent(state.patientId)}'}/chart-review-v2?category=notes\`);`;
+  if (source.includes(notesLoadBefore)) source = source.replace(notesLoadBefore, notesLoadAfter);
+  if (!source.includes(notesLoadAfter)) throw new Error('Spire workspace performance guard could not suppress the legacy Notes template during first load');
 
   const forcedActiveBefore = "      if (active !== 'summary-view') await activateView(active, { force: true });";
-  const forcedActiveAfter = "      if (active !== 'summary-view') await activateView(active);\n      clearChartHydrationMask();";
-  if (!source.includes(forcedActiveBefore)) throw new Error('Spire workspace performance guard could not find forced active-view reload');
-  source = source.replace(forcedActiveBefore, forcedActiveAfter);
+  const forcedActiveV2 = "      if (active !== 'summary-view') await activateView(active);\n      clearChartHydrationMask();";
+  const forcedActiveAfter = "      if (active !== 'summary-view') await activateView(active);";
+  if (source.includes(forcedActiveBefore)) source = source.replace(forcedActiveBefore, forcedActiveAfter);
+  else if (source.includes(forcedActiveV2)) source = source.replace(forcedActiveV2, forcedActiveAfter);
+  if (!source.includes(forcedActiveAfter)) throw new Error('Spire workspace performance guard could not disable forced active-view rebuilds');
 
-  const loadingHelperAnchor = `  function stableLoadingMarkup(label='Loading chart…') {`;
-  if (!source.includes(loadingHelperAnchor)) throw new Error('Spire workspace performance guard could not find loading helper anchor');
-  const hydrationHelpers = `  // ${marker}: keep the client chart visually stable while authenticated data hydrates.\n  function installChartHydrationMaskStyles() {\n    if (document.getElementById('spire-chart-hydration-style')) return;\n    const style = document.createElement('style');\n    style.id = 'spire-chart-hydration-style';\n    style.textContent = '#spireChartHydrationMask{position:fixed;inset:78px 0 0;z-index:9990;display:flex;align-items:center;justify-content:center;background:var(--main-bg,#eef6fa);font:600 13px/1.45 Segoe UI,Arial,sans-serif;color:#244657}#spireChartHydrationMask[hidden]{display:none!important}.spire-chart-hydration-card{min-width:min(420px,calc(100vw - 36px));max-width:520px;background:#fff;border:1px solid #b8d7e5;border-radius:8px;box-shadow:0 12px 36px rgba(14,84,116,.16);padding:22px 24px;text-align:center}.spire-chart-hydration-card strong{display:block;color:#075f86;font-size:15px;margin-bottom:5px}.spire-chart-hydration-card span{color:#607b89}';\n    document.head.appendChild(style);\n  }\n\n  function setChartHydrationMask(active, label='Opening client chart…') {\n    installChartHydrationMaskStyles();\n    let mask = document.getElementById('spireChartHydrationMask');\n    if (!mask) {\n      mask = document.createElement('div');\n      mask.id = 'spireChartHydrationMask';\n      mask.setAttribute('role', 'status');\n      mask.setAttribute('aria-live', 'polite');\n      mask.innerHTML = '<div class="spire-chart-hydration-card"><strong>Opening client chart</strong><span></span></div>';\n      document.body.appendChild(mask);\n    }\n    mask.querySelector('span').textContent = label;\n    mask.hidden = !active;\n  }\n\n  function clearChartHydrationMask() {\n    const mask = document.getElementById('spireChartHydrationMask');\n    if (mask) mask.hidden = true;\n  }\n\n`;
-  source = source.replace(loadingHelperAnchor, hydrationHelpers + loadingHelperAnchor);
-
-  const openPatientBefore = `  async function openPatient(patientId) {\n    if (!patientId) return;\n    const nextPatientId = String(patientId);`;
-  const openPatientAfter = `  async function openPatient(patientId) {\n    if (!patientId) return;\n    setChartHydrationMask(true, 'Loading the selected client without exposing another chart…');\n    const nextPatientId = String(patientId);`;
-  if (!source.includes(openPatientBefore)) throw new Error('Spire workspace performance guard could not find openPatient hydration anchor');
-  source = source.replace(openPatientBefore, openPatientAfter);
+  const openPatientBefore = `    restoreChartSnapshot(state.patientId);\n    await loadPatientChart(state.patientId);`;
+  const openPatientAfter = `    const rememberedView = sessionStorage.getItem('spire:active-view') || 'summary-view';\n    if (rememberedView && document.getElementById(rememberedView)) {\n      selectViewShell(rememberedView);\n      restoreWorkspaceSnapshot(rememberedView, state.patientId);\n    }\n    restoreChartSnapshot(state.patientId);\n    await loadPatientChart(state.patientId);`;
+  if (source.includes(openPatientBefore)) source = source.replace(openPatientBefore, openPatientAfter);
+  if (!source.includes(openPatientAfter)) throw new Error('Spire workspace performance guard could not establish patient workspace restore');
 
   const bootstrapBefore = `      await window.SulandraEntityContext?.ready;\n      state.entity=window.SulandraEntityContext?.get?.()?.selectedEntity||null;\n      state.user=await loadSession();\n      updateHeaderIdentity();\n      await loadWorkspace();\n      state.patientId=currentPatientId();\n      if(state.patientId){\n        sessionStorage.setItem('spire:patientId',state.patientId);\n        const rememberedView=sessionStorage.getItem('spire:active-view');\n        if(rememberedView && document.getElementById(rememberedView)) selectViewShell(rememberedView);\n        restoreChartSnapshot(state.patientId);\n        await loadPatientChart(state.patientId);\n      }else{\n        renderClientPicker();\n      }`;
-  const bootstrapAfter = `      const bootPatientId=currentPatientId();\n      if(bootPatientId) setChartHydrationMask(true, 'Restoring the current client chart…');\n      await window.SulandraEntityContext?.ready;\n      state.entity=window.SulandraEntityContext?.get?.()?.selectedEntity||null;\n      state.patientId=bootPatientId;\n      let rememberedView='summary-view';\n      let restoredSnapshot=false;\n      if(state.patientId){\n        sessionStorage.setItem('spire:patientId',state.patientId);\n        rememberedView=sessionStorage.getItem('spire:active-view')||'summary-view';\n        if(rememberedView && document.getElementById(rememberedView)) selectViewShell(rememberedView);\n        restoredSnapshot=restoreChartSnapshot(state.patientId);\n        if(restoredSnapshot && rememberedView==='summary-view') clearChartHydrationMask();\n      }\n      const sessionPromise=loadSession();\n      const workspacePromise=loadWorkspace();\n      const chartPromise=state.patientId?loadPatientChart(state.patientId):Promise.resolve();\n      state.user=await sessionPromise;\n      updateHeaderIdentity();\n      await Promise.all([workspacePromise,chartPromise]);\n      if(!state.patientId){\n        clearChartHydrationMask();\n        renderClientPicker();\n      }else{\n        clearChartHydrationMask();\n      }`;
-  if (!source.includes(bootstrapBefore)) throw new Error('Spire workspace performance guard could not find bootstrap hydration block');
-  source = source.replace(bootstrapBefore, bootstrapAfter);
+  const bootstrapV2 = `      const bootPatientId=currentPatientId();\n      await window.SulandraEntityContext?.ready;\n      state.entity=window.SulandraEntityContext?.get?.()?.selectedEntity||null;\n      state.patientId=bootPatientId;\n      let rememberedView='summary-view';\n      let restoredSnapshot=false;\n      if(state.patientId){\n        sessionStorage.setItem('spire:patientId',state.patientId);\n        rememberedView=sessionStorage.getItem('spire:active-view')||'summary-view';\n        if(rememberedView && document.getElementById(rememberedView)) selectViewShell(rememberedView);\n        restoredSnapshot=restoreChartSnapshot(state.patientId);\n      }\n      const sessionPromise=loadSession();\n      const workspacePromise=loadWorkspace();\n      const chartPromise=state.patientId?loadPatientChart(state.patientId):Promise.resolve();\n      state.user=await sessionPromise;\n      updateHeaderIdentity();\n      await Promise.all([workspacePromise,chartPromise]);\n      if(!state.patientId){\n        renderClientPicker();\n      }`;
+  const bootstrapAfter = `      const bootPatientId=currentPatientId();\n      await window.SulandraEntityContext?.ready;\n      state.entity=window.SulandraEntityContext?.get?.()?.selectedEntity||null;\n      state.patientId=bootPatientId;\n      let rememberedView='summary-view';\n      if(state.patientId){\n        sessionStorage.setItem('spire:patientId',state.patientId);\n        rememberedView=sessionStorage.getItem('spire:active-view')||'summary-view';\n        if(rememberedView && document.getElementById(rememberedView)) selectViewShell(rememberedView);\n        restoreChartSnapshot(state.patientId);\n        restoreWorkspaceSnapshot(rememberedView,state.patientId);\n      }\n      const sessionPromise=loadSession();\n      const workspacePromise=loadWorkspace();\n      const chartPromise=state.patientId?loadPatientChart(state.patientId):Promise.resolve();\n      state.user=await sessionPromise;\n      updateHeaderIdentity();\n      await Promise.all([workspacePromise,chartPromise]);\n      if(!state.patientId) renderClientPicker();`;
+  if (source.includes(bootstrapBefore)) source = source.replace(bootstrapBefore, bootstrapAfter);
+  else if (source.includes(bootstrapV2)) source = source.replace(bootstrapV2, bootstrapAfter);
+  if (!source.includes(bootstrapAfter)) throw new Error('Spire workspace performance guard could not establish non-blocking bootstrap restore');
 
-  const catchBefore = `    }catch(error){\n      console.error('[S.P.I.R.E. Master]',error);`;
-  const catchAfter = `    }catch(error){\n      clearChartHydrationMask();\n      console.error('[S.P.I.R.E. Master]',error);`;
-  if (!source.includes(catchBefore)) throw new Error('Spire workspace performance guard could not find bootstrap error handler');
-  source = source.replace(catchBefore, catchAfter);
+  const cleanupBefore = `      if (key.startsWith('spire:chart-snapshot:v1:') || key === 'spire:active-view') sessionStorage.removeItem(key);`;
+  const cleanupAfter = `      if (key.startsWith('spire:chart-snapshot:v1:') || key.startsWith('spire:workspace-snapshot:v1:') || key === 'spire:active-view') sessionStorage.removeItem(key);`;
+  if (source.includes(cleanupBefore)) source = source.replace(cleanupBefore, cleanupAfter);
+  if (!source.includes(cleanupAfter)) throw new Error('Spire workspace performance guard could not establish workspace snapshot cleanup');
 }
 
 if (!source.includes(fullscreenMarker)) {
@@ -63,10 +96,14 @@ const required = [
   marker,
   fullscreenMarker,
   'const CHART_SNAPSHOT_TTL_MS = 15 * 60 * 1000;',
-  'if (!force && hasLiveViewContent(target)) return Promise.resolve();',
+  "target.dataset.spireRestored !== 'true'",
+  'workspaceSnapshotKey',
+  'restoreWorkspaceSnapshot',
+  'saveWorkspaceSnapshot',
+  "stableLoadingMarkup('Loading clinical notes…')",
   "if (active !== 'summary-view') await activateView(active);",
   'const bootPatientId=currentPatientId();',
-  'setChartHydrationMask',
+  'spire:workspace-snapshot:v1:',
   'spire:fullscreen-intent-v1',
   'Resume Full Screen',
 ];
@@ -76,12 +113,15 @@ for (const needle of required) {
 
 for (const forbidden of [
   'if (!force && viewIsFresh(viewId) && hasLiveViewContent(target)) return Promise.resolve();',
+  'if (!force && hasLiveViewContent(target)) return Promise.resolve();',
   "if (active !== 'summary-view') await activateView(active, { force: true });",
   'const CHART_SNAPSHOT_TTL_MS = 90 * 1000;',
+  'setChartHydrationMask(true',
+  'spireChartHydrationMask',
 ]) {
-  if (source.includes(forbidden)) throw new Error(`Spire workspace performance verification failed: stale reload behavior remains: ${forbidden}`);
+  if (source.includes(forbidden)) throw new Error(`Spire workspace performance verification failed: stale blocking/reload behavior remains: ${forbidden}`);
 }
 
 await writeFile(masterPath, source, 'utf8');
 
-console.log('Spire workspace performance v2 installed: same-patient snapshot restores before workspace loading, chart/workspace requests overlap, loaded tabs stay mounted for instant revisits, active tabs are not force-reloaded, placeholder templates are masked during hydration, and native fullscreen intent survives refresh with one-click browser-safe resume.');
+console.log('Spire workspace performance v3 installed: same-patient chart and active workspace snapshots restore immediately, live tabs remain mounted for instant revisits, restored workspaces revalidate without being blanked, active tabs are not force-rebuilt, and no full-chart hydration mask obscures cached content.');
