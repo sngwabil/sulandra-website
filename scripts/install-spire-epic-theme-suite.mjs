@@ -15,7 +15,6 @@ for (const prerequisite of [
   './fix-spire-mar-single-owner-v5.mjs',
   './fix-spire-orders-workspace-v6.mjs',
   './fix-spire-orders-medication-name-v7.mjs',
-  './fix-spire-flowsheet-set-renderer-v10.mjs',
 ]) {
   await import(prerequisite);
 }
@@ -27,8 +26,6 @@ const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
 const darkroomClinicalSurfacesMarker = 'SPIRE_DARKROOM_CLINICAL_SURFACES_V4';
 const darkroomChromaticDepthMarker = 'SPIRE_DARKROOM_CHROMATIC_DEPTH_V5';
 const darkroomFlowsheetLabelsMarker = 'SPIRE_DARKROOM_FLOWSHEET_LABELS_V6';
-const flowsheetFilterDropdownMarker = 'SPIRE_FLOWSHEET_SET_SELECTOR_V10';
-const flowsheetNativeRendererMarker = 'SPIRE_FLOWSHEET_NATIVE_SET_RENDERER_V10';
 const ordersMedicationNameMarker = 'SPIRE_ORDERS_MEDICATION_NAME_V7';
 
 const masterPath = path.join(root, 'spire', 'master.html');
@@ -67,6 +64,7 @@ const assets = [
     attr: 'data-spire-darkroom-surfaces',
     marker: darkroomMarker,
     required: [darkroomMarker, 'SPIRE_DARKROOM_SURFACE_COVERAGE_V1', 'data-spire-epic-theme="darkRoom"', '.workspace-view:not(#mar-view)', '#hpAdmissionModal', 'SpireDarkRoomSurfaceCoverage'],
+    visualOnly: true,
   },
   {
     label: 'Dark Room repair V3',
@@ -108,16 +106,6 @@ const assets = [
     required: [darkroomFlowsheetLabelsMarker, '#flowsheetTable', 'style.setProperty', 'SpireDarkRoomFlowsheetLabelsV6', 'restoreAll'],
     visualOnly: true,
   },
-  {
-    label: 'Flowsheet set selector V10',
-    file: 'assets/spire-flowsheet-filter-dropdown-v7.js',
-    src: '/assets/spire-flowsheet-filter-dropdown-v7.js',
-    version: '20260817-flowsheet-set-selector-v10-1',
-    attr: 'data-spire-flowsheet-filter-dropdown',
-    marker: flowsheetFilterDropdownMarker,
-    required: [flowsheetFilterDropdownMarker, 'activeFlowsheetFilterName', 'flowsheetTreeMenu', 'Nurse / Skilled Nursing', 'All Clinical Documentation', 'SpireFlowsheetSetSelectorV10', 'announceSelection', 'ensureTrigger'],
-    forbidden: ['SpireMarTimelineContract', 'wakeCanonicalMarTimeline', 'loadCanonicalMarView'],
-  },
 ];
 
 function escapeRegExp(value) {
@@ -127,6 +115,8 @@ function escapeRegExp(value) {
 function tagFor(asset) {
   return `<script src="${asset.src}?v=${asset.version}" ${asset.attr}="${asset.marker}"></script>`;
 }
+
+const forbiddenVisualOwnership = /SpireFlowsheetSetSelector|SPIRE_FLOWSHEET_NATIVE_SET_RENDERER|SPIRE_MASTER_FLOWSHEET_AUTHORITY|restoreAuthoritativeToolbar|spire:flowsheet-set-change/;
 
 for (const asset of assets) {
   const assetPath = path.join(root, asset.file);
@@ -141,6 +131,9 @@ for (const asset of assets) {
   if (asset.visualOnly && /SpireMarTimelineContract|wakeCanonicalMarTimeline|loadCanonicalMarView/.test(runtime)) {
     throw new Error(`SPIRE ${asset.label} must remain visual-only and cannot own MAR rendering`);
   }
+  if (asset.visualOnly && forbiddenVisualOwnership.test(runtime)) {
+    throw new Error(`SPIRE ${asset.label} must remain visual-only and cannot own Flowsheet rendering or selection`);
+  }
   const syntax = spawnSync(process.execPath, ['--check', assetPath], { encoding: 'utf8' });
   if (syntax.status !== 0) {
     throw new Error(`SPIRE ${asset.label} syntax failed: ${(syntax.stderr || syntax.stdout || '').trim()}`);
@@ -152,15 +145,24 @@ for (const required of [
   'SPIRE_MAR_SINGLE_OWNER_V5',
   'SPIRE_ORDERS_WORKSPACE_RECOVERY_V6',
   ordersMedicationNameMarker,
-  flowsheetNativeRendererMarker,
-  'spireRowsForFlowsheetSet',
-  "document.addEventListener('spire:flowsheet-set-change'",
+  'function renderFlowsheet(host)',
+  "const groupRows = rows.filter(row => (row.groupName||'Other') === state.flowGroup);",
+  'window.openFlowsheetGroup = openFlowsheetGroup;',
   'data-spire-orders-loading="true"',
   'data-spire-orders-live="true"',
   "m?.medicationName || m?.name || m?.displayName || m?.order?.medicationName || m?.order?.name || 'Medication'",
   "['flowsheets-view','notes-view','manage-orders-view']",
 ]) {
   if (!transformedMaster.includes(required)) throw new Error(`SPIRE transformed chart missing ${required}`);
+}
+for (const forbidden of [
+  'SPIRE_FLOWSHEET_NATIVE_SET_RENDERER_V10',
+  'spireRowsForFlowsheetSet',
+  "document.addEventListener('spire:flowsheet-set-change'",
+]) {
+  if (transformedMaster.includes(forbidden)) {
+    throw new Error(`SPIRE theme build must preserve native Flowsheet ownership; found ${forbidden}`);
+  }
 }
 if (transformedMaster.includes('esc(medicationName(m))')) {
   throw new Error('SPIRE transformed chart still contains the removed MAR medicationName dependency in Orders');
@@ -170,6 +172,9 @@ for (const relative of targetFiles) {
   const filePath = path.join(root, relative);
   let html = await readFile(filePath, 'utf8');
   if (!html.includes('</body>')) throw new Error(`${relative} does not contain </body> for SPIRE theme publication`);
+
+  // Theme publication must never leave the retired V10 Flowsheet selector overlay behind.
+  html = html.replace(/\s*<script src="\/assets\/spire-flowsheet-filter-dropdown-v7\.js(?:\?v=[^"]+)?"[^>]*><\/script>\s*/g, '\n');
 
   for (const asset of assets) {
     const tag = tagFor(asset);
@@ -184,6 +189,9 @@ for (const relative of targetFiles) {
   await writeFile(filePath, html, 'utf8');
 
   const verified = await readFile(filePath, 'utf8');
+  if (verified.includes('/assets/spire-flowsheet-filter-dropdown-v7.js')) {
+    throw new Error(`SPIRE retired V10 Flowsheet selector overlay is still published to ${relative}`);
+  }
   for (const asset of assets) {
     const expected = `${asset.src}?v=${asset.version}`;
     if (!verified.includes(expected) || !verified.includes(asset.marker)) {
@@ -192,4 +200,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 + clinical surfaces V4 + chromatic depth V5 + Flowsheet labels V6, native Flowsheet set renderer V10 + selector V10, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
+console.log('SPIRE Epic theme suite installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
