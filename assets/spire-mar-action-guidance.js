@@ -1,11 +1,14 @@
 (() => {
   'use strict';
 
-  // SPIRE_MAR_ACTION_GUIDANCE_V2
-  // SPIRE_MAR_ACTION_GUIDANCE_V1
-  if (window.__SPIRE_MAR_ACTION_GUIDANCE_V2) return;
-  window.__SPIRE_MAR_ACTION_GUIDANCE_V2 = true;
+  // SPIRE_MAR_ACTION_GUIDANCE_V3
+  // Timing is advisory: the ordered scheduled time is preserved while the server
+  // records the actual administration time when the user saves the MAR action.
+  if (window.__SPIRE_MAR_ACTION_GUIDANCE_V3) return;
+  window.__SPIRE_MAR_ACTION_GUIDANCE_V3 = true;
 
+  const ON_TIME_WINDOW_MINUTES = 60;
+  const ON_TIME_WINDOW_MS = ON_TIME_WINDOW_MINUTES * 60_000;
   const GENERIC_REJECTION = /^(?:request failed|the mar action could not be saved)(?:\s*\((\d{3})\))?\.?$/i;
 
   function formatWhen(value) {
@@ -46,7 +49,7 @@
       return {
         kind: 'unknown',
         lead: 'This MAR occurrence does not have a valid scheduled time. Return to the MAR grid and select a scheduled occurrence.',
-        rejection: 'The server rejected this MAR action. Return to the MAR grid, refresh, and select a valid scheduled occurrence.',
+        rejection: 'The server rejected this MAR action. Timing does not block charting; refresh the MAR and verify the active order, authorization, and scheduled occurrence.',
       };
     }
 
@@ -56,34 +59,34 @@
     const span = durationText(difference);
     const sameCalendarDay = localDateInput(scheduled) === localDateInput(now);
 
-    if (difference > 60_000) {
+    if (difference > ON_TIME_WINDOW_MS) {
       return {
         kind: 'future',
-        lead: `Not due yet — this occurrence is scheduled for ${when} (${span} from now).`,
-        rejection: `The server rejected this MAR action. This occurrence is scheduled for ${when}, ${span} from now. Verify the ordered administration window before documenting it early.`,
+        lead: `Early administration warning — scheduled for ${when} (${span} from now). You may still document the medication; SPIRE will preserve the due time and record the actual administration time.`,
+        rejection: `The server rejected this MAR action for the occurrence scheduled ${when}. Being early does not by itself block charting; verify the active order, medication-administration authorization, and occurrence, then try again.`,
       };
     }
 
     if (!sameCalendarDay) {
       return {
         kind: 'past',
-        lead: `Past-due historical occurrence — due ${when} (${span} ago). This dose stays on that date; today's scheduled doses are separate.`,
-        rejection: `The server rejected this historical MAR action. This occurrence belongs to ${when}; it does not replace or block today's scheduled doses. Return to Today for current administration, or refresh this historical day and document the correct past occurrence.`,
+        lead: `Historical late administration warning — due ${when} (${span} ago). You may still document this occurrence; today's scheduled doses remain separate.`,
+        rejection: `The server rejected this historical MAR action for ${when}. Being late does not by itself block charting; refresh that MAR date and verify the active order, authorization, and occurrence.`,
       };
     }
 
-    if (difference < -60_000) {
+    if (difference < -ON_TIME_WINDOW_MS) {
       return {
         kind: 'past',
-        lead: `Past due today — scheduled for ${when} (${span} ago).`,
-        rejection: `The server rejected this MAR action for the occurrence scheduled ${when}. Refresh today's MAR and verify the active order and scheduled occurrence.`,
+        lead: `Late administration warning — scheduled for ${when} (${span} ago). You may still document the medication; SPIRE will preserve the due time and record the actual administration time.`,
+        rejection: `The server rejected this MAR action for the occurrence scheduled ${when}. Being late does not by itself block charting; verify the active order, medication-administration authorization, and occurrence, then try again.`,
       };
     }
 
     return {
       kind: 'current',
-      lead: `Due now — scheduled for ${when}.`,
-      rejection: `The server rejected this MAR action even though this occurrence is at its scheduled time. Refresh today's MAR and verify the active medication order before trying again.`,
+      lead: `Within administration window — scheduled for ${when}. Up to ${ON_TIME_WINDOW_MINUTES} minutes before or after the due time is treated as on time.`,
+      rejection: `The server rejected this MAR action even though it is within the ${ON_TIME_WINDOW_MINUTES}-minute administration window. Timing is not the block; refresh the MAR and verify the active order, medication-administration authorization, and scheduled occurrence.`,
     };
   }
 
@@ -150,7 +153,7 @@
     if (guidance) {
       guidance.className = `spire-mar-timing-guidance ${context.kind}`;
       guidance.textContent = context.lead;
-      guidance.setAttribute('role', context.kind === 'future' ? 'alert' : 'status');
+      guidance.setAttribute('role', context.kind === 'unknown' ? 'alert' : 'status');
     }
 
     const errorBox = dialog.querySelector('[data-mar-error]');
@@ -175,10 +178,14 @@
   }, true);
 
   window.__SPIRE_MAR_ACTION_GUIDANCE_CONTRACT = Object.freeze({
-    marker: 'SPIRE_MAR_ACTION_GUIDANCE_V2',
-    compatibilityMarker: 'SPIRE_MAR_ACTION_GUIDANCE_V1',
-    futureLabel: 'Not due yet',
-    pastLabel: 'Past-due historical occurrence',
+    marker: 'SPIRE_MAR_ACTION_GUIDANCE_V3',
+    compatibilityMarker: 'SPIRE_MAR_ACTION_GUIDANCE_V2',
+    onTimeWindowMinutes: ON_TIME_WINDOW_MINUTES,
+    timingIsAdvisory: true,
+    actualAdministrationTimeRecordedByServer: true,
+    scheduledTimePreserved: true,
+    earlyLabel: 'Early administration warning',
+    lateLabel: 'Late administration warning',
     todaySeparateFromHistory: true,
     genericErrorReplacement: true,
     wholeDocumentObserver: false,

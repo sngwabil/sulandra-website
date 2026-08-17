@@ -275,16 +275,20 @@ async function audit(
 
 const eventSchema = z.object({
   medicationOrderId: z.string().min(1),
-  scheduledFor: z.string().datetime().optional().nullable(),
+  // PostgreSQL timestamptz values may round-trip as Zulu or explicit-offset ISO strings.
+  // Accept both so selecting an existing scheduled occurrence can always be documented.
+  scheduledFor: z.string().datetime({ offset: true }).optional().nullable(),
   status: z.enum(['GIVEN', 'REFUSED', 'HELD', 'NOT_GIVEN', 'MISSED', 'PRN_GIVEN']),
   administeredDose: z.string().optional().nullable(),
   administeredRoute: z.string().optional().nullable(),
   reason: z.string().optional().nullable(),
   note: z.string().optional().nullable(),
   prnIndication: z.string().optional().nullable(),
-  barcodeValue: z.string().optional().nullable(),
+  barcodeValue: z.string().trim().max(1024).optional().nullable(),
   controlledQuantity: z.number().optional().nullable(),
   witnessUserId: z.string().optional().nullable(),
+  // Desktop and the forthcoming native scanner share this exact eMAR write path.
+  source: z.enum(['DESKTOP_MAR', 'MOBILE_SCAN']).default('DESKTOP_MAR'),
 });
 
 const effectivenessSchema = z.object({
@@ -572,12 +576,14 @@ export const registerSpireEmarRoutes = (
         );
       }
 
-      await audit(prisma, auth, patientId, `EMAR_${body.status}`, administrationId);
+      await audit(prisma, auth, patientId, `EMAR_${body.status}_${body.source}`, administrationId);
 
       res.status(201).json({
         data: {
           id: administrationId,
           status: body.status,
+          source: body.source,
+          barcodeCaptured: Boolean(body.barcodeValue),
           legalEntityId: selectedEntity(auth),
         },
       });
