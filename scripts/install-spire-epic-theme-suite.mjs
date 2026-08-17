@@ -8,6 +8,7 @@ await import('./optimize-spire-workspace-rendering.mjs');
 await import('./harden-spire-patient-transition.mjs');
 await import('./fix-spire-workspace-navigation.mjs');
 await import('./fix-spire-stable-workspace-selectors.mjs');
+await import('./fix-spire-workspace-performance.mjs');
 
 const marker = 'SPIRE_EPIC_THEME_SUITE_V1';
 const assetPath = path.join(root, 'assets', 'spire-epic-theme-suite.js');
