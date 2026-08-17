@@ -29,14 +29,10 @@ if (!source.includes(marker)) {
   const prewarmHelpers = `  // ${marker}: hydrate common documentation workspaces while the user reviews the chart.\n  function prewarmWorkspace(viewId) {\n    const target = document.getElementById(viewId);\n    if (!state.patientId || !target || !loaders[viewId] || hasLiveViewContent(target)) return Promise.resolve();\n    const key = viewStateKey(viewId);\n    const pending = viewLoadState.get(key)?.promise;\n    if (pending) return pending;\n\n    const patientAtStart = String(state.patientId);\n    const promise = Promise.resolve(loaders[viewId]?.())\n      .then(() => {\n        if (String(state.patientId) === patientAtStart) markViewLive(viewId, true);\n      })\n      .catch(error => {\n        console.warn('[Spire UX] background workspace prewarm failed', viewId, error);\n      })\n      .finally(() => {\n        const current = viewLoadState.get(key);\n        if (current?.promise === promise) viewLoadState.set(key, { at: current.at || 0, promise: null });\n      });\n    viewLoadState.set(key, { at: viewLoadState.get(key)?.at || 0, promise });\n    return promise;\n  }\n\n  let prewarmScheduledPatientId = '';\n  function scheduleWorkspacePrewarm() {\n    const patientAtSchedule = String(state.patientId || '');\n    if (!patientAtSchedule || navigator.connection?.saveData || prewarmScheduledPatientId === patientAtSchedule) return;\n    prewarmScheduledPatientId = patientAtSchedule;\n\n    const run = async () => {\n      if (String(state.patientId || '') !== patientAtSchedule) return;\n      if (!state.user) {\n        prewarmScheduledPatientId = '';\n        setTimeout(scheduleWorkspacePrewarm, 200);\n        return;\n      }\n      for (const viewId of ['flowsheets-view','mar-view','notes-view']) {\n        if (String(state.patientId || '') !== patientAtSchedule) return;\n        const host = document.getElementById(viewId);\n        if (!host || activeViewId() === viewId || hasLiveViewContent(host)) continue;\n        await prewarmWorkspace(viewId);\n        await new Promise(resolve => setTimeout(resolve, 0));\n      }\n    };\n\n    if ('requestIdleCallback' in window) requestIdleCallback(() => { void run(); }, { timeout: 1200 });\n    else setTimeout(() => { void run(); }, 350);\n  }\n\n`;
   source = source.replace(helperAnchor, prewarmHelpers + helperAnchor);
 
-  const wireCandidates = [
-    `    document.querySelectorAll('.chart-tab').forEach(tab=>tab.addEventListener('click',()=>activateView(tab.dataset.view)));`,
-    `    $$('.chart-tab').forEach(tab=>tab.addEventListener('click',()=>activateView(tab.dataset.view)));`,
-  ];
-  const wireBefore = wireCandidates.find(candidate => source.includes(candidate));
-  if (!wireBefore) throw new Error('SPIRE workstation v4 could not find chart tab wiring after selector normalization');
-  const wireAfter = `    document.querySelectorAll('.chart-tab').forEach(tab=>{\n      const viewId=tab.dataset.view;\n      tab.addEventListener('pointerenter',()=>{ void prewarmWorkspace(viewId); },{passive:true});\n      tab.addEventListener('pointerdown',()=>{ void prewarmWorkspace(viewId); },{passive:true});\n      tab.addEventListener('click',()=>activateView(viewId));\n    });`;
-  source = source.replace(wireBefore, wireAfter);
+  const wireAnchor = `  function wireTabs() {\n    $('#mainChartTabs')?.addEventListener('click', event => {`;
+  if (!source.includes(wireAnchor)) throw new Error('SPIRE workstation v4 could not find delegated chart tab wiring');
+  const wireWithPrewarm = `  function wireTabs() {\n    const prewarmTabFromEvent = event => {\n      const tab = event.target instanceof Element ? event.target.closest('.chart-tab[data-view]') : null;\n      const viewId = tab?.dataset?.view || '';\n      if (viewId) void prewarmWorkspace(viewId);\n    };\n    $('#mainChartTabs')?.addEventListener('pointerover', prewarmTabFromEvent, { passive: true });\n    $('#mainChartTabs')?.addEventListener('pointerdown', prewarmTabFromEvent, { passive: true });\n    $('#mainChartTabs')?.addEventListener('click', event => {`;
+  source = source.replace(wireAnchor, wireWithPrewarm);
 
   const loadedBanner = `      showBanner('Client chart loaded. Documentation is live and audit-tracked.','success');`;
   if (!source.includes(loadedBanner)) throw new Error('SPIRE workstation v4 could not find chart load completion');
@@ -57,7 +53,8 @@ for (const required of [
   "['flowsheets-view','mar-view','notes-view']",
   'requestIdleCallback',
   'scheduleWorkspacePrewarm();',
-  "document.querySelectorAll('.chart-tab').forEach(tab=>{",
+  "addEventListener('pointerover', prewarmTabFromEvent",
+  "addEventListener('pointerdown', prewarmTabFromEvent",
 ]) {
   if (!source.includes(required)) throw new Error(`SPIRE workstation v4 verification failed: missing ${required}`);
 }
@@ -66,4 +63,4 @@ if (source.includes('data-spire-fullscreen-resume="SPIRE_FULLSCREEN_RESUME_V1"')
 }
 
 await writeFile(masterPath, source, 'utf8');
-console.log('SPIRE workstation v4 installed: common workspaces prewarm in idle time, normalized chart tabs share one in-flight load, and the legacy fullscreen resume shim is removed.');
+console.log('SPIRE workstation v4 installed: common workspaces prewarm in idle time, delegated chart tabs share one in-flight load, and the legacy fullscreen resume shim is removed.');
