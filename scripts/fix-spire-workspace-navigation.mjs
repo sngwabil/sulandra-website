@@ -7,7 +7,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const stationPath = path.join(root, 'assets', 'spire-client-station.js');
 const masterPath = path.join(root, 'spire', 'master.html');
 const routerPath = path.join(root, 'assets', 'spire-workspace-navigation.js');
-const routeMarker = 'SPIRE_DURABLE_TOP_LEVEL_ROUTE_V1';
+const routeMarker = 'SPIRE_DURABLE_TOP_LEVEL_ROUTE_V2';
+const legacyRouteMarker = 'SPIRE_DURABLE_TOP_LEVEL_ROUTE_V1';
 const tabMarker = 'SPIRE_DURABLE_TAB_ROUTER_V1';
 const scriptTag = `<script src="/assets/spire-workspace-navigation.js?v=20260816-durable-navigation-1" data-spire-navigation="${tabMarker}"></script>`;
 
@@ -15,27 +16,34 @@ let station = await readFile(stationPath, 'utf8');
 
 if (!station.includes(routeMarker)) {
   const legacyNavigate = /  function navigateSpire\(url\) \{[\s\S]*?\n  \}\n\n  function openChart/;
-  if (!legacyNavigate.test(station)) {
-    throw new Error('Spire Client Station navigation contract changed: legacy navigateSpire implementation was not found');
+  const generatedV1Navigate = /  \/\/ SPIRE_DURABLE_TOP_LEVEL_ROUTE_V1[\s\S]*?  async function navigateSpire\(url\) \{[\s\S]*?\n  \}\n\n  function openChart/;
+  const replacement = `  // ${routeMarker}\n  // The authenticated SPIRE shell owns browser-native fullscreen. Internal Client\n  // Station → chart/chat navigation changes only the iframe route, so explicitly\n  // exiting fullscreen here would cause the inconsistent station-to-station collapse.\n  // Standalone top-level navigation may still leave native fullscreen by browser rule.\n  async function navigateSpire(url) {\n    const destination = String(url || '').trim();\n    if (!destination) return;\n    location.assign(destination);\n  }\n\n  function openChart`;
+
+  if (generatedV1Navigate.test(station)) {
+    station = station.replace(generatedV1Navigate, replacement);
+  } else if (legacyNavigate.test(station)) {
+    station = station.replace(legacyNavigate, replacement);
+  } else {
+    throw new Error('Spire Client Station navigation contract changed: navigateSpire implementation was not found');
   }
-  station = station.replace(
-    legacyNavigate,
-    `  // ${routeMarker}\n  // The browser URL must always represent the active clinical workspace. A chart\n  // opened inside a transient fullscreen iframe disappears on browser refresh and\n  // returns the user to Client Station, so chart/chat navigation is always top-level.\n  async function navigateSpire(url) {\n    const destination = String(url || '').trim();\n    if (!destination) return;\n    if (document.fullscreenElement && typeof document.exitFullscreen === 'function') {\n      try {\n        await document.exitFullscreen();\n      } catch (error) {\n        console.warn('[Spire Client Station] Unable to leave fullscreen before route navigation.', error);\n      }\n    }\n    location.assign(destination);\n  }\n\n  function openChart`
-  );
 
   station = station.replace(
     'Fullscreen chart/chat navigation is kept\n  // inside the active document so browser fullscreen does not collapse on route changes.',
-    'Chart/chat navigation uses durable top-level routes so browser refresh preserves\n  // the active clinical workspace and selected patient route.'
+    'Chart/chat navigation uses durable shell-owned routes so authenticated fullscreen\n  // remains stable while the selected clinical workspace changes.'
+  );
+  station = station.replace(
+    'Chart/chat navigation uses durable top-level routes so browser refresh preserves\n  // the active clinical workspace and selected patient route.',
+    'Chart/chat navigation uses durable shell-owned routes so browser refresh preserves\n  // the active clinical workspace without explicitly collapsing fullscreen.'
   );
   await writeFile(stationPath, station, 'utf8');
 }
 
 station = await readFile(stationPath, 'utf8');
-for (const required of [routeMarker, 'document.exitFullscreen', 'location.assign(destination)']) {
+for (const required of [routeMarker, 'location.assign(destination)']) {
   if (!station.includes(required)) throw new Error(`Spire durable top-level navigation verification failed: missing ${required}`);
 }
-if (station.includes('spireFullscreenRouteFrame')) {
-  throw new Error('Spire durable top-level navigation verification failed: transient fullscreen route iframe is still present');
+for (const forbidden of ['spireFullscreenRouteFrame', 'document.exitFullscreen', legacyRouteMarker]) {
+  if (station.includes(forbidden)) throw new Error(`Spire durable top-level navigation verification failed: stale fullscreen navigation remains: ${forbidden}`);
 }
 
 const router = await readFile(routerPath, 'utf8');
@@ -59,4 +67,4 @@ if (!master.includes('/assets/spire-workspace-navigation.js') || !master.include
   throw new Error('Spire durable tab router was not published to the master chart');
 }
 
-console.log('Spire durable navigation installed: chart tabs use a capture-safe router and Client Station opens chart/chat as refresh-safe top-level routes.');
+console.log('Spire durable navigation v2 installed: chart tabs use a capture-safe router and shell-owned fullscreen remains stable across Client Station → chart/chat navigation.');
