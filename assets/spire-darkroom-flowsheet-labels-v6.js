@@ -10,6 +10,50 @@
   const touched = new Set();
   let raf = 0;
 
+  function ensureStaticDarkRoomCss() {
+    if (document.getElementById('spireDarkroomFlowsheetStaticCssV7')) return;
+    const style = document.createElement('style');
+    style.id = 'spireDarkroomFlowsheetStaticCssV7';
+    style.textContent = `
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view .flowsheet-filters{
+        position:relative!important;z-index:8100!important;overflow:visible!important;
+      }
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view .filter-dropdown[data-spire-role-selector="true"]{
+        position:relative!important;z-index:8200!important;overflow:visible!important;
+      }
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view #spireFlowsheetRoleMenu{
+        z-index:9000!important;max-height:320px!important;overflow-y:auto!important;
+      }
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #headerTimeRow>th:first-child,
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #headerDateRow>th:first-child{
+        background:#10243b!important;background-color:#10243b!important;background-image:none!important;
+        box-shadow:inset 0 0 0 999px #10243b!important;color:#f2f5fb!important;
+        -webkit-text-fill-color:#f2f5fb!important;border-color:#33465f!important;
+      }
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr.flow-section-row>td{
+        background:#10291f!important;background-color:#10291f!important;background-image:none!important;
+        box-shadow:inset 0 0 0 999px #10291f!important;color:#f2f5fb!important;
+        -webkit-text-fill-color:#f2f5fb!important;border-color:#33465f!important;
+      }
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr:not(.flow-section-row)>td:first-child,
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr:not(.flow-section-row)>th:first-child{
+        background:#0d1a2d!important;background-color:#0d1a2d!important;background-image:none!important;
+        box-shadow:inset 0 0 0 999px #0d1a2d!important;color:#f2f5fb!important;
+        -webkit-text-fill-color:#f2f5fb!important;border-color:#33465f!important;
+      }
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr:not(.flow-section-row)>td:first-child b,
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr:not(.flow-section-row)>td:first-child strong{
+        background:transparent!important;color:#f2f5fb!important;-webkit-text-fill-color:#f2f5fb!important;
+      }
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr:not(.flow-section-row)>td:first-child div,
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr:not(.flow-section-row)>td:first-child small,
+      html[data-spire-epic-theme="darkRoom"] #flowsheets-view:has(#spireNurseTaskMenu.active) #flowsheetTbody tr:not(.flow-section-row)>td:first-child span{
+        background:transparent!important;color:#b7c4d8!important;-webkit-text-fill-color:#b7c4d8!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   const PALETTE = Object.freeze({
     adl: '#0c2930',
     behavior: '#26162e',
@@ -73,47 +117,6 @@
     });
   }
 
-  function ensureNurseSurfaceStyle() {
-    let style = document.getElementById('spireDarkroomNurseFlowsheetSurfaceV6');
-    if (style) return style;
-    style = document.createElement('style');
-    style.id = 'spireDarkroomNurseFlowsheetSurfaceV6';
-    style.textContent = `
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #headerTimeRow > th:first-child,
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #headerDateRow > th:first-child{
-        background:#10243b!important;background-color:#10243b!important;background-image:none!important;
-        color:#f2f5fb!important;-webkit-text-fill-color:#f2f5fb!important;border-color:#33465f!important;
-      }
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #flowsheetTbody tr.flow-section-row > td{
-        background:#10291f!important;background-color:#10291f!important;background-image:none!important;
-        color:#f2f5fb!important;-webkit-text-fill-color:#f2f5fb!important;border-color:#33465f!important;
-      }
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #flowsheetTbody tr:not(.flow-section-row) > td:first-child,
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #flowsheetTbody tr:not(.flow-section-row) > th:first-child{
-        background:#0d1a2d!important;background-color:#0d1a2d!important;background-image:none!important;
-        color:#f2f5fb!important;-webkit-text-fill-color:#f2f5fb!important;border-color:#33465f!important;
-      }
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #flowsheetTbody tr:not(.flow-section-row) > td:first-child b,
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #flowsheetTbody tr:not(.flow-section-row) > td:first-child strong{
-        background:transparent!important;color:#f2f5fb!important;-webkit-text-fill-color:#f2f5fb!important;
-      }
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #flowsheetTbody tr:not(.flow-section-row) > td:first-child div,
-      html[data-spire-epic-theme="darkRoom"] #flowsheets-view[data-spire-darkroom-nurse-flowsheet="true"] #flowsheetTbody tr:not(.flow-section-row) > td:first-child small{
-        background:transparent!important;color:#b7c4d8!important;-webkit-text-fill-color:#b7c4d8!important;
-      }
-    `;
-    document.head.appendChild(style);
-    return style;
-  }
-
-  function isNurseView(host) {
-    const selectedRole = window.SpireFlowsheetRoleSelector?.getRole?.();
-    if (selectedRole === 'nurse') return true;
-    const header = host?.querySelector?.('#headerTimeRow > th:first-child')?.textContent || '';
-    const label = host?.querySelector?.('#activeFlowsheetFilterName')?.textContent || '';
-    return /^\s*Nurse Flowsheets\b/i.test(header) || /^\s*Nurse Flowsheets\b/i.test(label);
-  }
-
   function restoreAll() {
     for (const element of Array.from(touched)) {
       const snapshot = originals.get(element);
@@ -130,7 +133,6 @@
       originals.delete(element);
       touched.delete(element);
     }
-    document.getElementById('flowsheets-view')?.removeAttribute('data-spire-darkroom-nurse-flowsheet');
   }
 
   function normalize() {
@@ -141,9 +143,6 @@
 
     const host = document.getElementById('flowsheets-view');
     if (!host) return;
-
-    ensureNurseSurfaceStyle();
-    host.dataset.spireDarkroomNurseFlowsheet = isNurseView(host) ? 'true' : 'false';
 
     const cells = new Set([
       ...host.querySelectorAll('#flowsheetTable thead tr > th:first-child'),
@@ -184,6 +183,7 @@
 
   const start = () => {
     if (!document.body) return;
+    ensureStaticDarkRoomCss();
     new MutationObserver(schedule).observe(document.body, { childList:true, subtree:true, attributes:true, attributeFilter:['style','class'] });
     schedule();
   };
