@@ -39,3 +39,6 @@ jobs:
 
       - name: Verify SPIRE 1.1 Phase B EVV gate
         run: node scripts/verify-spire-1.1-phase-b-evv.mjs
+
+      - name: Verify SPIRE 1.1 Phase B DODD billing rules
+        run: node scripts/verify-spire-1.1-phase-b-dodd-billing.mjs
