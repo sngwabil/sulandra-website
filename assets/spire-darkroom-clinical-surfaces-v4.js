@@ -2,8 +2,9 @@
   'use strict';
 
   // SPIRE_DARKROOM_CLINICAL_SURFACES_V4
-  // Extends Dark Room to chart surfaces rendered outside the canonical workspace selectors:
-  // live Flowsheets sticky cells, body-level dialogs, and the standalone Client Station.
+  // Extends the selected Dark Room theme to dynamically rendered clinical surfaces:
+  // all chart workspaces except MAR, live Flowsheets sticky cells, body-level dialogs,
+  // and the standalone Client Station.
   const MARKER = 'SPIRE_DARKROOM_CLINICAL_SURFACES_V4';
   const ROOT = document.documentElement;
   const STYLE_ID = 'spireDarkRoomClinicalSurfacesV4Style';
@@ -20,6 +21,19 @@
     }
     style.dataset.spireDarkroomClinicalSurfaces = MARKER;
     style.textContent = `
+      /* Every clinical workspace except the canonical MAR renderer follows Dark Room. */
+      :root[data-spire-epic-theme="darkRoom"] .workspace-view:not(#mar-view),
+      :root[data-spire-epic-theme="darkRoom"] .workspace-view:not(#mar-view) :is(.epic-section-card,.epic-section-body,.spire-card,.spire-kv-card,.notes-container,.notes-sidebar-list,.notes-editor-pane,.note-card,.note-item-card,.order-card,.care-plan-card,.detail-card,.detail-panel,.panel,.card,.widget,.tile,.table-wrap,.table-container){
+        background:var(--epic-card)!important;background-image:none!important;color:var(--epic-text)!important;border-color:var(--epic-line)!important;
+      }
+      :root[data-spire-epic-theme="darkRoom"] .workspace-view:not(#mar-view) :is(.epic-section-header,.card-header,.panel-header,.section-header,.widget-header,.detail-header,.spire-section-title){
+        background:var(--epic-panel2)!important;background-image:none!important;color:var(--epic-text)!important;border-color:var(--epic-line)!important;
+      }
+      :root[data-spire-epic-theme="darkRoom"] .workspace-view:not(#mar-view) :is(input,select,textarea){
+        background:#081427!important;color:var(--epic-text)!important;-webkit-text-fill-color:var(--epic-text)!important;border-color:var(--epic-line)!important;
+      }
+      :root[data-spire-epic-theme="darkRoom"] .workspace-view:not(#mar-view) :is(input,textarea)::placeholder{color:var(--epic-muted)!important;opacity:1!important}
+
       /* Live Flowsheets: eliminate legacy white sticky/task cells and inline light surfaces. */
       :root[data-spire-epic-theme="darkRoom"] #flowsheets-view,
       :root[data-spire-epic-theme="darkRoom"] #flowsheets-view :is(.flowsheet-grid-container,.flowsheet-main-layout,.flow-workspace,.flow-grid,.flow-groups,.flowsheet-tree){
@@ -174,12 +188,24 @@
     document.querySelectorAll(`.${AUTO_SURFACE},.${AUTO_TEXT}`).forEach(element => element.classList.remove(AUTO_SURFACE, AUTO_TEXT));
   }
 
+  function renameThemeUi() {
+    const tab = document.getElementById('accessPresetsTab');
+    const intro = tab?.querySelector('p');
+    if (intro && /Epic-style clinical themes/i.test(intro.textContent || '')) {
+      intro.textContent = 'Choose from the existing S.P.I.R.E. presets or the eight clinical themes below. Each choice is saved for the signed-in user.';
+    }
+    const heading = document.querySelector('#spireEpicThemeSuiteGroup .spire-epic-theme-heading b');
+    if (heading && /Epic/i.test(heading.textContent || '')) heading.textContent = 'Available Themes — Clinical set';
+  }
+
   function normalize() {
     ensureStyle();
+    renameThemeUi();
     if (ROOT.dataset.spireEpicTheme !== 'darkRoom') {
       clearMarks();
       return;
     }
+    document.querySelectorAll('.workspace-view:not(#mar-view)').forEach(normalizeRoot);
     const flowsheet = document.getElementById('flowsheets-view');
     if (flowsheet) normalizeRoot(flowsheet);
     const dialog = document.getElementById('masterDialogBackdrop');
