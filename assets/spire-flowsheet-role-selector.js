@@ -6,7 +6,7 @@
   // flowsheet without replacing its server-backed grid, staged File workflow,
   // audit behavior, or inline entry controls.
 
-  const VERSION = '20260815-role-selector-3';
+  const VERSION = '20260817-role-selector-4';
   const ROLE_KEY = 'spire:flowsheet:selected-role';
   const ROLE_DEFS = Object.freeze({
     dsp: { label: 'DSP Daily Documentation' },
@@ -34,12 +34,18 @@
     style.textContent = `
       #flowsheets-view .filter-dropdown[data-spire-role-selector="true"]{position:relative;cursor:pointer;user-select:none;min-width:240px;padding-right:24px}
       #flowsheets-view .filter-dropdown[data-spire-role-selector="true"]:focus{outline:2px solid #2563eb;outline-offset:1px}
-      #spireFlowsheetRoleMenu{position:absolute;left:0;top:calc(100% + 3px);z-index:7200;display:none;min-width:275px;background:#fff;border:1px solid #7f9db9;border-radius:4px;box-shadow:0 8px 24px rgba(15,23,42,.28);padding:4px;color:#172b3b}
+      #spireFlowsheetRoleMenu{position:fixed;left:0;top:0;z-index:12000;display:none;min-width:275px;max-width:min(360px,calc(100vw - 16px));background:#fff;border:1px solid #7f9db9;border-radius:4px;box-shadow:0 10px 30px rgba(15,23,42,.38);padding:4px;color:#172b3b}
       #spireFlowsheetRoleMenu.open{display:block}
       #spireFlowsheetRoleMenu button{display:block;width:100%;border:0;background:#fff;text-align:left;padding:8px 10px;border-radius:3px;cursor:pointer;font:600 12px/1.25 "Segoe UI",Arial,sans-serif;color:#163d60}
       #spireFlowsheetRoleMenu button:hover,#spireFlowsheetRoleMenu button:focus{background:#dbeafe;outline:none}
       #spireFlowsheetRoleMenu button[aria-checked="true"]{background:#cfe8ff;color:#003b67;font-weight:800}
       #spireFlowsheetRoleMenu button small{display:block;margin-top:2px;color:#607789;font-weight:500}
+      html[data-spire-epic-theme="darkRoom"] #spireFlowsheetRoleMenu{background:#101e36!important;border-color:#3a4a63!important;color:#f2f5fb!important;box-shadow:0 12px 34px rgba(0,0,0,.7)!important}
+      html[data-spire-epic-theme="darkRoom"] #spireFlowsheetRoleMenu button{background:#101e36!important;color:#f2f5fb!important;border-color:#3a4a63!important}
+      html[data-spire-epic-theme="darkRoom"] #spireFlowsheetRoleMenu button:hover,
+      html[data-spire-epic-theme="darkRoom"] #spireFlowsheetRoleMenu button:focus{background:#162b49!important;color:#f2f5fb!important}
+      html[data-spire-epic-theme="darkRoom"] #spireFlowsheetRoleMenu button[aria-checked="true"]{background:#173654!important;color:#53ddff!important;box-shadow:inset 3px 0 0 #ff4fc4!important}
+      html[data-spire-epic-theme="darkRoom"] #spireFlowsheetRoleMenu button small{color:#aebbd0!important}
       #spireRoleScopeNote{margin:5px 0 2px;padding:6px 7px;border:1px solid #b6c8d8;background:#eef6ff;color:#234d6d;font-size:10.5px;line-height:1.3}
     `;
     document.head.appendChild(style);
@@ -57,6 +63,29 @@
       </button>`).join('');
   }
 
+  function positionMenu() {
+    const menu = $('#spireFlowsheetRoleMenu');
+    const dropdown = $('#activeFlowsheetFilterName')?.closest('.filter-dropdown');
+    if (!menu || !dropdown || !menu.classList.contains('open')) return;
+
+    const rect = dropdown.getBoundingClientRect();
+    const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const viewportHeight = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const margin = 8;
+    const width = Math.min(Math.max(275, Math.ceil(rect.width)), Math.max(275, viewportWidth - margin * 2));
+    menu.style.width = `${width}px`;
+
+    const height = menu.offsetHeight || 150;
+    let left = Math.max(margin, Math.min(rect.left, viewportWidth - width - margin));
+    let top = rect.bottom + 4;
+    if (top + height > viewportHeight - margin && rect.top - height - 4 >= margin) {
+      top = rect.top - height - 4;
+    }
+    top = Math.max(margin, Math.min(top, viewportHeight - height - margin));
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
+  }
+
   function closeMenu() {
     const menu = $('#spireFlowsheetRoleMenu');
     if (menu) menu.classList.remove('open');
@@ -71,7 +100,10 @@
     const open = typeof force === 'boolean' ? force : !menu.classList.contains('open');
     menu.classList.toggle('open', open);
     dropdown.setAttribute('aria-expanded', open ? 'true' : 'false');
-    if (open) menu.querySelector(`[data-flow-role="${activeRole}"]`)?.focus();
+    if (open) {
+      positionMenu();
+      menu.querySelector(`[data-flow-role="${activeRole}"]`)?.focus();
+    }
   }
 
   function ensureDropdown() {
@@ -87,7 +119,6 @@
       dropdown.setAttribute('aria-expanded', 'false');
       dropdown.setAttribute('aria-label', 'Choose flowsheet role or template');
       dropdown.addEventListener('click', (event) => {
-        if (event.target instanceof Element && event.target.closest('#spireFlowsheetRoleMenu')) return;
         event.preventDefault();
         event.stopPropagation();
         toggleMenu();
@@ -101,13 +132,17 @@
         }
       });
     }
-    let menu = $('#spireFlowsheetRoleMenu', dropdown);
+
+    let menu = $('#spireFlowsheetRoleMenu');
     if (!menu) {
       menu = document.createElement('div');
       menu.id = 'spireFlowsheetRoleMenu';
       menu.setAttribute('role', 'menu');
-      dropdown.appendChild(menu);
+      document.body.appendChild(menu);
+    } else if (menu.parentElement !== document.body) {
+      document.body.appendChild(menu);
     }
+
     if (menu.dataset.spireRoleSelectorWired !== 'true') {
       menu.dataset.spireRoleSelectorWired = 'true';
       menu.innerHTML = menuHtml();
@@ -240,9 +275,17 @@
   function install() {
     document.addEventListener('click', (event) => {
       const dropdown = $('#activeFlowsheetFilterName')?.closest('.filter-dropdown');
-      if (dropdown && event.target instanceof Node && !dropdown.contains(event.target)) closeMenu();
+      const menu = $('#spireFlowsheetRoleMenu');
+      const target = event.target instanceof Node ? event.target : null;
+      if (dropdown && target && !dropdown.contains(target) && !menu?.contains(target)) closeMenu();
     }, true);
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeMenu(); });
+    window.addEventListener('resize', () => {
+      if ($('#spireFlowsheetRoleMenu')?.classList.contains('open')) positionMenu();
+    }, { passive: true });
+    window.addEventListener('scroll', () => {
+      if ($('#spireFlowsheetRoleMenu')?.classList.contains('open')) positionMenu();
+    }, true);
 
     observer = new MutationObserver(scheduleApply);
     observer.observe(document.body, { childList: true, subtree: true });
