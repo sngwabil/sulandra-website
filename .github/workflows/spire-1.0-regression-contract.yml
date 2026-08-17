@@ -36,3 +36,6 @@ jobs:
 
       - name: Enforce SPIRE 1.0 regression contract
         run: node scripts/verify-spire-1.0-regression-contract.mjs
+
+      - name: Verify SPIRE 1.1 Phase B EVV gate
+        run: node scripts/verify-spire-1.1-phase-b-evv.mjs
