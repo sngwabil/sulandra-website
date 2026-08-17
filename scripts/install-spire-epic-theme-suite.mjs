@@ -25,6 +25,7 @@ const darkroomMarker = 'SPIRE_DARKROOM_CONTRAST_V2';
 const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
 const darkroomClinicalSurfacesMarker = 'SPIRE_DARKROOM_CLINICAL_SURFACES_V4';
 const darkroomChromaticDepthMarker = 'SPIRE_DARKROOM_CHROMATIC_DEPTH_V5';
+const darkroomFlowsheetLabelsMarker = 'SPIRE_DARKROOM_FLOWSHEET_LABELS_V6';
 const ordersMedicationNameMarker = 'SPIRE_ORDERS_MEDICATION_NAME_V7';
 
 const masterPath = path.join(root, 'spire', 'master.html');
@@ -92,6 +93,16 @@ const assets = [
     attr: 'data-spire-darkroom-chromatic-depth',
     marker: darkroomChromaticDepthMarker,
     required: [darkroomChromaticDepthMarker, '--spire-v5-teal', '#flowsheets-view', '#notes-view', 'body[data-spire-client-station]', 'clinicalClass', 'SpireDarkRoomChromaticDepthV5'],
+    visualOnly: true,
+  },
+  {
+    label: 'Dark Room Flowsheet labels V6',
+    file: 'assets/spire-darkroom-flowsheet-labels-v6.js',
+    src: '/assets/spire-darkroom-flowsheet-labels-v6.js',
+    version: '20260816-darkroom-flowsheet-labels-v6-1',
+    attr: 'data-spire-darkroom-flowsheet-labels',
+    marker: darkroomFlowsheetLabelsMarker,
+    required: [darkroomFlowsheetLabelsMarker, '#flowsheetTable', 'style.setProperty', 'SpireDarkRoomFlowsheetLabelsV6', 'restoreAll'],
     visualOnly: true,
   },
 ];
@@ -165,4 +176,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 + clinical surfaces V4 + chromatic depth V5, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
+console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 + clinical surfaces V4 + chromatic depth V5 + Flowsheet labels V6, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
