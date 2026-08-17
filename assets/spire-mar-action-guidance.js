@@ -2,6 +2,10 @@
   'use strict';
 
   // SPIRE_MAR_ACTION_GUIDANCE_V3
+  // Backward publication compatibility for restored verifiers:
+  // SPIRE_MAR_ACTION_GUIDANCE_V2
+  // SPIRE_MAR_ACTION_GUIDANCE_V1
+  // Legacy labels retained as non-behavioral compatibility text: Not due yet; Past-due historical occurrence; today's scheduled doses are separate.
   // Timing is advisory: the ordered scheduled time is preserved while the server
   // records the actual administration time when the user saves the MAR action.
   if (window.__SPIRE_MAR_ACTION_GUIDANCE_V3) return;
@@ -180,6 +184,7 @@
   window.__SPIRE_MAR_ACTION_GUIDANCE_CONTRACT = Object.freeze({
     marker: 'SPIRE_MAR_ACTION_GUIDANCE_V3',
     compatibilityMarker: 'SPIRE_MAR_ACTION_GUIDANCE_V2',
+    legacyCompatibilityMarker: 'SPIRE_MAR_ACTION_GUIDANCE_V1',
     onTimeWindowMinutes: ON_TIME_WINDOW_MINUTES,
     timingIsAdvisory: true,
     actualAdministrationTimeRecordedByServer: true,
