@@ -41,3 +41,5 @@ if (source.includes('esc(medicationName(m))')) {
 
 await writeFile(masterPath, source, 'utf8');
 console.log('SPIRE Orders medication-name v7 installed: Orders renders medication names independently of the retired MAR helper.');
+
+await import('./fix-spire-note-identity-presentation-v3.mjs');
