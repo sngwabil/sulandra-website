@@ -103,8 +103,7 @@
     :root[data-spire-epic-theme="darkRoom"] body #notes-view :is(
       [style*="background:#fff" i],[style*="background: #fff" i],
       [style*="background:white" i],[style*="background: white" i],
-      [style*="background:#ffffff" i],[style*="background: #ffffff" i],
-      [style*="background:#f" i],[style*="background: #f" i]
+      [style*="background:#ffffff" i],[style*="background: #ffffff" i]
     ):not(button):not(.note-author-avatar){
       background:#0d1930!important;background-image:none!important;color:#e8f0f8!important;border-color:#33465f!important;
     }
