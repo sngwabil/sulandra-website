@@ -150,14 +150,22 @@
         {
           "path": "spire/master.html",
           "mustContain": [
-            "S.P.I.R.E.",
+            "S.P.I.R.E."
+          ]
+        },
+        {
+          "path": "scripts/verify-spire-foundation.mjs",
+          "mustContain": [
             "title=\"Secure Chat\"",
             "/assets/spire-user-preferences.js",
             "/assets/spire-screen-controls.js",
             "/assets/spire-master-navigation.js",
             "/assets/spire-medication-order-entry.js",
-            "/assets/spire-mar-timeline.js"
-          ]
+            "/assets/spire-mar-timeline.js",
+            "SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1",
+            "SPIRE Client Station before using Flowsheets"
+          ],
+          "syntaxCheck": true
         },
         {
           "path": "assets/spire-note-composer-v2.js",
@@ -187,8 +195,9 @@
         {
           "path": "assets/spire-master-flowsheet-grid.js",
           "mustContain": [
-            "SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1",
-            "SPIRE Client Station before using Flowsheets"
+            "SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1",
+            "SPIRE_FLOWSHEET_FILE_WORKFLOW_V1",
+            "ISP Goal Skill-Building"
           ],
           "syntaxCheck": true
         },
@@ -240,7 +249,7 @@
     },
     {
       "id": "patient-photo-home-and-dodd-scope",
-      "description": "Patient photo, selected service-home scope and home-health/DODD-first operational surfaces remain available.",
+      "description": "Client identity/photo slot, Authorized state, selected service-home scope and home-health/DODD-first operational surfaces remain available.",
       "checks": [
         {
           "path": "assets/spire-client-station.js",
@@ -248,7 +257,9 @@
             "HOME_ID_KEY",
             "HOME_ENTITY_KEY",
             "x-spire-home-id",
-            "photoUrl"
+            "client-photo",
+            "status-ok",
+            "Authorized"
           ]
         },
         {
@@ -305,10 +316,10 @@
           ]
         },
         {
-          "path": "api/prisma/migrations/20260817180000_spire_1_1_evv_canonical_visit/migration.sql"
+          "path": "prisma/migrations/20260817180000_spire_1_1_evv_canonical_visit/migration.sql"
         },
         {
-          "path": "api/prisma/migrations/20260817180500_spire_1_1_evv_capture_hardening/migration.sql"
+          "path": "prisma/migrations/20260817180500_spire_1_1_evv_capture_hardening/migration.sql"
         }
       ]
     },
@@ -330,13 +341,13 @@
           ]
         },
         {
-          "path": "api/prisma/migrations/20260817181000_spire_1_1_dodd_service_documentation/migration.sql"
+          "path": "prisma/migrations/20260817181000_spire_1_1_dodd_service_documentation/migration.sql"
         },
         {
-          "path": "api/prisma/migrations/20260817181500_spire_1_1_dodd_regulatory_profile_corrections/migration.sql"
+          "path": "prisma/migrations/20260817181500_spire_1_1_dodd_regulatory_profile_corrections/migration.sql"
         },
         {
-          "path": "api/prisma/migrations/20260817182000_spire_1_1_dodd_document_integrity/migration.sql"
+          "path": "prisma/migrations/20260817182000_spire_1_1_dodd_document_integrity/migration.sql"
         }
       ]
     },
@@ -401,16 +412,16 @@
           ]
         },
         {
-          "path": "api/prisma/migrations/20260817182500_spire_1_1_ohio_isp_bindings/migration.sql"
+          "path": "prisma/migrations/20260817182500_spire_1_1_ohio_isp_bindings/migration.sql"
         },
         {
-          "path": "api/prisma/migrations/20260817183000_spire_1_1_ohio_isp_lifecycle_sync/migration.sql"
+          "path": "prisma/migrations/20260817183000_spire_1_1_ohio_isp_lifecycle_sync/migration.sql"
         },
         {
-          "path": "api/prisma/migrations/20260817183500_spire_1_1_ohio_isp_profile_status_guard/migration.sql"
+          "path": "prisma/migrations/20260817183500_spire_1_1_ohio_isp_profile_status_guard/migration.sql"
         },
         {
-          "path": "api/prisma/migrations/20260817184000_spire_1_1_ohio_isp_repository_shift_controls/migration.sql"
+          "path": "prisma/migrations/20260817184000_spire_1_1_ohio_isp_repository_shift_controls/migration.sql"
         }
       ]
     }
