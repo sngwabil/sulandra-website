@@ -100,7 +100,7 @@ const assets = [
     label: 'Dark Room Flowsheet labels V6',
     file: 'assets/spire-darkroom-flowsheet-labels-v6.js',
     src: '/assets/spire-darkroom-flowsheet-labels-v6.js',
-    version: '20260817-darkroom-nurse-flowsheet-2',
+    version: '20260817-darkroom-nurse-flowsheet-3',
     attr: 'data-spire-darkroom-flowsheet-labels',
     marker: darkroomFlowsheetLabelsMarker,
     required: [darkroomFlowsheetLabelsMarker, '#flowsheetTable', 'style.setProperty', 'SpireDarkRoomFlowsheetLabelsV6', 'restoreAll'],
