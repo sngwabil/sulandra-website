@@ -24,7 +24,7 @@ export const registerSpireOhioIspClockOutGuard = ({ app, prisma, authOf }: Depen
       let clocks: Array<Record<string, unknown>>;
       try {
         clocks = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-          `SELECT c."id",c."shiftId",c."clockIn",s."endTime" AS "shiftEndTime",s."clientId" AS "shiftClientId"
+          `SELECT c."id",c."shiftId",c."clockIn",s."endTime" AS "shiftEndTime"
              FROM "TimeAttendanceClockEntry" c
              LEFT JOIN "TimeAttendanceShift" s
                ON s."organizationId"=c."organizationId" AND s."legalEntityId"=c."legalEntityId" AND s."id"=c."shiftId"
@@ -51,11 +51,10 @@ export const registerSpireOhioIspClockOutGuard = ({ app, prisma, authOf }: Depen
             AND t."dueAt" IS NOT NULL
             AND t."dueAt">=$5::timestamptz
             AND t."dueAt"<=COALESCE($6::timestamptz,NOW())
-            AND ($7::text IS NULL OR t."clientId"=$7)
             AND x."id" IS NULL
           ORDER BY t."dueAt",t."title"`,
         auth.organizationId, access.legalEntityId, auth.userId, String(clock.id), clock.clockIn,
-        clock.shiftEndTime ?? null, clock.shiftClientId ?? null,
+        clock.shiftEndTime ?? null,
       );
       if (!rows.length) return void next();
       res.status(409).json({
