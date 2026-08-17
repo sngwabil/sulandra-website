@@ -12,11 +12,13 @@ await import('./fix-spire-workspace-performance.mjs');
 await import('./fix-spire-workstation-v4.mjs');
 await import('./fix-spire-mar-single-owner-v5.mjs');
 await import('./fix-spire-orders-workspace-v6.mjs');
+await import('./fix-spire-orders-medication-name-v7.mjs');
 
 const marker = 'SPIRE_EPIC_THEME_SUITE_V1';
 const workstationMarker = 'SPIRE_WORKSTATION_RUNTIME_V4';
 const darkroomMarker = 'SPIRE_DARKROOM_CONTRAST_V2';
 const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
+const ordersMedicationNameMarker = 'SPIRE_ORDERS_MEDICATION_NAME_V7';
 const assetPath = path.join(root, 'assets', 'spire-epic-theme-suite.js');
 const workstationAssetPath = path.join(root, 'assets', 'spire-workstation-runtime-v4.js');
 const darkroomAssetPath = path.join(root, 'assets', 'spire-darkroom-surface-coverage.js');
@@ -31,7 +33,7 @@ const targetFiles = [
 const scriptTag = `<script src="/assets/spire-epic-theme-suite.js?v=20260815-epic-theme-suite-1" data-spire-epic-theme-suite="${marker}"></script>`;
 const workstationScriptTag = `<script src="/assets/spire-workstation-runtime-v4.js?v=20260816-workstation-v4-1" data-spire-workstation-runtime="${workstationMarker}"></script>`;
 const darkroomScriptTag = `<script src="/assets/spire-darkroom-surface-coverage.js?v=20260816-darkroom-surfaces-2" data-spire-darkroom-surfaces="${darkroomMarker}"></script>`;
-const darkroomRepairScriptTag = `<script src="/assets/spire-darkroom-repair-v3.js?v=20260816-darkroom-repair-v3-1" data-spire-darkroom-repair="${darkroomRepairMarker}"></script>`;
+const darkroomRepairScriptTag = `<script src="/assets/spire-darkroom-repair-v3.js?v=20260816-darkroom-repair-v3-2" data-spire-darkroom-repair="${darkroomRepairMarker}"></script>`;
 
 await access(assetPath);
 await access(workstationAssetPath);
@@ -62,7 +64,7 @@ const darkroomSyntax = spawnSync(process.execPath, ['--check', darkroomAssetPath
 if (darkroomSyntax.status !== 0) throw new Error(`SPIRE Dark Room contrast syntax failed: ${(darkroomSyntax.stderr || darkroomSyntax.stdout || '').trim()}`);
 
 const darkroomRepairRuntime = await readFile(darkroomRepairAssetPath, 'utf8');
-for (const required of [darkroomRepairMarker, '#mar-view .spire-mar-v4', '#summary-view', 'SpireDarkRoomRepairV3']) {
+for (const required of [darkroomRepairMarker, '#mar-view .spire-mar-v4', '#summary-view', 'SpireDarkRoomRepairV3', 'hasBrightBackground', 'backgroundImage', 'spire-darkroom-v3-summary-surface']) {
   if (!darkroomRepairRuntime.includes(required)) throw new Error(`SPIRE Dark Room repair V3 runtime missing ${required}`);
 }
 if (/SpireMarTimelineContract|wakeCanonicalMarTimeline|loadCanonicalMarView/.test(darkroomRepairRuntime)) {
@@ -72,8 +74,11 @@ const darkroomRepairSyntax = spawnSync(process.execPath, ['--check', darkroomRep
 if (darkroomRepairSyntax.status !== 0) throw new Error(`SPIRE Dark Room repair V3 syntax failed: ${(darkroomRepairSyntax.stderr || darkroomRepairSyntax.stdout || '').trim()}`);
 
 const transformedMaster = await readFile(masterPath, 'utf8');
-for (const required of ['SPIRE_MAR_SINGLE_OWNER_V5', 'SPIRE_ORDERS_WORKSPACE_RECOVERY_V6', 'data-spire-orders-loading="true"', 'data-spire-orders-live="true"', "['flowsheets-view','notes-view','manage-orders-view']"]) {
+for (const required of ['SPIRE_MAR_SINGLE_OWNER_V5', 'SPIRE_ORDERS_WORKSPACE_RECOVERY_V6', ordersMedicationNameMarker, 'data-spire-orders-loading="true"', 'data-spire-orders-live="true"', "m?.medicationName || m?.name || m?.displayName || m?.order?.medicationName || m?.order?.name || 'Medication'", "['flowsheets-view','notes-view','manage-orders-view']"]) {
   if (!transformedMaster.includes(required)) throw new Error(`SPIRE transformed chart missing ${required}`);
+}
+if (transformedMaster.includes('esc(medicationName(m))')) {
+  throw new Error('SPIRE transformed chart still contains the removed MAR medicationName dependency in Orders');
 }
 
 for (const relative of targetFiles) {
@@ -111,9 +116,9 @@ for (const relative of targetFiles) {
   if (!verified.includes('/assets/spire-darkroom-surface-coverage.js?v=20260816-darkroom-surfaces-2') || !verified.includes(darkroomMarker)) {
     throw new Error(`SPIRE Dark Room contrast V2 was not published to ${relative}`);
   }
-  if (!verified.includes('/assets/spire-darkroom-repair-v3.js?v=20260816-darkroom-repair-v3-1') || !verified.includes(darkroomRepairMarker)) {
-    throw new Error(`SPIRE Dark Room repair V3 was not published to ${relative}`);
+  if (!verified.includes('/assets/spire-darkroom-repair-v3.js?v=20260816-darkroom-repair-v3-2') || !verified.includes(darkroomRepairMarker)) {
+    throw new Error(`SPIRE Dark Room repair V3 gradient patch was not published to ${relative}`);
   }
 }
 
-console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3, live Orders recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
+console.log('SPIRE Epic theme suite, workstation runtime, Dark Room contrast V2 + repair V3 gradient patch, Orders V7 medication-name recovery, and canonical single-owner MAR installed across Client Station, chart, Secure Chat, and Flowsheets.');
