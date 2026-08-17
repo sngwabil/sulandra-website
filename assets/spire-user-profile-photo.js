@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  // SPIRE_USER_PROFILE_PHOTO_V2
+  // SPIRE_USER_PROFILE_PHOTO_V3
   // Isolated signed-in user profile-photo bridge for Spire profile, Client Station,
   // top navigation, and current-user clinical note author surfaces.
   // Intentionally event-driven/CSS-driven: no MutationObserver and no clinical workspace ownership.
@@ -81,7 +81,8 @@
       html[data-spire-user-photo-ready="true"] #stationAvatar,
       html[data-spire-user-photo-ready="true"] #activeAuthorAvatar,
       html[data-spire-user-photo-ready="true"] .notes-editor-pane .note-author-banner > .note-author-avatar,
-      html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar {
+      html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar,
+      html[data-spire-user-photo-ready="true"] #notes-view[data-spire-note-composer-v2="1"] .snc-top:has(#sncBlank) > .snc-avatar {
         background-image:var(--spire-user-profile-photo)!important;
         background-size:cover!important;
         background-position:center!important;
@@ -104,7 +105,9 @@
       html[data-spire-user-photo-ready="true"] .notes-editor-pane .note-author-banner > .note-author-avatar::before,
       html[data-spire-user-photo-ready="true"] .notes-editor-pane .note-author-banner > .note-author-avatar::after,
       html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar::before,
-      html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar::after {
+      html[data-spire-user-photo-ready="true"] #accessibilityModal .note-author-banner > .note-author-avatar::after,
+      html[data-spire-user-photo-ready="true"] #notes-view[data-spire-note-composer-v2="1"] .snc-top:has(#sncBlank) > .snc-avatar::before,
+      html[data-spire-user-photo-ready="true"] #notes-view[data-spire-note-composer-v2="1"] .snc-top:has(#sncBlank) > .snc-avatar::after {
         content:none!important;
       }
     `;
