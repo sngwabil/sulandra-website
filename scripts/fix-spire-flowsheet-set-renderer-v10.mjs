@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+await import('./fix-spire-master-flowsheet-authority-v2.mjs');
+
 const marker = 'SPIRE_FLOWSHEET_NATIVE_SET_RENDERER_V10';
 const files = [
   'spire/master.html',
@@ -143,4 +145,4 @@ for (const required of [
   if (!master.includes(required)) throw new Error(`SPIRE V10 native Flowsheet renderer missing ${required}`);
 }
 
-console.log(`SPIRE native Flowsheet set renderer V10 ready (${patched} source file${patched === 1 ? '' : 's'} patched).`);
+console.log(`SPIRE native Flowsheet set renderer V10 ready (${patched} source file${patched === 1 ? '' : 's'} patched) with master-grid authority V2.`);
