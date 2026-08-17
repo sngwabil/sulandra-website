@@ -126,7 +126,7 @@ const assets = [
     version: '20260817-darkroom-nurse-flowsheet-3',
     attr: 'data-spire-darkroom-flowsheet-labels',
     marker: darkroomFlowsheetLabelsMarker,
-    required: [darkroomFlowsheetsLabelsMarker = darkroomFlowsheetLabelsMarker, '#flowsheetTable', 'style.setProperty', 'SpireDarkRoomFlowsheetLabelsV6', 'restoreAll'],
+    required: [darkroomFlowsheetLabelsMarker, '#flowsheetTable', 'style.setProperty', 'SpireDarkRoomFlowsheetLabelsV6', 'restoreAll'],
     visualOnly: true,
   },
 ];
