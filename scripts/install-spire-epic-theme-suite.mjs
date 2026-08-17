@@ -36,6 +36,18 @@ const targetFiles = [
   'spire/flowsheets.html',
 ];
 
+// Keep the clinical theme picker branded only as S.P.I.R.E.; do not display the
+// external product name in the user-facing theme chooser.
+const themeSuiteAssetPath = path.join(root, 'assets', 'spire-epic-theme-suite.js');
+let themeSuiteSource = await readFile(themeSuiteAssetPath, 'utf8');
+themeSuiteSource = themeSuiteSource
+  .replaceAll('eight Epic-style clinical themes below', 'eight clinical themes below')
+  .replaceAll('Available Themes — Epic-style clinical set', 'Available Themes — Clinical set');
+if (themeSuiteSource.includes('Epic-style clinical')) {
+  throw new Error('SPIRE clinical theme picker still exposes the removed product wording');
+}
+await writeFile(themeSuiteAssetPath, themeSuiteSource, 'utf8');
+
 const assets = [
   {
     label: 'Epic theme suite',
@@ -44,7 +56,7 @@ const assets = [
     version: '20260815-epic-theme-suite-1',
     attr: 'data-spire-epic-theme-suite',
     marker,
-    required: [marker, 'Altitude', 'Lavender', 'Verdant', 'Deep Blue', 'Amethyst', 'Carbon', 'Dark Room', 'High Contrast', 'spire:epic-theme-suite:preset'],
+    required: [marker, 'Altitude', 'Lavender', 'Verdant', 'Deep Blue', 'Amethyst', 'Carbon', 'Dark Room', 'High Contrast', 'spire:epic-theme-suite:preset', 'Available Themes — Clinical set'],
   },
   {
     label: 'workstation runtime',
@@ -80,10 +92,10 @@ const assets = [
     label: 'Dark Room clinical surfaces V4',
     file: 'assets/spire-darkroom-clinical-surfaces-v4.js',
     src: '/assets/spire-darkroom-clinical-surfaces-v4.js',
-    version: '20260816-darkroom-clinical-surfaces-v4-1',
+    version: '20260817-darkroom-clinical-surfaces-v4-2',
     attr: 'data-spire-darkroom-clinical-surfaces',
     marker: darkroomClinicalSurfacesMarker,
-    required: [darkroomClinicalSurfacesMarker, '#flowsheets-view', 'body[data-spire-client-station]', '.master-dialog', 'brightBackground', 'SpireDarkRoomClinicalSurfacesV4'],
+    required: [darkroomClinicalSurfacesMarker, 'data-spire-epic-theme="darkRoom"', '.workspace-view:not(#mar-view)', '#flowsheets-view', 'body[data-spire-client-station]', '.master-dialog', 'brightBackground', 'Available Themes — Clinical set', 'SpireDarkRoomClinicalSurfacesV4'],
     visualOnly: true,
   },
   {
@@ -200,4 +212,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('SPIRE Epic theme suite installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
+console.log('SPIRE clinical theme suite installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
