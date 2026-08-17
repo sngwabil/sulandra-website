@@ -20,6 +20,7 @@ for (const prerequisite of [
 }
 
 const marker = 'SPIRE_EPIC_THEME_SUITE_V1';
+const profilePhotoMarker = 'SPIRE_USER_PROFILE_PHOTO_V1';
 const workstationMarker = 'SPIRE_WORKSTATION_RUNTIME_V4';
 const darkroomMarker = 'SPIRE_DARKROOM_CONTRAST_V2';
 const darkroomRepairMarker = 'SPIRE_DARKROOM_REPAIR_V3';
@@ -36,27 +37,37 @@ const targetFiles = [
   'spire/flowsheets.html',
 ];
 
-// Keep the clinical theme picker branded only as S.P.I.R.E.; do not display the
-// external product name in the user-facing theme chooser.
+// Keep the user-facing theme chooser branded only as Spire.
 const themeSuiteAssetPath = path.join(root, 'assets', 'spire-epic-theme-suite.js');
 let themeSuiteSource = await readFile(themeSuiteAssetPath, 'utf8');
 themeSuiteSource = themeSuiteSource
   .replaceAll('eight Epic-style clinical themes below', 'eight clinical themes below')
-  .replaceAll('Available Themes — Epic-style clinical set', 'Available Themes — Clinical set');
+  .replaceAll('Available Themes — Epic-style clinical set', 'Available Themes — Clinical set')
+  .replaceAll('S.P.I.R.E.', 'Spire');
 if (themeSuiteSource.includes('Epic-style clinical')) {
-  throw new Error('SPIRE clinical theme picker still exposes the removed product wording');
+  throw new Error('Spire clinical theme picker still exposes the removed product wording');
 }
 await writeFile(themeSuiteAssetPath, themeSuiteSource, 'utf8');
 
 const assets = [
   {
-    label: 'Epic theme suite',
+    label: 'clinical theme suite',
     file: 'assets/spire-epic-theme-suite.js',
     src: '/assets/spire-epic-theme-suite.js',
-    version: '20260815-epic-theme-suite-1',
+    version: '20260817-safe-theme-picker-2',
     attr: 'data-spire-epic-theme-suite',
     marker,
-    required: [marker, 'Altitude', 'Lavender', 'Verdant', 'Deep Blue', 'Amethyst', 'Carbon', 'Dark Room', 'High Contrast', 'spire:epic-theme-suite:preset', 'Available Themes — Clinical set'],
+    required: [marker, 'Altitude', 'Lavender', 'Verdant', 'Deep Blue', 'Amethyst', 'Carbon', 'Dark Room', 'High Contrast', 'spire:epic-theme-suite:preset', 'Available Themes — Clinical set', '19 Distinct Themes'],
+  },
+  {
+    label: 'user profile photo',
+    file: 'assets/spire-user-profile-photo.js',
+    src: '/assets/spire-user-profile-photo.js',
+    version: '20260817-user-profile-photo-1',
+    attr: 'data-spire-user-profile-photo',
+    marker: profilePhotoMarker,
+    required: [profilePhotoMarker, 'userAvatarUpload', 'spireUserProfile', 'FileReader', 'normalizeSpireBranding', 'SpireUserProfilePhoto'],
+    forbidden: ['MutationObserver'],
   },
   {
     label: 'workstation runtime',
@@ -212,4 +223,4 @@ for (const relative of targetFiles) {
   }
 }
 
-console.log('SPIRE clinical theme suite installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
+console.log('Spire theme and user-profile assets installed with Dark Room styling kept visual-only; native Flowsheet rendering/selection ownership is preserved, Orders V7 remains active, and canonical single-owner MAR remains intact.');
