@@ -2,6 +2,7 @@
   'use strict';
 
   // SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1
+  // SPIRE_DEEP_LINK_HANDOFF_V1
   const API = window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app';
   const TOKEN_KEY = 'sulandra:employee:access-token';
   const SESSION_KEY = 'sulandra:employee:session';
@@ -59,13 +60,32 @@
   }
 
   function stationUrl() {
-    const incoming = new URLSearchParams(location.search);
+    const search = new URLSearchParams(location.search);
+    const incomingHash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+    const readIncoming = (...keys) => {
+      for (const key of keys) {
+        const value = clean(search.get(key) || incomingHash.get(key));
+        if (value) return value;
+      }
+      return '';
+    };
     const query = new URLSearchParams();
-    const company = clean(incoming.get('company'));
-    const home = clean(incoming.get('spireHome') || incoming.get('home'));
+    const company = readIncoming('company');
+    const home = readIncoming('spireHome', 'home');
+    const patient = readIncoming('patientId', 'patient');
+    const tab = readIncoming('tab');
     if (company) query.set('company', company);
     if (home) query.set('spireHome', home);
     query.set('spireShell', '1');
+
+    if (patient) {
+      query.set('patientId', patient);
+      const chartHash = new URLSearchParams(incomingHash);
+      if (!chartHash.get('patient')) chartHash.set('patient', patient);
+      if (tab && !chartHash.get('tab')) chartHash.set('tab', tab);
+      return `/spire/master.html?${query}${chartHash.toString() ? `#${chartHash}` : ''}`;
+    }
+
     return `/spire/client-station.html?${query}`;
   }
 
