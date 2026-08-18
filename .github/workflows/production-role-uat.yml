@@ -38,6 +38,7 @@ jobs:
         run: npm run verify:role-uat
 
       - name: Wait for exact production role-UAT deployment
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -80,11 +81,13 @@ jobs:
           exit 1
 
       - name: Install Playwright browser runtime
+        if: github.event_name != 'pull_request'
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium
 
       - name: Run live production role-by-role UAT
+        if: github.event_name != 'pull_request'
         env:
           UAT_BASE_URL: https://www.sulandrahealth.com
         run: npx playwright test --config=playwright.role-uat.config.mjs
