@@ -12,15 +12,17 @@ if (!source.includes('SPIRE_WORKSPACE_PERFORMANCE_V3')) {
   throw new Error('SPIRE workstation v4 requires workspace performance v3 first');
 }
 
-if (!source.includes(marker)) {
-  // Browser-native fullscreen cannot be restored automatically after a full page
-  // refresh without a user gesture. Remove the old resume-button shim and let the
-  // authenticated shell/preferences runtime own native fullscreen consistently.
-  source = source.replace(
-    /\s*<script data-spire-fullscreen-resume="SPIRE_FULLSCREEN_RESUME_V1">[\s\S]*?<\/script>\s*/g,
-    '\n'
-  );
+// Browser-native fullscreen cannot be restored automatically after a full page
+// refresh without a user gesture. Workspace performance V3 is an older publisher
+// that can re-emit this helper on a later build:web pass, so normalize it on EVERY
+// workstation pass, not only the first installation. The authenticated Client
+// Station shell/preferences runtime remains the single native-fullscreen owner.
+source = source.replace(
+  /\s*<script data-spire-fullscreen-resume="SPIRE_FULLSCREEN_RESUME_V1">[\s\S]*?<\/script>\s*/g,
+  '\n'
+);
 
+if (!source.includes(marker)) {
   const helperAnchor = `  function stableLoadingMarkup(label='Loading chart…') {`;
   if (!source.includes(helperAnchor)) {
     throw new Error('SPIRE workstation v4 could not find workspace helper anchor');
