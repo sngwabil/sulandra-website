@@ -1,0 +1,64 @@
+name: Repair deepmerge lock
+
+on:
+  push:
+    branches:
+      - feature/spire-1.1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-deepmerge-lock-feature-spire-1-1
+  cancel-in-progress: true
+
+jobs:
+  repair-lock:
+    if: ${{ !contains(github.event.head_commit.message, 'fix(deps): resolve patched deepmerge-ts') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/spire-1.1
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Resolve patched deepmerge-ts and regenerate lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          fixed="$(npm view 'deepmerge-ts@>=8 <9' version --json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s);console.log(Array.isArray(v)?v[v.length-1]:v)})")"
+          if [[ -z "$fixed" || "$fixed" != 8.* ]]; then
+            echo "No patched deepmerge-ts 8.x release resolved" >&2
+            exit 1
+          fi
+          echo "Resolving deepmerge-ts ${fixed}"
+          npm pkg set "overrides.deepmerge-ts=${fixed}"
+          npm install --package-lock-only --ignore-scripts
+          node - <<'NODE'
+          const fs=require('fs');
+          const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+          const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          const wanted=String(pkg.overrides?.['deepmerge-ts']||'');
+          const actual=String(lock.packages?.['node_modules/deepmerge-ts']?.version||'');
+          if(!wanted.startsWith('8.')||actual!==wanted)throw new Error(`deepmerge-ts lock mismatch: wanted ${wanted}, actual ${actual}`);
+          console.log(`Verified deepmerge-ts ${actual} in package-lock.json`);
+          NODE
+
+      - name: Commit regenerated dependency lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "Dependency lock already patched."
+            exit 0
+          fi
+          git config user.name 'Sulandra CI'
+          git config user.email 'admin@sulandrahealth.com'
+          git add package.json package-lock.json
+          git commit -m 'fix(deps): resolve patched deepmerge-ts'
+          git push origin HEAD:feature/spire-1.1
