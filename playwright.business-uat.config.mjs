@@ -2,6 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 await import('./scripts/prepare-production-business-uat-round14.mjs');
 await import('./scripts/prepare-production-business-uat-round15.mjs');
+await import('./scripts/prepare-production-business-uat-round16.mjs');
 
 export default defineConfig({
   testDir: './tests',
