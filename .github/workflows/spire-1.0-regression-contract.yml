@@ -54,3 +54,6 @@ jobs:
 
       - name: Verify SPIRE 1.1 Phase C Company Compliance QA packets
         run: node scripts/verify-spire-1.1-phase-c-company-compliance.mjs
+
+      - name: Verify SPIRE 1.1 Phase C Company Compliance annual trends
+        run: node scripts/verify-spire-1.1-phase-c-company-compliance-trends.mjs
