@@ -70,9 +70,11 @@ else if(!source.includes(rnNew))throw new Error('Production Role UAT RN launcher
 
 const schedulerOld="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control');}";
 const schedulerPrevious="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control',{title:/Sulandra Workforce Scheduling/i});}";
-const schedulerNew="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control',{title:/Sulandra Health \\| Scheduling/i});}";
+const schedulerPrior="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control',{title:/Sulandra Health \\| Scheduling/i});}";
+const schedulerNew="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Scheduling',{title:/Sulandra Health \\| Scheduling/i});}";
 if(source.includes(schedulerOld))source=source.replace(schedulerOld,schedulerNew);
 else if(source.includes(schedulerPrevious))source=source.replace(schedulerPrevious,schedulerNew);
+else if(source.includes(schedulerPrior))source=source.replace(schedulerPrior,schedulerNew);
 else if(!source.includes(schedulerNew))throw new Error('Production Role UAT scheduler anchor missing');
 
 const mobileAdminOld="['Administrator',PERSONAS.administrator,'#topModuleNav a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
