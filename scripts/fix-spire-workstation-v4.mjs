@@ -58,24 +58,30 @@ for (const required of [
   if (!source.includes(required)) throw new Error(`SPIRE workstation v4 verification failed: missing ${required}`);
 }
 
-// The first publication pass installs workstation v4 with flowsheets/MAR/notes in
-// the generic prewarm list. Immediately afterward, MAR single-owner v5 correctly
-// removes MAR from that list and adds a fail-safe guard so the canonical hourly
-// timeline remains the only MAR owner. On a repeat build, workstation v4 must
-// accept that already-hardened state instead of demanding that MAR be re-added.
+// Publication layers intentionally evolve this list in a strict sequence:
+// workstation v4 -> flowsheets/MAR/notes;
+// MAR single-owner v5 -> flowsheets/notes (MAR removed);
+// Orders v6 -> flowsheets/notes/manage-orders.
+// A repeat build must accept any already-installed later SAFE state while continuing
+// to reject any state that brings MAR back into generic background prewarming.
 const workstationPrewarm = "['flowsheets-view','mar-view','notes-view']";
-const singleOwnerPrewarm = "['flowsheets-view','notes-view']";
+const marSafePrewarm = "['flowsheets-view','notes-view']";
+const ordersSafePrewarm = "['flowsheets-view','notes-view','manage-orders-view']";
 const singleOwnerGuard = "if (viewId === 'mar-view') return Promise.resolve(false)";
-const workstationStateValid = source.includes(workstationPrewarm);
-const singleOwnerStateValid = source.includes('SPIRE_MAR_SINGLE_OWNER_V5') && source.includes(singleOwnerPrewarm) && source.includes(singleOwnerGuard);
-if (!workstationStateValid && !singleOwnerStateValid) {
-  throw new Error('SPIRE workstation v4 verification failed: workspace prewarm targets are neither initial nor MAR single-owner state');
+const workstationStateValid = source.includes(workstationPrewarm) && !source.includes('SPIRE_MAR_SINGLE_OWNER_V5');
+const marSafeStateValid = source.includes('SPIRE_MAR_SINGLE_OWNER_V5') && source.includes(singleOwnerGuard)
+  && (source.includes(marSafePrewarm) || source.includes(ordersSafePrewarm));
+if (!workstationStateValid && !marSafeStateValid) {
+  throw new Error('SPIRE workstation v4 verification failed: workspace prewarm targets are not an approved workstation/MAR-single-owner/Orders state');
+}
+if (marSafeStateValid && source.includes(workstationPrewarm)) {
+  throw new Error('SPIRE workstation v4 verification failed: MAR returned to generic prewarm after single-owner activation');
 }
 if (source.includes('data-spire-fullscreen-resume="SPIRE_FULLSCREEN_RESUME_V1"')) {
   throw new Error('SPIRE workstation v4 verification failed: legacy fullscreen resume runtime remains');
 }
 
 await writeFile(masterPath, source, 'utf8');
-console.log(singleOwnerStateValid
-  ? 'SPIRE workstation v4 verified in repeat-build MAR single-owner state; generic MAR prewarm remains disabled.'
+console.log(marSafeStateValid
+  ? 'SPIRE workstation v4 verified in repeat-build MAR-safe state; Orders prewarm may remain active while generic MAR prewarm stays disabled.'
   : 'SPIRE workstation v4 installed: common workspaces prewarm in idle time, delegated chart tabs share one in-flight load, and the legacy fullscreen resume shim is removed.');
