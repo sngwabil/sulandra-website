@@ -4,10 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const verifierPath = path.join(root, 'scripts', 'verify-spire-foundation.mjs');
+const buildStaticSitePath = path.join(root, 'scripts', 'build-static-site.mjs');
 const continuityPath = path.join(root, 'assets', 'spire-mar-continuity.js');
 const marTimelinePath = path.join(root, 'assets', 'spire-mar-timeline.js');
 const MAR_ASSET = '/assets/spire-mar-timeline.js?v=20260814-chart-photo-db-2';
 const MAR_STYLE = '/assets/spire-mar-epic-v5.css?v=20260814-chart-photo-db-2';
+const PROFILE_ASSET = '/assets/spire-chart-profile-images.js?v=20260814-chart-photo-db-2';
 
 let source = await readFile(verifierPath, 'utf8');
 const original = source;
@@ -28,6 +30,23 @@ if (!source.includes(MAR_STYLE)) {
 }
 
 if (source !== original) await writeFile(verifierPath, source, 'utf8');
+
+// The PCP dedup publication pass intentionally advances the chart-photo cache-bust URL.
+// A later build:web in the same checkout must start from fix-spire-mar-publication's
+// canonical db-2 input URL; otherwise that fixer can mistake the already-upgraded URL for
+// a missing asset and inject it beside the first MAR style token (the const declaration).
+// Normalize only this URL here. install-spire-pcp-dedup-hotfix advances it again later in
+// the SAME build:web pass, so the final published browser runtime remains db-3-dataurl.
+let staticBuilder = await readFile(buildStaticSitePath, 'utf8');
+const staticBuilderOriginal = staticBuilder;
+staticBuilder = staticBuilder.replace(
+  /\/assets\/spire-chart-profile-images\.js(?:\?v=[^'"\s,\]]+)?/g,
+  PROFILE_ASSET,
+);
+if (!staticBuilder.includes(PROFILE_ASSET)) {
+  throw new Error('Unable to normalize SPIRE chart-photo static publication asset');
+}
+if (staticBuilder !== staticBuilderOriginal) await writeFile(buildStaticSitePath, staticBuilder, 'utf8');
 
 // Production Business Path UAT deliberately hardens the live MAR MutationObserver to
 // #mar-view only. The next build:web pass begins by running fix-spire-mar-publication,
