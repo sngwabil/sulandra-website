@@ -17,13 +17,13 @@ if(!source.includes('async function visibleControl(page,selector){')){
     const count=await controls.count();
     for(let index=0;index<count;index+=1){
       const control=controls.nth(index);
-      if(await control.isVisible().catch(()=>false))return control;
+      if(!await control.isVisible().catch(()=>false))continue;
+      if(!await control.isEnabled().catch(()=>false))continue;
+      if(await control.click({trial:true,timeout:500}).then(()=>true).catch(()=>false))return control;
     }
     await page.waitForTimeout(100);
   }
-  const first=controls.first();
-  await expect(first).toBeVisible();
-  return first;
+  throw new Error(\`No actionable control found for \${selector}\`);
 }
 function routeMatches(url,path){
   try{
@@ -59,6 +59,13 @@ async function open(page,selector,path,label,{popup=false,title=null}={}){
   return target;
 }`;
   source=source.slice(0,helperStart)+helper+source.slice(helperEnd);
+}else{
+  const visibleOld=`      if(await control.isVisible().catch(()=>false))return control;`;
+  const visibleNew=`      if(!await control.isVisible().catch(()=>false))continue;\n      if(!await control.isEnabled().catch(()=>false))continue;\n      if(await control.click({trial:true,timeout:500}).then(()=>true).catch(()=>false))return control;`;
+  if(source.includes(visibleOld))source=source.replace(visibleOld,visibleNew);
+  const fallbackOld=`  const first=controls.first();\n  await expect(first).toBeVisible();\n  return first;`;
+  const fallbackNew=`  throw new Error(\`No actionable control found for \${selector}\`);`;
+  if(source.includes(fallbackOld))source=source.replace(fallbackOld,fallbackNew);
 }
 
 const rnOld="else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire.html','SPIRE');";
@@ -77,10 +84,15 @@ else if(source.includes(schedulerPrevious))source=source.replace(schedulerPrevio
 else if(source.includes(schedulerPrior))source=source.replace(schedulerPrior,schedulerNew);
 else if(!source.includes(schedulerNew))throw new Error('Production Role UAT scheduler anchor missing');
 
+const executiveOld="else if(p.executive){const link=page.locator('#topModuleNav a[href=\"/spire-admin.html\"]').first();await expect(link).toBeVisible();await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);await expect(page).toHaveTitle(/SPIRE/i);}";
+const executiveNew="else if(p.executive){const link=await visibleControl(page,'a[href=\"/spire-admin.html\"]');await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);await expect(page).toHaveTitle(/SPIRE/i);}";
+if(source.includes(executiveOld))source=source.replace(executiveOld,executiveNew);
+else if(!source.includes(executiveNew))throw new Error('Production Role UAT executive SPIRE launcher anchor missing');
+
 const mobileAdminOld="['Administrator',PERSONAS.administrator,'#topModuleNav a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
 const mobileAdminNew="['Administrator',PERSONAS.administrator,'a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
 if(source.includes(mobileAdminOld))source=source.replace(mobileAdminOld,mobileAdminNew);
 else if(!source.includes(mobileAdminNew))throw new Error('Production Role UAT mobile Administrator launcher anchor missing');
 
 await writeFile(target,source,'utf8');
-console.log('Prepared Production Role UAT for visible launch controls, authenticated SPIRE Client Station routing, current scheduling title, and mobile Administrator navigation.');
+console.log('Prepared Production Role UAT for actionable launch controls, authenticated SPIRE Client Station routing, current scheduling title, and duplicate-safe executive Administrator navigation.');
