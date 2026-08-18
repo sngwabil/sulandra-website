@@ -6,10 +6,11 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const target=path.join(root,'tests/production-role-uat.spec.mjs');
 let source=await readFile(target,'utf8');
 
-const helperStart=source.indexOf('async function open(page,selector,path,label){');
-const helperEnd=source.indexOf('\nconst absent=',helperStart);
-if(helperStart<0||helperEnd<0)throw new Error('Production Role UAT navigation helper anchor missing');
-const helper=`async function visibleControl(page,selector){
+if(!source.includes('async function visibleControl(page,selector){')){
+  const helperStart=source.indexOf('async function open(page,selector,path,label){');
+  const helperEnd=source.indexOf('\nconst absent=',helperStart);
+  if(helperStart<0||helperEnd<0)throw new Error('Production Role UAT navigation helper anchor missing');
+  const helper=`async function visibleControl(page,selector){
   const controls=page.locator(selector);
   const deadline=Date.now()+12000;
   while(Date.now()<deadline){
@@ -42,7 +43,8 @@ async function open(page,selector,path,label,{popup=false,title=null}={}){
   }
   return target;
 }`;
-source=source.slice(0,helperStart)+helper+source.slice(helperEnd);
+  source=source.slice(0,helperStart)+helper+source.slice(helperEnd);
+}
 
 const rnOld="else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire.html','SPIRE');";
 const rnNew="else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire/master.html','SPIRE',{popup:true});";
