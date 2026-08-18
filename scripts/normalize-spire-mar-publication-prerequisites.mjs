@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const verifierPath = path.join(root, 'scripts', 'verify-spire-foundation.mjs');
 const continuityPath = path.join(root, 'assets', 'spire-mar-continuity.js');
+const marTimelinePath = path.join(root, 'assets', 'spire-mar-timeline.js');
 const MAR_ASSET = '/assets/spire-mar-timeline.js?v=20260814-chart-photo-db-2';
 const MAR_STYLE = '/assets/spire-mar-epic-v5.css?v=20260814-chart-photo-db-2';
 
@@ -28,6 +29,28 @@ if (!source.includes(MAR_STYLE)) {
 
 if (source !== original) await writeFile(verifierPath, source, 'utf8');
 
+// Production Business Path UAT deliberately hardens the live MAR MutationObserver to
+// #mar-view only. The next build:web pass begins by running fix-spire-mar-publication,
+// whose publication transform historically expects the pre-hardening body-observer shape.
+// Restore only that transform input here. fix-spire-mar-publication immediately narrows it,
+// and install-business-path-uat-bridges later in the SAME build:web pass restores the
+// authoritative root-only observer before static publication. Final browser behavior is
+// therefore unchanged; this only makes repeated publication in one CI checkout idempotent.
+let marTimeline = await readFile(marTimelinePath, 'utf8');
+const marTimelineOriginal = marTimeline;
+const rootOnlyObserver = 'mutationObserver.observe(host, { childList: true });';
+const publicationInputObserver = 'mutationObserver.observe(document.body, { childList: true, subtree: true, characterData: true });';
+const publicationNarrowedObserver = 'mutationObserver.observe(document.body, { childList: true, subtree: true });';
+if (marTimeline.includes(rootOnlyObserver)) {
+  marTimeline = marTimeline.replace(rootOnlyObserver, publicationInputObserver);
+} else if (marTimeline.includes(publicationNarrowedObserver)) {
+  marTimeline = marTimeline.replace(publicationNarrowedObserver, publicationInputObserver);
+}
+if (!marTimeline.includes(publicationInputObserver)) {
+  throw new Error('Unable to normalize SPIRE MAR observer publication entry');
+}
+if (marTimeline !== marTimelineOriginal) await writeFile(marTimelinePath, marTimeline, 'utf8');
+
 // finalize-platform-navigation applies the Due/Overdue continuity patch after static
 // publication. A later build:web in the same CI checkout must be able to apply that patch
 // again. Restore only the patcher's loadOverdue entry shape; the patcher immediately
@@ -41,4 +64,4 @@ if (continuity.includes(installedGate)) continuity = continuity.replace(installe
 if (!continuity.includes(patchInput)) throw new Error('Unable to normalize SPIRE MAR continuity Due/Overdue publication entry');
 if (continuity !== continuityOriginal) await writeFile(continuityPath, continuity, 'utf8');
 
-console.log('SPIRE MAR publication prerequisites normalized for repeatable build:web execution.');
+console.log('SPIRE MAR publication prerequisites normalized for repeatable build:web execution without changing final root-only MAR observer behavior.');
