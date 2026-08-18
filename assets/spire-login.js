@@ -76,9 +76,9 @@
     const tab = readIncoming('tab');
     if (company) query.set('company', company);
     if (home) query.set('spireHome', home);
-    query.set('spireShell', '1');
 
     if (patient) {
+      query.set('spireShell', '1');
       query.set('patientId', patient);
       const chartHash = new URLSearchParams(incomingHash);
       if (!chartHash.get('patient')) chartHash.set('patient', patient);
@@ -86,6 +86,7 @@
       return `/spire/master.html?${query}${chartHash.toString() ? `#${chartHash}` : ''}`;
     }
 
+    query.set('spireShell', '1');
     return `/spire/client-station.html?${query}`;
   }
 
