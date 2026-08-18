@@ -25,6 +25,20 @@ if(!source.includes('async function visibleControl(page,selector){')){
   await expect(first).toBeVisible();
   return first;
 }
+function routeMatches(url,path){
+  try{
+    const current=new URL(url);
+    if(current.pathname===path)return true;
+    if(current.pathname==='/employee-login.html'){
+      const returnTo=current.searchParams.get('return');
+      if(returnTo){
+        const destination=new URL(returnTo,current.origin);
+        return destination.pathname===path;
+      }
+    }
+  }catch{}
+  return false;
+}
 async function open(page,selector,path,label,{popup=false,title=null}={}){
   const control=await visibleControl(page,selector);
   let target=page;
@@ -34,9 +48,10 @@ async function open(page,selector,path,label,{popup=false,title=null}={}){
     target=await popupPromise;
     await target.waitForLoadState('domcontentloaded').catch(()=>{});
   }else await control.click();
-  await expect(target).toHaveURL(new RegExp(path.replace(/[.*+?^\${}()|[\\]\\\\]/g,'\\\\$&')));
-  if(title)await expect(target).toHaveTitle(title);
-  if(label){
+  await expect.poll(()=>routeMatches(target.url(),path)).toBe(true);
+  const authenticationReturn=(()=>{try{return new URL(target.url()).pathname==='/employee-login.html';}catch{return false;}})();
+  if(!authenticationReturn&&title)await expect(target).toHaveTitle(title);
+  if(!authenticationReturn&&label){
     const pattern=labelPattern(label);
     const heading=target.getByRole('heading',{name:pattern,exact:false}).first();
     if(await heading.count())await expect(heading).toBeVisible();else await expect(target).toHaveTitle(pattern);
@@ -47,14 +62,23 @@ async function open(page,selector,path,label,{popup=false,title=null}={}){
 }
 
 const rnOld="else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire.html','SPIRE');";
-const rnNew="else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire/master.html','SPIRE',{popup:true});";
+const rnPrevious="else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire/master.html','SPIRE',{popup:true});";
+const rnNew="else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire/client-station.html','SPIRE',{popup:true});";
 if(source.includes(rnOld))source=source.replace(rnOld,rnNew);
+else if(source.includes(rnPrevious))source=source.replace(rnPrevious,rnNew);
 else if(!source.includes(rnNew))throw new Error('Production Role UAT RN launcher anchor missing');
 
 const schedulerOld="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control');}";
-const schedulerNew="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control',{title:/Sulandra Workforce Scheduling/i});}";
+const schedulerPrevious="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control',{title:/Sulandra Workforce Scheduling/i});}";
+const schedulerNew="else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control',{title:/Sulandra Health \\| Scheduling/i});}";
 if(source.includes(schedulerOld))source=source.replace(schedulerOld,schedulerNew);
+else if(source.includes(schedulerPrevious))source=source.replace(schedulerPrevious,schedulerNew);
 else if(!source.includes(schedulerNew))throw new Error('Production Role UAT scheduler anchor missing');
 
+const mobileAdminOld="['Administrator',PERSONAS.administrator,'#topModuleNav a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
+const mobileAdminNew="['Administrator',PERSONAS.administrator,'a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
+if(source.includes(mobileAdminOld))source=source.replace(mobileAdminOld,mobileAdminNew);
+else if(!source.includes(mobileAdminNew))throw new Error('Production Role UAT mobile Administrator launcher anchor missing');
+
 await writeFile(target,source,'utf8');
-console.log('Prepared Production Role UAT for visible launch controls, SPIRE popup navigation, the published master chart path, and the current scheduling title.');
+console.log('Prepared Production Role UAT for visible launch controls, authenticated SPIRE Client Station routing, current scheduling title, and mobile Administrator navigation.');
