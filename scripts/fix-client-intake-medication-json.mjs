@@ -8,17 +8,21 @@ const marker = 'CLIENT_INTAKE_MEDICATION_DUETIMES_JSONB_V2';
 let source = await readFile(target, 'utf8');
 
 const legacySql = "CASE WHEN $9='' THEN ARRAY[]::text[] ELSE string_to_array($9,',') END";
-const jsonSql = '$9::jsonb';
+const modernJsonSql = '$9::jsonb';
+const compatibleJsonSql = '$10::jsonb';
 const legacyArgument = "med.dueTimes.join(','), instructions, effectiveStart, med.endDate, auth.userId,";
 const jsonArgument = 'JSON.stringify(med.dueTimes), instructions, effectiveStart, med.endDate, auth.userId,';
 
-if (source.includes(legacySql)) source = source.replace(legacySql, jsonSql);
+if (source.includes(legacySql)) source = source.replace(legacySql, modernJsonSql);
 if (source.includes(legacyArgument)) source = source.replace(legacyArgument, jsonArgument);
 
 if (source.includes(legacySql) || source.includes(legacyArgument)) {
   throw new Error('Legacy Client Intake medication dueTimes text-array persistence is still present');
 }
-if (!source.includes(jsonSql) || !source.includes(jsonArgument)) {
+// The first transform uses $9 for dueTimes. Adding the required legacy clientId
+// column below shifts dueTimes to $10. Accept both valid stages so a second build
+// can verify the already-compatible output instead of rejecting its own rewrite.
+if ((!source.includes(modernJsonSql) && !source.includes(compatibleJsonSql)) || !source.includes(jsonArgument)) {
   throw new Error('Client Intake medication dueTimes jsonb persistence could not be verified');
 }
 
