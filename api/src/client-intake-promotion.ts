@@ -368,24 +368,19 @@ async function ensureServiceAuthorization(
     if (sameNumber[0]) authorizationId = sameNumber[0].id;
   }
 
-  try {
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "SpireServiceAuthorization"("id","organizationId","legalEntityId","patientId","authorizationNumber","payer","waiverType","serviceCode","serviceName","unitType","authorizedUnits","startDate","endDate","status","notes","createdById")
-     VALUES($1,$2,$3,$4,$5,'MEDICAID',$6,$7,$8,'UNIT',$9,$10::date,$11::date,'ACTIVE',$12,$13)
-     ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","authorizationNumber"=EXCLUDED."authorizationNumber","waiverType"=EXCLUDED."waiverType","serviceCode"=EXCLUDED."serviceCode","serviceName"=EXCLUDED."serviceName","authorizedUnits"=EXCLUDED."authorizedUnits","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","notes"=EXCLUDED."notes","updatedAt"=NOW()`,
-      authorizationId, auth.organizationId, entityId, patientId, authorizationNumber,
-      text(payloads.get('insurance_medicaid')?.waiverType, 120) || null, serviceCode, serviceName, units, startDate, endDate,
-      [
-        text(authorization.frequency),
-        text(authorization.providerAssignment),
-        text(authorization.authorizationNotes),
-        `Source: Client Intake ${intakeCaseId}`,
-      ].filter(Boolean).join('\n'), auth.userId,
-    );
-  } catch (e) {
-    const cols = await prisma.$queryRawUnsafe("SELECT column_name FROM information_schema.columns WHERE table_name = 'SpireServiceAuthorization' AND is_nullable = 'NO' AND column_default IS NULL");
-    throw new Error("MISSING REQUIRED COLUMNS DUMP: " + JSON.stringify(cols) + " Original error: " + e);
-  }
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "SpireServiceAuthorization"("id","organizationId","legalEntityId","patientId","authorizationNumber","payer","waiverType","serviceCode","serviceName","unitType","authorizedUnits","startDate","endDate","startsAt","endsAt","status","notes","createdById")
+     VALUES($1,$2,$3,$4,$5,'MEDICAID',$6,$7,$8,'UNIT',$9,$10::date,$11::date,$10::date,$11::date,'ACTIVE',$12,$13)
+     ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","authorizationNumber"=EXCLUDED."authorizationNumber","waiverType"=EXCLUDED."waiverType","serviceCode"=EXCLUDED."serviceCode","serviceName"=EXCLUDED."serviceName","authorizedUnits"=EXCLUDED."authorizedUnits","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","startsAt"=EXCLUDED."startsAt","endsAt"=EXCLUDED."endsAt","notes"=EXCLUDED."notes","updatedAt"=NOW()`,
+    authorizationId, auth.organizationId, entityId, patientId, authorizationNumber,
+    text(payloads.get('insurance_medicaid')?.waiverType, 120) || null, serviceCode, serviceName, units, startDate, endDate,
+    [
+      text(authorization.frequency),
+      text(authorization.providerAssignment),
+      text(authorization.authorizationNotes),
+      `Source: Client Intake ${intakeCaseId}`,
+    ].filter(Boolean).join('\n'), auth.userId,
+  );
 
   if (carePlanId) {
     const linkId = stableId(carePlanId, 'SERVICE_LINK', authorizationId);
