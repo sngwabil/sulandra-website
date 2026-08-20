@@ -230,10 +230,10 @@ async function ensureMedications(
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO "SpireMedicationOrder"("id","organizationId","legalEntityId","patientId","name","dose","route","frequency","dueTimes","instructions","status","startDate","endDate","orderedById")
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,CASE WHEN $9='' THEN ARRAY[]::text[] ELSE string_to_array($9,',') END,$10,'ACTIVE',$11::date,$12::date,$13)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'ACTIVE',$11::date,$12::date,$13)
          ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","name"=EXCLUDED."name","dose"=EXCLUDED."dose","route"=EXCLUDED."route","frequency"=EXCLUDED."frequency","dueTimes"=EXCLUDED."dueTimes","instructions"=EXCLUDED."instructions","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","updatedAt"=NOW()`,
         orderId, auth.organizationId, entityId, patientId, med.name, med.dose, med.route, med.frequency,
-        med.dueTimes.join(','), instructions, effectiveStart, med.endDate, auth.userId,
+        JSON.stringify(med.dueTimes), instructions, effectiveStart, med.endDate, auth.userId,
       );
       mapped += 1;
       reason = 'Mapped to an active medication order from a licensed-reviewer-approved intake; medication reconciliation remains open for final clinical verification.';
