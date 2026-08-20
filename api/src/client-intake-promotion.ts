@@ -166,8 +166,8 @@ async function ensureAdmissionNote(prisma: PrismaClient, auth: PromotionAuth, in
 
 async function findSeededCarePlan(prisma: PrismaClient, auth: PromotionAuth, intakeCaseId: string, patientId: string) {
   const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-    `SELECT "id" FROM "SpireCarePlan" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "patientId"=$3 AND "sourceIntakeCaseId"=$4 ORDER BY "createdAt" DESC LIMIT 1`,
-    auth.organizationId, auth.legalEntityId, patientId, intakeCaseId,
+    `SELECT "id" FROM "SpireCarePlan" WHERE "organizationId"=$1 AND "patientId"=$2 AND "sourceIntakeCaseId"=$3 ORDER BY "createdAt" DESC LIMIT 1`,
+    auth.organizationId, patientId, intakeCaseId,
   );
   return rows[0]?.id || null;
 }
