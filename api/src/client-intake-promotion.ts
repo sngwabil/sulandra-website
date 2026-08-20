@@ -165,11 +165,19 @@ async function ensureAdmissionNote(prisma: PrismaClient, auth: PromotionAuth, in
 }
 
 async function findSeededCarePlan(prisma: PrismaClient, auth: PromotionAuth, intakeCaseId: string, patientId: string) {
-  const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-    `SELECT "id" FROM "SpireCarePlan" WHERE "organizationId"=$1 AND "patientId"=$2 AND "sourceIntakeCaseId"=$3 ORDER BY "createdAt" DESC LIMIT 1`,
-    auth.organizationId, patientId, intakeCaseId,
+  // 1. Broadest possible search: Just look for ANY care plan tied to this intake
+  const allPlansForIntake = await prisma.$queryRawUnsafe<any[]>(
+    `SELECT "id", "organizationId", "patientId", "sourceIntakeCaseId", "status" FROM "SpireCarePlan" WHERE "sourceIntakeCaseId"=$1`,
+    intakeCaseId
   );
-  return rows[0]?.id || null;
+  
+  // 2. If nothing is found at all, throw an error explicitly stating the trigger failed
+  if (!allPlansForIntake || allPlansForIntake.length === 0) {
+    throw new Error("DIAGNOSTIC DUMP: NO CARE PLAN FOUND FOR INTAKE CASE " + intakeCaseId + ". The legacy database trigger 'ClientIntakeCase_seed_draft_care_plan' did not create a record.");
+  }
+
+  // 3. If records ARE found, throw an error dumping exactly what they contain so we can fix our WHERE clause
+  throw new Error("DIAGNOSTIC DUMP: FOUND MISMATCHED CARE PLANS: " + JSON.stringify(allPlansForIntake) + " Expected org: " + auth.organizationId + ", Expected patient: " + patientId);
 }
 
 async function ensureMedications(
