@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - feature/spire-1.1
+  pull_request:
+    branches:
+      - feature/spire-ehr-platform
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -14,7 +18,7 @@ concurrency:
 
 jobs:
   repair-lock:
-    if: ${{ !contains(github.event.head_commit.message, 'fix(deps): resolve patched deepmerge-ts') }}
+    if: ${{ github.event_name == 'pull_request' || !contains(github.event.head_commit.message, 'fix(deps): resolve patched deepmerge-ts') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +48,7 @@ jobs:
           console.log(`Verified deepmerge-ts override ${wanted} resolved to ${actual}`);
           NODE
           npm ci --include=dev --ignore-scripts
+          npm audit --omit=dev --audit-level=high
 
       - name: Commit regenerated dependency lock
         shell: bash
