@@ -369,8 +369,8 @@ async function ensureServiceAuthorization(
   }
 
   await prisma.$executeRawUnsafe(
-    `INSERT INTO "SpireServiceAuthorization"("id","organizationId","legalEntityId","patientId","authorizationNumber","payer","waiverType","serviceCode","serviceName","unitType","authorizedUnits","startDate","endDate","status","notes","createdById")
-     VALUES($1,$2,$3,$4,$5,'MEDICAID',$6,$7,$8,'UNIT',$9,$10::date,$11::date,'ACTIVE',$12,$13)
+    `INSERT INTO "SpireServiceAuthorization"("id","organizationId","legalEntityId","patientId","authorizationNumber","payer","waiverType","serviceCode","serviceName","unitType","authorizedUnits","consumedUnits","remainingUnits","startDate","endDate","status","notes","createdById")
+     VALUES($1,$2,$3,$4,$5,'MEDICAID',$6,$7,$8,'UNIT',$9,0,$9,$10::date,$11::date,'ACTIVE',$12,$13)
      ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","authorizationNumber"=EXCLUDED."authorizationNumber","waiverType"=EXCLUDED."waiverType","serviceCode"=EXCLUDED."serviceCode","serviceName"=EXCLUDED."serviceName","authorizedUnits"=EXCLUDED."authorizedUnits","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","notes"=EXCLUDED."notes","updatedAt"=NOW()`,
     authorizationId, auth.organizationId, entityId, patientId, authorizationNumber,
     text(payloads.get('insurance_medicaid')?.waiverType, 120) || null, serviceCode, serviceName, units, startDate, endDate,
