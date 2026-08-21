@@ -21,12 +21,22 @@ for(const line of callLines)source=source.replace(new RegExp(`\\n?${line.replace
 source=source.replace(callAnchor,`${callLines.join('\n')}\n${callAnchor}`);
 await writeFile(target,source,'utf8');
 const page=path.join(root,'spire-incident-compliance.html');
-let html=await readFile(page,'utf8');
-const handoffScript='<script src="/assets/spire-incident-oitms-handoff.js?v=20260818-phase-c4-1"></script>';
-if(!html.includes(handoffScript)){
-  if(!html.includes('</body>'))throw new Error('SPIRE Incident Compliance page is missing </body>');
-  html=html.replace('</body>',`${handoffScript}</body>`);
-  await writeFile(page,html,'utf8');
+let frontendAttached=false;
+try{
+  let html=await readFile(page,'utf8');
+  const handoffScript='<script src="/assets/spire-incident-oitms-handoff.js?v=20260818-phase-c4-1"></script>';
+  if(!html.includes(handoffScript)){
+    if(!html.includes('</body>'))throw new Error('SPIRE Incident Compliance page is missing </body>');
+    html=html.replace('</body>',`${handoffScript}</body>`);
+    await writeFile(page,html,'utf8');
+  }
+  frontendAttached=true;
+}catch(error){
+  if(!(error&&typeof error==='object'&&'code' in error&&error.code==='ENOENT'))throw error;
 }
 console.log('Ohio MUI/UI compliance routes injected before the existing SPIRE incident route owner; close and reporting guards remain companion middleware.');
-console.log('OhioITMS handoff routes and MUI handoff panel installed in manual county-board handoff mode; no direct OITMS connector is claimed.');
+if(frontendAttached){
+  console.log('OhioITMS handoff routes and MUI handoff panel installed in manual county-board handoff mode; no direct OITMS connector is claimed.');
+}else{
+  console.log('OhioITMS handoff routes registered in manual county-board handoff mode; frontend panel injection skipped because spire-incident-compliance.html is not present in this backend build image.');
+}
