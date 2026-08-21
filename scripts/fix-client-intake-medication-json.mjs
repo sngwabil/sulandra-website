@@ -19,28 +19,36 @@ if (source.includes(legacyArgument)) source = source.replace(legacyArgument, jso
 if (source.includes(legacySql) || source.includes(legacyArgument)) {
   throw new Error('Legacy Client Intake medication dueTimes text-array persistence is still present');
 }
-// The first transform uses $9 for dueTimes. Adding the required legacy clientId
-// column below shifts dueTimes to $10. Accept both valid stages so a second build
-// can verify the already-compatible output instead of rejecting its own rewrite.
 if ((!source.includes(modernJsonSql) && !source.includes(compatibleJsonSql)) || !source.includes(jsonArgument)) {
   throw new Error('Client Intake medication dueTimes jsonb persistence could not be verified');
 }
 
-// SpireMedicationOrder still carries required legacy client/user columns used by the
-// existing eMAR routes. The permanent SPIRE patient is the same durable person key
-// used as clientId, so populate both generations of columns during intake promotion.
+// SpireMedicationOrder spans the original eMAR client/user contract and the newer
+// permanent SPIRE patient/entity contract. Populate both generations explicitly.
+// Accept the original pre-clientId shape as well as the direct clientId hotfix shape
+// so this installer can normalize either source into one canonical SQL statement.
 const modernColumns = '"id","organizationId","legalEntityId","patientId","name","dose","route","frequency","dueTimes","instructions","status","startDate","endDate","orderedById"';
+const directClientIdColumns = '"id","organizationId","legalEntityId","patientId","clientId","name","dose","route","frequency","dueTimes","instructions","status","startDate","endDate","orderedById"';
 const compatibleColumns = '"id","organizationId","clientId","legalEntityId","patientId","name","dose","route","frequency","dueTimes","instructions","status","startDate","endDate","orderedByUserId","lastModifiedByUserId","orderedById"';
+
 const modernValues = "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'ACTIVE',$11::date,$12::date,$13)";
+const directClientIdValues = "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,'ACTIVE',$12::date,$13::date,$14)";
 const compatibleValues = "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,'ACTIVE',$12::date,$13::date,$14,$14,$14)";
+
 const modernArgs = `orderId, auth.organizationId, entityId, patientId, med.name, med.dose, med.route, med.frequency,\n        JSON.stringify(med.dueTimes), instructions, effectiveStart, med.endDate, auth.userId,`;
+const directClientIdArgs = `orderId, auth.organizationId, entityId, patientId, patientId, med.name, med.dose, med.route, med.frequency,\n        JSON.stringify(med.dueTimes), instructions, effectiveStart, med.endDate, auth.userId,`;
 const compatibleArgs = `orderId, auth.organizationId, patientId, entityId, patientId, med.name, med.dose, med.route, med.frequency,\n        JSON.stringify(med.dueTimes), instructions, effectiveStart, med.endDate, auth.userId,`;
 
 if (source.includes(modernColumns)) source = source.replace(modernColumns, compatibleColumns);
+if (source.includes(directClientIdColumns)) source = source.replace(directClientIdColumns, compatibleColumns);
 if (source.includes(modernValues)) source = source.replace(modernValues, compatibleValues);
+if (source.includes(directClientIdValues)) source = source.replace(directClientIdValues, compatibleValues);
 if (source.includes(modernArgs)) source = source.replace(modernArgs, compatibleArgs);
+if (source.includes(directClientIdArgs)) source = source.replace(directClientIdArgs, compatibleArgs);
 
-if (source.includes(modernColumns) || source.includes(modernValues) || source.includes(modernArgs)) {
+if (source.includes(modernColumns) || source.includes(directClientIdColumns)
+  || source.includes(modernValues) || source.includes(directClientIdValues)
+  || source.includes(modernArgs) || source.includes(directClientIdArgs)) {
   throw new Error('Client Intake medication promotion still omits required legacy SpireMedicationOrder columns');
 }
 if (!source.includes(compatibleColumns) || !source.includes(compatibleValues) || !source.includes(compatibleArgs)) {
@@ -48,8 +56,10 @@ if (!source.includes(compatibleColumns) || !source.includes(compatibleValues) ||
 }
 
 const conflictAnchor = 'ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","name"=EXCLUDED."name"';
+const directClientIdConflict = 'ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","clientId"=EXCLUDED."clientId","name"=EXCLUDED."name"';
 const compatibleConflict = 'ON CONFLICT("id") DO UPDATE SET "clientId"=EXCLUDED."clientId","legalEntityId"=EXCLUDED."legalEntityId","patientId"=EXCLUDED."patientId","lastModifiedByUserId"=EXCLUDED."lastModifiedByUserId","name"=EXCLUDED."name"';
 if (source.includes(conflictAnchor)) source = source.replace(conflictAnchor, compatibleConflict);
+if (source.includes(directClientIdConflict)) source = source.replace(directClientIdConflict, compatibleConflict);
 if (!source.includes(compatibleConflict)) {
   throw new Error('Client Intake medication promotion idempotent legacy-column update could not be verified');
 }
