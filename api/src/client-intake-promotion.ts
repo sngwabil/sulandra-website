@@ -229,10 +229,10 @@ async function ensureMedications(
       ].filter(Boolean).join('\n');
 
       await prisma.$executeRawUnsafe(
-        `INSERT INTO "SpireMedicationOrder"("id","organizationId","legalEntityId","patientId","name","dose","route","frequency","dueTimes","instructions","status","startDate","endDate","orderedById")
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'ACTIVE',$11::date,$12::date,$13)
-         ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","name"=EXCLUDED."name","dose"=EXCLUDED."dose","route"=EXCLUDED."route","frequency"=EXCLUDED."frequency","dueTimes"=EXCLUDED."dueTimes","instructions"=EXCLUDED."instructions","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","updatedAt"=NOW()`,
-        orderId, auth.organizationId, entityId, patientId, med.name, med.dose, med.route, med.frequency,
+        `INSERT INTO "SpireMedicationOrder"("id","organizationId","legalEntityId","patientId","clientId","name","dose","route","frequency","dueTimes","instructions","status","startDate","endDate","orderedById")
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,'ACTIVE',$12::date,$13::date,$14)
+         ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","clientId"=EXCLUDED."clientId","name"=EXCLUDED."name","dose"=EXCLUDED."dose","route"=EXCLUDED."route","frequency"=EXCLUDED."frequency","dueTimes"=EXCLUDED."dueTimes","instructions"=EXCLUDED."instructions","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","updatedAt"=NOW()`,
+        orderId, auth.organizationId, entityId, patientId, patientId, med.name, med.dose, med.route, med.frequency,
         JSON.stringify(med.dueTimes), instructions, effectiveStart, med.endDate, auth.userId,
       );
       mapped += 1;
