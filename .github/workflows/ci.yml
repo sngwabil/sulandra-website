@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - feature/spire-ehr-platform
+      - feature/spire-1.1
   pull_request:
     branches:
       - main
       - feature/spire-ehr-platform
+      - feature/spire-1.1
 
 permissions:
   contents: read

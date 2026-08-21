@@ -7,6 +7,7 @@ const bootstrapPath = path.join(root, 'api/src/onboarding-bootstrap.ts');
 const careersImport = "import { registerCareersRoutes } from './careers-routes.js';";
 const ownerImport = "import { registerOwnerAuthorityRoutes } from './owner-authority-routes.js';";
 const serviceHomesImport = "import { registerServiceHomeManagementRoutes } from './service-home-management-routes.js';";
+const ohioIspClockOutImport = "import { registerSpireOhioIspClockOutGuard } from './spire-ohio-isp-clockout-guard.js';";
 const geofenceImport = "import { registerTimeAttendanceGeofenceRoutes } from './time-attendance-geofence-routes.js';";
 const exceptionImport = "import { registerTimeAttendanceExceptionRoutes } from './time-attendance-exception-routes.js';";
 const locationImport = "import { registerTimeAttendanceLocationSchedulerRoutes } from './time-attendance-location-scheduler-routes.js';";
@@ -14,6 +15,7 @@ const dayBoardImport = "import { registerTimeAttendanceDayBoardRoutes } from './
 const attendanceImport = "import { registerTimeAttendanceRoutes } from './time-attendance-routes.js';";
 const ownerRegister = 'registerOwnerAuthorityRoutes({ app, prisma, authOf });';
 const serviceHomesRegister = 'registerServiceHomeManagementRoutes({ app, prisma, authOf, requireRoles });';
+const ohioIspClockOutRegister = 'registerSpireOhioIspClockOutGuard({ app, prisma, authOf });';
 const geofenceRegister = 'registerTimeAttendanceGeofenceRoutes({ app, prisma, authOf, requireRoles });';
 const exceptionRegister = 'registerTimeAttendanceExceptionRoutes({ app, prisma, authOf, requireRoles });';
 const locationRegister = 'registerTimeAttendanceLocationSchedulerRoutes({ app, prisma, authOf, requireRoles });';
@@ -26,15 +28,16 @@ if (!bootstrap.includes(careersImport)) throw new Error('Unable to locate career
 if (!bootstrap.includes(ownerImport)) bootstrap = bootstrap.replace(careersImport, `${careersImport}\n${ownerImport}`);
 if (!bootstrap.includes(serviceHomesImport)) bootstrap = bootstrap.replace(ownerImport, `${ownerImport}\n${serviceHomesImport}`);
 if (!bootstrap.includes(geofenceImport)) bootstrap = bootstrap.replace(serviceHomesImport, `${serviceHomesImport}\n${geofenceImport}`);
+if (!bootstrap.includes(ohioIspClockOutImport)) bootstrap = bootstrap.replace(geofenceImport, `${ohioIspClockOutImport}\n${geofenceImport}`);
 if (!bootstrap.includes(exceptionImport)) bootstrap = bootstrap.replace(geofenceImport, `${geofenceImport}\n${exceptionImport}`);
 if (!bootstrap.includes(locationImport)) bootstrap = bootstrap.replace(exceptionImport, `${exceptionImport}\n${locationImport}`);
 if (!bootstrap.includes(dayBoardImport)) bootstrap = bootstrap.replace(locationImport, `${locationImport}\n${dayBoardImport}`);
 if (!bootstrap.includes(attendanceImport)) bootstrap = bootstrap.replace(dayBoardImport, `${dayBoardImport}\n${attendanceImport}`);
 if (!bootstrap.includes(careersRegister)) throw new Error('Unable to locate careers route registration anchor');
-for (const line of [ownerRegister, serviceHomesRegister, geofenceRegister, exceptionRegister, locationRegister, dayBoardRegister, attendanceRegister]) {
+for (const line of [ownerRegister, serviceHomesRegister, ohioIspClockOutRegister, geofenceRegister, exceptionRegister, locationRegister, dayBoardRegister, attendanceRegister]) {
   bootstrap = bootstrap.replace(new RegExp(`\\n?${line.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\n?`, 'g'), '\n');
 }
-bootstrap = bootstrap.replace(careersRegister, `${ownerRegister}\n${serviceHomesRegister}\n${geofenceRegister}\n${exceptionRegister}\n${locationRegister}\n${dayBoardRegister}\n${attendanceRegister}\n\n${careersRegister}`);
+bootstrap = bootstrap.replace(careersRegister, `${ownerRegister}\n${serviceHomesRegister}\n${ohioIspClockOutRegister}\n${geofenceRegister}\n${exceptionRegister}\n${locationRegister}\n${dayBoardRegister}\n${attendanceRegister}\n\n${careersRegister}`);
 await writeFile(bootstrapPath, bootstrap, 'utf8');
 
 const staticBase = 'https://www.sulandrahealth.com';
@@ -70,4 +73,4 @@ try {
   if (error?.code !== 'ENOENT') throw error;
 }
 
-console.log('Enterprise owner authority, unified service home management, Time and Attendance routes, dedicated daily Scheduling board, location-based workforce scheduler, GPS geofencing, blocked-attempt flags, manual punch review, and static portal navigation are installed without wrapping canonical Admin fetch requests.');
+console.log('Enterprise owner authority, unified service home management, OhioISP shift-completion guard, Time and Attendance routes, dedicated daily Scheduling board, location-based workforce scheduler, GPS geofencing, blocked-attempt flags, manual punch review, and static portal navigation are installed without wrapping canonical Admin fetch requests.');

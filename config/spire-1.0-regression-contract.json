@@ -1,0 +1,429 @@
+{
+  "name": "SPIRE 1.0 production invariant regression contract",
+  "version": 1,
+  "baselineSha": "704f6ab2d4913bb20594c1b8be8f1519b4f5d548",
+  "releaseBranch": "release/spire-1.0",
+  "protectedDeploymentFiles": [
+    "railway.json",
+    "railway.frontend.json",
+    "Dockerfile",
+    "Dockerfile.frontend",
+    "SULANDRA_DEPLOYMENT_WORKFLOW.md"
+  ],
+  "invariants": [
+    {
+      "id": "client-station-fullscreen-owner",
+      "description": "Client Station remains the single fullscreen owner and opens chart/chat inside that shell.",
+      "checks": [
+        {
+          "path": "spire/client-station.html",
+          "mustContain": [
+            "SPIRE_CLIENT_STATION_LISTS_V2",
+            "Client Station",
+            "stationClientBody",
+            "clientPreview",
+            "data-spire-fullscreen-control",
+            "/assets/spire-client-station.js"
+          ],
+          "mustNotContain": [
+            ">Patient Station<"
+          ]
+        },
+        {
+          "path": "assets/spire-client-station.js",
+          "mustContain": [
+            "function navigateSpire(url)",
+            "document.fullscreenElement",
+            "spireFullscreenRouteFrame",
+            "function openChart",
+            "navigateSpire(chartUrl(client))",
+            "function openChat",
+            "navigateSpire(chatUrl(client))",
+            "row.addEventListener('dblclick'",
+            "/api/spire/network/service-homes",
+            "localStorage.setItem(HOME_ID_KEY",
+            "/spire/secure-chat.html"
+          ],
+          "mustNotContain": [
+            "/spire/portal.html",
+            "openChart(state.clients[0]"
+          ],
+          "syntaxCheck": true
+        }
+      ]
+    },
+    {
+      "id": "secure-chat-embedded-workspace",
+      "description": "Secure Chat remains client-scoped and returns to Client Station rather than exiting the application shell.",
+      "checks": [
+        {
+          "path": "spire/secure-chat.html",
+          "mustContain": [
+            "SPIRE_SECURE_CHAT_V2",
+            "Secure Chat",
+            "Client Station",
+            "Client-scoped",
+            "data-spire-fullscreen-control"
+          ]
+        },
+        {
+          "path": "assets/spire-secure-chat.js",
+          "mustContain": [
+            "SPIRE_SECURE_CHAT_V2",
+            "/communications/overview",
+            "/communications/threads/",
+            "/api/spire/routing-pools",
+            "recipientPoolId",
+            "/spire/client-station.html"
+          ],
+          "mustNotContain": [
+            "Demo Conversation",
+            "Demo Message",
+            "mockMessages",
+            "/spire/portal.html"
+          ],
+          "syntaxCheck": true
+        }
+      ]
+    },
+    {
+      "id": "fullscreen-theme-and-header-controls",
+      "description": "Authenticated fullscreen preference, 19-theme system including Dark Room, and chart header controls remain present.",
+      "checks": [
+        {
+          "path": "assets/spire-user-preferences.js",
+          "mustContain": [
+            "SPIRE_USER_WORKSPACE_PREFERENCES_V5",
+            "spire:accessibility:fullscreen",
+            "fullscreenPreferred",
+            "requestFullscreen",
+            "userScope"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-epic-theme-suite.js",
+          "mustContain": [
+            "TOTAL_VISIBLE_THEMES = 19",
+            "darkRoom:",
+            "label: 'Dark Room'",
+            ":root[data-spire-epic-theme]",
+            "--epic-bg",
+            "--epic-text"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-screen-controls.js",
+          "mustContain": [
+            "SPIRE_SCREEN_CONTROLS_LIVE_V2",
+            "SpireUserPreferences",
+            "/api/spire/inbasket-v2?status=OPEN",
+            "/spire/secure-chat.html",
+            "Alerts & Reminders",
+            "Secure Chat"
+          ],
+          "mustNotContain": [
+            "Opening Staff Messaging Portal",
+            "Notifications: 3 unread reminders for current client."
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-master-navigation.js",
+          "mustContain": [
+            "SPIRE_MASTER_EXPLICIT_CLIENT_GATE_V2",
+            "/spire/client-station.html",
+            "Client Station"
+          ],
+          "mustNotContain": [
+            "/spire/portal.html"
+          ],
+          "syntaxCheck": true
+        }
+      ]
+    },
+    {
+      "id": "clinical-workspaces",
+      "description": "Notes, MAR, Flowsheets, Orders, eMAR, Care Plan/ISP, incidents and communications remain first-class SPIRE workspaces.",
+      "checks": [
+        {
+          "path": "spire/master.html",
+          "mustContain": [
+            "S.P.I.R.E."
+          ]
+        },
+        {
+          "path": "scripts/verify-spire-foundation.mjs",
+          "mustContain": [
+            "title=\"Secure Chat\"",
+            "/assets/spire-user-preferences.js",
+            "/assets/spire-screen-controls.js",
+            "/assets/spire-master-navigation.js",
+            "/assets/spire-medication-order-entry.js",
+            "/assets/spire-mar-timeline.js",
+            "SPIRE_FLOWSHEET_FRIENDLY_ACTOR_V1",
+            "SPIRE Client Station before using Flowsheets"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-note-composer-v2.js",
+          "mustContain": [
+            "SPIRE_NOTE_COMPOSER_V2",
+            "notes-view",
+            "noteStatus"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-mar-timeline.js",
+          "mustContainAny": [
+            "SPIRE_MAR_TIMELINE_V4",
+            "SPIRE_MAR_TIMELINE_V3",
+            "SPIRE_MAR_TIMELINE_V2"
+          ],
+          "mustContain": [
+            "Go to Now",
+            "Medication / Order",
+            "Completed / Inactive Medications",
+            "data-mar-filter=\"scheduled\"",
+            "data-mar-filter=\"prn\""
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-master-flowsheet-grid.js",
+          "mustContain": [
+            "SPIRE_MASTER_FLOWSHEET_AUTHORITY_V1",
+            "SPIRE_FLOWSHEET_FILE_WORKFLOW_V1",
+            "ISP Goal Skill-Building"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-medication-order-entry-v2.js",
+          "mustContain": [
+            "SPIRE_MEDICATION_ORDER_ENTRY_V2",
+            "+ Add Medication Order",
+            "Manage Orders",
+            "Validate & Activate Order",
+            "/api/spire/medication-orders-v2/"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-emar.js",
+          "mustContain": [
+            "Electronic Medication Administration Record",
+            "PRN Effect"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-care-plan.js",
+          "mustContain": [
+            "Care Plan / ISP",
+            "Goals & Outcomes"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-incidents.js",
+          "mustContain": [
+            "Incident Management",
+            "New Incident"
+          ],
+          "syntaxCheck": true
+        },
+        {
+          "path": "assets/spire-communications-inbasket.js",
+          "mustContain": [
+            "In Basket 2.0",
+            "communications/overview",
+            "inbasket-v2"
+          ],
+          "syntaxCheck": true
+        }
+      ]
+    },
+    {
+      "id": "patient-photo-home-and-dodd-scope",
+      "description": "Client identity/photo slot, Authorized state, selected service-home scope and home-health/DODD-first operational surfaces remain available.",
+      "checks": [
+        {
+          "path": "assets/spire-client-station.js",
+          "mustContain": [
+            "HOME_ID_KEY",
+            "HOME_ENTITY_KEY",
+            "x-spire-home-id",
+            "client-photo",
+            "status-ok",
+            "Authorized"
+          ]
+        },
+        {
+          "path": "api/src/spire-network-home-access-routes.ts",
+          "mustContain": [
+            "app.get('/api/spire/network/service-homes'",
+            "app.post('/api/spire/network/service-homes/:homeId/access'",
+            "SpireEmployeeHomeAssignment",
+            "SpirePatientHomeAssignment"
+          ]
+        },
+        {
+          "path": "scls-tasks.html",
+          "mustContain": [
+            "SCLS Task Board",
+            "immutable task history",
+            "/api/scls/tasks"
+          ]
+        },
+        {
+          "path": "scls-residential.html"
+        },
+        {
+          "path": "home-health.html"
+        }
+      ]
+    }
+  ],
+  "regulatoryAcceptance": [
+    {
+      "id": "step-1-canonical-evv",
+      "description": "Step 1 canonical Ohio EVV model, evidence, sequence, immutable change and transmission-event contract remains wired.",
+      "checks": [
+        {
+          "path": "api/src/spire-evv-canonical.ts",
+          "mustContain": [
+            "SPIRE_OHIO_ALT_EVV_CANONICAL_1_1",
+            "SpireEvvSequence",
+            "SpireEvvCall",
+            "SpireEvvVisitChange",
+            "SpireEvvTransmissionEvent",
+            "Provider Medicaid identifier",
+            "PatientOtherID",
+            "StaffOtherID",
+            "Canonical Call In evidence is required",
+            "Canonical Call Out evidence is required",
+            "ReasonCode: nullableText(change.reasonCode, 20) || '99'"
+          ]
+        },
+        {
+          "path": "api/src/spire-authorizations-evv-routes.ts",
+          "mustContain": [
+            "registerSpireAuthorizationsEvvRoutes"
+          ]
+        },
+        {
+          "path": "prisma/migrations/20260817180000_spire_1_1_evv_canonical_visit/migration.sql"
+        },
+        {
+          "path": "prisma/migrations/20260817180500_spire_1_1_evv_capture_hardening/migration.sql"
+        }
+      ]
+    },
+    {
+      "id": "step-2-dodd-service-documentation",
+      "description": "Step 2 DODD service-document lifecycle, immutability, provenance and retention controls remain present.",
+      "checks": [
+        {
+          "path": "api/src/spire-dodd-service-documentation-routes.ts",
+          "mustContain": [
+            "registerSpireDoddServiceDocumentationRoutes",
+            "Signed or voided service documentation cannot be edited",
+            "status\"='SIGNED'",
+            "SpireDoddServiceDocumentEvent",
+            "DODD_SERVICE_DOCUMENTATION_6Y",
+            "LEGAL_HOLD_SET",
+            "LEGAL_HOLD_RELEASED",
+            "Only signed service documentation can be voided"
+          ]
+        },
+        {
+          "path": "prisma/migrations/20260817181000_spire_1_1_dodd_service_documentation/migration.sql"
+        },
+        {
+          "path": "prisma/migrations/20260817181500_spire_1_1_dodd_regulatory_profile_corrections/migration.sql"
+        },
+        {
+          "path": "prisma/migrations/20260817182000_spire_1_1_dodd_document_integrity/migration.sql"
+        }
+      ]
+    },
+    {
+      "id": "step-3-ohio-isp-bindings",
+      "description": "Step 3 OhioISP discovery, Care Plan binding, Task Board binding, evidence, repository, lifecycle and clock-out guard remain wired.",
+      "checks": [
+        {
+          "path": "api/src/spire-ohio-isp-routes.ts",
+          "mustContain": [
+            "COMMUNICATION",
+            "ADVOCACY_ENGAGEMENT",
+            "SAFETY_SECURITY",
+            "SOCIAL_SPIRITUALITY",
+            "DAILY_LIFE_EMPLOYMENT",
+            "COMMUNITY_LIVING",
+            "HEALTHY_LIVING",
+            "carePlanGoalId",
+            "carePlanInterventionId",
+            "taskGenerationMode",
+            "SpireOhioIspEvent"
+          ]
+        },
+        {
+          "path": "api/src/spire-ohio-isp-lifecycle-guard.ts",
+          "mustContain": [
+            "registerSpireOhioIspLifecycleGuard"
+          ]
+        },
+        {
+          "path": "api/src/spire-ohio-isp-repository-routes.ts",
+          "mustContain": [
+            "registerSpireOhioIspRepositoryRoutes"
+          ]
+        },
+        {
+          "path": "api/src/spire-ohio-isp-clockout-guard.ts",
+          "mustContain": [
+            "registerSpireOhioIspClockOutGuard",
+            "/api/time-attendance/clock/geofenced-out",
+            "SpireOhioIspSupportTaskBinding",
+            "SpireOhioIspTaskException",
+            "OHIO_ISP_TASKS_INCOMPLETE",
+            "Complete the required OhioISP support work or document an exception before clocking out."
+          ]
+        },
+        {
+          "path": "scripts/inject-clinical-routes.mjs",
+          "mustContain": [
+            "registerSpireOhioIspLifecycleGuard",
+            "registerSpireOhioIspRoutes",
+            "registerSpireOhioIspRepositoryRoutes",
+            "registerSpireDoddServiceDocumentationRoutes",
+            "registerSpireAuthorizationsEvvRoutes"
+          ]
+        },
+        {
+          "path": "scripts/install-time-attendance-platform.mjs",
+          "mustContain": [
+            "registerSpireOhioIspClockOutGuard",
+            "OhioISP shift-completion guard"
+          ]
+        },
+        {
+          "path": "prisma/migrations/20260817182500_spire_1_1_ohio_isp_bindings/migration.sql"
+        },
+        {
+          "path": "prisma/migrations/20260817183000_spire_1_1_ohio_isp_lifecycle_sync/migration.sql"
+        },
+        {
+          "path": "prisma/migrations/20260817183500_spire_1_1_ohio_isp_profile_status_guard/migration.sql"
+        },
+        {
+          "path": "prisma/migrations/20260817184000_spire_1_1_ohio_isp_repository_shift_controls/migration.sql"
+        }
+      ]
+    }
+  ]
+}

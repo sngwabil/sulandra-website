@@ -166,8 +166,8 @@ async function ensureAdmissionNote(prisma: PrismaClient, auth: PromotionAuth, in
 
 async function findSeededCarePlan(prisma: PrismaClient, auth: PromotionAuth, intakeCaseId: string, patientId: string) {
   const rows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
-    `SELECT "id" FROM "SpireCarePlan" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "patientId"=$3 AND "sourceIntakeCaseId"=$4 ORDER BY "createdAt" DESC LIMIT 1`,
-    auth.organizationId, auth.legalEntityId, patientId, intakeCaseId,
+    `SELECT "id" FROM "SpireCarePlan" WHERE "sourceIntakeCaseId"=$1 ORDER BY "createdAt" DESC LIMIT 1`,
+    intakeCaseId
   );
   return rows[0]?.id || null;
 }
@@ -230,10 +230,10 @@ async function ensureMedications(
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO "SpireMedicationOrder"("id","organizationId","legalEntityId","patientId","name","dose","route","frequency","dueTimes","instructions","status","startDate","endDate","orderedById")
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,CASE WHEN $9='' THEN ARRAY[]::text[] ELSE string_to_array($9,',') END,$10,'ACTIVE',$11::date,$12::date,$13)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'ACTIVE',$11::date,$12::date,$13)
          ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","name"=EXCLUDED."name","dose"=EXCLUDED."dose","route"=EXCLUDED."route","frequency"=EXCLUDED."frequency","dueTimes"=EXCLUDED."dueTimes","instructions"=EXCLUDED."instructions","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","updatedAt"=NOW()`,
         orderId, auth.organizationId, entityId, patientId, med.name, med.dose, med.route, med.frequency,
-        med.dueTimes.join(','), instructions, effectiveStart, med.endDate, auth.userId,
+        JSON.stringify(med.dueTimes), instructions, effectiveStart, med.endDate, auth.userId,
       );
       mapped += 1;
       reason = 'Mapped to an active medication order from a licensed-reviewer-approved intake; medication reconciliation remains open for final clinical verification.';
@@ -369,9 +369,9 @@ async function ensureServiceAuthorization(
   }
 
   await prisma.$executeRawUnsafe(
-    `INSERT INTO "SpireServiceAuthorization"("id","organizationId","legalEntityId","patientId","authorizationNumber","payer","waiverType","serviceCode","serviceName","unitType","authorizedUnits","startDate","endDate","status","notes","createdById")
-     VALUES($1,$2,$3,$4,$5,'MEDICAID',$6,$7,$8,'UNIT',$9,$10::date,$11::date,'ACTIVE',$12,$13)
-     ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","authorizationNumber"=EXCLUDED."authorizationNumber","waiverType"=EXCLUDED."waiverType","serviceCode"=EXCLUDED."serviceCode","serviceName"=EXCLUDED."serviceName","authorizedUnits"=EXCLUDED."authorizedUnits","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","notes"=EXCLUDED."notes","updatedAt"=NOW()`,
+    `INSERT INTO "SpireServiceAuthorization"("id","organizationId","legalEntityId","patientId","authorizationNumber","payer","waiverType","serviceCode","serviceName","unitType","authorizedUnits","startDate","endDate","startsAt","endsAt","status","notes","createdById")
+     VALUES($1,$2,$3,$4,$5,'MEDICAID',$6,$7,$8,'UNIT',$9,$10::date,$11::date,$10::date,$11::date,'ACTIVE',$12,$13)
+     ON CONFLICT("id") DO UPDATE SET "legalEntityId"=EXCLUDED."legalEntityId","authorizationNumber"=EXCLUDED."authorizationNumber","waiverType"=EXCLUDED."waiverType","serviceCode"=EXCLUDED."serviceCode","serviceName"=EXCLUDED."serviceName","authorizedUnits"=EXCLUDED."authorizedUnits","startDate"=EXCLUDED."startDate","endDate"=EXCLUDED."endDate","startsAt"=EXCLUDED."startsAt","endsAt"=EXCLUDED."endsAt","notes"=EXCLUDED."notes","updatedAt"=NOW()`,
     authorizationId, auth.organizationId, entityId, patientId, authorizationNumber,
     text(payloads.get('insurance_medicaid')?.waiverType, 120) || null, serviceCode, serviceName, units, startDate, endDate,
     [

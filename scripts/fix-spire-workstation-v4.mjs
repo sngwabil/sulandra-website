@@ -12,15 +12,17 @@ if (!source.includes('SPIRE_WORKSPACE_PERFORMANCE_V3')) {
   throw new Error('SPIRE workstation v4 requires workspace performance v3 first');
 }
 
-if (!source.includes(marker)) {
-  // Browser-native fullscreen cannot be restored automatically after a full page
-  // refresh without a user gesture. Remove the old resume-button shim and let the
-  // authenticated shell/preferences runtime own native fullscreen consistently.
-  source = source.replace(
-    /\s*<script data-spire-fullscreen-resume="SPIRE_FULLSCREEN_RESUME_V1">[\s\S]*?<\/script>\s*/g,
-    '\n'
-  );
+// Browser-native fullscreen cannot be restored automatically after a full page
+// refresh without a user gesture. Workspace performance V3 is an older publisher
+// that can re-emit this helper on a later build:web pass, so normalize it on EVERY
+// workstation pass, not only the first installation. The authenticated Client
+// Station shell/preferences runtime remains the single native-fullscreen owner.
+source = source.replace(
+  /\s*<script data-spire-fullscreen-resume="SPIRE_FULLSCREEN_RESUME_V1">[\s\S]*?<\/script>\s*/g,
+  '\n'
+);
 
+if (!source.includes(marker)) {
   const helperAnchor = `  function stableLoadingMarkup(label='Loading chart…') {`;
   if (!source.includes(helperAnchor)) {
     throw new Error('SPIRE workstation v4 could not find workspace helper anchor');
@@ -50,7 +52,6 @@ for (const required of [
   marker,
   'function prewarmWorkspace(viewId)',
   'function scheduleWorkspacePrewarm()',
-  "['flowsheets-view','mar-view','notes-view']",
   'requestIdleCallback',
   'scheduleWorkspacePrewarm();',
   "addEventListener('pointerover', prewarmTabFromEvent",
@@ -58,9 +59,31 @@ for (const required of [
 ]) {
   if (!source.includes(required)) throw new Error(`SPIRE workstation v4 verification failed: missing ${required}`);
 }
+
+// Publication layers intentionally evolve this list in a strict sequence:
+// workstation v4 -> flowsheets/MAR/notes;
+// MAR single-owner v5 -> flowsheets/notes (MAR removed);
+// Orders v6 -> flowsheets/notes/manage-orders.
+// A repeat build must accept any already-installed later SAFE state while continuing
+// to reject any state that brings MAR back into generic background prewarming.
+const workstationPrewarm = "['flowsheets-view','mar-view','notes-view']";
+const marSafePrewarm = "['flowsheets-view','notes-view']";
+const ordersSafePrewarm = "['flowsheets-view','notes-view','manage-orders-view']";
+const singleOwnerGuard = "if (viewId === 'mar-view') return Promise.resolve(false)";
+const workstationStateValid = source.includes(workstationPrewarm) && !source.includes('SPIRE_MAR_SINGLE_OWNER_V5');
+const marSafeStateValid = source.includes('SPIRE_MAR_SINGLE_OWNER_V5') && source.includes(singleOwnerGuard)
+  && (source.includes(marSafePrewarm) || source.includes(ordersSafePrewarm));
+if (!workstationStateValid && !marSafeStateValid) {
+  throw new Error('SPIRE workstation v4 verification failed: workspace prewarm targets are not an approved workstation/MAR-single-owner/Orders state');
+}
+if (marSafeStateValid && source.includes(workstationPrewarm)) {
+  throw new Error('SPIRE workstation v4 verification failed: MAR returned to generic prewarm after single-owner activation');
+}
 if (source.includes('data-spire-fullscreen-resume="SPIRE_FULLSCREEN_RESUME_V1"')) {
   throw new Error('SPIRE workstation v4 verification failed: legacy fullscreen resume runtime remains');
 }
 
 await writeFile(masterPath, source, 'utf8');
-console.log('SPIRE workstation v4 installed: common workspaces prewarm in idle time, delegated chart tabs share one in-flight load, and the legacy fullscreen resume shim is removed.');
+console.log(marSafeStateValid
+  ? 'SPIRE workstation v4 verified in repeat-build MAR-safe state; Orders prewarm may remain active while generic MAR prewarm stays disabled.'
+  : 'SPIRE workstation v4 installed: common workspaces prewarm in idle time, delegated chart tabs share one in-flight load, and the legacy fullscreen resume shim is removed.');

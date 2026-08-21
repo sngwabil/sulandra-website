@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>SPIRE EVV UAT Console | Sulandra Health</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:#edf3f7;color:#173b52}button,input,textarea{font:inherit}.top{display:flex;align-items:center;gap:14px;padding:11px 18px;background:#fff;border-bottom:1px solid #d5e1e8;position:sticky;top:0;z-index:20}.top img{width:220px;max-width:42vw}.top .spacer{flex:1}.top a{color:#075985;text-decoration:none;font-weight:900}.shell{width:min(1180px,calc(100% - 22px));margin:18px auto 50px}.hero{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}.hero h1{margin:0;color:#0b4265;font-size:28px}.hero p{margin:5px 0;color:#687e8c}.warning{padding:13px 14px;border:1px solid #dca84e;background:#fff7df;color:#6e4b08;border-radius:11px;line-height:1.5;margin-bottom:12px}.warning strong{color:#8a5200}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border:1px solid #d5e1e8;border-radius:13px;box-shadow:0 8px 24px rgba(20,61,86,.06);padding:14px}.card h2{margin:0 0 9px;color:#174a69;font-size:16px}.field{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}.field label{font-size:10px;font-weight:900;text-transform:uppercase;color:#667d8c}.field input,.field textarea{border:1px solid #c6d5de;border-radius:8px;padding:9px;background:#fff;color:#173b52}.field textarea{min-height:82px}.actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #0b6ea8;background:#fff;color:#0b6ea8;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:900;cursor:pointer}.btn.primary{background:#0b6ea8;color:#fff}.btn.success{border-color:#3f8157;background:#eff9f2;color:#2f6842}.btn.danger{border-color:#ba5148;background:#fff2f1;color:#8f332d}.btn.warn{border-color:#a97828;background:#fff8e8;color:#76520d}.status{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:12px}.stat{background:#fff;border:1px solid #d5e1e8;border-radius:10px;padding:9px}.stat span{display:block;font-size:8px;text-transform:uppercase;font-weight:900;color:#87959e}.stat strong{font-size:12px;color:#24526c}.output{margin-top:10px;background:#0e1d2a;color:#d9edf7;border-radius:9px;padding:11px;min-height:140px;max-height:430px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}.message{display:none;margin-top:10px;padding:9px;border-radius:8px;background:#eef8fc;border:1px solid #c5e0ec;color:#3e6479}.message.show{display:block}.message.error{background:#fff0ef;border-color:#efb4af;color:#8b302a}.full{grid-column:1/-1}@media(max-width:760px){.grid,.status{grid-template-columns:1fr}.full{grid-column:auto}.top a{display:none}.hero{flex-direction:column}}
+  </style>
+</head>
+<body data-spire-evv-uat-console="SPIRE_EVV_UAT_CONSOLE_V1">
+  <header class="top"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span class="spacer"></span><a href="/revenue-cycle.html">Revenue Cycle</a><a href="/spire/client-station.html">Client Station</a><a href="/admin.html#dashboard">Admin</a></header>
+  <main class="shell">
+    <div class="hero"><div><h1>SPIRE Alternate EVV UAT Console</h1><p>Canonical payload validation, queue inspection and local response simulation for implementation testing.</p></div><button id="refreshStatus" class="btn primary">Refresh Adapter Status</button></div>
+    <div class="warning"><strong>UAT simulator only.</strong> This console does not transmit to Sandata or ODM, does not prove certification, and cannot create production acceptance evidence. Revenue Cycle remains fail-closed until an actual <b>ACCEPTED PRODUCTION</b> transmission exists through the future authenticated external adapter.</div>
+    <div id="adapterStats" class="status"></div>
+    <div class="grid">
+      <section class="card">
+        <h2>1. Select Canonical EVV Visit</h2>
+        <div class="field"><label>Client / Patient ID</label><input id="patientId" autocomplete="off" placeholder="SPIRE patient ID"></div>
+        <div class="field"><label>EVV Visit ID</label><input id="visitId" autocomplete="off" placeholder="SpireEvvVisit ID"></div>
+        <div class="actions"><button id="preview" class="btn primary">Validate & Preview</button><button id="queueUat" class="btn success">Queue UAT Snapshot</button><button id="history" class="btn">Load History</button></div>
+        <div id="visitMessage" class="message"></div>
+        <pre id="visitOutput" class="output">Select a client and EVV visit, then validate the canonical payload.</pre>
+      </section>
+      <section class="card">
+        <h2>2. Simulate UAT Aggregator Response</h2>
+        <div class="field"><label>Transmission ID</label><input id="transmissionId" autocomplete="off" placeholder="Filled automatically after Queue UAT"></div>
+        <div class="field"><label>Optional response reason</label><textarea id="reason" placeholder="Example: simulated validation rejection for missing test value"></textarea></div>
+        <div class="actions"><button data-status="ACKNOWLEDGED" class="btn">Acknowledge</button><button data-status="ACCEPTED" class="btn success">Accept UAT</button><button data-status="REJECTED" class="btn danger">Reject UAT</button><button data-status="RETRY_PENDING" class="btn warn">Retry Pending</button><button data-status="FAILED" class="btn danger">Fail UAT</button></div>
+        <div id="txMessage" class="message"></div>
+        <pre id="txOutput" class="output">No UAT response has been simulated.</pre>
+      </section>
+      <section class="card full">
+        <h2>Adapter / Certification State</h2>
+        <pre id="adapterOutput" class="output">Loading adapter status…</pre>
+      </section>
+    </div>
+  </main>
+  <script src="/assets/sulandra-entity-context.js?v=20260817-spire-evv-uat-1"></script>
+  <script>
+  (()=>{'use strict';
+    const API=window.SULANDRA_API_BASE||'https://sulandra-website-production-5fc4.up.railway.app';
+    const TOKEN_KEYS=['sulandra:employee:access-token','sulandra_token','token','accessToken'];
+    const ENTITY_KEY='sulandra:selected-legal-entity-id';
+    const $=id=>document.getElementById(id);
+    const token=()=>TOKEN_KEYS.map(k=>sessionStorage.getItem(k)||localStorage.getItem(k)).find(Boolean)||'';
+    const entity=()=>sessionStorage.getItem(ENTITY_KEY)||localStorage.getItem(ENTITY_KEY)||'';
+    const show=(id,message,error=false)=>{const el=$(id);el.textContent=message;el.classList.toggle('error',error);el.classList.add('show')};
+    const out=(id,value)=>{$(id).textContent=JSON.stringify(value,null,2)};
+    async function api(path,options={}){
+      const headers={Accept:'application/json',...(token()?{Authorization:`Bearer ${token()}`}:{})};
+      if(entity())headers['x-legal-entity-id']=entity();
+      if(options.body)headers['Content-Type']='application/json';
+      const response=await fetch(API+path,{...options,headers:{...headers,...(options.headers||{})},cache:'no-store'});
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok){const error=new Error(payload.error?.message||payload.error||payload.message||`Request failed (${response.status})`);error.details=payload.error?.details||payload.details||payload.data||payload;throw error}
+      return payload.data??payload;
+    }
+    const ids=()=>({patient:$('patientId').value.trim(),visit:$('visitId').value.trim()});
+    function requireVisit(){const v=ids();if(!v.patient||!v.visit)throw new Error('Client / Patient ID and EVV Visit ID are required.');return v}
+    async function adapterStatus(){try{const data=await api('/api/spire/evv/adapter-status');out('adapterOutput',data);const counts=Array.isArray(data.counts)?data.counts:[];$('adapterStats').innerHTML=`<div class="stat"><span>Mode</span><strong>${data.mode||'—'}</strong></div><div class="stat"><span>External UAT</span><strong>${data.externalUatConfigured?'Configured':'Not configured'}</strong></div><div class="stat"><span>Production</span><strong>${data.productionConfigured?'Configured':'Not configured'}</strong></div><div class="stat"><span>Certification</span><strong>${data.certified?'Certified':'NOT CERTIFIED'}</strong></div>`;if(counts.length)$('adapterOutput').textContent+=`\n\nTransmission counts:\n${counts.map(x=>`${x.environment} · ${x.status}: ${x.count}`).join('\n')}`;}catch(e){out('adapterOutput',{error:e.message,details:e.details||null});}}
+    $('refreshStatus').onclick=adapterStatus;
+    $('preview').onclick=async()=>{try{const v=requireVisit();const data=await api(`/api/spire/patients/${encodeURIComponent(v.patient)}/evv/visits/${encodeURIComponent(v.visit)}/adapter-preview`);out('visitOutput',data);show('visitMessage',data.transmittable?'Canonical payload passes local validation. No external transmission occurred.':`Blocked by ${data.validationErrors?.length||0} canonical validation error(s).`,!data.transmittable)}catch(e){show('visitMessage',e.message,true);out('visitOutput',{error:e.message,details:e.details||null})}};
+    $('queueUat').onclick=async()=>{try{const v=requireVisit();const data=await api(`/api/spire/patients/${encodeURIComponent(v.patient)}/evv/visits/${encodeURIComponent(v.visit)}/queue-transmission`,{method:'POST',body:JSON.stringify({environment:'UAT'})});$('transmissionId').value=data.id||'';out('visitOutput',data);show('visitMessage','UAT payload snapshot queued locally. No Sandata/ODM call was made.');await adapterStatus()}catch(e){show('visitMessage',e.message,true);out('visitOutput',{error:e.message,details:e.details||null})}};
+    $('history').onclick=async()=>{try{const v=requireVisit();const data=await api(`/api/spire/patients/${encodeURIComponent(v.patient)}/evv/visits/${encodeURIComponent(v.visit)}/history`);out('visitOutput',data);show('visitMessage','Loaded canonical visit evidence and transmission history.')}catch(e){show('visitMessage',e.message,true);out('visitOutput',{error:e.message,details:e.details||null})}};
+    document.querySelectorAll('[data-status]').forEach(button=>button.addEventListener('click',async()=>{try{const v=requireVisit(),tx=$('transmissionId').value.trim();if(!tx)throw new Error('Transmission ID is required. Queue a UAT snapshot first or paste a UAT transmission ID.');const status=button.dataset.status;const data=await api(`/api/spire/patients/${encodeURIComponent(v.patient)}/evv/transmissions/${encodeURIComponent(tx)}/simulate-uat-response`,{method:'POST',body:JSON.stringify({status,reason:$('reason').value.trim()||null,response:{console:'SPIRE_EVV_UAT_CONSOLE_V1'}})});out('txOutput',data);show('txMessage',`${status} recorded as a local UAT simulation. It does not satisfy the production billing gate.`,status==='REJECTED'||status==='FAILED');await adapterStatus()}catch(e){show('txMessage',e.message,true);out('txOutput',{error:e.message,details:e.details||null})}}));
+    window.addEventListener('sulandra:entity-context-changed',()=>adapterStatus());
+    (async()=>{if(!token()){location.href='/employee-login.html?returnTo='+encodeURIComponent(location.pathname);return}await window.SulandraEntityContext?.ready;await adapterStatus()})();
+  })();
+  </script>
+</body>
+</html>

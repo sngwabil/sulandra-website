@@ -38,6 +38,7 @@ jobs:
         run: npm run verify:business-uat
 
       - name: Wait for exact production business-UAT deployment
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -60,6 +61,7 @@ jobs:
             # Current SPIRE production contract: login/SSO shell -> Client Station -> explicit client chart.
             spire_entry="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire.html || true)"
             spire_login="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire/login.html || true)"
+            spire_login_js="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/spire-login.js || true)"
             spire_station="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/spire/client-station.html || true)"
             spire_preferences="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/spire-user-preferences.js || true)"
             spire_screen="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/spire-screen-controls.js || true)"
@@ -85,6 +87,8 @@ jobs:
               && grep -q '/spire/login.html' <<<"$spire_entry" \
               && grep -q 'SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1' <<<"$spire_login" \
               && grep -q 'spireWorkspaceFrame' <<<"$spire_login" \
+              && grep -q 'SPIRE_DEEP_LINK_HANDOFF_V1' <<<"$spire_login_js" \
+              && grep -q '/spire/master.html' <<<"$spire_login_js" \
               && grep -q 'SPIRE_CLIENT_STATION_LISTS_V2' <<<"$spire_station" \
               && grep -q 'Client Station' <<<"$spire_station" \
               && grep -q 'Available Homes' <<<"$spire_station" \
@@ -103,7 +107,7 @@ jobs:
               && grep -q 'DETERMINISTIC_HOME_HEALTH_RAIL_RESTORE' <<<"$home_health_rail" \
               && grep -q 'sulandra:home-health:active-rail' <<<"$home_health_rail" \
               && grep -q 'companyComplianceLink' <<<"$company_docs"; then
-              echo "Exact production business contract is live with authenticated SPIRE login, Client Station, user-scoped theme/preferences, live Secure Chat/In Basket and Home Health rail stability v2."
+              echo "Exact production business contract is live with authenticated SPIRE deep-link handoff, Client Station, user-scoped theme/preferences, live Secure Chat/In Basket and Home Health rail stability v2."
               exit 0
             fi
             echo "Waiting for business-UAT production deployment (${attempt}/80)..."
@@ -113,6 +117,7 @@ jobs:
           exit 1
 
       - name: Validate live SPIRE JavaScript syntax
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -139,11 +144,13 @@ jobs:
           echo "Live SPIRE JavaScript syntax verified across ${#scripts[@]} current runtimes."
 
       - name: Install Playwright browser runtime
+        if: github.event_name != 'pull_request'
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium
 
       - name: Run all nine live production business paths
+        if: github.event_name != 'pull_request'
         env:
           UAT_BASE_URL: https://www.sulandrahealth.com
         run: npx playwright test --config=playwright.business-uat.config.mjs
