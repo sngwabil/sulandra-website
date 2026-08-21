@@ -49,8 +49,8 @@
     section.id='adminSpire11Launchpad';
     section.style.cssText='margin:18px 0 6px;padding:18px;border:1px solid #d8c9ee;border-radius:18px;background:linear-gradient(135deg,#fbf8ff,#f1f8ff);box-shadow:0 10px 28px rgba(58,54,112,.08)';
     const tools=[
-      ['Ohio UI / MUI Incident Compliance','Classification, deadlines, filing evidence, UI logs, MUI trends and OhioITMS/county-board handoff evidence.','/spire-incident-compliance.html','#8b2765'],
-      ['Ohio Workforce Screening','DODD/Home Health screening cases, verified checks, readiness evaluation and evidence links.','/employee-ohio-screening.html','#46527f'],
+      ['Ohio UI / MUI Incident Compliance','Select an authorized home and client, then open classification, deadlines, filing evidence, UI logs, MUI trends and OhioITMS/county-board handoff evidence.','/spire-incident-compliance-launcher.html','#8b2765'],
+      ['Ohio Workforce Screening','Select employees by name, review required checks and readiness, and append verified screening evidence without raw IDs or JSON.','/employee-ohio-screening-workspace.html','#46527f'],
       ['Company Compliance QA & Trends','Compliance oversight, immutable QA packets, evidence review and annual cross-system trends.','/company-compliance.html','#2f6348'],
       ['EVV UAT Console','Canonical EVV validation, adapter queue inspection and alternate EVV implementation testing.','/spire-evv-test-console.html','#1c6570'],
       ['DODD Billing Rules','Date-effective Ohio DODD billing rules, service-event validation and immutable rule versions.','/dodd-billing-rules.html','#7b5518'],
