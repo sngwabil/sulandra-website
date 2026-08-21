@@ -27,6 +27,14 @@ function safePath(requestUrl) {
   return resolved === root || resolved.startsWith(`${root}${path.sep}`) ? resolved : null;
 }
 
+function cacheControlFor(file) {
+  const extension = path.extname(file).toLowerCase();
+  // Admin/application runtimes change frequently and must revalidate so a
+  // newly deployed UI fix cannot be masked for an hour by a stale JS bundle.
+  if (extension === '.html' || extension === '.js' || extension === '.css') return 'no-cache, no-store, must-revalidate';
+  return 'public, max-age=3600';
+}
+
 const server = http.createServer(async (request, response) => {
   if (!['GET', 'HEAD'].includes(request.method || 'GET')) {
     response.writeHead(405, { Allow: 'GET, HEAD' });
@@ -34,7 +42,9 @@ const server = http.createServer(async (request, response) => {
     return;
   }
 
-  const target = safePath(request.url || '/');
+  const requestUrl = request.url || '/';
+  const requestPathname = decodeURIComponent(new URL(requestUrl, 'http://localhost').pathname);
+  const target = safePath(requestUrl);
   if (!target) {
     response.writeHead(400);
     response.end('Bad Request');
@@ -45,12 +55,19 @@ const server = http.createServer(async (request, response) => {
     const info = await stat(target);
     const file = info.isDirectory() ? path.join(target, 'index.html') : target;
     const fileInfo = info.isDirectory() ? await stat(file) : info;
-    response.writeHead(200, {
+    const headers = {
       'Content-Type': contentTypes.get(path.extname(file).toLowerCase()) || 'application/octet-stream',
       'Content-Length': fileInfo.size,
-      'Cache-Control': path.extname(file).toLowerCase() === '.html' ? 'no-cache' : 'public, max-age=3600',
+      'Cache-Control': cacheControlFor(file),
       'X-Content-Type-Options': 'nosniff',
-    });
+    };
+
+    // The old Admin launcher was previously served with a one-hour asset cache.
+    // Clearing only the browser cache (not cookies/storage) on the canonical
+    // Admin document makes the corrected launcher take effect immediately.
+    if (requestPathname === '/admin.html') headers['Clear-Site-Data'] = '"cache"';
+
+    response.writeHead(200, headers);
     if (request.method === 'HEAD') response.end();
     else createReadStream(file).pipe(response);
   } catch {
