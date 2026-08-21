@@ -20,15 +20,25 @@ for(const line of callLines)source=source.replace(new RegExp(`\\n?${line.replace
 source=source.replace(callAnchor,`${callLines.join('\n')}\n${callAnchor}`);
 await writeFile(target,source,'utf8');
 const page=path.join(root,'company-compliance.html');
-let html=await readFile(page,'utf8');
-const scripts=[
-  '<script src="/assets/company-compliance-qa.js?v=20260818-phase-c2-1"></script>',
-  '<script src="/assets/company-compliance-trends.js?v=20260818-phase-c3-1"></script>',
-];
-for(const script of scripts){
- if(html.includes(script))continue;
- if(!html.includes('</body>'))throw new Error('Company Compliance page is missing </body>');
- html=html.replace('</body>',`${script}</body>`);
+let frontendAttached=false;
+try{
+  let html=await readFile(page,'utf8');
+  const scripts=[
+    '<script src="/assets/company-compliance-qa.js?v=20260818-phase-c2-1"></script>',
+    '<script src="/assets/company-compliance-trends.js?v=20260818-phase-c3-1"></script>',
+  ];
+  for(const script of scripts){
+    if(html.includes(script))continue;
+    if(!html.includes('</body>'))throw new Error('Company Compliance page is missing </body>');
+    html=html.replace('</body>',`${script}</body>`);
+  }
+  await writeFile(page,html,'utf8');
+  frontendAttached=true;
+}catch(error){
+  if(!(error&&typeof error==='object'&&'code' in error&&error.code==='ENOENT'))throw error;
 }
-await writeFile(page,html,'utf8');
-console.log('SPIRE 1.1 Company Compliance QA + annual trend routes registered before Careers; QA packets and annual trend/export panels attached to the existing Company Compliance page.');
+if(frontendAttached){
+  console.log('SPIRE 1.1 Company Compliance QA + annual trend routes registered before Careers; QA packets and annual trend/export panels attached to the existing Company Compliance page.');
+}else{
+  console.log('SPIRE 1.1 Company Compliance QA + annual trend routes registered before Careers; frontend page injection skipped because company-compliance.html is not present in this backend build image.');
+}
