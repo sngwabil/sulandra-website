@@ -2,19 +2,36 @@
 
 > **READ THIS BEFORE EDITING OR DEPLOYING ANY PART OF THIS PROJECT.**
 
-## Primary development branch
+## Version freeze and canonical development branch
 
-`feature/spire-ehr-platform` is the permanent primary development branch for this project.
+**Sulandra 1.0 is frozen.** The exact production baseline is preserved on `release/sulandra-1.0` and Railway production services must remain pinned to that branch until an explicitly approved Sulandra 1.1 production promotion occurs.
 
-All development work, fixes, features, routing changes, deployment changes, database changes, migration changes, and build changes must be made on `feature/spire-ehr-platform` unless Sulpitius explicitly names a different branch.
+`sulandra-1.1` is the canonical development/integration branch for all new Sulandra work. This applies to the complete platform from the public `index.html` through the Admin console, workforce/dispatch, financial modules, Client Intake, and S.P.I.R.E.
+
+`feature/spire-ehr-platform` is now a historical predecessor branch. Do not use it for new production-bound development and do not repoint Railway production services back to it unless Sulpitius explicitly orders a rollback.
 
 Before any write operation:
 
 1. Confirm the target repository is `sngwabil/sulandra-website`.
-2. Confirm the target branch is `feature/spire-ehr-platform`.
-3. Fetch and inspect the current branch version of every affected file before replacing it.
-4. Inspect the applicable build, deployment, validation, and database scripts before changing behavior.
-5. Do not merge to `main` unless Sulpitius explicitly requests that merge.
+2. Confirm production code is not being changed on `release/sulandra-1.0`.
+3. Confirm new work targets `sulandra-1.1` directly or a PR branch created from `sulandra-1.1`.
+4. Fetch and inspect the current branch version of every affected file before replacing it.
+5. Inspect the applicable build, deployment, validation, database, security, and compliance scripts before changing behavior.
+6. Do not merge Sulandra 1.1 work into the frozen production baseline unless Sulpitius explicitly approves the production promotion.
+
+### Release governance
+
+- `release/sulandra-1.0` = immutable Sulandra 1.0 production baseline / rollback target.
+- `sulandra-1.1` = canonical Sulandra 1.1 integration branch.
+- `pr/*` or task-specific branches = implementation branches created from `sulandra-1.1` and merged back only after required checks pass.
+- GitHub branch protection for the frozen release and canonical development branch must require pull requests and required status checks; direct production pushes are not part of the approved workflow.
+- Railway production must stay on `release/sulandra-1.0` while Sulandra 1.1 is under development. Sulandra 1.1 deployment must use a separate preview/staging path until formal promotion.
+
+## System scope
+
+The **Sulandra Admin console is the primary business operating control center**. S.P.I.R.E. is the clinical/client operational component of the broader Sulandra platform; it is not the entire website or business system.
+
+Sulandra 1.1 must remain tenant-aware and white-label capable so a future buyer can supply company-specific identity, logos, contact information, legal-entity settings, and regulated configuration without forking the platform.
 
 ## Production architecture
 
@@ -212,4 +229,4 @@ Ask these questions before coding:
 3. Does it involve frontend and backend? Build the page in the static frontend and the API in the backend, then connect them using the explicit API base.
 4. Is it a database deployment concern? Keep it in the backend predeploy path and never add it to the static frontend service.
 
-This document is the authoritative workflow for future Sulandra website work.
+This document is the authoritative workflow for Sulandra 1.1 development and future production promotion.
