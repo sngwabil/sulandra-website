@@ -35,6 +35,7 @@ requireMarkers(security, [
   'roleRequiresUniversalMfa(input.role)||Boolean(profile?.smsRequired)||ownerSmsRequired(input.email)',
   'Multi-factor authentication phone is not configured for this account',
   'Multi-factor authentication SMS provider is not configured',
+  "if(!roleRequiresUniversalMfa(String(target.role)))return void res.status(409).json({error:'This role is not configured for mandatory Sulandra MFA'});",
 ], 'employee-auth-security.ts');
 
 requireMarkers(bootstrap, [
@@ -44,11 +45,13 @@ requireMarkers(bootstrap, [
   'registerEmployeeAuthSecurityRoutes',
   'mfaChallengeId: z.string().trim().uuid().optional()',
   "mfaCode: z.string().trim().regex(/^\\d{6}$/).optional()",
-  'if (credentials.mfaChallengeId || credentials.mfaCode)',
-  'const verification = await verifyEmployeeSmsLoginMfa',
-  'const challenge = await beginEmployeeSmsLoginMfa',
+  'const smsMfaInput = {',
+  'const smsMfa = credentials.mfaChallengeId || credentials.mfaCode',
+  '? await verifyEmployeeSmsLoginMfa',
+  ': await beginEmployeeSmsLoginMfa',
+  "reason: 'SMS verification challenge issued'",
   "mfaMethod: 'sms'",
-  'await recordSuccessfulPortalLogin(account.userId);\n    res.json(buildSessionPayload(account));',
+  'await recordSuccessfulPortalLogin(account.userId);\n    const payload = await buildSessionPayload(account);',
   'registerEmployeeAuthSecurityRoutes({ app, prisma, authOf, requireRoles });',
 ], 'onboarding-bootstrap.ts');
 
@@ -56,10 +59,11 @@ forbidMarkers(bootstrap, [
   'await recordSuccessfulPortalLogin(employee.userId);\n      account = employee;',
 ], 'onboarding-bootstrap.ts pre-MFA path');
 
-const mfaGateIndex = bootstrap.indexOf('const challenge = await beginEmployeeSmsLoginMfa');
-const jwtIndex = bootstrap.indexOf('res.json(buildSessionPayload(account));');
-if (mfaGateIndex < 0 || jwtIndex < 0 || mfaGateIndex > jwtIndex) {
-  failures.push('JWT issuance is not ordered after the MFA challenge/verification gate');
+const mfaGateIndex = bootstrap.indexOf('const smsMfa = credentials.mfaChallengeId || credentials.mfaCode');
+const successIndex = bootstrap.indexOf('await recordSuccessfulPortalLogin(account.userId);');
+const jwtIndex = bootstrap.indexOf('const payload = await buildSessionPayload(account);');
+if (mfaGateIndex < 0 || successIndex < 0 || jwtIndex < 0 || mfaGateIndex > successIndex || successIndex > jwtIndex) {
+  failures.push('Successful-login accounting and JWT/session issuance are not ordered after the MFA challenge/verification gate');
 }
 
 requireMarkers(loginUi, [
@@ -75,4 +79,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Universal MFA verified: every governed Admin/PHI/regulated role is fail-closed at login until SMS verification succeeds, the browser supports the challenge flow, and access-token issuance occurs only after MFA.');
+console.log('Universal MFA verified: every governed Admin/PHI/regulated role is fail-closed at login until the canonical SMS challenge succeeds, successful-login accounting occurs after MFA, and session issuance remains behind that gate.');
