@@ -131,6 +131,9 @@ await import('./install-spire-adaptive-chart-tabs.mjs');
 // Company Chronicles owns white-label branding across all published non-Admin HTML and
 // is loaded inside Admin by the canonical shell rather than by direct HTML injection.
 await import('./install-company-chronicles-publication.mjs');
+// Sulandra 1.1 Admin uses the left menu for core folders, the top bar for global operations,
+// and the right drawer for day-to-day dispatch, EVV and intake actions.
+await import('./install-admin-global-ui-restructure.mjs');
 await import('./verify-employee-work-center.mjs');
 
 const finalOwnerProfile=await readFile(path.join(dist,'admin-profile.html'),'utf8');
