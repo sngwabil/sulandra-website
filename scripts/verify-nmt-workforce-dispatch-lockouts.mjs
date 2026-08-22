@@ -13,6 +13,10 @@ const forbidMarkers=(source,markers,label)=>{for(const marker of markers)if(sour
 requireMarkers(qualification,[
   'NmtDriverQualification',
   'NmtDispatchQualificationDecision',
+  'NmtDriverAssignmentProfile',
+  'licenseNumber',
+  'licenseState',
+  'licenseExpiresAt',
   'DRIVER_PROFILE_INACTIVE',
   'DRIVER_LICENSE_NUMBER_MISSING',
   'DRIVER_LICENSE_EXPIRED_FOR_SERVICE_DATE',
@@ -28,6 +32,9 @@ requireMarkers(qualification,[
   '/api/admin/nmt/drivers/:driverId/qualification',
   '/api/admin/nmt/drivers/:driverId/eligibility',
 ], 'nmt-driver-qualification.ts');
+forbidMarkers(qualification,[
+  'FROM "NmtDriverProfile"',
+], 'nmt-driver-qualification.ts canonical profile table');
 
 requireMarkers(dispatch,[
   "import { assertNmtDriverEligible } from './nmt-driver-qualification.js';",
@@ -50,4 +57,4 @@ if(failures.length){
   console.error('NMT workforce/dispatch lockout verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('NMT workforce/dispatch lockouts verified: driver assignment is fail-closed on server-side qualification evidence and decisions are auditable.');
+console.log('NMT workforce/dispatch lockouts verified: canonical driver profiles, license/BMV/insurance/background evidence, and fail-closed assignment decisions are enforced.');

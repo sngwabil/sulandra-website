@@ -12,14 +12,14 @@ type DriverProfile={
   active:boolean;
   userId:string|null;
   displayName:string;
-  licenseNumber:string|null;
-  licenseState:string|null;
-  licenseExpiresAt:Date|string|null;
 };
 
 type Qualification={
   active:boolean;
+  licenseNumber:string|null;
+  licenseState:string|null;
   licenseVerifiedAt:Date|string|null;
+  licenseExpiresAt:Date|string|null;
   bmvCheckedAt:Date|string|null;
   bmvPoints:number|null;
   insuranceStatus:string;
@@ -43,7 +43,10 @@ const validDate=(value:Date|null)=>Boolean(value&&!Number.isNaN(value.getTime())
 
 const qualificationSchema=z.object({
   active:z.boolean().default(true),
+  licenseNumber:z.string().trim().min(1).max(120),
+  licenseState:z.string().trim().min(2).max(40),
   licenseVerifiedAt:z.string().datetime(),
+  licenseExpiresAt:z.string().datetime(),
   bmvCheckedAt:z.string().datetime(),
   bmvPoints:z.number().int().min(0).max(99),
   insuranceStatus:z.enum(['VERIFIED','PENDING','FAILED','EXPIRED']),
@@ -63,7 +66,10 @@ export async function ensureNmtDriverQualificationSchema(prisma:PrismaClient){
     "legalEntityId" TEXT NOT NULL,
     "driverId" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT TRUE,
+    "licenseNumber" TEXT,
+    "licenseState" TEXT,
     "licenseVerifiedAt" TIMESTAMPTZ,
+    "licenseExpiresAt" TIMESTAMPTZ,
     "bmvCheckedAt" TIMESTAMPTZ,
     "bmvPoints" INTEGER,
     "insuranceStatus" TEXT NOT NULL DEFAULT 'PENDING',
@@ -79,6 +85,9 @@ export async function ensureNmtDriverQualificationSchema(prisma:PrismaClient){
     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "NmtDriverQualification" ADD COLUMN IF NOT EXISTS "licenseNumber" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "NmtDriverQualification" ADD COLUMN IF NOT EXISTS "licenseState" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "NmtDriverQualification" ADD COLUMN IF NOT EXISTS "licenseExpiresAt" TIMESTAMPTZ`);
   await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "NmtDriverQualification_scope_driver_uq" ON "NmtDriverQualification"("organizationId","legalEntityId","driverId")`);
   await prisma.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS "NmtDispatchQualificationDecision"(
     "id" TEXT PRIMARY KEY,
@@ -99,15 +108,15 @@ export function computeNmtDriverQualificationBlockers(profile:DriverProfile|null
   const blockers:string[]=[];
   if(!profile)return['DRIVER_PROFILE_MISSING'];
   if(!profile.active)blockers.push('DRIVER_PROFILE_INACTIVE');
-  if(!profile.licenseNumber)blockers.push('DRIVER_LICENSE_NUMBER_MISSING');
-  if(!profile.licenseState)blockers.push('DRIVER_LICENSE_STATE_MISSING');
-  const licenseExpiresAt=asDate(profile.licenseExpiresAt);
-  if(!validDate(licenseExpiresAt))blockers.push('DRIVER_LICENSE_EXPIRATION_MISSING');
-  else if(licenseExpiresAt!.getTime()<serviceDate.getTime())blockers.push('DRIVER_LICENSE_EXPIRED_FOR_SERVICE_DATE');
 
   if(!qualification)return[...blockers,'DRIVER_QUALIFICATION_EVIDENCE_MISSING'];
   if(!qualification.active)blockers.push('DRIVER_QUALIFICATION_INACTIVE');
+  if(!qualification.licenseNumber)blockers.push('DRIVER_LICENSE_NUMBER_MISSING');
+  if(!qualification.licenseState)blockers.push('DRIVER_LICENSE_STATE_MISSING');
   if(!qualification.licenseVerifiedAt)blockers.push('DRIVER_LICENSE_NOT_VERIFIED');
+  const licenseExpiresAt=asDate(qualification.licenseExpiresAt);
+  if(!validDate(licenseExpiresAt))blockers.push('DRIVER_LICENSE_EXPIRATION_MISSING');
+  else if(licenseExpiresAt!.getTime()<serviceDate.getTime())blockers.push('DRIVER_LICENSE_EXPIRED_FOR_SERVICE_DATE');
 
   const bmvCheckedAt=asDate(qualification.bmvCheckedAt);
   if(!validDate(bmvCheckedAt))blockers.push('BMV_RECORD_CHECK_MISSING');
@@ -135,8 +144,8 @@ export function computeNmtDriverQualificationBlockers(profile:DriverProfile|null
 
 export async function evaluateNmtDriverEligibility(prisma:PrismaClient,input:{organizationId:string;legalEntityId:string;driverId:string;serviceDate:Date}):Promise<NmtDriverEligibility>{
   await ensureNmtDriverQualificationSchema(prisma);
-  const profiles=await prisma.$queryRawUnsafe<DriverProfile[]>(`SELECT "id","active","userId","displayName","licenseNumber","licenseState","licenseExpiresAt" FROM "NmtDriverProfile" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`,input.organizationId,input.legalEntityId,input.driverId);
-  const qualifications=await prisma.$queryRawUnsafe<Qualification[]>(`SELECT "active","licenseVerifiedAt","bmvCheckedAt","bmvPoints","insuranceStatus","insuranceVerifiedAt","insuranceExpiresAt","backgroundStatus","backgroundVerifiedAt","postAccidentRestricted","postAccidentClearanceAt" FROM "NmtDriverQualification" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "driverId"=$3 LIMIT 1`,input.organizationId,input.legalEntityId,input.driverId);
+  const profiles=await prisma.$queryRawUnsafe<DriverProfile[]>(`SELECT "id","active","userId","displayName" FROM "NmtDriverAssignmentProfile" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`,input.organizationId,input.legalEntityId,input.driverId);
+  const qualifications=await prisma.$queryRawUnsafe<Qualification[]>(`SELECT "active","licenseNumber","licenseState","licenseVerifiedAt","licenseExpiresAt","bmvCheckedAt","bmvPoints","insuranceStatus","insuranceVerifiedAt","insuranceExpiresAt","backgroundStatus","backgroundVerifiedAt","postAccidentRestricted","postAccidentClearanceAt" FROM "NmtDriverQualification" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "driverId"=$3 LIMIT 1`,input.organizationId,input.legalEntityId,input.driverId);
   const profile=profiles[0]||null,qualification=qualifications[0]||null;
   const blockers=computeNmtDriverQualificationBlockers(profile,qualification,input.serviceDate);
   return{eligible:blockers.length===0,blockers,profile,qualification};
@@ -154,9 +163,9 @@ export async function assertNmtDriverEligible(prisma:PrismaClient,input:{organiz
 }
 
 export const registerNmtDriverQualificationRoutes=(app:express.Express,prisma:PrismaClient,deps:Deps)=>{const{authOf}=deps;
-  app.get('/api/admin/nmt/drivers/:driverId/qualification',async(req,res,next)=>{try{const a=authOf(res);ensureAdmin(a);await ensureNmtDriverQualificationSchema(prisma);const driverId=String(req.params.driverId||'').trim();const profile=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "id","active","userId","displayName","licenseNumber","licenseState","licenseExpiresAt" FROM "NmtDriverProfile" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`,a.organizationId,entity(a),driverId);if(!profile[0])throw httpError(404,'NMT driver was not found');const qualification=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT * FROM "NmtDriverQualification" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "driverId"=$3 LIMIT 1`,a.organizationId,entity(a),driverId);res.json({data:{driver:profile[0],qualification:qualification[0]||null}});}catch(e){next(e);}});
+  app.get('/api/admin/nmt/drivers/:driverId/qualification',async(req,res,next)=>{try{const a=authOf(res);ensureAdmin(a);await ensureNmtDriverQualificationSchema(prisma);const driverId=String(req.params.driverId||'').trim();const profile=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT "id","active","userId","displayName" FROM "NmtDriverAssignmentProfile" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`,a.organizationId,entity(a),driverId);if(!profile[0])throw httpError(404,'NMT driver was not found');const qualification=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`SELECT * FROM "NmtDriverQualification" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "driverId"=$3 LIMIT 1`,a.organizationId,entity(a),driverId);res.json({data:{driver:profile[0],qualification:qualification[0]||null}});}catch(e){next(e);}});
 
-  app.put('/api/admin/nmt/drivers/:driverId/qualification',async(req,res,next)=>{try{const a=authOf(res);ensureAdmin(a);await ensureNmtDriverQualificationSchema(prisma);const driverId=String(req.params.driverId||'').trim();const profile=await prisma.$queryRawUnsafe<Array<{id:string}>>(`SELECT "id" FROM "NmtDriverProfile" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`,a.organizationId,entity(a),driverId);if(!profile[0])throw httpError(404,'NMT driver was not found');const i=qualificationSchema.parse(req.body);const rows=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`INSERT INTO "NmtDriverQualification"("id","organizationId","legalEntityId","driverId","active","licenseVerifiedAt","bmvCheckedAt","bmvPoints","insuranceStatus","insuranceVerifiedAt","insuranceExpiresAt","backgroundStatus","backgroundVerifiedAt","postAccidentRestricted","postAccidentClearanceAt","reviewerNote","reviewedById","reviewedAt") VALUES($1,$2,$3,$4,$5,$6::timestamptz,$7::timestamptz,$8,$9,$10::timestamptz,$11::timestamptz,$12,$13::timestamptz,$14,$15::timestamptz,$16,$17,NOW()) ON CONFLICT("organizationId","legalEntityId","driverId") DO UPDATE SET "active"=EXCLUDED."active","licenseVerifiedAt"=EXCLUDED."licenseVerifiedAt","bmvCheckedAt"=EXCLUDED."bmvCheckedAt","bmvPoints"=EXCLUDED."bmvPoints","insuranceStatus"=EXCLUDED."insuranceStatus","insuranceVerifiedAt"=EXCLUDED."insuranceVerifiedAt","insuranceExpiresAt"=EXCLUDED."insuranceExpiresAt","backgroundStatus"=EXCLUDED."backgroundStatus","backgroundVerifiedAt"=EXCLUDED."backgroundVerifiedAt","postAccidentRestricted"=EXCLUDED."postAccidentRestricted","postAccidentClearanceAt"=EXCLUDED."postAccidentClearanceAt","reviewerNote"=EXCLUDED."reviewerNote","reviewedById"=EXCLUDED."reviewedById","reviewedAt"=NOW(),"updatedAt"=NOW() RETURNING *`,randomUUID(),a.organizationId,entity(a),driverId,i.active,i.licenseVerifiedAt,i.bmvCheckedAt,i.bmvPoints,i.insuranceStatus,i.insuranceVerifiedAt,i.insuranceExpiresAt,i.backgroundStatus,i.backgroundVerifiedAt,i.postAccidentRestricted,i.postAccidentClearanceAt??null,i.reviewerNote??null,a.userId);res.json({data:rows[0]});}catch(e){next(e);}});
+  app.put('/api/admin/nmt/drivers/:driverId/qualification',async(req,res,next)=>{try{const a=authOf(res);ensureAdmin(a);await ensureNmtDriverQualificationSchema(prisma);const driverId=String(req.params.driverId||'').trim();const profile=await prisma.$queryRawUnsafe<Array<{id:string}>>(`SELECT "id" FROM "NmtDriverAssignmentProfile" WHERE "organizationId"=$1 AND "legalEntityId"=$2 AND "id"=$3 LIMIT 1`,a.organizationId,entity(a),driverId);if(!profile[0])throw httpError(404,'NMT driver was not found');const i=qualificationSchema.parse(req.body);const rows=await prisma.$queryRawUnsafe<Array<Record<string,unknown>>>(`INSERT INTO "NmtDriverQualification"("id","organizationId","legalEntityId","driverId","active","licenseNumber","licenseState","licenseVerifiedAt","licenseExpiresAt","bmvCheckedAt","bmvPoints","insuranceStatus","insuranceVerifiedAt","insuranceExpiresAt","backgroundStatus","backgroundVerifiedAt","postAccidentRestricted","postAccidentClearanceAt","reviewerNote","reviewedById","reviewedAt") VALUES($1,$2,$3,$4,$5,$6,$7,$8::timestamptz,$9::timestamptz,$10::timestamptz,$11,$12,$13::timestamptz,$14::timestamptz,$15,$16::timestamptz,$17,$18::timestamptz,$19,$20,NOW()) ON CONFLICT("organizationId","legalEntityId","driverId") DO UPDATE SET "active"=EXCLUDED."active","licenseNumber"=EXCLUDED."licenseNumber","licenseState"=EXCLUDED."licenseState","licenseVerifiedAt"=EXCLUDED."licenseVerifiedAt","licenseExpiresAt"=EXCLUDED."licenseExpiresAt","bmvCheckedAt"=EXCLUDED."bmvCheckedAt","bmvPoints"=EXCLUDED."bmvPoints","insuranceStatus"=EXCLUDED."insuranceStatus","insuranceVerifiedAt"=EXCLUDED."insuranceVerifiedAt","insuranceExpiresAt"=EXCLUDED."insuranceExpiresAt","backgroundStatus"=EXCLUDED."backgroundStatus","backgroundVerifiedAt"=EXCLUDED."backgroundVerifiedAt","postAccidentRestricted"=EXCLUDED."postAccidentRestricted","postAccidentClearanceAt"=EXCLUDED."postAccidentClearanceAt","reviewerNote"=EXCLUDED."reviewerNote","reviewedById"=EXCLUDED."reviewedById","reviewedAt"=NOW(),"updatedAt"=NOW() RETURNING *`,randomUUID(),a.organizationId,entity(a),driverId,i.active,i.licenseNumber,i.licenseState,i.licenseVerifiedAt,i.licenseExpiresAt,i.bmvCheckedAt,i.bmvPoints,i.insuranceStatus,i.insuranceVerifiedAt,i.insuranceExpiresAt,i.backgroundStatus,i.backgroundVerifiedAt,i.postAccidentRestricted,i.postAccidentClearanceAt??null,i.reviewerNote??null,a.userId);res.json({data:rows[0]});}catch(e){next(e);}});
 
   app.get('/api/admin/nmt/drivers/:driverId/eligibility',async(req,res,next)=>{try{const a=authOf(res);ensureAdmin(a);const raw=String(req.query.serviceDate||'').trim();const serviceDate=raw?new Date(raw):new Date();if(Number.isNaN(serviceDate.getTime()))throw httpError(400,'A valid serviceDate is required');const result=await evaluateNmtDriverEligibility(prisma,{organizationId:a.organizationId,legalEntityId:entity(a),driverId:String(req.params.driverId||'').trim(),serviceDate});res.json({data:{driverId:req.params.driverId,serviceDate:serviceDate.toISOString(),...result}});}catch(e){next(e);}});
 };
