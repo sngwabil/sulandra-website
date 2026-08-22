@@ -128,6 +128,9 @@ await import('./install-spire-flowsheet-role-selector.mjs');
 // Publish responsive activity tabs last so screen-width overflow and the More menu
 // cannot be removed by an earlier SPIRE publication pass.
 await import('./install-spire-adaptive-chart-tabs.mjs');
+// Company Chronicles owns white-label branding across all published non-Admin HTML and
+// is loaded inside Admin by the canonical shell rather than by direct HTML injection.
+await import('./install-company-chronicles-publication.mjs');
 await import('./verify-employee-work-center.mjs');
 
 const finalOwnerProfile=await readFile(path.join(dist,'admin-profile.html'),'utf8');
