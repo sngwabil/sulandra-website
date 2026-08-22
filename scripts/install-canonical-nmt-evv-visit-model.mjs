@@ -3,8 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const target=path.join(root,'api','src','nmt-trip-routes.ts');
-let source=await readFile(target,'utf8');
+const tripPath=path.join(root,'api','src','nmt-trip-routes.ts');
+const canonicalPath=path.join(root,'api','src','spire-evv-canonical.ts');
+let source=await readFile(tripPath,'utf8');
 
 const replaceOnce=(from,to,label)=>{
   if(source.includes(to))return;
@@ -29,6 +30,15 @@ replaceOnce(reasonAnchor,evvRequirement,'pre-completion EVV requirement');
 const oldExecute="const q=`UPDATE \"NmtTrip\" SET ${sets.join(',')} WHERE \"organizationId\"=$${idx++} AND \"legalEntityId\"=$${idx++} AND \"id\"=$${idx++}`;await prisma.$executeRawUnsafe(q,...values);const refreshed=await trip(prisma,a,req.params.tripId);await event(prisma,a,refreshed,actorType(a),'STATUS_CHANGED',from,to,{odometer:i.odometer??null,reason:i.reason??null,driverNotes:i.driverNotes??null},req);res.json({data:refreshed});";
 const newExecute="const q=`UPDATE \"NmtTrip\" SET ${sets.join(',')} WHERE \"organizationId\"=$${idx++} AND \"legalEntityId\"=$${idx++} AND \"id\"=$${idx++}`;let canonicalEvvVisit:Record<string,unknown>|null=null;if(evvEvidence){await prisma.$transaction(async(tx)=>{await tx.$executeRawUnsafe(q,...values);canonicalEvvVisit=await createCanonicalNmtEvvVisit(tx,{organizationId:a.organizationId,legalEntityId:selectedEntity(a),tripId:req.params.tripId,actorUserId:a.userId,evidence:evvEvidence});});}else{await prisma.$executeRawUnsafe(q,...values);}const refreshed=await trip(prisma,a,req.params.tripId);await event(prisma,a,refreshed,actorType(a),'STATUS_CHANGED',from,to,{odometer:i.odometer??null,reason:i.reason??null,driverNotes:i.driverNotes??null,evvVisitId:canonicalEvvVisit?String(canonicalEvvVisit.id||''):null},req);res.json({data:refreshed,evvVisit:canonicalEvvVisit});";
 replaceOnce(oldExecute,newExecute,'atomic NMT completion update');
+await writeFile(tripPath,source,'utf8');
 
-await writeFile(target,source,'utf8');
+let canonical=await readFile(canonicalPath,'utf8');
+const canonicalMarker="  const assignments = new Set(calls.map((call) => evvText(call.callAssignment, 40)));";
+const nmtValidation=`  const sourceNmtTripId = evvText(visit.sourceNmtTripId, 160);\n  if (sourceNmtTripId) {\n    const nmtRequired: Array<[string,string]> = [\n      ['sourceNmtOrderId','NMT source order ID is required'],\n      ['nmtLegType','NMT leg type is required'],\n      ['originName','NMT origin name is required'],\n      ['originStreet','NMT origin street is required'],\n      ['originCity','NMT origin city is required'],\n      ['originState','NMT origin state is required'],\n      ['originPostalCode','NMT origin postal code is required'],\n      ['destinationName','NMT destination name is required'],\n      ['destinationStreet','NMT destination street is required'],\n      ['destinationCity','NMT destination city is required'],\n      ['destinationState','NMT destination state is required'],\n      ['destinationPostalCode','NMT destination postal code is required'],\n      ['vehicleLicensePlate','NMT vehicle license plate is required'],\n      ['driverSignature','NMT driver signature is required'],\n      ['driverSignatureSha256','NMT driver signature hash is required'],\n      ['driverSignatureMethod','NMT driver signature method is required'],\n      ['driverSignerUserId','NMT driver signer identity is required'],\n    ];\n    for (const [key,message] of nmtRequired) if (!evvText(visit[key], 500000)) errors.push(message);\n    if (!visit.driverSignedAt) errors.push('NMT driver signed timestamp is required');\n    if (!visit.immutableAt) errors.push('NMT immutable timestamp is required');\n    if (!Array.isArray(visit.personsPresent) || visit.personsPresent.length < 2) errors.push('NMT persons-present evidence is required');\n  }\n`;
+if(!canonical.includes('NMT origin name is required')){
+  if(!canonical.includes(canonicalMarker))throw new Error('Canonical EVV validation marker is missing');
+  canonical=canonical.replace(canonicalMarker,`${nmtValidation}${canonicalMarker}`);
+}
+await writeFile(canonicalPath,canonical,'utf8');
+
 console.log('Canonical NMT EVV visit completion installed: operational trip completion is atomic with immutable route, vehicle, persons-present and driver-signature evidence.');
