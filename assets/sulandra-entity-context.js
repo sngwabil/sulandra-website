@@ -85,17 +85,31 @@
   function installCompactWorkspaceHeader() {
     if (!compactWorkspaceHeaderPath() || document.getElementById('sulandra-compact-workspace-header')) return;
     const header = document.querySelector('header.top');
-    if (!header || !header.querySelector(':scope > img')) return;
+    if (!header) return;
+
+    let logoLink = header.querySelector(':scope > a > img')?.parentElement || null;
+    const directLogo = header.querySelector(':scope > img');
+    if (!logoLink && directLogo) {
+      logoLink = document.createElement('a');
+      logoLink.href = '/admin.html#dashboard';
+      logoLink.setAttribute('aria-label', 'Sulandra Health Admin');
+      header.insertBefore(logoLink, directLogo);
+      logoLink.appendChild(directLogo);
+    }
+    if (!logoLink || !logoLink.querySelector('img')) return;
+    logoLink.classList.add('sulandra-workspace-logo');
+
     const style = document.createElement('style');
     style.id = 'sulandra-compact-workspace-header';
     style.textContent = `
-      header.top,.top{min-height:80px!important;height:auto!important;padding:10px 20px!important;align-items:center!important;gap:14px!important;overflow:visible!important;box-sizing:border-box!important}
-      header.top>img,.top>img{width:240px!important;height:auto!important;max-width:38vw!important;max-height:60px!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:0 1 240px!important;transform:none!important;clip-path:none!important;margin:0!important}
+      header.top,.top{min-height:80px!important;height:80px!important;padding:10px 20px!important;align-items:center!important;gap:14px!important;overflow:hidden!important;box-sizing:border-box!important}
+      .sulandra-workspace-logo{display:flex!important;align-items:center!important;width:240px!important;height:60px!important;max-width:38vw!important;flex:0 0 240px!important;overflow:hidden!important;position:relative!important;text-decoration:none!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important}
+      .sulandra-workspace-logo>img{width:180px!important;height:58px!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:left center!important;display:block!important;flex:none!important;transform:scale(3.25)!important;transform-origin:left center!important;clip-path:none!important;margin:0!important}
       header.top .spacer,.top .spacer{min-width:12px!important;flex:1 1 auto!important}
-      header.top a,.top a{white-space:nowrap!important}
+      header.top a:not(.sulandra-workspace-logo),.top a:not(.sulandra-workspace-logo){white-space:nowrap!important}
       #sulandraCompanySwitcher{flex:0 1 auto!important;margin:0!important;align-self:center!important}
-      @media(max-width:900px){header.top,.top{padding:9px 14px!important;gap:10px!important}header.top>img,.top>img{width:205px!important;max-width:34vw!important;max-height:54px!important;flex-basis:205px!important}}
-      @media(max-width:760px){header.top,.top{min-height:72px!important;padding:8px 12px!important;flex-wrap:wrap!important}header.top>img,.top>img{width:185px!important;max-width:58vw!important;max-height:50px!important;flex-basis:185px!important}#sulandraCompanySwitcher{order:4!important;width:100%!important;max-width:none!important}#sulandraCompanySwitcher select{max-width:calc(100vw - 120px)!important}}
+      @media(max-width:900px){header.top,.top{padding:9px 14px!important;gap:10px!important}.sulandra-workspace-logo{width:205px!important;height:54px!important;max-width:34vw!important;flex-basis:205px!important}.sulandra-workspace-logo>img{width:155px!important;height:52px!important;transform:scale(3.25)!important}}
+      @media(max-width:760px){header.top,.top{min-height:72px!important;height:auto!important;padding:8px 12px!important;flex-wrap:wrap!important;overflow:visible!important}.sulandra-workspace-logo{width:185px!important;height:50px!important;max-width:58vw!important;flex-basis:185px!important}.sulandra-workspace-logo>img{width:140px!important;height:48px!important;transform:scale(3.2)!important}#sulandraCompanySwitcher{order:4!important;width:100%!important;max-width:none!important}#sulandraCompanySwitcher select{max-width:calc(100vw - 120px)!important}}
     `;
     document.head.appendChild(style);
   }
