@@ -14,7 +14,7 @@ if(!dispatch.includes(eligibilityImport)){
   dispatch=dispatch.replace(zodImport,`${zodImport}\n${eligibilityImport}`);
 }
 
-const oldDriverGate=/if\(i\.driverId\)\{const d=await prisma\.\$queryRawUnsafe<Array<\{id:string\}>>\(`SELECT \\\"id\\\" FROM \\\"NmtDriverProfile\\\"[\s\S]*?if\(!d\[0\]\)throw httpError\(404,'Active NMT driver was not found'\);\}/;
+const oldDriverGate=/if\(i\.driverId\)\{const d=await prisma\.\$queryRawUnsafe<Array<\{id:string\}>>\(`SELECT "id" FROM "NmtDriverProfile"[\s\S]*?if\(!d\[0\]\)throw httpError\(404,'Active NMT driver was not found'\);\}/;
 const newDriverGate="if(i.driverId){await assertNmtDriverEligible(prisma,{organizationId:a.organizationId,legalEntityId:entity(a),driverId:i.driverId,serviceDate:new Date(i.scheduledPickupAt),actorUserId:a.userId,orderId:req.params.orderId});}";
 if(!dispatch.includes(newDriverGate)){
   if(!oldDriverGate.test(dispatch))throw new Error('NMT dispatch active-driver gate anchor is missing');
