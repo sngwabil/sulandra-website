@@ -25,7 +25,7 @@ requireMarkers(adminSource,['id="topModuleNav"','id="sideModuleNav"','/assets/ad
 requireMarkers(context,[
   'const NAVIGATION = Object.freeze({',"{key:'dashboard',label:'Dashboard'","{key:'service-homes',label:'Service Homes'","{key:'employees',label:'Employees'",
   "href:'/scheduling.html'","href:'/time-attendance.html#admin'","href:'/employee360.html#files'","href:'/employee360.html#audit'","href:'/spire-admin.html'",
-  "{key:'onboarding',label:'Onboarding'","{key:'settings',label:'Settings'","href:'/client-intake.html'","href:'/home-health-referrals.html'","href:'/home-health.html'",
+  "{key:'onboarding',label:'Onboarding'","href:'/client-intake.html'","href:'/home-health-referrals.html'","href:'/home-health.html'",
   "href:'/nmt-orders.html'","href:'/nmt-dispatch.html'","href:'/workforce-admin.html'","href:'/spire-medication-qualifications.html'","href:'/company-documents.html'",
   "href:'/spire-training.html'","href:'/intranet-control.html'","href:'/employee-portal.html'","href:'/education-portal.html'",
   'top.innerHTML = NAVIGATION.primary.map(topMarkup).join',"side.innerHTML = [...NAVIGATION.leftOnly, ...NAVIGATION.primary].map(sideMarkup).join",
@@ -34,6 +34,9 @@ requireMarkers(context,[
   "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'","'/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1'",
   "'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'",'loadEmployeeSuite',
 ],'Canonical Admin navigation/bootstrap');
+if (!context.includes("{key:'settings',label:'Settings'") && !context.includes("{key:'settings',label:'Company Chronicles'")) {
+  failures.push('Canonical Admin navigation/bootstrap missing Settings or Company Chronicles root configuration module');
+}
 forbid(context,['installWorkspaceLinks()','const topLink =','const sideButton =','admin-platform-routing.js'],'Canonical Admin navigation/bootstrap');
 
 requireMarkers(shellCss,['html,body{width:100%!important','max-width:none!important','.sulandra-platform-bar','@keyframes sulandraNewsTicker','@keyframes sulandraLiveBlink','body .edge-toggle{width:24px!important;height:104px!important'],'Canonical Admin shell CSS');
