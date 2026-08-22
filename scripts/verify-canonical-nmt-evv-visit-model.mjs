@@ -26,7 +26,7 @@ requireMarkers(bridge,[
   'spire_protect_immutable_nmt_evv',
   "String(trip.legType || '').toUpperCase() === 'RETURN'",
   "createHash('sha256')",
-  "verificationMethod",
+  'verificationMethod',
   "'NMT_MOBILE'",
   "'DIRTY'",
 ], 'spire-nmt-evv-canonical.ts');
@@ -35,10 +35,10 @@ requireMarkers(trip,[
   "from './spire-nmt-evv-canonical.js'",
   'nmtEvvCompletionSchema',
   'driverSignature',
-  "Canonical NMT EVV evidence and driver signature are required before trip completion",
+  'Canonical NMT EVV evidence and driver signature are required before trip completion',
   'await ensureCanonicalNmtEvvSchema(prisma)',
-  'await prisma.$transaction(async(tx)',
-  'canonicalEvvVisit=await createCanonicalNmtEvvVisit',
+  'const canonicalEvvVisit=evvEvidence?await prisma.$transaction(async(tx)',
+  'return await createCanonicalNmtEvvVisit(tx',
   'evvVisit:canonicalEvvVisit',
 ], 'nmt-trip-routes.ts');
 
