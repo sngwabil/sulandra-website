@@ -21,15 +21,21 @@ if(!source.includes(evvImport)){
 
 const oldTransition="const transitionSchema=z.object({status:z.enum(['SCHEDULED','DISPATCHED','EN_ROUTE','ARRIVED_PICKUP','RIDER_ON_BOARD','DEPARTED_PICKUP','ARRIVED_DROPOFF','COMPLETED','NO_SHOW','CANCELLED']),odometer:z.number().min(0).max(9999999).optional().nullable(),driverNotes:z.string().trim().max(5000).optional().nullable(),reason:z.string().trim().max(5000).optional().nullable()});";
 const newTransition="const nmtEvvCompletionSchema=z.object({providerMedicaidId:z.string().trim().min(1).max(80),patientOtherId:z.string().trim().max(120).optional().nullable(),patientMedicaidId:z.string().trim().min(1).max(80),payer:z.string().trim().min(1).max(120),payerProgram:z.string().trim().min(1).max(120),procedureCode:z.string().trim().min(1).max(120),driverSignature:z.string().trim().min(2).max(500000),driverSignatureMethod:z.enum(['DRAWN','TYPED','ELECTRONIC','PIN']).default('ELECTRONIC'),otherPersonsPresent:z.array(z.string().trim().min(1).max(200)).max(30).default([]),timeZone:z.string().trim().min(1).max(80).default('US/Eastern')});\nconst transitionSchema=z.object({status:z.enum(['SCHEDULED','DISPATCHED','EN_ROUTE','ARRIVED_PICKUP','RIDER_ON_BOARD','DEPARTED_PICKUP','ARRIVED_DROPOFF','COMPLETED','NO_SHOW','CANCELLED']),odometer:z.number().min(0).max(9999999).optional().nullable(),driverNotes:z.string().trim().max(5000).optional().nullable(),reason:z.string().trim().max(5000).optional().nullable(),evv:nmtEvvCompletionSchema.optional()});";
-replaceOnce(oldTransition,newTransition,'trip transition schema');
+if(!source.includes('const nmtEvvCompletionSchema=')){
+  replaceOnce(oldTransition,newTransition,'trip transition schema');
+}
 
 const reasonAnchor="if(['NO_SHOW','CANCELLED'].includes(to)&&!i.reason)throw httpError(400,`${to==='NO_SHOW'?'No-show':'Cancellation'} reason is required`);const timeColumn";
 const evvRequirement="if(['NO_SHOW','CANCELLED'].includes(to)&&!i.reason)throw httpError(400,`${to==='NO_SHOW'?'No-show':'Cancellation'} reason is required`);const evvEvidence=to==='COMPLETED'&&!training?i.evv:null;if(to==='COMPLETED'&&!training&&!evvEvidence)throw httpError(400,'Canonical NMT EVV evidence and driver signature are required before trip completion');if(evvEvidence)await ensureCanonicalNmtEvvSchema(prisma);const timeColumn";
-replaceOnce(reasonAnchor,evvRequirement,'pre-completion EVV requirement');
+if(!source.includes("const evvEvidence=to==='COMPLETED'&&!training?i.evv:null")){
+  replaceOnce(reasonAnchor,evvRequirement,'pre-completion EVV requirement');
+}
 
 const oldExecute="const q=`UPDATE \"NmtTrip\" SET ${sets.join(',')} WHERE \"organizationId\"=$${idx++} AND \"legalEntityId\"=$${idx++} AND \"id\"=$${idx++}`;await prisma.$executeRawUnsafe(q,...values);const refreshed=await trip(prisma,a,req.params.tripId);await event(prisma,a,refreshed,actorType(a),'STATUS_CHANGED',from,to,{odometer:i.odometer??null,reason:i.reason??null,driverNotes:i.driverNotes??null},req);res.json({data:refreshed});";
 const newExecute="const q=`UPDATE \"NmtTrip\" SET ${sets.join(',')} WHERE \"organizationId\"=$${idx++} AND \"legalEntityId\"=$${idx++} AND \"id\"=$${idx++}`;const canonicalEvvVisit=evvEvidence?await prisma.$transaction(async(tx)=>{await tx.$executeRawUnsafe(q,...values);return await createCanonicalNmtEvvVisit(tx,{organizationId:a.organizationId,legalEntityId:selectedEntity(a),tripId:req.params.tripId,actorUserId:a.userId,evidence:evvEvidence});}):(await prisma.$executeRawUnsafe(q,...values),null);const refreshed=await trip(prisma,a,req.params.tripId);await event(prisma,a,refreshed,actorType(a),'STATUS_CHANGED',from,to,{odometer:i.odometer??null,reason:i.reason??null,driverNotes:i.driverNotes??null,evvVisitId:canonicalEvvVisit?String(canonicalEvvVisit.id||''):null},req);res.json({data:refreshed,evvVisit:canonicalEvvVisit});";
-replaceOnce(oldExecute,newExecute,'atomic NMT completion update');
+if(!source.includes('const canonicalEvvVisit=evvEvidence?await prisma.$transaction(async(tx)')){
+  replaceOnce(oldExecute,newExecute,'atomic NMT completion update');
+}
 await writeFile(tripPath,source,'utf8');
 
 let canonical=await readFile(canonicalPath,'utf8');
