@@ -1,0 +1,140 @@
+name: Disaster Recovery Verification
+
+on:
+  push:
+    branches:
+      - sulandra-1.1
+  pull_request:
+    branches:
+      - sulandra-1.1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dr-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  restore-drill:
+    name: PostgreSQL backup and restore drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: spire
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d spire"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      SOURCE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/spire
+      TARGET_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/spire_restore
+      PSQL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/spire
+      BACKUP_FILE: /tmp/sulandra-dr/spire.dump
+      DR_TEST_RTO_SECONDS: 600
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify DR control files
+        run: node scripts/verify-disaster-recovery.mjs
+
+      - name: Bootstrap legacy SPIRE base schema
+        run: psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/ci-bootstrap-legacy-base.sql
+
+      - name: Apply migration SQL in repository order
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r migration; do
+            echo "===== Applying ${migration} ====="
+            psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done < <(find prisma/migrations -mindepth 2 -maxdepth 2 -type f -name migration.sql | sort)
+
+      - name: Seed restore sentinel
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE IF NOT EXISTS "DisasterRecoveryRestoreSentinel" (
+            "id" TEXT PRIMARY KEY,
+            "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            "note" TEXT NOT NULL
+          );
+          INSERT INTO "DisasterRecoveryRestoreSentinel" ("id", "note")
+          VALUES ('sulandra-dr-ci', 'backup restore regression sentinel')
+          ON CONFLICT ("id") DO UPDATE SET "note" = EXCLUDED."note";
+          SQL
+
+      - name: Create logical backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/dr-create-postgres-backup.sh scripts/dr-restore-postgres-backup.sh
+          scripts/dr-create-postgres-backup.sh
+          test -s "$BACKUP_FILE"
+          test -s "${BACKUP_FILE}.sha256"
+          test -s "${BACKUP_FILE}.manifest"
+          test -s "${BACKUP_FILE}.metadata.json"
+
+      - name: Start restore RTO clock and create isolated target
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "DR_RESTORE_STARTED_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+          PGPASSWORD=postgres createdb -h 127.0.0.1 -p 5432 -U postgres spire_restore
+
+      - name: Restore backup into isolated database
+        shell: bash
+        env:
+          DR_ALLOW_RESTORE: "true"
+        run: |
+          set -euo pipefail
+          scripts/dr-restore-postgres-backup.sh
+
+      - name: Verify restored sentinel
+        shell: bash
+        run: |
+          set -euo pipefail
+          sentinel="$(psql "$TARGET_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc 'SELECT "note" FROM "DisasterRecoveryRestoreSentinel" WHERE "id"='"'"'sulandra-dr-ci'"'"';')"
+          test "$sentinel" = "backup restore regression sentinel"
+
+          required_tables=(
+            LegalEntity
+            SpirePatient
+            CompanyComplianceEvidence
+            RevenueCycleServiceEvent
+          )
+          for table in "${required_tables[@]}"; do
+            exists="$(psql "$TARGET_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT to_regclass('public.\"${table}\"') IS NOT NULL;")"
+            if [[ "$exists" != "t" ]]; then
+              echo "Restored database missing required table: ${table}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Verify restore drill RTO
+        shell: bash
+        run: |
+          set -euo pipefail
+          finished="$(date +%s)"
+          elapsed="$((finished - DR_RESTORE_STARTED_EPOCH))"
+          echo "Restore and validation elapsed time: ${elapsed}s"
+          if (( elapsed > DR_TEST_RTO_SECONDS )); then
+            echo "Restore drill exceeded ${DR_TEST_RTO_SECONDS}s target" >&2
+            exit 1
+          fi
