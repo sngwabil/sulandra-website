@@ -6,6 +6,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bootstrapPath = path.join(root, 'api', 'src', 'onboarding-bootstrap.ts');
 const securityPath = path.join(root, 'api', 'src', 'employee-auth-security.ts');
 
+// Universal MFA extends the canonical employee authentication installer. Running it
+// here makes this installer safe both in the root CI pipeline and when api/package
+// scripts are invoked directly (for example by Railway or a developer).
+await import('./install-employee-auth-security.mjs');
+
 function replaceOnce(source, from, to, label) {
   if (source.includes(to)) return source;
   if (!source.includes(from)) throw new Error(`Universal MFA installer could not find ${label}`);
@@ -33,25 +38,48 @@ await writeFile(securityPath, security, 'utf8');
 
 let bootstrap = await readFile(bootstrapPath, 'utf8');
 
-const careersImport = "import { registerCareersRoutes } from './careers-routes.js';";
-const securityImport = `${careersImport}\nimport {\n  beginEmployeeSmsLoginMfa,\n  registerEmployeeAuthSecurityRoutes,\n  verifyEmployeeSmsLoginMfa,\n} from './employee-auth-security.js';`;
-bootstrap = replaceOnce(bootstrap, careersImport, securityImport, 'employee auth security import');
+// The canonical installer already owns the login challenge flow. Add only the
+// route-registration symbol without creating a second employee-auth import.
+const employeeAuthImport = bootstrap.match(/import\s*\{([^;]*?)\}\s*from '\.\/employee-auth-security\.js';/s);
+if (!employeeAuthImport) throw new Error('Universal MFA installer could not find canonical employee auth import');
+const importedNames = employeeAuthImport[1].split(',').map((value) => value.trim()).filter(Boolean);
+if (!importedNames.includes('registerEmployeeAuthSecurityRoutes')) {
+  importedNames.push('registerEmployeeAuthSecurityRoutes');
+  const uniqueNames = [...new Set(importedNames)];
+  bootstrap = bootstrap.replace(
+    employeeAuthImport[0],
+    `import {\n  ${uniqueNames.join(',\n  ')},\n} from './employee-auth-security.js';`,
+  );
+}
 
-const loginPasswordField = "  password: z.string().min(1).max(1_024),\n}).refine(";
-const loginMfaFields = "  password: z.string().min(1).max(1_024),\n  mfaChallengeId: z.string().trim().uuid().optional(),\n  mfaCode: z.string().trim().regex(/^\\d{6}$/).optional(),\n}).refine(";
-bootstrap = replaceOnce(bootstrap, loginPasswordField, loginMfaFields, 'login MFA credential fields');
-
+// Successful portal-login accounting must happen only after the MFA gate.
 const earlySuccess = "      await recordSuccessfulPortalLogin(employee.userId);\n      account = employee;";
-bootstrap = replaceOnce(bootstrap, earlySuccess, "      account = employee;", 'pre-MFA successful login marker');
+if (bootstrap.includes(earlySuccess)) bootstrap = bootstrap.replace(earlySuccess, '      account = employee;');
+const payloadAnchor = '    const payload = await buildSessionPayload(account);';
+const postMfaSuccess = `    await recordSuccessfulPortalLogin(account.userId);\n${payloadAnchor}`;
+if (!bootstrap.includes('await recordSuccessfulPortalLogin(account.userId);')) {
+  if (!bootstrap.includes(payloadAnchor)) throw new Error('Universal MFA installer could not find post-MFA session payload anchor');
+  bootstrap = bootstrap.replace(payloadAnchor, postMfaSuccess);
+}
 
-const sessionReturn = "    res.json(buildSessionPayload(account));";
-const mfaSessionReturn = `    const mfaInput = {\n      organizationId: account.organizationId,\n      userId: account.userId,\n      role: account.role,\n      email: account.email,\n      ipAddress: req.ip || req.socket.remoteAddress || '0.0.0.0',\n      userAgent: req.get('user-agent')?.trim() || 'Sulandra Health Employee Login',\n    };\n\n    if (credentials.mfaChallengeId || credentials.mfaCode) {\n      const verification = await verifyEmployeeSmsLoginMfa(prisma, {\n        ...mfaInput,\n        challengeId: credentials.mfaChallengeId,\n        code: credentials.mfaCode,\n      });\n      if (!verification.verified) {\n        res.status(verification.status || 401).json({\n          error: verification.reason || 'Multi-factor authentication failed',\n          mfaRequired: Boolean(verification.required),\n          mfaMethod: 'sms',\n        });\n        return;\n      }\n    } else {\n      const challenge = await beginEmployeeSmsLoginMfa(prisma, mfaInput);\n      if (challenge.required) {\n        if (!challenge.challengeIssued) {\n          res.status(challenge.status || 503).json({\n            error: challenge.reason || 'Multi-factor authentication is required but unavailable',\n            mfaRequired: true,\n            mfaMethod: 'sms',\n          });\n          return;\n        }\n        res.status(202).json({\n          mfaRequired: true,\n          mfaMethod: 'sms',\n          mfaChallengeId: challenge.challengeId,\n          maskedPhone: challenge.maskedPhone,\n          expiresIn: challenge.expiresIn,\n        });\n        return;\n      }\n    }\n\n    await recordSuccessfulPortalLogin(account.userId);\n    res.json(buildSessionPayload(account));`;
-bootstrap = replaceOnce(bootstrap, sessionReturn, mfaSessionReturn, 'JWT issuance MFA gate');
+const registration = 'registerEmployeeAuthSecurityRoutes({ app, prisma, authOf, requireRoles });';
+if (!bootstrap.includes(registration)) {
+  const auditAnchor = 'type AuditColumn = {';
+  if (!bootstrap.includes(auditAnchor)) throw new Error('Universal MFA installer could not find employee auth route registration anchor');
+  bootstrap = bootstrap.replace(auditAnchor, `${registration}\n\n${auditAnchor}`);
+}
 
-const auditAnchor = "type AuditColumn = {";
-const securityRoutesRegistration = "registerEmployeeAuthSecurityRoutes({ app, prisma, authOf, requireRoles });\n\ntype AuditColumn = {";
-bootstrap = replaceOnce(bootstrap, auditAnchor, securityRoutesRegistration, 'employee auth security route registration');
+for (const marker of [
+  'mfaCode: z.string().trim().regex(/^\\d{6}$/).optional()',
+  'mfaChallengeId: z.string().trim().uuid().optional()',
+  'const smsMfaInput = {',
+  'await verifyEmployeeSmsLoginMfa',
+  'await beginEmployeeSmsLoginMfa',
+  payloadAnchor,
+]) {
+  if (!bootstrap.includes(marker)) throw new Error(`Universal MFA installer expected canonical login marker: ${marker}`);
+}
 
 await writeFile(bootstrapPath, bootstrap, 'utf8');
 
-console.log('Universal MFA enforcement installed: governed Admin/PHI/regulated roles cannot receive an access token before successful SMS verification, and MFA security administration routes are registered.');
+console.log('Universal MFA enforcement installed by extending the canonical employee SMS challenge flow: governed Admin/PHI/regulated roles cannot receive an access token before successful MFA, and authentication security routes are registered.');
