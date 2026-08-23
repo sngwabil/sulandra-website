@@ -5,7 +5,14 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const bootstrap = await readFile(path.join(root, 'api', 'src', 'onboarding-bootstrap.ts'), 'utf8');
 const security = await readFile(path.join(root, 'api', 'src', 'employee-auth-security.ts'), 'utf8');
-const loginUi = await readFile(path.join(root, 'employee-login-railway.js'), 'utf8');
+const loginUiPath = path.join(root, 'employee-login-railway.js');
+let loginUi = null;
+try {
+  loginUi = await readFile(loginUiPath, 'utf8');
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+  console.log('Universal MFA frontend verification skipped: employee-login-railway.js is not present in this backend-only build image. Backend fail-closed MFA enforcement will still be verified.');
+}
 
 const failures = [];
 const requireMarkers = (source, markers, label) => {
@@ -66,13 +73,15 @@ if (mfaGateIndex < 0 || successIndex < 0 || jwtIndex < 0 || mfaGateIndex > succe
   failures.push('Successful-login accounting and JWT/session issuance are not ordered after the MFA challenge/verification gate');
 }
 
-requireMarkers(loginUi, [
-  'mfaChallengeId',
-  'mfaCode',
-  'payload.mfaRequired',
-  'payload.mfaMethod === "sms"',
-  'showMfaChallenge(payload)',
-], 'employee-login-railway.js');
+if (loginUi !== null) {
+  requireMarkers(loginUi, [
+    'mfaChallengeId',
+    'mfaCode',
+    'payload.mfaRequired',
+    'payload.mfaMethod === "sms"',
+    'showMfaChallenge(payload)',
+  ], 'employee-login-railway.js');
+}
 
 if (failures.length) {
   console.error('Universal MFA verification failed:\n- ' + failures.join('\n- '));
