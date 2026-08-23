@@ -1,9 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 
-const expectedProjectId = '57cf9538-ebbf-4947-b393-c77a33bb2926';
-const expectedEnvironmentId = 'f72c66b3-2546-4673-bf3a-a309a26bd85b';
-const expectedApiServiceId = '68161318-02a4-43d7-952a-dbef5611e114';
-
 function requireStagingGuard() {
   if (process.env.SULANDRA_STAGING_CANARY_BOOTSTRAP !== '1') {
     throw new Error('Staging legacy bootstrap refused: SULANDRA_STAGING_CANARY_BOOTSTRAP=1 is required.');
@@ -11,15 +7,21 @@ function requireStagingGuard() {
   if (process.env.SULANDRA_ENVIRONMENT !== 'release-1.1-staging-canary') {
     throw new Error('Staging legacy bootstrap refused: SULANDRA_ENVIRONMENT must equal release-1.1-staging-canary.');
   }
-  if (process.env.RAILWAY_PROJECT_ID && process.env.RAILWAY_PROJECT_ID !== expectedProjectId) {
-    throw new Error(`Staging legacy bootstrap refused: unexpected Railway project ${process.env.RAILWAY_PROJECT_ID}.`);
+
+  const guardPairs = [
+    ['RAILWAY_PROJECT_ID', 'SULANDRA_STAGING_PROJECT_GUARD'],
+    ['RAILWAY_ENVIRONMENT_ID', 'SULANDRA_STAGING_ENVIRONMENT_GUARD'],
+    ['RAILWAY_SERVICE_ID', 'SULANDRA_STAGING_SERVICE_GUARD'],
+  ];
+
+  for (const [actualName, expectedName] of guardPairs) {
+    const actual = process.env[actualName];
+    const expected = process.env[expectedName];
+    if (!actual || !expected || actual !== expected) {
+      throw new Error(`Staging legacy bootstrap refused: ${actualName} does not match its staging guard.`);
+    }
   }
-  if (process.env.RAILWAY_ENVIRONMENT_ID && process.env.RAILWAY_ENVIRONMENT_ID !== expectedEnvironmentId) {
-    throw new Error(`Staging legacy bootstrap refused: unexpected Railway environment ${process.env.RAILWAY_ENVIRONMENT_ID}.`);
-  }
-  if (process.env.RAILWAY_SERVICE_ID && process.env.RAILWAY_SERVICE_ID !== expectedApiServiceId) {
-    throw new Error(`Staging legacy bootstrap refused: unexpected Railway service ${process.env.RAILWAY_SERVICE_ID}.`);
-  }
+
   if (!process.env.DATABASE_URL) {
     throw new Error('Staging legacy bootstrap refused: DATABASE_URL is not configured.');
   }
