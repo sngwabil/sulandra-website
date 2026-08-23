@@ -62,3 +62,8 @@ if (sourceAdmin !== publishedAdmin) throw new Error('Global UI restructuring mus
 if (publishedAdmin.includes(runtimeSrc)) throw new Error('Global UI restructuring must be loaded through the canonical Admin bootstrap, not direct admin.html injection');
 
 console.log('Sulandra Admin global UI restructuring published: core folders own the left menu, global operations own the top bar, and day-to-day dispatch/EVV/intake actions own the right drawer.');
+
+// Roadmap PR #12 binds every rendered Admin control to a stable, entity-aware
+// operation identity only after the global UI has finished publishing its shell.
+await import('./install-admin-operations-mapping.mjs');
+await import('./verify-admin-operations-mapping.mjs');
