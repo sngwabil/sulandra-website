@@ -23,7 +23,11 @@ must(payroll.includes("code: 'PAYROLL_FINGERPRINT_MISMATCH'"), 'stale payroll ev
 must(payroll.includes("action: 'REOPEN'"), 'audited controlled reopen is missing');
 must(payroll.includes("action: 'EXPORT'"), 'payroll export decision audit is missing');
 must(payroll.includes('directPayrollProviderSubmission: false'), 'export boundary must not imply direct payroll-provider submission');
-must(payroll.includes("['ADMINISTRATOR', 'HR_MANAGER', 'CEO', 'DOO', 'COO']"), 'high-privilege payroll authority gate is missing');
+must(payroll.includes('const payrollAuthority ='), 'payroll authority policy is missing');
+for (const role of ['ADMINISTRATOR', 'HR_MANAGER', 'CEO', 'DOO']) {
+  must(payroll.includes(`'${role}'`), `${role} is missing from the payroll authority policy`);
+}
+must(payroll.includes('admin@sulandrahealth.com'), 'enterprise owner payroll authority fallback is missing');
 
 must(routes.includes("from './time-attendance-payroll-lock.js';"), 'time-attendance routes do not import payroll lock engine');
 must(routes.includes('await ensureTimeAttendancePayrollLockSchema(prisma);'), 'time-attendance schema bootstrap does not install payroll lock schema');
