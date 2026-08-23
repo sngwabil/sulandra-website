@@ -27,6 +27,18 @@ const migrationNames = [
   '20260811234000_spire_chart_access_audit_hardening',
 ];
 
+async function prismaMigrationsTableExists() {
+  const prisma = new PrismaClient();
+  try {
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT to_regclass('public."_prisma_migrations"') AS relation`,
+    );
+    return Boolean(rows[0]?.relation);
+  } finally {
+    await prisma.$disconnect().catch(() => undefined);
+  }
+}
+
 async function migrationState(migrationName) {
   const prisma = new PrismaClient();
   try {
@@ -44,6 +56,11 @@ async function migrationState(migrationName) {
     // this predeploy while Postgres is near its connection ceiling.
     await prisma.$disconnect().catch(() => undefined);
   }
+}
+
+if (!(await prismaMigrationsTableExists())) {
+  console.log('Prisma migration history table is not initialized yet; skipping failed-migration recovery so prisma migrate deploy can initialize it.');
+  process.exit(0);
 }
 
 for (const migrationName of migrationNames) {
