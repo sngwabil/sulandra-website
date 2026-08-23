@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const lockNamespace = 1936749168;
 const lockKey = 20260810;
 const lockRetryMs = 1500;
@@ -47,6 +48,57 @@ function runScript(scriptName) {
   }
 }
 
+function runPrismaResolve(migrationName) {
+  console.log(`[db:predeploy] baselining Prisma migration ${migrationName}`);
+  const result = spawnSync(npx, ['prisma', 'migrate', 'resolve', '--applied', migrationName], {
+    stdio: 'inherit',
+    env: childEnvironment(),
+  });
+  if (result.status !== 0) {
+    throw new Error(`prisma migrate resolve --applied ${migrationName} failed with exit code ${result.status ?? 'unknown'}`);
+  }
+}
+
+async function baselineFreshLegacyDatabase(tx) {
+  const migrationHistoryRows = await tx.$queryRawUnsafe(
+    `SELECT to_regclass('public."_prisma_migrations"')::text AS "migrationHistory"`,
+  );
+  if (migrationHistoryRows[0]?.migrationHistory) return;
+
+  const baselineRows = await tx.$queryRawUnsafe(`
+    SELECT
+      to_regclass('public."Organization"')::text AS "organization",
+      to_regclass('public."User"')::text AS "userTable",
+      to_regclass('public."EmployeeApplication"')::text AS "employeeApplication",
+      to_regclass('public."AuditEvent"')::text AS "auditEvent"
+  `);
+  const baseline = baselineRows[0] ?? {};
+  const legacyBasePresent = Boolean(
+    baseline.organization && baseline.userTable && baseline.employeeApplication && baseline.auditEvent,
+  );
+  if (!legacyBasePresent) return;
+
+  const stagingGuarded =
+    process.env.SULANDRA_STAGING_CANARY_BOOTSTRAP === '1' &&
+    process.env.SULANDRA_ENVIRONMENT === 'release-1.1-staging-canary';
+
+  if (!stagingGuarded) {
+    throw new Error(
+      '[db:predeploy] refusing Prisma baseline outside the guarded release-1.1 staging canary environment.',
+    );
+  }
+
+  console.log('[db:predeploy] legacy staging base detected without Prisma history; resolving legacy baseline migrations.');
+
+  const legacyBaselineMigrations = [
+    '20260728152000_careers_pipeline',
+  ];
+
+  for (const migrationName of legacyBaselineMigrations) {
+    runPrismaResolve(migrationName);
+  }
+}
+
 const datasourceUrl = constrainedDatabaseUrl(process.env.DATABASE_URL);
 const prisma = datasourceUrl
   ? new PrismaClient({ datasourceUrl })
@@ -73,6 +125,7 @@ try {
       console.log('[db:predeploy] acquired deployment advisory lock.');
 
       runScript('db:check-prerequisites');
+      await baselineFreshLegacyDatabase(tx);
       runScript('db:recover-failed-doo-migration');
       runScript('db:migrate:deploy');
       runScript('db:verify-careers-schema');
