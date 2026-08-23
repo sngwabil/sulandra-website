@@ -34,10 +34,14 @@ if (!source.includes('await ensureTimeAttendancePayrollLockSchema(prisma);')) {
   source = source.replace(schemaAnchor, schemaReplacement);
 }
 
-const registrarAnchor = `  const admin = requireRoles(UserRole.ADMINISTRATOR, UserRole.PROGRAM_MANAGER, UserRole.HR_MANAGER, UserRole.SCHEDULER, UserRole.CEO, UserRole.COO);`;
+const registrarCandidates = [
+  `  const admin = requireRoles(UserRole.ADMINISTRATOR, UserRole.PROGRAM_MANAGER, UserRole.HR_MANAGER, UserRole.SCHEDULER, UserRole.CEO, UserRole.DOO);`,
+  `  const admin = requireRoles(UserRole.ADMINISTRATOR, UserRole.PROGRAM_MANAGER, UserRole.HR_MANAGER, UserRole.SCHEDULER, UserRole.CEO, UserRole.COO);`,
+];
 const registrarStatement = `  registerTimeAttendancePayrollLockRoutes({ app, prisma, authOf, admin, ready });`;
 if (!source.includes(registrarStatement)) {
-  if (!source.includes(registrarAnchor)) throw new Error('Payroll lock installer could not find time-attendance admin middleware anchor');
+  const registrarAnchor = registrarCandidates.find((candidate) => source.includes(candidate));
+  if (!registrarAnchor) throw new Error('Payroll lock installer could not find time-attendance admin middleware anchor after role normalization');
   source = source.replace(registrarAnchor, `${registrarAnchor}\n  ${registrarStatement.trim()}`);
 }
 
