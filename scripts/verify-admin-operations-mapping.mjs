@@ -31,7 +31,7 @@ must(runtime.includes("endpoint:'/health'"), 'System Health does not resolve to 
 must(!runtime.includes("kind:'route', href:'#'"), 'a route operation still points to a placeholder # target');
 must(runtime.includes("companyCodes:['NMT']"), 'NMT operations are not company-scoped');
 must(runtime.includes("companyCodes:['HOME_HEALTH']"), 'Home Health operations are not company-scoped');
-must(runtime.includes('data.operationMapped = \'true\''), 'rendered controls are not annotated with canonical operation identity');
+must(runtime.includes("control.dataset.operationMapped = 'true'"), 'rendered controls are not annotated with canonical operation identity');
 must(runtime.includes('MutationObserver'), 'operations mapping does not follow dynamic Admin rerenders');
 must(runtime.includes('sulandra:company-context-changed'), 'operations mapping does not remap after company changes');
 must(runtime.includes('SulandraAdminOperations'), 'operations registry is not exposed for diagnostics and controlled execution');
