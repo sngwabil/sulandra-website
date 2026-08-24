@@ -31,7 +31,7 @@ async function prismaMigrationsTableExists() {
   const prisma = new PrismaClient();
   try {
     const rows = await prisma.$queryRawUnsafe(
-      `SELECT to_regclass('public."_prisma_migrations"') AS relation`,
+      `SELECT to_regclass('public."_prisma_migrations"')::text AS relation`,
     );
     return Boolean(rows[0]?.relation);
   } finally {
