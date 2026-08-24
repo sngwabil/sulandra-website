@@ -1,0 +1,2 @@
+Retired staging Prisma helper deployment trigger v2.
+This change follows the dedicated railway.retired-staging-prisma.json config and exists only to produce one successful no-op deployment.
