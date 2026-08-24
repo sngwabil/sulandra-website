@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const node = process.execPath;
 const lockNamespace = 1936749168;
 const lockKey = 20260810;
 const lockRetryMs = 1500;
@@ -48,6 +49,17 @@ function runScript(scriptName) {
   }
 }
 
+function runNodeScript(scriptPath) {
+  console.log(`[db:predeploy] running node ${scriptPath}`);
+  const result = spawnSync(node, [scriptPath], {
+    stdio: 'inherit',
+    env: childEnvironment(),
+  });
+  if (result.status !== 0) {
+    throw new Error(`node ${scriptPath} failed with exit code ${result.status ?? 'unknown'}`);
+  }
+}
+
 function runPrismaResolve(migrationName) {
   console.log(`[db:predeploy] baselining Prisma migration ${migrationName}`);
   const result = spawnSync(npx, ['prisma', 'migrate', 'resolve', '--applied', migrationName], {
@@ -70,7 +82,11 @@ async function baselineFreshLegacyDatabase(tx) {
       to_regclass('public."Organization"')::text AS "organization",
       to_regclass('public."User"')::text AS "userTable",
       to_regclass('public."EmployeeApplication"')::text AS "employeeApplication",
-      to_regclass('public."AuditEvent"')::text AS "auditEvent"
+      to_regclass('public."AuditEvent"')::text AS "auditEvent",
+      to_regclass('public."JobOpening"')::text AS "jobOpening",
+      to_regclass('public."ApplicantDocument"')::text AS "applicantDocument",
+      to_regclass('public."ApplicantMessage"')::text AS "applicantMessage",
+      to_regclass('public."InterviewOption"')::text AS "interviewOption"
   `);
   const baseline = baselineRows[0] ?? {};
   const legacyBasePresent = Boolean(
@@ -88,15 +104,22 @@ async function baselineFreshLegacyDatabase(tx) {
     );
   }
 
-  console.log('[db:predeploy] legacy staging base detected without Prisma history; resolving legacy baseline migrations.');
+  const careersPipelinePresent = Boolean(
+    baseline.jobOpening &&
+      baseline.applicantDocument &&
+      baseline.applicantMessage &&
+      baseline.interviewOption,
+  );
 
-  const legacyBaselineMigrations = [
-    '20260728152000_careers_pipeline',
-  ];
-
-  for (const migrationName of legacyBaselineMigrations) {
-    runPrismaResolve(migrationName);
+  if (!careersPipelinePresent) {
+    console.log(
+      '[db:predeploy] legacy staging base detected without Prisma history, but the careers-pipeline relations are absent; leaving 20260728152000_careers_pipeline pending so Prisma creates them normally.',
+    );
+    return;
   }
+
+  console.log('[db:predeploy] complete legacy careers pipeline detected without Prisma history; resolving only the verified legacy baseline migration.');
+  runPrismaResolve('20260728152000_careers_pipeline');
 }
 
 const datasourceUrl = constrainedDatabaseUrl(process.env.DATABASE_URL);
@@ -126,6 +149,7 @@ try {
 
       runScript('db:check-prerequisites');
       await baselineFreshLegacyDatabase(tx);
+      runNodeScript('scripts/reconcile-staging-careers-baseline.mjs');
       runScript('db:recover-failed-doo-migration');
       runScript('db:migrate:deploy');
       runScript('db:verify-careers-schema');

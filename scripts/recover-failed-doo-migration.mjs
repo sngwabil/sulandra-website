@@ -2,6 +2,12 @@ import { spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 
 const migrationNames = [
+  // The guarded staging canary can have this migration recorded as failed after
+  // an earlier bad legacy baseline marked the careers-pipeline migration applied
+  // without actually creating ApplicantDocument/ApplicantMessage. The predeploy
+  // reconciliation restores those missing prerequisite relations before this
+  // migration is marked rolled back and retried.
+  '20260729010000_applicant_lifecycle',
   '20260804064500_update_employee_application_role_check_for_doo',
   '20260806203500_employee_workflow_automation',
   '20260807125000_finalize_doo_job_opening',
