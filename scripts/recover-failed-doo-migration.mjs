@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 
 const migrationNames = [
+  // The applicant lifecycle migration is retry-safe once the guarded careers baseline exists.
+  '20260729010000_applicant_lifecycle',
   '20260804064500_update_employee_application_role_check_for_doo',
   '20260806203500_employee_workflow_automation',
   '20260807125000_finalize_doo_job_opening',
