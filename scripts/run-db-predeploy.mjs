@@ -152,7 +152,9 @@ try {
       runNodeScript('scripts/reconcile-staging-careers-baseline.mjs');
       runScript('db:recover-failed-doo-migration');
       runScript('db:migrate:deploy');
+      runNodeScript('scripts/verify-release-staging-parity.mjs');
       runScript('db:verify-careers-schema');
+      runNodeScript('scripts/verify-spire-route-registration.mjs');
 
       console.log('[db:predeploy] database predeploy completed successfully.');
     },
