@@ -55,8 +55,14 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
+      - name: Run OASIS-E2 contract regressions
+        run: npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
+
       - name: Validate Prisma and API
         run: npm run check
+
+      - name: Verify compiled SPIRE route registration
+        run: node scripts/verify-spire-route-registration.mjs
 
       - name: Validate browser workflow modules
         run: |
@@ -160,6 +166,7 @@ jobs:
             EnterpriseDataQualityIssue
             SecurityAccessReviewCampaign
             CompanyComplianceEvidence
+            HomeHealthOasisSpecImport
           )
 
           for table in "${required_tables[@]}"; do
@@ -181,6 +188,44 @@ jobs:
 
             echo "Verified platform table: ${table}"
           done
+
+      - name: Verify OASIS-E2 spec-ingestion hard stops
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_columns="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT count(*)
+            FROM information_schema.columns
+            WHERE table_schema='public'
+              AND (table_name,column_name) IN (
+                ('HomeHealthOasisSpecVersion','sourcePackageSha256'),
+                ('HomeHealthOasisSpecVersion','normalizedDefinitionSha256'),
+                ('HomeHealthOasisSpecVersion','submissionDefinition'),
+                ('HomeHealthOasisAssessment','transactionMode'),
+                ('HomeHealthIqiesSubmission','payloadBytes'),
+                ('HomeHealthIqiesSubmission','specDefinitionSha256')
+              );
+          ")"
+          test "$required_columns" = "6"
+
+          trigger_count="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT count(*) FROM pg_trigger
+            WHERE NOT tgisinternal
+              AND tgrelid='public.\"HomeHealthOasisSpecImport\"'::regclass
+              AND tgname IN ('HomeHealthOasisSpecImport_no_update','HomeHealthOasisSpecImport_no_delete');
+          ")"
+          test "$trigger_count" = "2"
+
+          registered_state="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT \"status\" || ':' || jsonb_array_length(\"itemDefinitions\") || ':' || jsonb_array_length(\"editRules\")
+            FROM \"HomeHealthOasisSpecVersion\"
+            WHERE \"itemSetVersionCode\"='E2-042026' AND \"submissionSpecVersion\"='3.02'
+            LIMIT 1;
+          ")"
+          if [[ "$registered_state" != "REGISTERED:0:0" ]]; then
+            echo "OASIS-E2 3.02 must remain REGISTERED with empty official definitions until the verified CMS package is imported; got ${registered_state}" >&2
+            exit 1
+          fi
 
       - name: Install production Client Intake transforms
         shell: bash
