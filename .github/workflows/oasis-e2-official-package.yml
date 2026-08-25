@@ -6,6 +6,9 @@ on:
       - agent/oasis-e2-iqies
     paths:
       - scripts/fetch-official-oasis-e2-package.mjs
+      - scripts/normalize-official-oasis-e2-package.mjs
+      - scripts/import-oasis-e2-spec.mjs
+      - scripts/oasis-e2-spec-contract.mjs
       - .github/workflows/oasis-e2-official-package.yml
   workflow_dispatch:
 
@@ -14,9 +17,9 @@ permissions:
 
 jobs:
   acquire:
-    name: Fetch and fingerprint CMS OASIS-E2 3.02.0
+    name: Fetch, normalize, and validate CMS OASIS-E2 3.02.0
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -29,22 +32,50 @@ jobs:
       - name: Fetch official CMS package
         run: node scripts/fetch-official-oasis-e2-package.mjs artifacts/oasis-e2-official
 
-      - name: Verify ZIP integrity and capture manifests
+      - name: Verify ZIP integrity and extract official nested packages
         shell: bash
         run: |
           set -euo pipefail
-          zipfile=artifacts/oasis-e2-official/oasis-e2-data-specs-v3.02.0-final.zip
+          root=artifacts/oasis-e2-official
+          zipfile="$root/oasis-e2-data-specs-v3.02.0-final.zip"
           unzip -t "$zipfile"
-          unzip -Z1 "$zipfile" | tee artifacts/oasis-e2-official/top-level-manifest.txt
-          mkdir -p artifacts/oasis-e2-official/extracted
-          unzip -q "$zipfile" -d artifacts/oasis-e2-official/extracted
-          find artifacts/oasis-e2-official/extracted -type f -printf '%P\n' | sort | tee artifacts/oasis-e2-official/recursive-manifest.txt
-          find artifacts/oasis-e2-official/extracted -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/oasis-e2-official/extracted-sha256.txt
+          unzip -Z1 "$zipfile" | tee "$root/top-level-manifest.txt"
+          mkdir -p "$root/extracted" "$root/csv" "$root/html"
+          unzip -q "$zipfile" -d "$root/extracted"
+          unzip -q "$root/extracted/OASIS E2 Data Specs CSV Files V3.02.0 FINAL 10-13-2025.zip" -d "$root/csv"
+          unzip -q "$root/extracted/OASIS E2 Data Specs HTML Files V3.02.0 FINAL 10-13-2025.zip" -d "$root/html"
+          find "$root/extracted" -type f -printf '%P\n' | sort | tee "$root/recursive-manifest.txt"
+          find "$root/extracted" -type f -print0 | sort -z | xargs -0 sha256sum > "$root/extracted-sha256.txt"
 
-      - name: Upload verified CMS package artifact
+      - name: Normalize official CMS item, value, ISC, edit, and XML material
+        run: node scripts/normalize-official-oasis-e2-package.mjs artifacts/oasis-e2-official artifacts/oasis-e2-official/oasis-e2-v3.02.0.normalized.json
+
+      - name: Validate normalized contract without changing a database
+        run: node scripts/import-oasis-e2-spec.mjs artifacts/oasis-e2-official/oasis-e2-v3.02.0.normalized.json --validate-only
+
+      - name: Verify authoritative normalized counts and controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const spec=JSON.parse(await readFile('artifacts/oasis-e2-official/oasis-e2-v3.02.0.normalized.json','utf8'));
+          const fail=(m)=>{throw new Error(m)};
+          if(spec.sourcePackage.sha256!=='b848a1f33efb77406124f02bfd50dbb48c6efb841c4e4bf3c68719c1e8d9f6ca')fail('official CMS package SHA-256 mismatch');
+          if(spec.itemDefinitions.length!==420)fail(`expected 420 submitted Control/Asmt items, got ${spec.itemDefinitions.length}`);
+          if(spec.editRules.length!==233)fail(`expected 233 unduplicated official edits, got ${spec.editRules.length}`);
+          if(spec.submissionDefinition.xml.rootElement!=='ASSESSMENT')fail('CMS XML root must be ASSESSMENT');
+          if(spec.submissionDefinition.transactionModeItemCode!=='TRANS_TYPE_CD')fail('CMS transaction item must be TRANS_TYPE_CD');
+          const modes=spec.submissionDefinition.transactionModes;
+          if(modes.NEW!=='1'||modes.MODIFICATION!=='2'||modes.INACTIVATION!=='3')fail('CMS transaction mappings changed');
+          for(const code of ['ASMT_SYS_CD','TRANS_TYPE_CD','ITM_SBST_CD','ITM_SET_VRSN_CD','SPEC_VRSN_CD'])if(!spec.itemDefinitions.some((item)=>item.code===code))fail(`missing control item ${code}`);
+          console.log(JSON.stringify({packageSha256:spec.sourcePackage.sha256,itemCount:spec.itemDefinitions.length,editCount:spec.editRules.length,valueSetCount:Object.keys(spec.valueSets).length,xmlRoot:spec.submissionDefinition.xml.rootElement,transactionModes:modes},null,2));
+          NODE
+
+      - name: Upload verified CMS package and normalized contract artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cms-oasis-e2-v3.02.0-final
+          name: cms-oasis-e2-v3.02.0-final-normalized
           path: artifacts/oasis-e2-official
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
