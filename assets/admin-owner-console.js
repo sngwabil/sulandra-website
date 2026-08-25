@@ -9,7 +9,9 @@
   const SHARED_SELECTED_ENTITY_KEY = 'sulandra:selected-legal-entity-id';
   const OWNER_BOOTSTRAP_KEY = 'sulandra:owner-console:parent-bootstrap';
   const PARENT_CODE = 'SULANDRA_HEALTH';
+  const OWNER_CONTEXT_SRC = '/assets/admin-owner-context.js?v=20260825-owner-console-2';
   const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
+  let ownerContextPromise = null;
 
   document.documentElement.classList.add('sulandra-owner-verifying');
   const style = document.createElement('style');
@@ -83,6 +85,24 @@
     });
   }
 
+  function loadOwnerContext() {
+    if (ownerContextPromise) return ownerContextPromise;
+    const existing = document.querySelector('script[data-sulandra-owner-context],script[src^="/assets/admin-owner-context.js"]');
+    if (existing?.dataset?.loaded === 'true') return Promise.resolve(existing);
+    ownerContextPromise = new Promise((resolve, reject) => {
+      const script = existing || document.createElement('script');
+      script.dataset.sulandraOwnerContext = 'true';
+      script.async = false;
+      script.onload = () => { script.dataset.loaded = 'true'; resolve(script); };
+      script.onerror = () => reject(new Error('Unable to load the Sulandra Health owner command-center context.'));
+      if (!existing) {
+        script.src = OWNER_CONTEXT_SRC;
+        document.head.appendChild(script);
+      }
+    });
+    return ownerContextPromise;
+  }
+
   function addOperationsButton() {
     if (document.getElementById('ownerOperationsLauncher')) return true;
     const controls = [...document.querySelectorAll('a,button')];
@@ -105,6 +125,12 @@
     if (!profile) return;
     if (pinParentContext(profile)) return;
     verified = true;
+    hideCompanySelectors();
+    try {
+      await loadOwnerContext();
+    } catch (error) {
+      console.error('[Sulandra Owner Console]', error);
+    }
     hideCompanySelectors();
     addOperationsButton();
     document.documentElement.classList.remove('sulandra-owner-verifying');
