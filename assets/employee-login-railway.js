@@ -14,6 +14,23 @@
   const resendMfaCode = document.getElementById("resendMfaCode");
   const signInButton = document.getElementById("signInButton");
   let mfaChallengeId = "";
+  let apiWarmupPromise = null;
+
+  // Start the API connection as soon as the login page opens. If Railway has a
+  // cold connection, DNS/TLS/service wake-up happens while the user is typing
+  // credentials instead of after Sign In is pressed.
+  function warmApi() {
+    if (!apiWarmupPromise) {
+      apiWarmupPromise = fetch(API_BASE + "/live", {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+        keepalive: true
+      }).catch(() => null);
+    }
+    return apiWarmupPromise;
+  }
+  warmApi();
 
   // Remove any legacy credential query parameters left by an older broken form submission.
   try {
@@ -136,8 +153,11 @@
     if (!email || !password) return showMessage("Enter your employee email and password.", "error");
     if (mfaChallengeId && !resend && code.length !== 6) return showMessage("Enter the 6-digit security code sent to your phone.", "error");
 
+    warmApi();
     signInButton.disabled = true;
     resendMfaCode.disabled = true;
+    const previousButtonText = signInButton.textContent;
+    signInButton.textContent = mfaChallengeId && !resend ? "Verifying…" : "Connecting…";
     try {
       const body = { email, password };
       if (mfaChallengeId && !resend) {
@@ -174,6 +194,7 @@
     } finally {
       signInButton.disabled = false;
       resendMfaCode.disabled = false;
+      if (!mfaChallengeId) signInButton.textContent = previousButtonText || "Sign In";
     }
   }
 
