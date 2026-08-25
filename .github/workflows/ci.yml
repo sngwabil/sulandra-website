@@ -9,6 +9,7 @@ on:
       - sulandra-1.1
       - feature/spire-ehr-platform
       - feature/spire-1.1
+      - 'agent/**'
   pull_request:
     branches:
       - main
@@ -16,6 +17,7 @@ on:
       - sulandra-1.1
       - feature/spire-ehr-platform
       - feature/spire-1.1
+      - 'agent/**'
 
 permissions:
   contents: read
@@ -55,8 +57,21 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
+      - name: Run OASIS-E2 contract regressions
+        run: npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
+
+      - name: Validate OASIS promotion scripts
+        run: |
+          node --check scripts/fetch-official-oasis-e2-package.mjs
+          node --check scripts/normalize-official-oasis-e2-package.mjs
+          node --check scripts/import-oasis-e2-spec.mjs
+          node --check scripts/promote-pinned-oasis-e2-spec.mjs
+
       - name: Validate Prisma and API
         run: npm run check
+
+      - name: Verify compiled SPIRE route registration
+        run: node scripts/verify-spire-route-registration.mjs
 
       - name: Validate browser workflow modules
         run: |
@@ -160,6 +175,7 @@ jobs:
             EnterpriseDataQualityIssue
             SecurityAccessReviewCampaign
             CompanyComplianceEvidence
+            HomeHealthOasisSpecImport
           )
 
           for table in "${required_tables[@]}"; do
@@ -173,14 +189,70 @@ jobs:
                   AND c.relkind IN ('r', 'p')
               );
             ")"
-
             if [[ "$exists" != "t" ]]; then
               echo "Missing expected platform table: ${table}" >&2
               exit 1
             fi
-
             echo "Verified platform table: ${table}"
           done
+
+      - name: Verify OASIS-E2 spec-ingestion hard stops
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_columns="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT count(*)
+            FROM information_schema.columns
+            WHERE table_schema='public'
+              AND (table_name,column_name) IN (
+                ('HomeHealthOasisSpecVersion','sourcePackageSha256'),
+                ('HomeHealthOasisSpecVersion','normalizedDefinitionSha256'),
+                ('HomeHealthOasisSpecVersion','submissionDefinition'),
+                ('HomeHealthOasisAssessment','transactionMode'),
+                ('HomeHealthIqiesSubmission','payloadBytes'),
+                ('HomeHealthIqiesSubmission','specDefinitionSha256')
+              );
+          ")"
+          test "$required_columns" = "6"
+
+          trigger_count="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT count(*) FROM pg_trigger
+            WHERE NOT tgisinternal
+              AND tgrelid='public.\"HomeHealthOasisSpecImport\"'::regclass
+              AND tgname IN ('HomeHealthOasisSpecImport_no_update','HomeHealthOasisSpecImport_no_delete');
+          ")"
+          test "$trigger_count" = "2"
+
+          registered_state="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT \"status\" || ':' || jsonb_array_length(\"itemDefinitions\") || ':' || jsonb_array_length(\"editRules\")
+            FROM \"HomeHealthOasisSpecVersion\"
+            WHERE \"itemSetVersionCode\"='E2-042026' AND \"submissionSpecVersion\"='3.02'
+            LIMIT 1;
+          ")"
+          if [[ "$registered_state" != "REGISTERED:0:0" ]]; then
+            echo "OASIS-E2 3.02 must remain REGISTERED with empty official definitions until the verified CMS package is imported; got ${registered_state}" >&2
+            exit 1
+          fi
+
+      - name: Promote pinned official OASIS-E2 spec and prove idempotency
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/promote-pinned-oasis-e2-spec.mjs
+          node scripts/promote-pinned-oasis-e2-spec.mjs
+          state="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT \"status\" || ':' || \"sourcePackageSha256\" || ':' || \"normalizedDefinitionSha256\" || ':' ||
+                   jsonb_array_length(\"itemDefinitions\") || ':' || jsonb_array_length(\"editRules\") || ':' ||
+                   (SELECT count(*) FROM jsonb_object_keys(\"valueSets\")) || ':' || jsonb_array_length(COALESCE(\"submissionDefinition\"->'fields','[]'::jsonb))
+            FROM \"HomeHealthOasisSpecVersion\"
+            WHERE \"itemSetVersionCode\"='E2-042026' AND \"submissionSpecVersion\"='3.02'
+            LIMIT 1;
+          ")"
+          expected="VALIDATED:b848a1f33efb77406124f02bfd50dbb48c6efb841c4e4bf3c68719c1e8d9f6ca:bf01dced0972a5a2629c084de87e4071dd855de3e46d315db53252562af432ee:420:233:367:420"
+          if [[ "$state" != "$expected" ]]; then
+            echo "OASIS-E2 promoted state mismatch: ${state}" >&2
+            exit 1
+          fi
 
       - name: Install production Client Intake transforms
         shell: bash

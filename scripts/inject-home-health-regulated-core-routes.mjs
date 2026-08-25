@@ -15,3 +15,8 @@ source=source.replace(new RegExp(`\\n?${callLine.replace(/[.*+?^${}()|[\]\\]/g,'
 source=source.replace(callAnchor,`${callLine}\n${callAnchor}`);
 await writeFile(target,source,'utf8');
 console.log('Home Health regulated-core routes registered before the existing Home Health operations routes.');
+
+// The spec-driven OASIS/iQIES routes intentionally register ahead of the
+// regulated-core compatibility handlers so the real edit engine/export path
+// owns duplicate OASIS endpoints at runtime.
+await import('./inject-home-health-oasis-iqies-routes.mjs');

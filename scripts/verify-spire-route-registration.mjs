@@ -28,6 +28,7 @@ const requiredCalls = [
   'registerHomeHealthReferralRoutes(app, prisma, { authOf, audit });',
   'registerHomeHealthStartOfCareRoutes(app, prisma, { authOf, audit });',
   'registerHomeHealthCanonicalVisitRoutes(app, prisma, { authOf, audit });',
+  'registerHomeHealthOasisIqiesRoutes(app, prisma, { authOf, audit });',
   'registerHomeHealthRegulatedCoreRoutes(app, prisma, { authOf, audit });',
   'registerHomeHealthOperationsRoutes(app, prisma, { authOf, audit });',
   'registerRevenueCycleRoutes(app, prisma, { authOf, audit });',
