@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFile(path.join(root, relative), 'utf8');
-const [formationMigration, approvedMigration, access, context, careers, general, dsp, nursing, executive, build] = await Promise.all([
+const [formationMigration, approvedMigration, access, operationsDesktop, careers, general, dsp, nursing, executive, build] = await Promise.all([
   read('prisma/migrations/20260809110000_activate_prelaunch_companies/migration.sql'),
   read('prisma/migrations/20260815073500_activate_approved_operating_companies/migration.sql'),
   read('api/src/entity-access.ts'),
-  read('assets/admin-company-context.js'),
+  read('assets/admin-operations-desktop.js'),
   read('careers.html'),
   read('applygeneral.html'),
   read('applydsp.html'),
@@ -61,8 +61,10 @@ for (const [route, capability] of [
 ]) {
   expect(access.includes(route), `${capability} routes are not covered by the company capability gate`);
 }
-expect(context.includes('serviceOperationsStatus'), 'Admin company selector does not show operating lifecycle status');
-expect(context.includes('licensingStatus'), 'Admin company selector does not show licensing lifecycle status');
+expect(operationsDesktop.includes('serviceOperationsStatus'), 'Operations company selector/dashboard does not show operating lifecycle status');
+expect(operationsDesktop.includes('licensingStatus'), 'Operations company selector/dashboard does not show licensing lifecycle status');
+expect(operationsDesktop.includes('Operations Status'), 'Operations dashboard does not present the operating lifecycle to administrators');
+expect(operationsDesktop.includes('Licensing'), 'Operations dashboard does not present the licensing lifecycle to administrators');
 
 for (const code of ['SULANDRA_HEALTH', 'SCLS', 'HOME_HEALTH', 'NMT']) {
   expect(careers.includes(`"${code}"`), `Careers page does not load ${code} openings`);
@@ -79,11 +81,13 @@ for (const [name, source] of [
   expect(source.includes('legalEntityCode:'), `${name} application does not submit the selected employer`);
 }
 
-expect(build.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'), 'Static build does not require the company lifecycle selector');
+expect(build.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'), 'Static build does not require the Admin context router');
+expect(build.includes("'admin-operations.html'"), 'Static build does not explicitly require the company Operations desktop');
+expect(build.includes("'assets/admin-operations-desktop.js'"), 'Static build does not explicitly require the Operations lifecycle desktop runtime');
 
 if (failures.length) {
   console.error(`Approved-company activation verification failed:\n- ${failures.join('\n- ')}`);
   process.exit(1);
 }
 
-console.log('Approved-company activation verified: SCLS, Home Health, and NMT are active operating providers with referrals, billing, workforce, compliance, client intake, and clinical capabilities enabled; the Sulandra Health parent remains a non-provider holding entity.');
+console.log('Approved-company activation verified: SCLS, Home Health, and NMT are active operating providers with referrals, billing, workforce, compliance, client intake, clinical capabilities, and visible Operations/licensing lifecycle status; the Sulandra Health parent remains a non-provider holding entity.');
