@@ -60,6 +60,13 @@ jobs:
       - name: Run OASIS-E2 contract regressions
         run: npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
 
+      - name: Validate OASIS promotion scripts
+        run: |
+          node --check scripts/fetch-official-oasis-e2-package.mjs
+          node --check scripts/normalize-official-oasis-e2-package.mjs
+          node --check scripts/import-oasis-e2-spec.mjs
+          node --check scripts/promote-pinned-oasis-e2-spec.mjs
+
       - name: Validate Prisma and API
         run: npm run check
 
@@ -182,12 +189,10 @@ jobs:
                   AND c.relkind IN ('r', 'p')
               );
             ")"
-
             if [[ "$exists" != "t" ]]; then
               echo "Missing expected platform table: ${table}" >&2
               exit 1
             fi
-
             echo "Verified platform table: ${table}"
           done
 
@@ -226,6 +231,26 @@ jobs:
           ")"
           if [[ "$registered_state" != "REGISTERED:0:0" ]]; then
             echo "OASIS-E2 3.02 must remain REGISTERED with empty official definitions until the verified CMS package is imported; got ${registered_state}" >&2
+            exit 1
+          fi
+
+      - name: Promote pinned official OASIS-E2 spec and prove idempotency
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/promote-pinned-oasis-e2-spec.mjs
+          node scripts/promote-pinned-oasis-e2-spec.mjs
+          state="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
+            SELECT \"status\" || ':' || \"sourcePackageSha256\" || ':' || \"normalizedDefinitionSha256\" || ':' ||
+                   jsonb_array_length(\"itemDefinitions\") || ':' || jsonb_array_length(\"editRules\") || ':' ||
+                   jsonb_object_length(\"valueSets\") || ':' || jsonb_array_length(COALESCE(\"submissionDefinition\"->'fields','[]'::jsonb))
+            FROM \"HomeHealthOasisSpecVersion\"
+            WHERE \"itemSetVersionCode\"='E2-042026' AND \"submissionSpecVersion\"='3.02'
+            LIMIT 1;
+          ")"
+          expected="VALIDATED:b848a1f33efb77406124f02bfd50dbb48c6efb841c4e4bf3c68719c1e8d9f6ca:bf01dced0972a5a2629c084de87e4071dd855de3e46d315db53252562af432ee:420:233:367:420"
+          if [[ "$state" != "$expected" ]]; then
+            echo "OASIS-E2 promoted state mismatch: ${state}" >&2
             exit 1
           fi
 
