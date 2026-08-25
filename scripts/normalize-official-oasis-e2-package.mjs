@@ -53,6 +53,8 @@ const [items,values,iscs,iscValues,packageMetadata]=await Promise.all([
   readCsv('itm_mstr.csv'),readCsv('itm_val.csv'),readCsv('isc_mstr.csv'),readCsv('isc_val.csv'),JSON.parse(await readFile(packageMetadataPath,'utf8')),
 ]);
 if(String(packageMetadata.sha256||'').toLowerCase()!==EXPECTED_PACKAGE_SHA256)throw new Error(`CMS OASIS-E2 package fingerprint mismatch: expected ${EXPECTED_PACKAGE_SHA256}, received ${packageMetadata.sha256||'(missing)'}`);
+const stablePackageMetadata={...packageMetadata};
+delete stablePackageMetadata.fetchedAt;
 
 const valuesByItem=new Map();
 for(const value of values){const bucket=valuesByItem.get(value.itm_id)||[];bucket.push(value);valuesByItem.set(value.itm_id,bucket);}
@@ -111,7 +113,7 @@ const submissionDefinition={
 };
 const nested=(name)=>path.join(root,'extracted',name);
 const sourceManifest={
-  packageMetadata,
+  packageMetadata:stablePackageMetadata,
   nestedPackages:{
     csv:{name:'OASIS E2 Data Specs CSV Files V3.02.0 FINAL 10-13-2025.zip',sha256:await fileSha(nested('OASIS E2 Data Specs CSV Files V3.02.0 FINAL 10-13-2025.zip'))},
     html:{name:'OASIS E2 Data Specs HTML Files V3.02.0 FINAL 10-13-2025.zip',sha256:await fileSha(nested('OASIS E2 Data Specs HTML Files V3.02.0 FINAL 10-13-2025.zip'))},
