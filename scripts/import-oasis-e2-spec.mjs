@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { PrismaClient } from '@prisma/client';
 import { OASIS_E2_CONTRACT_VERSION, validateNormalizedOasisE2Spec } from './oasis-e2-spec-contract.mjs';
 
 const args=process.argv.slice(2);
@@ -38,6 +37,7 @@ if(!process.env.DATABASE_URL){
   process.exit(2);
 }
 
+const { PrismaClient }=await import('@prisma/client');
 const prisma=new PrismaClient({datasourceUrl:process.env.DATABASE_URL});
 try{
   await prisma.$transaction(async(tx)=>{
