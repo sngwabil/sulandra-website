@@ -283,64 +283,47 @@ for (const file of await walk(dist)) {
  */
 
 try {
-  const admin =
-    await readFile(
-      path.join(
-        dist,
-        'admin.html'
-      ),
-      'utf8'
-    );
+  const admin = await readFile(path.join(dist, 'admin.html'), 'utf8');
+  const context = await readFile(path.join(dist, 'assets/admin-company-context.js'), 'utf8');
+  const registry = await readFile(path.join(dist, 'assets/admin-navigation-registry.js'), 'utf8');
 
-  const context =
-    await readFile(
-      path.join(
-        dist,
-        'assets/admin-company-context.js'
-      ),
-      'utf8'
-    );
-
-  if (
-    !admin.includes(
-      '/assets/admin-company-context.js?v=20260809-admin-company-context-2'
-    )
-  ) {
-    failures.push(
-      'Admin does not load the canonical company/navigation bootstrap'
-    );
+  for (const marker of [
+    '/assets/admin-navigation-registry.js?v=20260825-admin-ia-1',
+    '/assets/admin-company-context.js?v=20260809-admin-company-context-2',
+  ]) {
+    if (!admin.includes(marker)) failures.push(`Admin does not load canonical runtime ${marker}`);
   }
 
-  for (
-    const marker of [
-      "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'",
-      "href:'/intranet.html'",
-      "href:'/employee-portal.html'",
-      "href:'/employee360.html'",
-      "href:'/education-portal.html'",
-      "href:'/spire.html'",
-      "href:'/scheduling.html'",
-      "href:'/time-attendance.html#admin'",
-      "href:'/spire-admin.html'",
-    ]
-  ) {
-    if (!context.includes(marker)) {
-      failures.push(
-        `Canonical Admin navigation/bootstrap is missing ${marker}`
-      );
+  const serviceHomeAsset = "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'";
+  if (!context.includes(serviceHomeAsset)) {
+    failures.push(`Canonical Admin bootstrap is missing ${serviceHomeAsset}`);
+  }
+
+  for (const route of [
+    '/intranet.html',
+    '/employee-portal.html',
+    '/employee360.html',
+    '/education-portal.html',
+    '/spire.html',
+    '/spire/master.html',
+    '/scheduling.html',
+    '/time-attendance.html#admin',
+    '/spire-admin.html',
+  ]) {
+    if (!registry.includes(route)) {
+      failures.push(`Canonical Admin route registry is missing ${route}`);
     }
   }
 
-  if (
-    context.includes(
-      'admin-platform-routing.js'
-    )
-  ) {
-    failures.push(
-      'Admin still relies on the legacy runtime route patcher'
-    );
+  if (!context.includes('const REGISTRY = window.SulandraAdminRouteRegistry')) {
+    failures.push('Admin company context does not consume the canonical route registry');
   }
-} catch {}
+  if (context.includes('admin-platform-routing.js')) {
+    failures.push('Admin still relies on the legacy runtime route patcher');
+  }
+} catch (error) {
+  failures.push(`Canonical Admin navigation verification could not complete: ${error instanceof Error ? error.message : error}`);
+}
 
 /*
  * --------------------------------------------------------------------------
@@ -869,3 +852,4 @@ console.log(
     'and public/employee/clinical services retain correct frontend/backend ownership.',
   ].join(' ')
 );
+
