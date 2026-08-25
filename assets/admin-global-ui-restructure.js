@@ -1,5 +1,8 @@
 (() => {
   'use strict';
+  // Admin IA v2 owns the stable top actions, searchable eight-folder shell and
+  // company-aware tool visibility. Retain this runtime only for older shells.
+  if (window.SulandraAdminRouteRegistry?.version === '2.0.0') return;
 
   const API_BASE = String(window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app').replace(/\/$/, '');
   const TOKEN_KEY = 'sulandra:employee:access-token';
@@ -257,3 +260,4 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => window.setTimeout(mount, 0), { once: true });
   else window.setTimeout(mount, 0);
 })();
+

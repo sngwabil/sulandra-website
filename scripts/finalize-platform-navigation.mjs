@@ -39,13 +39,18 @@ function replaceExactHref(html, from, to) {
 }
 
 async function installOwnerProfileCanonicalNavigation() {
+  const registrySource=await readFile(path.join(root,'assets','admin-navigation-registry.js'),'utf8');
+  if(!registrySource.includes('"id": "admin-profile"')||!registrySource.includes('"href": "/admin-profile.html"')) {
+    throw new Error('Canonical Admin registry is missing the owner profile entry');
+  }
   const targets=[path.join(root,'assets','admin-company-context.js'),path.join(dist,'assets','admin-company-context.js')];
   const marker="      {key:'settings',label:'Settings',sub:'Company Settings',kind:'module'},";
   const profile="      {key:'my-profile',label:'My Profile',sub:'Owner & DON',kind:'route',href:'/admin-profile.html'},";
   for(const target of targets){
     try{
       let source=await readFile(target,'utf8');
-      if(!source.includes("href:'/admin-profile.html'")) {
+      const registryOwned=source.includes('const REGISTRY = window.SulandraAdminRouteRegistry');
+      if(!registryOwned&&!source.includes("href:'/admin-profile.html'")) {
         if(!source.includes(marker)) throw new Error(`Canonical Admin settings marker missing in ${path.relative(root,target)}`);
         source=source.replace(marker,`${profile}\n${marker}`);
       }

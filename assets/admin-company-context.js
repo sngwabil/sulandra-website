@@ -12,43 +12,12 @@
   let shellPromise = null;
   let employeeSuitePromise = null;
 
-  const NAVIGATION = Object.freeze({
-    primary: Object.freeze([
-      {key:'dashboard',label:'Dashboard',sub:'Overview',kind:'module'},
-      {key:'service-homes',label:'Service Homes',sub:'Homes',kind:'module'},
-      {key:'employees',label:'Employees',sub:'Employee 360',kind:'module'},
-      {key:'scheduling',label:'Scheduling',sub:'Shifts',kind:'route',href:'/scheduling.html'},
-      {key:'time',label:'Time & Attendance',sub:'Clock-ins',kind:'route',href:'/time-attendance.html#admin'},
-      {key:'client-intake',label:'Client Intake',sub:'Admission Packet',kind:'route',href:'/client-intake.html'},
-      {key:'home-health-referrals',label:'HH Referrals',sub:'Secure Referral Inbox',kind:'route',href:'/home-health-referrals.html',companyCodes:['HOME_HEALTH']},
-      {key:'home-health',label:'Home Health',sub:'Episodes & Visits',kind:'route',href:'/home-health.html',companyCodes:['HOME_HEALTH']},
-      {key:'nmt-orders',label:'NMT Orders',sub:'Facility Referrals',kind:'route',href:'/nmt-orders.html',companyCodes:['NMT']},
-      {key:'nmt-dispatch',label:'NMT Dispatch',sub:'Trips & Drivers',kind:'route',href:'/nmt-dispatch.html',companyCodes:['NMT']},
-      {key:'workforce',label:'Workforce',sub:'Timesheets & Documents',kind:'route',href:'/workforce-admin.html'},
-      {key:'med-qualifications',label:'Med Qualifications',sub:'Administration Authority',kind:'route',href:'/spire-medication-qualifications.html'},
-      {key:'company-files',label:'Company Files',sub:'Official Records',kind:'route',href:'/company-documents.html'},
-      {key:'spire-training',label:'SPIRE Training',sub:'Practice Charts',kind:'route',href:'/spire-training.html'},
-      {key:'documents',label:'Documents',sub:'Compliance',kind:'route',href:'/employee360.html#files'},
-      {key:'reports',label:'Reports',sub:'Audit',kind:'route',href:'/employee360.html#audit'},
-      {key:'spire',label:'SPIRE',sub:'Clinical Admin',kind:'route',href:'/spire-admin.html'},
-      {key:'onboarding',label:'Onboarding',sub:'Hiring',kind:'module'},
-      {key:'settings',label:'Settings',sub:'Company Settings',kind:'module'},
-    ]),
-    leftOnly: Object.freeze([
-      {key:'intranet-content',label:'Manage Intranet Content',sub:'Publishing',kind:'route',href:'/intranet-control.html'},
-    ]),
-    portals: Object.freeze([
-      {label:'Intranet Portal',sub:'Live company intranet',href:'/intranet.html'},
-      {label:'Employee Portal',sub:'Employee-facing workspace',href:'/employee-portal.html'},
-      {label:'Employee 360',sub:'Employee records, documents and management',href:'/employee360.html'},
-      {label:'Education Portal',sub:'Training, courses and learning assignments',href:'/education-portal.html'},
-      {label:'SPIRE Clinical',sub:'Clinical and client record application',href:'/spire.html'},
-    ]),
-    quickOperations: Object.freeze([
-      {label:'Scheduling',sub:'Workforce schedules by service location',href:'/scheduling.html'},
-      {label:'Time & Attendance',sub:'Clock-ins, corrections, GPS and payroll-period review',href:'/time-attendance.html#admin'},
-    ]),
-  });
+  const REGISTRY = window.SulandraAdminRouteRegistry;
+  if (!REGISTRY?.legacyNavigation) {
+    console.error('[Admin Company Context] Canonical navigation registry is unavailable.');
+    return;
+  }
+  const NAVIGATION = REGISTRY.legacyNavigation;
 
   const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
   const escapeHtml = value => String(value ?? '')

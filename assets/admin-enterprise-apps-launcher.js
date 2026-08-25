@@ -1,6 +1,9 @@
 (() => {
   'use strict';
   if (!/\/admin\.html$/i.test(location.pathname)) return;
+  // Admin IA v2 owns all top, folder and search navigation. Keep this legacy
+  // injector only as a compatibility fallback for older published Admin shells.
+  if (window.SulandraAdminRouteRegistry?.version === '2.0.0') return;
   const HREF='/enterprise-apps.html';
   const SPIRE_ADMIN='/spire-admin.html';
   const addTop=()=>{

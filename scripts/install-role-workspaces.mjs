@@ -59,6 +59,10 @@ await patch('admin-railway.js', (source) => {
 });
 
 await patch('assets/admin-company-context.js', (source) => {
+  if (source.includes('const REGISTRY = window.SulandraAdminRouteRegistry')) {
+    if (!source.includes('const NAVIGATION = REGISTRY.legacyNavigation')) throw new Error('Canonical Admin registry compatibility navigation is unavailable');
+    return source;
+  }
   if (source.includes("{key:'role-workspaces',label:'Role Workspaces'")) return source;
   const anchor = "      {key:'company-files',label:'Company Files',sub:'Official Records',kind:'route',href:'/company-documents.html'},\n";
   if (!source.includes(anchor)) throw new Error('Canonical Admin Company Files navigation anchor changed');
@@ -68,6 +72,7 @@ await patch('assets/admin-company-context.js', (source) => {
 
 await patch('admin.html', (html) => {
   html = html.replace(/\s*<script src="\/assets\/admin-role-workspaces-link\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+  if (html.includes('/assets/admin-navigation-registry.js?v=20260825-admin-ia-1')) return html;
   const context = '<script src="/assets/admin-company-context.js?v=20260809-admin-company-context-2"></script>';
   if (!html.includes(context)) throw new Error('Canonical Admin company-context marker changed');
   return html.replace(context, `${context}\n  <script src="/assets/admin-role-workspaces-link.js?v=${ROLE_WORKSPACE_VERSION}"></script>`);
@@ -79,11 +84,12 @@ await patch('tests/production-role-uat.spec.mjs', (source) => {
   if (source.includes(oldLogin)) source = source.replace(oldLogin, newLogin);
 
   source = source.replace("  else if(key==='houseManager'){await absent(page,'#employeeCompanyDocumentsLauncher');await open(page,'#employeeSclsOperationsLauncher','/scls-residential.html','SCLS Residential Operations');}","  else if(key==='houseManager'){await absent(page,'#employeeCompanyDocumentsLauncher');await open(page,'#employeeRoleWorkspaceLauncher','/home-manager.html','Home Manager');await expect(page.getByRole('link',{name:'Manage My Home Team'})).toBeVisible();}");
+  source = source.replace("['Administrator',PERSONAS.administrator,'#topModuleNav a[href=\"/spire-admin.html\"]','/spire-admin.html']","['Administrator',PERSONAS.administrator,'#sideModuleNav a[href=\"/spire-admin.html\"]','/spire-admin.html']");
 
   const oldExecutive = `  else if(p.executive){const link=page.locator('#topModuleNav a[href="/spire-admin.html"]').first();await expect(link).toBeVisible();await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);await expect(page).toHaveTitle(/SPIRE/i);}`;
-  const newExecutive = `  else if(key==='administrator'){const link=page.locator('#topModuleNav a[href="/spire-admin.html"]').first();await expect(link).toBeVisible();await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);await expect(page).toHaveTitle(/SPIRE/i);}\n  else if(key==='doo'){await expect(page.locator('a.rw-card[href="/admin.html"]')).toHaveCount(0);const link=page.locator('a.rw-card[href="/spire-admin.html"]').first();await expect(link).toBeVisible();await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);}\n  else if(key==='ceo'){await expect(page.locator('a.rw-card[href="/admin.html"]')).toHaveCount(0);const link=page.locator('a.rw-card[href="/enterprise-analytics.html"]').first();await expect(link).toBeVisible();}`;
+  const newExecutive = `  else if(key==='administrator'){const link=page.locator('#sideModuleNav a[href="/spire-admin.html"]').first();await expect(link).toBeVisible();await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);await expect(page).toHaveTitle(/SPIRE/i);}\n  else if(key==='doo'){await expect(page.locator('a.rw-card[href="/admin.html"]')).toHaveCount(0);const link=page.locator('a.rw-card[href="/spire-admin.html"]').first();await expect(link).toBeVisible();await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);}\n  else if(key==='ceo'){await expect(page.locator('a.rw-card[href="/admin.html"]')).toHaveCount(0);const link=page.locator('a.rw-card[href="/enterprise-analytics.html"]').first();await expect(link).toBeVisible();}`;
   if (source.includes(oldExecutive)) source = source.replace(oldExecutive, newExecutive);
   return source;
 });
 
-console.log('Role workspaces installed: every employee role has a dedicated HTML workspace, Home Manager gets a home-team tab, CEO/DOO use dedicated executive workspaces, DOO receives all separate administrative HTML except owner admin.html, and Owner Admin receives a Role Workspaces menu tab and directory.');
+console.log('Role workspaces installed: every employee role has a dedicated HTML workspace, Home Manager gets a home-team tab, CEO/DOO use dedicated executive workspaces, DOO receives all separate administrative HTML except owner admin.html, and Owner Admin receives the registry-owned Role Workspaces entry under System Administration.');
