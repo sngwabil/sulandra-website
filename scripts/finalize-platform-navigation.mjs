@@ -38,26 +38,23 @@ function replaceExactHref(html, from, to) {
   return html.replace(new RegExp(`href=(['"])${escaped}\\1`,'g'),`href="${to}"`);
 }
 
-async function installOwnerProfileCanonicalNavigation() {
-  // Owner-profile navigation belongs to the preserved Sulandra Health owner
-  // command-center context only. The Operations desktop already exposes its
-  // own enterprise-owner profile under System Administration.
-  const targets=[path.join(root,'assets','admin-owner-context.js'),path.join(dist,'assets','admin-owner-context.js')];
-  const marker="      {key:'settings',label:'Settings',sub:'Company Settings',kind:'module'},";
-  const profile="      {key:'my-profile',label:'My Profile',sub:'Owner & DON',kind:'route',href:'/admin-profile.html'},";
-  for(const target of targets){
-    try{
-      let source=await readFile(target,'utf8');
-      if(!source.includes("href:'/admin-profile.html'")) {
-        if(!source.includes(marker)) throw new Error(`Owner command-center settings marker missing in ${path.relative(root,target)}`);
-        source=source.replace(marker,`${profile}\n${marker}`);
-      }
-      source=source
-        .replace('/assets/sulandra-enterprise-owner.js?v=20260808-admin-profile-owner-v1','/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v3')
-        .replace('/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v2','/assets/sulandra-enterprise-owner.js?v=20260814-admin-profile-owner-v3');
-      await writeFile(target,source,'utf8');
-    }catch(error){if(error?.code!=='ENOENT')throw error}
-  }
+async function verifyOwnerContextIsPreserved() {
+  // The owner command-center controls are intentionally frozen for this PR.
+  // Owner Profile continues to publish as a valid route, but this build step
+  // must not add a new navigation control or rewrite the established owner
+  // context. The only visible owner-console changes are implemented by the
+  // separate boundary runtime: hide the child-company selector and add the
+  // Operations launcher beside Platform Readiness.
+  const source=await readFile(path.join(root,'assets','admin-owner-context.js'),'utf8');
+  const published=await readFile(path.join(dist,'assets','admin-owner-context.js'),'utf8');
+  if(source!==published) throw new Error('Owner command-center context changed during static publication');
+  for(const marker of [
+    "{key:'dashboard',label:'Dashboard'",
+    "{key:'service-homes',label:'Service Homes'",
+    "{key:'settings',label:'Settings',sub:'Company Settings'",
+    "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'",
+    "'/assets/admin-enterprise-apps-launcher.js?v=20260810-enterprise-apps-1'",
+  ]) if(!source.includes(marker)) throw new Error(`Preserved owner command center is missing ${marker}`);
 }
 
 async function publishOwnerProfile() {
@@ -70,7 +67,7 @@ async function publishOwnerProfile() {
   }
 }
 
-await installOwnerProfileCanonicalNavigation();
+await verifyOwnerContextIsPreserved();
 await publishOwnerProfile();
 
 for (const file of await walk(dist)) {
@@ -134,4 +131,4 @@ const finalOwnerProfile=await readFile(path.join(dist,'admin-profile.html'),'utf
 if(!finalOwnerProfile.includes("api('/api/owner/profile')")) throw new Error('Final static owner profile lost its live API wiring');
 await stat(path.join(dist,'admin-profile','index.html'));
 
-console.log('Static platform navigation normalized for non-Admin surfaces; both the Sulandra Health owner command center and the separate company Operations desktop are protected from generic navigation rewrites.');
+console.log('Static platform navigation normalized for non-Admin surfaces; the preserved owner command center and separate company Operations desktop are protected from generic navigation rewrites.');
