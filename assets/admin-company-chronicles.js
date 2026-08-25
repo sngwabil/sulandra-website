@@ -56,15 +56,13 @@
     const form = module?.querySelector('form');
     if (!module || !form) return false;
     ensureStyles();
-    const heading = module.querySelector('h1,h2');
-    if (heading) heading.textContent = 'Company Chronicles';
-    const sub = module.querySelector('.sub');
-    if (sub) sub.textContent = 'Global company identity, contact, and white-label configuration for every Sulandra interface.';
+    // Company Chronicles belongs inside Company Profile & Settings. Do not
+    // rename the canonical module or create a second navigation destination.
     if ($('companyChroniclesPanel')) return true;
 
     const panel = document.createElement('section');
     panel.id = 'companyChroniclesPanel';
-    panel.innerHTML = '<h3>Brand & Global Identity</h3><p class="cc-sub">These values are company-scoped and are consumed by the shared Sulandra branding runtime across published interfaces.</p>';
+    panel.innerHTML = '<h3>Brand & Global Identity</h3><p class="cc-sub">Company Chronicles controls company-scoped logos, colors, public contact details, taglines, and mapped domains consumed by the shared Sulandra branding runtime.</p>';
     const grid = document.createElement('div');
     grid.className = 'company-chronicles-grid';
     grid.append(
@@ -87,7 +85,7 @@
     save.type = 'button';
     save.className = 'btn btn-cta';
     save.id = 'companyChroniclesSave';
-    save.textContent = 'Save Company Chronicles';
+    save.textContent = 'Save Brand & Global Identity';
     const reload = document.createElement('button');
     reload.type = 'button';
     reload.className = 'btn btn-ghost';
@@ -158,7 +156,7 @@
     const authToken = token();
     const entity = currentEntity();
     if (!authToken) throw new Error('Administrator sign-in is required.');
-    if (!entity?.id) throw new Error('Select a company before managing Company Chronicles.');
+    if (!entity?.id) throw new Error('Select a company before managing Brand & Global Identity.');
     const response = await fetch(`${API_BASE}/api/admin/company-settings`, {
       ...init,
       cache: 'no-store',
@@ -170,7 +168,7 @@
       },
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || body.message || `Company Chronicles request failed (${response.status}).`);
+    if (!response.ok) throw new Error(body.error || body.message || `Brand & Global Identity request failed (${response.status}).`);
     return body.data ?? body;
   }
 
@@ -179,7 +177,7 @@
     const entity = currentEntity();
     if (!entity?.id) {
       write({});
-      setStatus('Select an active company to load Company Chronicles.');
+      setStatus('Select an active company to load branding.');
       return;
     }
     state.entityId = String(entity.id);
@@ -189,10 +187,10 @@
       const data = await request();
       write(data.settings?.metadata?.companyChronicles || {});
       state.loaded = true;
-      setStatus('Company Chronicles loaded from PostgreSQL.', 'success');
+      setStatus('Brand & Global Identity loaded from PostgreSQL.', 'success');
     } catch (error) {
       state.loaded = false;
-      setStatus(error.message || 'Unable to load Company Chronicles.', 'error');
+      setStatus(error.message || 'Unable to load branding.', 'error');
     } finally {
       setBusy(false);
     }
@@ -204,17 +202,17 @@
     if (!entity?.id) return setStatus('Select a company before saving.', 'error');
     state.saving = true;
     setBusy(true);
-    setStatus('Saving Company Chronicles…');
+    setStatus('Saving Brand & Global Identity…');
     try {
       const data = await request({ method: 'PATCH', body: JSON.stringify({ metadata: { companyChronicles: payload() } }) });
       write(data.settings?.metadata?.companyChronicles || payload());
-      setStatus('Company Chronicles saved and applied.', 'success');
-      toast('Company Chronicles saved', `${entity.displayName || entity.code || 'Selected company'} branding is now authoritative.`);
+      setStatus('Brand & Global Identity saved and applied.', 'success');
+      toast('Brand & Global Identity saved', `${entity.displayName || entity.code || 'Selected company'} branding is now authoritative.`);
       window.dispatchEvent(new CustomEvent('sulandra:company-settings-updated', { detail: { legalEntityId: entity.id, settings: data.settings || {} } }));
       await window.SulandraCompanyChronicles?.reload?.();
     } catch (error) {
-      setStatus(error.message || 'Company Chronicles were not saved.', 'error');
-      toast('Company Chronicles not saved', error.message || 'Unable to save branding configuration.');
+      setStatus(error.message || 'Brand & Global Identity was not saved.', 'error');
+      toast('Brand & Global Identity not saved', error.message || 'Unable to save branding configuration.');
     } finally {
       state.saving = false;
       setBusy(false);
