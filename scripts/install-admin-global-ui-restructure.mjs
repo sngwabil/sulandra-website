@@ -32,7 +32,9 @@ for (const key of folderKeys) {
 }
 if (!router.includes('admin-owner-context.js') || !router.includes('admin-operations-context.js')) throw new Error('Admin context router does not separate owner and Operations desktops');
 if (!ownerConsole.includes('/api/owner/authority') || !ownerConsole.includes('ownerOperationsLauncher')) throw new Error('Owner console boundary/Operations launcher is incomplete');
-if (!operationsDesktop.includes('admin-operations.html') || !operationsDesktop.includes('allowedOperatingEntities')) throw new Error('Company Operations desktop boundary is incomplete');
+// The route guard is expressed as a regular expression in the runtime, so test
+// its stable path token instead of requiring the unescaped literal filename.
+if (!operationsDesktop.includes('admin-operations') || !operationsDesktop.includes('allowedOperatingEntities')) throw new Error('Company Operations desktop boundary is incomplete');
 if (router.includes(retiredRuntime) || ownerContext.includes(retiredRuntime) || operationsContext.includes(retiredRuntime)) throw new Error('Retired five-folder Admin global UI runtime is still injected');
 
 const sourceAdmin = await readFile(path.join(root, 'admin.html'), 'utf8');
