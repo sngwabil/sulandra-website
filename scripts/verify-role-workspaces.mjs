@@ -58,7 +58,12 @@ expect(operationsHtml.includes('/assets/admin-company-context.js?v=20260809-admi
 expect(!ownerHtml.includes('/assets/admin-role-workspaces-link.js'), 'Owner command center must not receive a new Role Workspaces navigation injection');
 expect(!operationsHtml.includes('/assets/admin-role-workspaces-link.js'), 'Operations HTML must not bypass its canonical registry with a Role Workspaces injector');
 expect(router.includes('admin-owner-context.js') && router.includes('admin-operations-context.js'), 'Admin context router does not preserve owner/Operations separation');
-expect(operationsContext.includes("{key:'role-workspaces',label:'Role Workspaces',sub:'Preview Role HTML',kind:'route',href:'/role-workspaces.html'}"), 'Company Operations System Administration registry does not include Role Workspaces');
+expect(
+  operationsContext.includes("key:'role-workspaces'")
+    && operationsContext.includes("label:'Roles, Permissions & Workspaces'")
+    && operationsContext.includes("href:'/role-workspaces.html'"),
+  'Company Operations System Administration registry does not include Roles, Permissions & Workspaces',
+);
 expect(adminLink.includes('adminRoleWorkspacesTopLink') && adminLink.includes('/role-workspaces.html'), 'Retained Role Workspaces compatibility runtime is incomplete');
 expect(installer.includes("await patch('assets/admin-operations-context.js'"), 'Role workspace installer does not keep the Operations registry aligned');
 expect(installer.includes('Owner/Operations split guard was not installed'), 'Role workspace installer does not enforce the owner/Operations role guards');
@@ -76,4 +81,4 @@ if (failures.length) {
   console.error('Role workspace verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Role workspaces verified: all 15 employee/leadership roles retain dedicated HTML; the Sulandra Health owner command center stays unchanged and owner-only; Role Workspaces lives in Operations System Administration; Home Manager has assigned-home team operations; and CEO/DOO retain dedicated landings.');
+console.log('Role workspaces verified: all 15 employee/leadership roles retain dedicated HTML; the Sulandra Health owner command center stays unchanged and owner-only; Roles, Permissions & Workspaces lives in Operations System Administration; Home Manager has assigned-home team operations; and CEO/DOO retain dedicated landings.');
