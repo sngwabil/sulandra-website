@@ -17,12 +17,8 @@ function constrainedDatabaseUrl(rawDatabaseUrl) {
     const databaseUrl = new URL(rawDatabaseUrl);
     if (databaseUrl.protocol === 'postgres:' || databaseUrl.protocol === 'postgresql:') {
       databaseUrl.searchParams.set('connection_limit', '1');
-      if (!databaseUrl.searchParams.has('pool_timeout')) {
-        databaseUrl.searchParams.set('pool_timeout', '30');
-      }
-      if (!databaseUrl.searchParams.has('connect_timeout')) {
-        databaseUrl.searchParams.set('connect_timeout', '10');
-      }
+      if (!databaseUrl.searchParams.has('pool_timeout')) databaseUrl.searchParams.set('pool_timeout', '30');
+      if (!databaseUrl.searchParams.has('connect_timeout')) databaseUrl.searchParams.set('connect_timeout', '10');
       return databaseUrl.toString();
     }
   } catch {
@@ -40,41 +36,24 @@ function childEnvironment() {
 
 function runScript(scriptName) {
   console.log(`[db:predeploy] running npm run ${scriptName}`);
-  const result = spawnSync(npm, ['run', scriptName], {
-    stdio: 'inherit',
-    env: childEnvironment(),
-  });
-  if (result.status !== 0) {
-    throw new Error(`npm run ${scriptName} failed with exit code ${result.status ?? 'unknown'}`);
-  }
+  const result = spawnSync(npm, ['run', scriptName], { stdio: 'inherit', env: childEnvironment() });
+  if (result.status !== 0) throw new Error(`npm run ${scriptName} failed with exit code ${result.status ?? 'unknown'}`);
 }
 
 function runNodeScript(scriptPath) {
   console.log(`[db:predeploy] running node ${scriptPath}`);
-  const result = spawnSync(node, [scriptPath], {
-    stdio: 'inherit',
-    env: childEnvironment(),
-  });
-  if (result.status !== 0) {
-    throw new Error(`node ${scriptPath} failed with exit code ${result.status ?? 'unknown'}`);
-  }
+  const result = spawnSync(node, [scriptPath], { stdio: 'inherit', env: childEnvironment() });
+  if (result.status !== 0) throw new Error(`node ${scriptPath} failed with exit code ${result.status ?? 'unknown'}`);
 }
 
 function runPrismaResolve(migrationName) {
   console.log(`[db:predeploy] baselining Prisma migration ${migrationName}`);
-  const result = spawnSync(npx, ['prisma', 'migrate', 'resolve', '--applied', migrationName], {
-    stdio: 'inherit',
-    env: childEnvironment(),
-  });
-  if (result.status !== 0) {
-    throw new Error(`prisma migrate resolve --applied ${migrationName} failed with exit code ${result.status ?? 'unknown'}`);
-  }
+  const result = spawnSync(npx, ['prisma', 'migrate', 'resolve', '--applied', migrationName], { stdio: 'inherit', env: childEnvironment() });
+  if (result.status !== 0) throw new Error(`prisma migrate resolve --applied ${migrationName} failed with exit code ${result.status ?? 'unknown'}`);
 }
 
 async function baselineFreshLegacyDatabase(tx) {
-  const migrationHistoryRows = await tx.$queryRawUnsafe(
-    `SELECT to_regclass('public."_prisma_migrations"')::text AS "migrationHistory"`,
-  );
+  const migrationHistoryRows = await tx.$queryRawUnsafe(`SELECT to_regclass('public."_prisma_migrations"')::text AS "migrationHistory"`);
   if (migrationHistoryRows[0]?.migrationHistory) return;
 
   const baselineRows = await tx.$queryRawUnsafe(`
@@ -89,32 +68,15 @@ async function baselineFreshLegacyDatabase(tx) {
       to_regclass('public."InterviewOption"')::text AS "interviewOption"
   `);
   const baseline = baselineRows[0] ?? {};
-  const legacyBasePresent = Boolean(
-    baseline.organization && baseline.userTable && baseline.employeeApplication && baseline.auditEvent,
-  );
+  const legacyBasePresent = Boolean(baseline.organization && baseline.userTable && baseline.employeeApplication && baseline.auditEvent);
   if (!legacyBasePresent) return;
 
-  const stagingGuarded =
-    process.env.SULANDRA_STAGING_CANARY_BOOTSTRAP === '1' &&
-    process.env.SULANDRA_ENVIRONMENT === 'release-1.1-staging-canary';
+  const stagingGuarded = process.env.SULANDRA_STAGING_CANARY_BOOTSTRAP === '1' && process.env.SULANDRA_ENVIRONMENT === 'release-1.1-staging-canary';
+  if (!stagingGuarded) throw new Error('[db:predeploy] refusing Prisma baseline outside the guarded release-1.1 staging canary environment.');
 
-  if (!stagingGuarded) {
-    throw new Error(
-      '[db:predeploy] refusing Prisma baseline outside the guarded release-1.1 staging canary environment.',
-    );
-  }
-
-  const careersPipelinePresent = Boolean(
-    baseline.jobOpening &&
-      baseline.applicantDocument &&
-      baseline.applicantMessage &&
-      baseline.interviewOption,
-  );
-
+  const careersPipelinePresent = Boolean(baseline.jobOpening && baseline.applicantDocument && baseline.applicantMessage && baseline.interviewOption);
   if (!careersPipelinePresent) {
-    console.log(
-      '[db:predeploy] legacy staging base detected without Prisma history, but the careers-pipeline relations are absent; leaving 20260728152000_careers_pipeline pending so Prisma creates them normally.',
-    );
+    console.log('[db:predeploy] legacy staging base detected without Prisma history, but the careers-pipeline relations are absent; leaving 20260728152000_careers_pipeline pending so Prisma creates them normally.');
     return;
   }
 
@@ -123,30 +85,19 @@ async function baselineFreshLegacyDatabase(tx) {
 }
 
 const datasourceUrl = constrainedDatabaseUrl(process.env.DATABASE_URL);
-const prisma = datasourceUrl
-  ? new PrismaClient({ datasourceUrl })
-  : new PrismaClient();
+const prisma = datasourceUrl ? new PrismaClient({ datasourceUrl }) : new PrismaClient();
 
 try {
   console.log('[db:predeploy] waiting for Sulandra PostgreSQL advisory lock...');
   await prisma.$transaction(
     async (tx) => {
       while (true) {
-        const rows = await tx.$queryRawUnsafe(
-          'SELECT pg_try_advisory_xact_lock($1::int, $2::int) AS "locked"',
-          lockNamespace,
-          lockKey,
-        );
-
-        if (rows[0]?.locked === true) {
-          break;
-        }
-
+        const rows = await tx.$queryRawUnsafe('SELECT pg_try_advisory_xact_lock($1::int, $2::int) AS "locked"', lockNamespace, lockKey);
+        if (rows[0]?.locked === true) break;
         await wait(lockRetryMs);
       }
 
       console.log('[db:predeploy] acquired deployment advisory lock.');
-
       runScript('db:check-prerequisites');
       await baselineFreshLegacyDatabase(tx);
       runNodeScript('scripts/reconcile-staging-careers-baseline.mjs');
@@ -154,15 +105,13 @@ try {
       runScript('db:migrate:deploy');
       runNodeScript('scripts/verify-release-staging-parity.mjs');
       runNodeScript('scripts/check-home-health-regulated-core.mjs');
+      runNodeScript('scripts/promote-pinned-oasis-e2-spec.mjs');
       runScript('db:verify-careers-schema');
       runNodeScript('scripts/verify-spire-route-registration.mjs');
 
       console.log('[db:predeploy] database predeploy completed successfully.');
     },
-    {
-      maxWait: 600000,
-      timeout: 900000,
-    },
+    { maxWait: 600000, timeout: 900000 },
   );
 } finally {
   await prisma.$disconnect();
