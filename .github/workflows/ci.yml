@@ -61,6 +61,7 @@ jobs:
         run: |
           npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
           npx --no-install tsx --test tests/iqies-transport-boundary.regression.test.ts
+          npx --no-install tsx --test tests/production-adapter-boundaries.regression.test.ts
 
       - name: Validate OASIS promotion scripts
         run: |

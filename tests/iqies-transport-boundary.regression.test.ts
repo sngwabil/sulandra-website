@@ -7,7 +7,7 @@ const production={
   IQIES_ENVIRONMENT:'PRODUCTION',
   IQIES_ENDPOINT_URL:'https://iqies.example.gov/oasis',
   IQIES_ALLOWED_HOSTS:'iqies.example.gov',
-  IQIES_CREDENTIAL_REFERENCE:'railway-secret://iqies-production',
+  IQIES_CREDENTIAL_REFERENCE:'railway://iqies-production',
   IQIES_CERTIFICATION_STATUS:'PRODUCTION_CERTIFIED',
   IQIES_PRODUCTION_SUBMISSION_ENABLED:'1',
 };
@@ -20,8 +20,12 @@ test('iQIES transport defaults to fail-closed without exposing configuration sec
   assert.equal(JSON.stringify(readiness).includes('railway-secret'),false);
 });
 
-test('production transport requires HTTPS, an allowlisted host, certification, credentials and explicit activation',()=>{
-  assert.equal(getIqiesTransportReadiness(production).submissionEnabled,true);
+test('production transport remains fail-closed because CMS has not published an automated OASIS machine contract',()=>{
+  const readyConfiguration=getIqiesTransportReadiness(production);
+  assert.equal(readyConfiguration.configured,true);
+  assert.equal(readyConfiguration.submissionEnabled,false);
+  assert.equal(readyConfiguration.machineTransportImplemented,false);
+  assert.match(readyConfiguration.blockers.join(' '),/official XML upload/);
   assert.equal(getIqiesTransportReadiness({...production,IQIES_ENDPOINT_URL:'http://iqies.example.gov'}).submissionEnabled,false);
   assert.equal(getIqiesTransportReadiness({...production,IQIES_ALLOWED_HOSTS:'other.example.gov'}).submissionEnabled,false);
   assert.equal(getIqiesTransportReadiness({...production,IQIES_CERTIFICATION_STATUS:'SANDBOX_APPROVED'}).submissionEnabled,false);

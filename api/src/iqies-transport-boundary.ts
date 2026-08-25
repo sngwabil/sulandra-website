@@ -10,6 +10,7 @@ export type IqiesTransportReadiness={
   certificationStatus:IqiesCertificationStatus;
   configured:boolean;
   submissionEnabled:boolean;
+  machineTransportImplemented:false;
   endpointOrigin:string|null;
   blockers:string[];
 };
@@ -82,9 +83,10 @@ export function getIqiesTransportReadiness(env:Readonly<Record<string,string|und
   if(selectedEnvironment==='PRODUCTION'&&certificationStatus!=='PRODUCTION_CERTIFIED')blockers.push('iQIES production certification is required');
   const activationKey=selectedEnvironment==='PRODUCTION'?'IQIES_PRODUCTION_SUBMISSION_ENABLED':'IQIES_SANDBOX_SUBMISSION_ENABLED';
   if(!enabled(env[activationKey]))blockers.push(`${activationKey} must be explicitly set to 1`);
+  blockers.push('Automated CMS iQIES machine transport is not implemented; use the official XML upload, VUT and Final Validation Report workflow');
 
   const configured=selectedMode==='EXTERNAL_ADAPTER'&&!endpoint.error&&Boolean(String(env.IQIES_CREDENTIAL_REFERENCE||'').trim());
-  return {mode:selectedMode,environment:selectedEnvironment,certificationStatus,configured,submissionEnabled:configured&&blockers.length===0,endpointOrigin:endpoint.origin,blockers};
+  return {mode:selectedMode,environment:selectedEnvironment,certificationStatus,configured,submissionEnabled:false,machineTransportImplemented:false,endpointOrigin:endpoint.origin,blockers};
 }
 
 export function buildIqiesIdempotencyKey(input:{organizationId:string;legalEntityId:string;oasisAssessmentId:string;transactionMode:string;payloadSha256:string}){
