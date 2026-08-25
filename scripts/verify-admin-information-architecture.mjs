@@ -12,7 +12,7 @@ const readDist=async relative=>{try{return await readFile(path.join(dist,relativ
 const exists=async relative=>{try{await stat(path.join(root,relative));return true}catch{return false}};
 const existsDist=async relative=>{try{await stat(path.join(dist,relative));return true}catch{return false}};
 
-const [registrySource,inventorySource,adminSource,iaSource,onboardingSource,contextSource,appsSource,launcherSource,adminDist,registryDist,iaDist,onboardingDist]=await Promise.all([
+const [registrySource,inventorySource,adminSource,iaSource,onboardingSource,contextSource,appsSource,launcherSource,legacyUiSource,adminDist,registryDist,iaDist,onboardingDist]=await Promise.all([
   read('assets/admin-navigation-registry.js'),
   read('config/admin-route-inventory.json'),
   read('admin.html'),
@@ -21,6 +21,7 @@ const [registrySource,inventorySource,adminSource,iaSource,onboardingSource,cont
   read('assets/admin-company-context.js'),
   read('enterprise-apps.html'),
   read('assets/admin-enterprise-apps-launcher.js'),
+  read('assets/admin-global-ui-restructure.js'),
   readDist('admin.html'),
   readDist('assets/admin-navigation-registry.js'),
   readDist('assets/admin-information-architecture.js'),
@@ -121,6 +122,7 @@ if(contextSource.includes('const NAVIGATION = Object.freeze({'))failures.push('A
 if(!appsSource.includes('window.SulandraAdminRouteRegistry?.enterpriseApps'))failures.push('Enterprise Apps does not consume the canonical registry');
 if(appsSource.includes('const apps=['))failures.push('Enterprise Apps still hard-codes a duplicate application catalog');
 if(!launcherSource.includes("window.SulandraAdminRouteRegistry?.version === '2.0.0'"))failures.push('Legacy Enterprise Apps injector is not gated behind Admin IA v2');
+if(!legacyUiSource.includes("window.SulandraAdminRouteRegistry?.version === '2.0.0'"))failures.push('Legacy global Admin UI is not gated behind Admin IA v2');
 if(adminSource!==adminDist)failures.push('Published Admin HTML drifted from canonical source');
 if(registrySource!==registryDist)failures.push('Published Admin route registry drifted from canonical source');
 if(iaSource!==iaDist)failures.push('Published Admin information architecture drifted from canonical source');
