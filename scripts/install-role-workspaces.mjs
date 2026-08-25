@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ROLE_WORKSPACE_VERSION = '20260815-role-workspaces-2';
 
 async function patch(relative, transform) {
   const target = path.join(root, relative);
@@ -51,27 +50,38 @@ await patch('assets/employee-login-railway.js', patchLogin);
 await patch('employee-login-railway.js', patchLogin);
 
 await patch('admin-railway.js', (source) => {
-  const ownerOnly = 'if (!session || role !== "ADMINISTRATOR") { const destination = role === "DOO" ? "doo.html" : role === "CEO" ? "ceo.html" : "employee-portal.html"; location.replace(destination); return; }';
-  source = source.replace('if (!session || !["ADMINISTRATOR", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }', ownerOnly);
-  source = source.replace('if (!session || !["ADMINISTRATOR", "CEO", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }', ownerOnly);
-  if (!source.includes('role !== "ADMINISTRATOR"') || !source.includes('role === "DOO" ? "doo.html"')) throw new Error('Owner-only Admin main-page guard was not installed');
+  const legacyOwnerOnly = 'if (!session || role !== "ADMINISTRATOR") { const destination = role === "DOO" ? "doo.html" : role === "CEO" ? "ceo.html" : "employee-portal.html"; location.replace(destination); return; }';
+  const legacyMixed = 'if (!session || !["ADMINISTRATOR", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }';
+  const legacyExecutive = 'if (!session || !["ADMINISTRATOR", "CEO", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }';
+  const splitGuard = 'if (!session) { location.replace("employee-login.html"); return; }\n      if (/\\/admin\\.html$/i.test(location.pathname) && role !== "ADMINISTRATOR") { const destination = role === "DOO" ? "doo.html" : role === "CEO" ? "ceo.html" : "employee-portal.html"; location.replace(destination); return; }\n      if (/\\/admin-operations\\.html$/i.test(location.pathname) && !["ADMINISTRATOR", "HR_MANAGER", "CEO", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }';
+  if (!source.includes('/\\/admin-operations\\.html$/i.test(location.pathname)')) {
+    if (source.includes(legacyOwnerOnly)) source = source.replace(legacyOwnerOnly, splitGuard);
+    else if (source.includes(legacyMixed)) source = source.replace(legacyMixed, splitGuard);
+    else if (source.includes(legacyExecutive)) source = source.replace(legacyExecutive, splitGuard);
+    else throw new Error('Admin role guard anchor changed');
+  }
+  if (!source.includes('/\\/admin\\.html$/i.test(location.pathname)') || !source.includes('/\\/admin-operations\\.html$/i.test(location.pathname)')) throw new Error('Owner/Operations split guard was not installed');
   return source;
 });
 
-await patch('assets/admin-company-context.js', (source) => {
-  if (source.includes("{key:'role-workspaces',label:'Role Workspaces'")) return source;
-  const anchor = "      {key:'company-files',label:'Company Files',sub:'Official Records',kind:'route',href:'/company-documents.html'},\n";
-  if (!source.includes(anchor)) throw new Error('Canonical Admin Company Files navigation anchor changed');
+await patch('assets/admin-operations-context.js', (source) => {
+  // Role Workspaces belongs only in the Operations System Administration
+  // folder. Never inject it into the parent-company owner command center.
+  if (source.includes("key:'role-workspaces'") && source.includes("href:'/role-workspaces.html'")) return source;
+  const legacyAnchor = "      {key:'company-files',label:'Company Files',sub:'Official Records',kind:'route',href:'/company-documents.html'},\n";
+  if (!source.includes(legacyAnchor)) throw new Error('Operations Role Workspaces registry entry is missing');
   const roleTab = "      {key:'role-workspaces',label:'Role Workspaces',sub:'Preview Role HTML',kind:'route',href:'/role-workspaces.html'},\n";
-  return source.replace(anchor, `${anchor}${roleTab}`);
+  return source.replace(legacyAnchor, `${legacyAnchor}${roleTab}`);
 });
 
-await patch('admin.html', (html) => {
-  html = html.replace(/\s*<script src="\/assets\/admin-role-workspaces-link\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
-  const context = '<script src="/assets/admin-company-context.js?v=20260809-admin-company-context-2"></script>';
-  if (!html.includes(context)) throw new Error('Canonical Admin company-context marker changed');
-  return html.replace(context, `${context}\n  <script src="/assets/admin-role-workspaces-link.js?v=${ROLE_WORKSPACE_VERSION}"></script>`);
-});
+for (const page of ['admin.html','admin-operations.html']) {
+  await patch(page, (html) => {
+    html = html.replace(/\s*<script src="\/assets\/admin-role-workspaces-link\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
+    const context = '<script src="/assets/admin-company-context.js?v=20260809-admin-company-context-2"></script>';
+    if (!html.includes(context)) throw new Error(`Admin context router marker changed in ${page}`);
+    return html;
+  });
+}
 
 await patch('tests/production-role-uat.spec.mjs', (source) => {
   const oldLogin = `  if(p.executive){await expect(page).toHaveURL(/\\/admin\\.html(?:#.*)?$/);await expect(page.locator('#topModuleNav')).toBeVisible();}\n  else{await expect(page).toHaveURL(/\\/employee-portal\\.html$/);await expect(page.locator('body')).toHaveAttribute('data-role-uat-ready','true');await expect(page.locator('body')).toHaveAttribute('data-authenticated-role',p.role);}`;
@@ -86,4 +96,4 @@ await patch('tests/production-role-uat.spec.mjs', (source) => {
   return source;
 });
 
-console.log('Role workspaces installed: every employee role has a dedicated HTML workspace, Home Manager gets a home-team tab, CEO/DOO use dedicated executive workspaces, DOO receives all separate administrative HTML except owner admin.html, and Owner Admin receives a Role Workspaces menu tab and directory.');
+console.log('Role workspaces installed: employee roles retain dedicated workspaces; the owner command center stays owner-only; company management roles may enter the separate Operations desktop when their server-side company scope permits it.');
