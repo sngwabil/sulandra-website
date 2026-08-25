@@ -42,7 +42,7 @@ requireMarkers(operationsContext,[
   "serviceModule.id = 'module-service-requests'",'installInformationArchitectureStyles()',
 ],'Operations navigation/bootstrap');
 forbid(operationsContext,['admin-enterprise-apps-launcher.js','admin-navigation-overflow.js','NAVIGATION.primary','NAVIGATION.leftOnly','Platform Portals','Quick Operations'],'Operations navigation/bootstrap');
-requireMarkers(operationsDesktop,['allowedOperatingEntities','hasActiveEmployment','entityType === \'HOLDING\'','PARENT_CODES','Company Operations','data-open-ops-folder'],'Operations desktop boundary');
+requireMarkers(operationsDesktop,['allowedOperatingEntities','hasActiveEmployment',"entity?.entityType === 'HOLDING'",'PARENT_CODES','Company Operations','data-open-ops-folder'],'Operations desktop boundary');
 
 const folderStart = operationsContext.indexOf('folders: Object.freeze([');
 const lifecycleStart = operationsContext.indexOf('onboardingLifecycle:Object.freeze([');
