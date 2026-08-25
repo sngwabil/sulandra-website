@@ -7,6 +7,9 @@
   const SETTINGS_KEY = "sulandra:admin:company-settings";
   const TASKBAR_KEY = "sulandra:admin:taskbar-open";
   const ACTIVE_MODULE_KEY = "sulandra:admin:active-module";
+  const IS_OPERATIONS = /\/admin-operations\.html$/i.test(location.pathname);
+  const OPERATIONS_ROLES = new Set(["ADMINISTRATOR", "HR_MANAGER", "CEO", "DOO"]);
+  const loadedOperationsModules = new Set();
   const $ = (id) => document.getElementById(id);
   let applications = [];
   let jobOpenings = [];
@@ -16,6 +19,14 @@
   const title = (v) => String(v || "").toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (c) => c.toUpperCase());
   const slugify = (v) => String(v || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || "";
+
+  function storedSession() {
+    try {
+      return JSON.parse(sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY) || "null") || null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   function signOut() {
     sessionStorage.removeItem(TOKEN_KEY);
@@ -300,6 +311,18 @@
     }
   }
 
+  async function loadOperationsModuleData(key, force = false) {
+    if (!IS_OPERATIONS) return;
+    const moduleKey = String(key || "dashboard");
+    if (!force && loadedOperationsModules.has(moduleKey)) return;
+    if (moduleKey === "onboarding") {
+      await Promise.all([loadApplications(), loadOpenings()]);
+    } else if (moduleKey === "dashboard") {
+      await loadDashboard();
+    }
+    loadedOperationsModules.add(moduleKey);
+  }
+
   function loadSettings() {
     let saved = {};
     try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); } catch (_) {}
@@ -317,7 +340,17 @@
   window.syncArchivedJobsContainer = function () {};
 
   function bindEvents() {
-    document.querySelectorAll("#topModuleNav [data-module], #sideModuleNav [data-module]").forEach((n) => n.addEventListener("click", () => activateModule(n.dataset.module)));
+    if (IS_OPERATIONS) {
+      document.addEventListener("click", (event) => {
+        const node = event.target.closest?.("#topModuleNav [data-module], #sideModuleNav [data-module]");
+        if (!node) return;
+        const key = node.dataset.module || "dashboard";
+        activateModule(key);
+        loadOperationsModuleData(key).catch((error) => toast("Workspace data unavailable", error.message));
+      });
+    } else {
+      document.querySelectorAll("#topModuleNav [data-module], #sideModuleNav [data-module]").forEach((n) => n.addEventListener("click", () => activateModule(n.dataset.module)));
+    }
     document.querySelectorAll("[data-onboarding-panel]").forEach((n) => n.addEventListener("click", () => activatePanel(n.dataset.onboardingPanel)));
     document.querySelectorAll(".archive-subtab").forEach((button, index) => {
       const folder = /job/i.test(button.textContent || "") || index > 0 ? "jobs" : "applicants";
@@ -335,11 +368,33 @@
     activateArchiveFolder("applicants", document.querySelector('.archive-subtab[data-archive-folder="applicants"]'));
     $("btnAdminSignOut")?.addEventListener("click", signOut);
     $("signOutBtn")?.addEventListener("click", signOut);
-    $("refreshBtn")?.addEventListener("click", async () => { try { await Promise.all([loadApplications(), loadOpenings(), loadDashboard()]); toast("Admin portal refreshed", "The latest Railway data is displayed."); } catch (e) { toast("Refresh incomplete", e.message); } });
+    $("refreshBtn")?.addEventListener("click", async () => {
+      try {
+        if (IS_OPERATIONS) {
+          const active = location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard";
+          loadedOperationsModules.delete(active);
+          await loadOperationsModuleData(active, true);
+        } else {
+          await Promise.all([loadApplications(), loadOpenings(), loadDashboard()]);
+        }
+        toast("Admin portal refreshed", "The latest Railway data is displayed.");
+      } catch (e) { toast("Refresh incomplete", e.message); }
+    });
     $("exportBtn")?.addEventListener("click", exportApplications);
     $("closeModalBtn")?.addEventListener("click", () => { $("detailsModal").style.display = "none"; $("modalBody")?.replaceChildren(); });
     $("detailsModal")?.addEventListener("click", (e) => { if (e.target === $("detailsModal")) $("closeModalBtn")?.click(); });
-    window.addEventListener("hashchange", () => activateModule(location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard", false));
+    window.addEventListener("hashchange", () => {
+      const key = location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard";
+      activateModule(key, false);
+      if (IS_OPERATIONS) loadOperationsModuleData(key).catch((error) => toast("Workspace data unavailable", error.message));
+    });
+    if (IS_OPERATIONS) {
+      window.addEventListener("sulandra:company-change", () => {
+        loadedOperationsModules.clear();
+        const key = location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard";
+        loadOperationsModuleData(key, true).catch((error) => toast("Company data unavailable", error.message));
+      });
+    }
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
       if ($("detailsModal")?.style.display === "block") $("closeModalBtn")?.click();
@@ -366,6 +421,22 @@
     const requestedModule = location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard";
     activateModule(requestedModule, false);
     try {
+      if (IS_OPERATIONS) {
+        if (window.SulandraAdminContextReady) await window.SulandraAdminContextReady;
+        let session = storedSession();
+        let role = String(session?.role || session?.user?.role || "").toUpperCase();
+        if (!session || !token() || !OPERATIONS_ROLES.has(role)) {
+          session = await api("/api/session");
+          role = String(session?.role || "").toUpperCase();
+        }
+        if (!session || !OPERATIONS_ROLES.has(role)) { location.replace("employee-portal.html"); return; }
+        await window.SulandraCompanyContext?.initialize?.(session.entityContext);
+        if ($("adminEmailPill")) $("adminEmailPill").textContent = session.email || session.username || session?.user?.email || title(role);
+        await loadOperationsModuleData(requestedModule);
+        if ($("livePill")) $("livePill").textContent = "Railway: connected";
+        return;
+      }
+
       const session = await api("/api/session");
       const role = String(session?.role || "").toUpperCase();
       if (!session || !["ADMINISTRATOR", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }
