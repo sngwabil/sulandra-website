@@ -1,0 +1,549 @@
+{
+  "schemaVersion": 1,
+  "sourceBranch": "release/sulandra-1.1",
+  "sourceCommit": "4520da2c85d1de6b65d1defcfcf86373cca5a43b",
+  "generatedAt": "2026-08-25",
+  "policy": {
+    "navigation": "Authorized Admin or employee route surfaced by the canonical registry.",
+    "contextual": "Opened from a parent workflow; not a global Admin control.",
+    "entry": "Public, authentication or portal entry surface.",
+    "alias": "Legacy compatibility route that should redirect to canonical.",
+    "setup": "Bootstrap-only system surface."
+  },
+  "routes": [
+    {
+      "path": "admin-profile.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "admin-setup.html",
+      "surface": "system",
+      "disposition": "setup"
+    },
+    {
+      "path": "admin-users.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "admin.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "administrative-assistant.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "applicant-portal.html",
+      "surface": "authentication",
+      "disposition": "entry"
+    },
+    {
+      "path": "applycoo.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "applydoo.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "applydriver.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "applydsp.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "applygeneral.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "applylpn.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "auditor.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "benefits.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "billing-specialist.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "careers.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "ceo.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "client-intake.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "company-compliance.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "company-documents.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "compliance-evidence.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "course-player.html",
+      "surface": "employee",
+      "disposition": "contextual"
+    },
+    {
+      "path": "data-quality.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "delegating-nurse.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "dodd-billing-rules.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "doo.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "driver.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "dsp.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "education-certificate.html",
+      "surface": "employee",
+      "disposition": "contextual"
+    },
+    {
+      "path": "education-portal.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "employee-directory.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "employee-login.html",
+      "surface": "authentication",
+      "disposition": "entry"
+    },
+    {
+      "path": "employee-ohio-screening-workspace.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "employee-ohio-screening.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "employee-portal.html",
+      "surface": "employee",
+      "disposition": "contextual"
+    },
+    {
+      "path": "employee360.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "enterprise-analytics.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "enterprise-apps.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "feedback.html",
+      "surface": "employee",
+      "disposition": "contextual"
+    },
+    {
+      "path": "general-employee.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+  {
+    "path": "google91b09e120dde6e2c.html",
+    "surface": "infrastructure",
+    "disposition": "setup"
+  },
+    {
+      "path": "health-safety.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "home-health-referral-access.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "home-health-referral-inbox.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "home-health-referral-portal.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "home-health-referral-secure.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "home-health-referral.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "home-health-referrals.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "home-health-sources.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "home-health-start-of-care.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "home-health-visits.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "home-health.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "home-manager.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "hr-manager.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "index.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "indexbackbone.html",
+      "surface": "legacy",
+      "disposition": "alias",
+      "canonical": "/index.html"
+    },
+    {
+      "path": "interview-scheduling.html",
+      "surface": "admin",
+      "disposition": "contextual"
+    },
+    {
+      "path": "intranet-control.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "intranet.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "intranet.HTML",
+      "surface": "legacy",
+      "disposition": "alias",
+      "canonical": "/intranet.html"
+    },
+    {
+      "path": "leadership.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "lpn.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "my-work.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "news.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "nmt-dispatch.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "nmt-driver.html",
+      "surface": "employee",
+      "disposition": "contextual"
+    },
+    {
+      "path": "nmt-facilities.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "nmt-facility-invitations.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "nmt-order-inbox.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "nmt-orders.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "nmt-referral-secure.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "nmt-referral.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "notifications.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "offer-acceptance.html",
+      "surface": "authentication",
+      "disposition": "entry"
+    },
+    {
+      "path": "patient-portal.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "payroll.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "platform-readiness.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "policies.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "program-manager.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "resources.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "revenue-claim-exchange.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "revenue-cycle.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "rn.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "role-workspaces.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "scheduler.html",
+      "surface": "role",
+      "disposition": "contextual"
+    },
+    {
+      "path": "scheduling.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "scls-residential.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "scls-tasks.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "security-audit.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "service-request.html",
+      "surface": "employee",
+      "disposition": "contextual"
+    },
+    {
+      "path": "services.html",
+      "surface": "public",
+      "disposition": "entry"
+    },
+    {
+      "path": "spire-admin.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "spire-admission-history.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "spire-demo.html",
+      "surface": "legacy",
+      "disposition": "alias",
+      "canonical": "/spire-training.html"
+    },
+    {
+      "path": "spire-evv-test-console.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "spire-incident-compliance-launcher.html",
+      "surface": "workflow",
+      "disposition": "contextual"
+    },
+    {
+      "path": "spire-incident-compliance.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "spire-medication-qualifications.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "spire-shift.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "spire-training.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "spire.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "support.html",
+      "surface": "employee",
+      "disposition": "navigation"
+    },
+    {
+      "path": "time-attendance.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "transportation.html",
+      "surface": "legacy",
+      "disposition": "alias",
+      "canonical": "/nmt-dispatch.html"
+    },
+    {
+      "path": "workforce-admin.html",
+      "surface": "admin",
+      "disposition": "navigation"
+    },
+    {
+      "path": "workforce.html",
+      "surface": "employee",
+      "disposition": "contextual"
+    }
+  ]
+}
