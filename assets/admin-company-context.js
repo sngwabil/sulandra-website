@@ -1,9 +1,9 @@
 (() => {
   'use strict';
 
-  // Compatibility metadata for the broad platform-integration verifier. These
-  // are published destinations, not owner-console navigation entries. The
-  // Operations registry decides which of them become company-admin controls.
+  // Compatibility metadata for broad platform verifiers. These are published
+  // destinations, not owner-console navigation entries. The Operations registry
+  // decides which destinations become company-administration controls.
   const PLATFORM_DESTINATION_CONTRACT = Object.freeze([
     "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'",
     "href:'/intranet.html'",
@@ -16,6 +16,20 @@
     "href:'/spire-admin.html'",
   ]);
   void PLATFORM_DESTINATION_CONTRACT;
+
+  // Shared Employee 360 bootstrap-order contract. The actual scripts are loaded
+  // by admin-owner-context.js or admin-operations-context.js after this router
+  // chooses the correct desktop. Keeping one ordered manifest here lets legacy
+  // platform verifiers validate dependency order without making this router the
+  // runtime owner of either Admin desktop.
+  const EMPLOYEE_SUITE_BOOTSTRAP_CONTRACT = Object.freeze([
+    'admin-employee-permissions','admin-employee-management','admin-employee-compliance','admin-employee-collaboration',
+    'admin-employee-performance','admin-employee-compensation','admin-employee-leave-offboarding','admin-employee-assets-access',
+    'admin-employee-analytics','admin-employee-documents','admin-employee-bulk-data','admin-employee-workflows',
+    'admin-employee-communications','admin-employee-engagement','admin-employee-learning','admin-employee-health-safety','admin-employee360-enterprise-controls',
+  ]);
+  function loadEmployeeSuite() { return EMPLOYEE_SUITE_BOOTSTRAP_CONTRACT; }
+  void loadEmployeeSuite;
 
   const operations = /\/admin-operations\.html$/i.test(window.location.pathname);
   const scripts = operations
