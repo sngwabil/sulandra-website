@@ -244,7 +244,7 @@
           "label": "Live SPIRE",
           "sub": "Authorized client charts",
           "kind": "route",
-          "href": "/spire.html",
+          "href": "/spire/master.html",
           "icon": "✚",
           "tone": "red",
           "desc": "Authorized charts, notes, orders, eMAR, care plans, assessments, flowsheets and incidents.",
@@ -1042,4 +1042,3 @@
   window.SulandraAdminRouteRegistry = registry;
   document.documentElement.dataset.sulandraAdminRegistry = registry.version;
 })();
-

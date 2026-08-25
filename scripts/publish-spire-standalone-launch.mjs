@@ -12,6 +12,18 @@ const ownerProfileSyncUrl = '/assets/spire-owner-clinical-profile.js?v=20260814-
 const operationalContextUrl = '/assets/sulandra-operational-context.js?v=20260815-approved-operations-1';
 const contract = 'SPIRE_STANDALONE_PUBLIC_LAUNCH_V1';
 
+const enterpriseRegistryPath = path.join(dist, 'assets', 'admin-navigation-registry.js');
+let registryOwnedEnterprise = false;
+try {
+  const registrySource = await readFile(enterpriseRegistryPath, 'utf8');
+  registryOwnedEnterprise = registrySource.includes('window.SulandraAdminRouteRegistry');
+  if (registryOwnedEnterprise && (!registrySource.includes('"id": "spire-live"') || !registrySource.includes('"href": "/spire/master.html"'))) {
+    throw new Error('Canonical Admin registry must route Live SPIRE to /spire/master.html');
+  }
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+}
+
 let master = await readFile(masterPath, 'utf8');
 let station = await readFile(stationPath, 'utf8');
 for (const marker of [
@@ -98,11 +110,18 @@ await patch('employee-portal-railway.js', source => {
   return next;
 });
 
-await patch('enterprise-apps.html', source => {
-  let next = source.replace(/(id:'spire-live'[^\n]*?href:)'\/spire\.html'/, `$1'/spire/master.html'`);
-  if (!next.includes(`${contract}:enterprise`)) next = next.replace("{id:'spire-live'", `{id:'spire-live',launchContract:'${contract}:enterprise'`);
-  return next;
-});
+if (registryOwnedEnterprise) {
+  const launchpad = await readFile(path.join(dist, 'enterprise-apps.html'), 'utf8');
+  if (!launchpad.includes('window.SulandraAdminRouteRegistry?.enterpriseApps')) {
+    throw new Error('Enterprise Apps must consume the canonical Admin registry');
+  }
+} else {
+  await patch('enterprise-apps.html', source => {
+    let next = source.replace(/(id:'spire-live'[^\n]*?href:)'\/spire\.html'/, `$1'/spire/master.html'`);
+    if (!next.includes(`${contract}:enterprise`)) next = next.replace("{id:'spire-live'", `{id:'spire-live',launchContract:'${contract}:enterprise'`);
+    return next;
+  });
+}
 
 await patch('spire-admin.html', source => {
   let next = source.replace(/(<a class="btn primary" id="openSpire" href=")\/spire\.html("[^>]*>Open Live SPIRE)/, `$1/spire/master.html$2`);
@@ -110,12 +129,13 @@ await patch('spire-admin.html', source => {
   return next;
 });
 
-for (const [relative, marker] of [
+const launchMarkers = [
   ['employee-portal.html', `${contract}:employee`],
   ['employee-portal-railway.js', `${contract}:employee-runtime`],
-  ['enterprise-apps.html', `${contract}:enterprise`],
   ['spire-admin.html', `${contract}:spire-admin`],
-]) {
+];
+if (!registryOwnedEnterprise) launchMarkers.push(['enterprise-apps.html', `${contract}:enterprise`]);
+for (const [relative, marker] of launchMarkers) {
   const published = await readFile(path.join(dist, relative), 'utf8');
   if (!published.includes(marker)) throw new Error(`Standalone SPIRE launch marker missing from ${relative}`);
 }
@@ -130,3 +150,4 @@ if (!publishedMaster.includes(operationalContextUrl)) throw new Error('Standalon
 if (!publishedStation.includes(operationalContextUrl)) throw new Error('SPIRE Client Station is missing operational company context');
 
 console.log('Standalone live SPIRE publication unlocked: authorized launchers open /spire/master.html directly; master and Client Station sync owner professional identity and automatically resolve holding-company context to an approved operating provider.');
+
