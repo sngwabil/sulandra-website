@@ -11,6 +11,7 @@
   const IS_OPERATIONS = /\/admin-operations\.html$/i.test(location.pathname);
   const OPERATIONS_ROLES = new Set(["ADMINISTRATOR", "HR_MANAGER", "CEO", "DOO"]);
   const loadedOperationsModules = new Set();
+  const loadedOwnerModules = new Set();
   const $ = (id) => document.getElementById(id);
   let applications = [];
   let jobOpenings = [];
@@ -317,11 +318,26 @@
     const moduleKey = String(key || "dashboard");
     if (!force && loadedOperationsModules.has(moduleKey)) return;
     if (moduleKey === "onboarding") {
+      loadInterviewSchedulerScript();
       await Promise.all([loadApplications(), loadOpenings()]);
     } else if (moduleKey === "dashboard") {
       await loadDashboard();
     }
     loadedOperationsModules.add(moduleKey);
+  }
+
+  async function loadOwnerModuleData(key, force = false) {
+    if (!IS_OWNER_CONSOLE) return;
+    const moduleKey = String(key || "dashboard");
+    if (!force && loadedOwnerModules.has(moduleKey)) return;
+    if (moduleKey === "onboarding") {
+      loadInterviewSchedulerScript();
+      await Promise.all([loadApplications(), loadOpenings()]);
+    }
+    // The preserved owner dashboard is already owned by admin-live-dashboard.js,
+    // which loads dashboard/applicant/opening data once. Do not issue the same
+    // three requests again here during first paint.
+    loadedOwnerModules.add(moduleKey);
   }
 
   function loadSettings() {
@@ -350,7 +366,11 @@
         loadOperationsModuleData(key).catch((error) => toast("Workspace data unavailable", error.message));
       });
     } else {
-      document.querySelectorAll("#topModuleNav [data-module], #sideModuleNav [data-module]").forEach((n) => n.addEventListener("click", () => activateModule(n.dataset.module)));
+      document.querySelectorAll("#topModuleNav [data-module], #sideModuleNav [data-module]").forEach((n) => n.addEventListener("click", () => {
+        const key = n.dataset.module || "dashboard";
+        activateModule(key);
+        if (IS_OWNER_CONSOLE) loadOwnerModuleData(key).catch((error) => toast("Workspace data unavailable", error.message));
+      }));
     }
     document.querySelectorAll("[data-onboarding-panel]").forEach((n) => n.addEventListener("click", () => activatePanel(n.dataset.onboardingPanel)));
     document.querySelectorAll(".archive-subtab").forEach((button, index) => {
@@ -388,6 +408,7 @@
       const key = location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard";
       activateModule(key, false);
       if (IS_OPERATIONS) loadOperationsModuleData(key).catch((error) => toast("Workspace data unavailable", error.message));
+      else if (IS_OWNER_CONSOLE) loadOwnerModuleData(key).catch((error) => toast("Workspace data unavailable", error.message));
     });
     if (IS_OPERATIONS) {
       window.addEventListener("sulandra:company-change", () => {
@@ -416,7 +437,6 @@
 
   async function initialize() {
     installSlidingTaskbar();
-    loadInterviewSchedulerScript();
     bindEvents();
     loadSettings();
     const requestedModule = location.hash.slice(1) || localStorage.getItem(ACTIVE_MODULE_KEY) || "dashboard";
@@ -438,10 +458,25 @@
         return;
       }
 
+      if (IS_OWNER_CONSOLE) {
+        // Wait for the router to load the owner boundary, then wait for the
+        // server-verified owner bootstrap. This replaces a redundant /api/session
+        // round trip and prevents legacy data requests from racing owner auth.
+        if (window.SulandraAdminContextReady) await window.SulandraAdminContextReady;
+        const ownerProfile = window.SulandraOwnerConsoleReady ? await window.SulandraOwnerConsoleReady : null;
+        if (!ownerProfile?.isOwner) return;
+        const role = "ADMINISTRATOR";
+        if (role !== "ADMINISTRATOR") { location.replace("employee-portal.html"); return; }
+        if ($("adminEmailPill")) $("adminEmailPill").textContent = ownerProfile.email || ownerProfile.displayName || title(role);
+        await loadOwnerModuleData(requestedModule);
+        if ($("livePill")) $("livePill").textContent = "Railway: connected";
+        return;
+      }
+
       const session = await api("/api/session");
       const role = String(session?.role || "").toUpperCase();
       if (!session) { location.replace("employee-login.html"); return; }
-      if (IS_OWNER_CONSOLE && role !== "ADMINISTRATOR") {
+      if (/\/admin\.html$/i.test(location.pathname) && role !== "ADMINISTRATOR") {
         const destination = role === "DOO" ? "doo.html" : role === "CEO" ? "ceo.html" : "employee-portal.html";
         location.replace(destination);
         return;
