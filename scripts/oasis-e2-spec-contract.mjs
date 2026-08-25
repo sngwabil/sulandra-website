@@ -8,6 +8,10 @@ export const OASIS_E2_IDENTITY = Object.freeze({
   submissionSpecVersion: '3.02',
   effectiveFrom: '2026-04-01',
 });
+export const SUPPORTED_LOCAL_EDIT_OPERATORS = Object.freeze([
+  'REQUIRED','MAX_LENGTH','MIN_LENGTH','ALLOWED_VALUES','REGEX',
+  'EQUALS','NOT_EQUALS','NUMERIC_RANGE','CONDITIONAL_REQUIRED',
+]);
 
 const isObject=(value)=>Boolean(value)&&typeof value==='object'&&!Array.isArray(value);
 const clean=(value)=>typeof value==='string'?value.trim():'';
@@ -26,6 +30,40 @@ export function oasisSpecDigest(value){
 
 function finding(findings,code,message,path,severity='FATAL'){
   findings.push({code,severity,path,message});
+}
+
+function validateEvaluator(findings,rule,index,itemCodes){
+  if(rule.requiresExternalState===true)return;
+  if(!isObject(rule.evaluator)){
+    finding(findings,'EDIT_EVALUATOR_REQUIRED','A locally evaluated edit rule requires an evaluator, or requiresExternalState=true',`$.editRules[${index}].evaluator`);
+    return;
+  }
+  const operator=clean(rule.evaluator.operator).toUpperCase();
+  if(!SUPPORTED_LOCAL_EDIT_OPERATORS.includes(operator)){
+    finding(findings,'EDIT_OPERATOR_UNSUPPORTED',`Unsupported local edit operator ${operator||'(blank)'}`,`$.editRules[${index}].evaluator.operator`);
+    return;
+  }
+  if(['MAX_LENGTH','MIN_LENGTH'].includes(operator)&&(!Number.isInteger(rule.evaluator.value)||rule.evaluator.value<0||rule.evaluator.value>100))finding(findings,'EDIT_LENGTH_VALUE_INVALID',`${operator} requires an integer value from 0 through 100`,`$.editRules[${index}].evaluator.value`);
+  if(operator==='ALLOWED_VALUES'&&(!Array.isArray(rule.evaluator.values)||rule.evaluator.values.length===0))finding(findings,'EDIT_ALLOWED_VALUES_REQUIRED','ALLOWED_VALUES requires a non-empty values array',`$.editRules[${index}].evaluator.values`);
+  if(operator==='REGEX'){
+    const pattern=clean(rule.evaluator.pattern);
+    if(!pattern)finding(findings,'EDIT_REGEX_REQUIRED','REGEX requires a pattern',`$.editRules[${index}].evaluator.pattern`);
+    else try{new RegExp(pattern);}catch{finding(findings,'EDIT_REGEX_INVALID','REGEX pattern is invalid',`$.editRules[${index}].evaluator.pattern`);}
+  }
+  if(operator==='NUMERIC_RANGE'){
+    const min=rule.evaluator.min,max=rule.evaluator.max;
+    if(min!==undefined&&typeof min!=='number')finding(findings,'EDIT_RANGE_MIN_INVALID','NUMERIC_RANGE min must be numeric when supplied',`$.editRules[${index}].evaluator.min`);
+    if(max!==undefined&&typeof max!=='number')finding(findings,'EDIT_RANGE_MAX_INVALID','NUMERIC_RANGE max must be numeric when supplied',`$.editRules[${index}].evaluator.max`);
+    if(typeof min==='number'&&typeof max==='number'&&max<min)finding(findings,'EDIT_RANGE_ORDER_INVALID','NUMERIC_RANGE max must be greater than or equal to min',`$.editRules[${index}].evaluator`);
+  }
+  if(operator==='CONDITIONAL_REQUIRED'){
+    const when=isObject(rule.evaluator.when)?rule.evaluator.when:{};
+    const whenItem=clean(when.itemCode);
+    if(!itemCodes.has(whenItem))finding(findings,'EDIT_CONDITION_ITEM_UNKNOWN',`CONDITIONAL_REQUIRED references unknown condition item ${whenItem||'(blank)'}`,`$.editRules[${index}].evaluator.when.itemCode`);
+    const whenOperator=clean(when.operator).toUpperCase();
+    if(!['EQUALS','NOT_EQUALS','IN'].includes(whenOperator))finding(findings,'EDIT_CONDITION_OPERATOR_INVALID','CONDITIONAL_REQUIRED condition operator must be EQUALS, NOT_EQUALS or IN',`$.editRules[${index}].evaluator.when.operator`);
+    if(whenOperator==='IN'&&(!Array.isArray(when.values)||when.values.length===0))finding(findings,'EDIT_CONDITION_VALUES_REQUIRED','IN condition requires a non-empty values array',`$.editRules[${index}].evaluator.when.values`);
+  }
 }
 
 export function validateNormalizedOasisE2Spec(input){
@@ -60,8 +98,9 @@ export function validateNormalizedOasisE2Spec(input){
     if(!code)finding(findings,'ITEM_CODE_REQUIRED','Item code is required',`$.itemDefinitions[${index}].code`);
     else if(itemCodes.has(code))finding(findings,'ITEM_CODE_DUPLICATE',`Duplicate item code ${code}`,`$.itemDefinitions[${index}].code`);
     else itemCodes.add(code);
-    if(!clean(item.label))finding(findings,'ITEM_LABEL_REQUIRED',`Item ${code||index} requires a label`, `$.itemDefinitions[${index}].label`);
+    if(!clean(item.label))finding(findings,'ITEM_LABEL_REQUIRED',`Item ${code||index} requires a label`,`$.itemDefinitions[${index}].label`);
     if(item.maxLength!==undefined&&(!Number.isInteger(item.maxLength)||item.maxLength<1||item.maxLength>100))finding(findings,'ITEM_MAX_LENGTH_INVALID','Item maxLength must be an integer from 1 through 100',`$.itemDefinitions[${index}].maxLength`);
+    if(item.valueSet&& !Object.hasOwn(valueSets,clean(item.valueSet)))finding(findings,'ITEM_VALUE_SET_UNKNOWN',`Item ${code||index} references unknown value set ${clean(item.valueSet)}`,`$.itemDefinitions[${index}].valueSet`);
   });
   for(const control of ['ITM_SET_VRSN_CD','SPEC_VRSN_CD'])if(!itemCodes.has(control))finding(findings,'CONTROL_ITEM_REQUIRED',`Required submission control item ${control} is missing`,'$.itemDefinitions');
 
@@ -75,8 +114,9 @@ export function validateNormalizedOasisE2Spec(input){
     const severity=clean(rule.severity).toUpperCase();
     if(!['FATAL','WARNING','INFO'].includes(severity))finding(findings,'EDIT_SEVERITY_INVALID','Edit rule severity must be FATAL, WARNING or INFO',`$.editRules[${index}].severity`);
     if(!clean(rule.message))finding(findings,'EDIT_MESSAGE_REQUIRED','Edit rule message is required',`$.editRules[${index}].message`);
-    if(rule.itemCode&& !itemCodes.has(clean(rule.itemCode)))finding(findings,'EDIT_ITEM_UNKNOWN',`Edit rule references unknown item ${clean(rule.itemCode)}`,`$.editRules[${index}].itemCode`);
+    if(rule.itemCode&&!itemCodes.has(clean(rule.itemCode)))finding(findings,'EDIT_ITEM_UNKNOWN',`Edit rule references unknown item ${clean(rule.itemCode)}`,`$.editRules[${index}].itemCode`);
     if(rule.requiresExternalState!==undefined&&typeof rule.requiresExternalState!=='boolean')finding(findings,'EDIT_EXTERNAL_FLAG_INVALID','requiresExternalState must be boolean',`$.editRules[${index}].requiresExternalState`);
+    validateEvaluator(findings,rule,index,itemCodes);
   });
 
   const xml=isObject(submission.xml)?submission.xml:{};
@@ -100,6 +140,9 @@ export function validateNormalizedOasisE2Spec(input){
   });
   for(const control of ['ITM_SET_VRSN_CD','SPEC_VRSN_CD'])if(!mappedItems.has(control))finding(findings,'CONTROL_MAPPING_REQUIRED',`Required submission mapping ${control} is missing`,'$.submissionDefinition.fields');
 
+  const transactionModeItemCode=clean(submission.transactionModeItemCode);
+  if(!itemCodes.has(transactionModeItemCode))finding(findings,'TRANSACTION_MODE_ITEM_REQUIRED','submissionDefinition.transactionModeItemCode must identify an official item definition','$.submissionDefinition.transactionModeItemCode');
+  else if(!mappedItems.has(transactionModeItemCode))finding(findings,'TRANSACTION_MODE_FIELD_MAPPING_REQUIRED',`Transaction mode item ${transactionModeItemCode} must have an XML field mapping`,'$.submissionDefinition.fields');
   const transactionModes=isObject(submission.transactionModes)?submission.transactionModes:{};
   for(const mode of ['NEW','MODIFICATION','INACTIVATION'])if(!clean(transactionModes[mode]))finding(findings,'TRANSACTION_MODE_MAPPING_REQUIRED',`Official submission mapping for semantic transaction mode ${mode} is required`,`$.submissionDefinition.transactionModes.${mode}`);
 
