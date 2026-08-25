@@ -10,10 +10,10 @@ async function mustRead(relative) {
   catch { failures.push(`Missing published file: ${relative}`); return ''; }
 }
 
-const [ownerHtml,operationsHtml,adminJs,routerJs,ownerContext,operationsContext,ownerBoundary,operationsDesktop,shellJs,shellCss,liveJs,companySettingsJs,analogClockJs,homesJs,cleanupJs,schedulingHtml,schedulingJs,timeAttendanceHtml] = await Promise.all([
+const [ownerHtml,operationsHtml,adminJs,routerJs,ownerContext,operationsContext,ownerBoundary,operationsDesktop,operationsShellJs,shellJs,shellCss,liveJs,companySettingsJs,analogClockJs,homesJs,cleanupJs,schedulingHtml,schedulingJs,timeAttendanceHtml] = await Promise.all([
   mustRead('admin.html'),mustRead('admin-operations.html'),mustRead('admin-railway.js'),mustRead('assets/admin-company-context.js'),
   mustRead('assets/admin-owner-context.js'),mustRead('assets/admin-operations-context.js'),mustRead('assets/admin-owner-console.js'),mustRead('assets/admin-operations-desktop.js'),
-  mustRead('assets/admin-shell.js'),mustRead('assets/admin-shell.css'),mustRead('assets/admin-live-dashboard.js'),
+  mustRead('assets/admin-operations-shell.js'),mustRead('assets/admin-shell.js'),mustRead('assets/admin-shell.css'),mustRead('assets/admin-live-dashboard.js'),
   mustRead('assets/admin-company-settings.js'),mustRead('assets/admin-analog-clock.js'),mustRead('assets/admin-service-home-management-v2.js'),mustRead('assets/admin-dashboard-cleanup.js'),
   mustRead('scheduling.html'),mustRead('assets/time-attendance-location-scheduler.js'),mustRead('time-attendance.html'),
 ]);
@@ -21,13 +21,13 @@ const [ownerHtml,operationsHtml,adminJs,routerJs,ownerContext,operationsContext,
 for (const [label,html] of [['Owner Admin',ownerHtml],['Operations Admin',operationsHtml]]) {
   if (!html.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2')) failures.push(`${label} is not loading the Admin context router`);
 }
-for (const marker of ['admin-owner-context.js','admin-owner-console.js','admin-operations-context.js','admin-operations-desktop.js']) {
+for (const marker of ['admin-owner-context.js','admin-owner-console.js','admin-operations-shell.js','admin-operations-context.js','admin-operations-desktop.js']) {
   if (!routerJs.includes(marker)) failures.push(`Admin context router is missing ${marker}`);
 }
 
 // admin.html is intentionally the established parent-company owner command
-// center. Preserve its live dashboard and existing controls while hiding the
-// company selector and adding only the Operations launcher.
+// center. Preserve its live dashboard, local news, existing navigation and
+// controls while hiding the company selector and adding only Operations.
 for (const marker of [
   'NAVIGATION = Object.freeze({','primary: Object.freeze([',
   "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'",
@@ -37,9 +37,13 @@ for (const marker of [
 for (const marker of ['/api/owner/authority','ownerOperationsLauncher','/admin-operations.html','#adminCompanyContext']) {
   if (!ownerBoundary.includes(marker)) failures.push(`Owner command-center boundary is missing ${marker}`);
 }
+for (const marker of ['ensureCanonicalSso()','ensureNavigationOverflow','ensurePlatformBar','NEWS_REFRESH_MS','sulandraNewsTrack','weather-mini-clock',"timeZone:'America/New_York'"]) {
+  if (!shellJs.includes(marker)) failures.push(`Preserved owner command-center shell is missing ${marker}`);
+}
 
 // The new company Operations desktop owns the eight-folder information
-// architecture. It must not reintroduce Enterprise Apps/overflow navigation.
+// architecture. Its dedicated shell must not create the owner news/overflow
+// layers; it only provides SSO and module hosts required by company workspaces.
 for (const marker of [
   "'/assets/admin-shell.js?v=20260825-admin-ia-1'",
   "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'",
@@ -71,15 +75,15 @@ if (lifecycle.includes('Service Requests')) failures.push('Service Requests is s
 for (const marker of ['allowedOperatingEntities','hasActiveEmployment',"entity?.entityType === 'HOLDING'",'Company Operations','data-open-ops-folder']) {
   if (!operationsDesktop.includes(marker)) failures.push(`Operations desktop company boundary is missing ${marker}`);
 }
-
 for (const forbidden of ['ensureNavigationOverflow','ensurePlatformBar','NEWS_REFRESH_MS','sulandraNewsTrack']) {
-  if (shellJs.includes(forbidden)) failures.push(`Canonical Operations shell still creates a second top/overflow navigation layer: ${forbidden}`);
+  if (operationsShellJs.includes(forbidden)) failures.push(`Company Operations shell creates an owner-only top/overflow layer: ${forbidden}`);
 }
+for (const marker of ['ensureCanonicalSso()','ensureModuleHosts()','module-employees',"adminInformationArchitecture = 'company-operations-v1'"]) {
+  if (!operationsShellJs.includes(marker)) failures.push(`Company Operations shell runtime is missing ${marker}`);
+}
+
 for (const marker of ['html,body{width:100%!important','max-width:none!important','min-width:0!important','overflow-x:hidden!important']) {
   if (!shellCss.includes(marker)) failures.push(`Canonical Admin shell CSS is missing ${marker}`);
-}
-for (const marker of ['ensureCanonicalSso()','removeLegacyNavigationArtifacts()','weather-mini-clock',"timeZone:'America/New_York'","adminInformationArchitecture = 'canonical-folders-v1'"]) {
-  if (!shellJs.includes(marker)) failures.push(`Canonical Operations shell runtime is missing ${marker}`);
 }
 
 if (!adminJs.includes('sulandra:admin:active-module')) failures.push('Admin module persistence key is missing');
@@ -119,4 +123,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: the existing Sulandra Health owner dashboard is preserved and owner-gated, while the separate Operations desktop owns the eight-folder company administration shell.');
+console.log('Admin command center verified: the existing Sulandra Health owner dashboard and shell are preserved and owner-gated, while the separate Operations desktop owns the eight-folder company administration shell.');
