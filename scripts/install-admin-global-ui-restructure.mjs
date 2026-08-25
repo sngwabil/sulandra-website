@@ -9,11 +9,17 @@ const folderKeys = [
   'company-management','people-hr','clients-spire','service-operations',
   'billing-revenue','compliance-quality','communications-learning','system-administration',
 ];
+const operationsLandingFiles = [
+  'company-documents.html','employee360.html','spire-admin.html','scls-residential.html',
+  'home-health-referral-inbox.html','nmt-dispatch.html','revenue-cycle.html','company-compliance.html',
+  'intranet-control.html','admin-users.html','admin-operations.html',
+];
 
 for (const relative of [
   'admin.html','admin-operations.html',
   'assets/admin-company-context.js','assets/admin-owner-context.js','assets/admin-operations-context.js',
   'assets/admin-owner-console.js','assets/admin-operations-shell.js','assets/admin-operations-desktop.js',
+  ...operationsLandingFiles,
 ]) {
   await stat(path.join(root, relative));
   await stat(path.join(dist, relative));
@@ -32,6 +38,7 @@ for (const key of folderKeys) {
   if (!operationsContext.includes(`key:'${key}'`)) throw new Error(`Operations desktop registry missing ${key}`);
 }
 if (!router.includes('admin-owner-context.js') || !router.includes('admin-operations-context.js')) throw new Error('Admin context router does not separate owner and Operations desktops');
+if (!router.includes('company-operations-ui-4')) throw new Error('Operations UI upgrade is not cache-busted in the Admin context router');
 if (!ownerConsole.includes('/api/owner/authority') || !ownerConsole.includes('ownerOperationsLauncher')) throw new Error('Owner console boundary/Operations launcher is incomplete');
 // The route guard is expressed as a regular expression in the runtime, so test
 // its stable path token instead of requiring the unescaped literal filename.
@@ -43,10 +50,16 @@ if (!operationsShell.includes('operationsSidebarToggle') || !operationsShell.inc
 if (!operationsShell.includes('body.operations-sidebar-collapsed .grid{grid-template-columns:minmax(0,1fr)!important;gap:0!important}')) throw new Error('Collapsed Operations sidebar does not return its grid width to the workspace');
 if (!operationsShell.includes("localStorage.setItem(OPERATIONS_SIDEBAR_KEY, String(open))")) throw new Error('Operations sidebar open/closed preference is not persisted');
 if (!operationsShell.includes("setAttribute('aria-expanded', String(open))")) throw new Error('Operations sidebar toggle does not publish accessible expanded state');
+if (!operationsShell.includes('FOLDER_LANDINGS') || !operationsShell.includes('serviceOperationsLanding')) throw new Error('Operations folder cards do not resolve to real company-aware HTML destinations');
+if (!operationsShell.includes('folderIcon') || !operationsShell.includes('<svg ${common}>')) throw new Error('Operations folder cards still lack real SVG icons');
+if (!operationsShell.includes("window.open(href, '_blank'")) throw new Error('Operations tools are not guaranteed to open in a new browser tab');
+if (!operationsShell.includes('upgradeModuleButtons') || !operationsShell.includes("removeAttribute('data-sulandra-route')")) throw new Error('Legacy same-tab module/route controls are not normalized to new-tab navigation');
+if (!operationsShell.includes('.ops-folder-card h3{font-size:17px!important') || !operationsShell.includes('#sideModuleNav .admin-folder-link{font-size:13.5px!important')) throw new Error('Operations typography upgrade is missing or inconsistent');
+if (!operationsShell.includes('data.opsFolderRoute') && !operationsShell.includes('dataset.opsFolderRoute')) throw new Error('Operations folder cards are not upgraded into routed workspace links');
 if (router.includes(retiredRuntime) || ownerContext.includes(retiredRuntime) || operationsContext.includes(retiredRuntime)) throw new Error('Retired five-folder Admin global UI runtime is still injected');
 
 const sourceAdmin = await readFile(path.join(root, 'admin.html'), 'utf8');
 const publishedAdmin = await readFile(path.join(dist, 'admin.html'), 'utf8');
 if (sourceAdmin !== publishedAdmin) throw new Error('Owner admin.html must publish unchanged from canonical source');
 
-console.log('Sulandra Admin split verified: admin.html remains the owner command center, admin-operations.html owns the eight-folder company Operations desktop, the left folder rail is visible and collapsible with a persistent edge toggle, duplicate timed dashboard renders are disabled, and the retired five-folder/right-drawer injector is disabled.');
+console.log(`Sulandra Admin split verified: admin.html remains the owner command center; admin-operations.html owns the eight-folder company Operations desktop; the left rail is collapsible; all ${operationsLandingFiles.length} routed workspace destinations exist in source and published output; folder cards use real SVG icons and larger consistent typography; and Operations navigation opens tools in new tabs instead of replacing the desktop.`);

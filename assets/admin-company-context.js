@@ -47,7 +47,7 @@
   if (!ownerConsole && !operations) return;
   const scripts = operations
     ? [
-        '/assets/admin-operations-shell.js?v=20260825-company-operations-toggle-3',
+        '/assets/admin-operations-shell.js?v=20260825-company-operations-ui-4',
         '/assets/admin-operations-context.js?v=20260825-company-operations-2',
         '/assets/admin-operations-desktop.js?v=20260825-company-operations-hotfix-1',
       ]
