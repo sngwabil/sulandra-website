@@ -7,7 +7,6 @@
   const TOKEN_KEY = 'sulandra:employee:access-token';
   const SELECTED_ENTITY_KEY = 'sulandra:admin:legal-entity-id';
   const SHARED_SELECTED_ENTITY_KEY = 'sulandra:selected-legal-entity-id';
-  const OWNER_BOOTSTRAP_KEY = 'sulandra:owner-console:parent-bootstrap';
   const PARENT_CODE = 'SULANDRA_HEALTH';
   const OWNER_CONTEXT_SRC = '/assets/admin-owner-context.js?v=20260825-owner-console-2';
   const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
@@ -57,25 +56,17 @@
 
   function pinParentContext(profile) {
     const parent = parentEmployment(profile);
-    if (!parent?.legalEntityId) return false;
+    if (!parent?.legalEntityId) return '';
     const parentId = String(parent.legalEntityId);
-    let current = '';
-    try { current = localStorage.getItem(SELECTED_ENTITY_KEY) || sessionStorage.getItem(SHARED_SELECTED_ENTITY_KEY) || ''; } catch {}
-    if (current === parentId) {
-      try { sessionStorage.removeItem(OWNER_BOOTSTRAP_KEY); } catch {}
-      return false;
-    }
-    let attempted = '';
-    try { attempted = sessionStorage.getItem(OWNER_BOOTSTRAP_KEY) || ''; } catch {}
-    if (attempted === parentId) return false;
     try {
-      sessionStorage.setItem(OWNER_BOOTSTRAP_KEY, parentId);
+      // Keep the parent command center pinned to the holding company without a
+      // second navigation. The old location.reload() doubled every owner-console
+      // bootstrap and was especially costly after returning from Operations.
       localStorage.setItem(SELECTED_ENTITY_KEY, parentId);
       sessionStorage.setItem(SHARED_SELECTED_ENTITY_KEY, parentId);
       localStorage.setItem(SHARED_SELECTED_ENTITY_KEY, parentId);
     } catch {}
-    location.reload();
-    return true;
+    return parentId;
   }
 
   function hideCompanySelectors() {
@@ -121,13 +112,20 @@
   let verified = false;
   const start = async () => {
     hideCompanySelectors();
-    const profile = await verifyOwner().catch(() => null);
-    if (!profile) return;
-    if (pinParentContext(profile)) return;
+    const profile = await verifyOwner().catch((error) => {
+      console.error('[Sulandra Owner Console] Owner verification failed', error);
+      return null;
+    });
+    if (!profile) return null;
+
+    pinParentContext(profile);
     verified = true;
     hideCompanySelectors();
     try {
       await loadOwnerContext();
+      // Wait for the real company context to resolve the already-pinned parent
+      // entity before any legacy Admin data controller is allowed to continue.
+      await window.SulandraCompanyContext?.initialize?.();
     } catch (error) {
       console.error('[Sulandra Owner Console]', error);
     }
@@ -136,6 +134,7 @@
     document.documentElement.classList.remove('sulandra-owner-verifying');
     window.setTimeout(addOperationsButton, 350);
     window.setTimeout(addOperationsButton, 1000);
+    return profile;
   };
 
   const observer = new MutationObserver(() => {
@@ -144,6 +143,14 @@
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
-  else start();
+  // Expose one authoritative owner bootstrap promise. admin-railway.js can wait
+  // on this instead of issuing its own session request and racing the owner gate.
+  window.SulandraOwnerConsoleReady = new Promise((resolve) => {
+    const run = () => start().then(resolve).catch((error) => {
+      console.error('[Sulandra Owner Console]', error);
+      resolve(null);
+    });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
+    else run();
+  });
 })();
