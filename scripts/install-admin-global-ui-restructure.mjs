@@ -35,10 +35,13 @@ if (!ownerConsole.includes('/api/owner/authority') || !ownerConsole.includes('ow
 // The route guard is expressed as a regular expression in the runtime, so test
 // its stable path token instead of requiring the unescaped literal filename.
 if (!operationsDesktop.includes('admin-operations') || !operationsDesktop.includes('allowedOperatingEntities')) throw new Error('Company Operations desktop boundary is incomplete');
+if (!operationsDesktop.includes("classList.remove('taskbar-open', 'taskbar-closed')")) throw new Error('Company Operations does not clear legacy taskbar state');
+if (!operationsDesktop.includes('.sidebar{transform:none!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important}')) throw new Error('Company Operations sidebar can remain translated off-screen while its grid column is reserved');
+if (operationsDesktop.includes('window.setTimeout(() => { constrainSelector(context); renderDashboard')) throw new Error('Company Operations still performs delayed duplicate dashboard renders');
 if (router.includes(retiredRuntime) || ownerContext.includes(retiredRuntime) || operationsContext.includes(retiredRuntime)) throw new Error('Retired five-folder Admin global UI runtime is still injected');
 
 const sourceAdmin = await readFile(path.join(root, 'admin.html'), 'utf8');
 const publishedAdmin = await readFile(path.join(dist, 'admin.html'), 'utf8');
 if (sourceAdmin !== publishedAdmin) throw new Error('Owner admin.html must publish unchanged from canonical source');
 
-console.log('Sulandra Admin split verified: admin.html remains the owner command center, admin-operations.html owns the eight-folder company Operations desktop, and the retired five-folder/right-drawer injector is disabled.');
+console.log('Sulandra Admin split verified: admin.html remains the owner command center, admin-operations.html owns the eight-folder company Operations desktop, the left folder rail is visible, duplicate timed dashboard renders are disabled, and the retired five-folder/right-drawer injector is disabled.');
