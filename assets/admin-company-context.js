@@ -28,7 +28,11 @@
     'admin-employee-analytics','admin-employee-documents','admin-employee-bulk-data','admin-employee-workflows',
     'admin-employee-communications','admin-employee-engagement','admin-employee-learning','admin-employee-health-safety','admin-employee360-enterprise-controls',
   ]);
-  function loadEmployeeSuite() { return EMPLOYEE_SUITE_BOOTSTRAP_CONTRACT; }
+  let employeeSuitePromise = null;
+  function loadEmployeeSuite() {
+    if (!employeeSuitePromise) employeeSuitePromise = Promise.resolve(EMPLOYEE_SUITE_BOOTSTRAP_CONTRACT);
+    return employeeSuitePromise;
+  }
   void loadEmployeeSuite;
 
   const operations = /\/admin-operations\.html$/i.test(window.location.pathname);
