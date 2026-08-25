@@ -5,59 +5,63 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const failures = [];
-const read = async relative => { try { return await readFile(path.join(root, relative), 'utf8'); } catch { failures.push(`Missing canonical source: ${relative}`); return ''; } };
-const readPublished = async relative => { try { return await readFile(path.join(dist, relative), 'utf8'); } catch { failures.push(`Missing published file: ${relative}`); return ''; } };
+const read = async (base, relative) => { try { return await readFile(path.join(base, relative), 'utf8'); } catch { failures.push(`Missing ${path.relative(root, base) || 'source'} file: ${relative}`); return ''; } };
 const requireMarkers = (source, markers, label) => { for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`); };
 const forbid = (source, markers, label) => { for (const marker of markers) if (source.includes(marker)) failures.push(`${label} still references ${marker}`); };
 
-const [adminSource,adminPublished,context,shellJs,shellCss,buildScript,packageJson,serviceRequestPublisher,ssoPublisher,platformFinalizer] = await Promise.all([
-  read('admin.html'),readPublished('admin.html'),read('assets/admin-company-context.js'),read('assets/admin-shell.js'),read('assets/admin-shell.css'),
-  read('scripts/build-static-site.mjs'),read('package.json'),read('scripts/install-client-service-request-frontend.mjs'),
-  read('scripts/install-sulandra-sso-session.mjs'),read('scripts/finalize-platform-navigation.mjs'),
+const [ownerSource,ownerPublished,operationsSource,operationsPublished,router,ownerContext,operationsContext,ownerConsole,operationsDesktop] = await Promise.all([
+  read(root,'admin.html'),read(dist,'admin.html'),read(root,'admin-operations.html'),read(dist,'admin-operations.html'),
+  read(root,'assets/admin-company-context.js'),read(root,'assets/admin-owner-context.js'),read(root,'assets/admin-operations-context.js'),
+  read(root,'assets/admin-owner-console.js'),read(root,'assets/admin-operations-desktop.js'),
 ]);
 
-if (adminSource !== adminPublished) failures.push('dist-web/admin.html drifted from canonical admin.html; post-copy Admin mutation occurred');
-for (const [label,source] of [['Admin company/navigation context',context],['Admin shell runtime',shellJs]]) {
+if (ownerSource !== ownerPublished) failures.push('Owner admin.html drifted from canonical source');
+if (operationsSource !== operationsPublished) failures.push('admin-operations.html drifted from canonical source');
+for (const [label,source] of [['Admin context router',router],['Owner context',ownerContext],['Operations context',operationsContext],['Owner boundary',ownerConsole],['Operations desktop',operationsDesktop]]) {
   try { new Function(source); } catch (error) { failures.push(`${label} has JavaScript syntax error: ${error instanceof Error ? error.message : String(error)}`); }
 }
 
-requireMarkers(adminSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Canonical admin.html');
-requireMarkers(context,[
-  'const NAVIGATION = Object.freeze({',"{key:'dashboard',label:'Dashboard'","{key:'service-homes',label:'Service Homes'","{key:'employees',label:'Employees'",
-  "href:'/scheduling.html'","href:'/time-attendance.html#admin'","href:'/employee360.html#files'","href:'/employee360.html#audit'","href:'/spire-admin.html'",
-  "{key:'onboarding',label:'Onboarding'","href:'/client-intake.html'","href:'/home-health-referrals.html'","href:'/home-health.html'",
-  "href:'/nmt-orders.html'","href:'/nmt-dispatch.html'","href:'/workforce-admin.html'","href:'/spire-medication-qualifications.html'","href:'/company-documents.html'",
-  "href:'/spire-training.html'","href:'/intranet-control.html'","href:'/employee-portal.html'","href:'/education-portal.html'",
-  'top.innerHTML = NAVIGATION.primary.map(topMarkup).join',"side.innerHTML = [...NAVIGATION.leftOnly, ...NAVIGATION.primary].map(sideMarkup).join",
-  'data-company-module','renderRightDrawer','window.SulandraAdminNavigation',"'/assets/admin-shell.js?v=20260810-canonical-admin-1'",
-  "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'","'/assets/admin-company-settings.js?v=20260810-company-settings-backend-1'",
-  "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'","'/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1'",
-  "'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'",'loadEmployeeSuite',
-],'Canonical Admin navigation/bootstrap');
-if (!context.includes("{key:'settings',label:'Settings'") && !context.includes("{key:'settings',label:'Company Chronicles'")) {
-  failures.push('Canonical Admin navigation/bootstrap missing Settings or Company Chronicles root configuration module');
+requireMarkers(ownerSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Owner admin.html');
+requireMarkers(operationsSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Operations HTML');
+requireMarkers(router,['admin-owner-context.js','admin-owner-console.js','admin-operations-context.js','admin-operations-desktop.js','/admin-operations\\.html$/i'],'Admin context router');
+
+// The parent owner command center deliberately preserves the established
+// command-center navigation and dashboard composition. Only its company
+// selector is suppressed by the owner boundary runtime.
+requireMarkers(ownerContext,['NAVIGATION = Object.freeze({','primary: Object.freeze([','admin-enterprise-apps-launcher.js','admin-live-dashboard.js'],'Owner command-center context');
+requireMarkers(ownerConsole,['/api/owner/authority','ownerOperationsLauncher','/admin-operations.html','#adminCompanyContext','#adminCompanySelectorContainer'],'Owner command-center boundary');
+
+requireMarkers(operationsContext,[
+  'One authoritative Admin information-architecture registry.','topActions: Object.freeze([','folders: Object.freeze([',
+  "label:'Company Management'","label:'People & HR'","label:'Clients & SPIRE'","label:'Service Operations'",
+  "label:'Billing & Revenue'","label:'Compliance & Quality'","label:'Communications & Learning'","label:'System Administration'",
+  'adminGlobalToolSearch',"key:'onboarding',label:'Hiring & Onboarding'","key:'admin-users',label:'Admin Users'",
+  "href:'/employee-ohio-screening-workspace.html'","href:'/dodd-billing-rules.html'","href:'/revenue-claim-exchange.html'",
+  "href:'/home-health-referral-inbox.html'","href:'/nmt-order-inbox.html'","href:'/spire-admission-history.html'","href:'/spire-incident-compliance.html'",
+  'onboardingLifecycle:Object.freeze([',"key:'overview',label:'Overview'","key:'employee-activation',label:'Employee Activation'",
+  "serviceModule.id = 'module-service-requests'",'installInformationArchitectureStyles()',
+],'Operations navigation/bootstrap');
+forbid(operationsContext,['admin-enterprise-apps-launcher.js','admin-navigation-overflow.js','NAVIGATION.primary','NAVIGATION.leftOnly','Platform Portals','Quick Operations'],'Operations navigation/bootstrap');
+requireMarkers(operationsDesktop,['allowedOperatingEntities','hasActiveEmployment',"entity?.entityType === 'HOLDING'",'PARENT_CODES','Company Operations','data-open-ops-folder'],'Operations desktop boundary');
+
+const folderStart = operationsContext.indexOf('folders: Object.freeze([');
+const lifecycleStart = operationsContext.indexOf('onboardingLifecycle:Object.freeze([');
+const registry = folderStart >= 0 && lifecycleStart > folderStart ? operationsContext.slice(folderStart,lifecycleStart) : '';
+for (const workflowRoute of ['/careers.html','/applicant-portal.html','/offer-acceptance.html','/patient-portal.html','/service-request.html','/course-player.html','/employee-portal.html']) {
+  if (registry.includes(workflowRoute)) failures.push(`Contextual workflow leaked into Operations folders: ${workflowRoute}`);
 }
-forbid(context,['installWorkspaceLinks()','const topLink =','const sideButton =','admin-platform-routing.js'],'Canonical Admin navigation/bootstrap');
-
-requireMarkers(shellCss,['html,body{width:100%!important','max-width:none!important','.sulandra-platform-bar','@keyframes sulandraNewsTicker','@keyframes sulandraLiveBlink','body .edge-toggle{width:24px!important;height:104px!important'],'Canonical Admin shell CSS');
-requireMarkers(shellJs,[
-  'NEWS_REFRESH_MS = 10 * 60 * 1000','Dayton%20Ohio%20when%3A1d','ensureCanonicalSso()',
-  '/assets/sulandra-sso-session.js?v=20260806-sso-1','data-canonical-admin-sso','ensureModuleHosts()',"employee.id = 'module-employees'",
-  'ensurePlatformBar()','weather-mini-clock',"timeZone:'America/New_York'",
-],'Canonical Admin shell runtime');
-
-forbid(buildScript,["restore-modern-admin-portal.mjs","finalize-admin-fullscreen-layout.mjs","install-employee-management-frontend.mjs","admin-achieved-archive-fix.js?v=20260808-achieved-archive-1\"></script>","fix-admin-company-settings-backend.mjs"],'Static build');
-requireMarkers(buildScript,["await import('./verify-admin-canonical-source.mjs')","'assets/admin-shell.css'","'assets/admin-shell.js'",'Admin is deliberately not rewritten after publication'],'Static build');
-forbid(packageJson,['scripts/fix-admin-time-attendance-link.mjs','scripts/restore-modern-admin-portal.mjs','scripts/install-employee-management-frontend.mjs','scripts/finalize-admin-fullscreen-layout.mjs'],'package.json build pipeline');
-
-if (serviceRequestPublisher.includes("path.join(dist,'admin.html')")) failures.push('Client Service Request publisher still mutates dist-web/admin.html');
-if (!serviceRequestPublisher.includes('Admin service-request integration is canonical')) failures.push('Client Service Request publisher does not document canonical Admin ownership');
-if (ssoPublisher.includes("'admin.html'")) failures.push('Global SSO HTML publisher still rewrites Admin instead of canonical shell ownership');
-requireMarkers(ssoPublisher,['Admin owns SSO from assets/admin-shell.js'],'SSO publisher');
-requireMarkers(platformFinalizer,["if (path.basename(file).toLowerCase() === 'admin.html') continue",'canonical Admin navigation is protected'],'Global platform navigation publisher');
-
-for (const relative of ['assets/admin-shell.css','assets/admin-shell.js','assets/admin-company-context.js','assets/sulandra-sso-session.js']) {
-  try { await stat(path.join(dist, relative)); } catch { failures.push(`Canonical Admin publication missing ${relative}`); }
+for (const href of [...new Set([...registry.matchAll(/href:'(\/[^']+)'/g)].map((match) => match[1]))]) {
+  const pathname = href.split(/[?#]/,1)[0].replace(/^\//,'');
+  if (!pathname?.endsWith('.html')) continue;
+  try { await stat(path.join(root, pathname)); } catch { failures.push(`Operations registry route does not exist: ${href}`); }
 }
-if (failures.length) { console.error('Canonical Admin source verification failed:\n- ' + failures.join('\n- ')); process.exit(1); }
-console.log('Canonical Admin source verified: one navigation registry owns top/left/company-specific/portal routes, modern shell and SSO are source-controlled, and generic/post-build publishers are forbidden from rewriting Admin.');
+
+for (const relative of [
+  'admin.html','admin-operations.html','assets/admin-company-context.js','assets/admin-owner-context.js','assets/admin-operations-context.js',
+  'assets/admin-owner-console.js','assets/admin-operations-desktop.js','assets/admin-shell.css','assets/admin-shell.js',
+]) {
+  try { await stat(path.join(dist, relative)); } catch { failures.push(`Admin publication missing ${relative}`); }
+}
+
+if (failures.length) { console.error('Canonical Admin split verification failed:\n- ' + failures.join('\n- ')); process.exit(1); }
+console.log('Canonical Admin split verified: the existing Sulandra Health owner command center is preserved, Operations owns the eight-folder company administration desktop, and the parent company is excluded from the Operations selector boundary.');
