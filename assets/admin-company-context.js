@@ -35,6 +35,13 @@
   }
   void loadEmployeeSuite;
 
+  const OWNER_CONTEXT_SCRIPT = '/assets/admin-owner-context.js?v=20260825-owner-console-2';
+  const OWNER_CONSOLE_SCRIPT = '/assets/admin-owner-console.js?v=20260825-owner-console-2';
+  // Owner context is deliberately NOT loaded by this router. The owner boundary
+  // verifies /api/owner/authority first, then loads OWNER_CONTEXT_SCRIPT. This
+  // prevents protected owner modules from booting before owner authorization.
+  void OWNER_CONTEXT_SCRIPT;
+
   const operations = /\/admin-operations\.html$/i.test(window.location.pathname);
   const scripts = operations
     ? [
@@ -42,10 +49,7 @@
         '/assets/admin-operations-context.js?v=20260825-company-operations-2',
         '/assets/admin-operations-desktop.js?v=20260825-company-operations-2',
       ]
-    : [
-        '/assets/admin-owner-context.js?v=20260825-owner-console-1',
-        '/assets/admin-owner-console.js?v=20260825-owner-console-1',
-      ];
+    : [OWNER_CONSOLE_SCRIPT];
 
   const tags = scripts.map((src) => `<script src="${src}"><\/script>`).join('');
   if (document.readyState === 'loading') {
