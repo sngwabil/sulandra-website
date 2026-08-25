@@ -20,8 +20,9 @@
   const operations = /\/admin-operations\.html$/i.test(window.location.pathname);
   const scripts = operations
     ? [
-        '/assets/admin-operations-context.js?v=20260825-company-operations-1',
-        '/assets/admin-operations-desktop.js?v=20260825-company-operations-1',
+        '/assets/admin-operations-shell.js?v=20260825-company-operations-2',
+        '/assets/admin-operations-context.js?v=20260825-company-operations-2',
+        '/assets/admin-operations-desktop.js?v=20260825-company-operations-2',
       ]
     : [
         '/assets/admin-owner-context.js?v=20260825-owner-console-1',
