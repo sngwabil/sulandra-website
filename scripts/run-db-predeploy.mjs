@@ -153,6 +153,7 @@ try {
       runScript('db:recover-failed-doo-migration');
       runScript('db:migrate:deploy');
       runNodeScript('scripts/verify-release-staging-parity.mjs');
+      runNodeScript('scripts/check-home-health-regulated-core.mjs');
       runScript('db:verify-careers-schema');
       runNodeScript('scripts/verify-spire-route-registration.mjs');
 
