@@ -7,6 +7,7 @@
   const SETTINGS_KEY = "sulandra:admin:company-settings";
   const TASKBAR_KEY = "sulandra:admin:taskbar-open";
   const ACTIVE_MODULE_KEY = "sulandra:admin:active-module";
+  const IS_OWNER_CONSOLE = /\/admin\.html$/i.test(location.pathname);
   const IS_OPERATIONS = /\/admin-operations\.html$/i.test(location.pathname);
   const OPERATIONS_ROLES = new Set(["ADMINISTRATOR", "HR_MANAGER", "CEO", "DOO"]);
   const loadedOperationsModules = new Set();
@@ -439,7 +440,12 @@
 
       const session = await api("/api/session");
       const role = String(session?.role || "").toUpperCase();
-      if (!session || !["ADMINISTRATOR", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }
+      if (!session) { location.replace("employee-login.html"); return; }
+      if (IS_OWNER_CONSOLE && role !== "ADMINISTRATOR") {
+        const destination = role === "DOO" ? "doo.html" : role === "CEO" ? "ceo.html" : "employee-portal.html";
+        location.replace(destination);
+        return;
+      }
       await window.SulandraCompanyContext?.initialize?.(session.entityContext);
       if ($("adminEmailPill")) $("adminEmailPill").textContent = session.email || session.username || title(role);
       await Promise.all([loadApplications(), loadOpenings(), loadDashboard()]);
