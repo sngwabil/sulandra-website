@@ -68,25 +68,47 @@ if (await exists(path.join(root, migrationPath))) {
   expect('active duplicate grant prevention', migration.includes('Employee360AccessGrant_active_unique_idx'));
 }
 
-const canonicalContext = await read('assets/admin-company-context.js');
-const canonicalShell = await read('assets/admin-shell.js');
-const permissionAssetAt = canonicalContext.indexOf("'admin-employee-permissions'");
-const managementAssetAt = canonicalContext.indexOf("'admin-employee-management'");
-expect('canonical Admin loader owns Employee 360 scripts', canonicalContext.includes('loadEmployeeSuite') && permissionAssetAt >= 0 && managementAssetAt > permissionAssetAt);
-expect('canonical Admin shell creates Employee 360 module', canonicalShell.includes("employee.id = 'module-employees'") && canonicalShell.includes('ensureModuleHosts()'));
+// Admin is now deliberately split. The compatibility router only selects an
+// owner or company-Operations bootstrap; each bootstrap owns its own Employee
+// 360 loader. Operations has a small dedicated shell because the preserved
+// owner shell must remain unchanged.
+const contextRouter = await read('assets/admin-company-context.js');
+const ownerContext = await read('assets/admin-owner-context.js');
+const operationsContext = await read('assets/admin-operations-context.js');
+const ownerShell = await read('assets/admin-shell.js');
+const operationsShell = await read('assets/admin-operations-shell.js');
+for (const [label,context] of [['owner',ownerContext],['Operations',operationsContext]]) {
+  const permissionAssetAt = context.indexOf("'admin-employee-permissions'");
+  const managementAssetAt = context.indexOf("'admin-employee-management'");
+  expect(`${label} Admin loader owns Employee 360 scripts`, context.includes('loadEmployeeSuite') && permissionAssetAt >= 0 && managementAssetAt > permissionAssetAt);
+}
+expect('Admin context router selects owner and Operations loaders', contextRouter.includes('admin-owner-context.js') && contextRouter.includes('admin-operations-context.js'));
+expect('owner Admin shell preserves Employee 360 module host', ownerShell.includes("employee.id = 'module-employees'") && ownerShell.includes('ensureModuleHosts()'));
+expect('Operations shell creates Employee 360 module host', operationsShell.includes("employee.id = 'module-employees'") && operationsShell.includes('ensureModuleHosts()'));
 
-const distAdmin = path.join(root, 'dist-web', 'admin.html');
-if (await exists(distAdmin)) {
-  const [html, publishedContext, publishedShell] = await Promise.all([
-    readFile(distAdmin, 'utf8'),
+const distOwnerAdmin = path.join(root, 'dist-web', 'admin.html');
+const distOperationsAdmin = path.join(root, 'dist-web', 'admin-operations.html');
+if (await exists(distOwnerAdmin) && await exists(distOperationsAdmin)) {
+  const [ownerHtml,operationsHtml,publishedRouter,publishedOwnerContext,publishedOperationsContext,publishedOwnerShell,publishedOperationsShell] = await Promise.all([
+    readFile(distOwnerAdmin, 'utf8'),
+    readFile(distOperationsAdmin, 'utf8'),
     read('dist-web/assets/admin-company-context.js'),
+    read('dist-web/assets/admin-owner-context.js'),
+    read('dist-web/assets/admin-operations-context.js'),
     read('dist-web/assets/admin-shell.js'),
+    read('dist-web/assets/admin-operations-shell.js'),
   ]);
-  const publishedPermissionAt = publishedContext.indexOf("'admin-employee-permissions'");
-  const publishedManagementAt = publishedContext.indexOf("'admin-employee-management'");
-  expect('dist admin loads canonical Admin bootstrap', html.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'));
-  expect('dist canonical shell includes Employee 360 module', publishedShell.includes("employee.id = 'module-employees'"));
-  expect('dist canonical loader loads permission script before management script', publishedPermissionAt >= 0 && publishedManagementAt > publishedPermissionAt);
+  for (const [label,html] of [['owner',ownerHtml],['Operations',operationsHtml]]) {
+    expect(`dist ${label} Admin loads context router`, html.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'));
+  }
+  expect('dist context router selects both Admin bootstraps', publishedRouter.includes('admin-owner-context.js') && publishedRouter.includes('admin-operations-context.js'));
+  expect('dist owner shell includes Employee 360 module', publishedOwnerShell.includes("employee.id = 'module-employees'"));
+  expect('dist Operations shell includes Employee 360 module', publishedOperationsShell.includes("employee.id = 'module-employees'"));
+  for (const [label,context] of [['owner',publishedOwnerContext],['Operations',publishedOperationsContext]]) {
+    const publishedPermissionAt = context.indexOf("'admin-employee-permissions'");
+    const publishedManagementAt = context.indexOf("'admin-employee-management'");
+    expect(`dist ${label} loader loads permission script before management script`, publishedPermissionAt >= 0 && publishedManagementAt > publishedPermissionAt);
+  }
 }
 
 const distPortal = path.join(root, 'dist-web', 'employee-portal.html');
@@ -101,4 +123,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Employee 360 permission verification passed (${checks.length} checks) using canonical Admin shell/bootstrap ownership.`);
+console.log(`Employee 360 permission verification passed (${checks.length} checks) using separate owner/Operations Admin bootstrap ownership.`);
