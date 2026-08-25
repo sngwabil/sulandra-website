@@ -26,8 +26,8 @@ try {
        AND (
          (table_name='HomeHealthEpisode' AND column_name='currentCertificationPeriodId') OR
          (table_name='HomeHealthPlanOfCare' AND column_name IN ('certificationPeriodId','orderLifecycleStatus','signatureStatus')) OR
-         (table_name='HomeHealthDisciplineOrder' AND column_name IN ('certificationPeriodId','orderType','signatureStatus')) OR
-         (table_name='HomeHealthVisit' AND column_name='certificationPeriodId') OR
+         (table_name='HomeHealthDisciplineOrder' AND column_name IN ('certificationPeriodId','orderType','signatureStatus','evvServiceCode')) OR
+         (table_name='HomeHealthVisit' AND column_name IN ('certificationPeriodId','evvServiceCode')) OR
          (table_name='SpireEvvVisit' AND column_name='homeHealthVisitId')
        )
   `);
@@ -40,11 +40,38 @@ try {
     'HomeHealthDisciplineOrder.certificationPeriodId',
     'HomeHealthDisciplineOrder.orderType',
     'HomeHealthDisciplineOrder.signatureStatus',
+    'HomeHealthDisciplineOrder.evvServiceCode',
     'HomeHealthVisit.certificationPeriodId',
+    'HomeHealthVisit.evvServiceCode',
     'SpireEvvVisit.homeHealthVisitId',
   ];
   const missingColumns = requiredColumns.filter((name) => !have.has(name));
   if (missingColumns.length) throw new Error(`[home-health-regulated-core] missing required columns: ${missingColumns.join(', ')}`);
+
+  const runtimeObjects = await prisma.$queryRawUnsafe(`
+    SELECT
+      to_regprocedure('public.sync_home_health_canonical_evv_visit()')::text AS "syncFunction",
+      EXISTS(
+        SELECT 1
+          FROM pg_trigger t
+          JOIN pg_class c ON c.oid=t.tgrelid
+          JOIN pg_namespace n ON n.oid=c.relnamespace
+         WHERE n.nspname=current_schema()
+           AND c.relname='HomeHealthVisit'
+           AND t.tgname='HomeHealthVisit_canonical_evv_trg'
+           AND NOT t.tgisinternal
+      ) AS "syncTrigger",
+      EXISTS(
+        SELECT 1
+          FROM pg_indexes
+         WHERE schemaname=current_schema()
+           AND indexname='SpireEvvVisit_home_health_visit_idx'
+      ) AS "oneToOneIndex"
+  `);
+  const runtime = runtimeObjects[0] ?? {};
+  if (!runtime.syncFunction) throw new Error('[home-health-regulated-core] canonical Home Health→EVV synchronization function is missing');
+  if (runtime.syncTrigger !== true) throw new Error('[home-health-regulated-core] canonical Home Health→EVV synchronization trigger is missing');
+  if (runtime.oneToOneIndex !== true) throw new Error('[home-health-regulated-core] Home Health→EVV one-to-one uniqueness index is missing');
 
   const specs = await prisma.$queryRawUnsafe(`
     SELECT "id","specName","itemSetVersionCode","submissionSpecVersion","status",
@@ -71,7 +98,20 @@ try {
         WHERE hh."evvRequired"=TRUE
           AND hh."status" IN ('IN_PROGRESS','COMPLETED')
           AND evv."id" IS NULL
-      )::int AS "completedOrActiveVisitsMissingCanonicalEvv"
+      )::int AS "activeOrCompletedVisitsMissingCanonicalEvv",
+      count(*) FILTER (
+        WHERE hh."evvRequired"=TRUE
+          AND hh."status"='SCHEDULED'
+          AND evv."id" IS NULL
+      )::int AS "scheduledVisitsMissingCanonicalEvv",
+      count(*) FILTER (
+        WHERE hh."evvRequired"=TRUE
+          AND NULLIF(BTRIM(hh."evvServiceCode"),'') IS NULL
+      )::int AS "evvRequiredVisitsMissingServiceCode",
+      count(*) FILTER (
+        WHERE evv."homeHealthVisitId"=hh."id"
+          AND hh."evvVisitId" IS DISTINCT FROM evv."id"
+      )::int AS "bidirectionalLinkMismatch"
     FROM "HomeHealthVisit" hh
     LEFT JOIN "SpireEvvVisit" evv ON evv."homeHealthVisitId"=hh."id"
     LEFT JOIN "SpireEvvVisit" evv_legacy ON evv_legacy."id"=hh."evvVisitId"
@@ -79,7 +119,8 @@ try {
   const links = linkProblems[0] ?? {};
   if (Number(links.danglingLegacyEvvLinks || 0) > 0) throw new Error(`[home-health-regulated-core] ${links.danglingLegacyEvvLinks} Home Health visit(s) reference a missing legacy EVV visit`);
   if (Number(links.scopeMismatchLinks || 0) > 0) throw new Error(`[home-health-regulated-core] ${links.scopeMismatchLinks} EVV/Home Health visit link(s) cross organization/patient scope`);
-  if (Number(links.completedOrActiveVisitsMissingCanonicalEvv || 0) > 0) throw new Error(`[home-health-regulated-core] ${links.completedOrActiveVisitsMissingCanonicalEvv} EVV-required in-progress/completed Home Health visit(s) are not linked to the canonical SpireEvvVisit record`);
+  if (Number(links.activeOrCompletedVisitsMissingCanonicalEvv || 0) > 0) throw new Error(`[home-health-regulated-core] ${links.activeOrCompletedVisitsMissingCanonicalEvv} EVV-required in-progress/completed Home Health visit(s) are not linked to the canonical SpireEvvVisit record`);
+  if (Number(links.bidirectionalLinkMismatch || 0) > 0) throw new Error(`[home-health-regulated-core] ${links.bidirectionalLinkMismatch} Home Health/EVV visit pair(s) have inconsistent bidirectional identifiers`);
 
   const operationalWarnings = await prisma.$queryRawUnsafe(`
     SELECT
@@ -92,10 +133,16 @@ try {
   `);
 
   const spec = specs[0];
-  console.log(`[home-health-regulated-core] PASS: regulated schema and canonical Home Health↔EVV link integrity are valid.`);
+  console.log('[home-health-regulated-core] PASS: regulated schema, synchronization trigger, and canonical Home Health↔EVV link integrity are valid.');
   console.log(`[home-health-regulated-core] OASIS spec registered: ${spec.specName} ${spec.itemSetVersionCode} / ${spec.submissionSpecVersion}; status=${spec.status}; items=${spec.itemDefinitionCount}; edits=${spec.editRuleCount}.`);
   if (spec.status === 'REGISTERED' || Number(spec.itemDefinitionCount) === 0 || Number(spec.editRuleCount) === 0) {
     console.warn('[home-health-regulated-core] OASIS submission remains intentionally blocked until the official CMS 3.02 item definitions/edit rules are loaded and validated.');
+  }
+  if (Number(links.scheduledVisitsMissingCanonicalEvv || 0) > 0) {
+    console.warn(`[home-health-regulated-core] ${links.scheduledVisitsMissingCanonicalEvv} legacy EVV-required scheduled Home Health visit(s) still need canonical EVV linkage before they can start.`);
+  }
+  if (Number(links.evvRequiredVisitsMissingServiceCode || 0) > 0) {
+    console.warn(`[home-health-regulated-core] ${links.evvRequiredVisitsMissingServiceCode} legacy EVV-required Home Health visit(s) are missing an explicit EVV service/procedure code; no code was guessed.`);
   }
   const warnings = operationalWarnings[0] ?? {};
   console.log(`[home-health-regulated-core] operational warnings: active episodes without certification period=${warnings.activeEpisodesWithoutCertificationPeriod ?? 0}; overdue POC signatures=${warnings.overduePocSignatures ?? 0}; overdue order signatures=${warnings.overdueOrderSignatures ?? 0}.`);
