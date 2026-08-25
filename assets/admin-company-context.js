@@ -42,7 +42,9 @@
   // prevents protected owner modules from booting before owner authorization.
   void OWNER_CONTEXT_SCRIPT;
 
-  const operations = /\/admin-operations\.html$/i.test(window.location.pathname);
+  const ownerConsole = /\/admin\.html$/i.test(location.pathname);
+  const operations = /\/admin-operations\.html$/i.test(location.pathname);
+  if (!ownerConsole && !operations) return;
   const scripts = operations
     ? [
         '/assets/admin-operations-shell.js?v=20260825-company-operations-2',
