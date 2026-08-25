@@ -26,14 +26,14 @@
         },
         {
           "id": "company-settings",
-          "label": "Company Settings",
-          "sub": "Identity and operating preferences",
+          "label": "Company Chronicles",
+          "sub": "Brand, identity and entity configuration",
           "kind": "module",
           "module": "settings",
           "href": "/admin.html#settings",
           "icon": "⚙",
           "tone": "slate",
-          "desc": "Manage selected-company identity, address and administrative preferences.",
+          "desc": "Manage selected-company branding, identity, address and administrative preferences.",
           "tags": [
             "Company",
             "Settings"
