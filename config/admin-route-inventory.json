@@ -72,6 +72,12 @@
       "disposition": "entry"
     },
     {
+      "path": "applyrn.html",
+      "surface": "public",
+      "disposition": "entry",
+      "generatedBy": "scripts/install-rn-application.mjs"
+    },
+    {
       "path": "auditor.html",
       "surface": "role",
       "disposition": "contextual"
