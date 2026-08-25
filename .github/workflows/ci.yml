@@ -243,7 +243,7 @@ jobs:
           state="$(psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "
             SELECT \"status\" || ':' || \"sourcePackageSha256\" || ':' || \"normalizedDefinitionSha256\" || ':' ||
                    jsonb_array_length(\"itemDefinitions\") || ':' || jsonb_array_length(\"editRules\") || ':' ||
-                   jsonb_object_length(\"valueSets\") || ':' || jsonb_array_length(COALESCE(\"submissionDefinition\"->'fields','[]'::jsonb))
+                   (SELECT count(*) FROM jsonb_object_keys(\"valueSets\")) || ':' || jsonb_array_length(COALESCE(\"submissionDefinition\"->'fields','[]'::jsonb))
             FROM \"HomeHealthOasisSpecVersion\"
             WHERE \"itemSetVersionCode\"='E2-042026' AND \"submissionSpecVersion\"='3.02'
             LIMIT 1;

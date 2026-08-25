@@ -62,7 +62,7 @@ try{
       SELECT "status","sourcePackageSha256","normalizedDefinitionSha256",
              jsonb_array_length("itemDefinitions")::int AS "itemCount",
              jsonb_array_length("editRules")::int AS "editCount",
-             jsonb_object_length("valueSets")::int AS "valueSetCount",
+             (SELECT count(*)::int FROM jsonb_object_keys("valueSets")) AS "valueSetCount",
              jsonb_array_length(COALESCE("submissionDefinition"->'fields','[]'::jsonb))::int AS "mappingCount"
         FROM "HomeHealthOasisSpecVersion"
        WHERE "itemSetVersionCode"=$1 AND "submissionSpecVersion"=$2
