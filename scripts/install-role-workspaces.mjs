@@ -50,6 +50,12 @@ await patch('assets/employee-login-railway.js', patchLogin);
 await patch('employee-login-railway.js', patchLogin);
 
 await patch('admin-railway.js', (source) => {
+  const modernOperationsController = source.includes('const IS_OPERATIONS = /\\/admin-operations\\.html$/i.test(location.pathname);')
+    && source.includes('const OPERATIONS_ROLES = new Set(["ADMINISTRATOR", "HR_MANAGER", "CEO", "DOO"]);')
+    && source.includes('if (IS_OPERATIONS) {')
+    && source.includes('OPERATIONS_ROLES.has(role)');
+  if (modernOperationsController) return source;
+
   const legacyOwnerOnly = 'if (!session || role !== "ADMINISTRATOR") { const destination = role === "DOO" ? "doo.html" : role === "CEO" ? "ceo.html" : "employee-portal.html"; location.replace(destination); return; }';
   const legacyMixed = 'if (!session || !["ADMINISTRATOR", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }';
   const legacyExecutive = 'if (!session || !["ADMINISTRATOR", "CEO", "DOO"].includes(role)) { location.replace("employee-portal.html"); return; }';

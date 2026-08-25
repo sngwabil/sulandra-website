@@ -77,17 +77,23 @@
       sessionStorage.removeItem(OPERATIONS_BOOTSTRAP_KEY);
       return { allowed, current, reloading: false };
     }
+
+    // The parent owner console may leave the parent LegalEntity selected. Operations
+    // must switch to an authorized operating company, but it must do so in-memory.
+    // The previous implementation wrote storage and called location.reload(), which
+    // doubled every bootstrap request and could re-enter the old document.write path.
     const target = allowed[0];
-    const attempted = sessionStorage.getItem(OPERATIONS_BOOTSTRAP_KEY);
-    if (attempted === String(target.id)) return { allowed, current: target, reloading: false };
-    sessionStorage.setItem(OPERATIONS_BOOTSTRAP_KEY, String(target.id));
     try {
       localStorage.setItem(companyContext?.storageKey || 'sulandra:admin:legal-entity-id', String(target.id));
       sessionStorage.setItem(companyContext?.sharedStorageKey || 'sulandra:selected-legal-entity-id', String(target.id));
       localStorage.setItem(companyContext?.sharedStorageKey || 'sulandra:selected-legal-entity-id', String(target.id));
+      sessionStorage.removeItem(OPERATIONS_BOOTSTRAP_KEY);
     } catch {}
-    location.reload();
-    return { allowed, current: target, reloading: true };
+
+    // Passing the already-authorized context causes the shared selector to re-render
+    // synchronously from the saved operating company without another network request.
+    try { companyContext?.initialize?.(context); } catch {}
+    return { allowed, current: companyContext?.current?.() || target, reloading: false };
   }
 
   const folderCopy = [
