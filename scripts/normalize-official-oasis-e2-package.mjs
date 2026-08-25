@@ -104,6 +104,7 @@ const submissionDefinition={
   format:'XML',encoding:'ASCII',zipRequired:true,maxZipBytes:5*1024*1024,
   xml:{rootElement:'ASSESSMENT',maxTagLength:30,maxValueLength:100,singleAssessmentPerXml:true},
   fields:itemDefinitions.map((item,index)=>({itemCode:item.code,tag:item.code,order:index,activeSubsets:item.activeSubsets,omitIfBlank:false})),
+  assessmentSystemItem:'ASMT_SYS_CD',assessmentSystemValue:'OASIS',
   transactionModeItemCode:'TRANS_TYPE_CD',transactionModes:{NEW:'1',MODIFICATION:'2',INACTIVATION:'3'},
   itemSubsetCodeItem:'ITM_SBST_CD',itemSetVersionItem:'ITM_SET_VRSN_CD',specVersionItem:'SPEC_VRSN_CD',
   inactiveItemsMustBeOmitted:true,calculatedAndFillerItemsOmitted:true,
