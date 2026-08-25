@@ -52,10 +52,7 @@
     : [OWNER_CONSOLE_SCRIPT];
 
   // Never use document.write for an authenticated application shell. A delayed
-  // or re-entered document.write can replace the entire page after first paint,
-  // which is exactly the failure mode that produced a blank Operations desktop.
-  // Dynamic parser-safe loading keeps the existing document intact and preserves
-  // script order without forcing a second page parse.
+  // or re-entered document.write can replace the entire page after first paint.
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const existing = document.querySelector(`script[src="${src}"]`);
@@ -80,22 +77,56 @@
     });
   }
 
-  scripts.reduce((promise, src) => promise.then(() => loadScript(src)), Promise.resolve())
-    .catch((error) => {
-      console.error('[Sulandra Admin Context Router]', error);
-      if (!operations) return;
-      const showFailure = () => {
-        if (document.getElementById('adminOperationsRuntimeFailure')) return;
-        const host = document.querySelector('main') || document.body;
-        if (!host) return;
-        const notice = document.createElement('div');
-        notice.id = 'adminOperationsRuntimeFailure';
-        notice.setAttribute('role', 'alert');
-        notice.style.cssText = 'max-width:1100px;margin:18px auto;padding:14px 16px;border:1px solid #e4b8b8;border-radius:10px;background:#fff5f5;color:#7a2929;font:600 14px/1.45 Segoe UI,Arial,sans-serif';
-        notice.textContent = 'Company Operations could not finish loading. Refresh once. If the problem continues, sign out and sign back in.';
-        host.prepend(notice);
-      };
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showFailure, { once: true });
-      else showFailure();
-    });
+  let loadingPromise = Promise.resolve();
+
+  // admin-railway.js is still a parser-loaded legacy controller. Give it a safe
+  // CompanyContext facade immediately so it can await the new Operations runtime
+  // instead of racing it on first load.
+  if (operations && !window.SulandraCompanyContext) {
+    const pendingContext = {
+      initialize: (...args) => loadingPromise.then(() => {
+        const current = window.SulandraCompanyContext;
+        if (!current || current === pendingContext || typeof current.initialize !== 'function') {
+          throw new Error('Company Operations context did not finish loading.');
+        }
+        return current.initialize(...args);
+      }),
+      current: () => {
+        const current = window.SulandraCompanyContext;
+        return current && current !== pendingContext && typeof current.current === 'function' ? current.current() : null;
+      },
+      context: () => {
+        const current = window.SulandraCompanyContext;
+        return current && current !== pendingContext && typeof current.context === 'function' ? current.context() : null;
+      },
+      headers: () => {
+        const current = window.SulandraCompanyContext;
+        return current && current !== pendingContext && typeof current.headers === 'function' ? current.headers() : {};
+      },
+      storageKey: 'sulandra:admin:legal-entity-id',
+      sharedStorageKey: 'sulandra:selected-legal-entity-id',
+    };
+    window.SulandraCompanyContext = pendingContext;
+  }
+
+  loadingPromise = scripts.reduce((promise, src) => promise.then(() => loadScript(src)), Promise.resolve());
+  window.SulandraAdminContextReady = loadingPromise;
+
+  loadingPromise.catch((error) => {
+    console.error('[Sulandra Admin Context Router]', error);
+    if (!operations) return;
+    const showFailure = () => {
+      if (document.getElementById('adminOperationsRuntimeFailure')) return;
+      const host = document.querySelector('main') || document.body;
+      if (!host) return;
+      const notice = document.createElement('div');
+      notice.id = 'adminOperationsRuntimeFailure';
+      notice.setAttribute('role', 'alert');
+      notice.style.cssText = 'max-width:1100px;margin:18px auto;padding:14px 16px;border:1px solid #e4b8b8;border-radius:10px;background:#fff5f5;color:#7a2929;font:600 14px/1.45 Segoe UI,Arial,sans-serif';
+      notice.textContent = 'Company Operations could not finish loading. Refresh once. If the problem continues, sign out and sign back in.';
+      host.prepend(notice);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showFailure, { once: true });
+    else showFailure();
+  });
 })();
