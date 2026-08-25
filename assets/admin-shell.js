@@ -2,6 +2,21 @@
   'use strict';
   if (!/\/admin\.html$/i.test(location.pathname)) return;
 
+  const NEWS_REFRESH_MS = 10 * 60 * 1000;
+  const NEWS_RSS = 'https://news.google.com/rss/search?q=Dayton%20Ohio%20when%3A1d&hl=en-US&gl=US&ceid=US%3Aen';
+  const NEWS_JSON = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(NEWS_RSS);
+  const fallback = [
+    {title:'Live local headlines for Dayton and the Miami Valley are loading…',link:'/news.html',source:'Sulandra News'},
+    {title:'News ticker refreshes automatically as local headlines update.',link:'/news.html',source:'Live News'},
+  ];
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const sourceName = item => item.author || item.source || String(item.title || '').split(' - ').slice(-1)[0] || 'Local News';
+  const headline = item => {
+    const raw = String(item.title || 'Local news update').trim();
+    const parts = raw.split(' - ');
+    return parts.length > 1 ? parts.slice(0, -1).join(' - ') : raw;
+  };
+
   function ensureCanonicalSso() {
     if (window.SulandraSSO || document.querySelector('script[data-canonical-admin-sso]')) return;
     const script = document.createElement('script');
@@ -9,6 +24,15 @@
     script.dataset.canonicalAdminSso = 'true';
     script.async = false;
     document.head.appendChild(script);
+  }
+
+  function ensureNavigationOverflow() {
+    if (document.querySelector('script[data-admin-navigation-overflow]')) return;
+    const script = document.createElement('script');
+    script.src = '/assets/admin-navigation-overflow.js?v=20260815-admin-nav-overflow-1';
+    script.dataset.adminNavigationOverflow = 'true';
+    script.async = false;
+    document.body.appendChild(script);
   }
 
   function ensureModuleHosts() {
@@ -19,8 +43,42 @@
     employee.id = 'module-employees';
     employee.className = 'card module';
     employee.setAttribute('aria-label', 'Employee management workspace');
-    employee.innerHTML = '<h1>Employee 360</h1><p class="sub">Loading employee directory, permissions, compliance, workforce, documents, learning, payroll, benefits, leave, safety, analytics and audit tools…</p>';
+    employee.innerHTML = '<h1>Employees</h1><p class="sub">Loading Employee 360 directory, permissions, compliance, workforce, documents, learning, payroll, benefits, leave, safety, analytics and audit tools…</p>';
     onboarding.parentElement.insertBefore(employee, onboarding);
+  }
+
+  function tickerMarkup(items) {
+    const clean = (items?.length ? items : fallback).slice(0, 12).map(item => ({title:headline(item),link:item.link || '/news.html',source:sourceName(item)}));
+    const once = clean.map(item => `<a class="sulandra-news-item" href="${esc(item.link)}" target="_blank" rel="noopener"><span>${esc(item.title)}</span><span class="sulandra-news-source">${esc(item.source)}</span></a>`).join('');
+    return once + once;
+  }
+
+  async function loadNews() {
+    const track = document.getElementById('sulandraNewsTrack');
+    if (!track) return;
+    try {
+      const response = await fetch(NEWS_JSON, {cache:'no-store'});
+      if (!response.ok) throw new Error('news unavailable');
+      const data = await response.json();
+      const items = Array.isArray(data.items) ? data.items : [];
+      track.innerHTML = tickerMarkup(items);
+      track.style.animationDuration = `${Math.max(55, Math.min(125, items.length * 9))}s`;
+    } catch {
+      track.innerHTML = tickerMarkup(fallback);
+    }
+  }
+
+  function ensurePlatformBar() {
+    let bar = document.querySelector('.sulandra-platform-bar');
+    if (!bar) {
+      bar = document.createElement('nav');
+      bar.className = 'sulandra-platform-bar';
+      bar.setAttribute('aria-label', 'Sulandra Health local news');
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
+    bar.innerHTML = `<span class="sulandra-platform-title">Sulandra Health Platform</span><span class="sulandra-news-label">Local News</span><div class="sulandra-news-window" aria-live="polite"><div class="sulandra-news-track" id="sulandraNewsTrack">${tickerMarkup(fallback)}</div></div>`;
+    loadNews();
+    window.setInterval(loadNews, NEWS_REFRESH_MS);
   }
 
   function updateWeatherClock() {
@@ -33,48 +91,20 @@
       clock.innerHTML = '<strong>--:--</strong><span>Local time</span>';
       weather.appendChild(clock);
     }
-    const value = new Intl.DateTimeFormat('en-US', {
-      timeZone:'America/New_York',
-      hour:'numeric',
-      minute:'2-digit',
-      second:'2-digit',
-    }).format(new Date());
+    const value = new Intl.DateTimeFormat('en-US', {timeZone:'America/New_York',hour:'numeric',minute:'2-digit',second:'2-digit'}).format(new Date());
     const node = clock.querySelector('strong');
     if (node) node.textContent = value;
-  }
-
-  function removeLegacyNavigationArtifacts() {
-    document.getElementById('restoredPlatformNavigation')?.remove();
-    document.querySelector('.sulandra-platform-bar')?.remove();
-    document.getElementById('adminTopNavigationMore')?.remove();
-    document.getElementById('adminTopNavigationOverflowMenu')?.remove();
-    document.querySelectorAll('.taskbar-toggle,.taskbar-scrim,.edge-toggle,.edge-drawer').forEach(node => node.remove());
-  }
-
-  function installDelegatedModuleNavigation() {
-    if (document.documentElement.dataset.adminModuleDelegation === 'true') return;
-    document.documentElement.dataset.adminModuleDelegation = 'true';
-    document.addEventListener('click', event => {
-      const control = event.target?.closest?.('#topModuleNav [data-module], #sideModuleNav [data-module]');
-      if (!control) return;
-      const key = control.dataset.module;
-      if (!key) return;
-      event.preventDefault();
-      if (location.hash.slice(1) === key) window.dispatchEvent(new Event('hashchange'));
-      else location.hash = key;
-    });
   }
 
   function mount() {
     ensureCanonicalSso();
     ensureModuleHosts();
-    removeLegacyNavigationArtifacts();
-    installDelegatedModuleNavigation();
+    ensurePlatformBar();
+    ensureNavigationOverflow();
     updateWeatherClock();
     window.setTimeout(updateWeatherClock, 250);
     window.setTimeout(updateWeatherClock, 900);
     window.setInterval(updateWeatherClock, 1000);
-    document.documentElement.dataset.adminInformationArchitecture = 'canonical-folders-v1';
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, {once:true});
