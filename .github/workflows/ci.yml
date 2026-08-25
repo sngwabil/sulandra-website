@@ -9,6 +9,7 @@ on:
       - sulandra-1.1
       - feature/spire-ehr-platform
       - feature/spire-1.1
+      - 'agent/**'
   pull_request:
     branches:
       - main
@@ -16,6 +17,7 @@ on:
       - sulandra-1.1
       - feature/spire-ehr-platform
       - feature/spire-1.1
+      - 'agent/**'
 
 permissions:
   contents: read
