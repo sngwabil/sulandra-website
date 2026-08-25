@@ -23,30 +23,58 @@ for (const [label,source] of [['Admin company/navigation context',context],['Adm
 
 requireMarkers(adminSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Canonical admin.html');
 requireMarkers(context,[
-  'const NAVIGATION = Object.freeze({',"{key:'dashboard',label:'Dashboard'","{key:'service-homes',label:'Service Homes'","{key:'employees',label:'Employees'",
-  "href:'/scheduling.html'","href:'/time-attendance.html#admin'","href:'/employee360.html#files'","href:'/employee360.html#audit'","href:'/spire-admin.html'",
-  "{key:'onboarding',label:'Onboarding'","href:'/client-intake.html'","href:'/home-health-referrals.html'","href:'/home-health.html'",
-  "href:'/nmt-orders.html'","href:'/nmt-dispatch.html'","href:'/workforce-admin.html'","href:'/spire-medication-qualifications.html'","href:'/company-documents.html'",
-  "href:'/spire-training.html'","href:'/intranet-control.html'","href:'/employee-portal.html'","href:'/education-portal.html'",
-  'top.innerHTML = NAVIGATION.primary.map(topMarkup).join',"side.innerHTML = [...NAVIGATION.leftOnly, ...NAVIGATION.primary].map(sideMarkup).join",
-  'data-company-module','renderRightDrawer','window.SulandraAdminNavigation',"'/assets/admin-shell.js?v=20260810-canonical-admin-1'",
-  "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'","'/assets/admin-company-settings.js?v=20260810-company-settings-backend-1'",
-  "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'","'/assets/admin-achieved-archive-fix.js?v=20260808-achieved-archive-1'",
-  "'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'",'loadEmployeeSuite',
+  'One authoritative Admin information-architecture registry.',
+  'topActions: Object.freeze([','folders: Object.freeze([',
+  "label:'Company Management'","label:'People & HR'","label:'Clients & SPIRE'","label:'Service Operations'",
+  "label:'Billing & Revenue'","label:'Compliance & Quality'","label:'Communications & Learning'","label:'System Administration'",
+  "key:'dashboard',label:'Dashboard'","key:'my-work',label:'My Work'","key:'notifications',label:'Notifications'","key:'profile',label:'Profile'",
+  'adminGlobalToolSearch','NAVIGATION.folders.map(folderMarkup).join',
+  "key:'onboarding',label:'Hiring & Onboarding'","key:'admin-users',label:'Admin Users'","key:'role-workspaces',label:'Roles, Permissions & Workspaces'",
+  "href:'/employee-ohio-screening-workspace.html'","href:'/dodd-billing-rules.html'","href:'/revenue-claim-exchange.html'","href:'/spire-evv-test-console.html'",
+  "href:'/home-health-referral-inbox.html'","href:'/nmt-order-inbox.html'","href:'/spire-admission-history.html'","href:'/spire-incident-compliance.html'",
+  'onboardingLifecycle:Object.freeze([',"key:'overview',label:'Overview'","key:'openings',label:'Job Openings'","key:'applicants',label:'Applicants'",
+  "key:'screening',label:'Screening'","key:'interviews',label:'Interviews'","key:'offers',label:'Offers'",
+  "key:'pre-employment',label:'Pre-employment'","key:'new-hire-paperwork',label:'New-hire Paperwork'","key:'orientation',label:'Orientation'",
+  "key:'employee-activation',label:'Employee Activation'","key:'archived',label:'Archive'",
+  "serviceModule.id = 'module-service-requests'","servicePanel.classList.remove('onboarding-panel','active')",
+  'window.SulandraAdminNavigation',"'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'",
+  "'/assets/admin-company-settings.js?v=20260810-company-settings-backend-1'","'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'",
+  'loadEmployeeSuite','data-company-modules','installInformationArchitectureStyles()',
 ],'Canonical Admin navigation/bootstrap');
-if (!context.includes("{key:'settings',label:'Settings'") && !context.includes("{key:'settings',label:'Company Chronicles'")) {
-  failures.push('Canonical Admin navigation/bootstrap missing Settings or Company Chronicles root configuration module');
-}
-forbid(context,['installWorkspaceLinks()','const topLink =','const sideButton =','admin-platform-routing.js'],'Canonical Admin navigation/bootstrap');
 
-requireMarkers(shellCss,['html,body{width:100%!important','max-width:none!important','.sulandra-platform-bar','@keyframes sulandraNewsTicker','@keyframes sulandraLiveBlink','body .edge-toggle{width:24px!important;height:104px!important'],'Canonical Admin shell CSS');
+forbid(context,[
+  'admin-enterprise-apps-launcher.js','admin-navigation-overflow.js','NAVIGATION.primary','NAVIGATION.leftOnly',
+  'right.innerHTML =','Platform Portals','Quick Operations',
+],'Canonical Admin navigation/bootstrap');
+forbid(shellJs,['ensureNavigationOverflow','admin-navigation-overflow.js','ensurePlatformBar','sulandraNewsTrack','NEWS_REFRESH_MS'],'Canonical Admin shell runtime');
 requireMarkers(shellJs,[
-  'NEWS_REFRESH_MS = 10 * 60 * 1000','Dayton%20Ohio%20when%3A1d','ensureCanonicalSso()',
-  '/assets/sulandra-sso-session.js?v=20260806-sso-1','data-canonical-admin-sso','ensureModuleHosts()',"employee.id = 'module-employees'",
-  'ensurePlatformBar()','weather-mini-clock',"timeZone:'America/New_York'",
+  'ensureCanonicalSso()','/assets/sulandra-sso-session.js?v=20260806-sso-1','data-canonical-admin-sso',
+  'ensureModuleHosts()',"employee.id = 'module-employees'",'removeLegacyNavigationArtifacts()',
+  'weather-mini-clock',"timeZone:'America/New_York'","adminInformationArchitecture = 'canonical-folders-v1'",
 ],'Canonical Admin shell runtime');
 
-forbid(buildScript,["restore-modern-admin-portal.mjs","finalize-admin-fullscreen-layout.mjs","install-employee-management-frontend.mjs","admin-achieved-archive-fix.js?v=20260808-achieved-archive-1\"></script>","fix-admin-company-settings-backend.mjs"],'Static build');
+const folderStart = context.indexOf('folders: Object.freeze([');
+const lifecycleStart = context.indexOf('onboardingLifecycle:Object.freeze([');
+const folderRegistry = folderStart >= 0 && lifecycleStart > folderStart ? context.slice(folderStart,lifecycleStart) : '';
+for (const publicRoute of ['/careers.html','/applicant-portal.html','/offer-acceptance.html','/patient-portal.html','/service-request.html','/course-player.html','/employee-portal.html']) {
+  if (folderRegistry.includes(publicRoute)) failures.push(`Public/contextual workflow leaked into Admin folders: ${publicRoute}`);
+}
+for (const duplicate of [
+  ["'/home-health-referrals.html':'/home-health-referral-inbox.html'",'Home Health referrals alias'],
+  ["'/nmt-orders.html':'/nmt-order-inbox.html'",'NMT order alias'],
+  ["'/spire-demo.html':'/spire-training.html'",'SPIRE training alias'],
+  ["'/transportation.html':'/nmt-dispatch.html'",'Transportation alias'],
+  ["'/intranet.HTML':'/intranet.html'",'Intranet case alias'],
+]) if (!context.includes(duplicate[0])) failures.push(`Canonical Admin registry missing ${duplicate[1]}`);
+
+const routeMatches = [...folderRegistry.matchAll(/href:'(\/[^']+)'/g)].map(match => match[1]);
+for (const href of [...new Set(routeMatches)]) {
+  const pathname = href.split(/[?#]/,1)[0].replace(/^\//,'');
+  if (!pathname || !pathname.endsWith('.html')) continue;
+  try { await stat(path.join(root, pathname)); } catch { failures.push(`Admin registry route does not exist: ${href}`); }
+}
+
+forbid(buildScript,["restore-modern-admin-portal.mjs","finalize-admin-fullscreen-layout.mjs","install-employee-management-frontend.mjs","fix-admin-company-settings-backend.mjs"],'Static build');
 requireMarkers(buildScript,["await import('./verify-admin-canonical-source.mjs')","'assets/admin-shell.css'","'assets/admin-shell.js'",'Admin is deliberately not rewritten after publication'],'Static build');
 forbid(packageJson,['scripts/fix-admin-time-attendance-link.mjs','scripts/restore-modern-admin-portal.mjs','scripts/install-employee-management-frontend.mjs','scripts/finalize-admin-fullscreen-layout.mjs'],'package.json build pipeline');
 
@@ -60,4 +88,4 @@ for (const relative of ['assets/admin-shell.css','assets/admin-shell.js','assets
   try { await stat(path.join(dist, relative)); } catch { failures.push(`Canonical Admin publication missing ${relative}`); }
 }
 if (failures.length) { console.error('Canonical Admin source verification failed:\n- ' + failures.join('\n- ')); process.exit(1); }
-console.log('Canonical Admin source verified: one navigation registry owns top/left/company-specific/portal routes, modern shell and SSO are source-controlled, and generic/post-build publishers are forbidden from rewriting Admin.');
+console.log('Canonical Admin source verified: one eight-folder registry owns Admin navigation, the top bar is limited to global actions, Service Requests are separated from Hiring & Onboarding, and legacy overflow/drawer/Enterprise Apps navigation injection is disabled.');
