@@ -11,12 +11,17 @@
 
   document.title = 'Company Operations | Sulandra Health';
   document.body?.classList.add('sulandra-company-operations');
+  // The legacy sliding taskbar can leave one of these classes behind even after
+  // its toggle/scrim are removed. That translates the real eight-folder sidebar
+  // off screen while the canonical grid still reserves its first column.
+  document.body?.classList.remove('taskbar-open', 'taskbar-closed');
 
   const style = document.createElement('style');
   style.id = 'sulandraCompanyOperationsDesktopStyles';
   style.textContent = `
     body.sulandra-company-operations{background:#eef4f8}
     body.sulandra-company-operations .alert-bar{background:#123f62!important}
+    body.sulandra-company-operations .sidebar{transform:none!important;opacity:1!important;pointer-events:auto!important;visibility:visible!important}
     #module-dashboard[data-operations-desktop="true"]{display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
     .ops-hero{position:relative;overflow:hidden;border-radius:22px;padding:28px 30px;background:linear-gradient(135deg,#0c385d,#0b6997 58%,#118b9e);color:#fff;box-shadow:0 18px 42px rgba(13,56,93,.18)}
     .ops-hero:after{content:"";position:absolute;width:250px;height:250px;border:34px solid rgba(255,255,255,.07);border-radius:50%;right:-80px;top:-105px}.ops-eyebrow{font-size:11px;font-weight:950;letter-spacing:.11em;text-transform:uppercase;color:#bfeafb}.ops-hero h1{margin:5px 0 7px;color:#fff;font-size:clamp(28px,4vw,42px)}.ops-hero p{margin:0;max-width:780px;color:#e5f5fb;line-height:1.55}.ops-hero-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.ops-hero-actions a,.ops-hero-actions button{border:1px solid rgba(255,255,255,.28);border-radius:10px;background:rgba(255,255,255,.13);color:#fff;padding:9px 12px;text-decoration:none;font-weight:850;font-size:12px;cursor:pointer}.ops-hero-actions a:hover,.ops-hero-actions button:hover{background:rgba(255,255,255,.22)}
@@ -203,9 +208,10 @@
     const current = companyContext.current?.() || selection.current || selection.allowed[0];
     const alert = document.querySelector('.alert-bar');
     if (alert) alert.textContent = 'Company Operations — confidential. Authorized management staff only.';
+    // Render once after the authenticated company context is resolved. Actual
+    // company changes are handled by the event listener below; timed rewrites
+    // made the finished desktop visibly "load" two additional times.
     renderDashboard(context, current);
-    window.setTimeout(() => { constrainSelector(context); renderDashboard(context, companyContext.current?.() || current); }, 450);
-    window.setTimeout(() => { constrainSelector(context); renderDashboard(context, companyContext.current?.() || current); }, 1200);
   }
 
   window.addEventListener('sulandra:company-change', () => {
