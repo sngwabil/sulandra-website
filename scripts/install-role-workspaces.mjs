@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ROLE_WORKSPACE_VERSION = '20260815-role-workspaces-2';
 
 async function patch(relative, transform) {
   const target = path.join(root, relative);
@@ -59,18 +58,23 @@ await patch('admin-railway.js', (source) => {
 });
 
 await patch('assets/admin-company-context.js', (source) => {
-  if (source.includes("{key:'role-workspaces',label:'Role Workspaces'")) return source;
-  const anchor = "      {key:'company-files',label:'Company Files',sub:'Official Records',kind:'route',href:'/company-documents.html'},\n";
-  if (!source.includes(anchor)) throw new Error('Canonical Admin Company Files navigation anchor changed');
+  // The canonical Admin IA owns Role Workspaces inside System Administration.
+  // Older source layouts can still be upgraded, but canonical layouts must not
+  // receive a second top/side/drawer navigation injector.
+  if (source.includes("key:'role-workspaces'") && source.includes("href:'/role-workspaces.html'")) return source;
+  const legacyAnchor = "      {key:'company-files',label:'Company Files',sub:'Official Records',kind:'route',href:'/company-documents.html'},\n";
+  if (!source.includes(legacyAnchor)) throw new Error('Canonical Admin Role Workspaces registry entry is missing');
   const roleTab = "      {key:'role-workspaces',label:'Role Workspaces',sub:'Preview Role HTML',kind:'route',href:'/role-workspaces.html'},\n";
-  return source.replace(anchor, `${anchor}${roleTab}`);
+  return source.replace(legacyAnchor, `${legacyAnchor}${roleTab}`);
 });
 
 await patch('admin.html', (html) => {
+  // Remove the retired Role Workspaces navigation injector if an older build
+  // left it behind. The route is now rendered by the canonical Admin registry.
   html = html.replace(/\s*<script src="\/assets\/admin-role-workspaces-link\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
   const context = '<script src="/assets/admin-company-context.js?v=20260809-admin-company-context-2"></script>';
   if (!html.includes(context)) throw new Error('Canonical Admin company-context marker changed');
-  return html.replace(context, `${context}\n  <script src="/assets/admin-role-workspaces-link.js?v=${ROLE_WORKSPACE_VERSION}"></script>`);
+  return html;
 });
 
 await patch('tests/production-role-uat.spec.mjs', (source) => {
@@ -86,4 +90,4 @@ await patch('tests/production-role-uat.spec.mjs', (source) => {
   return source;
 });
 
-console.log('Role workspaces installed: every employee role has a dedicated HTML workspace, Home Manager gets a home-team tab, CEO/DOO use dedicated executive workspaces, DOO receives all separate administrative HTML except owner admin.html, and Owner Admin receives a Role Workspaces menu tab and directory.');
+console.log('Role workspaces installed: every employee role has a dedicated HTML workspace, Home Manager gets a home-team tab, CEO/DOO use dedicated executive workspaces, and Owner Admin exposes Role Workspaces only through the canonical System Administration registry.');
