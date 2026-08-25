@@ -3,6 +3,14 @@
 
   if (!/\/admin-operations\.html$/i.test(window.location.pathname)) return;
 
+  const OWNER_ONLY_RUNTIME_IDS = Object.freeze([
+    'canonical-admin-shell',
+    'canonical-admin-owner',
+    'canonical-admin-live-dashboard',
+    'canonical-admin-analog-clock',
+    'canonical-admin-dashboard-cleanup',
+  ]);
+
   function ensureCanonicalSso() {
     if (window.SulandraSSO || document.querySelector('script[data-canonical-admin-sso]')) return;
     const script = document.createElement('script');
@@ -10,6 +18,18 @@
     script.dataset.canonicalAdminSso = 'true';
     script.async = false;
     document.head.appendChild(script);
+  }
+
+  function suppressOwnerOnlyRuntimes() {
+    for (const id of OWNER_ONLY_RUNTIME_IDS) {
+      if (document.getElementById(id)) continue;
+      const sentinel = document.createElement('script');
+      sentinel.id = id;
+      sentinel.type = 'application/json';
+      sentinel.dataset.operationsSuppressedOwnerRuntime = 'true';
+      sentinel.textContent = '{}';
+      document.head.appendChild(sentinel);
+    }
   }
 
   function ensureModuleHosts() {
@@ -26,6 +46,7 @@
 
   function mount() {
     ensureCanonicalSso();
+    suppressOwnerOnlyRuntimes();
     ensureModuleHosts();
     document.documentElement.dataset.adminInformationArchitecture = 'company-operations-v1';
   }
