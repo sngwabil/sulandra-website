@@ -13,17 +13,18 @@ for (const file of [
   'services/home-health/index.html','services/transportation/index.html','services/respite-care/index.html',
   'services/rehab/index.html','services/behavioral-health/index.html','services/companion-care/index.html',
   'assets/client-service-request-app.js','assets/admin-client-service-requests.js',
-  'assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js','assets/admin-company-context.js',
+  'assets/public-consultation-service-request-bridge.js','assets/public-services-navigation.js',
+  'assets/admin-company-context.js','assets/admin-owner-context.js','assets/admin-operations-context.js',
 ]) {
   try { await stat(path.join(dist, file)); } catch { failures.push(`Missing published client intake/service file: ${file}`); }
 }
 
-const [route,clinical,migration,adminSource,publicFormSource,publicBridgeSource,installer,publicPage,canonicalContext] = await Promise.all([
+const [route,clinical,migration,adminSource,publicFormSource,publicBridgeSource,installer,publicPage,operationsContext,ownerContext,router] = await Promise.all([
   read('api/src/client-service-request-routes.ts'), read('api/src/clinical-routes.ts'),
   read('prisma/migrations/20260809180000_company_client_intake_boundaries/migration.sql'),
   read('assets/admin-client-service-requests.js'), read('assets/client-service-request-app.js'),
   read('assets/public-consultation-service-request-bridge.js'), read('scripts/install-client-service-request-frontend.mjs'),
-  read('service-request.html'), read('assets/admin-company-context.js'),
+  read('service-request.html'), read('assets/admin-operations-context.js'), read('assets/admin-owner-context.js'), read('assets/admin-company-context.js'),
 ]);
 
 for (const marker of [
@@ -54,10 +55,14 @@ expect(publicFormSource.includes("HOME_HEALTH:'HOME_HEALTH'"), 'Home Health inte
 expect(publicPage.includes('does not guarantee admission, approval, referral acceptance'), 'Public request page does not disclose prelaunch and availability boundaries');
 expect(publicPage.includes('Only an approved, operational company'), 'Public request page does not explain the formal-intake gate');
 expect(installer.includes('Admin service-request integration is canonical'), 'Client Service Request publisher still assumes post-build Admin injection');
-expect(canonicalContext.includes("'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'"), 'Canonical Admin bootstrap does not load Client Service Requests');
-expect(canonicalContext.includes("href:'/client-intake.html'"), 'Canonical Admin navigation does not expose Client Intake');
+expect(router.includes('admin-owner-context.js') && router.includes('admin-operations-context.js'), 'Admin context router does not preserve owner/Operations ownership');
+expect(operationsContext.includes("'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'"), 'Company Operations bootstrap does not load Client Service Requests');
+expect(operationsContext.includes("href:'/client-intake.html'"), 'Company Operations navigation does not expose Client Intake');
+// The parent command center is intentionally preserved; retaining its established
+// client-service runtime is acceptable while company-scoped work is owned by Operations.
+expect(ownerContext.includes("'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'"), 'Owner command center lost its established Client Service Requests runtime');
 
-for (const [name,source] of [['Admin client intake',adminSource],['Public service request',publicFormSource],['Homepage consultation bridge',publicBridgeSource],['Canonical Admin navigation',canonicalContext]]) {
+for (const [name,source] of [['Admin client intake',adminSource],['Public service request',publicFormSource],['Homepage consultation bridge',publicBridgeSource],['Operations Admin navigation',operationsContext],['Owner Admin navigation',ownerContext],['Admin context router',router]]) {
   try { new Function(source); } catch (error) { failures.push(`${name} JavaScript does not parse: ${error.message}`); }
 }
 
@@ -66,11 +71,17 @@ const linkMigration = await read('prisma/migrations/20260807030000_client_servic
 expect(originalMigration.includes('ClientServiceRequest'), 'Controlled ClientServiceRequest migration is missing');
 for (const marker of ['intakeImportId','clientId']) expect(linkMigration.includes(marker), `Missing permanent client intake link column: ${marker}`);
 try {
-  const admin = await readFile(path.join(dist,'admin.html'),'utf8');
-  const context = await readFile(path.join(dist,'assets/admin-company-context.js'),'utf8');
-  expect(admin.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'), 'Admin does not load the canonical bootstrap');
-  expect(context.includes("'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'"), 'Published canonical Admin bootstrap does not load Client Service Requests');
-  expect(!admin.includes('/assets/admin-client-service-requests.js?v=20260809-company-intake-3'), 'Admin still directly injects Client Service Requests instead of canonical ownership');
+  const owner = await readFile(path.join(dist,'admin.html'),'utf8');
+  const operations = await readFile(path.join(dist,'admin-operations.html'),'utf8');
+  const publishedRouter = await readFile(path.join(dist,'assets/admin-company-context.js'),'utf8');
+  const publishedOwnerContext = await readFile(path.join(dist,'assets/admin-owner-context.js'),'utf8');
+  const publishedOperationsContext = await readFile(path.join(dist,'assets/admin-operations-context.js'),'utf8');
+  expect(owner.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'), 'Owner Admin does not load the canonical context router');
+  expect(operations.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'), 'Company Operations does not load the canonical context router');
+  expect(publishedRouter.includes('admin-owner-context.js') && publishedRouter.includes('admin-operations-context.js'), 'Published Admin context router does not split owner and Operations');
+  expect(publishedOperationsContext.includes("'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'"), 'Published Company Operations bootstrap does not load Client Service Requests');
+  expect(publishedOwnerContext.includes("'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'"), 'Published owner context lost its established Client Service Requests runtime');
+  expect(!operations.includes('/assets/admin-client-service-requests.js?v=20260809-company-intake-3'), 'Operations HTML directly injects Client Service Requests instead of canonical bootstrap ownership');
 } catch {}
 try {
   const index = await readFile(path.join(dist,'index.html'),'utf8');
@@ -93,4 +104,4 @@ if (failures.length) {
   console.error(`Company Client Service Request verification failed:\n- ${failures.join('\n- ')}`);
   process.exit(1);
 }
-console.log('Company Client Service Requests verified: public routing, canonical Admin loading, selected-company scope, approval-gated transfer, and legal-entity SPIRE intake linkage are connected.');
+console.log('Company Client Service Requests verified: public routing, owner/Operations bootstrap ownership, selected-company scope, approval-gated transfer, and legal-entity SPIRE intake linkage are connected.');
