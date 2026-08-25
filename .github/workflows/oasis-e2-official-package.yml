@@ -1,0 +1,50 @@
+name: Acquire official OASIS-E2 package
+
+on:
+  push:
+    branches:
+      - agent/oasis-e2-iqies
+    paths:
+      - scripts/fetch-official-oasis-e2-package.mjs
+      - .github/workflows/oasis-e2-official-package.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    name: Fetch and fingerprint CMS OASIS-E2 3.02.0
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch official CMS package
+        run: node scripts/fetch-official-oasis-e2-package.mjs artifacts/oasis-e2-official
+
+      - name: Verify ZIP integrity and capture manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          zipfile=artifacts/oasis-e2-official/oasis-e2-data-specs-v3.02.0-final.zip
+          unzip -t "$zipfile"
+          unzip -Z1 "$zipfile" | tee artifacts/oasis-e2-official/top-level-manifest.txt
+          mkdir -p artifacts/oasis-e2-official/extracted
+          unzip -q "$zipfile" -d artifacts/oasis-e2-official/extracted
+          find artifacts/oasis-e2-official/extracted -type f -printf '%P\n' | sort | tee artifacts/oasis-e2-official/recursive-manifest.txt
+          find artifacts/oasis-e2-official/extracted -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/oasis-e2-official/extracted-sha256.txt
+
+      - name: Upload verified CMS package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cms-oasis-e2-v3.02.0-final
+          path: artifacts/oasis-e2-official
+          if-no-files-found: error
+          retention-days: 7
