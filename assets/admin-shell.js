@@ -51,10 +51,25 @@
     document.querySelectorAll('.taskbar-toggle,.taskbar-scrim,.edge-toggle,.edge-drawer').forEach(node => node.remove());
   }
 
+  function installDelegatedModuleNavigation() {
+    if (document.documentElement.dataset.adminModuleDelegation === 'true') return;
+    document.documentElement.dataset.adminModuleDelegation = 'true';
+    document.addEventListener('click', event => {
+      const control = event.target?.closest?.('#topModuleNav [data-module], #sideModuleNav [data-module]');
+      if (!control) return;
+      const key = control.dataset.module;
+      if (!key) return;
+      event.preventDefault();
+      if (location.hash.slice(1) === key) window.dispatchEvent(new Event('hashchange'));
+      else location.hash = key;
+    });
+  }
+
   function mount() {
     ensureCanonicalSso();
     ensureModuleHosts();
     removeLegacyNavigationArtifacts();
+    installDelegatedModuleNavigation();
     updateWeatherClock();
     window.setTimeout(updateWeatherClock, 250);
     window.setTimeout(updateWeatherClock, 900);
