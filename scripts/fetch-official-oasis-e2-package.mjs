@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const PAGE_URL='https://www.cms.gov/medicare/quality/home-health/data-specifications';
 const EXPECTED_LABEL='OASIS E2 Data Specs (V3.02.0) FINAL';
+const EXPECTED_SHA256='b848a1f33efb77406124f02bfd50dbb48c6efb841c4e4bf3c68719c1e8d9f6ca';
 const outputDirectory=path.resolve(process.argv[2]||'artifacts/oasis-e2-official');
 
 function textOfAnchor(value){
@@ -35,9 +36,7 @@ for(const match of html.matchAll(/<a\b[^>]*href=(?:"([^"]+)"|'([^']+)')[^>]*>([\
   anchors.push({href:decodeHref(match[1]||match[2]||''),label:textOfAnchor(match[3]||'')});
 }
 let target=anchors.find((anchor)=>anchor.label.toLowerCase().includes(EXPECTED_LABEL.toLowerCase()));
-if(!target){
-  target=anchors.find((anchor)=>/oasis/i.test(anchor.href)&&/(3[._-]?02|3020)/i.test(anchor.href)&&/zip/i.test(anchor.href));
-}
+if(!target)target=anchors.find((anchor)=>/oasis/i.test(anchor.href)&&/(3[._-]?02|3020)/i.test(anchor.href)&&/zip/i.test(anchor.href));
 if(!target)throw new Error(`Could not locate the ${EXPECTED_LABEL} download on the current CMS page`);
 const packageUrl=new URL(target.href,PAGE_URL).href;
 if(new URL(packageUrl).hostname!=='www.cms.gov')throw new Error(`Resolved OASIS package is not hosted on www.cms.gov: ${packageUrl}`);
@@ -49,19 +48,13 @@ if(new URL(finalUrl).hostname!=='www.cms.gov')throw new Error(`CMS package redir
 const bytes=Buffer.from(await packageResponse.arrayBuffer());
 if(bytes.length<4||bytes[0]!==0x50||bytes[1]!==0x4b)throw new Error(`Downloaded CMS resource is not a ZIP archive; content-type=${packageResponse.headers.get('content-type')||'unknown'}`);
 const sha256=createHash('sha256').update(bytes).digest('hex');
+if(sha256!==EXPECTED_SHA256)throw new Error(`CMS OASIS-E2 package fingerprint changed. Expected ${EXPECTED_SHA256}; received ${sha256}. Review the new CMS publication before changing the pinned fingerprint.`);
 const packagePath=path.join(outputDirectory,'oasis-e2-data-specs-v3.02.0-final.zip');
 await writeFile(packagePath,bytes);
 const metadata={
-  authority:'Centers for Medicare & Medicaid Services (CMS)',
-  landingPage:PAGE_URL,
-  expectedLabel:EXPECTED_LABEL,
-  resolvedLabel:target.label,
-  sourceUrl:packageUrl,
-  finalUrl,
-  fetchedAt:new Date().toISOString(),
-  contentType:packageResponse.headers.get('content-type')||null,
-  contentLength:bytes.length,
-  sha256,
+  authority:'Centers for Medicare & Medicaid Services (CMS)',landingPage:PAGE_URL,expectedLabel:EXPECTED_LABEL,resolvedLabel:target.label,
+  sourceUrl:packageUrl,finalUrl,fetchedAt:new Date().toISOString(),contentType:packageResponse.headers.get('content-type')||null,
+  contentLength:bytes.length,sha256,verifiedAgainstPinnedSha256:true,
 };
 await writeFile(path.join(outputDirectory,'package-metadata.json'),JSON.stringify(metadata,null,2)+'\n','utf8');
 console.log(JSON.stringify(metadata,null,2));
