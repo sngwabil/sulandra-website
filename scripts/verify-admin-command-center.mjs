@@ -10,35 +10,56 @@ async function mustRead(relative) {
   catch { failures.push(`Missing published file: ${relative}`); return ''; }
 }
 
-const [adminHtml,adminJs,contextJs,shellJs,shellCss,liveJs,enterpriseAppsJs,companySettingsJs,analogClockJs,homesJs,cleanupJs,schedulingHtml,schedulingJs,timeAttendanceHtml] = await Promise.all([
+const [adminHtml,adminJs,contextJs,shellJs,shellCss,liveJs,companySettingsJs,analogClockJs,homesJs,cleanupJs,schedulingHtml,schedulingJs,timeAttendanceHtml] = await Promise.all([
   mustRead('admin.html'), mustRead('admin-railway.js'), mustRead('assets/admin-company-context.js'),
   mustRead('assets/admin-shell.js'), mustRead('assets/admin-shell.css'), mustRead('assets/admin-live-dashboard.js'),
-  mustRead('assets/admin-enterprise-apps-launcher.js'), mustRead('assets/admin-company-settings.js'),
-  mustRead('assets/admin-analog-clock.js'), mustRead('assets/admin-service-home-management-v2.js'),
-  mustRead('assets/admin-dashboard-cleanup.js'), mustRead('scheduling.html'),
-  mustRead('assets/time-attendance-location-scheduler.js'), mustRead('time-attendance.html'),
+  mustRead('assets/admin-company-settings.js'), mustRead('assets/admin-analog-clock.js'),
+  mustRead('assets/admin-service-home-management-v2.js'), mustRead('assets/admin-dashboard-cleanup.js'),
+  mustRead('scheduling.html'), mustRead('assets/time-attendance-location-scheduler.js'), mustRead('time-attendance.html'),
 ]);
 
 if (!adminHtml.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2')) failures.push('Admin page is not loading the canonical company/navigation bootstrap');
 for (const marker of [
-  "'/assets/admin-shell.js?v=20260810-canonical-admin-1'",
+  "'/assets/admin-shell.js?v=20260825-admin-ia-1'",
   "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'",
-  "'/assets/admin-enterprise-apps-launcher.js?v=20260810-enterprise-apps-1'",
   "'/assets/admin-company-settings.js?v=20260810-company-settings-backend-1'",
   "'/assets/admin-analog-clock.js?v=20260808-analog-wall-clock-v1'",
   "'/assets/admin-service-home-management-v2.js?v=20260809-service-home-entity-5'",
   "'/assets/admin-dashboard-cleanup.js?v=20260808-dashboard-cleanup-v1'",
+  "'/assets/admin-client-service-requests.js?v=20260809-company-intake-3'",
 ]) if (!contextJs.includes(marker)) failures.push(`Canonical Admin bootstrap is not loading ${marker}`);
-if (contextJs.includes('admin-platform-routing.js')) failures.push('Legacy Admin route patcher is still part of the canonical runtime');
+
+for (const forbidden of ['admin-enterprise-apps-launcher.js','admin-navigation-overflow.js','NAVIGATION.primary','NAVIGATION.leftOnly']) {
+  if (contextJs.includes(forbidden)) failures.push(`Canonical Admin bootstrap still contains overlapping navigation layer: ${forbidden}`);
+}
+for (const forbidden of ['ensureNavigationOverflow','ensurePlatformBar','NEWS_REFRESH_MS','sulandraNewsTrack']) {
+  if (shellJs.includes(forbidden)) failures.push(`Canonical Admin shell still creates a second top/overflow navigation layer: ${forbidden}`);
+}
 
 for (const marker of [
-  'html,body{width:100%!important', 'max-width:none!important', 'min-width:0!important', 'overflow-x:hidden!important',
-  '.sulandra-platform-bar', '@keyframes sulandraNewsTicker', '@keyframes sulandraLiveBlink',
-  'body .edge-toggle{width:24px!important;height:104px!important',
+  'topActions: Object.freeze([','folders: Object.freeze([',
+  "label:'Company Management'","label:'People & HR'","label:'Clients & SPIRE'","label:'Service Operations'",
+  "label:'Billing & Revenue'","label:'Compliance & Quality'","label:'Communications & Learning'","label:'System Administration'",
+  'adminGlobalToolSearch','admin-nav-folder','data-company-modules',
+  "key:'onboarding',label:'Hiring & Onboarding'","key:'service-requests',label:'Service Requests'",
+  "key:'admin-users',label:'Admin Users'","key:'role-workspaces',label:'Roles, Permissions & Workspaces'",
+  "serviceModule.id = 'module-service-requests'",'onboardingLifecycle:Object.freeze([',
+]) if (!contextJs.includes(marker)) failures.push(`Admin information architecture is missing ${marker}`);
+
+for (const stage of ['Overview','Job Openings','Applicants','Screening','Interviews','Offers','Pre-employment','New-hire Paperwork','Orientation','Employee Activation','Archive']) {
+  if (!contextJs.includes(`label:'${stage}'`)) failures.push(`Hiring & Onboarding lifecycle is missing ${stage}`);
+}
+const lifecycleStart = contextJs.indexOf('onboardingLifecycle:Object.freeze([');
+const lifecycleEnd = contextJs.indexOf('contextual:Object.freeze([');
+const lifecycle = lifecycleStart >= 0 && lifecycleEnd > lifecycleStart ? contextJs.slice(lifecycleStart,lifecycleEnd) : '';
+if (lifecycle.includes('Service Requests')) failures.push('Service Requests is still nested inside Hiring & Onboarding');
+
+for (const marker of [
+  'html,body{width:100%!important','max-width:none!important','min-width:0!important','overflow-x:hidden!important',
 ]) if (!shellCss.includes(marker)) failures.push(`Canonical Admin shell CSS is missing ${marker}`);
 for (const marker of [
-  'NEWS_REFRESH_MS = 10 * 60 * 1000', 'Dayton%20Ohio%20when%3A1d', 'sulandraNewsTrack',
-  'weather-mini-clock', "timeZone:'America/New_York'", 'ensureModuleHosts()', "employee.id = 'module-employees'",
+  'ensureCanonicalSso()','removeLegacyNavigationArtifacts()','weather-mini-clock',"timeZone:'America/New_York'",
+  "adminInformationArchitecture = 'canonical-folders-v1'",
 ]) if (!shellJs.includes(marker)) failures.push(`Canonical Admin shell runtime is missing ${marker}`);
 
 if (!adminJs.includes('sulandra:admin:active-module')) failures.push('Admin module persistence key is missing');
@@ -54,29 +75,17 @@ for (const marker of [
 
 for (const marker of [
   'Sulandra Health Command Center', 'api.open-meteo.com', '/api/admin/dashboard',
-  'edge-toggle', 'edge-drawer left', 'edge-drawer right', "id:'weather'", "id:'people'", "type:'clock'",
-  "type:'appointments'", "type:'reminders'", "type:'alarms'", 'card-drag-handle', 'pointerdown', 'contextmenu',
-  'Edit Dashboard Widget', 'dashboard-slide', 'dashboardPageDots', 'ACTIVE_MODULE_KEY', 'hashchange',
+  "id:'weather'", "id:'people'", "type:'clock'", "type:'appointments'", "type:'reminders'", "type:'alarms'",
+  'card-drag-handle', 'pointerdown', 'contextmenu', 'Edit Dashboard Widget', 'dashboard-slide', 'dashboardPageDots',
+  'ACTIVE_MODULE_KEY', 'hashchange',
 ]) if (!liveJs.includes(marker)) failures.push(`Live command center is missing required capability: ${marker}`);
 for (const marker of ['wall-clock-face','wall-clock-hour','wall-clock-minute','wall-clock-second','data-sulandra-analog-clock','setInterval(tick, 1000)',"const TIME_ZONE = 'America/New_York'"]) {
   if (!analogClockJs.includes(marker)) failures.push(`Analog wall clock runtime is missing ${marker}`);
 }
-for (const marker of ['Enterprise Apps','enterprise-apps.html']) if (!enterpriseAppsJs.includes(marker)) failures.push(`Enterprise Apps launcher is missing ${marker}`);
 for (const marker of ['/api/admin/service-homes','/api/admin/service-homes/directory/employees','/api/admin/service-homes/directory/clients','Create Service Home','Open Schedule']) {
   if (!homesJs.includes(marker)) failures.push(`Service Homes live manager is missing capability: ${marker}`);
 }
 for (const marker of ['sulandraOwnerConsoleButton','/^[123]\\s*\\/\\s*3$/']) if (!cleanupJs.includes(marker)) failures.push(`Admin cleanup is missing ${marker}`);
-
-for (const [key,target] of Object.entries({
-  scheduling:'/scheduling.html', time:'/time-attendance.html#admin', documents:'/employee360.html#files', reports:'/employee360.html#audit', spire:'/spire-admin.html',
-})) {
-  if (!contextJs.includes(`key:'${key}'`) || !contextJs.includes(`href:'${target}'`)) failures.push(`Canonical Admin navigation missing ${key} -> ${target}`);
-}
-for (const marker of ["href:'/client-intake.html'","href:'/company-documents.html'","href:'/spire-training.html'","href:'/workforce-admin.html'","href:'/intranet-control.html'"]) {
-  if (!contextJs.includes(marker)) failures.push(`Canonical Admin extended navigation is missing ${marker}`);
-}
-if (!contextJs.includes('window.SulandraAdminNavigation')) failures.push('Canonical Admin navigation registry is not exposed for shared drawer/runtime use');
-if (!contextJs.includes('renderRightDrawer')) failures.push('Platform portal drawer is not rendered from the canonical navigation registry');
 
 for (const marker of [
   '<title>Sulandra Health | Scheduling</title>', 'Workforce Schedule Control', 'id="schedulerHost"',
@@ -93,4 +102,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified from canonical sources: one navigation registry, full-viewport shell, live dashboard, backend Company Settings, Enterprise Apps, analog clock, live Service Homes, dedicated Scheduling, separate Time & Attendance, Employee 360, SPIRE and company-scoped workspaces are published.');
+console.log('Admin command center verified: one eight-folder Admin shell preserves the live dashboard and company settings while overflow, drawer and Enterprise Apps navigation injection remain disabled.');
