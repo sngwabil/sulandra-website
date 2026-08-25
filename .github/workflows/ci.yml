@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - release/sulandra-1.0
+      - release/sulandra-1.1
       - sulandra-1.1
       - feature/spire-ehr-platform
       - feature/spire-1.1
   pull_request:
     branches:
       - main
+      - release/sulandra-1.1
       - sulandra-1.1
       - feature/spire-ehr-platform
       - feature/spire-1.1
