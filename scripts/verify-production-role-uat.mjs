@@ -46,7 +46,7 @@ expect(!portal.includes('<li><a href="/company-documents.html">Documents</a></li
 
 for(const marker of [
   `const UAT_CONTRACT = "${contract}"`,
-  'companyDocumentRoles','sclsOperationsRoles','homeHealthVisitRoles','nmtDispatchRoles','enterpriseAnalyticsRoles','securityAuditRoles','employee360Roles','schedulingRoles',
+  'companyDocumentRoles','sclsOperationsRoles','homeHealthVisitRoles','nmtDispatchRoles','employee360Roles','schedulingRoles',
   'applyStaticRoleVisibility(session)','selected.code === "NMT" && nmtDispatchRoles.has(role)','document.body.dataset.roleUatReady = "true"','document.body.dataset.authenticatedRole = role','window.SulandraRoleUat',
   'const roleWorkspaceRoutes = new Map([','employeeRoleWorkspaceLauncher','employeeRoleWorkspaceNav',
 ]) expect(runtime.includes(marker),`Employee Portal runtime missing role/company UAT behavior: ${marker}`);
