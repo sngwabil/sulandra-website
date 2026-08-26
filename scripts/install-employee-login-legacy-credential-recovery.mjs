@@ -191,7 +191,8 @@ const oldEmployeeEmailBoundary = `    if (requestedPortal === 'EMPLOYEE' && iden
       res.status(400).json({ error: 'Employee Portal requires your assigned employee username, not an email address' });
       return;
     }`;
-const managementEmployeeEmailBoundary = `    if (requestedPortal === 'EMPLOYEE' && identifier.includes('@') && !identifier.endsWith('@sulandrahealth.com')) {
+const managementEmployeeEmailBoundary = `    // SULANDRA_MANAGEMENT_EMPLOYEE_LOGIN_V1
+    if (requestedPortal === 'EMPLOYEE' && identifier.includes('@') && !identifier.endsWith('@sulandrahealth.com')) {
       res.status(400).json({ error: 'Management Employee Portal sign-in requires a @sulandrahealth.com work email' });
       return;
     }`;
