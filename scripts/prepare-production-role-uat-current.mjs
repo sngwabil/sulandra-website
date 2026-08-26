@@ -84,19 +84,24 @@ else if(source.includes(schedulerPrevious))source=source.replace(schedulerPrevio
 else if(source.includes(schedulerPrior))source=source.replace(schedulerPrior,schedulerNew);
 else if(!source.includes(schedulerNew))throw new Error('Production Role UAT scheduler anchor missing');
 
+// Management users now remain in Employee Portal and receive an explicit Admin
+// Sign In door. Older UAT revisions included an executive-only /spire-admin.html
+// launcher branch; normalize it when present, but do not require or recreate it.
 const executiveNew="else if(p.executive){const link=await visibleControl(page,'a[href=\"/spire-admin.html\"]');await link.click();await expect(page).toHaveURL(/\\/spire-admin\\.html$/);await expect(page).toHaveTitle(/SPIRE/i);}";
 if(!source.includes(executiveNew)){
   const executiveSearchStart=source.indexOf("else if(key==='auditor')");
-  const executiveStart=source.indexOf('else if(p.executive){',executiveSearchStart);
-  const executiveEnd=source.indexOf('\n  expect(mutations,',executiveStart);
-  if(executiveSearchStart<0||executiveStart<0||executiveEnd<0)throw new Error('Production Role UAT executive SPIRE launcher anchor missing');
-  source=source.slice(0,executiveStart)+executiveNew+source.slice(executiveEnd);
+  const executiveStart=source.indexOf('else if(p.executive){',Math.max(0,executiveSearchStart));
+  if(executiveStart>=0){
+    const executiveEnd=source.indexOf('\n  expect(mutations,',executiveStart);
+    if(executiveEnd<0)throw new Error('Production Role UAT executive SPIRE launcher end anchor missing');
+    source=source.slice(0,executiveStart)+executiveNew+source.slice(executiveEnd);
+  }
 }
 
 const mobileAdminOld="['Administrator',PERSONAS.administrator,'#topModuleNav a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
 const mobileAdminNew="['Administrator',PERSONAS.administrator,'a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
 if(source.includes(mobileAdminOld))source=source.replace(mobileAdminOld,mobileAdminNew);
-else if(!source.includes(mobileAdminNew))throw new Error('Production Role UAT mobile Administrator launcher anchor missing');
+else if(source.includes(mobileAdminNew)){}
 
 await writeFile(target,source,'utf8');
-console.log('Prepared Production Role UAT for actionable launch controls, authenticated SPIRE Client Station routing, current scheduling title, and duplicate-safe executive Administrator navigation.');
+console.log('Prepared Production Role UAT for actionable launch controls, authenticated SPIRE Client Station routing, current scheduling title, and the current separate Admin-sign-in boundary without requiring an obsolete executive SPIRE launcher.');
