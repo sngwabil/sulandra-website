@@ -4,6 +4,11 @@ WORKDIR /app
 
 COPY . .
 
+# Apply the Admin authentication/bootstrap performance patch before the
+# authoritative static publication chain runs. The optimizer is idempotent and
+# keeps the canonical Admin source as the publication input.
+RUN node scripts/optimize-admin-login-performance.mjs
+
 # DEVELOPMENT_WORKFLOW.md defines npm run build:web as the authoritative
 # Sulandra Static Website build. Running build-static-site.mjs directly skipped
 # the pre/post integration chain and silently published placeholder/legacy pages.
