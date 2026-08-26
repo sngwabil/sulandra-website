@@ -230,7 +230,7 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
         return void res.status(503).json({ error: 'SIA AI service is not configured yet. Sulandra Networks has been notified.' });
       }
 
-      let conversationId = input.conversationId || randomUUID();
+      const conversationId = input.conversationId || randomUUID();
       let conversation = input.conversationId ? await ownedConversation(auth, input.conversationId) : null;
       if (input.conversationId && !conversation) return void res.status(404).json({ error: 'SIA conversation was not found' });
       if (!conversation) {
@@ -259,7 +259,7 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 45_000);
-      let openAIResponse: Response;
+      let openAIResponse: Awaited<ReturnType<typeof fetch>>;
       try {
         openAIResponse = await fetch('https://api.openai.com/v1/responses', {
           method: 'POST',
