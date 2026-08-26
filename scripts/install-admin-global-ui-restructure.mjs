@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const retiredRuntime = '/assets/admin-global-ui-restructure.js?v=20260822-global-admin-ui-1';
+const globalSiaCss = '<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260826-global-copilot-1" data-sia-global-copilot="20260826-global-copilot-1" />';
+const globalSiaScript = '<script src="/assets/sia-copilot.js?v=20260826-global-copilot-1" defer data-sia-global-copilot="20260826-global-copilot-1"></script>';
+const stripGlobalSiaCopilot = (source) => String(source || '').replace(`${globalSiaCss}\n`, '').replace(`${globalSiaScript}\n`, '');
 const folderKeys = [
   'company-management','people-hr','clients-spire','service-operations',
   'billing-revenue','compliance-quality','communications-learning','system-administration',
@@ -80,6 +83,9 @@ if (!adminLogin.includes('/admin-login-railway.js') || !adminLogin.includes('/em
 
 const sourceAdmin = await readFile(path.join(root, 'admin.html'), 'utf8');
 const publishedAdmin = await readFile(path.join(dist, 'admin.html'), 'utf8');
-if (sourceAdmin !== publishedAdmin) throw new Error('Owner admin.html must publish unchanged from canonical source');
+// The only allowed publication difference is the globally shared Ask SIA shell.
+// Strip exactly those two known tags; every other byte must remain canonical.
+if (sourceAdmin !== stripGlobalSiaCopilot(publishedAdmin)) throw new Error('Owner admin.html must publish unchanged from canonical source except for the shared Ask SIA copilot shell');
+if (!publishedAdmin.includes(globalSiaCss) || !publishedAdmin.includes(globalSiaScript)) throw new Error('Owner admin.html is missing the shared Ask SIA copilot shell');
 
-console.log(`Sulandra Admin split verified: admin.html remains the owner command center; admin-operations.html owns the eight-folder company Operations desktop; all ${registryRouteFiles.length} registered HTML destinations plus ${operationsLandingFiles.length} dashboard workspace landings exist in source and published output; same-origin new tabs inherit the secure tab-only session before navigation; Admin login remains a dedicated Sulandra-email authentication door with Employee Portal offered only as an independent new-tab entry; the left folder rail and right workspace scroll independently; and the Operations cards retain real SVG icons with larger consistent typography.`);
+console.log(`Sulandra Admin split verified: admin.html remains the owner command center; admin-operations.html owns the eight-folder company Operations desktop; all ${registryRouteFiles.length} registered HTML destinations plus ${operationsLandingFiles.length} dashboard workspace landings exist in source and published output; same-origin new tabs inherit the secure tab-only session before navigation; Admin login remains a dedicated Sulandra-email authentication door with Employee Portal offered only as an independent new-tab entry; the left folder rail and right workspace scroll independently; the Operations cards retain real SVG icons with larger consistent typography; and the shared Ask SIA copilot shell is the only allowed cross-platform publication layer.`);
