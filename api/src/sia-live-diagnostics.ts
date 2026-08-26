@@ -61,8 +61,13 @@ const TARGETS: SiaDiagnosticTarget[] = [
 ];
 
 const loadingPattern = /\b(stuck|loading|load(?:ing)? forever|spinn(?:ing|er)|blank|black(?:ed)?|black screen|white screen|frozen|freeze|not rendering|won't load|doesn't load|does not load|hang(?:ing|s)?)\b/i;
-
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const normalize = (value: string) => value.toLowerCase().replace(/https?:\/\/[^/\s]+/g, '').replace(/[?#][^\s]*/g, '').replace(/\s+/g, ' ').trim();
+const aliasMatches = (text: string, alias: string) => {
+  const normalizedAlias = alias.toLowerCase();
+  if (normalizedAlias.includes(' ') || normalizedAlias.includes('.') || normalizedAlias.includes('-')) return text.includes(normalizedAlias);
+  return new RegExp(`\\b${escapeRegex(normalizedAlias)}\\b`, 'i').test(text);
+};
 
 export const isPageLoadingIntent = (message: string, history: SiaMessageLike[] = []) => {
   if (loadingPattern.test(message)) return true;
@@ -74,7 +79,7 @@ export const detectSiaDiagnosticTarget = (message: string, history: SiaMessageLi
   for (const candidate of candidates) {
     const text = normalize(candidate);
     for (const target of TARGETS) {
-      if (text.includes(target.route.toLowerCase()) || target.aliases.some((alias) => text.includes(alias))) return target;
+      if (text.includes(target.route.toLowerCase()) || target.aliases.some((alias) => aliasMatches(text, alias))) return target;
     }
   }
   return null;
