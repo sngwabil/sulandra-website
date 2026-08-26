@@ -90,4 +90,5 @@ siaRoutes = siaRoutes.replace(
 await writeFile(siaRoutesTarget, siaRoutes, 'utf8');
 
 await import('./verify-sia-system-map.mjs');
+await import('./verify-sia-guided-diagnostics.mjs');
 console.log('SIA routes registered with affected-page clarification, screenshot-aware guided troubleshooting, GitHub release/CI evidence, and Railway-backed live service probes.');
