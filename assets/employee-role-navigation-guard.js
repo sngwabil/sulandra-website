@@ -120,7 +120,8 @@
     adminRoles: [...managementAdminRoles],
     crossWorkspaceNewTab: true,
     schedulingStyleTaskbar: true,
+    schedulingStyleContract: '20260826-scheduling-header-1',
     loadingWatchdogMs: 8000,
-    contract: '20260826-scheduling-header-1',
+    contract: '20260825-portal-separation-3',
   });
 })();
