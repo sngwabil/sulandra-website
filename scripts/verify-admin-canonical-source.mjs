@@ -4,13 +4,21 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
+
+// Guarantee the shared assistant shell is the final cross-platform publication
+// layer even when this verifier is run independently from the full web build.
+// The installer is idempotent and verifies every published HTML destination.
+await import('./install-global-sia-copilot.mjs');
+
 const failures = [];
 const read = async (base, relative) => { try { return await readFile(path.join(base, relative), 'utf8'); } catch { failures.push(`Missing ${path.relative(root, base) || 'source'} file: ${relative}`); return ''; } };
 const requireMarkers = (source, markers, label) => { for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`); };
 const forbid = (source, markers, label) => { for (const marker of markers) if (source.includes(marker)) failures.push(`${label} still references ${marker}`); };
+const globalSiaCss = '<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260826-global-copilot-1" data-sia-global-copilot="20260826-global-copilot-1" />';
+const globalSiaScript = '<script src="/assets/sia-copilot.js?v=20260826-global-copilot-1" defer data-sia-global-copilot="20260826-global-copilot-1"></script>';
 const stripGlobalSiaCopilot = (source) => String(source || '')
-  .replace(/\s*<link[^>]+href=["']\/assets\/sia-copilot\.css(?:\?v=[^"']*)?["'][^>]*data-sia-global-copilot=["'][^"']+["'][^>]*\/?>(?:\s*)/gi, '\n')
-  .replace(/\s*<script[^>]+src=["']\/assets\/sia-copilot\.js(?:\?v=[^"']*)?["'][^>]*data-sia-global-copilot=["'][^"']+["'][^>]*><\/script>(?:\s*)/gi, '\n');
+  .replace(`${globalSiaCss}\n`, '')
+  .replace(`${globalSiaScript}\n`, '');
 
 const [ownerSource,ownerPublished,operationsSource,operationsPublished,router,ownerContext,operationsContext,ownerConsole,operationsDesktop] = await Promise.all([
   read(root,'admin.html'),read(dist,'admin.html'),read(root,'admin-operations.html'),read(dist,'admin-operations.html'),
@@ -19,9 +27,9 @@ const [ownerSource,ownerPublished,operationsSource,operationsPublished,router,ow
 ]);
 
 // The global Ask SIA drawer is a deliberately shared publication shell added to
-// every HTML destination after canonical files are copied. Remove only those two
-// known tags before byte-for-byte Admin comparison; any other publication drift
-// still fails this verifier.
+// every HTML destination after canonical files are copied. Remove exactly those
+// two known tags before byte-for-byte Admin comparison; any other publication
+// drift still fails this verifier.
 if (ownerSource !== stripGlobalSiaCopilot(ownerPublished)) failures.push('Owner admin.html drifted from canonical source beyond the shared Ask SIA copilot shell');
 if (operationsSource !== stripGlobalSiaCopilot(operationsPublished)) failures.push('admin-operations.html drifted from canonical source beyond the shared Ask SIA copilot shell');
 for (const [label,source] of [['Admin context router',router],['Owner context',ownerContext],['Operations context',operationsContext],['Owner boundary',ownerConsole],['Operations desktop',operationsDesktop]]) {
