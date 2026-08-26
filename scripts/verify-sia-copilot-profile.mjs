@@ -9,6 +9,7 @@ const bootstrap=await readFile(path.join(root,'api','src','onboarding-bootstrap.
 
 for(const marker of [
   'SIAEmployeeProfile','/api/sia/profile','/api/sia/profile/context','ensureSIACopilotProfile','serializeSIACopilotProfile',
+  'serverConfirmedSIACopilotProfileVersion','serverConfirmedSIACopilotDisplayName','serverConfirmedSIACopilotResponseStyle',
   'rememberRecentApps','proactiveHints','responseStyle','identitySnapshot','recentContext',
 ])if(!profile.includes(marker))throw new Error(`SIA copilot profile module missing ${marker}`);
 
@@ -16,7 +17,8 @@ for(const marker of [
   "import { ensureSIACopilotProfile, serializeSIACopilotProfile } from './sia-copilot-profile.js';",
   'const copilotProfile = await ensureSIACopilotProfile',
   'serializeSIACopilotProfile(copilotProfile)',
-  'serverConfirmedSIACopilotProfile',
+  'serverConfirmedSIACopilot* fields come from',
+  'copilotProfileId: copilotProfile.id',
 ])if(!routes.includes(marker))throw new Error(`SIA chat is not grounded on employee copilot profiles: missing ${marker}`);
 
 for(const marker of [
