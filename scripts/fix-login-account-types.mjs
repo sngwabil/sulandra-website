@@ -34,6 +34,11 @@ source = source.replace(
 );
 
 source = source.replace(
+  'const resolveLegacyPortalAccount = async (identifier: string): Promise<LoginAccount | null> => {',
+  'const resolveLegacyPortalAccount = async (identifier: string): Promise<PortalLoginAccount | null> => {',
+);
+
+source = source.replace(
   `  } as LoginAccount & {
     passwordHash: string | null;
     failedLoginAttempts: number;
