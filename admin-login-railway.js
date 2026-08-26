@@ -19,6 +19,7 @@
   const mfaCode = document.getElementById("adminMfaCode");
   const mfaHint = document.getElementById("adminMfaHint");
   const resendButton = document.getElementById("adminResendMfa");
+  const unauthorizedWarning = document.getElementById("adminUnauthorizedWarning");
   let mfaChallengeId = "";
 
   function showMessage(text, type) {
@@ -29,6 +30,19 @@
   function clearMessage() {
     message.textContent = "";
     message.className = "msg";
+  }
+
+  function isManagementEmail(value) {
+    const identifier = String(value || "").trim().toLowerCase();
+    return /^[^\s@]+@sulandrahealth\.com$/.test(identifier);
+  }
+
+  function showUnauthorizedWarning() {
+    if (unauthorizedWarning) unauthorizedWarning.hidden = false;
+  }
+
+  function hideUnauthorizedWarning() {
+    if (unauthorizedWarning) unauthorizedWarning.hidden = true;
   }
 
   function clearAdminSession() {
@@ -78,6 +92,7 @@
   }
 
   function showMfa(payload) {
+    hideUnauthorizedWarning();
     mfaChallengeId = String(payload.mfaChallengeId || "");
     mfaPanel.classList.add("open");
     mfaCode.value = "";
@@ -94,8 +109,11 @@
     const email = emailInput.value.trim().toLowerCase();
     const password = passwordInput.value;
     const code = mfaCode.value.replace(/\D/g, "").slice(0, 6);
-    if (!email || !password) return showMessage("Enter your Sulandra work email and password.", "error");
-    if (!email.endsWith("@sulandrahealth.com")) return showMessage("Administrator sign-in requires your @sulandrahealth.com work email.", "error");
+    if (!email || !password) return showMessage("Enter your Sulandra management work email and password.", "error");
+    if (!isManagementEmail(email)) {
+      showUnauthorizedWarning();
+      return showMessage("Administrator access could not be verified for this identifier.", "error");
+    }
     if (mfaChallengeId && !resend && code.length !== 6) return showMessage("Enter the 6-digit security code sent to your phone.", "error");
 
     signInButton.disabled = true;
@@ -119,6 +137,10 @@
       }
       if (!response.ok) {
         clearAdminSession();
+        if (!mfaChallengeId && [400, 401, 403].includes(response.status)) {
+          showUnauthorizedWarning();
+          throw new Error("Administrator access could not be verified. This management portal is restricted to authorized users.");
+        }
         throw new Error(payload.error || "Unable to sign in.");
       }
       const session = payload.session || payload.data || payload;
@@ -126,8 +148,10 @@
       if (!token) throw new Error("The server did not return an access token.");
       if (!adminAllowed(session)) {
         clearAdminSession();
+        showUnauthorizedWarning();
         throw new Error("This account does not have Sulandra administrator or management access.");
       }
+      hideUnauthorizedWarning();
       saveAdminSession(token, session);
       window.location.assign(safeReturnTarget(session));
     } catch (error) {
@@ -142,12 +166,17 @@
     emailInput.value = "";
     passwordInput.value = "";
     resetMfa();
+    hideUnauthorizedWarning();
     clearMessage();
   });
 
   document.getElementById("adminForgotPassword").addEventListener("click", async () => {
     const email = emailInput.value.trim().toLowerCase();
-    if (!email || !email.endsWith("@sulandrahealth.com")) return showMessage("Enter your Sulandra work email first.", "error");
+    if (!email || !isManagementEmail(email)) {
+      showUnauthorizedWarning();
+      return showMessage("Enter your authorized Sulandra management work email first.", "error");
+    }
+    hideUnauthorizedWarning();
     clearMessage();
     try {
       const response = await fetch(API_BASE + "/api/auth/forgot-password", {
@@ -161,6 +190,17 @@
     } catch (error) {
       showMessage(error.message || "Unable to request a password reset.", "error");
     }
+  });
+
+  emailInput.addEventListener("blur", () => {
+    const identifier = emailInput.value.trim();
+    if (identifier && !isManagementEmail(identifier)) showUnauthorizedWarning();
+  });
+
+  emailInput.addEventListener("input", () => {
+    const identifier = emailInput.value.trim();
+    clearMessage();
+    if (!identifier || isManagementEmail(identifier)) hideUnauthorizedWarning();
   });
 
   resendButton.addEventListener("click", () => {
