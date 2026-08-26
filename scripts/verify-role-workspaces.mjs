@@ -15,9 +15,9 @@ const roleFiles = Object.freeze({
   DRIVER: 'driver.html', GENERAL: 'general-employee.html',
 });
 
-const [schema, runtime, css, directory, portal, loginAsset, loginRoot, admin, ownerHtml, operationsHtml, router, operationsContext, adminLink, installer] = await Promise.all([
+const [schema, runtime, css, directory, portal, loginAsset, admin, ownerHtml, operationsHtml, router, operationsContext, adminLink, installer] = await Promise.all([
   read('prisma/schema.prisma'), read('assets/role-workspace.js'), read('assets/role-workspace.css'), read('role-workspaces.html'),
-  read('employee-portal-railway.js'), read('assets/employee-login-railway.js'), read('employee-login-railway.js'), read('admin-railway.js'),
+  read('employee-portal-railway.js'), read('assets/employee-login-railway.js'), read('admin-railway.js'),
   read('admin.html'), read('admin-operations.html'), read('assets/admin-company-context.js'), read('assets/admin-operations-context.js'),
   read('assets/admin-role-workspaces-link.js'), read('scripts/install-role-workspaces.mjs'),
 ]);
@@ -44,15 +44,12 @@ expect(css.includes('.rw-card-grid') && css.includes('.rw-preview'), 'Shared rol
 
 expect(portal.includes('const roleWorkspaceRoutes = new Map(['), 'Employee Portal does not publish role workspace routes');
 expect(portal.includes('employeeRoleWorkspaceLauncher') && portal.includes('employeeRoleWorkspaceNav'), 'Employee Portal does not add a role-specific launcher and navigation tab');
-expect(portal.includes('const executiveAdminRoles = new Set(["ADMINISTRATOR"]);'), 'Employee Portal still redirects CEO or DOO into owner admin.html');
-for (const source of [loginAsset, loginRoot]) {
-  expect(source.includes('function landingForRole(role)'), 'Employee login lacks role-specific executive landing');
-  expect(source.includes('if (role === "ADMINISTRATOR") return "admin.html";'), 'Administrator login no longer lands on owner Admin');
-  expect(source.includes('if (role === "DOO") return "doo.html";'), 'DOO login does not land on doo.html');
-  expect(source.includes('if (role === "CEO") return "ceo.html";'), 'CEO login does not land on ceo.html');
-}
+expect(portal.includes('const executiveAdminRoles = new Set(["ADMINISTRATOR"]);'), 'Employee Portal still treats CEO or DOO as implicit owner Admin');
+for (const marker of ['username.includes("@")','portal: "EMPLOYEE"','safeReturnTarget() || "/employee-portal.html"']) expect(loginAsset.includes(marker), `Employee Login does not preserve username → Employee Portal behavior: ${marker}`);
+for (const forbidden of ['function landingForRole(role)','return "admin.html"','return "doo.html"','return "ceo.html"']) expect(!loginAsset.includes(forbidden), `Employee Login still contains obsolete privileged landing: ${forbidden}`);
+
 expect(admin.includes('/\\/admin\\.html$/i.test(location.pathname)') && admin.includes('role !== "ADMINISTRATOR"'), 'admin.html controller is not owner-only');
-expect(admin.includes('/\\/admin-operations\\.html$/i.test(location.pathname)') && admin.includes('["ADMINISTRATOR", "HR_MANAGER", "CEO", "DOO"]'), 'Company Operations controller does not enforce management-role entry');
+expect(admin.includes('/\\/admin-operations\\.html$/i.test(location.pathname)') && admin.includes('["ADMINISTRATOR", "PROGRAM_MANAGER", "HR_MANAGER", "CEO", "DOO"]'), 'Company Operations controller does not enforce the authorized management-role set');
 expect(ownerHtml.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'), 'Owner Admin does not load the canonical context router');
 expect(operationsHtml.includes('/assets/admin-company-context.js?v=20260809-admin-company-context-2'), 'Company Operations does not load the canonical context router');
 expect(!ownerHtml.includes('/assets/admin-role-workspaces-link.js'), 'Owner command center must not receive a new Role Workspaces navigation injection');
@@ -67,7 +64,8 @@ expect(
 expect(adminLink.includes('adminRoleWorkspacesTopLink') && adminLink.includes('/role-workspaces.html'), 'Retained Role Workspaces compatibility runtime is incomplete');
 expect(installer.includes("await patch('assets/admin-operations-context.js'"), 'Role workspace installer does not keep the Operations registry aligned');
 expect(installer.includes('Owner/Operations split guard was not installed'), 'Role workspace installer does not enforce the owner/Operations role guards');
-expect(installer.includes("await patch('tests/production-role-uat.spec.mjs'"), 'Role workspace installer does not keep production role UAT aligned with the dedicated role pages');
+expect(installer.includes('do not patch employee-login-railway.js'), 'Role workspace installer does not explicitly preserve the separate Employee login contract');
+expect(!installer.includes("await patch('tests/production-role-uat.spec.mjs'"), 'Role workspace installer must not rewrite the production UAT test into obsolete landing behavior');
 
 for (const relative of ['assets/role-workspace.js', 'assets/admin-role-workspaces-link.js', 'scripts/install-role-workspaces.mjs']) {
   try {
@@ -81,4 +79,4 @@ if (failures.length) {
   console.error('Role workspace verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Role workspaces verified: all 15 employee/leadership roles retain dedicated HTML; the Sulandra Health owner command center stays unchanged and owner-only; Roles, Permissions & Workspaces lives in Operations System Administration; Home Manager has assigned-home team operations; and CEO/DOO retain dedicated landings.');
+console.log('Role workspaces verified: all 15 employee/leadership roles retain dedicated Employee-side HTML workspaces, Employee Login never redirects a management role into Admin, the owner command center stays owner-only, and authorized management roles use the separate Admin Operations entry after Admin sign-in.');

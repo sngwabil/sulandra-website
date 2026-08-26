@@ -6,11 +6,13 @@ on:
       - main
       - feature/spire-ehr-platform
       - feature/spire-1.1
+      - release/sulandra-1.0
   pull_request:
     branches:
       - main
       - feature/spire-ehr-platform
       - feature/spire-1.1
+      - release/sulandra-1.0
 
 permissions:
   contents: read

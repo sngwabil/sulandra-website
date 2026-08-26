@@ -3,10 +3,10 @@ name: Production Role UAT
 on:
   push:
     branches:
-      - feature/spire-ehr-platform
+      - release/sulandra-1.0
   pull_request:
     branches:
-      - feature/spire-ehr-platform
+      - release/sulandra-1.0
   workflow_dispatch:
 
 permissions:
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   role-uat:
-    name: Login-first role-by-role production UAT
+    name: Two-door role-by-role production UAT
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -37,7 +37,7 @@ jobs:
       - name: Verify role UAT source contract
         run: npm run verify:role-uat
 
-      - name: Wait for exact production role-UAT deployment
+      - name: Wait for exact production two-door deployment
         if: github.event_name != 'pull_request'
         shell: bash
         run: |
@@ -46,38 +46,36 @@ jobs:
           for attempt in $(seq 1 60); do
             portal="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal.html || true)"
             runtime="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-portal-railway.js || true)"
-            login="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-login-railway.js || true)"
+            employee_login_html="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/employee-login.html || true)"
+            employee_login="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-login-railway.js || true)"
+            admin_login_html="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/admin-login.html || true)"
+            admin_login="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/admin-login-railway.js || true)"
             guard="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/employee-role-navigation-guard.js || true)"
-            admin="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/admin-railway.js || true)"
+            cross="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/admin-cross-workspace-launcher.js || true)"
             roles="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/assets/role-workspace.js || true)"
-            doo="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/doo.html || true)"
-            ceo="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/ceo.html || true)"
-            home_manager="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/home-manager.html || true)"
             residential="$(curl -fsSL --max-time 20 https://www.sulandrahealth.com/scls-residential.html || true)"
             if grep -q "$contract" <<<"$portal" \
-              && grep -q "$contract" <<<"$runtime" \
-              && grep -q "$contract" <<<"$guard" \
-              && grep -q 'ADMIN_LANDING_ROLES' <<<"$login" \
-              && grep -q 'function landingForRole(role)' <<<"$login" \
-              && grep -Fq 'if (role === "DOO") return "doo.html";' <<<"$login" \
-              && grep -Fq 'if (role === "CEO") return "ceo.html";' <<<"$login" \
-              && grep -Fq 'role !== "ADMINISTRATOR"' <<<"$admin" \
-              && grep -Fq 'role === "DOO" ? "doo.html"' <<<"$admin" \
+              && grep -Fq 'Employee Portal is a' <<<"$runtime" \
+              && grep -Fq 'Employee username' <<<"$employee_login_html" \
+              && grep -Fq 'Administrator Sign In' <<<"$employee_login_html" \
+              && grep -Fq 'portal: "EMPLOYEE"' <<<"$employee_login" \
+              && grep -Fq 'username.includes("@")' <<<"$employee_login" \
+              && grep -Fq 'Sulandra work email' <<<"$admin_login_html" \
+              && grep -Fq 'portal: "ADMIN"' <<<"$admin_login" \
+              && grep -Fq 'adminAllowed(session)' <<<"$admin_login" \
+              && grep -Fq "managementAdminRoles" <<<"$guard" \
+              && grep -Fq "/admin-login.html?returnTo=/admin.html" <<<"$guard" \
+              && grep -Fq "employeeLogin: '/employee-login.html?returnTo=/employee-portal.html'" <<<"$cross" \
+              && grep -Fq 'opensNewTab: true' <<<"$cross" \
               && grep -Fq 'Manage My Home Team' <<<"$roles" \
-              && grep -Fq 'ownerMain: "/admin.html"' <<<"$roles" \
-              && grep -Fq 'data-role-workspace="DOO"' <<<"$doo" \
-              && grep -Fq 'data-role-workspace="CEO"' <<<"$ceo" \
-              && grep -Fq 'data-role-workspace="HOUSE_MANAGER"' <<<"$home_manager" \
-              && grep -Fq 'canManageStaff' <<<"$residential" \
-              && grep -Fq "const validTabs=new Set(['residents','staff','tasks','handoff','log'])" <<<"$residential" \
-              && grep -Fq "history.replaceState(null,'','#'+state.tab)" <<<"$residential"; then
-              echo "Exact dedicated role-workspace and assigned-home manager production contract is live."
+              && grep -Fq 'canManageStaff' <<<"$residential"; then
+              echo "Exact two-door Employee/Admin authentication contract is live."
               exit 0
             fi
-            echo "Waiting for dedicated role-workspace production deployment (${attempt}/60)..."
+            echo "Waiting for two-door production deployment (${attempt}/60)..."
             sleep 15
           done
-          echo "Timed out waiting for the exact dedicated role-workspace production deployment." >&2
+          echo "Timed out waiting for the exact two-door production deployment." >&2
           exit 1
 
       - name: Install Playwright browser runtime

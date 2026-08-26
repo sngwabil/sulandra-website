@@ -4,7 +4,6 @@
   const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
-  const ADMIN_LANDING_ROLES = new Set(["ADMINISTRATOR", "CEO", "DOO"]);
   const message = document.getElementById("msg");
   const usernamePanel = document.getElementById("usernameRecoveryPanel");
   const passwordPanel = document.getElementById("passwordRecoveryPanel");
@@ -16,9 +15,6 @@
   let mfaChallengeId = "";
   let apiWarmupPromise = null;
 
-  // Start the API connection as soon as the login page opens. If Railway has a
-  // cold connection, DNS/TLS/service wake-up happens while the user is typing
-  // credentials instead of after Sign In is pressed.
   function warmApi() {
     if (!apiWarmupPromise) {
       apiWarmupPromise = fetch(API_BASE + "/live", {
@@ -32,7 +28,6 @@
   }
   warmApi();
 
-  // Remove any legacy credential query parameters left by an older broken form submission.
   try {
     const current = new URL(window.location.href);
     let changed = false;
@@ -56,17 +51,11 @@
   }
 
   function saveAuthenticatedSession(token, session) {
-    const encoded = JSON.stringify(session);
-    const role = String(session?.role || session?.user?.role || "").toUpperCase();
+    const encoded = JSON.stringify({ ...session, portalContext: "EMPLOYEE" });
     window.sessionStorage.setItem(TOKEN_KEY, token);
     window.sessionStorage.setItem(SESSION_KEY, encoded);
-    if (ADMIN_LANDING_ROLES.has(role)) {
-      window.localStorage.removeItem(TOKEN_KEY);
-      window.localStorage.removeItem(SESSION_KEY);
-      return;
-    }
-    window.localStorage.setItem(TOKEN_KEY, token);
-    window.localStorage.setItem(SESSION_KEY, encoded);
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(SESSION_KEY);
   }
 
   function clearAuthenticatedSession() {
@@ -83,6 +72,7 @@
     try {
       const resolved = new URL(requested, window.location.origin);
       if (resolved.origin !== window.location.origin) return "";
+      if (resolved.pathname.toLowerCase().includes("admin")) return "";
       return resolved.pathname + resolved.search + resolved.hash;
     } catch {
       return "";
@@ -106,7 +96,7 @@
     mfaCode.value = "";
     mfaPanel.classList.remove("open");
     mfaHint.textContent = "Enter the 6-digit security code sent to your phone.";
-    signInButton.textContent = "Sign In";
+    signInButton.textContent = "Sign In to Employee Portal";
   }
 
   function showMfaChallenge(payload) {
@@ -115,7 +105,7 @@
     mfaPanel.classList.add("open");
     const destination = payload.maskedPhone ? ` ${payload.maskedPhone}` : " your phone";
     mfaHint.textContent = `We sent a 6-digit security code to${destination}. The code expires in 5 minutes.`;
-    signInButton.textContent = "Verify & Sign In";
+    signInButton.textContent = "Verify & Open Employee Portal";
     showMessage("Password accepted. Enter the security code from your phone to finish signing in.", "success");
     requestAnimationFrame(() => mfaCode.focus());
   }
@@ -147,10 +137,11 @@
     const resend = Boolean(options.resend);
     clearMessage();
     closeRecoveryPanels();
-    const email = document.getElementById("email").value.trim().toLowerCase();
+    const username = document.getElementById("username").value.trim().toLowerCase();
     const password = document.getElementById("password").value;
     const code = mfaCode.value.replace(/\D/g, "").slice(0, 6);
-    if (!email || !password) return showMessage("Enter your employee email and password.", "error");
+    if (!username || !password) return showMessage("Enter your employee username and password.", "error");
+    if (username.includes("@")) return showMessage("Employee Portal uses your assigned employee username, not your Sulandra email. Use Administrator Sign In for admin access.", "error");
     if (mfaChallengeId && !resend && code.length !== 6) return showMessage("Enter the 6-digit security code sent to your phone.", "error");
 
     warmApi();
@@ -159,7 +150,7 @@
     const previousButtonText = signInButton.textContent;
     signInButton.textContent = mfaChallengeId && !resend ? "Verifying…" : "Connecting…";
     try {
-      const body = { email, password };
+      const body = { username, password, portal: "EMPLOYEE" };
       if (mfaChallengeId && !resend) {
         body.mfaChallengeId = mfaChallengeId;
         body.mfaCode = code;
@@ -186,34 +177,28 @@
       const token = session.accessToken || session.bearerToken || session.token;
       if (!token) throw new Error("The server did not return an access token.");
       saveAuthenticatedSession(token, session);
-      const requestedTarget = safeReturnTarget();
-      const role = String(session.role || "").toUpperCase();
-      window.location.assign(requestedTarget || (ADMIN_LANDING_ROLES.has(role) ? "admin.html" : "employee-portal.html"));
+      window.location.assign(safeReturnTarget() || "/employee-portal.html");
     } catch (error) {
       showMessage(error.message || "Unable to sign in.", "error");
     } finally {
       signInButton.disabled = false;
       resendMfaCode.disabled = false;
-      if (!mfaChallengeId) signInButton.textContent = previousButtonText || "Sign In";
+      if (!mfaChallengeId) signInButton.textContent = previousButtonText || "Sign In to Employee Portal";
     }
   }
 
   document.getElementById("clear").addEventListener("click", () => {
-    document.getElementById("email").value = "";
+    document.getElementById("username").value = "";
     document.getElementById("password").value = "";
     document.getElementById("recoveryEmail").value = "";
     document.getElementById("recoveryUsername").value = "";
     resetMfaChallenge();
     closeRecoveryPanels(); clearMessage();
   });
-  document.getElementById("forgotUsername").addEventListener("click", () => {
-    const loginEmail = document.getElementById("email").value.trim();
-    if (loginEmail) document.getElementById("recoveryEmail").value = loginEmail;
-    openRecoveryPanel(usernamePanel);
-  });
+  document.getElementById("forgotUsername").addEventListener("click", () => openRecoveryPanel(usernamePanel));
   document.getElementById("forgotPassword").addEventListener("click", () => {
-    const loginEmail = document.getElementById("email").value.trim();
-    if (loginEmail) document.getElementById("recoveryUsername").value = loginEmail;
+    const loginUsername = document.getElementById("username").value.trim();
+    if (loginUsername) document.getElementById("recoveryUsername").value = loginUsername;
     openRecoveryPanel(passwordPanel);
   });
   document.querySelectorAll("[data-close-recovery]").forEach((button) => button.addEventListener("click", closeRecoveryPanels));
@@ -224,7 +209,7 @@
   });
   document.getElementById("sendPasswordRecovery").addEventListener("click", () => {
     const username = document.getElementById("recoveryUsername").value.trim().toLowerCase();
-    if (!username) return showMessage("Enter your Sulandra employee username or email.", "error");
+    if (!username) return showMessage("Enter your Sulandra employee username.", "error");
     recoveryRequest("/api/auth/forgot-password", { username }, document.getElementById("sendPasswordRecovery"));
   });
   resendMfaCode.addEventListener("click", () => {
@@ -234,7 +219,6 @@
   mfaCode.addEventListener("input", () => {
     mfaCode.value = mfaCode.value.replace(/\D/g, "").slice(0, 6);
   });
-
   document.getElementById("form").addEventListener("submit", async (event) => {
     event.preventDefault();
     await performLogin();

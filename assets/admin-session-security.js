@@ -2,8 +2,10 @@
   "use strict";
 
   const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
-  const TOKEN_KEY = "sulandra:employee:access-token";
-  const SESSION_KEY = "sulandra:employee:session";
+  const ADMIN_TOKEN_KEY = "sulandra:admin:access-token";
+  const ADMIN_SESSION_KEY = "sulandra:admin:session";
+  const LEGACY_TOKEN_KEY = "sulandra:employee:access-token";
+  const LEGACY_SESSION_KEY = "sulandra:employee:session";
   const LAST_ACTIVITY_KEY = "sulandra:admin:last-activity";
   const STEP_UP_UNTIL_KEY = "sulandra:admin:step-up-until";
   const PRIVILEGED_ROLES = new Set(["ADMINISTRATOR", "CEO", "DOO"]);
@@ -20,7 +22,9 @@
   }
 
   function sessionRecord() {
-    return readJson(sessionStorage.getItem(SESSION_KEY)) || readJson(localStorage.getItem(SESSION_KEY));
+    return readJson(sessionStorage.getItem(ADMIN_SESSION_KEY))
+      || readJson(sessionStorage.getItem(LEGACY_SESSION_KEY))
+      || readJson(localStorage.getItem(LEGACY_SESSION_KEY));
   }
 
   function roleOf(session) {
@@ -28,31 +32,33 @@
   }
 
   function token() {
-    return sessionStorage.getItem(TOKEN_KEY) || "";
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY) || sessionStorage.getItem(LEGACY_TOKEN_KEY) || "";
   }
 
   function clearPersistentAuth() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_SESSION_KEY);
   }
 
   function migratePrivilegedSessionToTabOnlyStorage() {
     const session = sessionRecord();
     if (!PRIVILEGED_ROLES.has(roleOf(session))) return false;
 
-    const persistentToken = localStorage.getItem(TOKEN_KEY);
-    const persistentSession = localStorage.getItem(SESSION_KEY);
-    if (!sessionStorage.getItem(TOKEN_KEY) && persistentToken) sessionStorage.setItem(TOKEN_KEY, persistentToken);
-    if (!sessionStorage.getItem(SESSION_KEY) && persistentSession) sessionStorage.setItem(SESSION_KEY, persistentSession);
+    const legacyToken = sessionStorage.getItem(LEGACY_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    const legacySession = sessionStorage.getItem(LEGACY_SESSION_KEY) || localStorage.getItem(LEGACY_SESSION_KEY);
+    if (!sessionStorage.getItem(ADMIN_TOKEN_KEY) && legacyToken) sessionStorage.setItem(ADMIN_TOKEN_KEY, legacyToken);
+    if (!sessionStorage.getItem(ADMIN_SESSION_KEY) && legacySession) sessionStorage.setItem(ADMIN_SESSION_KEY, legacySession);
+    // Keep the tab-scoped legacy mirror for older Admin modules; never persist it.
+    if (!sessionStorage.getItem(LEGACY_TOKEN_KEY) && sessionStorage.getItem(ADMIN_TOKEN_KEY)) sessionStorage.setItem(LEGACY_TOKEN_KEY, sessionStorage.getItem(ADMIN_TOKEN_KEY));
+    if (!sessionStorage.getItem(LEGACY_SESSION_KEY) && sessionStorage.getItem(ADMIN_SESSION_KEY)) sessionStorage.setItem(LEGACY_SESSION_KEY, sessionStorage.getItem(ADMIN_SESSION_KEY));
     clearPersistentAuth();
     return true;
   }
 
   function clearPrivilegedSession() {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(SESSION_KEY);
-    sessionStorage.removeItem(LAST_ACTIVITY_KEY);
-    sessionStorage.removeItem(STEP_UP_UNTIL_KEY);
+    for (const key of [ADMIN_TOKEN_KEY, ADMIN_SESSION_KEY, LEGACY_TOKEN_KEY, LEGACY_SESSION_KEY, LAST_ACTIVITY_KEY, STEP_UP_UNTIL_KEY]) {
+      sessionStorage.removeItem(key);
+    }
     clearPersistentAuth();
   }
 
@@ -74,7 +80,7 @@
     await revokeCurrentSession();
     clearPrivilegedSession();
     const suffix = reason ? `?reason=${encodeURIComponent(reason)}` : "";
-    window.location.replace("employee-login.html" + suffix);
+    window.location.replace("admin-login.html" + suffix);
   }
 
   function lastActivity() {
@@ -240,6 +246,7 @@
   window.SulandraAdminSessionSecurity = Object.freeze({
     idleTimeoutMinutes: IDLE_TIMEOUT_MS / 60000,
     persistentAuthDisabled: true,
+    sessionStorage: 'ADMIN',
     stepUpWindowMinutes: STEP_UP_WINDOW_MS / 60000,
     signOut: secureSignOut
   });

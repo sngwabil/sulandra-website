@@ -1,0 +1,177 @@
+(function () {
+  "use strict";
+
+  const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
+  const ADMIN_TOKEN_KEY = "sulandra:admin:access-token";
+  const ADMIN_SESSION_KEY = "sulandra:admin:session";
+  // Legacy Admin modules still read the employee-key names. Keep a tab-scoped
+  // compatibility mirror until every Admin module has moved to the admin keys.
+  const LEGACY_TOKEN_KEY = "sulandra:employee:access-token";
+  const LEGACY_SESSION_KEY = "sulandra:employee:session";
+  const ADMIN_ROLES = new Set(["ADMINISTRATOR", "PROGRAM_MANAGER", "HR_MANAGER", "CEO", "DOO"]);
+  const OWNER_ROLES = new Set(["ADMINISTRATOR"]);
+  const message = document.getElementById("adminLoginMessage");
+  const form = document.getElementById("adminLoginForm");
+  const emailInput = document.getElementById("adminEmail");
+  const passwordInput = document.getElementById("adminPassword");
+  const signInButton = document.getElementById("adminSignInButton");
+  const mfaPanel = document.getElementById("adminMfaPanel");
+  const mfaCode = document.getElementById("adminMfaCode");
+  const mfaHint = document.getElementById("adminMfaHint");
+  const resendButton = document.getElementById("adminResendMfa");
+  let mfaChallengeId = "";
+
+  function showMessage(text, type) {
+    message.textContent = text;
+    message.className = type === "success" ? "msg success" : "msg show";
+  }
+
+  function clearMessage() {
+    message.textContent = "";
+    message.className = "msg";
+  }
+
+  function clearAdminSession() {
+    for (const key of [ADMIN_TOKEN_KEY, ADMIN_SESSION_KEY, LEGACY_TOKEN_KEY, LEGACY_SESSION_KEY]) {
+      window.sessionStorage.removeItem(key);
+    }
+  }
+
+  function saveAdminSession(token, session) {
+    const encoded = JSON.stringify({ ...session, portalContext: "ADMIN" });
+    window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    window.sessionStorage.setItem(ADMIN_SESSION_KEY, encoded);
+    window.sessionStorage.setItem(LEGACY_TOKEN_KEY, token);
+    window.sessionStorage.setItem(LEGACY_SESSION_KEY, encoded);
+  }
+
+  function normalizeRole(session) {
+    return String(session?.role || session?.user?.role || session?.profile?.role || "").toUpperCase();
+  }
+
+  function adminAllowed(session) {
+    const role = normalizeRole(session);
+    const permissionList = Array.isArray(session?.permissions) ? session.permissions : [];
+    const backendAccess = Boolean(session?.access?.administration || session?.user?.access?.administration);
+    return ADMIN_ROLES.has(role) && (backendAccess || permissionList.includes("SULANDRA_ADMINISTRATION_ACCESS") || role === "ADMINISTRATOR");
+  }
+
+  function safeReturnTarget(session) {
+    const requested = new URLSearchParams(window.location.search).get("returnTo");
+    if (requested) {
+      try {
+        const resolved = new URL(requested, window.location.origin);
+        if (resolved.origin === window.location.origin && /(^|\/)admin(?:-|\.|\/|$)/i.test(resolved.pathname)) {
+          return resolved.pathname + resolved.search + resolved.hash;
+        }
+      } catch {}
+    }
+    return OWNER_ROLES.has(normalizeRole(session)) ? "/admin.html" : "/admin-operations.html";
+  }
+
+  function resetMfa() {
+    mfaChallengeId = "";
+    mfaCode.value = "";
+    mfaPanel.classList.remove("open");
+    mfaHint.textContent = "Enter the 6-digit security code sent to your phone.";
+    signInButton.textContent = "Sign In to Admin";
+  }
+
+  function showMfa(payload) {
+    mfaChallengeId = String(payload.mfaChallengeId || "");
+    mfaPanel.classList.add("open");
+    mfaCode.value = "";
+    const destination = payload.maskedPhone ? ` ${payload.maskedPhone}` : " your phone";
+    mfaHint.textContent = `We sent a 6-digit security code to${destination}. The code expires in 5 minutes.`;
+    signInButton.textContent = "Verify & Open Admin";
+    showMessage("Password accepted. Complete phone verification to enter administration.", "success");
+    requestAnimationFrame(() => mfaCode.focus());
+  }
+
+  async function performLogin(options = {}) {
+    const resend = Boolean(options.resend);
+    clearMessage();
+    const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
+    const code = mfaCode.value.replace(/\D/g, "").slice(0, 6);
+    if (!email || !password) return showMessage("Enter your Sulandra work email and password.", "error");
+    if (!email.endsWith("@sulandrahealth.com")) return showMessage("Administrator sign-in requires your @sulandrahealth.com work email.", "error");
+    if (mfaChallengeId && !resend && code.length !== 6) return showMessage("Enter the 6-digit security code sent to your phone.", "error");
+
+    signInButton.disabled = true;
+    resendButton.disabled = true;
+    try {
+      const body = { email, password, portal: "ADMIN" };
+      if (mfaChallengeId && !resend) {
+        body.mfaChallengeId = mfaChallengeId;
+        body.mfaCode = code;
+      }
+      const response = await fetch(API_BASE + "/api/auth/login", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (payload.mfaRequired && payload.mfaMethod === "sms" && payload.mfaChallengeId) {
+        clearAdminSession();
+        showMfa(payload);
+        return;
+      }
+      if (!response.ok) {
+        clearAdminSession();
+        throw new Error(payload.error || "Unable to sign in.");
+      }
+      const session = payload.session || payload.data || payload;
+      const token = session.accessToken || session.bearerToken || session.token;
+      if (!token) throw new Error("The server did not return an access token.");
+      if (!adminAllowed(session)) {
+        clearAdminSession();
+        throw new Error("This account does not have Sulandra administrator or management access.");
+      }
+      saveAdminSession(token, session);
+      window.location.assign(safeReturnTarget(session));
+    } catch (error) {
+      showMessage(error.message || "Unable to sign in.", "error");
+    } finally {
+      signInButton.disabled = false;
+      resendButton.disabled = false;
+    }
+  }
+
+  document.getElementById("adminClear").addEventListener("click", () => {
+    emailInput.value = "";
+    passwordInput.value = "";
+    resetMfa();
+    clearMessage();
+  });
+
+  document.getElementById("adminForgotPassword").addEventListener("click", async () => {
+    const email = emailInput.value.trim().toLowerCase();
+    if (!email || !email.endsWith("@sulandrahealth.com")) return showMessage("Enter your Sulandra work email first.", "error");
+    clearMessage();
+    try {
+      const response = await fetch(API_BASE + "/api/auth/forgot-password", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ username: email })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Unable to request a password reset.");
+      showMessage(payload.message || "If the email matches an active Sulandra account, secure recovery instructions have been sent.", "success");
+    } catch (error) {
+      showMessage(error.message || "Unable to request a password reset.", "error");
+    }
+  });
+
+  resendButton.addEventListener("click", () => {
+    resetMfa();
+    performLogin({ resend: true });
+  });
+  mfaCode.addEventListener("input", () => {
+    mfaCode.value = mfaCode.value.replace(/\D/g, "").slice(0, 6);
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await performLogin();
+  });
+})();

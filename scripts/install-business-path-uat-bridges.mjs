@@ -201,6 +201,10 @@ await update('home-health.html', source => {
  * role/company-scoped Home Health Operations card instead. That card opens the
  * canonical Home Health workspace, whose header exposes Referral Inbox. Treat
  * both architectures as valid and never re-introduce the retired launcher.
+ *
+ * The same universal runtime uses a static role-scoped SPIRE card. Mark that
+ * runtime as owning the new-tab contract so the older SPIRE installer does not
+ * try to reconstruct retired dynamic launcher helpers.
  * --------------------------------------------------------------------------
  */
 
@@ -222,7 +226,16 @@ await update(
       source.includes('homeHealthManagementRoles.has(role)');
 
     if (universalPortal) {
-      return source;
+      const spireRuntimeMarker = 'SPIRE_NEW_TAB_LAUNCH_CONTRACT_V1:employee-runtime';
+      if (source.includes(spireRuntimeMarker)) return source;
+      const strictAnchor = '  "use strict";';
+      if (!source.includes(strictAnchor)) {
+        throw new Error('Universal Employee Portal runtime strict-mode anchor is missing');
+      }
+      return source.replace(
+        strictAnchor,
+        `${strictAnchor}\n  // ${spireRuntimeMarker}: the static role-scoped SPIRE card owns new-tab launch behavior.`
+      );
     }
 
     const marker =
