@@ -46,8 +46,18 @@ for (const marker of [
   if (!diagnostics.includes(marker)) throw new Error(`SIA live-diagnostics module missing marker: ${marker}`);
 }
 
-if (/supportWorkspacePage[^\n]+affected/i.test(routes)) {
-  throw new Error('SIA must not treat the support workspace page as the affected application.');
+// Guard the implementation, not explanatory prompt prose. A failure means code
+// is actually deriving the affected application from the SIA support workspace.
+const unsafeTargetPatterns = [
+  /detectSiaDiagnosticTarget\s*\(\s*input\.context\?\.supportWorkspacePage/i,
+  /diagnosticTarget\s*=\s*input\.context\?\.supportWorkspacePage/i,
+  /affected(?:Page|Application|Target)\s*=\s*input\.context\?\.supportWorkspacePage/i,
+];
+for (const pattern of unsafeTargetPatterns) {
+  if (pattern.test(routes)) throw new Error('SIA must not treat the support workspace page as the affected application.');
+}
+if (!routes.includes('detectSiaDiagnosticTarget(safeMessage, history)')) {
+  throw new Error('SIA must identify the affected application from the employee conversation/history.');
 }
 
 console.log('SIA guided diagnostics verified: affected-page clarification, screenshot-aware flow, GitHub release/CI reads, Railway-backed service health, and Admin-gated read-only Railway deployment/log diagnostics are wired.');
