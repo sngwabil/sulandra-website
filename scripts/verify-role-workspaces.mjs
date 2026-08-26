@@ -45,7 +45,7 @@ expect(css.includes('.rw-card-grid') && css.includes('.rw-preview'), 'Shared rol
 expect(portal.includes('const roleWorkspaceRoutes = new Map(['), 'Employee Portal does not publish role workspace routes');
 expect(portal.includes('employeeRoleWorkspaceLauncher') && portal.includes('employeeRoleWorkspaceNav'), 'Employee Portal does not add a role-specific launcher and navigation tab');
 expect(portal.includes('const executiveAdminRoles = new Set(["ADMINISTRATOR"]);'), 'Employee Portal still treats CEO or DOO as implicit owner Admin');
-for (const marker of ['username.includes("@")','portal: "EMPLOYEE"','window.location.assign("/employee-portal.html")']) expect(loginAsset.includes(marker), `Employee Login does not preserve username → Employee Portal behavior: ${marker}`);
+for (const marker of ['username.includes("@")','portal: "EMPLOYEE"','safeReturnTarget() || "/employee-portal.html"']) expect(loginAsset.includes(marker), `Employee Login does not preserve username → Employee Portal behavior: ${marker}`);
 for (const forbidden of ['function landingForRole(role)','return "admin.html"','return "doo.html"','return "ceo.html"']) expect(!loginAsset.includes(forbidden), `Employee Login still contains obsolete privileged landing: ${forbidden}`);
 
 expect(admin.includes('/\\/admin\\.html$/i.test(location.pathname)') && admin.includes('role !== "ADMINISTRATOR"'), 'admin.html controller is not owner-only');
