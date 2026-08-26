@@ -23,4 +23,33 @@ if (!routes.includes('SULANDRA_CANONICAL_SYSTEM_MAP')) {
 if (!map.includes('admin sign in') || !map.includes('/admin-login.html, not /sia.html')) {
   throw new Error('SIA administrator sign-in disambiguation contract is missing.');
 }
-console.log('SIA canonical route map and admin sign-in disambiguation contract verified.');
+
+for (const marker of [
+  'adminAccessFor',
+  'adminSignInFor',
+  'adminWorkspaceFor',
+  'Admin-capable authenticated role',
+  'serverVerifiedAdminCapableRole',
+  'serverAuthenticatedWorkEmail',
+  'sign in with the Sulandra work email',
+  'not the Employee Portal username',
+  'invite them to attach a screenshot',
+  'When a screenshot is attached',
+  "type: 'input_image'",
+  "detail: 'high'",
+  'screenshotAttached',
+]) {
+  if (!routes.includes(marker)) throw new Error(`SIA interactive Admin/screenshot contract missing marker: ${marker}`);
+}
+
+if (!routes.includes("adminAccessSource: 'SERVER_AUTHENTICATED_ROLE'")) {
+  throw new Error('SIA status must expose that Admin access guidance comes from the authenticated server role.');
+}
+if (!routes.includes("Admin sign-in route for this role")) {
+  throw new Error('SIA must be given the role-specific Admin sign-in destination.');
+}
+if (!routes.includes('what is confirmed → likely cause → exact next action → workaround')) {
+  throw new Error('SIA interactive troubleshooting sequence is missing.');
+}
+
+console.log('SIA canonical route map, authenticated Admin guidance, work-email sign-in, screenshot analysis, and interactive troubleshooting contract verified.');
