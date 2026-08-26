@@ -72,10 +72,14 @@ if (!operationsShell.includes('data.opsFolderRoute') && !operationsShell.include
 if (!operationsShell.includes('installIndependentWorkspaceScroll') || !operationsShell.includes('operations-independent-scroll') || !operationsShell.includes("overflow-y:auto!important") || !operationsShell.includes("grid.style.height = `${height}px`")) throw new Error('Operations workspace and left rail are not independently scrollable on desktop');
 if (router.includes(retiredRuntime) || ownerContext.includes(retiredRuntime) || operationsContext.includes(retiredRuntime)) throw new Error('Retired five-folder Admin global UI runtime is still injected');
 
-if (!adminLogin.includes('/employee-login.html?returnTo=') || !adminLogin.includes("target.origin === location.origin")) throw new Error('admin-login.html does not safely redirect legacy Admin login requests to unified authentication');
+// Admin authentication is now an explicit second door. It must remain a real
+// Sulandra-email Admin form and may only offer Employee Portal as an independent
+// new-tab entry; it must never redirect Admin login into Employee login.
+if (!adminLogin.includes('id="adminLoginForm"') || !adminLogin.includes('Sulandra work email') || !adminLogin.includes('Sign In to Admin')) throw new Error('admin-login.html does not publish the dedicated Admin authentication door');
+if (!adminLogin.includes('/admin-login-railway.js') || !adminLogin.includes('/employee-login.html?returnTo=/employee-portal.html') || !adminLogin.includes('target="_blank"')) throw new Error('admin-login.html does not preserve separate Admin and Employee entry doors');
 
 const sourceAdmin = await readFile(path.join(root, 'admin.html'), 'utf8');
 const publishedAdmin = await readFile(path.join(dist, 'admin.html'), 'utf8');
 if (sourceAdmin !== publishedAdmin) throw new Error('Owner admin.html must publish unchanged from canonical source');
 
-console.log(`Sulandra Admin split verified: admin.html remains the owner command center; admin-operations.html owns the eight-folder company Operations desktop; all ${registryRouteFiles.length} registered HTML destinations plus ${operationsLandingFiles.length} dashboard workspace landings exist in source and published output; same-origin new tabs inherit the secure tab-only session before navigation; legacy /admin-login.html routes to unified authentication; the left folder rail and right workspace scroll independently; and the Operations cards retain real SVG icons with larger consistent typography.`);
+console.log(`Sulandra Admin split verified: admin.html remains the owner command center; admin-operations.html owns the eight-folder company Operations desktop; all ${registryRouteFiles.length} registered HTML destinations plus ${operationsLandingFiles.length} dashboard workspace landings exist in source and published output; same-origin new tabs inherit the secure tab-only session before navigation; Admin login remains a dedicated Sulandra-email authentication door with Employee Portal offered only as an independent new-tab entry; the left folder rail and right workspace scroll independently; and the Operations cards retain real SVG icons with larger consistent typography.`);
