@@ -40,8 +40,17 @@ export type SiaLiveDiagnostics = {
     serviceName: string | null;
     publicDomain: string | null;
     managementApiConnected: boolean;
+    managementReadAuthorized: boolean;
+    latestDeploymentId: string | null;
+    latestDeploymentStatus: string | null;
+    latestDeploymentCreatedAt: string | null;
+    logHighlights: string[];
     detail: string;
   };
+};
+
+export type SiaLiveDiagnosticOptions = {
+  allowRailwayManagement?: boolean;
 };
 
 const TARGETS: SiaDiagnosticTarget[] = [
@@ -189,20 +198,143 @@ const githubDiagnostics = async (): Promise<SiaLiveDiagnostics['github']> => {
   }
 };
 
-export const collectSiaLiveDiagnostics = async (target: SiaDiagnosticTarget | null): Promise<SiaLiveDiagnostics> => {
+const redactInfraLine = (value: string) => value
+  .replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, '[REDACTED_KEY]')
+  .replace(/\bBearer\s+[A-Za-z0-9._~-]{12,}\b/gi, 'Bearer [REDACTED_TOKEN]')
+  .replace(/\b(postgres(?:ql)?|redis|mysql):\/\/[^\s]+/gi, '$1://[REDACTED_CONNECTION]')
+  .replace(/\b(password|secret|token|api[_ -]?key)\s*[:=]\s*[^\s,;]+/gi, '$1=[REDACTED]')
+  .slice(0, 900);
+
+const railwayGraphql = async (query: string, variables: Record<string, unknown>, projectToken: string | null, accountToken: string | null) => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'Sulandra-SIA/1.0' };
+  if (projectToken) headers['Project-Access-Token'] = projectToken;
+  else if (accountToken) headers.Authorization = `Bearer ${accountToken}`;
+  const { response } = await withTimeout('https://backboard.railway.com/graphql/v2', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query, variables }),
+  }, 6500);
+  const payload = await response.json().catch(() => ({})) as any;
+  if (!response.ok || Array.isArray(payload?.errors)) {
+    const message = Array.isArray(payload?.errors) && payload.errors[0]?.message ? String(payload.errors[0].message) : `Railway API HTTP ${response.status}`;
+    throw new Error(message);
+  }
+  return payload?.data || {};
+};
+
+const railwayManagementDiagnostics = async (allowManagement: boolean): Promise<Pick<SiaLiveDiagnostics['railway'], 'managementApiConnected' | 'managementReadAuthorized' | 'latestDeploymentId' | 'latestDeploymentStatus' | 'latestDeploymentCreatedAt' | 'logHighlights' | 'detail'>> => {
+  const projectToken = process.env.SIA_RAILWAY_TOKEN?.trim() || process.env.RAILWAY_TOKEN?.trim() || null;
+  const accountToken = process.env.RAILWAY_API_TOKEN?.trim() || null;
+  const connected = Boolean(projectToken || accountToken);
+  const projectId = process.env.RAILWAY_PROJECT_ID || null;
+  const serviceId = process.env.RAILWAY_SERVICE_ID || null;
+  if (!connected) {
+    return {
+      managementApiConnected: false,
+      managementReadAuthorized: false,
+      latestDeploymentId: null,
+      latestDeploymentStatus: null,
+      latestDeploymentCreatedAt: null,
+      logHighlights: [],
+      detail: 'Railway runtime metadata and live service-health probes are available; deployment/log management API is not connected to SIA yet.',
+    };
+  }
+  if (!allowManagement) {
+    return {
+      managementApiConnected: true,
+      managementReadAuthorized: false,
+      latestDeploymentId: null,
+      latestDeploymentStatus: null,
+      latestDeploymentCreatedAt: null,
+      logHighlights: [],
+      detail: 'Railway management integration is connected, but this authenticated SIA session is not authorized to receive deployment/log diagnostics.',
+    };
+  }
+  if (!projectId || !serviceId) {
+    return {
+      managementApiConnected: true,
+      managementReadAuthorized: true,
+      latestDeploymentId: null,
+      latestDeploymentStatus: null,
+      latestDeploymentCreatedAt: null,
+      logHighlights: [],
+      detail: 'Railway management integration is connected, but runtime project/service identifiers are unavailable.',
+    };
+  }
+
+  try {
+    const deploymentData = await railwayGraphql(
+      `query deployments($input: DeploymentListInput!) { deployments(input: $input, first: 5) { edges { node { id status createdAt } } } }`,
+      { input: { projectId, serviceId } },
+      projectToken,
+      accountToken,
+    );
+    const latest = Array.isArray(deploymentData?.deployments?.edges) ? deploymentData.deployments.edges[0]?.node : null;
+    if (!latest?.id) {
+      return {
+        managementApiConnected: true,
+        managementReadAuthorized: true,
+        latestDeploymentId: null,
+        latestDeploymentStatus: null,
+        latestDeploymentCreatedAt: null,
+        logHighlights: [],
+        detail: 'Railway management read succeeded, but no recent deployment was returned for this service.',
+      };
+    }
+
+    const logData = await railwayGraphql(
+      `query deploymentLogs($deploymentId: String!, $limit: Int) { deploymentLogs(deploymentId: $deploymentId, limit: $limit) { timestamp message severity } }`,
+      { deploymentId: latest.id, limit: 80 },
+      projectToken,
+      accountToken,
+    );
+    const rows = Array.isArray(logData?.deploymentLogs) ? logData.deploymentLogs : [];
+    const interesting = rows.filter((row: any) => {
+      const severity = String(row?.severity || '').toLowerCase();
+      const message = String(row?.message || '');
+      return severity === 'error' || severity === 'warn' || /\b(fail|failed|error|crash|timeout| 5\d\d | 4\d\d |\/health|\/api\/|listening|migration)\b/i.test(` ${message} `);
+    });
+    const selected = (interesting.length ? interesting : rows.slice(-20)).slice(-14).map((row: any) => {
+      const timestamp = typeof row?.timestamp === 'string' ? row.timestamp : '';
+      const severity = typeof row?.severity === 'string' ? row.severity.toUpperCase() : 'INFO';
+      return redactInfraLine(`${timestamp} ${severity} ${String(row?.message || '')}`.trim());
+    });
+    return {
+      managementApiConnected: true,
+      managementReadAuthorized: true,
+      latestDeploymentId: String(latest.id),
+      latestDeploymentStatus: typeof latest.status === 'string' ? latest.status : null,
+      latestDeploymentCreatedAt: typeof latest.createdAt === 'string' ? latest.createdAt : null,
+      logHighlights: selected,
+      detail: 'Authorized read-only Railway deployment status and sanitized log highlights were retrieved for this service.',
+    };
+  } catch (error) {
+    return {
+      managementApiConnected: true,
+      managementReadAuthorized: true,
+      latestDeploymentId: null,
+      latestDeploymentStatus: null,
+      latestDeploymentCreatedAt: null,
+      logHighlights: [],
+      detail: `Railway management read failed: ${redactInfraLine(error instanceof Error ? error.message : 'unknown Railway API error')}`,
+    };
+  }
+};
+
+export const collectSiaLiveDiagnostics = async (target: SiaDiagnosticTarget | null, options: SiaLiveDiagnosticOptions = {}): Promise<SiaLiveDiagnostics> => {
   const apiBase = normalizeBaseUrl(
     process.env.RAILWAY_SERVICE_SULANDRA_WEBSITE_URL || process.env.RAILWAY_PUBLIC_DOMAIN,
     'https://sulandra-website-production-5fc4.up.railway.app',
   );
   const siteBase = normalizeBaseUrl(process.env.RAILWAY_STATIC_URL, 'https://www.sulandrahealth.com');
-  const [apiHealth, staticPage, github] = await Promise.all([
+  const [apiHealth, staticPage, github, railwayManagement] = await Promise.all([
     probe(`${apiBase}/health`),
     target ? probe(`${siteBase}${target.route}`, 'HEAD') : Promise.resolve(null),
     githubDiagnostics(),
+    railwayManagementDiagnostics(Boolean(options.allowRailwayManagement)),
   ]);
 
   const railwayRuntimeDetected = Boolean(process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_ENVIRONMENT_ID);
-  const railwayManagementConnected = Boolean(process.env.SIA_RAILWAY_TOKEN?.trim() || process.env.RAILWAY_TOKEN?.trim() || process.env.RAILWAY_API_TOKEN?.trim());
   return {
     checkedAt: new Date().toISOString(),
     target,
@@ -217,10 +349,7 @@ export const collectSiaLiveDiagnostics = async (target: SiaDiagnosticTarget | nu
       serviceId: process.env.RAILWAY_SERVICE_ID || null,
       serviceName: process.env.RAILWAY_SERVICE_NAME || null,
       publicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null,
-      managementApiConnected: railwayManagementConnected,
-      detail: railwayManagementConnected
-        ? 'Railway management credential is present; current SIA build still uses safe service probes unless an approved management action is implemented.'
-        : 'Railway runtime metadata and live service health probes are available; deployment/log management API is not connected to SIA yet.',
+      ...railwayManagement,
     },
   };
 };
