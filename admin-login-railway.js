@@ -2,6 +2,7 @@
   "use strict";
 
   const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
+  const ADMIN_EMAIL_DOMAIN = "@sulandrahealth.com";
   const ADMIN_TOKEN_KEY = "sulandra:admin:access-token";
   const ADMIN_SESSION_KEY = "sulandra:admin:session";
   // Legacy Admin modules still read the employee-key names. Keep a tab-scoped
@@ -34,7 +35,7 @@
 
   function isManagementEmail(value) {
     const identifier = String(value || "").trim().toLowerCase();
-    return /^[^\s@]+@sulandrahealth\.com$/.test(identifier);
+    return identifier.endsWith(ADMIN_EMAIL_DOMAIN) && /^[^\s@]+@[^\s@]+$/.test(identifier);
   }
 
   function showUnauthorizedWarning() {
