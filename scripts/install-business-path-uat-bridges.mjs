@@ -195,6 +195,13 @@ await update('home-health.html', source => {
  * --------------------------------------------------------------------------
  * Employee Portal → Home Health Referral Inbox
  * --------------------------------------------------------------------------
+ *
+ * The legacy portal dynamically created a dedicated Referral Inbox launcher
+ * beside Home Health Operations. The universal Employee Portal now publishes a
+ * role/company-scoped Home Health Operations card instead. That card opens the
+ * canonical Home Health workspace, whose header exposes Referral Inbox. Treat
+ * both architectures as valid and never re-introduce the retired launcher.
+ * --------------------------------------------------------------------------
  */
 
 await update(
@@ -208,12 +215,22 @@ await update(
       return source;
     }
 
+    const universalPortal =
+      source.includes('employeeStaticHomeHealthOperations') &&
+      source.includes('employeeStaticHomeHealthVisits') &&
+      source.includes('selected.code === "HOME_HEALTH"') &&
+      source.includes('homeHealthManagementRoles.has(role)');
+
+    if (universalPortal) {
+      return source;
+    }
+
     const marker =
       '          quick.appendChild(launcher("Home Health Operations", "/home-health.html", "Manage Home Health referrals, episodes, Plan of Care, disciplines, staff and scheduling", "employeeHomeHealthOperationsLauncher"));';
 
     if (!source.includes(marker)) {
       throw new Error(
-        'Employee Portal Home Health management launcher anchor is missing'
+        'Employee Portal Home Health navigation contract is missing'
       );
     }
 
