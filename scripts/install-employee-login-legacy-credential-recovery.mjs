@@ -183,14 +183,58 @@ if (source.includes(oldLoginBlock)) {
   throw new Error('Legacy employee credential recovery could not find the employee login validation block.');
 }
 
+// SULANDRA_MANAGEMENT_EMPLOYEE_LOGIN_V1
+// Authorized management employees are still employees. They may open their own
+// Employee Portal with the same Sulandra work email/password used at the Admin door.
+// Non-management employees continue to use their assigned employee username.
+const oldEmployeeEmailBoundary = `    if (requestedPortal === 'EMPLOYEE' && identifier.includes('@')) {
+      res.status(400).json({ error: 'Employee Portal requires your assigned employee username, not an email address' });
+      return;
+    }`;
+const managementEmployeeEmailBoundary = `    if (requestedPortal === 'EMPLOYEE' && identifier.includes('@') && !identifier.endsWith('@sulandrahealth.com')) {
+      res.status(400).json({ error: 'Management Employee Portal sign-in requires a @sulandrahealth.com work email' });
+      return;
+    }`;
+if (source.includes(oldEmployeeEmailBoundary)) {
+  source = source.replace(oldEmployeeEmailBoundary, managementEmployeeEmailBoundary);
+} else if (!source.includes(managementEmployeeEmailBoundary)) {
+  throw new Error('Management Employee Portal login could not find the employee email boundary.');
+}
+
+source = source.replace(
+  "    const isAdministratorIdentifier = identifier === administratorEmail && requestedPortal !== 'EMPLOYEE';",
+  "    const isAdministratorIdentifier = identifier === administratorEmail\n      || (identifier === 'admin' && requestedPortal !== 'EMPLOYEE');",
+);
+
+const managementEntitlementMarker = "reason: 'Management Employee Portal work-email entitlement required'";
+if (!source.includes(managementEntitlementMarker)) {
+  const entitlementAnchor = "    if (requestedPortal === 'ADMIN' && !administrationRoles.has(account.role)) {";
+  if (!source.includes(entitlementAnchor)) {
+    throw new Error('Management Employee Portal login could not find the Admin entitlement anchor.');
+  }
+  source = source.replace(
+    entitlementAnchor,
+    `    if (requestedPortal === 'EMPLOYEE' && identifier.includes('@') && !administrationRoles.has(account.role)) {
+      await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: 'Management Employee Portal work-email entitlement required', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
+      res.status(403).json({ error: 'This Sulandra work email does not have management access. Use your assigned employee username instead.' });
+      return;
+    }
+${entitlementAnchor}`,
+  );
+}
+
 for (const required of [
   marker,
   'resolveLegacyPortalAccount(identifier)',
   'configuredAdministratorBootstrapAccepted',
   'bootstrapEmployeePortalCredential(employee, identifier, credentials.password)',
+  'SULANDRA_MANAGEMENT_EMPLOYEE_LOGIN_V1',
+  "requestedPortal === 'EMPLOYEE' && identifier.includes('@') && !identifier.endsWith('@sulandrahealth.com')",
+  "Management Employee Portal work-email entitlement required",
+  "identifier === administratorEmail",
 ]) {
   if (!source.includes(required)) throw new Error(`Legacy employee credential recovery missing marker: ${required}`);
 }
 
 await writeFile(bootstrapPath, source, 'utf8');
-console.log('Legacy Employee Portal credentials self-heal into EmployeePortalCredential without weakening the two-door login boundary.');
+console.log('Legacy Employee Portal credentials self-heal, and authorized management employees may use their Sulandra work-email Admin credentials for their employee workspace.');
