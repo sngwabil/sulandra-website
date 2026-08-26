@@ -14,6 +14,7 @@ for (const marker of [
   'collectSiaLiveDiagnostics',
   'serializeSiaLiveDiagnostics',
   'supportWorkspacePage (and legacy field page) identifies',
+  'allowRailwayManagement: adminAccessFor(auth)',
   'serverGitHubReleaseEvidence',
   'serverRailwayRuntimeEvidence',
 ]) {
@@ -29,7 +30,15 @@ for (const marker of [
   'RAILWAY_PROJECT_ID',
   'RAILWAY_SERVICE_ID',
   'RAILWAY_ENVIRONMENT_ID',
+  'SIA_RAILWAY_TOKEN',
+  'Project-Access-Token',
+  'https://backboard.railway.com/graphql/v2',
+  'query deployments($input: DeploymentListInput!)',
+  'query deploymentLogs($deploymentId: String!, $limit: Int)',
   'managementApiConnected',
+  'managementReadAuthorized',
+  'logHighlights',
+  'redactInfraLine',
   'serverRailwayBackedApiHealth',
   'serverStaticPageProbe',
   'serverGitHubReleaseEvidence',
@@ -41,4 +50,4 @@ if (/supportWorkspacePage[^\n]+affected/i.test(routes)) {
   throw new Error('SIA must not treat the support workspace page as the affected application.');
 }
 
-console.log('SIA guided diagnostics verified: affected-page clarification, screenshot-aware flow, GitHub release/CI reads, and Railway-backed service health are all wired.');
+console.log('SIA guided diagnostics verified: affected-page clarification, screenshot-aware flow, GitHub release/CI reads, Railway-backed service health, and Admin-gated read-only Railway deployment/log diagnostics are wired.');
