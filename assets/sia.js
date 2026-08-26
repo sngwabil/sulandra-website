@@ -6,11 +6,271 @@
   const token = TOKEN_KEYS.map((key) => sessionStorage.getItem(key)).find(Boolean) || '';
   const $ = (id) => document.getElementById(id);
   const state = { conversationId: '', lastUserMessage: '', status: null };
+  const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
 
   if (!token) {
     location.replace('/employee-login.html?returnTo=/sia.html');
     return;
   }
+
+  function installRichResponseStyles() {
+    if (document.getElementById('siaSafeRichRendererStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'siaSafeRichRendererStyles';
+    style.textContent = `
+      .message.assistant .bubble.sia-rich-content{white-space:normal;overflow-wrap:anywhere}
+      .sia-rich-content>*:first-child{margin-top:0!important}.sia-rich-content>*:last-child{margin-bottom:0!important}
+      .sia-rich-content p{margin:.45rem 0;line-height:1.58}.sia-rich-content h1,.sia-rich-content h2,.sia-rich-content h3,.sia-rich-content h4,.sia-rich-content h5,.sia-rich-content h6{color:#123f61;line-height:1.28;margin:1rem 0 .45rem;font-weight:900}
+      .sia-rich-content h1{font-size:1.42rem}.sia-rich-content h2{font-size:1.3rem}.sia-rich-content h3{font-size:1.18rem}.sia-rich-content h4{font-size:1.08rem}.sia-rich-content h5,.sia-rich-content h6{font-size:1rem}
+      .sia-rich-content ul,.sia-rich-content ol{margin:.45rem 0 .65rem;padding-left:1.45rem}.sia-rich-content li{margin:.22rem 0;line-height:1.52}.sia-rich-content li::marker{color:#0b6b9f;font-weight:800}
+      .sia-rich-content strong{color:#153e5a;font-weight:900}.sia-rich-content code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:.9em;background:#edf3f7;color:#173c55;border:1px solid #d8e4eb;border-radius:5px;padding:.12rem .32rem}
+      .sia-rich-content pre{position:relative;margin:.75rem 0;background:#102433;color:#e9f4fb;border:1px solid #23475f;border-radius:10px;padding:14px 15px;overflow:auto;white-space:pre;line-height:1.5;tab-size:2}.sia-rich-content pre code{display:block;background:transparent;color:inherit;border:0;padding:0;font-size:.88rem;white-space:pre}
+      .sia-rich-content .sia-code-language{display:block;margin:-3px 0 8px;color:#9fc5d9;font-size:10px;font-family:Inter,"Segoe UI",Arial,sans-serif;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+      .sia-rich-content a{color:#075b96;font-weight:800;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}.sia-rich-content a:hover{color:#083a67}.sia-rich-content a::after{content:" ↗";font-size:.78em}
+      .sia-table-wrap{width:100%;overflow-x:auto;margin:.75rem 0;border:1px solid #d4e1ea;border-radius:10px;background:#fff}.sia-rich-content table{width:100%;min-width:520px;border-collapse:collapse;font-size:.92em}.sia-rich-content th,.sia-rich-content td{padding:9px 11px;border-right:1px solid #dce7ee;border-bottom:1px solid #dce7ee;text-align:left;vertical-align:top;line-height:1.45}.sia-rich-content th{background:#edf6fb;color:#174b70;font-weight:900}.sia-rich-content tr:last-child td{border-bottom:0}.sia-rich-content th:last-child,.sia-rich-content td:last-child{border-right:0}.sia-rich-content tbody tr:nth-child(even){background:#fbfdfe}
+      .sia-rich-content .sia-unsafe-link{color:#6d7882;text-decoration:line-through;text-decoration-thickness:1px}.sia-rich-content .sia-raw-html-note{font-family:"SFMono-Regular",Consolas,monospace}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function safeHref(raw) {
+    const value = String(raw || '').trim();
+    if (!value) return null;
+    try {
+      const url = new URL(value, location.origin);
+      return SAFE_LINK_PROTOCOLS.has(url.protocol) ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function appendInlineMarkdown(parent, source) {
+    const text = String(source ?? '');
+    const pattern = /(`[^`\n]+`|\*\*[^*\n](?:.*?[^*\n])?\*\*|\[[^\]\n]+\]\([^\)\n]+\))/g;
+    let cursor = 0;
+    let match;
+
+    while ((match = pattern.exec(text)) !== null) {
+      if (match.index > cursor) parent.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+      const token = match[0];
+
+      if (token.startsWith('`')) {
+        const code = document.createElement('code');
+        code.textContent = token.slice(1, -1);
+        parent.appendChild(code);
+      } else if (token.startsWith('**')) {
+        const strong = document.createElement('strong');
+        appendInlineMarkdown(strong, token.slice(2, -2));
+        parent.appendChild(strong);
+      } else {
+        const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (linkMatch) {
+          const href = safeHref(linkMatch[2]);
+          if (href) {
+            const anchor = document.createElement('a');
+            anchor.href = href;
+            anchor.target = '_blank';
+            anchor.rel = 'noopener noreferrer nofollow';
+            appendInlineMarkdown(anchor, linkMatch[1]);
+            parent.appendChild(anchor);
+          } else {
+            const blocked = document.createElement('span');
+            blocked.className = 'sia-unsafe-link';
+            blocked.title = 'SIA blocked a link using a disallowed or invalid protocol.';
+            blocked.appendChild(document.createTextNode(linkMatch[1]));
+            parent.appendChild(blocked);
+          }
+        } else {
+          parent.appendChild(document.createTextNode(token));
+        }
+      }
+      cursor = pattern.lastIndex;
+    }
+
+    if (cursor < text.length) parent.appendChild(document.createTextNode(text.slice(cursor)));
+  }
+
+  function splitTableRow(line) {
+    let value = String(line || '').trim();
+    if (value.startsWith('|')) value = value.slice(1);
+    if (value.endsWith('|')) value = value.slice(0, -1);
+    const cells = [];
+    let current = '';
+    let escaped = false;
+    for (const char of value) {
+      if (escaped) {
+        current += char;
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '|') {
+        cells.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    if (escaped) current += '\\';
+    cells.push(current.trim());
+    return cells;
+  }
+
+  function isTableSeparator(line) {
+    const cells = splitTableRow(line);
+    return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+  }
+
+  function isBlockStart(lines, index) {
+    const line = lines[index] || '';
+    const next = lines[index + 1] || '';
+    return /^\s*```/.test(line)
+      || /^\s*~~~/.test(line)
+      || /^\s*#{1,6}\s+/.test(line)
+      || /^\s*[-+*]\s+/.test(line)
+      || /^\s*\d+[.)]\s+/.test(line)
+      || (line.includes('|') && isTableSeparator(next));
+  }
+
+  function renderMarkdown(source) {
+    const fragment = document.createDocumentFragment();
+    const lines = String(source ?? '').replace(/\r\n?/g, '\n').split('\n');
+    let index = 0;
+
+    while (index < lines.length) {
+      const line = lines[index];
+      if (!line.trim()) {
+        index += 1;
+        continue;
+      }
+
+      const fenceMatch = line.match(/^\s*(```|~~~)\s*([A-Za-z0-9_+.#-]*)\s*$/);
+      if (fenceMatch) {
+        const fence = fenceMatch[1];
+        const language = fenceMatch[2];
+        index += 1;
+        const codeLines = [];
+        while (index < lines.length && !new RegExp(`^\\s*${fence}`).test(lines[index])) {
+          codeLines.push(lines[index]);
+          index += 1;
+        }
+        if (index < lines.length) index += 1;
+        const pre = document.createElement('pre');
+        if (language) {
+          const label = document.createElement('span');
+          label.className = 'sia-code-language';
+          label.textContent = language;
+          pre.appendChild(label);
+        }
+        const code = document.createElement('code');
+        code.textContent = codeLines.join('\n');
+        pre.appendChild(code);
+        fragment.appendChild(pre);
+        continue;
+      }
+
+      const headingMatch = line.match(/^\s*(#{1,6})\s+(.+?)\s*#*\s*$/);
+      if (headingMatch) {
+        const heading = document.createElement(`h${headingMatch[1].length}`);
+        appendInlineMarkdown(heading, headingMatch[2]);
+        fragment.appendChild(heading);
+        index += 1;
+        continue;
+      }
+
+      const unorderedMatch = line.match(/^\s*[-+*]\s+(.+)$/);
+      if (unorderedMatch) {
+        const list = document.createElement('ul');
+        while (index < lines.length) {
+          const itemMatch = lines[index].match(/^\s*[-+*]\s+(.+)$/);
+          if (!itemMatch) break;
+          const item = document.createElement('li');
+          appendInlineMarkdown(item, itemMatch[1]);
+          list.appendChild(item);
+          index += 1;
+        }
+        fragment.appendChild(list);
+        continue;
+      }
+
+      const orderedMatch = line.match(/^\s*\d+[.)]\s+(.+)$/);
+      if (orderedMatch) {
+        const list = document.createElement('ol');
+        while (index < lines.length) {
+          const itemMatch = lines[index].match(/^\s*\d+[.)]\s+(.+)$/);
+          if (!itemMatch) break;
+          const item = document.createElement('li');
+          appendInlineMarkdown(item, itemMatch[1]);
+          list.appendChild(item);
+          index += 1;
+        }
+        fragment.appendChild(list);
+        continue;
+      }
+
+      if (line.includes('|') && index + 1 < lines.length && isTableSeparator(lines[index + 1])) {
+        const headers = splitTableRow(line);
+        index += 2;
+        const rows = [];
+        while (index < lines.length && lines[index].includes('|') && lines[index].trim()) {
+          rows.push(splitTableRow(lines[index]));
+          index += 1;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = 'sia-table-wrap';
+        wrap.setAttribute('role', 'region');
+        wrap.setAttribute('aria-label', 'SIA troubleshooting table');
+        wrap.tabIndex = 0;
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        headers.forEach((cellText) => {
+          const th = document.createElement('th');
+          th.scope = 'col';
+          appendInlineMarkdown(th, cellText);
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        rows.forEach((row) => {
+          const tr = document.createElement('tr');
+          for (let cellIndex = 0; cellIndex < headers.length; cellIndex += 1) {
+            const td = document.createElement('td');
+            appendInlineMarkdown(td, row[cellIndex] ?? '');
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+        fragment.appendChild(wrap);
+        continue;
+      }
+
+      const paragraphLines = [line.trim()];
+      index += 1;
+      while (index < lines.length && lines[index].trim() && !isBlockStart(lines, index)) {
+        paragraphLines.push(lines[index].trim());
+        index += 1;
+      }
+      const paragraph = document.createElement('p');
+      appendInlineMarkdown(paragraph, paragraphLines.join(' '));
+      fragment.appendChild(paragraph);
+    }
+
+    return fragment;
+  }
+
+  window.SulandraSiaSafeRenderer = Object.freeze({
+    version: '20260826-safe-rich-1',
+    formats: Object.freeze(['bold', 'headings', 'unordered-lists', 'ordered-lists', 'inline-code', 'code-blocks', 'links', 'tables']),
+    rawHtmlExecution: false,
+    allowedLinkProtocols: Object.freeze([...SAFE_LINK_PROTOCOLS]),
+    render: renderMarkdown,
+  });
+
+  installRichResponseStyles();
 
   const toast = (message) => {
     const node = $('toast');
@@ -76,8 +336,9 @@
     avatar.className = 'avatar';
     avatar.textContent = role === 'assistant' ? 'SIA' : 'YOU';
     const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = content;
+    bubble.className = `bubble${role === 'assistant' ? ' sia-rich-content' : ''}`;
+    if (role === 'assistant') bubble.appendChild(renderMarkdown(content));
+    else bubble.textContent = content;
     wrap.append(avatar, bubble);
     log.appendChild(wrap);
     log.scrollTop = log.scrollHeight;
