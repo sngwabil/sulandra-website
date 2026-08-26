@@ -26,44 +26,12 @@ if (!authSecurity.includes(schemaMarker) || !authSecurity.includes('if(employeeA
   throw new Error('Employee Auth schema promise cache was not installed');
 }
 
-// 2) Password verification keeps the existing scrypt parameters, but moves the
-// expensive KDF off the Node event loop. This does NOT lower the password cost;
-// it simply prevents one sign-in from freezing unrelated API requests.
-const bootstrapPath = path.join(root, 'api', 'src', 'onboarding-bootstrap.ts');
-let bootstrap = await readFile(bootstrapPath, 'utf8');
-const scryptMarker = 'SULANDRA_ASYNC_PASSWORD_VERIFY_V1';
-if (!bootstrap.includes(scryptMarker)) {
-  const importOld = "import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';";
-  const importNew = "import { randomBytes, randomUUID, scrypt, scryptSync, timingSafeEqual } from 'node:crypto';";
-  if (!bootstrap.includes(importOld)) throw new Error('Unable to locate crypto import for async password verification');
-  bootstrap = bootstrap.replace(importOld, importNew);
+// Password hashing/verification parameters are intentionally left untouched in
+// this pre-build optimizer. The canonical authentication installers rely on the
+// current verification function shape and must finish before TypeScript build.
+// The latency fix here removes repeated schema DDL without reducing password cost.
 
-  const functionStart = 'const verifyPortalPassword = (password: string, encodedHash: string | null) => {';
-  const functionEnd = '\n};\n\nconst roleTitle';
-  const startIndex = bootstrap.indexOf(functionStart);
-  const endIndex = bootstrap.indexOf(functionEnd, startIndex + functionStart.length);
-  if (startIndex < 0 || endIndex < 0) throw new Error('Unable to locate password verification function');
-  let functionBody = bootstrap.slice(startIndex + functionStart.length, endIndex);
-  const syncAnchor = '    const derived = scryptSync(\n      password,';
-  if (!functionBody.includes(syncAnchor)) throw new Error('Unable to locate synchronous password derivation');
-  functionBody = functionBody.replace(syncAnchor, `    const derived = await new Promise<Buffer>((resolve, reject) => {\n      scrypt(\n        password,`);
-  const optionsEnd = `        maxmem: 64 * 1_024 * 1_024,\n      },\n    );\n    return derived.length === expected.length && timingSafeEqual(derived, expected);`;
-  const asyncEnd = `        maxmem: 64 * 1_024 * 1_024,\n      },\n        (error, value) => error ? reject(error) : resolve(value),\n      );\n    });\n    return derived.length === expected.length && timingSafeEqual(derived, expected);`;
-  if (!functionBody.includes(optionsEnd)) throw new Error('Unable to locate password scrypt completion');
-  functionBody = functionBody.replace(optionsEnd, asyncEnd);
-  const replacement = `// ${scryptMarker}\nconst verifyPortalPassword = async (password: string, encodedHash: string | null) => {${functionBody}\n};\n\nconst roleTitle`;
-  bootstrap = bootstrap.slice(0, startIndex) + replacement + bootstrap.slice(endIndex + functionEnd.length);
-
-  const callAnchor = '!verifyPortalPassword(credentials.password, employee.passwordHash)';
-  if (!bootstrap.includes(callAnchor)) throw new Error('Unable to locate login password verification call');
-  bootstrap = bootstrap.replace(callAnchor, '!await verifyPortalPassword(credentials.password, employee.passwordHash)');
-  await writeFile(bootstrapPath, bootstrap, 'utf8');
-}
-if (!bootstrap.includes(scryptMarker) || !bootstrap.includes('!await verifyPortalPassword(credentials.password, employee.passwordHash)')) {
-  throw new Error('Async password verification was not installed');
-}
-
-// 3) Start fetching the Admin authorization/bootstrap runtimes at the top of
+// 2) Start fetching the Admin authorization/bootstrap runtimes at the top of
 // admin.html rather than discovering every script only after the entire legacy
 // document has arrived. The API Docker image intentionally does not copy the
 // static HTML, so this step is optional there and required in the frontend image.
@@ -89,4 +57,4 @@ try {
   console.log('Admin HTML is not present in this build image; skipping static fast-bootstrap rewrite.');
 }
 
-console.log('Admin login performance optimized: auth schema DDL is process-cached, scrypt verification is asynchronous at unchanged cost, and Admin authorization/bootstrap assets are discovered early when the static Admin document is present.');
+console.log('Admin login performance optimized: auth schema DDL is process-cached and Admin authorization/bootstrap assets are discovered early when the static Admin document is present. Password security parameters are unchanged.');
