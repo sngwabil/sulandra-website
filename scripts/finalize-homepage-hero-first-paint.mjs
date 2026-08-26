@@ -69,3 +69,8 @@ source = source.replace(/<img class="hero-slide-image"([^>]*?)>/, (match, attrs)
 
 await writeFile(target, source, 'utf8');
 console.log('Homepage hero final output hardened: inline SVG scene paints before any network image and the remote photograph never exposes a blank dark panel.');
+
+// This is deliberately the final static-page mutation in build:web. Publish the
+// same authenticated Ask SIA copilot drawer after all other HTML finalizers so
+// every Sulandra HTML destination receives one stable shared assistant surface.
+await import('./install-global-sia-copilot.mjs');
