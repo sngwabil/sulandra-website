@@ -63,7 +63,7 @@ for(const marker of [
 expect(guard.includes("['employeeSchedulingLauncher', '/scheduling.html']")&&guard.includes("['employeeSchedulingNav', '/scheduling.html']"),'Protected Employee Scheduling navigation guard is incomplete');
 
 for(const marker of [
-  'employee-role-navigation-guard.js?v=20260825-portal-separation-3',
+  'employee-role-navigation-guard.js?v=20260826-scheduling-header-1',
   'install-home-manager-residential-scope.mjs',
   'install-role-workspaces.mjs',
   'install-admin-cross-workspace-launcher.mjs',
