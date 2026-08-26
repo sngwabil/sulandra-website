@@ -52,8 +52,8 @@ export function registerEmployeeNumberRoutes({ app, prisma, authOf, requireRoles
     try {
       const auth = authOf(res);
       const result = await prisma.$transaction(async (tx) => {
-        await tx.$executeRawUnsafe(
-          'SELECT pg_advisory_xact_lock(hashtext($1))',
+        await tx.$queryRawUnsafe<Array<{ lock: unknown }>>(
+          'SELECT pg_advisory_xact_lock(hashtext($1)) AS lock',
           `sulandra-employee-number:${auth.organizationId}`,
         );
 
@@ -65,9 +65,9 @@ export function registerEmployeeNumberRoutes({ app, prisma, authOf, requireRoles
                     FILTER (WHERE NULLIF(e."employeeNumber",'') IS NOT NULL))[1] AS "existingNumber"
            FROM "User" u
            JOIN "Employment" e ON e."organizationId"=u."organizationId" AND e."userId"=u."id"
-           LEFT JOIN "EmployeeCredential" c ON c."organizationId"=u."organizationId" AND c."userId"=u."id"
+           LEFT JOIN "EmployeePortalCredential" c ON c."userId"=u."id"
            LEFT JOIN "EmployeeManagementProfile" p ON p."organizationId"=u."organizationId" AND p."userId"=u."id"
-           WHERE u."organizationId"=$1
+           WHERE u."organizationId"=$1 AND lower(COALESCE(u."email",'')) NOT LIKE '%@demo.spire.local'
            GROUP BY u."id",u."email",c."displayName",p."displayName"
            ORDER BY CASE WHEN lower(COALESCE(u."email",''))=$2 THEN 0 ELSE 1 END,
                     MIN(e."startsAt") ASC,u."id" ASC`,
