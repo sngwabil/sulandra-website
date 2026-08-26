@@ -43,7 +43,7 @@ for (const marker of [
   'adminWorkspaceFor',
   'Admin-capable authenticated role',
   'serverVerifiedAdminCapableRole',
-  'serverAuthenticatedWorkEmail',
+  'serverConfirmedWorkEmail',
   'sign in with the Sulandra work email',
   'not the Employee Portal username',
   'invite them to attach a screenshot',
@@ -57,8 +57,10 @@ for (const marker of [
 
 for (const marker of [
   'loadEmployeeUsername',
+  'loadEmployeeWorkEmail',
   'EmployeePortalCredential',
   'serverConfirmedEmployeePortalUsername',
+  "workEmailSource: confirmedWorkEmail ? 'USER_DIRECTORY' : 'NOT_CONFIRMED'",
   "employeeUsernameSource: employeeUsername ? 'EMPLOYEE_PORTAL_CREDENTIAL' : 'NOT_CONFIRMED'",
   'loadPublishedSchedule',
   'TimeAttendanceShift',
@@ -88,4 +90,4 @@ if (!map.includes('Authorized management employees may also use their @sulandrah
   throw new Error('SIA system map is missing the current management Employee Portal credential contract.');
 }
 
-console.log('SIA verified: canonical routes, authenticated Admin guidance, screenshots, confirmed employee username lookup, published personal schedule grounding, exact SPIRE theme controls, and MAR software-only guidance.');
+console.log('SIA verified: canonical routes, directory-confirmed employee identity, authenticated Admin guidance, screenshots, published personal schedules, exact SPIRE theme controls, and MAR software-only guidance.');
