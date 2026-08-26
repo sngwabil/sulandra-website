@@ -69,10 +69,13 @@ requireMarkers('Employee Portal navigation guard', navGuard, [
 ]);
 
 requireMarkers('Employee username login', employeeLogin, [
-  'Your employee workspace has its own sign-in','id="username"','placeholder="Example: sngwabil"',
+  'class="auth-card"','id="username"','placeholder="Example: sngwabil"',
   'Sulpitius Ndeh Gwabil → sngwabil','Administrator Sign In ↗','href="/admin-login.html"','target="_blank"',
 ]);
-forbidMarkers('Employee username login', employeeLogin, ['Employee email or username','id="email" name="username"']);
+forbidMarkers('Employee username login', employeeLogin, [
+  'Employee email or username','id="email" name="username"','Your employee workspace has its own sign-in',
+  'One employee home','Role-aware access','Protected session','class="welcome"',
+]);
 requireMarkers('Employee login runtime', employeeLoginRuntime, [
   'portal: "EMPLOYEE"','username.includes("@")','/employee-portal.html','portalContext: "EMPLOYEE"',
   'Employee Portal uses your assigned employee username','window.sessionStorage.setItem(TOKEN_KEY, token)',
@@ -154,10 +157,11 @@ const [publishedPortal, publishedEmployeeLogin, publishedAdminLogin] = await Pro
 requireMarkers('Published Employee Portal', publishedPortal, [
   'workspace-header','peopleDirectory','employeeMyWorkLauncher','employeeNotificationsLauncher','employeeWorkCenterTitle','employeeNotificationHeaderCount','/my-work.html','/notifications.html',
 ]);
-requireMarkers('Published employee login', publishedEmployeeLogin, ['id="username"','placeholder="Example: sngwabil"','Administrator Sign In ↗']);
+requireMarkers('Published employee login', publishedEmployeeLogin, ['class="auth-card"','id="username"','placeholder="Example: sngwabil"','Administrator Sign In ↗']);
+forbidMarkers('Published employee login', publishedEmployeeLogin, ['Your employee workspace has its own sign-in','One employee home','Role-aware access','Protected session','class="welcome"']);
 requireMarkers('Published admin login', publishedAdminLogin, ['Administrator Access','id="adminEmail"','/admin-login-railway.js']);
 if (publishedPortal.includes('Sulandra Health Platform</strong><a href="/admin.html#dashboard"')) {
   throw new Error('Published Employee Portal unexpectedly gained the global application strip.');
 }
 
-console.log('Employee Portal verified: universal employee workspace, non-blocking live panels, company-scoped people directories, username-only employee sign-in, Sulandra-email admin sign-in with backend entitlement enforcement, independent cross-workspace tabs, and canonical hire usernames such as sngwabil.');
+console.log('Employee Portal verified: universal employee workspace, non-blocking live panels, company-scoped people directories, centered username-only employee sign-in, Sulandra-email admin sign-in with backend entitlement enforcement, independent cross-workspace tabs, and canonical hire usernames such as sngwabil.');
