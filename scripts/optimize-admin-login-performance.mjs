@@ -65,23 +65,28 @@ if (!bootstrap.includes(scryptMarker) || !bootstrap.includes('!await verifyPorta
 
 // 3) Start fetching the Admin authorization/bootstrap runtimes at the top of
 // admin.html rather than discovering every script only after the entire legacy
-// document has arrived. The router is safe in <head>; it verifies authority
-// before owner-only modules are loaded.
+// document has arrived. The API Docker image intentionally does not copy the
+// static HTML, so this step is optional there and required in the frontend image.
 const adminPath = path.join(root, 'admin.html');
-let admin = await readFile(adminPath, 'utf8');
 const fastBootMarker = '<!-- SULANDRA_ADMIN_FAST_BOOTSTRAP_V1 -->';
-if (!admin.includes(fastBootMarker)) {
-  const companyContextTag = '<script src="/assets/admin-company-context.js?v=20260809-admin-company-context-2"></script>';
-  admin = admin.replace(companyContextTag, '');
-  const headAnchor = '</head>';
-  if (!admin.includes(headAnchor)) throw new Error('Unable to locate Admin head');
-  const fastBoot = `${fastBootMarker}\n  <link rel="preload" as="script" href="/assets/admin-owner-console.js?v=20260825-owner-console-2">\n  <link rel="preload" as="script" href="/assets/admin-owner-context.js?v=20260825-owner-console-2">\n  <link rel="preload" as="script" href="/admin-railway.js?v=20260804-admin-clean-4">\n  ${companyContextTag}\n`;
-  admin = admin.replace(headAnchor, `${fastBoot}${headAnchor}`);
-  await writeFile(adminPath, admin, 'utf8');
-}
-const contextCount = (admin.match(/<script src="\/assets\/admin-company-context\.js\?v=20260809-admin-company-context-2"><\/script>/g) || []).length;
-if (!admin.includes(fastBootMarker) || contextCount !== 1 || admin.indexOf(fastBootMarker) > admin.indexOf('</head>')) {
-  throw new Error(`Admin fast bootstrap is invalid (company-context script count: ${contextCount})`);
+try {
+  let admin = await readFile(adminPath, 'utf8');
+  if (!admin.includes(fastBootMarker)) {
+    const companyContextTag = '<script src="/assets/admin-company-context.js?v=20260809-admin-company-context-2"></script>';
+    admin = admin.replace(companyContextTag, '');
+    const headAnchor = '</head>';
+    if (!admin.includes(headAnchor)) throw new Error('Unable to locate Admin head');
+    const fastBoot = `${fastBootMarker}\n  <link rel="preload" as="script" href="/assets/admin-owner-console.js?v=20260825-owner-console-2">\n  <link rel="preload" as="script" href="/assets/admin-owner-context.js?v=20260825-owner-console-2">\n  <link rel="preload" as="script" href="/admin-railway.js?v=20260804-admin-clean-4">\n  ${companyContextTag}\n`;
+    admin = admin.replace(headAnchor, `${fastBoot}${headAnchor}`);
+    await writeFile(adminPath, admin, 'utf8');
+  }
+  const contextCount = (admin.match(/<script src="\/assets\/admin-company-context\.js\?v=20260809-admin-company-context-2"><\/script>/g) || []).length;
+  if (!admin.includes(fastBootMarker) || contextCount !== 1 || admin.indexOf(fastBootMarker) > admin.indexOf('</head>')) {
+    throw new Error(`Admin fast bootstrap is invalid (company-context script count: ${contextCount})`);
+  }
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+  console.log('Admin HTML is not present in this build image; skipping static fast-bootstrap rewrite.');
 }
 
-console.log('Admin login performance optimized: auth schema DDL is process-cached, scrypt verification is asynchronous at unchanged cost, and Admin authorization/bootstrap assets are discovered from the document head.');
+console.log('Admin login performance optimized: auth schema DDL is process-cached, scrypt verification is asynchronous at unchanged cost, and Admin authorization/bootstrap assets are discovered early when the static Admin document is present.');
