@@ -16,7 +16,7 @@ COPY interview-scheduling.html ./interview-scheduling.html
 RUN npm run db:generate
 
 COPY api ./api
-RUN npm run build
+RUN node scripts/optimize-admin-login-performance.mjs && npm run build
 
 ENV NODE_ENV=production
 ENV PORT=4000
