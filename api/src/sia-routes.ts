@@ -132,11 +132,11 @@ const iso = (value: Date | string) => {
   return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString();
 };
 
-const systemInstructions = (auth: AuthContext) => {
+const systemInstructions = (auth: AuthContext, confirmedWorkEmail: string | null) => {
   const adminAccess = adminAccessFor(auth);
   const adminWorkspace = adminWorkspaceFor(auth);
   const adminSignIn = adminSignInFor(auth);
-  const workEmail = auth.email?.trim() || 'the employee’s assigned Sulandra work email';
+  const workEmail = confirmedWorkEmail || 'the employee’s assigned Sulandra work email';
   return `You are SIA, the Sulandra Intelligent Assistant, serving as the interactive IT specialist for Sulandra Networks, Sulandra companies, and authorized partner organizations.
 
 Your mission is technical support, troubleshooting, system navigation, incident triage, account/access guidance, endpoint/device/network guidance, software diagnostics, deployment explanation, and safe IT operations advice.
@@ -144,7 +144,7 @@ Your mission is technical support, troubleshooting, system navigation, incident 
 Current server-authenticated tenant context:
 - organizationId: ${auth.organizationId}
 - user role: ${roleLabel(auth.role)}
-- authenticated work email when available: ${workEmail}
+- directory-confirmed work email when available: ${workEmail}
 - Admin-capable authenticated role: ${adminAccess ? 'YES' : 'NO'}
 - Admin sign-in route for this role: ${adminAccess ? adminSignIn : 'NOT AUTHORIZED'}
 - Admin workspace after successful sign-in: ${adminAccess ? adminWorkspace : 'NOT AUTHORIZED'}
@@ -173,7 +173,7 @@ Interactive support rules:
 20. For schedule questions, use serverPublishedShift entries when supplied. Summarize the actual published assigned shifts and include [Scheduling](/scheduling.html) as the place to view the full schedule. If serverPublishedScheduleLookup is AVAILABLE but there are zero serverPublishedShift entries, say no published assigned shifts were found in the supplied lookup window; do not invent a schedule. If lookup is UNAVAILABLE, say the live schedule lookup is temporarily unavailable and provide the Scheduling link.
 21. For SPIRE chart appearance/theme questions, use the exact known path: top-right User Profile → "User Profile & Accessibility Suite" → "19 Distinct Themes". Mention "Individual Color Customizer" for manual color changes. Never tell the user to hunt through generic Settings/Preferences when the real controls are known.
 22. For SPIRE MAR questions, provide software-use guidance only from the authoritative MAR map. A true missed occurrence can be documented by opening the scheduled occurrence, choosing MISSED in "Document Medication Administration", completing factual Reason/Note information as appropriate, then choosing "File MAR Event". Do not tell the employee whether to give a late/replacement dose, hold a dose, call a provider/pharmacy, or make another clinical decision; those are clinical/policy decisions outside SIA's IT role.
-23. Distinguish identifiers precisely: work email, Employee Portal username, and Admin entitlement are different fields. Authorized management employees may use their Sulandra work email plus Admin password at the Employee Portal door to reach their own employee profile, but that email is still not their Employee Portal username.
+23. Distinguish identifiers precisely: directory-confirmed work email, Employee Portal username, and Admin entitlement are different fields. Authorized management employees may use their Sulandra work email plus Admin password at the Employee Portal door to reach their own employee profile, but that email is still not their Employee Portal username.
 
 When answering, use Sulandra product names exactly when known: Employee Portal, Administrator Portal, Scheduling, Employee 360, SPIRE, Sulandra Community Living Services, Sulandra Home Health, Sulandra NMT, Sulandra Networks, and SIA.`;
 };
@@ -241,9 +241,9 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
   const loadEmployeeUsername = async (auth: AuthContext) => {
     try {
       const rows = await prisma.$queryRawUnsafe<Array<{ username: string | null }>>(
-        `SELECT COALESCE(NULLIF(credential."username",''),NULLIF(to_jsonb(user_row)->>'username','')) AS "username"
+        `SELECT credential."username" AS "username"
          FROM "User" user_row
-         LEFT JOIN "EmployeePortalCredential" credential ON credential."userId"=user_row."id"
+         JOIN "EmployeePortalCredential" credential ON credential."userId"=user_row."id"
          WHERE user_row."organizationId"=$1 AND user_row."id"=$2
          LIMIT 1`,
         auth.organizationId,
@@ -253,6 +253,21 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
       return username || null;
     } catch (error) {
       console.warn('[sia] employee username lookup unavailable', { userId: auth.userId, error });
+      return null;
+    }
+  };
+
+  const loadEmployeeWorkEmail = async (auth: AuthContext) => {
+    try {
+      const rows = await prisma.$queryRawUnsafe<Array<{ email: string | null }>>(
+        `SELECT "email" FROM "User" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,
+        auth.organizationId,
+        auth.userId,
+      );
+      const email = rows[0]?.email?.trim().toLowerCase();
+      return email || null;
+    } catch (error) {
+      console.warn('[sia] employee work-email lookup unavailable', { userId: auth.userId, error });
       return null;
     }
   };
@@ -304,12 +319,13 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
       const auth = authOf(res);
       const started = Date.now();
       await prisma.$queryRawUnsafe(`SELECT 1 AS ok`);
-      const [[ticketMetric], employeeUsername] = await Promise.all([
+      const [[ticketMetric], employeeUsername, confirmedWorkEmail] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
           `SELECT COUNT(*)::bigint AS count FROM "EmployeeSupportRequest" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status" NOT IN ('RESOLVED','CLOSED')`,
           auth.organizationId, auth.userId,
         ),
         loadEmployeeUsername(auth),
+        loadEmployeeWorkEmail(auth),
       ]);
       const adminAccess = adminAccessFor(auth);
       res.json({
@@ -325,7 +341,8 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
           myOpenTickets: Number(ticketMetric?.count || 0),
           currentUser: {
             role: auth.role,
-            email: auth.email || null,
+            email: confirmedWorkEmail,
+            workEmailSource: confirmedWorkEmail ? 'USER_DIRECTORY' : 'NOT_CONFIRMED',
             employeeUsername,
             employeeUsernameSource: employeeUsername ? 'EMPLOYEE_PORTAL_CREDENTIAL' : 'NOT_CONFIRMED',
             adminAccess,
@@ -395,7 +412,10 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
         auth.organizationId, conversationId,
       );
       const history = prior.reverse().map((message) => ({ role: message.role, content: message.content }));
-      const employeeUsername = await loadEmployeeUsername(auth);
+      const [employeeUsername, confirmedWorkEmail] = await Promise.all([
+        loadEmployeeUsername(auth),
+        loadEmployeeWorkEmail(auth),
+      ]);
       const scheduleIntent = /\b(schedule|scheduled|shift|shifts|roster|working|work today|work tomorrow|next shift)\b/i.test(safeMessage)
         || (/\b(today|tomorrow|next|when|what about)\b/i.test(safeMessage)
           && history.slice(-4).some((message) => /\b(schedule|shift|roster)\b/i.test(message.content)));
@@ -404,7 +424,7 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
       const contextLines = Object.entries(input.context || {}).filter(([, value]) => value).map(([key, value]) => `${key}: ${redactSensitiveText(String(value))}`);
       contextLines.push(`serverAuthenticatedRole: ${auth.role}`);
       contextLines.push(`serverVerifiedAdminCapableRole: ${adminAccessFor(auth) ? 'YES' : 'NO'}`);
-      if (auth.email) contextLines.push(`serverAuthenticatedWorkEmail: ${auth.email}`);
+      contextLines.push(`serverConfirmedWorkEmail: ${confirmedWorkEmail || 'NOT_FOUND'}`);
       contextLines.push(`serverConfirmedEmployeePortalUsername: ${employeeUsername || 'NOT_FOUND'}`);
       if (publishedSchedule) {
         contextLines.push(`serverPublishedScheduleLookup: ${publishedSchedule.lookupAvailable ? 'AVAILABLE' : 'UNAVAILABLE'}`);
@@ -435,6 +455,7 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
         screenshotAttached: Boolean(input.attachment),
         adminAccess: adminAccessFor(auth),
         employeeUsernameConfirmed: Boolean(employeeUsername),
+        workEmailConfirmed: Boolean(confirmedWorkEmail),
         publishedScheduleLookup: publishedSchedule?.lookupAvailable ?? null,
         publishedShiftCount: publishedSchedule?.shifts.length ?? null,
       });
@@ -458,7 +479,7 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
           body: JSON.stringify({
             model: openAIModel(),
             store: false,
-            instructions: systemInstructions(auth),
+            instructions: systemInstructions(auth, confirmedWorkEmail),
             input: [...history, { role: 'user', content: currentUserContent }],
             max_output_tokens: 1800,
           }),
