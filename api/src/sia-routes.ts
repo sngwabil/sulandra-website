@@ -25,6 +25,23 @@ type SiaMessageRow = {
   content: string;
 };
 
+type SiaScheduleShift = {
+  startTime: Date | string;
+  endTime: Date | string;
+  code: string | null;
+  department: string | null;
+  location: string | null;
+  payCode: string | null;
+  companyName: string | null;
+};
+
+type SiaScheduleContext = {
+  lookupAvailable: boolean;
+  asOf: string;
+  through: string;
+  shifts: SiaScheduleShift[];
+};
+
 type OpenAIResponse = {
   id?: string;
   model?: string;
@@ -110,6 +127,10 @@ const extractOutputText = (payload: OpenAIResponse) => {
 };
 
 const roleLabel = (role: UserRole) => role.toLowerCase().replace(/_/g, ' ');
+const iso = (value: Date | string) => {
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toISOString();
+};
 
 const systemInstructions = (auth: AuthContext) => {
   const adminAccess = adminAccessFor(auth);
@@ -147,6 +168,12 @@ Interactive support rules:
 15. Resolve Sulandra navigation questions against the canonical application map above. Never call /sia.html an Admin sign-in page.
 16. When a canonical route is known, lead with that route before cache/incognito/device-time advice. Suggest browser/session workarounds only when the symptom supports them.
 17. Keep the tone calm, competent, concise, and collaborative. Avoid repetitive disclaimers and avoid talking down to the employee.
+18. Treat technical-context fields prefixed with serverConfirmed or serverPublished as trusted Sulandra backend facts. They outrank guesses, prior assistant text, screenshots, and user assumptions.
+19. If serverConfirmedEmployeePortalUsername is present, that is the employee's confirmed Employee Portal username. Give it directly when asked. Never substitute the work email and call it a username. If the field says NOT_FOUND, say the username is not currently provisioned/confirmed and offer credential support rather than guessing initials.
+20. For schedule questions, use serverPublishedShift entries when supplied. Summarize the actual published assigned shifts and include [Scheduling](/scheduling.html) as the place to view the full schedule. If serverPublishedScheduleLookup is AVAILABLE but there are zero serverPublishedShift entries, say no published assigned shifts were found in the supplied lookup window; do not invent a schedule. If lookup is UNAVAILABLE, say the live schedule lookup is temporarily unavailable and provide the Scheduling link.
+21. For SPIRE chart appearance/theme questions, use the exact known path: top-right User Profile → "User Profile & Accessibility Suite" → "19 Distinct Themes". Mention "Individual Color Customizer" for manual color changes. Never tell the user to hunt through generic Settings/Preferences when the real controls are known.
+22. For SPIRE MAR questions, provide software-use guidance only from the authoritative MAR map. A true missed occurrence can be documented by opening the scheduled occurrence, choosing MISSED in "Document Medication Administration", completing factual Reason/Note information as appropriate, then choosing "File MAR Event". Do not tell the employee whether to give a late/replacement dose, hold a dose, call a provider/pharmacy, or make another clinical decision; those are clinical/policy decisions outside SIA's IT role.
+23. Distinguish identifiers precisely: work email, Employee Portal username, and Admin entitlement are different fields. Authorized management employees may use their Sulandra work email plus Admin password at the Employee Portal door to reach their own employee profile, but that email is still not their Employee Portal username.
 
 When answering, use Sulandra product names exactly when known: Employee Portal, Administrator Portal, Scheduling, Employee 360, SPIRE, Sulandra Community Living Services, Sulandra Home Health, Sulandra NMT, Sulandra Networks, and SIA.`;
 };
@@ -211,16 +238,79 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
     return rows[0] || null;
   };
 
+  const loadEmployeeUsername = async (auth: AuthContext) => {
+    try {
+      const rows = await prisma.$queryRawUnsafe<Array<{ username: string | null }>>(
+        `SELECT COALESCE(NULLIF(credential."username",''),NULLIF(to_jsonb(user_row)->>'username','')) AS "username"
+         FROM "User" user_row
+         LEFT JOIN "EmployeePortalCredential" credential ON credential."userId"=user_row."id"
+         WHERE user_row."organizationId"=$1 AND user_row."id"=$2
+         LIMIT 1`,
+        auth.organizationId,
+        auth.userId,
+      );
+      const username = rows[0]?.username?.trim();
+      return username || null;
+    } catch (error) {
+      console.warn('[sia] employee username lookup unavailable', { userId: auth.userId, error });
+      return null;
+    }
+  };
+
+  const loadPublishedSchedule = async (auth: AuthContext): Promise<SiaScheduleContext> => {
+    const asOf = new Date();
+    const through = new Date(asOf.getTime() + 14 * 86_400_000);
+    try {
+      const shifts = await prisma.$queryRawUnsafe<SiaScheduleShift[]>(
+        `SELECT shift_row."startTime",shift_row."endTime",shift_row."code",shift_row."department",
+                shift_row."location",shift_row."payCode",
+                COALESCE(
+                  NULLIF(to_jsonb(entity_row)->>'displayName',''),
+                  NULLIF(to_jsonb(entity_row)->>'legalName',''),
+                  NULLIF(to_jsonb(entity_row)->>'name',''),
+                  NULLIF(to_jsonb(entity_row)->>'code','')
+                ) AS "companyName"
+         FROM "TimeAttendanceShift" shift_row
+         LEFT JOIN "LegalEntity" entity_row
+           ON entity_row."organizationId"=shift_row."organizationId"
+          AND entity_row."id"=shift_row."legalEntityId"
+         WHERE shift_row."organizationId"=$1
+           AND shift_row."employeeId"=$2
+           AND shift_row."status"='PUBLISHED'
+           AND shift_row."endTime">=NOW()-INTERVAL '2 hours'
+           AND shift_row."startTime"<=NOW()+INTERVAL '14 days'
+           AND EXISTS(
+             SELECT 1 FROM "Employment" employment
+             WHERE employment."organizationId"=shift_row."organizationId"
+               AND employment."legalEntityId"=shift_row."legalEntityId"
+               AND employment."userId"=$2
+               AND employment."status" IN ('ACTIVE','LEAVE')
+           )
+         ORDER BY shift_row."startTime"
+         LIMIT 24`,
+        auth.organizationId,
+        auth.userId,
+      );
+      return { lookupAvailable: true, asOf: asOf.toISOString(), through: through.toISOString(), shifts };
+    } catch (error) {
+      console.warn('[sia] published employee schedule lookup unavailable', { userId: auth.userId, error });
+      return { lookupAvailable: false, asOf: asOf.toISOString(), through: through.toISOString(), shifts: [] };
+    }
+  };
+
   app.get('/api/sia/status', gate, async (_req, res, next) => {
     try {
       await ready();
       const auth = authOf(res);
       const started = Date.now();
       await prisma.$queryRawUnsafe(`SELECT 1 AS ok`);
-      const [ticketMetric] = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-        `SELECT COUNT(*)::bigint AS count FROM "EmployeeSupportRequest" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status" NOT IN ('RESOLVED','CLOSED')`,
-        auth.organizationId, auth.userId,
-      );
+      const [[ticketMetric], employeeUsername] = await Promise.all([
+        prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+          `SELECT COUNT(*)::bigint AS count FROM "EmployeeSupportRequest" WHERE "organizationId"=$1 AND "employeeId"=$2 AND "status" NOT IN ('RESOLVED','CLOSED')`,
+          auth.organizationId, auth.userId,
+        ),
+        loadEmployeeUsername(auth),
+      ]);
       const adminAccess = adminAccessFor(auth);
       res.json({
         data: {
@@ -236,12 +326,14 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
           currentUser: {
             role: auth.role,
             email: auth.email || null,
+            employeeUsername,
+            employeeUsernameSource: employeeUsername ? 'EMPLOYEE_PORTAL_CREDENTIAL' : 'NOT_CONFIRMED',
             adminAccess,
             adminAccessSource: 'SERVER_AUTHENTICATED_ROLE',
             adminSignInPath: adminAccess ? adminSignInFor(auth) : null,
             adminWorkspacePath: adminAccess ? adminWorkspaceFor(auth) : null,
           },
-          capabilities: ['interactive IT troubleshooting', 'screenshot error analysis', 'system navigation', 'incident triage', 'account and access guidance', 'device and network support', 'IT ticket escalation'],
+          capabilities: ['interactive IT troubleshooting', 'screenshot error analysis', 'confirmed employee credential lookup', 'published personal schedule lookup', 'system navigation', 'incident triage', 'account and access guidance', 'device and network support', 'IT ticket escalation'],
         },
       });
     } catch (error) { next(error); }
@@ -303,17 +395,49 @@ export function registerSIARoutes({ app, prisma, authOf, requireRoles }: Depende
         auth.organizationId, conversationId,
       );
       const history = prior.reverse().map((message) => ({ role: message.role, content: message.content }));
+      const employeeUsername = await loadEmployeeUsername(auth);
+      const scheduleIntent = /\b(schedule|scheduled|shift|shifts|roster|working|work today|work tomorrow|next shift)\b/i.test(safeMessage)
+        || (/\b(today|tomorrow|next|when|what about)\b/i.test(safeMessage)
+          && history.slice(-4).some((message) => /\b(schedule|shift|roster)\b/i.test(message.content)));
+      const publishedSchedule = scheduleIntent ? await loadPublishedSchedule(auth) : null;
+
       const contextLines = Object.entries(input.context || {}).filter(([, value]) => value).map(([key, value]) => `${key}: ${redactSensitiveText(String(value))}`);
       contextLines.push(`serverAuthenticatedRole: ${auth.role}`);
       contextLines.push(`serverVerifiedAdminCapableRole: ${adminAccessFor(auth) ? 'YES' : 'NO'}`);
       if (auth.email) contextLines.push(`serverAuthenticatedWorkEmail: ${auth.email}`);
+      contextLines.push(`serverConfirmedEmployeePortalUsername: ${employeeUsername || 'NOT_FOUND'}`);
+      if (publishedSchedule) {
+        contextLines.push(`serverPublishedScheduleLookup: ${publishedSchedule.lookupAvailable ? 'AVAILABLE' : 'UNAVAILABLE'}`);
+        contextLines.push(`serverPublishedScheduleAsOf: ${publishedSchedule.asOf}`);
+        contextLines.push(`serverPublishedScheduleThrough: ${publishedSchedule.through}`);
+        contextLines.push(`serverPublishedAssignedShiftCount: ${publishedSchedule.shifts.length}`);
+        for (const shift of publishedSchedule.shifts) {
+          contextLines.push(`serverPublishedShift: ${JSON.stringify({
+            startTime: iso(shift.startTime),
+            endTime: iso(shift.endTime),
+            code: shift.code || '',
+            department: shift.department || '',
+            location: shift.location || '',
+            payCode: shift.payCode || '',
+            company: shift.companyName || '',
+          })}`);
+        }
+      }
       const contextualMessage = contextLines.length ? `${safeMessage}\n\nTechnical context:\n${contextLines.join('\n')}` : safeMessage;
 
       await prisma.$executeRawUnsafe(
         `INSERT INTO "SIAMessage" ("id","organizationId","conversationId","userId","role","content") VALUES ($1,$2,$3,$4,'user',$5)`,
         randomUUID(), auth.organizationId, conversationId, auth.userId, storedUserMessage,
       );
-      await audit(auth, 'CHAT_REQUEST', 'ACCEPTED', conversationId, { model: openAIModel(), page: input.context?.page || null, screenshotAttached: Boolean(input.attachment), adminAccess: adminAccessFor(auth) });
+      await audit(auth, 'CHAT_REQUEST', 'ACCEPTED', conversationId, {
+        model: openAIModel(),
+        page: input.context?.page || null,
+        screenshotAttached: Boolean(input.attachment),
+        adminAccess: adminAccessFor(auth),
+        employeeUsernameConfirmed: Boolean(employeeUsername),
+        publishedScheduleLookup: publishedSchedule?.lookupAvailable ?? null,
+        publishedShiftCount: publishedSchedule?.shifts.length ?? null,
+      });
 
       const currentUserContent: Array<Record<string, unknown>> = [{ type: 'input_text', text: contextualMessage }];
       if (input.attachment) {
