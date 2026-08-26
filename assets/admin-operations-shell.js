@@ -272,7 +272,7 @@
     installNewTabGuard();
     normalizeOperationsControls();
     observeOperationsControls();
-    document.documentElement.dataset.adminInformationArchitecture = 'company-operations-v2';
+    document.documentElement.dataset.adminInformationArchitecture = 'company-operations-v1';
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
