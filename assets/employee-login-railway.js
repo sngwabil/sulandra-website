@@ -15,6 +15,19 @@
   let mfaChallengeId = "";
   let apiWarmupPromise = null;
 
+  function installManagementLoginCopy() {
+    const identifierInput = document.getElementById("username");
+    const identifierLabel = identifierInput?.closest("label");
+    if (identifierLabel?.firstChild?.nodeType === Node.TEXT_NODE) {
+      identifierLabel.firstChild.nodeValue = "Employee username or management work email";
+    }
+    if (identifierInput) identifierInput.placeholder = "Employee username or name@sulandrahealth.com";
+    const sub = document.querySelector(".auth-card .sub");
+    if (sub) sub.textContent = "Employees may use their assigned username. Authorized management employees may use their Sulandra work email and the same password used for Admin.";
+    const adminHint = document.querySelector(".admin-entry span");
+    if (adminHint) adminHint.textContent = "Management employee? You can sign in above with your Sulandra work email and Admin password to open your employee profile. Use Administrator Sign In for management tools.";
+  }
+
   function warmApi() {
     if (!apiWarmupPromise) {
       apiWarmupPromise = fetch(API_BASE + "/live", {
@@ -26,6 +39,7 @@
     }
     return apiWarmupPromise;
   }
+  installManagementLoginCopy();
   warmApi();
 
   try {
