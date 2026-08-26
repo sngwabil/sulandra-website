@@ -23,3 +23,8 @@ for (const relative of files) {
   }
 }
 console.log('Applicant folder and careers application enhancements published into dist-web.');
+
+// This publisher is already the final static copy step reached from the Employee
+// self-service pipeline. Publish and verify SIA here so the assistant page and
+// Employee Portal launchers are part of the same immutable website build.
+await import('./install-sia-frontend.mjs');

@@ -18,3 +18,8 @@ if(!source.includes(careersRegister))throw new Error('Unable to locate Careers r
 source=source.replace(careersRegister,`${registerLine}\n\n${careersRegister}`);
 await writeFile(target,source,'utf8');
 console.log('Employee support request routes are registered before Careers.');
+
+// SIA is part of the same authenticated employee-support surface. Chaining its
+// idempotent installer here keeps API typecheck/build flows aligned without
+// duplicating route registration commands across package scripts.
+await import('./install-sia-routes.mjs');
