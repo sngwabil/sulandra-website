@@ -37,6 +37,7 @@
 
   const OWNER_CONTEXT_SCRIPT = '/assets/admin-owner-context.js?v=20260825-owner-console-2';
   const OWNER_CONSOLE_SCRIPT = '/assets/admin-owner-console.js?v=20260825-owner-console-2';
+  const CROSS_WORKSPACE_SCRIPT = '/assets/admin-cross-workspace-launcher.js?v=20260825-portal-separation-1';
   // Owner context is deliberately NOT loaded by this router. The owner boundary
   // verifies /api/owner/authority first, then loads OWNER_CONTEXT_SCRIPT. This
   // prevents protected owner modules from booting before owner authorization.
@@ -47,11 +48,12 @@
   if (!ownerConsole && !operations) return;
   const scripts = operations
     ? [
+        CROSS_WORKSPACE_SCRIPT,
         '/assets/admin-operations-shell.js?v=20260825-company-operations-ui-5',
         '/assets/admin-operations-context.js?v=20260825-company-operations-2',
         '/assets/admin-operations-desktop.js?v=20260825-company-operations-hotfix-1',
       ]
-    : [OWNER_CONSOLE_SCRIPT];
+    : [CROSS_WORKSPACE_SCRIPT, OWNER_CONSOLE_SCRIPT];
 
   // Never use document.write for an authenticated application shell. A delayed
   // or re-entered document.write can replace the entire page after first paint.
