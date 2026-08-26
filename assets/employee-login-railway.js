@@ -140,8 +140,10 @@
     const username = document.getElementById("username").value.trim().toLowerCase();
     const password = document.getElementById("password").value;
     const code = mfaCode.value.replace(/\D/g, "").slice(0, 6);
-    if (!username || !password) return showMessage("Enter your employee username and password.", "error");
-    if (username.includes("@")) return showMessage("Employee Portal uses your assigned employee username, not your Sulandra email. Use Administrator Sign In for admin access.", "error");
+    const managementEmail = username.includes("@");
+    if (!username || !password) return showMessage("Enter your employee username or Sulandra management work email and password.", "error");
+    if (managementEmail && !username.endsWith("@sulandrahealth.com")) return showMessage("Management sign-in to the Employee Portal requires your @sulandrahealth.com work email.", "error");
+    // Non-management employees continue using their assigned employee username.
     if (mfaChallengeId && !resend && code.length !== 6) return showMessage("Enter the 6-digit security code sent to your phone.", "error");
 
     warmApi();
@@ -150,7 +152,9 @@
     const previousButtonText = signInButton.textContent;
     signInButton.textContent = mfaChallengeId && !resend ? "Verifying…" : "Connecting…";
     try {
-      const body = { username, password, portal: "EMPLOYEE" };
+      const body = managementEmail
+        ? { email: username, password, portal: "EMPLOYEE" }
+        : { username, password, portal: "EMPLOYEE" };
       if (mfaChallengeId && !resend) {
         body.mfaChallengeId = mfaChallengeId;
         body.mfaCode = code;
@@ -198,7 +202,7 @@
   document.getElementById("forgotUsername").addEventListener("click", () => openRecoveryPanel(usernamePanel));
   document.getElementById("forgotPassword").addEventListener("click", () => {
     const loginUsername = document.getElementById("username").value.trim();
-    if (loginUsername) document.getElementById("recoveryUsername").value = loginUsername;
+    if (loginUsername && !loginUsername.includes("@")) document.getElementById("recoveryUsername").value = loginUsername;
     openRecoveryPanel(passwordPanel);
   });
   document.querySelectorAll("[data-close-recovery]").forEach((button) => button.addEventListener("click", closeRecoveryPanels));
