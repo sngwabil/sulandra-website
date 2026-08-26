@@ -13,6 +13,11 @@ const jsPath=path.join(dist,'assets','sia-copilot.js');
 for(const required of [cssPath,jsPath]){
   try{await stat(required);}catch{throw new Error(`Global SIA copilot publication asset missing: ${path.relative(dist,required)}`);}
 }
+const copilotRuntime=await readFile(jsPath,'utf8');
+try{new Function(copilotRuntime);}catch(error){throw new Error(`Global Ask SIA copilot JavaScript has a syntax error: ${error instanceof Error?error.message:String(error)}`);}
+for(const required of ['SIA_GLOBAL_COPILOT_V1','/api/sia/profile/context','/api/sia/chat','Ask SIA','window.top !== window.self']){
+  if(!copilotRuntime.includes(required))throw new Error(`Global Ask SIA copilot runtime missing required contract marker: ${required}`);
+}
 
 async function htmlFiles(directory){
   const output=[];
@@ -56,4 +61,4 @@ for(const file of verify){
 }
 
 if(!injected)throw new Error('No published HTML pages received the global Ask SIA copilot');
-console.log(`Ask SIA global copilot published across ${injected} HTML page(s); ${standalone} standalone SIA workspace page(s) retain the full assistant instead of a duplicate drawer.`);
+console.log(`Ask SIA global copilot syntax verified and published across ${injected} HTML page(s); ${standalone} standalone SIA workspace page(s) retain the full assistant instead of a duplicate drawer.`);
