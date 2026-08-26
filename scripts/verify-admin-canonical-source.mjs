@@ -8,6 +8,9 @@ const failures = [];
 const read = async (base, relative) => { try { return await readFile(path.join(base, relative), 'utf8'); } catch { failures.push(`Missing ${path.relative(root, base) || 'source'} file: ${relative}`); return ''; } };
 const requireMarkers = (source, markers, label) => { for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`); };
 const forbid = (source, markers, label) => { for (const marker of markers) if (source.includes(marker)) failures.push(`${label} still references ${marker}`); };
+const stripGlobalSiaCopilot = (source) => String(source || '')
+  .replace(/\s*<link[^>]+href=["']\/assets\/sia-copilot\.css(?:\?v=[^"']*)?["'][^>]*data-sia-global-copilot=["'][^"']+["'][^>]*\/?>(?:\s*)/gi, '\n')
+  .replace(/\s*<script[^>]+src=["']\/assets\/sia-copilot\.js(?:\?v=[^"']*)?["'][^>]*data-sia-global-copilot=["'][^"']+["'][^>]*><\/script>(?:\s*)/gi, '\n');
 
 const [ownerSource,ownerPublished,operationsSource,operationsPublished,router,ownerContext,operationsContext,ownerConsole,operationsDesktop] = await Promise.all([
   read(root,'admin.html'),read(dist,'admin.html'),read(root,'admin-operations.html'),read(dist,'admin-operations.html'),
@@ -15,14 +18,20 @@ const [ownerSource,ownerPublished,operationsSource,operationsPublished,router,ow
   read(root,'assets/admin-owner-console.js'),read(root,'assets/admin-operations-desktop.js'),
 ]);
 
-if (ownerSource !== ownerPublished) failures.push('Owner admin.html drifted from canonical source');
-if (operationsSource !== operationsPublished) failures.push('admin-operations.html drifted from canonical source');
+// The global Ask SIA drawer is a deliberately shared publication shell added to
+// every HTML destination after canonical files are copied. Remove only those two
+// known tags before byte-for-byte Admin comparison; any other publication drift
+// still fails this verifier.
+if (ownerSource !== stripGlobalSiaCopilot(ownerPublished)) failures.push('Owner admin.html drifted from canonical source beyond the shared Ask SIA copilot shell');
+if (operationsSource !== stripGlobalSiaCopilot(operationsPublished)) failures.push('admin-operations.html drifted from canonical source beyond the shared Ask SIA copilot shell');
 for (const [label,source] of [['Admin context router',router],['Owner context',ownerContext],['Operations context',operationsContext],['Owner boundary',ownerConsole],['Operations desktop',operationsDesktop]]) {
   try { new Function(source); } catch (error) { failures.push(`${label} has JavaScript syntax error: ${error instanceof Error ? error.message : String(error)}`); }
 }
 
 requireMarkers(ownerSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Owner admin.html');
 requireMarkers(operationsSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Operations HTML');
+requireMarkers(ownerPublished,['/assets/sia-copilot.css?v=20260826-global-copilot-1','/assets/sia-copilot.js?v=20260826-global-copilot-1','data-sia-global-copilot="20260826-global-copilot-1"'],'Published owner Admin shared copilot');
+requireMarkers(operationsPublished,['/assets/sia-copilot.css?v=20260826-global-copilot-1','/assets/sia-copilot.js?v=20260826-global-copilot-1','data-sia-global-copilot="20260826-global-copilot-1"'],'Published Operations shared copilot');
 requireMarkers(router,['admin-owner-context.js','admin-owner-console.js','admin-operations-context.js','admin-operations-desktop.js','/admin-operations\\.html$/i'],'Admin context router');
 
 // The parent owner command center deliberately preserves the established
@@ -59,9 +68,10 @@ for (const href of [...new Set([...registry.matchAll(/href:'(\/[^']+)'/g)].map((
 for (const relative of [
   'admin.html','admin-operations.html','assets/admin-company-context.js','assets/admin-owner-context.js','assets/admin-operations-context.js',
   'assets/admin-owner-console.js','assets/admin-operations-desktop.js','assets/admin-shell.css','assets/admin-shell.js',
+  'assets/sia-copilot.css','assets/sia-copilot.js',
 ]) {
   try { await stat(path.join(dist, relative)); } catch { failures.push(`Admin publication missing ${relative}`); }
 }
 
 if (failures.length) { console.error('Canonical Admin split verification failed:\n- ' + failures.join('\n- ')); process.exit(1); }
-console.log('Canonical Admin split verified: the existing Sulandra Health owner command center is preserved, Operations owns the eight-folder company administration desktop, and the parent company is excluded from the Operations selector boundary.');
+console.log('Canonical Admin split verified: owner/Operations source remains unchanged apart from the explicitly shared Ask SIA copilot publication shell, the owner command center is preserved, and Operations retains its eight-folder boundary.');
