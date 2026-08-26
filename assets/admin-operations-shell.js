@@ -20,6 +20,11 @@
     'communications-learning': '/intranet-control.html',
     'system-administration': '/admin-users.html',
   });
+  const NEW_TAB_SELECTOR = [
+    '#topModuleNav a', '#topModuleNav button',
+    '#sideModuleNav a', '#sideModuleNav button',
+    '.ops-folder-card', '.ops-hero-actions a', '.ops-quick-link', '.lifecycle-stage-card a.btn',
+  ].join(',');
 
   function ensureCanonicalSso() {
     if (window.SulandraSSO || document.querySelector('script[data-canonical-admin-sso]')) return;
@@ -162,35 +167,72 @@
       #sideModuleNav .admin-folder-link{font-size:13.5px!important;line-height:1.35!important;padding:10px 11px!important}
       #sideModuleNav .admin-folder-link small{font-size:10.5px!important;line-height:1.35!important}
       #topModuleNav a,#topModuleNav button{font-size:13px!important;line-height:1.3!important}
+      html.operations-independent-scroll,body.operations-independent-scroll{overflow:hidden!important}
+      html.operations-independent-scroll .grid{min-height:0!important;align-items:stretch!important}
+      html.operations-independent-scroll .sidebar{position:relative!important;top:auto!important;max-height:none!important;height:100%!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable}
+      html.operations-independent-scroll .grid>section{height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-gutter:stable}
+      @media(max-width:980px){html.operations-independent-scroll,body.operations-independent-scroll{overflow:auto!important}html.operations-independent-scroll .grid{height:auto!important}html.operations-independent-scroll .sidebar,html.operations-independent-scroll .grid>section{height:auto!important;overflow:visible!important}}
     `;
     document.head.appendChild(styles);
   }
 
+  function copyTabSession(child) {
+    for (let index = 0; index < sessionStorage.length; index += 1) {
+      const key = sessionStorage.key(index);
+      if (!key) continue;
+      const value = sessionStorage.getItem(key);
+      if (value !== null) child.sessionStorage.setItem(key, value);
+    }
+  }
+
   function openNewTab(href) {
-    if (!href) return;
-    const opened = window.open(href, '_blank', 'noopener,noreferrer');
-    if (opened) opened.opener = null;
+    if (!href) return false;
+    let destination;
+    try { destination = new URL(href, window.location.href); }
+    catch { return false; }
+
+    if (destination.origin !== window.location.origin) {
+      return Boolean(window.open(destination.href, '_blank', 'noopener,noreferrer'));
+    }
+
+    const child = window.open('about:blank', '_blank');
+    if (!child) return false;
+    try {
+      copyTabSession(child);
+      child.opener = null;
+      child.location.replace(destination.href);
+      return true;
+    } catch (error) {
+      try { child.location.replace(destination.href); }
+      catch { try { child.close(); } catch {} }
+      console.error('[Sulandra Operations] Unable to hand off the tab-scoped session.', error);
+      return false;
+    }
+  }
+
+  function controlHref(control) {
+    if (!control) return '';
+    if (control.dataset?.module) return moduleRoute(control.dataset.module);
+    return control.dataset?.sulandraRoute || control.getAttribute?.('href') || '';
   }
 
   function installNewTabGuard() {
     if (document.documentElement.dataset.operationsNewTabGuard === 'true') return;
     document.documentElement.dataset.operationsNewTabGuard = 'true';
     window.addEventListener('click', (event) => {
-      const route = event.target?.closest?.('#topModuleNav [data-sulandra-route],#sideModuleNav [data-sulandra-route]');
-      if (route) {
-        const href = route.dataset.sulandraRoute || route.getAttribute('href');
-        if (href) {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          openNewTab(href);
-        }
-        return;
-      }
-      const moduleControl = event.target?.closest?.('#topModuleNav [data-module],#sideModuleNav [data-module]');
-      if (moduleControl) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        openNewTab(moduleRoute(moduleControl.dataset.module));
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const control = event.target?.closest?.(NEW_TAB_SELECTOR);
+      if (!control || control.hasAttribute?.('download')) return;
+      const href = controlHref(control);
+      if (!href || href === '#') return;
+      let destination;
+      try { destination = new URL(href, window.location.href); }
+      catch { return; }
+      if (!/^https?:$/.test(destination.protocol) || destination.origin !== window.location.origin) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!openNewTab(destination.href)) {
+        window.alert('Your browser blocked the new workspace tab. Allow pop-ups for sulandrahealth.com and try again.');
       }
     }, true);
   }
@@ -247,6 +289,40 @@
     upgradeFolderCards();
   }
 
+  function installIndependentWorkspaceScroll() {
+    if (document.documentElement.dataset.operationsIndependentScroll === 'true') return;
+    document.documentElement.dataset.operationsIndependentScroll = 'true';
+    const grid = document.querySelector('.grid');
+    const sidebar = document.querySelector('.sidebar');
+    const workspace = grid?.querySelector(':scope > section');
+    if (!grid || !sidebar || !workspace) return;
+
+    let queued = false;
+    const apply = () => {
+      queued = false;
+      if (window.innerWidth <= 980) {
+        document.documentElement.classList.remove('operations-independent-scroll');
+        document.body.classList.remove('operations-independent-scroll');
+        grid.style.removeProperty('height');
+        return;
+      }
+      const top = Math.max(0, grid.getBoundingClientRect().top);
+      const height = Math.max(320, Math.floor(window.innerHeight - top - 10));
+      grid.style.height = `${height}px`;
+      document.documentElement.classList.add('operations-independent-scroll');
+      document.body.classList.add('operations-independent-scroll');
+    };
+    const schedule = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(apply);
+    };
+    window.addEventListener('resize', schedule);
+    window.addEventListener('orientationchange', schedule);
+    window.addEventListener('sulandra:company-change', schedule);
+    apply();
+  }
+
   function observeOperationsControls() {
     if (document.documentElement.dataset.operationsUiObserver === 'true') return;
     document.documentElement.dataset.operationsUiObserver = 'true';
@@ -271,6 +347,7 @@
     installOperationsUiStyles();
     installNewTabGuard();
     normalizeOperationsControls();
+    installIndependentWorkspaceScroll();
     observeOperationsControls();
     document.documentElement.dataset.adminInformationArchitecture = 'company-operations-v1';
   }
