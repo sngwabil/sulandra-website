@@ -9,7 +9,7 @@ const siaPath = path.join(dist, 'sia.html');
 const runtimePath = path.join(dist, 'assets', 'sia.js');
 const themePath = path.join(dist, 'assets', 'sia-futuristic.css');
 const navGuardPath = path.join(dist, 'assets', 'employee-role-navigation-guard.js');
-const SIA_RUNTIME_VERSION = '20260826-sia-interactive-2';
+const SIA_RUNTIME_VERSION = '20260826-sia-guided-diagnostics-1';
 
 for (const file of [siaPath, runtimePath, themePath, navGuardPath, portalPath]) await stat(file);
 
@@ -27,8 +27,16 @@ sia = sia.replace(
 );
 await writeFile(siaPath, sia, 'utf8');
 
-const [runtime, theme, navGuard] = await Promise.all([
-  readFile(runtimePath, 'utf8'),
+let runtime = await readFile(runtimePath, 'utf8');
+const legacyContext = "            page: location.pathname,\n            application: 'SIA',";
+const guidedContext = "            supportWorkspacePage: location.pathname,\n            application: 'SIA support workspace',";
+if (runtime.includes(legacyContext)) runtime = runtime.replace(legacyContext, guidedContext);
+if (!runtime.includes('supportWorkspacePage: location.pathname')) {
+  throw new Error('SIA runtime did not separate the support workspace from the affected application.');
+}
+await writeFile(runtimePath, runtime, 'utf8');
+
+const [theme, navGuard] = await Promise.all([
   readFile(themePath, 'utf8'),
   readFile(navGuardPath, 'utf8'),
 ]);
@@ -62,6 +70,8 @@ for (const marker of [
   'image/jpeg',
   'image/webp',
   'sia-typing',
+  'supportWorkspacePage: location.pathname',
+  "application: 'SIA support workspace'",
 ]) {
   if (!runtime.includes(marker)) throw new Error(`SIA interactive runtime missing marker: ${marker}`);
 }
@@ -108,4 +118,4 @@ if (!portal.includes('/assets/employee-role-navigation-guard.js?v=20260826-sia-1
   throw new Error('Employee Portal did not publish the cache-busted SIA launcher runtime.');
 }
 
-console.log(`SIA ${SIA_RUNTIME_VERSION} published: verified role-aware Admin guidance, screenshot troubleshooting, safe Markdown rendering, ChatGPT-style interaction, and futuristic dark blue/purple/green/pink/white presentation.`);
+console.log(`SIA ${SIA_RUNTIME_VERSION} published: guided affected-page troubleshooting, support-workspace/target separation, screenshot analysis, safe Markdown rendering, and futuristic presentation.`);
