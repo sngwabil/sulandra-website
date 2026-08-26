@@ -22,7 +22,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;bac
 .brand-head{background:rgba(6,13,31,.84)!important;border-bottom:1px solid var(--sia-line)!important;backdrop-filter:blur(22px)}
 .brand-copy h1{color:#fff!important;text-shadow:0 0 24px rgba(124,60,255,.28)}
 .brand-copy p{color:var(--sia-muted)!important}.logo-slot{filter:drop-shadow(0 0 12px rgba(255,255,255,.12))}
-.sia-mark{background:linear-gradient(135deg,var(--sia-purple),var(--sia-pink) 48%,var(--sia-green))!important;color:#fff!important;border:1px solid rgba(255,255,255,.24)!important;box-shadow:0 0 30px rgba(124,60,255,.36),0 0 26px rgba(255,79,184,.18)!important}
+.sia-mark{width:auto!important;height:auto!important;min-width:0!important;padding:0!important;border-radius:0!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;place-items:unset!important;background:none!important;color:#fff!important;border:0!important;box-shadow:none!important;text-shadow:none!important;font-size:25px!important;font-weight:950!important;line-height:1!important;letter-spacing:-.04em!important;flex:0 0 auto!important}
 .status-pill{background:rgba(255,255,255,.045)!important;border-color:var(--sia-line)!important;color:#d9e6ff!important}
 .dot.ok{background:var(--sia-green)!important;box-shadow:0 0 0 4px rgba(66,245,167,.09),0 0 16px rgba(66,245,167,.72)!important}
 .dot.warn{background:var(--sia-pink)!important;box-shadow:0 0 0 4px rgba(255,79,184,.09),0 0 16px rgba(255,79,184,.54)!important}
