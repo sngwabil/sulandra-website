@@ -48,6 +48,7 @@
         <strong>Sulandra Health Platform</strong>
         <a href="/intranet.html">Intranet Portal</a>
         <a href="/employee-portal.html" aria-current="page">Employee Portal</a>
+        <a href="/sia.html">SIA</a>
         <a href="/my-work.html">My Work</a>
         <a href="/education-portal.html">Education Portal</a>
         <a href="/spire.html">Spire Clinical</a>
@@ -57,7 +58,31 @@
     }
   }
 
+  function installSiaLaunchers() {
+    const nav = document.querySelector('.main-nav .nav-links');
+    if (nav && !document.getElementById('employeeSiaNav')) {
+      const item = document.createElement('li');
+      item.innerHTML = '<a id="employeeSiaNav" href="/sia.html">SIA</a>';
+      const help = [...nav.querySelectorAll('li')].find((li) => li.querySelector('a[href="#employeeHelp"]'));
+      nav.insertBefore(item, help || null);
+    }
+
+    if (!document.getElementById('employeeSiaCard')) {
+      const employeeServices = document.getElementById('employeeServicesTitle')?.closest('section');
+      const grid = employeeServices?.querySelector('.apps-grid');
+      if (grid) {
+        const card = document.createElement('a');
+        card.id = 'employeeSiaCard';
+        card.className = 'app-card';
+        card.href = '/sia.html';
+        card.innerHTML = '<span class="app-icon">SIA</span><strong>Sulandra Intelligent Assistant</strong><span>Your Sulandra Networks IT specialist for troubleshooting, system guidance, incidents, devices, networks and support escalation.</span>';
+        grid.insertBefore(card, grid.firstChild);
+      }
+    }
+  }
+
   installSchedulingStyleTaskbar();
+  installSiaLaunchers();
 
   // Cross-workspace navigation is explicit authentication, not an implicit
   // privilege switch. Keep Employee Portal alive in this tab and open Admin
@@ -116,11 +141,13 @@
   window.SulandraEmployeeRoleNavigationGuard = Object.freeze({
     scheduling: '/scheduling.html',
     workforce: '/workforce.html',
+    sia: '/sia.html',
     adminLogin: '/admin-login.html',
     adminRoles: [...managementAdminRoles],
     crossWorkspaceNewTab: true,
     schedulingStyleTaskbar: true,
     schedulingStyleContract: '20260826-scheduling-header-1',
+    siaLauncherContract: '20260826-sia-launcher-1',
     loadingWatchdogMs: 8000,
     contract: '20260825-portal-separation-3',
   });
