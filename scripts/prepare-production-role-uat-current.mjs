@@ -101,7 +101,11 @@ if(!source.includes(executiveNew)){
 const mobileAdminOld="['Administrator',PERSONAS.administrator,'#topModuleNav a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
 const mobileAdminNew="['Administrator',PERSONAS.administrator,'a[href=\"/spire-admin.html\"]','/spire-admin.html'],";
 if(source.includes(mobileAdminOld))source=source.replace(mobileAdminOld,mobileAdminNew);
-else if(source.includes(mobileAdminNew)){}
+
+// Employee Login now contains a separate recovery username field. Label-based
+// lookup is intentionally ambiguous, so UAT must target the primary sign-in
+// control rather than the recovery control.
+source=source.replaceAll("page.getByLabel('Employee username')","page.locator('#username')");
 
 await writeFile(target,source,'utf8');
-console.log('Prepared Production Role UAT for actionable launch controls, authenticated SPIRE Client Station routing, current scheduling title, and the current separate Admin-sign-in boundary without requiring an obsolete executive SPIRE launcher.');
+console.log('Prepared Production Role UAT for actionable launch controls, authenticated SPIRE Client Station routing, current scheduling title, the current separate Admin-sign-in boundary, and the primary Employee Login username field.');
