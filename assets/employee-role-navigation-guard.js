@@ -8,6 +8,7 @@
     ['employeeWorkforceLauncher', '/workforce.html'],
     ['employeeWorkforceNav', '/workforce.html'],
   ]);
+  const managementAdminRoles = new Set(['ADMINISTRATOR', 'PROGRAM_MANAGER', 'HR_MANAGER', 'CEO', 'DOO']);
 
   // Cross-workspace navigation is explicit authentication, not an implicit
   // privilege switch. Keep Employee Portal alive in this tab and open Admin
@@ -18,6 +19,14 @@
     adminControl.target = '_blank';
     adminControl.rel = 'noopener noreferrer';
     adminControl.textContent = 'Admin Sign In ↗';
+    try {
+      const session = JSON.parse(window.sessionStorage.getItem('sulandra:employee:session') || 'null');
+      const role = String(session?.role || '').toUpperCase();
+      if (managementAdminRoles.has(role)) {
+        adminControl.hidden = false;
+        adminControl.setAttribute('aria-hidden', 'false');
+      }
+    } catch {}
   }
 
   // Never leave the whole employee desktop looking frozen because one optional
@@ -59,8 +68,9 @@
     scheduling: '/scheduling.html',
     workforce: '/workforce.html',
     adminLogin: '/admin-login.html',
+    adminRoles: [...managementAdminRoles],
     crossWorkspaceNewTab: true,
     loadingWatchdogMs: 8000,
-    contract: '20260825-portal-separation-2',
+    contract: '20260825-portal-separation-3',
   });
 })();
