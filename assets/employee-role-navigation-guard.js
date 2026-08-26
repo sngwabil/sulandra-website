@@ -9,6 +9,17 @@
     ['employeeWorkforceNav', '/workforce.html'],
   ]);
 
+  // Cross-workspace navigation is explicit authentication, not an implicit
+  // privilege switch. Keep Employee Portal alive in this tab and open Admin
+  // sign-in in an independent tab/session.
+  const adminControl = document.getElementById('employeeAdminReturn');
+  if (adminControl) {
+    adminControl.href = '/admin-login.html?returnTo=/admin.html';
+    adminControl.target = '_blank';
+    adminControl.rel = 'noopener noreferrer';
+    adminControl.textContent = 'Admin Sign In ↗';
+  }
+
   window.addEventListener('click', event => {
     const control = event.target?.closest?.('#employeeSchedulingLauncher,#employeeSchedulingNav,#employeeWorkforceLauncher,#employeeWorkforceNav');
     if (!control) return;
@@ -22,6 +33,8 @@
   window.SulandraEmployeeRoleNavigationGuard = Object.freeze({
     scheduling: '/scheduling.html',
     workforce: '/workforce.html',
-    contract: '20260810-role-uat-1',
+    adminLogin: '/admin-login.html',
+    crossWorkspaceNewTab: true,
+    contract: '20260825-portal-separation-1',
   });
 })();
