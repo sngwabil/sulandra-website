@@ -106,7 +106,7 @@ if (!canonicalFormula.test(hiringProvisioning)) throw new Error('Canonical emplo
 
 requireMarkers('Admin cross-workspace launcher', adminCrossWorkspace, [
   "link.href = '/employee-login.html?returnTo=/employee-portal.html'","link.target = '_blank'",
-  "link.rel = 'noopener noreferrer'",'Employee Portal ↗','crossWorkspaceNewTab',
+  "link.rel = 'noopener noreferrer'",'Employee Portal ↗','window.SulandraAdminCrossWorkspace','opensNewTab: true',
 ]);
 
 requireMarkers('Employee self-service directory backend', selfService, [
