@@ -476,188 +476,229 @@ const buildSessionPayload = (account: LoginAccount) => {
     department: '',
     phone: '',
     status: 'ACTIVE',
-    active: true,
-    isActive: true,
-    mustChangePassword: account.mustChangePassword,
+    employmentStatus: 'ACTIVE',
+    avatarUrl: '',
+    profilePhotoUrl: '',
+    photoUrl: '',
     permissions: authorization.permissions,
     access: authorization.access,
     apps: authorization.apps,
-    landingRoute: authorization.landingRoute,
-    organization,
   };
-  const session = {
+  return {
     token,
     accessToken: token,
-    refreshToken: token,
-    bearerToken: token,
     tokenType: 'Bearer',
     expiresIn,
     expiresAt,
-    id: account.userId,
-    userId: account.userId,
-    employeeId: account.userId,
-    organizationId: account.organizationId,
-    organizationName,
-    email: account.email,
-    username: account.username,
-    role: account.role,
-    firstName,
-    middleName,
-    lastName,
-    name: account.displayName,
-    fullName: account.displayName,
-    displayName: account.displayName,
-    title: roleTitle(account.role),
-    jobTitle: roleTitle(account.role),
-    department: '',
-    phone: '',
     mustChangePassword: account.mustChangePassword,
+    landingRoute: authorization.landingRoute,
     permissions: authorization.permissions,
     access: authorization.access,
     apps: authorization.apps,
-    landingRoute: authorization.landingRoute,
-    redirectTo: authorization.landingRoute,
-    defaultRoute: authorization.landingRoute,
-    organization,
-    profile: user,
+    role: account.role,
+    username: account.username,
     user,
-  };
-
-  return {
-    ...session,
-    session,
-    data: session,
+    employee: user,
+    profile: user,
+    organization,
+    company: organization,
   };
 };
 
-app.disable('x-powered-by');
-app.set('trust proxy', 1);
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 app.use(cors({
-  credentials: false,
   origin(origin, callback) {
     if (!origin || clientOrigins.has(origin)) {
       callback(null, true);
       return;
     }
-
-    const error = new Error('Origin is not allowed') as HttpError;
-    error.status = 403;
-    callback(error);
+    callback(Object.assign(new Error('Origin is not allowed'), { status: 403 }));
   },
+  credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-app.use('/api/auth/login', rateLimit({
+const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1_000,
-  limit: 5,
-  standardHeaders: 'draft-8',
+  max: 75,
+  standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many sign-in attempts. Please try again later.' },
-}));
-
-app.use('/public/careers/applicant/login', rateLimit({
-  windowMs: 15 * 60 * 1_000,
-  limit: 10,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many applicant sign-in attempts. Please try again later.' },
-}));
-
-app.use('/public/careers/applicant/forgot-password', rateLimit({
-  windowMs: 60 * 60 * 1_000,
-  limit: 5,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many password-reset requests. Please try again later.' },
-}));
-
-app.use('/public/careers/applicant/reset-password', rateLimit({
-  windowMs: 15 * 60 * 1_000,
-  limit: 10,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many password-reset attempts. Please request a new link later.' },
-}));
-
-app.use('/public/careers/applications', rateLimit({
-  windowMs: 15 * 60 * 1_000,
-  limit: 20,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many applications were submitted. Please try again later.' },
-}));
+});
 
 app.get('/live', (_req, res) => {
-  res.json({ ok: true, service: 'spire-api' });
+  res.json({ status: 'ok', service: 'spire-api' });
 });
 
 app.get('/health', async (_req, res) => {
   try {
-    await prisma.$queryRawUnsafe('SELECT 1');
-    res.json({
-      ok: true,
-      service: 'spire-api',
-      database: 'connected',
-      timestamp: new Date().toISOString(),
-    });
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', database: 'connected' });
   } catch (error) {
-    console.error('[health] database check failed', error);
-    res.status(503).json({
-      ok: false,
-      service: 'spire-api',
-      database: 'unavailable',
-    });
+    console.error('Health check failed', error);
+    res.status(503).json({ status: 'error', database: 'unavailable' });
   }
 });
 
-app.post('/api/auth/login', async (req, res, next) => {
+app.post('/api/auth/login', authLimiter, async (req, res, next) => {
   try {
-    const credentials = loginSchema.parse(req.body);
-    const identifier = (credentials.email || credentials.username || credentials.identifier || '')
-      .trim()
-      .toLowerCase();
-
-    if (!jwtSecret) {
-      res.status(503).json({ error: 'Employee sign-in is not configured' });
+    const input = loginSchema.parse(req.body);
+    const identifier = (input.identifier || input.username || input.email || '').trim();
+    const account = await resolvePortalAccount(identifier);
+    if (!account) {
+      res.status(401).json({ error: 'Invalid username or password' });
       return;
     }
 
-    let account: LoginAccount | null = null;
-    const configuredPassword = process.env.ADMIN_INITIAL_PASSWORD;
-    const isAdministratorIdentifier = identifier === administratorEmail || identifier === 'admin';
-
-    if (
-      isAdministratorIdentifier
-      && configuredPassword
-      && secureEquals(credentials.password, configuredPassword)
-    ) {
-      const administrator = await resolveAdministrator();
-      const firstName = process.env.ADMIN_FIRST_NAME?.trim() || 'Sulpitius';
-      const lastName = process.env.ADMIN_LAST_NAME?.trim() || 'Gwabil';
-      account = {
-        ...administrator,
-        username: 'admin',
-        displayName: `${firstName} ${lastName}`,
-        mustChangePassword: false,
-      };
-    } else {
-      const employee = await resolvePortalAccount(identifier);
-      const locked = employee?.lockedUntil && employee.lockedUntil.getTime() > Date.now();
-      if (!employee || locked || !verifyPortalPassword(credentials.password, employee.passwordHash)) {
-        if (employee && !locked && employee.passwordHash) {
-          await recordFailedPortalLogin(employee.userId);
-        }
-        res.status(401).json({ error: 'Invalid username or password' });
-        return;
-      }
-
-      await recordSuccessfulPortalLogin(employee.userId);
-      account = employee;
+    const accountWithSecurity = account as LoginAccount & {
+      passwordHash: string | null;
+      failedLoginAttempts: number;
+      lockedUntil: Date | null;
+    };
+    if (accountWithSecurity.lockedUntil && accountWithSecurity.lockedUntil.getTime() > Date.now()) {
+      res.status(423).json({ error: 'Account is temporarily locked. Try again in 15 minutes.' });
+      return;
+    }
+    if (!verifyPortalPassword(input.password, accountWithSecurity.passwordHash)) {
+      await recordFailedPortalLogin(account.userId);
+      res.status(401).json({ error: 'Invalid username or password' });
+      return;
     }
 
+    await recordSuccessfulPortalLogin(account.userId);
     res.json(buildSessionPayload(account));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/auth/admin-login', authLimiter, async (req, res, next) => {
+  try {
+    if (!jwtSecret) {
+      res.status(503).json({ error: 'Administrator sign-in is not configured' });
+      return;
+    }
+    const input = loginSchema.parse(req.body);
+    const identifier = (input.identifier || input.username || input.email || '').trim().toLowerCase();
+    const account = await resolvePortalAccount(identifier);
+    if (!account || !administrationRoles.has(account.role)) {
+      res.status(401).json({ error: 'Invalid administrator credentials' });
+      return;
+    }
+
+    const accountWithSecurity = account as LoginAccount & {
+      passwordHash: string | null;
+      failedLoginAttempts: number;
+      lockedUntil: Date | null;
+    };
+    if (accountWithSecurity.lockedUntil && accountWithSecurity.lockedUntil.getTime() > Date.now()) {
+      res.status(423).json({ error: 'Account is temporarily locked. Try again in 15 minutes.' });
+      return;
+    }
+    if (!verifyPortalPassword(input.password, accountWithSecurity.passwordHash)) {
+      await recordFailedPortalLogin(account.userId);
+      res.status(401).json({ error: 'Invalid administrator credentials' });
+      return;
+    }
+
+    await recordSuccessfulPortalLogin(account.userId);
+    res.json(buildSessionPayload(account));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/auth/legacy-admin-login', authLimiter, async (req, res, next) => {
+  try {
+    if (!jwtSecret) {
+      res.status(503).json({ error: 'Administrator sign-in is not configured' });
+      return;
+    }
+    const configuredPassword = process.env.ADMIN_PASSWORD?.trim();
+    if (!configuredPassword) {
+      res.status(410).json({ error: 'Legacy administrator password sign-in is disabled' });
+      return;
+    }
+    const input = loginSchema.parse(req.body);
+    if (!secureEquals(input.password, configuredPassword)) {
+      res.status(401).json({ error: 'Invalid administrator credentials' });
+      return;
+    }
+
+    const administrator = await resolveAdministrator();
+    const token = jwt.sign(
+      {
+        organizationId: administrator.organizationId,
+        role: administrator.role,
+      },
+      jwtSecret,
+      {
+        algorithm: 'HS256',
+        subject: administrator.userId,
+        expiresIn: '8h',
+      },
+    );
+    const expiresIn = 8 * 60 * 60;
+    const expiresAt = new Date(Date.now() + expiresIn * 1_000).toISOString();
+    const organizationName = process.env.ORGANIZATION_NAME?.trim() || 'Sulandra Health';
+    const organization = {
+      id: administrator.organizationId,
+      organizationId: administrator.organizationId,
+      name: organizationName,
+      displayName: organizationName,
+    };
+    const authorization = accessForRole(administrator.role);
+    const user = {
+      id: administrator.userId,
+      userId: administrator.userId,
+      employeeId: administrator.userId,
+      organizationId: administrator.organizationId,
+      organizationName,
+      email: administrator.email,
+      username: administrator.email,
+      role: administrator.role,
+      firstName: 'Sulandra',
+      middleName: '',
+      lastName: 'Administrator',
+      name: 'Sulandra Administrator',
+      fullName: 'Sulandra Administrator',
+      displayName: 'Sulandra Administrator',
+      title: roleTitle(administrator.role),
+      jobTitle: roleTitle(administrator.role),
+      department: 'Administration',
+      phone: '',
+      status: 'ACTIVE',
+      employmentStatus: 'ACTIVE',
+      avatarUrl: '',
+      profilePhotoUrl: '',
+      photoUrl: '',
+      permissions: authorization.permissions,
+      access: authorization.access,
+      apps: authorization.apps,
+    };
+
+    res.json({
+      token,
+      accessToken: token,
+      tokenType: 'Bearer',
+      expiresIn,
+      expiresAt,
+      mustChangePassword: false,
+      landingRoute: authorization.landingRoute,
+      permissions: authorization.permissions,
+      access: authorization.access,
+      apps: authorization.apps,
+      role: administrator.role,
+      username: administrator.email,
+      user,
+      employee: user,
+      profile: user,
+      organization,
+      company: organization,
+    });
   } catch (error) {
     next(error);
   }
