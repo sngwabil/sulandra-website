@@ -7,9 +7,6 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { z, ZodError } from 'zod';
 import { registerCareersRoutes } from './careers-routes.js';
-import { registerSIARoutes } from './sia-routes.js';
-import { registerSIACopilotProfileRoutes } from './sia-copilot-profile.js';
-import { registerITSolutionsRoutes } from './it-solutions-routes.js';
 import {
   createEntityAccessMiddleware,
   entityAccessOf,
@@ -124,103 +121,520 @@ const hashPortalPassword = (password: string) => {
     N: passwordScryptCost,
     r: passwordScryptBlockSize,
     p: passwordScryptParallelization,
+    maxmem: 64 * 1_024 * 1_024,
   });
-  return `scrypt$${salt.toString('base64')}$${derived.toString('base64')}`;
+  return [
+    'scrypt',
+    passwordScryptCost,
+    passwordScryptBlockSize,
+    passwordScryptParallelization,
+    salt.toString('base64url'),
+    derived.toString('base64url'),
+  ].join('$');
 };
 
-const verifyPortalPassword = (password: string, storedHash: string) => {
-  const [algorithm, saltBase64, hashBase64] = storedHash.split('$');
-  if (algorithm !== 'scrypt' || !saltBase64 || !hashBase64) return false;
-  const expected = Buffer.from(hashBase64, 'base64');
-  const actual = scryptSync(password, Buffer.from(saltBase64, 'base64'), expected.length, {
-    N: passwordScryptCost,
-    r: passwordScryptBlockSize,
-    p: passwordScryptParallelization,
-  });
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
+const verifyPortalPassword = (password: string, encodedHash: string | null) => {
+  if (!encodedHash) return false;
+  const [scheme, costValue, blockSizeValue, parallelizationValue, saltValue, hashValue, extra] =
+    encodedHash.split('$');
+  if (
+    scheme !== 'scrypt'
+    || !costValue
+    || !blockSizeValue
+    || !parallelizationValue
+    || !saltValue
+    || !hashValue
+    || extra
+  ) {
+    return false;
+  }
+
+  const cost = Number(costValue);
+  const blockSize = Number(blockSizeValue);
+  const parallelization = Number(parallelizationValue);
+  if (
+    cost !== passwordScryptCost
+    || blockSize !== passwordScryptBlockSize
+    || parallelization !== passwordScryptParallelization
+  ) {
+    return false;
+  }
+
+  try {
+    const expected = Buffer.from(hashValue, 'base64url');
+    const derived = scryptSync(
+      password,
+      Buffer.from(saltValue, 'base64url'),
+      expected.length,
+      {
+        N: cost,
+        r: blockSize,
+        p: parallelization,
+        maxmem: 64 * 1_024 * 1_024,
+      },
+    );
+    return derived.length === expected.length && timingSafeEqual(derived, expected);
+  } catch {
+    return false;
+  }
+};
+
+const roleTitle = (role: UserRole) => {
+  if (role === UserRole.COO) return 'Chief Operating Officer';
+  if (role === UserRole.CEO) return 'Chief Executive Officer';
+  return role
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+};
+
+const stringField = (record: Record<string, unknown> | null, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = record?.[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+};
+
+const accessForRole = (role: UserRole) => {
+  const canWriteCharts = chartWriteRoles.has(role);
+  const canReadCharts = chartReadRoles.has(role);
+  const canAdminister = administrationRoles.has(role);
+  const permissions = [
+    'SULANDRA_DESKTOP_ACCESS',
+    ...(canReadCharts ? ['SPIRE_CHART_READ'] : []),
+    ...(canWriteCharts ? ['SPIRE_CHART_WRITE'] : []),
+    ...(canAdminister ? ['SULANDRA_ADMINISTRATION_ACCESS'] : []),
+  ];
+
+  return {
+    landingRoute: '/desktop',
+    permissions,
+    access: {
+      desktop: true,
+      administration: canAdminister,
+      spire: {
+        enabled: canReadCharts,
+        route: '/spire',
+        readOnly: canReadCharts && !canWriteCharts,
+        canReadCharts,
+        canWriteCharts,
+      },
+    },
+    apps: [
+      {
+        id: 'sulandra-desktop',
+        name: 'Sulandra Desktop',
+        route: '/desktop',
+        enabled: true,
+      },
+      {
+        id: 'spire',
+        name: 'S.P.I.R.E.',
+        route: '/spire',
+        enabled: canReadCharts,
+        readOnly: canReadCharts && !canWriteCharts,
+      },
+    ],
+  };
+};
+
+const bearerToken = (authorization: string | undefined) => {
+  if (!authorization) return null;
+  const [scheme, token, extra] = authorization.trim().split(/\s+/);
+  return scheme?.toLowerCase() === 'bearer' && token && !extra ? token : null;
+};
+
+const internalAuth = (req: express.Request): AuthContext | null => {
+  const configuredKey = process.env.SULANDRA_INTERNAL_API_KEY?.trim();
+  if (!secureEquals(req.header('x-sulandra-api-key'), configuredKey)) return null;
+
+  const organizationId = req.header('x-organization-id')
+    ?? process.env.CAREERS_ORGANIZATION_ID?.trim();
+  const userId = req.header('x-user-id')
+    ?? process.env.PRIMARY_ADMIN_USER_ID?.trim();
+  const roleValue = req.header('x-user-role') ?? UserRole.ADMINISTRATOR;
+
+  if (!organizationId || !userId || !isUserRole(roleValue)) return null;
+  return {
+    organizationId,
+    userId,
+    role: roleValue,
+    email: req.header('x-user-email')?.trim().toLowerCase() || administratorEmail,
+  };
+};
+
+const tokenAuth = (req: express.Request): AuthContext | null => {
+  const token = bearerToken(req.header('authorization'));
+  if (!token || !jwtSecret) return null;
+
+  try {
+    const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
+    if (typeof decoded === 'string') return null;
+
+    const claims = decoded as AuthTokenClaims;
+    if (
+      typeof claims.sub !== 'string'
+      || typeof claims.organizationId !== 'string'
+      || !isUserRole(claims.role)
+      || typeof claims.exp !== 'number'
+    ) {
+      return null;
+    }
+
+    return {
+      userId: claims.sub,
+      organizationId: claims.organizationId,
+      role: claims.role,
+      email: typeof claims.email === 'string'
+        ? claims.email.trim().toLowerCase()
+        : undefined,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const loginSchema = z.object({
+  email: z.string().trim().optional(),
+  username: z.string().trim().optional(),
+  identifier: z.string().trim().optional(),
+  password: z.string().min(1).max(1_024),
+}).refine(
+  (value) => Boolean(value.email || value.username || value.identifier),
+  { message: 'Username or email is required' },
+);
+
+const resolveAdministrator = async (): Promise<AuthContext & { email: string }> => {
+  let administrator: AdministratorRow | undefined;
+
+  try {
+    const rows = await prisma.$queryRawUnsafe<AdministratorRow[]>(
+      `SELECT "id", "organizationId", "role", "email"
+       FROM "User"
+       WHERE LOWER("email") = LOWER($1)
+       LIMIT 1`,
+      administratorEmail,
+    );
+    administrator = rows[0];
+  } catch (error) {
+    console.warn('[auth] administrator lookup by email failed', error);
+  }
+
+  if (!administrator) {
+    const fallback = await prisma.$queryRawUnsafe<AdministratorRow[]>(
+      `SELECT "id", "organizationId", "role", "email"
+       FROM "User"
+       WHERE "role"::text = 'ADMINISTRATOR'
+       ORDER BY "createdAt" ASC
+       LIMIT 1`,
+    );
+    administrator = fallback[0];
+  }
+
+  if (!administrator || !isUserRole(administrator.role)) {
+    throw Object.assign(new Error('Administrator account is not configured'), { status: 503 });
+  }
+
+  return {
+    userId: administrator.id,
+    organizationId: administrator.organizationId,
+    role: administrator.role,
+    email: administrator.email?.trim().toLowerCase() || administratorEmail,
+  };
+};
+
+const resolvePortalAccount = async (identifier: string): Promise<LoginAccount | null> => {
+  const rows = await prisma.$queryRawUnsafe<PortalCredentialRow[]>(
+    `SELECT
+       u."id",
+       u."organizationId",
+       u."role",
+       u."email",
+       c."username",
+       c."passwordHash",
+       c."displayName",
+       c."mustChangePassword",
+       c."failedLoginAttempts",
+       c."lockedUntil",
+       to_jsonb(u) AS "userRecord"
+     FROM "EmployeePortalCredential" c
+     JOIN "User" u ON u."id" = c."userId"
+     WHERE LOWER(c."username") = LOWER($1)
+        OR LOWER(COALESCE(u."email", '')) = LOWER($1)
+     LIMIT 1`,
+    identifier,
+  );
+  const row = rows[0];
+  if (!row || !isUserRole(row.role)) return null;
+
+  const lockedUntil = row.lockedUntil ? new Date(row.lockedUntil) : null;
+  const displayName = row.displayName
+    || [
+      stringField(row.userRecord, 'firstName'),
+      stringField(row.userRecord, 'middleName'),
+      stringField(row.userRecord, 'lastName'),
+    ].filter(Boolean).join(' ')
+    || row.email
+    || row.username
+    || 'Sulandra Health Employee';
+
+  return {
+    userId: row.id,
+    organizationId: row.organizationId,
+    role: row.role,
+    email: row.email?.trim().toLowerCase() || '',
+    username: row.username || row.email || row.id,
+    displayName,
+    mustChangePassword: Boolean(row.mustChangePassword),
+    passwordHash: row.passwordHash,
+    failedLoginAttempts: row.failedLoginAttempts || 0,
+    lockedUntil,
+  } as LoginAccount & {
+    passwordHash: string | null;
+    failedLoginAttempts: number;
+    lockedUntil: Date | null;
+  };
+};
+
+const recordFailedPortalLogin = async (userId: string) => {
+  await prisma.$executeRawUnsafe(
+    `UPDATE "EmployeePortalCredential"
+     SET
+       "failedLoginAttempts" = "failedLoginAttempts" + 1,
+       "lockedUntil" = CASE
+         WHEN "failedLoginAttempts" + 1 >= 5 THEN NOW() + INTERVAL '15 minutes'
+         ELSE NULL
+       END,
+       "updatedAt" = NOW()
+     WHERE "userId" = $1`,
+    userId,
+  );
+};
+
+const recordSuccessfulPortalLogin = async (userId: string) => {
+  await prisma.$executeRawUnsafe(
+    `UPDATE "EmployeePortalCredential"
+     SET
+       "failedLoginAttempts" = 0,
+       "lockedUntil" = NULL,
+       "lastSignedInAt" = NOW(),
+       "updatedAt" = NOW()
+     WHERE "userId" = $1`,
+    userId,
+  );
+};
+
+const buildSessionPayload = (account: LoginAccount) => {
+  if (!jwtSecret) {
+    throw Object.assign(new Error('Employee sign-in is not configured'), { status: 503 });
+  }
+
+  const token = jwt.sign(
+    {
+      organizationId: account.organizationId,
+      role: account.role,
+    },
+    jwtSecret,
+    {
+      algorithm: 'HS256',
+      subject: account.userId,
+      expiresIn: '8h',
+    },
+  );
+  const expiresIn = 8 * 60 * 60;
+  const expiresAt = new Date(Date.now() + expiresIn * 1_000).toISOString();
+  const nameParts = account.displayName.split(/\s+/).filter(Boolean);
+  const firstName = nameParts.shift() || account.username;
+  const lastName = nameParts.pop() || '';
+  const middleName = nameParts.join(' ');
+  const organizationName = process.env.ORGANIZATION_NAME?.trim() || 'Sulandra Health';
+  const authorization = accessForRole(account.role);
+  const organization = {
+    id: account.organizationId,
+    organizationId: account.organizationId,
+    name: organizationName,
+    displayName: organizationName,
+  };
+  const user = {
+    id: account.userId,
+    userId: account.userId,
+    employeeId: account.userId,
+    organizationId: account.organizationId,
+    organizationName,
+    email: account.email,
+    username: account.username,
+    role: account.role,
+    firstName,
+    middleName,
+    lastName,
+    name: account.displayName,
+    fullName: account.displayName,
+    displayName: account.displayName,
+    title: roleTitle(account.role),
+    jobTitle: roleTitle(account.role),
+    department: '',
+    phone: '',
+    status: 'ACTIVE',
+    mustChangePassword: account.mustChangePassword,
+    permissions: authorization.permissions,
+    access: authorization.access,
+  };
+  return {
+    token,
+    accessToken: token,
+    expiresIn,
+    expiresAt,
+    user,
+    employee: user,
+    organization,
+    authorization,
+  };
 };
 
 app.set('trust proxy', 1);
-app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors({ origin(origin, callback) {
-  if (!origin || clientOrigins.has(origin)) return callback(null, true);
-  callback(new Error('Origin is not allowed'));
-}, credentials: true }));
+app.use(helmet({
+  contentSecurityPolicy: isProduction ? undefined : false,
+  crossOriginResourcePolicy: { policy: 'same-site' },
+}));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || clientOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Origin is not allowed'));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(rateLimit({ windowMs: 60_000, max: 600, standardHeaders: true, legacyHeaders: false }));
 
-const authOf = (res: express.Response): AuthContext => res.locals.auth as AuthContext;
-const requireRoles = (...roles: UserRole[]): express.RequestHandler => (req, res, next) => {
-  const token = req.headers.authorization?.startsWith('Bearer ')
-    ? req.headers.authorization.slice('Bearer '.length).trim()
-    : undefined;
-  if (!token || !jwtSecret) {
-    res.status(401).json({ error: 'Authentication required' });
+const signInLimiter = rateLimit({
+  windowMs: 15 * 60 * 1_000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many sign-in attempts. Please try again later.' },
+});
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'sulandra-api' });
+});
+
+app.post('/api/auth/login', signInLimiter, async (req, res, next) => {
+  try {
+    const input = loginSchema.parse(req.body);
+    const identifier = (input.identifier || input.username || input.email || '').trim();
+    const account = await resolvePortalAccount(identifier);
+    if (!account) {
+      res.status(401).json({ error: 'Invalid username or password' });
+      return;
+    }
+
+    const authAccount = account as LoginAccount & {
+      passwordHash: string | null;
+      failedLoginAttempts: number;
+      lockedUntil: Date | null;
+    };
+    if (authAccount.lockedUntil && authAccount.lockedUntil > new Date()) {
+      res.status(423).json({ error: 'Account is temporarily locked. Please try again later.' });
+      return;
+    }
+
+    if (!verifyPortalPassword(input.password, authAccount.passwordHash)) {
+      await recordFailedPortalLogin(authAccount.userId);
+      res.status(401).json({ error: 'Invalid username or password' });
+      return;
+    }
+
+    await recordSuccessfulPortalLogin(authAccount.userId);
+    res.json(buildSessionPayload(account));
+  } catch (error) {
+    next(error);
+  }
+});
+
+const authenticate: express.RequestHandler = async (req, res, next) => {
+  const auth = internalAuth(req) ?? tokenAuth(req);
+  if (!auth) {
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
+
   try {
-    const claims = jwt.verify(token, jwtSecret) as AuthTokenClaims;
-    if (typeof claims.sub !== 'string' || typeof claims.organizationId !== 'string' || !isUserRole(claims.role)) {
-      res.status(401).json({ error: 'Invalid authentication token' });
-      return;
-    }
-    const role = claims.role;
-    if (!roles.includes(role)) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
-    }
-    res.locals.auth = {
-      userId: claims.sub,
-      organizationId: claims.organizationId,
-      role,
-      legalEntityId: typeof (claims as any).legalEntityId === 'string' ? (claims as any).legalEntityId : null,
-      email: typeof (claims as any).email === 'string' ? (claims as any).email : undefined,
-    } satisfies AuthContext;
+    res.locals.auth = await getUserEntityContext(prisma, auth);
     next();
-  } catch {
-    res.status(401).json({ error: 'Invalid authentication token' });
+  } catch (error) {
+    next(error);
   }
 };
 
-app.get('/health', (_req, res) => res.status(200).json({ ok: true }));
+const scopedAccess = createEntityAccessMiddleware({
+  prisma,
+  authOf: (res) => res.locals.auth as ScopedAuthContext,
+  entityAccessOf,
+});
 
-const audit = async (auth: AuthContext, action: string, resourceType: string, resourceId: string, metadata: Record<string, unknown> = {}) => {
+app.use('/api', authenticate);
+app.use('/api', scopedAccess);
+
+const authOf = (res: express.Response) => res.locals.auth as ScopedAuthContext;
+const requireRoles = (...allowed: UserRole[]): express.RequestHandler => (_req, res, next) => {
+  const auth = authOf(res);
+  if (!allowed.includes(auth.role)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+  next();
+};
+
+const audit = async (
+  auth: ScopedAuthContext,
+  action: string,
+  resourceType: string,
+  resourceId?: string | null,
+  metadata?: unknown,
+) => {
   try {
-    const metadataJson = JSON.stringify(metadata);
-    const columns = await prisma.$queryRawUnsafe<Array<{ column_name: string; data_type: string }>>(
-      `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='AuditEvent'`,
+    const columns = await prisma.$queryRawUnsafe<Array<{
+      column_name: string;
+      data_type: string;
+    }>>(
+      `SELECT column_name, data_type
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'AuditEvent'`,
     );
+    if (!columns.length) return;
+
     const available = new Map(columns.map((column) => [column.column_name, column.data_type]));
-    const sourceValues: Record<string, unknown> = {
-      id: randomUUID(),
-      organizationId: auth.organizationId,
-      legalEntityId: auth.legalEntityId ?? null,
-      userId: auth.userId,
-      actorUserId: auth.userId,
-      action,
-      eventType: action,
-      resourceType,
-      entityType: resourceType,
-      resourceId,
-      entityId: resourceId,
-      metadata: metadataJson,
-      details: metadataJson,
-      payload: metadataJson,
-    };
+    const metadataJson = JSON.stringify(metadata ?? {});
     const candidates: Array<{ name: string; value: unknown; cast?: string }> = [];
-    for (const [name, dataType] of available.entries()) {
-      if (!(name in sourceValues)) continue;
-      const jsonLike = dataType === 'json' || dataType === 'jsonb';
-      const booleanLike = dataType === 'boolean';
-      const numericLike = ['integer', 'bigint', 'numeric', 'double precision', 'real'].includes(dataType);
-      const timestampLike = dataType.includes('timestamp');
-      candidates.push({
-        name,
-        value: jsonLike ? metadataJson : booleanLike ? false : numericLike ? 0 : timestampLike ? new Date() : sourceValues[name],
-        cast: jsonLike ? '::jsonb' : undefined,
-      });
-    }
+    const add = (names: string[], value: unknown) => {
+      for (const name of names) {
+        if (!available.has(name)) continue;
+        const dataType = available.get(name) || '';
+        const jsonLike = dataType === 'json' || dataType === 'jsonb';
+        const booleanLike = dataType === 'boolean';
+        const numericLike = ['smallint', 'integer', 'bigint', 'numeric', 'real', 'double precision'].includes(dataType);
+        const timestampLike = dataType.includes('timestamp') || dataType === 'date';
+        candidates.push({
+          name,
+          value: jsonLike ? metadataJson : booleanLike ? false : numericLike ? 0 : timestampLike ? new Date() : '',
+          cast: jsonLike ? '::jsonb' : undefined,
+        });
+      }
+    };
+
+    add(['id'], randomUUID());
+    add(['organizationId'], auth.organizationId);
+    add(['legalEntityId'], auth.legalEntityId ?? '');
+    add(['userId', 'actorUserId', 'performedBy', 'createdBy'], auth.userId);
+    add(['action', 'eventType', 'event', 'activity'], action);
+    add(['resourceType', 'entityType', 'objectType'], resourceType);
+    add(['resourceId', 'entityId', 'objectId'], resourceId ?? '');
+    add(['metadata', 'details', 'payload', 'context'], metadataJson);
+
     const columnSql = candidates.map((candidate) => `"${candidate.name}"`);
     const valueSql = candidates.map((candidate, index) => `$${index + 1}${candidate.cast || ''}`);
     if (available.has('createdAt')) {
@@ -228,7 +642,11 @@ const audit = async (auth: AuthContext, action: string, resourceType: string, re
       valueSql.push('NOW()');
     }
     if (!candidates.length) throw new Error('AuditEvent has no compatible columns.');
-    await prisma.$executeRawUnsafe(`INSERT INTO "AuditEvent" (${columnSql.join(',')}) VALUES (${valueSql.join(',')})`, ...candidates.map((candidate) => candidate.value));
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "AuditEvent" (${columnSql.join(',')}) VALUES (${valueSql.join(',')})`,
+      ...candidates.map((candidate) => candidate.value),
+    );
   } catch (error) {
     console.warn('[audit] event could not be persisted', { action, resourceType, error });
   }
@@ -240,14 +658,27 @@ const portalCredentialSchema = z.object({
   username: z.string().trim().min(3).max(100).regex(/^[a-zA-Z0-9._-]+$/),
   temporaryPassword: z.string().min(12).max(256),
   displayName: z.string().trim().min(1).max(160).optional(),
-}).refine((value) => Boolean(value.userId || value.email), { message: 'User ID or employee email is required' });
+}).refine(
+  (value) => Boolean(value.userId || value.email),
+  { message: 'User ID or employee email is required' },
+);
 
 const provisionPortalCredential: express.RequestHandler = async (req, res, next) => {
   try {
     const auth = authOf(res);
-    const input = portalCredentialSchema.parse({ ...req.body, userId: req.params.userId || req.body?.userId });
+    const input = portalCredentialSchema.parse({
+      ...req.body,
+      userId: req.params.userId || req.body?.userId,
+    });
     const users = await prisma.$queryRawUnsafe<AdministratorRow[]>(
-      `SELECT "id", "organizationId", "role", "email" FROM "User" WHERE "organizationId" = $1 AND (( $2::text IS NOT NULL AND "id" = $2) OR ($3::text IS NOT NULL AND LOWER("email") = LOWER($3))) LIMIT 1`,
+      `SELECT "id", "organizationId", "role", "email"
+       FROM "User"
+       WHERE "organizationId" = $1
+         AND (
+           ($2::text IS NOT NULL AND "id" = $2)
+           OR ($3::text IS NOT NULL AND LOWER("email") = LOWER($3))
+         )
+       LIMIT 1`,
       auth.organizationId,
       input.userId ?? null,
       input.email ?? null,
@@ -257,40 +688,72 @@ const provisionPortalCredential: express.RequestHandler = async (req, res, next)
       res.status(404).json({ error: 'Employee account was not found' });
       return;
     }
+
     const passwordHash = hashPortalPassword(input.temporaryPassword);
     await prisma.$executeRawUnsafe(
-      `INSERT INTO "EmployeePortalCredential" ("userId","username","passwordHash","displayName","mustChangePassword","createdAt","updatedAt") VALUES ($1,$2,$3,$4,TRUE,NOW(),NOW()) ON CONFLICT ("userId") DO UPDATE SET "username" = EXCLUDED."username", "passwordHash" = EXCLUDED."passwordHash", "displayName" = EXCLUDED."displayName", "mustChangePassword" = TRUE, "failedLoginAttempts" = 0, "lockedUntil" = NULL, "updatedAt" = NOW()`,
+      `INSERT INTO "EmployeePortalCredential"
+         ("userId","username","passwordHash","displayName","mustChangePassword","createdAt","updatedAt")
+       VALUES ($1,$2,$3,$4,TRUE,NOW(),NOW())
+       ON CONFLICT ("userId") DO UPDATE SET
+         "username" = EXCLUDED."username",
+         "passwordHash" = EXCLUDED."passwordHash",
+         "displayName" = EXCLUDED."displayName",
+         "mustChangePassword" = TRUE,
+         "failedLoginAttempts" = 0,
+         "lockedUntil" = NULL,
+         "updatedAt" = NOW()`,
       user.id,
       input.username,
       passwordHash,
       input.displayName ?? null,
     );
-    await audit(auth, 'PROVISION_EMPLOYEE_PORTAL_ACCESS', 'User', user.id, { username: input.username });
+    await audit(auth, 'PROVISION_EMPLOYEE_PORTAL_ACCESS', 'User', user.id, {
+      username: input.username,
+    });
     res.status(201).json({ data: { userId: user.id, username: input.username } });
-  } catch (error) { next(error); }
+  } catch (error) {
+    next(error);
+  }
 };
 
-app.post('/api/admin/users/:userId/portal-credentials', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), provisionPortalCredential);
-app.post('/api/admin/employee-portal/credentials', requireRoles(UserRole.ADMINISTRATOR, UserRole.COO), provisionPortalCredential);
+app.post(
+  '/api/admin/users/:userId/portal-credentials',
+  requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
+  provisionPortalCredential,
+);
+app.post(
+  '/api/admin/employee-portal/credentials',
+  requireRoles(UserRole.ADMINISTRATOR, UserRole.COO),
+  provisionPortalCredential,
+);
 
 registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, audit });
-registerSIACopilotProfileRoutes({ app, prisma, authOf, requireRoles });
-registerSIARoutes({ app, prisma, authOf, requireRoles });
-registerITSolutionsRoutes({ app, prisma, authOf, requireRoles });
 registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof ZodError) {
-    res.status(400).json({ error: 'Validation failed', details: error.issues });
+    res.status(400).json({
+      error: 'Validation failed',
+      details: error.issues,
+    });
     return;
   }
+
   const httpError = error as HttpError;
   const status = httpError.status ?? httpError.statusCode ?? 500;
   if (status >= 500) console.error(error);
   res.status(status).json({ error: httpError.message || 'Internal server error' });
 });
 
-app.listen(port, '0.0.0.0', () => { console.log(`SPIRE API listening on 0.0.0.0:${port}`); });
-const shutdown = async (signal: string) => { console.log(`Received ${signal}; disconnecting database client.`); await prisma.$disconnect(); process.exit(0); };
+app.listen(port, '0.0.0.0', () => {
+  console.log(`SPIRE API listening on 0.0.0.0:${port}`);
+});
+
+const shutdown = async (signal: string) => {
+  console.log(`Received ${signal}; disconnecting database client.`);
+  await prisma.$disconnect();
+  process.exit(0);
+};
+
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
