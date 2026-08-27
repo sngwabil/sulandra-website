@@ -70,6 +70,10 @@ source = source.replace(/<img class="hero-slide-image"([^>]*?)>/, (match, attrs)
 await writeFile(target, source, 'utf8');
 console.log('Homepage hero final output hardened: inline SVG scene paints before any network image and the remote photograph never exposes a blank dark panel.');
 
+// Publish the two navigation/data-scope repairs after all normal static installers
+// have run, then let the global SIA installer remain the last HTML mutation.
+await import('./fix-owner-onboarding-pay-benefits.mjs');
+
 // This is deliberately the final static-page mutation in build:web. Publish the
 // same authenticated Ask SIA copilot drawer after all other HTML finalizers so
 // every Sulandra HTML destination receives one stable shared assistant surface.
