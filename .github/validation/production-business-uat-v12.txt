@@ -1,0 +1,2 @@
+Production business-path UAT validation round twelve.
+Exact feature head includes round-ten visible Home Health status validation, loaded Workforce navigation guard, pinned SPIRE app/deep-link generations, async census refresh, and patient-click recovery.
