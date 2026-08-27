@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dist=path.join(root,'dist-web');
-const cssHref='/assets/sia-copilot.css?v=20260826-global-copilot-1';
-const jsSrc='/assets/sia-copilot.js?v=20260826-global-copilot-1';
-const marker='data-sia-global-copilot="20260826-global-copilot-1"';
+const cssHref='/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1';
+const jsSrc='/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1';
+const marker='data-sia-global-copilot="20260827-sia-intelligence-router-1"';
 
 const cssPath=path.join(dist,'assets','sia-copilot.css');
 const jsPath=path.join(dist,'assets','sia-copilot.js');
@@ -15,7 +15,7 @@ for(const required of [cssPath,jsPath]){
 }
 const copilotRuntime=await readFile(jsPath,'utf8');
 try{new Function(copilotRuntime);}catch(error){throw new Error(`Global Ask SIA copilot JavaScript has a syntax error: ${error instanceof Error?error.message:String(error)}`);}
-for(const required of ['SIA_GLOBAL_COPILOT_V1','/api/sia/profile/context','/api/sia/chat','Ask SIA','window.top !== window.self']){
+for(const required of ['SIA_GLOBAL_COPILOT_V1','/api/sia/profile/context','/api/sia/chat','Ask SIA','window.top !== window.self','clientLocalDateTime','clientTimeZone','modeLabel','siax-mode-badge','supportWorkspacePage: location.pathname','isClinicalPage']){
   if(!copilotRuntime.includes(required))throw new Error(`Global Ask SIA copilot runtime missing required contract marker: ${required}`);
 }
 
@@ -61,4 +61,4 @@ for(const file of verify){
 }
 
 if(!injected)throw new Error('No published HTML pages received the global Ask SIA copilot');
-console.log(`Ask SIA global copilot syntax verified and published across ${injected} HTML page(s); ${standalone} standalone SIA workspace page(s) retain the full assistant instead of a duplicate drawer.`);
+console.log(`SIA automatic-mode copilot syntax verified and published across ${injected} HTML page(s); ${standalone} standalone SIA workspace page(s) retain the full assistant instead of a duplicate drawer.`);

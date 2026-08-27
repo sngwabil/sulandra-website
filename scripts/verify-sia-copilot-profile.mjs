@@ -15,15 +15,16 @@ for(const marker of [
 
 for(const marker of [
   "import { ensureSIACopilotProfile, serializeSIACopilotProfile } from './sia-copilot-profile.js';",
-  'const copilotProfile = await ensureSIACopilotProfile',
+  'ensureSIACopilotProfile(prisma, auth',
   'serializeSIACopilotProfile(copilotProfile)',
   'serverConfirmedSIACopilot* fields come from',
-  'copilotProfileId: copilotProfile.id',
-])if(!routes.includes(marker))throw new Error(`SIA chat is not grounded on employee copilot profiles: missing ${marker}`);
+  'copilotProfile?.id',
+  "if (routing.mode === 'SULANDRA')",
+])if(!routes.includes(marker))throw new Error(`SIA Sulandra-mode chat is not grounded on employee copilot profiles: missing ${marker}`);
 
 for(const marker of [
   "import { registerSIACopilotProfileRoutes } from './sia-copilot-profile.js';",
   'registerSIACopilotProfileRoutes({ app, prisma, authOf, requireRoles });',
 ])if(!bootstrap.includes(marker))throw new Error(`SIA copilot profile routes are not registered: missing ${marker}`);
 
-console.log('SIA per-employee copilot profile verified: server identity, preferences, recent non-sensitive application context, and chat grounding are persistent and employee-scoped.');
+console.log('SIA per-employee copilot profile verified: Sulandra-mode identity, preferences, recent non-sensitive application context, and chat grounding are persistent and employee-scoped; General mode remains context-minimized.');
