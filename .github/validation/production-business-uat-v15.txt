@@ -1,0 +1,3 @@
+Production business-path UAT validation round eighteen.
+Exact feature head: dcda2e429063257892217d86ddc3b7631e491b41.
+Fixes the malformed SPIRE Care Plan script that caused Missing } in template expression and blocked Client Intake, eMAR, and Incident chart readiness; generated/published SPIRE JavaScript syntax is verified before live UAT.
