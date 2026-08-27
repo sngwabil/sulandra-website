@@ -19,7 +19,7 @@
     const link = document.createElement('link');
     link.id = 'siaFutureTheme';
     link.rel = 'stylesheet';
-    link.href = '/assets/sia-futuristic.css?v=20260826-future-2';
+    link.href = '/assets/sia-futuristic.css?v=20260827-sia-intelligence-router-1';
     document.head.appendChild(link);
   }
 
@@ -173,6 +173,18 @@
     return payload.data || payload;
   }
 
+  function localTimeContext() {
+    const now = new Date();
+    let clientTimeZone = '';
+    try { clientTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {}
+    return {
+      clientLocalDateTime: now.toLocaleString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'long' }),
+      clientTimeZone,
+      clientUtcOffsetMinutes: now.getTimezoneOffset(),
+      clientLocale: navigator.language || '',
+    };
+  }
+
   function normalizeRole(session) { return String(session?.role || session?.user?.role || session?.profile?.role || '').toUpperCase(); }
   function adminAllowed(session) {
     const role = normalizeRole(session), permissions = Array.isArray(session?.permissions) ? session.permissions : [];
@@ -230,7 +242,10 @@
     const wrap = document.createElement('div'); wrap.className = `message ${role}`;
     const avatar = document.createElement('div'); avatar.className = 'avatar'; avatar.textContent = role === 'assistant' ? 'SIA' : 'YOU';
     const bubble = document.createElement('div'); bubble.className = `bubble${role === 'assistant' ? ' sia-rich-content' : ''}`;
-    if (role === 'assistant') bubble.appendChild(renderMarkdown(content)); else bubble.textContent = content;
+    if (role === 'assistant') {
+      if (options.modeLabel) { const mode = document.createElement('span'); mode.className = 'sia-mode-badge'; mode.textContent = options.modeLabel; bubble.appendChild(mode); }
+      bubble.appendChild(renderMarkdown(content));
+    } else bubble.textContent = content;
     if (options.attachmentName && role === 'user') { const tag = document.createElement('div'); tag.style.cssText = 'margin-top:8px;font-size:11px;opacity:.8'; tag.textContent = `📎 ${options.attachmentName}`; bubble.appendChild(tag); }
     wrap.append(avatar, bubble); log.appendChild(wrap); if (role === 'assistant' && !options.noActions) addMessageActions(wrap, content);
     log.scrollTop = log.scrollHeight; return wrap;
@@ -243,7 +258,7 @@
   function hideTyping() { $('siaTypingMessage')?.remove(); }
 
   function welcomeHtml() {
-    return `<div id="welcome" class="welcome"><div class="sia-mark">SIA</div><h3>What can I help you solve?</h3><p>I can verify your Sulandra access context, guide you to the right system, inspect a screenshot of an error, troubleshoot the message with you, and help find a safe workaround.</p><div class="quick-prompts"><button class="quick-prompt" type="button">Help me with Admin sign in</button><button class="quick-prompt" type="button">I cannot sign in</button><button class="quick-prompt" type="button">A page is stuck loading</button><button class="quick-prompt" type="button">My schedule is not showing</button><button class="quick-prompt" type="button">SPIRE is showing an error</button></div></div>`;
+    return `<div id="welcome" class="welcome"><div class="sia-mark">SIA</div><h3>Ask SIA anything</h3><p>SIA automatically chooses General, Sulandra, or Clinical-safe mode from your question. Ask for explanations, writing, current information, Sulandra help, or safe clinical education.</p><div class="quick-prompts"><button class="quick-prompt" type="button">What day and time is it?</button><button class="quick-prompt" type="button">Explain a topic to me</button><button class="quick-prompt" type="button">Where is my schedule?</button><button class="quick-prompt" type="button">Show my open work</button><button class="quick-prompt" type="button">Help me with this page</button></div></div>`;
   }
 
   function clearChat() {
@@ -279,8 +294,6 @@
     renderMessage('user', message, { attachmentName: attachment?.name }); clearAttachmentUi(); state.attachment = null;
     state.busy = true; const button = $('sendButton'); button.disabled = true; showTyping();
     try {
-      if (!state.identity) await loadIdentity();
-      const role = normalizeRole(state.identity), sessionAdmin = state.identity ? adminAllowed(state.identity) : false;
       const data = await api('/api/sia/chat', {
         method: 'POST',
         body: JSON.stringify({
@@ -288,16 +301,14 @@
           message,
           attachment: attachment ? { name: attachment.name, mimeType: attachment.mimeType, dataUrl: attachment.dataUrl } : undefined,
           context: {
-            page: location.pathname,
-            application: 'SIA',
+            supportWorkspacePage: location.pathname,
+            application: 'SIA support workspace',
             environment: 'production',
-            authenticatedRole: role || undefined,
-            adminAccess: state.identity ? (sessionAdmin ? 'verified' : 'not-authorized') : undefined,
-            workEmail: state.identity?.email || undefined,
+            ...localTimeContext(),
           },
         }),
       });
-      hideTyping(); state.conversationId = data.conversationId; renderMessage('assistant', data.answer); await Promise.all([loadConversations(), loadActivity()]);
+      hideTyping(); state.conversationId = data.conversationId; renderMessage('assistant', data.answer, { modeLabel: data.modeLabel || '' }); await Promise.all([loadConversations(), loadActivity()]);
     } catch (error) { hideTyping(); renderMessage('assistant', `I could not complete that request: **${error.message}**`); }
     finally { state.busy = false; button.disabled = false; input.focus(); }
   }

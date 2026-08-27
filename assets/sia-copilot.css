@@ -23,3 +23,12 @@
 .siax-guest{padding:18px}.siax-guest-card{border:1px solid var(--siax-line);background:rgba(255,255,255,.04);border-radius:14px;padding:16px}.siax-guest-card h3{margin:0;color:#fff}.siax-guest-card p{color:var(--siax-muted);font-size:11px;line-height:1.5}.siax-guest-actions{display:flex;gap:8px;flex-wrap:wrap}.siax-guest-actions a{border:1px solid var(--siax-line);background:#102446;color:#fff;border-radius:9px;padding:8px 10px;text-decoration:none;font-size:10px;font-weight:900}.siax-guest-actions a.primary{background:linear-gradient(135deg,#5535c8,#0d7b78)}
 @media(max-width:640px){.siax-launcher{right:12px;bottom:12px}.siax-drawer{width:100vw}.siax-scrim{display:none}.siax-head{padding-top:max(14px,env(safe-area-inset-top))}.siax-bubble{max-width:92%}}
 @media print{#sia-copilot-root{display:none!important}}
+
+
+/* SIA automatic intelligence modes */
+.siax-mode-badge{
+  display:inline-flex;align-items:center;width:max-content;margin:0 0 8px;padding:4px 8px;
+  border:1px solid rgba(124,92,255,.42);border-radius:999px;
+  background:rgba(124,60,255,.14);color:#cfc6ff;font-size:10px;font-weight:900;
+  letter-spacing:.055em;text-transform:uppercase;
+}

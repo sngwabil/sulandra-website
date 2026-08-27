@@ -9,7 +9,7 @@
 
   const API_BASE = String(window.SULANDRA_API_BASE || 'https://sulandra-website-production-5fc4.up.railway.app').replace(/\/$/, '');
   const TOKEN_KEYS = ['sulandra:admin:access-token','sulandra:employee:access-token'];
-  const VERSION = '20260826-global-copilot-1';
+  const VERSION = '20260827-sia-intelligence-router-1';
   const state = {
     token: '', profile: null, status: null, conversationId: '', attached: null,
     busy: false, booted: false, errors: [], loadingNotice: false, uiNotice: '',
@@ -62,6 +62,22 @@
       if (allowed.test(text)) return text;
     }
     return '';
+  }
+
+  function isClinicalPage(pathname = location.pathname){
+    return /(?:^|\/)(?:spire(?:\/|\.html|$)|e-?mar(?:\/|\.html|$)|tar(?:\/|\.html|$)|flowsheets?(?:\/|\.html|$)|client-station(?:\/|\.html|$)|patient(?:\/|\.html|$)|resident(?:\/|\.html|$)|clinical(?:\/|\.html|$)|chart(?:\/|\.html|$))/i.test(String(pathname || ''));
+  }
+
+  function localTimeContext(){
+    const now=new Date();
+    let clientTimeZone='';
+    try{clientTimeZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch{}
+    return {
+      clientLocalDateTime:now.toLocaleString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZoneName:'long'}),
+      clientTimeZone,
+      clientUtcOffsetMinutes:now.getTimezoneOffset(),
+      clientLocale:navigator.language||'',
+    };
   }
 
   function safeHref(raw){
@@ -145,13 +161,13 @@
       <button class="siax-launcher" id="siaxLauncher" type="button" aria-haspopup="dialog" aria-controls="siaxDrawer" aria-expanded="false"><span class="siax-launcher-mark">Ask SIA</span><span class="siax-launcher-badge" id="siaxLauncherBadge">!</span></button>
       <div class="siax-scrim" id="siaxScrim"></div>
       <aside class="siax-drawer" id="siaxDrawer" role="dialog" aria-modal="true" aria-label="Ask SIA copilot">
-        <header class="siax-head"><div class="siax-brand"><div class="siax-brand-row"><span class="siax-wordmark">SIA</span><span class="siax-online" id="siaxOnline"></span></div><div class="siax-subtitle" id="siaxSubtitle">Your Sulandra copilot</div></div><button class="siax-icon-btn" id="siaxNew" type="button" title="New conversation" aria-label="New SIA conversation">＋</button><a class="siax-icon-btn" href="/sia.html" target="_blank" rel="noopener noreferrer" title="Open full SIA" aria-label="Open full SIA">↗</a><button class="siax-icon-btn" id="siaxClose" type="button" aria-label="Close SIA">×</button></header>
+        <header class="siax-head"><div class="siax-brand"><div class="siax-brand-row"><span class="siax-wordmark">SIA</span><span class="siax-online" id="siaxOnline"></span></div><div class="siax-subtitle" id="siaxSubtitle">Your intelligent Sulandra copilot</div></div><button class="siax-icon-btn" id="siaxNew" type="button" title="New conversation" aria-label="New SIA conversation">＋</button><a class="siax-icon-btn" href="/sia.html" target="_blank" rel="noopener noreferrer" title="Open full SIA" aria-label="Open full SIA">↗</a><button class="siax-icon-btn" id="siaxClose" type="button" aria-label="Close SIA">×</button></header>
         <div class="siax-persona"><div class="siax-persona-copy"><strong id="siaxPerson">Personal SIA profile</strong><span id="siaxContext">${escapeHtml(appForPath(location.pathname))} · ${escapeHtml(location.pathname)}</span></div><span class="siax-chip" id="siaxProfileChip">Second eye</span></div>
         <div class="siax-quickbar" id="siaxQuickbar"><button class="siax-quick" type="button" data-prompt="What am I looking at on this page and what can I do here?">What is this page?</button><button class="siax-quick" type="button" data-prompt="Help me complete what I am working on here, one step at a time.">Help me do this</button><button class="siax-quick" type="button" data-prompt="This page is not working as expected. Help me troubleshoot it using the current page context.">Troubleshoot page</button><button class="siax-quick" type="button" data-prompt="Based on my current Sulandra context, what should I do next?">What next?</button></div>
         <div class="siax-notice" id="siaxNotice"></div>
         <div class="siax-log" id="siaxLog" aria-live="polite"></div>
         <div class="siax-attach-preview" id="siaxAttachPreview"><span id="siaxAttachName"></span><button id="siaxRemoveAttach" type="button">Remove</button></div>
-        <footer class="siax-compose"><div class="siax-compose-box"><button class="siax-action" id="siaxAttach" type="button" title="Attach screenshot" aria-label="Attach screenshot">＋</button><textarea id="siaxInput" rows="1" maxlength="12000" placeholder="Ask SIA about this page…" aria-label="Ask SIA"></textarea><button class="siax-send" id="siaxSend" type="button" aria-label="Send to SIA">↑</button><input id="siaxFile" type="file" accept="image/png,image/jpeg,image/webp" hidden /></div><div class="siax-privacy"><strong>Never share passwords, API keys, MFA codes, or patient/client clinical information.</strong> SIA automatically receives only safe page metadata, not form values or clinical content.</div></footer>
+        <footer class="siax-compose"><div class="siax-compose-box"><button class="siax-action" id="siaxAttach" type="button" title="Attach screenshot" aria-label="Attach screenshot">＋</button><textarea id="siaxInput" rows="1" maxlength="12000" placeholder="Ask SIA anything…" aria-label="Ask SIA"></textarea><button class="siax-send" id="siaxSend" type="button" aria-label="Send to SIA">↑</button><input id="siaxFile" type="file" accept="image/png,image/jpeg,image/webp" hidden /></div><div class="siax-privacy"><strong>Never share passwords, API keys, MFA codes, or patient/client information.</strong> Clinical-page screenshots are blocked before AI processing; SIA receives safe page metadata only.</div></footer>
       </aside>`;
     document.body.appendChild(root);
     return root;
@@ -170,7 +186,7 @@
   }
 
   function showGuest(){
-    log.innerHTML=`<div class="siax-guest"><div class="siax-guest-card"><h3>Sign in for your personal SIA copilot</h3><p>Ask SIA follows your authenticated Sulandra employee identity, role, conversations, and safe application context across the platform. Sign in first so SIA can keep the correct employee boundary.</p><div class="siax-guest-actions"><a class="primary" href="/employee-login.html?returnTo=${encodeURIComponent(location.pathname+location.search)}">Employee Sign In</a><a href="/admin-login.html">Admin Sign In</a></div></div></div>`;
+    log.innerHTML=`<div class="siax-guest"><div class="siax-guest-card"><h3>Sign in for your personal SIA copilot</h3><p>Ask SIA follows your authenticated Sulandra employee identity, role, conversations, and safe application context across the platform. Sign in first so SIA can keep the correct employee boundary.</p><div class="siax-guest-actions"><a class="primary" href="/employee-login.html?returnTo=${encodeURIComponent(location.pathname)}">Employee Sign In</a><a href="/admin-login.html">Admin Sign In</a></div></div></div>`;
     el('siaxPerson').textContent='SIA support'; el('siaxProfileChip').textContent='Sign in';
     input.disabled=true; send.disabled=true; el('siaxAttach').disabled=true;
   }
@@ -186,21 +202,24 @@
   }
 
   function currentPageContext(){
-    const section=safeSection();
-    const errors=state.errors.length ? ` Recent browser-side error signals: ${state.errors.join(' | ')}` : '';
-    const longLoad=state.loadingNotice ? ' A loading indicator has remained visible longer than expected.' : '';
+    const clinicalPage=isClinicalPage();
+    const section=clinicalPage?'':safeSection();
+    const errors=clinicalPage||!state.errors.length ? '' : ` Recent browser-side error signals: ${state.errors.join(' | ')}`;
+    const longLoad=clinicalPage||!state.loadingNotice ? '' : ' A loading indicator has remained visible longer than expected.';
+    const symptom=clinicalPage?'':cleanText(`Current page title: ${document.title}.${section?` Current section: ${section}.`:''}${longLoad}${errors}`,1400);
     return {
-      page: location.pathname+location.search,
-      supportWorkspacePage: location.pathname+location.search,
+      page: location.pathname,
+      supportWorkspacePage: location.pathname,
       application: appForPath(location.pathname),
       environment: 'production',
-      symptom: cleanText(`Current page title: ${document.title}.${section?` Current section: ${section}.`:''}${longLoad}${errors}`,1400),
+      ...(symptom?{symptom}:{}),
+      ...localTimeContext(),
     };
   }
 
   async function ensureProfile(){
     const pageContext=currentPageContext();
-    const result=await api('/api/sia/profile/context',{method:'POST',body:JSON.stringify({page:pageContext.page,application:pageContext.application,pageTitle:document.title})});
+    const result=await api('/api/sia/profile/context',{method:'POST',body:JSON.stringify({page:pageContext.page,application:pageContext.application,pageTitle:isClinicalPage()?pageContext.application:document.title})});
     state.profile=result.profile;
     const identity=state.profile?.identitySnapshot || {};
     const prefs=state.profile?.preferences || {};
@@ -212,9 +231,10 @@
     return state.profile;
   }
 
-  function assistantMessage(text){
+  function assistantMessage(text,modeLabel=''){
     const wrap=document.createElement('div'); wrap.className='siax-msg assistant';
-    wrap.innerHTML=`<div class="siax-avatar">SIA</div><div class="siax-bubble">${renderMarkdown(text)}<button class="siax-copy" type="button">Copy</button></div>`;
+    const badge=modeLabel?`<span class="siax-mode-badge">${escapeHtml(modeLabel)}</span>`:'';
+    wrap.innerHTML=`<div class="siax-avatar">SIA</div><div class="siax-bubble">${badge}${renderMarkdown(text)}<button class="siax-copy" type="button">Copy</button></div>`;
     wrap.querySelector('.siax-copy').addEventListener('click',async(event)=>{try{await navigator.clipboard.writeText(text);event.currentTarget.textContent='Copied';setTimeout(()=>event.currentTarget.textContent='Copy',1200);}catch{}});
     log.appendChild(wrap); log.scrollTop=log.scrollHeight; return wrap;
   }
@@ -228,7 +248,7 @@
     wrap.innerHTML='<div class="siax-avatar">SIA</div><div class="siax-thinking"><span>Thinking</span><i></i><i></i><i></i></div>'; log.appendChild(wrap); log.scrollTop=log.scrollHeight;
   }
   function emptyState(){
-    log.innerHTML=`<div class="siax-empty"><div class="siax-empty-inner"><strong>Your second eye across Sulandra</strong><p>I know which Sulandra application you are using, your authenticated role and employee identity, and your own SIA conversation history. I can guide, troubleshoot, explain, and help you find the next safe step without reading form values or clinical content automatically.</p><div class="siax-empty-note">Ask naturally: “How do I do this?”, “Why is this spinning?”, “Where is my schedule?”, or attach a non-sensitive screenshot.</div></div></div>`;
+    log.innerHTML=`<div class="siax-empty"><div class="siax-empty-inner"><strong>Ask SIA anything</strong><p>SIA automatically chooses General, Sulandra, or Clinical-safe mode from your question. It can explain, write, reason, use cited live web results for general current questions, and privately help with Sulandra work.</p><div class="siax-empty-note">Try: “What time is it?”, “Explain this topic”, “Where is my schedule?”, or “Help with this page.” Never attach clinical content.</div></div></div>`;
   }
 
   async function loadConversation(id){
@@ -283,7 +303,7 @@
     const attachment=state.attached;state.attached=null;file.value='';showAttachment();
     try{
       const data=await api('/api/sia/chat',{method:'POST',body:JSON.stringify({conversationId:state.conversationId||undefined,message:shown,attachment:attachment||undefined,context:currentPageContext()})});
-      el('siaxThinking')?.remove();state.conversationId=data.conversationId||state.conversationId;assistantMessage(data.answer||'SIA did not return a response.');
+      el('siaxThinking')?.remove();state.conversationId=data.conversationId||state.conversationId;assistantMessage(data.answer||'SIA did not return a response.',data.modeLabel||'');
       ensureProfile().catch(()=>{});
     }catch(error){el('siaxThinking')?.remove();assistantMessage(`I could not complete that request: **${cleanText(error.message,180)}**\n\nIf the page itself is failing, tell me what you see or attach a non-sensitive screenshot and I’ll continue from there.`);}
     finally{state.busy=false;send.disabled=false;input.disabled=false;input.focus();}

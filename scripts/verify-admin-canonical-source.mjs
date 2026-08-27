@@ -14,8 +14,8 @@ const failures = [];
 const read = async (base, relative) => { try { return await readFile(path.join(base, relative), 'utf8'); } catch { failures.push(`Missing ${path.relative(root, base) || 'source'} file: ${relative}`); return ''; } };
 const requireMarkers = (source, markers, label) => { for (const marker of markers) if (!source.includes(marker)) failures.push(`${label} missing ${marker}`); };
 const forbid = (source, markers, label) => { for (const marker of markers) if (source.includes(marker)) failures.push(`${label} still references ${marker}`); };
-const globalSiaCss = '<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260826-global-copilot-1" data-sia-global-copilot="20260826-global-copilot-1" />';
-const globalSiaScript = '<script src="/assets/sia-copilot.js?v=20260826-global-copilot-1" defer data-sia-global-copilot="20260826-global-copilot-1"></script>';
+const globalSiaCss = '<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1" data-sia-global-copilot="20260827-sia-intelligence-router-1" />';
+const globalSiaScript = '<script src="/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1" defer data-sia-global-copilot="20260827-sia-intelligence-router-1"></script>';
 const stripGlobalSiaCopilot = (source) => String(source || '')
   .replace(`${globalSiaCss}\n`, '')
   .replace(`${globalSiaScript}\n`, '');
@@ -38,8 +38,8 @@ for (const [label,source] of [['Admin context router',router],['Owner context',o
 
 requireMarkers(ownerSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Owner admin.html');
 requireMarkers(operationsSource,['id="topModuleNav"','id="sideModuleNav"','/assets/admin-company-context.js?v=20260809-admin-company-context-2','admin-railway.js?v=20260804-admin-clean-4'],'Operations HTML');
-requireMarkers(ownerPublished,['/assets/sia-copilot.css?v=20260826-global-copilot-1','/assets/sia-copilot.js?v=20260826-global-copilot-1','data-sia-global-copilot="20260826-global-copilot-1"'],'Published owner Admin shared copilot');
-requireMarkers(operationsPublished,['/assets/sia-copilot.css?v=20260826-global-copilot-1','/assets/sia-copilot.js?v=20260826-global-copilot-1','data-sia-global-copilot="20260826-global-copilot-1"'],'Published Operations shared copilot');
+requireMarkers(ownerPublished,['/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1','/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1','data-sia-global-copilot="20260827-sia-intelligence-router-1"'],'Published owner Admin shared copilot');
+requireMarkers(operationsPublished,['/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1','/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1','data-sia-global-copilot="20260827-sia-intelligence-router-1"'],'Published Operations shared copilot');
 requireMarkers(router,['admin-owner-context.js','admin-owner-console.js','admin-operations-context.js','admin-operations-desktop.js','/admin-operations\\.html$/i'],'Admin context router');
 
 // The parent owner command center deliberately preserves the established

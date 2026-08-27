@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 const retiredRuntime = '/assets/admin-global-ui-restructure.js?v=20260822-global-admin-ui-1';
-const globalSiaCss = '<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260826-global-copilot-1" data-sia-global-copilot="20260826-global-copilot-1" />';
-const globalSiaScript = '<script src="/assets/sia-copilot.js?v=20260826-global-copilot-1" defer data-sia-global-copilot="20260826-global-copilot-1"></script>';
+const globalSiaCss = '<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1" data-sia-global-copilot="20260827-sia-intelligence-router-1" />';
+const globalSiaScript = '<script src="/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1" defer data-sia-global-copilot="20260827-sia-intelligence-router-1"></script>';
 const stripGlobalSiaCopilot = (source) => String(source || '').replace(`${globalSiaCss}\n`, '').replace(`${globalSiaScript}\n`, '');
 const folderKeys = [
   'company-management','people-hr','clients-spire','service-operations',
