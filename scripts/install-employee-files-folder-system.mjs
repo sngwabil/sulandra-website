@@ -41,3 +41,8 @@ if (app && !app.includes('EMPLOYEE_FILES_FOLDER_VIEW_V2')) {
 } else if (app) {
   console.log('Employee Files folder view already installed.');
 }
+
+// The enterprise owner may select any Sulandra company, but an owner employment
+// in one department must never silently narrow enterprise recruiting to that one
+// department. Install the API scope guard before the TypeScript build starts.
+await import('./fix-owner-enterprise-onboarding-api.mjs');
