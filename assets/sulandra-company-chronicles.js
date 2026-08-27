@@ -57,7 +57,13 @@
 
   function setText(selector, value) {
     if (!text(value)) return;
-    document.querySelectorAll(selector).forEach((node) => { node.textContent = text(value); });
+    document.querySelectorAll(selector).forEach((node) => {
+      // Company Chronicles may publish metadata on <html>/<body>. Those roots
+      // must never become text-replacement targets because assigning textContent
+      // to either one destroys the entire application DOM.
+      if (node === document.documentElement || node === document.body) return;
+      node.textContent = text(value);
+    });
   }
 
   function setLink(selector, value, prefix = '') {
