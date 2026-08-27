@@ -6,33 +6,71 @@ Sulandra IT Solutions is the internal IT operations, support, diagnostics, and c
 ## Core operating model
 Every case follows the same chain:
 
-`User -> Company -> Application -> Page/Module -> Workflow -> Step -> Action -> System response -> Outcome -> Evidence -> Triage -> Resolution/Approval -> Verification -> Archive`
+`User -> Company -> Application -> Page/Module -> Workflow -> Step -> Action -> System response -> Outcome -> Evidence -> SIA diagnosis -> Resolution or Engineering handoff -> Verification -> Archive`
 
 Clock-in/geofence evidence is one evidence source only. The same model applies to login, logout, navigation, form submission, approvals, scheduling, SPIRE workflow operations, EVV, billing, documents, integrations, API failures, permissions, deployment/runtime errors, and all other Sulandra workflows.
+
+## SIA is first-line IT support
+Ask SIA is the front door for employee support and should resolve as much as possible before creating an engineering ticket.
+
+1. SIA first determines the affected application, page, workflow step, expected behavior, actual behavior, and available non-sensitive evidence.
+2. SIA provides navigation help, explains where to click, checks trusted role/access/workflow context, guides safe browser/device steps, interprets non-sensitive screenshots, and uses available live diagnostics.
+3. SIA must not create a coding-agent ticket merely because the employee asks for one or because the first troubleshooting step fails.
+4. A coding-agent ticket is created only after SIA has evidence that a code patch, configuration repair, deployment repair, or data repair is required.
+5. If no engineering change is needed, SIA continues troubleshooting and closes the interaction without creating an engineering ticket.
+6. When an engineering ticket is created, SIA tells the employee in the same conversation that the issue has been handed to Sulandra IT, and the employee receives push/status updates from the coding agent through the SIA conversation.
+
+## 24/7 autonomous coding-agent handoff
+Sulandra IT is designed for continuous autonomous operation rather than a human technician waiting for tickets.
+
+- A confirmed engineering ticket immediately creates an `ITAgentHandoff` record.
+- The coding agent acknowledges the handoff immediately and begins diagnosis/work using the attached SIA conversation, sanitized evidence, GitHub context, Railway context, and related incident history.
+- Agent state flows through `ACKNOWLEDGED -> IN_PROGRESS -> WAITING_APPROVAL | RESOLVED | FAILED`.
+- Every meaningful state change creates an employee-facing SIA update and push-notification payload.
+- Routine established-operation repairs do not wait for a supervisor merely because code/configuration is involved; they follow the safe remediation policy below.
+- Resolutions, verification evidence, commits/PRs/deployments when applicable, and rollback evidence are retained in the resolved archive for later human review.
+
+## Established-operation repair vs new-system change
+The approval boundary is based on whether the agent is restoring an already-approved operation or introducing materially new behavior.
+
+### Established operation repair
+Examples: a previously working sign-in route breaks, a save button begins returning 500, a known workflow regresses after deployment, a frontend route points to the wrong backend, a scheduled job stops executing, or an existing permission mapping is not being honored as designed.
+
+The coding agent may repair an established operation without waiting for supervisor approval when all of the following are true:
+
+- the intended existing behavior is documented or can be established from current production contracts, tests, prior working code, or approved configuration;
+- the repair is scoped to restoring that behavior, not expanding authority or inventing new functionality;
+- the action is reversible and passes required validation;
+- no secret, credential, destructive data operation, clinical-record mutation, payroll/payment decision, or cross-tenant access change is involved;
+- the change passes the repository validation and Railway health requirements before completion.
+
+These cases are automatically archived for later human review.
+
+### New system change
+A new capability, changed business rule, materially changed permissions, new production workflow, new data behavior, new external integration behavior, or other functionality not already approved as part of the established system requires administrator approval before production promotion.
+
+When this approval is required:
+
+- the coding agent pauses at `WAITING_APPROVAL`;
+- the employee receives a SIA/push status update;
+- the employee's supervisor receives an approval email or the request is routed to the authorized administrator approval queue according to company policy;
+- work can continue in a non-production branch/sandbox when safe, but production-changing execution waits for approval.
+
+Supervisor email is not used for ordinary established-operation failures.
 
 ## IT operations center
 The Admin IT Solutions portal is organized as an internal IT-company command center with:
 
-1. **Operations overview** — open incidents, service health, SLA/risk, active remote-assist sessions, pending approvals, recent production failures, and recent resolutions.
+1. **Operations overview** — open incidents, service health, SLA/risk, active remote-assist sessions, pending approvals, coding-agent handoffs, recent production failures, and recent resolutions.
 2. **Incident queue** — employee, admin, SIA, automated-monitoring, deployment, integration, and security-originated cases.
 3. **System diagnostics** — sanitized browser/runtime evidence, API status, workflow state, service/deployment health, integration status, build/CI failures, correlation IDs, and timestamps.
 4. **Remote assistance** — employee-initiated, explicitly consented screen sharing and screenshots for guided support.
-5. **Remediation center** — proposed fixes, automated low-risk remediation, human approval gates, execution evidence, rollback evidence, and post-fix verification.
+5. **Remediation center** — proposed fixes, autonomous established-operation repair, human approval gates for new-system changes, execution evidence, rollback evidence, and post-fix verification.
 6. **Resolved archive** — immutable compliance-facing case history including who requested help, evidence, diagnosis, approval history, resolution, verification, and timestamps.
 7. **Knowledge and problem management** — recurring-incident detection, known errors, reusable runbooks, root-cause records, and prevention tasks.
 
 ## Ticket sources
-Tickets can be created by:
-
-- employees and administrators;
-- SIA conversations;
-- workflow telemetry when a meaningful action fails;
-- backend/API exception detection;
-- GitHub CI/build failure ingestion;
-- Railway deployment/runtime/health failures;
-- integration/vendor failures;
-- security/access anomalies;
-- recurring-problem detection.
+Engineering tickets may originate from employees/admins through SIA, workflow telemetry, backend/API exception detection, GitHub CI/build failure ingestion, Railway deployment/runtime/health failures, integration/vendor failures, security/access anomalies, and recurring-problem detection. For employee-originated requests, the SIA diagnosis gate applies before coding-agent handoff.
 
 ## Evidence model
 Evidence is semantic and sanitized. Examples:
@@ -58,81 +96,19 @@ Remote assistance is support, not surveillance.
 - Clinical and other sensitive screens trigger privacy safeguards; support should use non-sensitive workflow context whenever possible.
 - Remote control, if added later, requires a separate explicit consent step and a restricted allowlist. It must never silently type passwords, MFA codes, clinical orders, financial approvals, or other consequential data.
 
-## Triage and severity
-Triage evaluates:
-
-- affected company and application;
-- affected workflow and step;
-- number of users affected;
-- patient/client safety impact;
-- security/privacy impact;
-- payroll/financial impact;
-- operational impact;
-- production/service availability;
-- workaround availability;
-- recurrence and known-problem match.
-
-Suggested severity:
-
-- **SEV1 Critical** — broad outage, material security event, safety-critical workflow unavailable, or major data-integrity risk.
-- **SEV2 High** — major workflow unavailable to a department/company or serious production degradation.
-- **SEV3 Medium** — limited-user workflow failure with workaround or non-critical service degradation.
-- **SEV4 Low** — guidance, cosmetic defect, isolated non-blocking issue, or routine request.
-
-## Automated remediation boundary
-The Sulandra IT agent may automatically execute only pre-approved, reversible, low-risk actions that are explicitly allowlisted and fully audited.
-
-Human Admin approval is required before:
-
-- production deployment/configuration changes;
-- repository/code changes promoted to production;
-- role, permission, authentication-policy, or security-control changes;
-- destructive or bulk data changes;
-- database schema/data repair outside approved safe runbooks;
-- clinical-record mutation;
-- payroll, billing, payment, or consequential financial changes;
-- external vendor credential/connection changes;
-- actions that materially affect another employee or company.
-
-Every executed remediation records the proposed action, risk classification, approver when required, execution result, verification result, and rollback result when applicable.
-
 ## GitHub and Railway integration
-GitHub and Railway are first-class IT evidence sources.
+GitHub and Railway are first-class IT evidence sources. The coding agent should correlate failing workflows/jobs, TypeScript/build/test/migration-smoke failures, PR/commit history, Railway deployment status, health checks, runtime/build logs, metrics, and the deployment/commit relationship.
 
-### GitHub
-Capture and correlate:
-
-- failing workflows/jobs;
-- TypeScript/build/test/migration-smoke failures;
-- PR and commit associated with the incident;
-- changed files when diagnosing regressions;
-- approved fix PR and review/merge evidence.
-
-### Railway
 Monitor the three production services according to `DEVELOPMENT_WORKFLOW.md`:
 
 - Sulandra Static Website — only frontend;
 - `sulandra-website` backend in the frontend-service project;
 - `sulandra-website` backend in `magnificent-education`.
 
-Capture deployment status, health checks, runtime/build logs, service metrics, and the deployment/commit relationship. One green service never proves the other two are healthy.
+One green service never proves the other two are healthy.
 
 ## Compliance and audit
-Each incident retains:
-
-- requester and tenant/company context;
-- creation source;
-- workflow/action metadata;
-- sanitized evidence;
-- remote-assistance consent events;
-- screenshots/evidence metadata;
-- triage/severity history;
-- assignee and agent actions;
-- approvals and denials;
-- remediation attempts;
-- resolution and verification;
-- timestamps and correlation ids;
-- linked GitHub/Railway evidence where applicable.
+Each incident retains requester/company context, creation source, workflow/action metadata, sanitized evidence, remote-assistance consent events, screenshots/evidence metadata, triage history, coding-agent actions, approvals/denials, remediation attempts, resolution and verification, timestamps/correlation ids, and linked GitHub/Railway evidence.
 
 Resolved tickets remain searchable in the Resolved archive for compliance, operational review, employee disputes, corrective-action review, root-cause analysis, and recurring-problem prevention.
 
