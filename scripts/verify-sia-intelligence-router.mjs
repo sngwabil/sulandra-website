@@ -9,7 +9,7 @@ const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFile(path.join(root, relative), 'utf8');
 
-const [routerSource, routeSource, copilotSource, standaloneSource, copilotCss, standaloneCss, siaHtml] = await Promise.all([
+const [routerSource, routeSource, copilotSource, standaloneSource, copilotCss, standaloneCss, siaHtml, adminPublicationGuard] = await Promise.all([
   read('api/src/sia-mode-router.ts'),
   read('api/src/sia-routes.ts'),
   read('assets/sia-copilot.js'),
@@ -17,6 +17,7 @@ const [routerSource, routeSource, copilotSource, standaloneSource, copilotCss, s
   read('assets/sia-copilot.css'),
   read('assets/sia-futuristic.css'),
   read('sia.html'),
+  read('scripts/install-admin-global-ui-restructure.mjs'),
 ]);
 
 const cases = [
@@ -102,5 +103,7 @@ assert.ok(standaloneCss.includes('.sia-mode-badge'));
 for (const marker of ['Ask SIA anything', 'General, Sulandra, or Clinical-safe', 'Clinical-page screenshots', '20260827-sia-intelligence-router-1']) {
   assert.ok(siaHtml.includes(marker), `SIA HTML missing ${marker}`);
 }
+assert.ok(adminPublicationGuard.includes('20260827-sia-intelligence-router-1'), 'Admin publication guard must recognize the current global SIA shell.');
+assert.ok(!adminPublicationGuard.includes('20260826-global-copilot-1'), 'Admin publication guard still pins the retired global SIA shell.');
 
 console.log('SIA intelligence router verified: automatic modes, General-only web search, time context, privacy preflight, clinical screenshot blocking, cited output support, and UI mode indicators.');
