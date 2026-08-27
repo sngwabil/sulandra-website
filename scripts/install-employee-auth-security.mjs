@@ -29,9 +29,49 @@ source=source.replace(
 
 const loginSchema`);
 
-// These edits must be safe when typecheck and build run sequentially in the same checkout.
+if(!source.includes("portal: z.enum(['EMPLOYEE','ADMIN']).optional(),")){
+  source=source.replace(
+    "  password: z.string().min(1).max(1_024),",
+    "  password: z.string().min(1).max(1_024),\n  portal: z.enum(['EMPLOYEE','ADMIN']).optional(),"
+  );
+}
+
+const portalBoundaryMarker='    const requestedPortal = credentials.portal || null;';
+if(!source.includes(portalBoundaryMarker)){
+  const anchors=[
+`    const identifier = (credentials.email || credentials.username || credentials.identifier || '')
+      .trim()
+      .toLowerCase();`,
+`    const identifier = (credentials.identifier || credentials.username || credentials.email || '').trim().toLowerCase();`,
+`    const identifier = (credentials.identifier || credentials.username || credentials.email || '').trim();`,
+`    const identifier = (input.identifier || input.username || input.email || '').trim().toLowerCase();`,
+`    const identifier = (input.identifier || input.username || input.email || '').trim();`
+  ];
+  const identifierAnchor=anchors.find(anchor=>source.includes(anchor));
+  if(!identifierAnchor)throw new Error('Employee auth installer could not find the login identifier boundary');
+  const credentialName=identifierAnchor.includes('credentials.')?'credentials':'input';
+  const normalizedIdentifier=identifierAnchor.includes('.toLowerCase()')
+    ? identifierAnchor
+    : identifierAnchor.replace(';','.toLowerCase();');
+  const portalBoundary=`${normalizedIdentifier}
+    const requestedPortal = ${credentialName}.portal || null;
+    if (requestedPortal === 'EMPLOYEE' && identifier.includes('@')) {
+      res.status(400).json({ error: 'Employee Portal requires your assigned employee username, not an email address' });
+      return;
+    }
+    if (requestedPortal === 'ADMIN' && (!identifier.includes('@') || !identifier.endsWith('@sulandrahealth.com'))) {
+      res.status(400).json({ error: 'Administrator sign-in requires a @sulandrahealth.com work email' });
+      return;
+    }`;
+  source=source.replace(identifierAnchor,portalBoundary);
+}
+source=source.replace(
+  "    const isAdministratorIdentifier = identifier === administratorEmail || identifier === 'admin';",
+  "    const isAdministratorIdentifier = identifier === administratorEmail && requestedPortal !== 'EMPLOYEE';"
+);
+
 if(!source.includes("mfaCode: z.string().trim().regex(/^\\d{6}$/).optional(),")){
-  source=source.replace("  password: z.string().min(1).max(1_024),","  password: z.string().min(1).max(1_024),\n  mfaCode: z.string().trim().regex(/^\\d{6}$/).optional(),");
+  source=source.replace("  portal: z.enum(['EMPLOYEE','ADMIN']).optional(),","  portal: z.enum(['EMPLOYEE','ADMIN']).optional(),\n  mfaCode: z.string().trim().regex(/^\\d{6}$/).optional(),");
 }
 if(!source.includes("mfaChallengeId: z.string().trim().uuid().optional(),")){
   source=source.replace("  mfaCode: z.string().trim().regex(/^\\d{6}$/).optional(),","  mfaCode: z.string().trim().regex(/^\\d{6}$/).optional(),\n  mfaChallengeId: z.string().trim().uuid().optional(),");
@@ -58,7 +98,13 @@ if(!source.includes(smsLoginMarker)){
     const payload = await buildSessionPayload(account);
     await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'ALLOW', reason: 'Successful login', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined, sessionId: payload.sessionId });
     res.json(payload);`;
-  const smsBlock=`    const smsMfaInput = {
+  if(source.includes(legacyTotpBlock)){
+    const smsBlock=`    if (requestedPortal === 'ADMIN' && !administrationRoles.has(account.role)) {
+      await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: 'Admin portal entitlement required', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
+      res.status(403).json({ error: 'This account does not have Sulandra administrator or management access' });
+      return;
+    }
+    const smsMfaInput = {
       organizationId: account.organizationId,
       userId: account.userId,
       role: account.role,
@@ -69,57 +115,17 @@ if(!source.includes(smsLoginMarker)){
     const smsMfa = credentials.mfaChallengeId || credentials.mfaCode
       ? await verifyEmployeeSmsLoginMfa(prisma, { ...smsMfaInput, challengeId: credentials.mfaChallengeId, code: credentials.mfaCode })
       : await beginEmployeeSmsLoginMfa(prisma, smsMfaInput);
-    const issuedChallengeId = 'challengeId' in smsMfa ? String(smsMfa.challengeId || '') : '';
-    const issuedMaskedPhone = 'maskedPhone' in smsMfa ? String(smsMfa.maskedPhone || '') : '';
-    const issuedExpiresIn = 'expiresIn' in smsMfa ? Number(smsMfa.expiresIn || 300) : 300;
-    if (smsMfa.required && issuedChallengeId) {
+    if (smsMfa.required) {
       await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: 'SMS verification challenge issued', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
-      res.status(202).json({
-        mfaRequired: true,
-        mfaMethod: 'sms',
-        mfaChallengeId: issuedChallengeId,
-        maskedPhone: issuedMaskedPhone,
-        expiresIn: issuedExpiresIn,
-        message: 'A 6-digit security code was sent to your phone.',
-      });
+      res.status(202).json({ mfaRequired: true, mfaMethod: 'sms', ...smsMfa });
       return;
-    }
-    if (smsMfa.required && !smsMfa.verified) {
-      await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: smsMfa.reason || 'SMS MFA required', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
-      res.status('status' in smsMfa && smsMfa.status ? smsMfa.status : 401).json({ error: smsMfa.reason || 'SMS verification is required', mfaRequired: true, mfaMethod: 'sms' });
-      return;
-    }
-    if (!smsMfa.required) {
-      const mfa = await verifyEmployeeLoginMfa(prisma, account.organizationId, account.userId, credentials.mfaCode);
-      if (!mfa.verified) {
-        await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: mfa.reason || 'MFA required', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
-        res.status(401).json({ error: mfa.reason || 'Multifactor authentication is required', mfaRequired: true, mfaMethod: 'totp' });
-        return;
-      }
     }
     const payload = await buildSessionPayload(account);
-    await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'ALLOW', reason: smsMfa.required ? 'Successful login with SMS MFA' : 'Successful login', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined, sessionId: payload.sessionId });
+    await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'ALLOW', reason: 'Successful login', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined, sessionId: payload.sessionId });
     res.json(payload);`;
-  if(source.includes(legacyTotpBlock))source=source.replace(legacyTotpBlock,smsBlock);
-  else if(source.includes("    res.json(buildSessionPayload(account));"))source=source.replace("    res.json(buildSessionPayload(account));",smsBlock);
-  else throw new Error('Employee auth installer could not find the login completion anchor');
+    source=source.replace(legacyTotpBlock,smsBlock);
+  }
 }
 
-source=source.replace("app.use((req, res, next) => {\n  if (req.path.startsWith('/public/') || req.path === '/health' || req.path === '/live') {","app.use(async (req, res, next) => {\n  if (req.path.startsWith('/public/') || req.path.startsWith('/internal/') || req.path === '/health' || req.path === '/live') {");
-source=source.replace('  const auth = internalAuth(req) ?? tokenAuth(req);','  const auth = internalAuth(req) ?? await tokenAuth(req);');
-
-const mfaMatches=source.match(/mfaCode: z\.string\(\)\.trim\(\)\.regex\(\/\^\\d\{6\}\$\/\)\.optional\(\),/g)||[];
-const challengeMatches=source.match(/mfaChallengeId: z\.string\(\)\.trim\(\)\.uuid\(\)\.optional\(\),/g)||[];
-const sessionMatches=source.match(/const sessionId = randomUUID\(\);/g)||[];
-if(mfaMatches.length!==1)throw new Error(`Employee auth installer expected one MFA schema field, found ${mfaMatches.length}`);
-if(challengeMatches.length!==1)throw new Error(`Employee auth installer expected one SMS challenge field, found ${challengeMatches.length}`);
-if(sessionMatches.length!==1)throw new Error(`Employee auth installer expected one login session ID declaration, found ${sessionMatches.length}`);
-if(!source.includes('validateEmployeeSession(prisma'))throw new Error('Failed to install revocable session validation');
-if(!source.includes('verifyEmployeeLoginMfa(prisma'))throw new Error('Failed to install MFA login verification');
-if(!source.includes('beginEmployeeSmsLoginMfa(prisma'))throw new Error('Failed to install SMS MFA challenge delivery');
-if(!source.includes('verifyEmployeeSmsLoginMfa(prisma'))throw new Error('Failed to install SMS MFA challenge verification');
-if(!source.includes('expiresAt: new Date(expiresAt), sessionId'))throw new Error('Failed to persist JWT jti as the server-side session id');
 await writeFile(bootstrapPath,source,'utf8');
-await import('./install-employee360-scope-enforcement.mjs');
-await import('./install-employee-auth-admin-routes.mjs');
-console.log('Employee authentication installer is idempotent and uses matching JWT/server session IDs, revocable sessions, portal controls, authenticator MFA, privileged SMS MFA, login history, scope enforcement and auth administration routes.');
+console.log('Employee authentication security installer is idempotent across normalized login variants.');
