@@ -30,4 +30,8 @@ try{
   console.log('IT Agent education publication portal rewrite skipped because frontend sources are not present in this API-only build image.');
 }
 
-console.log('Static publication requires the education campaign review page and preserves the Section 9D immediate-routine/owner-major-change autonomy contract when frontend sources are present.');
+// Run after the education/read-only/conversational installers so employee-level
+// tool evidence is preserved in answers and UI execution states stay truthful.
+await import('./fix-it-agent-grounded-results.mjs');
+
+console.log('Static publication requires the education campaign review page, preserves the Section 9D immediate-routine/owner-major-change autonomy contract, and installs grounded IT Agent result reporting when frontend sources are present.');
