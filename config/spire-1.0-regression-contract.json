@@ -286,6 +286,28 @@
           "path": "home-health.html"
         }
       ]
+    },
+    {
+      "id": "education-campaign-review-publication",
+      "description": "Education campaign review URL contract remains wired to the published static route and campaign API endpoint.",
+      "checks": [
+        {
+          "path": "api/src/education-campaign-routes.ts",
+          "mustContain": [
+            "export const educationCampaignReviewUrl = (campaignId: string) => `${publicBase()}/education-campaign?id=${encodeURIComponent(campaignId)}`;",
+            "app.get('/api/education/campaigns/:id'",
+            "app.post('/api/education/campaigns/:id/attest'"
+          ]
+        },
+        {
+          "path": "education-campaign.html",
+          "mustContain": [
+            "<title>Sulandra Health Education Review</title>",
+            "const campaignId=params.get('id')||'';",
+            "api('/api/education/campaigns/'+encodeURIComponent(campaignId))"
+          ]
+        }
+      ]
     }
   ],
   "regulatoryAcceptance": [
