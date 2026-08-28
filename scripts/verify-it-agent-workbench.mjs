@@ -14,9 +14,11 @@ for(const marker of [
   'https://api.openai.com/v1/responses','gpt-image-2','https://api.openai.com/v1/images/generations',
   'IntranetContentItem','EmployeeAnnouncement','EmployeeNotification','EmployeeCommunicationEvent',
   'ITRemediationApproval','ITAgentHandoff',"'WAITING_APPROVAL'",
-  'codingWorkerConnected:Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)',
   'will not fabricate a commit or deployment',
 ]) need(backend,marker,'IT Agent backend');
+const legacyWorkerStatus='codingWorkerConnected:Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)';
+const enabledWorkerStatus="codingWorkerConnected:String(process.env.IT_AGENT_CODING_WORKER_ENABLED||'').toLowerCase()==='true'&&Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)";
+if(!backend.includes(legacyWorkerStatus)&&!backend.includes(enabledWorkerStatus))failures.push('IT Agent backend missing coding-worker connection status');
 if(backend.includes('OPENAI_API_KEY=')||backend.includes('SMTP_PASS='))failures.push('IT Agent backend appears to hard-code a credential');
 
 const bootstrap=await readFile(path.join(root,'api','src','onboarding-bootstrap.ts'),'utf8');

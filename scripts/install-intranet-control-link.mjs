@@ -38,5 +38,6 @@ attendance = attendance.replace(/\s*<script src="\/assets\/time-attendance-locat
 await writeFile(attendancePath, attendance, 'utf8');
 
 await import('./install-it-solutions-navigation.mjs');
+await import('./install-it-coding-worker-ui.mjs');
 
-console.log('Scheduling separation and isolated IT Solutions Admin launchers published without replacing canonical Admin drawers, dashboard, or shell.');
+console.log('Scheduling separation, IT Solutions launchers, and trusted coding-worker controls published without replacing canonical Admin drawers, dashboard, or shell.');
