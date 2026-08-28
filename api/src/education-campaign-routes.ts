@@ -99,7 +99,7 @@ const publicBase = () => {
   const configured = clean(process.env.CLIENT_ORIGIN?.split(',')[0], 1000);
   return (configured && /^https?:\/\//i.test(configured) ? configured : 'https://www.sulandrahealth.com').replace(/\/$/, '');
 };
-export const educationCampaignReviewUrl = (campaignId: string) => `${publicBase()}/education-campaign.html?id=${encodeURIComponent(campaignId)}`;
+export const educationCampaignReviewUrl = (campaignId: string) => `${publicBase()}/education-campaign?id=${encodeURIComponent(campaignId)}`;
 const courseCode = () => `SUL-IT-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${randomBytes(4).toString('hex').toUpperCase()}`;
 const certificateNumber = (completedAt: Date) => `SUL-${completedAt.getUTCFullYear()}-${randomBytes(6).toString('hex').toUpperCase()}`;
 
