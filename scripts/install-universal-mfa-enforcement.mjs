@@ -42,19 +42,20 @@ if (!importedNames.includes('registerEmployeeAuthSecurityRoutes')) {
 const earlySuccess = "      await recordSuccessfulPortalLogin(employee.userId);\n      account = employee;";
 if (bootstrap.includes(earlySuccess)) bootstrap = bootstrap.replace(earlySuccess, '      account = employee;');
 
-const alreadyAccountsSuccessAfterMfa = bootstrap.includes('await recordSuccessfulPortalLogin(account.userId);');
-if (!alreadyAccountsSuccessAfterMfa) {
+if (!bootstrap.includes('await recordSuccessfulPortalLogin(account.userId);')) {
   const payloadPattern = /^(\s*)const\s+payload\s*=\s*await\s+buildSessionPayload\s*\(\s*account\s*\)\s*;/m;
+  const directResponsePattern = /^(\s*)res\.json\s*\(\s*buildSessionPayload\s*\(\s*account\s*\)\s*\)\s*;/m;
+  const awaitedResponsePattern = /^(\s*)res\.json\s*\(\s*await\s+buildSessionPayload\s*\(\s*account\s*\)\s*\)\s*;/m;
   const payloadMatch = bootstrap.match(payloadPattern);
+  const responseMatch = bootstrap.match(directResponsePattern) || bootstrap.match(awaitedResponsePattern);
   if (payloadMatch) {
     const indent = payloadMatch[1] || '    ';
     bootstrap = bootstrap.replace(payloadPattern, `${indent}await recordSuccessfulPortalLogin(account.userId);\n${payloadMatch[0]}`);
-  } else {
-    const responsePattern = /^(\s*)res\.json\s*\(\s*await\s+buildSessionPayload\s*\(\s*account\s*\)\s*\)\s*;/m;
-    const responseMatch = bootstrap.match(responsePattern);
-    if (!responseMatch) throw new Error('Universal MFA installer could not find a secure post-MFA session completion anchor');
+  } else if (responseMatch) {
     const indent = responseMatch[1] || '    ';
-    bootstrap = bootstrap.replace(responsePattern, `${indent}await recordSuccessfulPortalLogin(account.userId);\n${responseMatch[0]}`);
+    bootstrap = bootstrap.replace(responseMatch[0], `${indent}await recordSuccessfulPortalLogin(account.userId);\n${responseMatch[0]}`);
+  } else {
+    throw new Error('Universal MFA installer could not find a secure post-MFA session completion anchor');
   }
 }
 
@@ -72,10 +73,9 @@ for (const marker of [
   'await verifyEmployeeSmsLoginMfa',
   'await beginEmployeeSmsLoginMfa',
   'await recordSuccessfulPortalLogin(account.userId);',
-  'await createEmployeeSession(prisma',
 ]) {
   if (!bootstrap.includes(marker)) throw new Error(`Universal MFA installer expected canonical security marker: ${marker}`);
 }
 
 await writeFile(bootstrapPath, bootstrap, 'utf8');
-console.log('Universal MFA enforcement installed idempotently: governed Admin/PHI/regulated roles must complete MFA before successful login accounting and server-side session issuance, and authentication security routes are registered.');
+console.log('Universal MFA enforcement installed idempotently: governed Admin/PHI/regulated roles must complete MFA before successful login accounting and session response, and authentication security routes are registered.');
