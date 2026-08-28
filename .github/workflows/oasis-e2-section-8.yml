@@ -1,0 +1,180 @@
+name: Section 8 OASIS-E2 Verification
+
+on:
+  push:
+    branches:
+      - backport/section-8-oasis-iqies
+      - release/sulandra-1.0
+    paths:
+      - 'api/src/home-health-oasis-*'
+      - 'prisma/migrations/20260825011500_oasis_e2_spec_ingestion/**'
+      - 'scripts/*oasis*'
+      - 'tests/oasis-e2-contract.regression.test.ts'
+      - 'api/package.json'
+      - '.github/workflows/oasis-e2-section-8.yml'
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oasis8-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-runtime:
+    name: OASIS contract and runtime safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Validate section 8 scripts
+        run: |
+          node --check scripts/fetch-official-oasis-e2-package.mjs
+          node --check scripts/normalize-official-oasis-e2-package.mjs
+          node --check scripts/import-oasis-e2-spec.mjs
+          node --check scripts/promote-pinned-oasis-e2-spec.mjs
+          node --check scripts/oasis-e2-spec-contract.mjs
+          node --check scripts/inject-home-health-oasis-iqies-routes.mjs
+          node --check scripts/verify-oasis-section-8.mjs
+
+      - name: Run OASIS-E2 contract regressions
+        run: npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
+
+      - name: Build through canonical Sulandra root chain and inject section 8 routes
+        run: npm run build
+
+      - name: Verify fail-closed runtime boundaries
+        run: node scripts/verify-oasis-section-8.mjs
+
+  migration-official-package:
+    name: OASIS migration and official CMS package proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: spire
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d spire"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/spire?schema=public
+      PSQL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/spire
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Bootstrap legacy SPIRE base schema
+        run: psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/ci-bootstrap-legacy-base.sql
+
+      - name: Verify deployment prerequisites
+        run: npm run db:check-prerequisites
+
+      - name: Apply migration SQL in repository order
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r migration; do
+            echo "===== Applying ${migration} ====="
+            psql "$PSQL_DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done < <(find prisma/migrations -mindepth 2 -maxdepth 2 -type f -name migration.sql | sort)
+
+      - name: Prove OASIS starts fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          relation="$(psql "$PSQL_DATABASE_URL" -Atc "SELECT to_regclass('public.\"HomeHealthOasisSpecImport\"') IS NOT NULL;")"
+          test "$relation" = "t"
+
+          required_columns="$(psql "$PSQL_DATABASE_URL" -Atc "
+            SELECT count(*) FROM information_schema.columns
+            WHERE table_schema='public'
+              AND (table_name,column_name) IN (
+                ('HomeHealthOasisSpecVersion','sourcePackageSha256'),
+                ('HomeHealthOasisSpecVersion','normalizedDefinitionSha256'),
+                ('HomeHealthOasisSpecVersion','submissionDefinition'),
+                ('HomeHealthOasisAssessment','transactionMode'),
+                ('HomeHealthIqiesSubmission','payloadBytes'),
+                ('HomeHealthIqiesSubmission','specDefinitionSha256')
+              );")"
+          test "$required_columns" = "6"
+
+          trigger_count="$(psql "$PSQL_DATABASE_URL" -Atc "
+            SELECT count(*) FROM pg_trigger
+            WHERE NOT tgisinternal
+              AND tgrelid='public.\"HomeHealthOasisSpecImport\"'::regclass
+              AND tgname IN ('HomeHealthOasisSpecImport_no_update','HomeHealthOasisSpecImport_no_delete');")"
+          test "$trigger_count" = "2"
+
+          registered_state="$(psql "$PSQL_DATABASE_URL" -Atc "
+            SELECT \"status\" || ':' || jsonb_array_length(\"itemDefinitions\") || ':' || jsonb_array_length(\"editRules\")
+            FROM \"HomeHealthOasisSpecVersion\"
+            WHERE \"itemSetVersionCode\"='E2-042026' AND \"submissionSpecVersion\"='3.02'
+            LIMIT 1;")"
+          if [[ "$registered_state" != "REGISTERED:0:0" ]]; then
+            echo "Expected fail-closed REGISTERED:0:0 state; got ${registered_state}" >&2
+            exit 1
+          fi
+
+      - name: Fetch, normalize, validate, and import pinned official CMS OASIS-E2 package
+        run: node scripts/promote-pinned-oasis-e2-spec.mjs
+
+      - name: Prove promotion is idempotent
+        run: node scripts/promote-pinned-oasis-e2-spec.mjs
+
+      - name: Verify authoritative promoted state
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(psql "$PSQL_DATABASE_URL" -Atc "
+            SELECT \"status\" || ':' || \"sourcePackageSha256\" || ':' || \"normalizedDefinitionSha256\" || ':' ||
+                   jsonb_array_length(\"itemDefinitions\") || ':' || jsonb_array_length(\"editRules\") || ':' ||
+                   (SELECT count(*) FROM jsonb_object_keys(\"valueSets\")) || ':' ||
+                   jsonb_array_length(COALESCE(\"submissionDefinition\"->'fields','[]'::jsonb))
+            FROM \"HomeHealthOasisSpecVersion\"
+            WHERE \"itemSetVersionCode\"='E2-042026' AND \"submissionSpecVersion\"='3.02'
+            LIMIT 1;")"
+          expected="VALIDATED:b848a1f33efb77406124f02bfd50dbb48c6efb841c4e4bf3c68719c1e8d9f6ca:bf01dced0972a5a2629c084de87e4071dd855de3e46d315db53252562af432ee:420:233:367:420"
+          if [[ "$state" != "$expected" ]]; then
+            echo "OASIS-E2 promoted state mismatch: ${state}" >&2
+            exit 1
+          fi
+          import_count="$(psql "$PSQL_DATABASE_URL" -Atc 'SELECT count(*) FROM "HomeHealthOasisSpecImport";')"
+          test "$import_count" = "1"
