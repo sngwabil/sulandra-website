@@ -36,7 +36,12 @@ for(const marker of ['executeRoutineITAgentAction','PUBLISH_INTRAnet_CONTENT','G
 const intake=await readFile(path.join(root,'api','src','it-specialist-intake.ts'),'utf8');
 for(const marker of ['submitITAgentEngineeringRequest','reportITAgentRuntimeFailure','enqueueITSpecialistTicket','IT Agent runtime failure','ADMIN_IT_AGENT_ENGINEERING_REQUEST','ADMIN_IT_AGENT_RUNTIME_FAILURE','Established LOW/MEDIUM-risk repairs'])need(intake,marker,'IT Specialist Admin intake');
 const workbenchInstaller=await readFile(path.join(root,'scripts','install-it-agent-workbench.mjs'),'utf8');
-for(const marker of ['executeRoutineITAgentAction','submitITAgentEngineeringRequest','reportITAgentRuntimeFailure',"type:item.role==='assistant'?'output_text':'input_text'",'outcomeMessages','recovering:true','explicit request is authorization'])need(workbenchInstaller,marker,'IT Agent autonomy installer');
+for(const marker of ['executeRoutineITAgentAction','reportITAgentRuntimeFailure',"type:item.role==='assistant'?'output_text':'input_text'",'recovering:true','probeITCodingWorker','runApprovedITCodingWorker','getITSpecialistKnowledgeContext','ESTABLISHED_OPERATION_REPAIR','NEW_SYSTEM_CHANGE'])need(workbenchInstaller,marker,'IT Agent reasoning installer');
+if(workbenchInstaller.includes('submitITAgentEngineeringRequest(prisma'))failures.push('IT Agent installer still replaces direct reasoning with the legacy canned engineering handoff');
+
+const workbench=await readFile(path.join(root,'api','src','it-agent-workbench-routes.ts'),'utf8');
+for(const marker of ['approvedEvidenceCount','probeITCodingWorker','runApprovedITCodingWorker','codingWorkerConnected:connected','ESTABLISHED_OPERATION_REPAIR','NEW_SYSTEM_CHANGE','status:\'PR_OPEN\'','status:\'FAILED\''])need(workbench,marker,'IT Agent reasoning workbench');
+if(workbench.includes("codingWorkerConnected:Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)"))failures.push('IT Agent workbench still reports coding-worker connection from credential presence alone');
 
 const bootstrap=await readFile(path.join(root,'api','src','onboarding-bootstrap.ts'),'utf8');
 if(bootstrap.includes('registerITSpecialistAutonomyRoutes')){
@@ -87,4 +92,4 @@ try{
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
 if(failures.length){console.error('Autonomous IT Specialist verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('Autonomous IT Specialist verified: full repository/approved-work knowledge, immediate routine Admin execution, self-ticketing IT Agent failures, durable SIA continuity, visual employee guides, safe autonomous established-operation repair, owner-only major-change decisions, required gates, and exact three-service production verification are present.');
+console.log('Autonomous IT Specialist verified: full repository/approved-work knowledge, evidence-grounded Admin reasoning, immediate routine execution, self-ticketing failures, durable SIA continuity, visual employee guides, safe established-operation repair, owner-only major-change decisions, required gates, and exact three-service production verification are present.');
