@@ -26,13 +26,25 @@ expect(access.includes('You do not have access to the selected company'), 'Unaut
 expect(access.includes('You do not have access to the selected department'), 'Unauthorized department selection is not rejected');
 expect(access.includes("request.path.startsWith('/public/')"), 'Public applicant and intake routes are not excluded from protected company resolution');
 expect(access.includes("request.path.startsWith('/internal/')"), 'API-key-protected internal workers are not excluded from employee company resolution');
+expect(access.includes('const { identity, access } = await resolveEntityAccess(prisma, auth, request);'), 'Company access middleware does not resolve database-backed entity scope');
+expect(access.includes('response.locals.entityAccess = access;'), 'Resolved company scope is not attached to the request');
+for (const scopedField of ['legalEntityId: access.legalEntityId', 'departmentId: access.departmentId', 'allowedDepartmentIds: access.allowedDepartmentIds', 'entityAccessLevel: access.accessLevel', 'enterpriseOwner: access.enterpriseOwner']) {
+  expect(access.includes(scopedField), `Authenticated request scope is missing ${scopedField}`);
+}
 
-const authMiddlewareIndex = bootstrap.indexOf('res.locals.auth = {');
-const entityMiddlewareIndex = bootstrap.indexOf('app.use(createEntityAccessMiddleware({ prisma }));');
+const authenticateIndex = bootstrap.indexOf("app.use('/api', authenticate);");
+const scopedAccessDeclarationIndex = bootstrap.indexOf('const scopedAccess = createEntityAccessMiddleware({ prisma });');
+const scopedAccessUseIndex = bootstrap.indexOf("app.use('/api', scopedAccess);");
 const routeRegistrationIndex = bootstrap.indexOf('registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, audit });');
-expect(authMiddlewareIndex >= 0 && entityMiddlewareIndex > authMiddlewareIndex, 'Company access middleware is not installed after authentication');
-expect(routeRegistrationIndex > entityMiddlewareIndex, 'Company access middleware is not installed before protected routes');
-expect(bootstrap.includes('entityAccess: entityAccessOf(res)'), 'Session response does not expose the enforced company scope');
+expect(scopedAccessDeclarationIndex >= 0, 'Canonical company access middleware is not constructed');
+expect(authenticateIndex >= 0 && scopedAccessUseIndex > authenticateIndex, 'Company access middleware is not installed after authentication');
+expect(routeRegistrationIndex > scopedAccessUseIndex, 'Company access middleware is not installed before protected routes');
+
+const hasSessionEntityContext = /const entityContext = await getUserEntityContext\(prisma, (account|auth)\);/.test(bootstrap)
+  && bootstrap.includes('entityContext,');
+expect(hasSessionEntityContext, 'Session response does not expose authorized company memberships');
+expect(routes.includes("app.get('/api/entity-context'"), 'Canonical entity-context endpoint is not registered');
+expect(routes.includes('getUserEntityContext(prisma, authOf(res))'), 'Entity-context endpoint does not resolve the authenticated user memberships');
 expect(!bootstrap.includes(': administratorEmail,\n    };\n  } catch'), 'JWT claims still gain the Enterprise Owner email through a fallback');
 
 for (const helper of ['requireEntityMatch', 'requireDepartmentMatch', 'requireEntityManageAccess', 'requireEnterpriseOwner']) {
@@ -50,4 +62,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Entity access enforcement verified: database identity, company and department boundaries, selected-company Admin APIs, and shared intranet/education access are wired into the backend.');
+console.log('Entity access enforcement verified: database identity, authenticated middleware ordering, company and department boundaries, session memberships, selected-company Admin APIs, and shared intranet/education access are wired into the backend.');
