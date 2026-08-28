@@ -22,8 +22,13 @@ await writeFile(campaignPath,campaigns,'utf8');
 let workbench=await readFile(workbenchPath,'utf8');
 const oldImport="import { executeTrainingAgentAction } from './education-campaign-routes.js';";
 const newImport="import { executeTrainingAgentAction, getTrainingCampaignStatus } from './education-campaign-routes.js';";
-if(workbench.includes(oldImport))workbench=workbench.replace(oldImport,newImport);
-else if(!workbench.includes(newImport))throw new Error('Read-only education-status import anchor changed');
+const importAnchor="import { reportITAgentRuntimeFailure } from './it-specialist-intake.js';";
+// The training installer can run more than once in the same CI workspace. Remove
+// both import forms and reinsert exactly one canonical combined import.
+workbench=workbench.split(oldImport).join('');
+workbench=workbench.split(newImport).join('');
+if(!workbench.includes(importAnchor))throw new Error('Read-only education-status import anchor changed');
+workbench=workbench.replace(importAnchor,`${importAnchor}\n${newImport}`);
 
 const loopAnchor="for(const item of payload.output||[]){if(item.type!=='function_call'||!item.name)continue;let args:Record<string,unknown>={};try{args=JSON.parse(item.arguments||'{}')}catch{continue}const policy=actionPolicy(item.name,args,knowledge);";
 const readOnlyLoop="for(const item of payload.output||[]){if(item.type!=='function_call'||!item.name)continue;let args:Record<string,unknown>={};try{args=JSON.parse(item.arguments||'{}')}catch{continue}if(item.name==='get_training_status'){try{const result=await getTrainingCampaignStatus(prisma,{organizationId:auth.organizationId,userId:auth.userId,conversationId:conversationId!,campaignId:clean(args.campaignId,160)||null});trustedEvents.push(clean(result.message,2000))}catch(actionError){console.warn('[it-agent] read-only education status failed:',safeError(actionError));trustedEvents.push('I could not verify the education status just now. Please try again.')}continue}const policy=actionPolicy(item.name,args,knowledge);";
