@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -90,21 +90,28 @@ workbench=workbench.replace(
 );
 await writeFile(workbenchPath,workbench,'utf8');
 
-// Make the Action Center reflect execution state instead of showing approval
-// controls for ordinary campaign lifecycle actions.
+// The API Docker image intentionally contains backend sources only. Rewrite the
+// Action Center only when the frontend source is present; the static build still
+// requires and verifies the real portal page.
 const portalPath=path.join(root,'it-solutions.html');
-let portal=await readFile(portalPath,'utf8');
-portal=portal
-  .replace('Ask for a real operational action or a system change. Side effects appear as reviewable action cards before execution.','Ask for a real operational action, reviewable employee education, or a system change. Routine operations execute from your instruction; only consequential system changes pause for approval.')
-  .replace("<button class=\"example\">Add a new button next to Operations in the Admin Command Center.</button>","<button class=\"example\">Create a fall-prevention education for all employees with a September 30 deadline. Let me review it before sending.</button><button class=\"example\">Add a new button next to Operations in the Admin Command Center.</button>")
-  .replace('I’m the Administrator IT Agent workbench. I can prepare and execute intranet cards/messages, original meme cards, employee announcements, targeted notifications, and employee emails. For code/UI/deployment changes I create a controlled engineering action and approval record rather than pretending the change happened.','I’m the Administrator IT Agent workbench. I execute authorized routine operations and manage employee education as one durable draft → review → revise → send → completion workflow. Training drafts are never sent until you say “send.” Major code/security/permission changes retain the controlled approval boundary.')
-  .replace('The agent proposes; you decide. Executed actions retain evidence.','Routine work executes from your instruction. Education stays in one reviewable campaign until you say “send.” Only approval-required system changes show decision buttons.')
-  .replace('<div class="cap"><span>GitHub code execution</span><strong id="capCode">—</strong></div>','<div class="cap"><span>Employee education campaigns</span><strong class="ok">REAL</strong></div><div class="cap"><span>GitHub code execution</span><strong id="capCode">—</strong></div>')
-  .replace("const pending=a.status==='PROPOSED';return", "const pending=a.status==='PROPOSED'&&a.approvalRequired===true;const reviewLink=result.reviewUrl?`<div class=\"action-buttons\"><a class=\"btn secondary\" target=\"_blank\" rel=\"noopener\" href=\"${esc(result.reviewUrl)}\">Review education</a></div>`:'';return")
-  .replace('</pre>${pending?`<div class="action-buttons">','</pre>${reviewLink}${pending?`<div class="action-buttons">')
-  .replace('>Execute</button><button class="btn danger"','>Approve &amp; Continue</button><button class="btn danger"')
-  .replace("bubble('agent',data.reply||'I prepared the requested action for review.');", "bubble('agent',data.reply||'I completed the requested IT operation or moved the current workflow to its next state.');");
-await writeFile(portalPath,portal,'utf8');
+try{
+  await access(portalPath);
+  let portal=await readFile(portalPath,'utf8');
+  portal=portal
+    .replace('Ask for a real operational action or a system change. Side effects appear as reviewable action cards before execution.','Ask for a real operational action, reviewable employee education, or a system change. Routine operations execute from your instruction; only consequential system changes pause for approval.')
+    .replace("<button class=\"example\">Add a new button next to Operations in the Admin Command Center.</button>","<button class=\"example\">Create a fall-prevention education for all employees with a September 30 deadline. Let me review it before sending.</button><button class=\"example\">Add a new button next to Operations in the Admin Command Center.</button>")
+    .replace('I’m the Administrator IT Agent workbench. I can prepare and execute intranet cards/messages, original meme cards, employee announcements, targeted notifications, and employee emails. For code/UI/deployment changes I create a controlled engineering action and approval record rather than pretending the change happened.','I’m the Administrator IT Agent workbench. I execute authorized routine operations and manage employee education as one durable draft → review → revise → send → completion workflow. Training drafts are never sent until you say “send.” Major code/security/permission changes retain the controlled approval boundary.')
+    .replace('The agent proposes; you decide. Executed actions retain evidence.','Routine work executes from your instruction. Education stays in one reviewable campaign until you say “send.” Only approval-required system changes show decision buttons.')
+    .replace('<div class="cap"><span>GitHub code execution</span><strong id="capCode">—</strong></div>','<div class="cap"><span>Employee education campaigns</span><strong class="ok">REAL</strong></div><div class="cap"><span>GitHub code execution</span><strong id="capCode">—</strong></div>')
+    .replace("const pending=a.status==='PROPOSED';return", "const pending=a.status==='PROPOSED'&&a.approvalRequired===true;const reviewLink=result.reviewUrl?`<div class=\"action-buttons\"><a class=\"btn secondary\" target=\"_blank\" rel=\"noopener\" href=\"${esc(result.reviewUrl)}\">Review education</a></div>`:'';return")
+    .replace('</pre>${pending?`<div class="action-buttons">','</pre>${reviewLink}${pending?`<div class="action-buttons">')
+    .replace('>Execute</button><button class="btn danger"','>Approve &amp; Continue</button><button class="btn danger"')
+    .replace("bubble('agent',data.reply||'I prepared the requested action for review.');", "bubble('agent',data.reply||'I completed the requested IT operation or moved the current workflow to its next state.');");
+  await writeFile(portalPath,portal,'utf8');
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  console.log('IT Agent education portal rewrite skipped because frontend sources are not present in this API-only build image.');
+}
 
 await import('./verify-it-agent-training-workflow.mjs');
 console.log('IT Agent education lifecycle installed: one draft survives review/revision, explicit send distributes without a second approval, completion is tracked in EducationAssignment, and manual approval execution is written back into conversation history.');
