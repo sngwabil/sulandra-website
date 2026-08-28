@@ -48,6 +48,11 @@ await import('./install-it-specialist-autonomy.mjs');
 // store completion/attestation in the canonical EducationAssignment record.
 await import('./install-it-agent-training-workflow.mjs');
 
+// Status questions are read-only conversations, not work orders. Answer draft/
+// sent state directly, avoid unnecessary assignment joins before distribution,
+// and keep read-only status checks out of the Action Center.
+await import('./fix-it-agent-readonly-training-status.mjs');
+
 // Keep the Administrator-facing reply natural: create/update, provide a real
 // clickable review label, then wait for the Administrator to choose revise/send.
 await import('./install-it-agent-conversational-review-ux.mjs');
