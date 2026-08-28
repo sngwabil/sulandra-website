@@ -57,8 +57,8 @@ jobs:
       - name: Run OASIS-E2 contract regressions
         run: npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
 
-      - name: Compile API and inject section 8 routes
-        run: npm run build --workspace=spire-api
+      - name: Build through canonical Sulandra root chain and inject section 8 routes
+        run: npm run build
 
       - name: Verify fail-closed runtime boundaries
         run: node scripts/verify-oasis-section-8.mjs
