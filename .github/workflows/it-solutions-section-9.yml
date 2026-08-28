@@ -69,7 +69,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'SIA Chat' sia.html
+          grep -Fq 'Sulandra Intelligent Assistant' sia.html
+          grep -Fq 'Ask SIA anything' sia.html
           grep -Fq 'System Health' sia.html
           grep -Fq 'My Requests' sia.html
           grep -Fq 'SIA Knowledge' sia.html
