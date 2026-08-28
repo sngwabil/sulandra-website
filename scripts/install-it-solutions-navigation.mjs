@@ -1,13 +1,11 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { access, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const dist=path.join(root,'dist-web');
-const portalPath=path.join(dist,'it-solutions.html');
-const portal=await readFile(portalPath,'utf8');
+const portal=await readFile(path.join(root,'it-solutions.html'),'utf8');
 for(const marker of ['Sulandra IT Solutions','Operations Overview','Resolved Compliance Archive']){
-  if(!portal.includes(marker))throw new Error(`Published IT Solutions portal missing ${marker}`);
+  if(!portal.includes(marker))throw new Error(`IT Solutions portal missing ${marker}`);
 }
 
 const topLauncher='        <li><a href="/it-solutions.html">IT Solutions</a></li>';
@@ -41,8 +39,7 @@ function insertSide(html,name){
   throw new Error(`${name} has no canonical sidebar insertion point for IT Solutions`);
 }
 
-for(const name of ['admin.html','admin-operations.html']){
-  const target=path.join(dist,name);
+async function publish(target,name){
   let html=await readFile(target,'utf8');
   html=insertTop(html,name);
   html=insertSide(html,name);
@@ -53,4 +50,27 @@ for(const name of ['admin.html','admin-operations.html']){
   }
 }
 
-console.log('IT Solutions launchers published in both canonical Admin desktops using resilient canonical navigation anchors without replacing either Admin architecture.');
+// Install into canonical source before static publication. This keeps the owner
+// Admin invariant intact: dist-web is copied from the canonical Admin source,
+// rather than rewriting the owner desktop after publication.
+for(const name of ['admin.html','admin-operations.html']){
+  await publish(path.join(root,name),name);
+}
+
+// The script is intentionally idempotent. When invoked after static publication,
+// verify/preserve the already-canonical launchers instead of introducing a delta.
+const dist=path.join(root,'dist-web');
+try{
+  await access(dist);
+  for(const name of ['admin.html','admin-operations.html']){
+    await publish(path.join(dist,name),`dist-web/${name}`);
+  }
+  const distPortal=await readFile(path.join(dist,'it-solutions.html'),'utf8');
+  for(const marker of ['Sulandra IT Solutions','Operations Overview','Resolved Compliance Archive']){
+    if(!distPortal.includes(marker))throw new Error(`Published IT Solutions portal missing ${marker}`);
+  }
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+}
+
+console.log('IT Solutions launchers installed in canonical Admin source so static publication preserves both Admin architectures without post-publication rewriting.');
