@@ -16,13 +16,19 @@ await writeFile(workbenchPath,workbench,'utf8');
 const bootstrapPath=path.join(root,'api','src','onboarding-bootstrap.ts');
 let bootstrap=await readFile(bootstrapPath,'utf8');
 const workbenchRegister='registerITAgentWorkbenchRoutes({ app, prisma, authOf, requireRoles });';
-const unresolved='registerITAgentArtifactRoutes({ app, prisma, authOf, requireRoles, adminRoles });';
 const resolved='registerITAgentArtifactRoutes({ app, prisma, authOf, requireRoles, adminRoles: [UserRole.ADMINISTRATOR, UserRole.CEO, UserRole.DOO, UserRole.COO, UserRole.HR_MANAGER] });';
 if(!bootstrap.includes(workbenchRegister))throw new Error('IT Agent workbench registration anchor is missing');
-bootstrap=bootstrap.split(unresolved).join('');
-bootstrap=bootstrap.split(resolved).join('');
+
+// onboarding-bootstrap.ts is rewritten by several idempotent installers and the
+// root build runs this chain both on the host and again inside the API Docker
+// image. Remove every executable artifact-route registration regardless of
+// whitespace or which adminRoles expression a prior pass used, while leaving the
+// import declaration untouched. Reinsert one canonical call immediately after
+// the workbench registration so route order remains deterministic.
+const artifactRegistrationPattern=/\s*registerITAgentArtifactRoutes\s*\(\s*\{[\s\S]*?\}\s*\)\s*;\s*/g;
+bootstrap=bootstrap.replace(artifactRegistrationPattern,'\n');
 bootstrap=bootstrap.replace(workbenchRegister,`${workbenchRegister}\n${resolved}`);
-const registrations=bootstrap.split('registerITAgentArtifactRoutes({ app, prisma, authOf, requireRoles').length-1;
+const registrations=(bootstrap.match(/registerITAgentArtifactRoutes\s*\(\s*\{/g)||[]).length;
 if(registrations!==1)throw new Error(`Expected exactly one IT Agent artifact route registration, found ${registrations}`);
 await writeFile(bootstrapPath,bootstrap,'utf8');
 
