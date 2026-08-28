@@ -11,6 +11,7 @@ on:
     paths:
       - 'IT_SOLUTIONS_ARCHITECTURE.md'
       - 'IT_SPECIALIST_OPERATING_MODEL.md'
+      - 'Dockerfile'
       - 'api/src/it-solutions-routes.ts'
       - 'api/src/it-agent-workbench-routes.ts'
       - 'api/src/it-agent-routine-executor.ts'
@@ -18,15 +19,21 @@ on:
       - 'api/src/it-specialist-intake.ts'
       - 'api/src/it-specialist-knowledge.ts'
       - 'api/src/it-specialist-autonomy.ts'
+      - 'api/src/education-campaign-routes.ts'
       - 'api/src/sia-routes.ts'
       - 'api/src/employee-support-routes.ts'
+      - 'prisma/migrations/20260828171500_it_agent_education_campaigns/migration.sql'
       - 'it-solutions.html'
       - 'it-guide.html'
+      - 'education-campaign.html'
       - 'assets/admin-it-solutions-hero-launcher.js'
       - 'assets/it-coding-worker-ui.js'
       - 'assets/it-specialist-ui.js'
       - 'scripts/install-it-solutions-*.mjs'
       - 'scripts/install-it-agent-workbench.mjs'
+      - 'scripts/install-it-agent-training-workflow.mjs'
+      - 'scripts/verify-it-agent-training-workflow.mjs'
+      - 'scripts/install-it-agent-training-publication.mjs'
       - 'scripts/install-it-coding-worker.mjs'
       - 'scripts/install-it-coding-worker-ui.mjs'
       - 'scripts/install-it-specialist-autonomy.mjs'
@@ -77,6 +84,9 @@ jobs:
           node --check scripts/install-it-solutions-navigation.mjs
           node --check scripts/verify-it-solutions-powerhouse.mjs
           node --check scripts/install-it-agent-workbench.mjs
+          node --check scripts/install-it-agent-training-workflow.mjs
+          node --check scripts/verify-it-agent-training-workflow.mjs
+          node --check scripts/install-it-agent-training-publication.mjs
           node --check scripts/verify-it-agent-workbench.mjs
           node --check scripts/install-it-coding-worker.mjs
           node --check scripts/install-it-coding-worker-ui.mjs
@@ -93,6 +103,7 @@ jobs:
           node scripts/verify-it-solutions-powerhouse.mjs
           node scripts/install-employee-support.mjs
           node scripts/verify-it-agent-workbench.mjs
+          node scripts/verify-it-agent-training-workflow.mjs
           node scripts/verify-it-coding-worker.mjs
           node scripts/verify-it-specialist-autonomy.mjs
 
@@ -122,12 +133,16 @@ jobs:
       - name: Build canonical API chain
         run: npm run build
 
+      - name: Build Railway API-only Docker image
+        run: docker build --tag sulandra-section9-api:${{ github.sha }} .
+
       - name: Verify compiled IT route order and deployment identity
         shell: bash
         run: |
           set -euo pipefail
           node scripts/verify-it-solutions-powerhouse.mjs
           node scripts/verify-it-agent-workbench.mjs
+          node scripts/verify-it-agent-training-workflow.mjs
           node scripts/verify-it-coding-worker.mjs
           node scripts/verify-it-specialist-autonomy.mjs
           node - <<'NODE'
