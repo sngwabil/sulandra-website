@@ -10,9 +10,12 @@ on:
       - release/sulandra-1.0
     paths:
       - 'IT_SOLUTIONS_ARCHITECTURE.md'
+      - 'IT_SPECIALIST_OPERATING_MODEL.md'
       - 'api/src/it-solutions-routes.ts'
       - 'api/src/it-agent-workbench-routes.ts'
+      - 'api/src/it-agent-routine-executor.ts'
       - 'api/src/it-coding-worker.ts'
+      - 'api/src/it-specialist-intake.ts'
       - 'api/src/it-specialist-knowledge.ts'
       - 'api/src/it-specialist-autonomy.ts'
       - 'api/src/sia-routes.ts'
@@ -85,11 +88,11 @@ jobs:
           node --check assets/it-coding-worker-ui.js
           node --check assets/it-specialist-ui.js
 
-      - name: Verify IT operations, agent, coding worker, and autonomous specialist safety contracts
+      - name: Install canonical Section 9 runtime chain and verify safety contracts
         run: |
           node scripts/verify-it-solutions-powerhouse.mjs
-          node scripts/verify-it-agent-workbench.mjs
           node scripts/install-employee-support.mjs
+          node scripts/verify-it-agent-workbench.mjs
           node scripts/verify-it-coding-worker.mjs
           node scripts/verify-it-specialist-autonomy.mjs
 
@@ -158,6 +161,8 @@ jobs:
           grep -Fq 'Sulandra IT Agent' dist-web/it-solutions.html
           grep -Fq 'Action Center' dist-web/it-solutions.html
           grep -Fq 'Ask IT Agent' dist-web/it-solutions.html
+          grep -Fq 'Routine authorized work executes immediately' dist-web/it-solutions.html
+          grep -Fq 'only major changes pause for owner approval' dist-web/it-solutions.html
           grep -Fq '/assets/it-coding-worker-ui.js?v=20260828-worker-1' dist-web/it-solutions.html
           grep -Fq '/assets/it-specialist-ui.js?v=20260828-specialist-1' dist-web/it-solutions.html
           grep -Fq 'Approve &amp; Run' dist-web/assets/it-coding-worker-ui.js
