@@ -14,7 +14,11 @@ if(!source.includes(workerImport)){
   if(!source.includes(agentImport))throw new Error('IT Agent import anchor missing for trusted coding worker');
   source=source.replace(agentImport,`${agentImport}\n${workerImport}`);
 }
-source=source.replace(new RegExp(`\\n?${workerRegister.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\n?`,'g'),'\n');
+// Later legacy role-normalization passes can rewrite role names inside the
+// existing call. Remove every prior worker registration by function identity
+// rather than exact argument text so repeated typecheck/build runs can never
+// accumulate duplicate or stale registrations.
+source=source.replace(/^\s*registerITCodingWorkerRoutes\([^;]*\);\s*$/gm,'');
 if(!source.includes(agentRegister))throw new Error('IT Agent registration anchor missing for trusted coding worker');
 source=source.replace(agentRegister,`${agentRegister}\n${workerRegister}`);
 await writeFile(target,source,'utf8');
@@ -26,4 +30,4 @@ workbench=workbench.replaceAll(
 );
 await writeFile(workbenchPath,workbench,'utf8');
 await import('./verify-it-coding-worker.mjs');
-console.log('Trusted PR-only IT coding worker registered after the privileged IT Agent.');
+console.log('Trusted PR-only IT coding worker registered exactly once after the privileged IT Agent.');
