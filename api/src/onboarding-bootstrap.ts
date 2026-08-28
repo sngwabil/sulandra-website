@@ -476,351 +476,164 @@ const buildSessionPayload = (account: LoginAccount) => {
     department: '',
     phone: '',
     status: 'ACTIVE',
-    active: true,
-    isActive: true,
     mustChangePassword: account.mustChangePassword,
     permissions: authorization.permissions,
     access: authorization.access,
-    apps: authorization.apps,
-    landingRoute: authorization.landingRoute,
-    organization,
   };
-  const session = {
+  return {
     token,
     accessToken: token,
-    refreshToken: token,
-    bearerToken: token,
-    tokenType: 'Bearer',
     expiresIn,
     expiresAt,
-    id: account.userId,
-    userId: account.userId,
-    employeeId: account.userId,
-    organizationId: account.organizationId,
-    organizationName,
-    email: account.email,
-    username: account.username,
-    role: account.role,
-    firstName,
-    middleName,
-    lastName,
-    name: account.displayName,
-    fullName: account.displayName,
-    displayName: account.displayName,
-    title: roleTitle(account.role),
-    jobTitle: roleTitle(account.role),
-    department: '',
-    phone: '',
-    mustChangePassword: account.mustChangePassword,
-    permissions: authorization.permissions,
-    access: authorization.access,
-    apps: authorization.apps,
-    landingRoute: authorization.landingRoute,
-    redirectTo: authorization.landingRoute,
-    defaultRoute: authorization.landingRoute,
-    organization,
-    profile: user,
     user,
-  };
-
-  return {
-    ...session,
-    session,
-    data: session,
+    employee: user,
+    organization,
+    authorization,
   };
 };
 
-app.disable('x-powered-by');
 app.set('trust proxy', 1);
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: isProduction ? undefined : false,
+  crossOriginResourcePolicy: { policy: 'same-site' },
+}));
 app.use(cors({
-  credentials: false,
   origin(origin, callback) {
     if (!origin || clientOrigins.has(origin)) {
       callback(null, true);
       return;
     }
-
-    const error = new Error('Origin is not allowed') as HttpError;
-    error.status = 403;
-    callback(error);
+    callback(new Error('Origin is not allowed'));
   },
+  credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-app.use('/api/auth/login', rateLimit({
+const signInLimiter = rateLimit({
   windowMs: 15 * 60 * 1_000,
-  limit: 5,
-  standardHeaders: 'draft-8',
+  max: 30,
+  standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many sign-in attempts. Please try again later.' },
-}));
-
-app.use('/public/careers/applicant/login', rateLimit({
-  windowMs: 15 * 60 * 1_000,
-  limit: 10,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many applicant sign-in attempts. Please try again later.' },
-}));
-
-app.use('/public/careers/applicant/forgot-password', rateLimit({
-  windowMs: 60 * 60 * 1_000,
-  limit: 5,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many password-reset requests. Please try again later.' },
-}));
-
-app.use('/public/careers/applicant/reset-password', rateLimit({
-  windowMs: 15 * 60 * 1_000,
-  limit: 10,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many password-reset attempts. Please request a new link later.' },
-}));
-
-app.use('/public/careers/applications', rateLimit({
-  windowMs: 15 * 60 * 1_000,
-  limit: 20,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: { error: 'Too many applications were submitted. Please try again later.' },
-}));
-
-app.get('/live', (_req, res) => {
-  res.json({ ok: true, service: 'spire-api' });
 });
 
-app.get('/health', async (_req, res) => {
-  try {
-    await prisma.$queryRawUnsafe('SELECT 1');
-    res.json({
-      ok: true,
-      service: 'spire-api',
-      database: 'connected',
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('[health] database check failed', error);
-    res.status(503).json({
-      ok: false,
-      service: 'spire-api',
-      database: 'unavailable',
-    });
-  }
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'sulandra-api' });
 });
 
-app.post('/api/auth/login', async (req, res, next) => {
+app.post('/api/auth/login', signInLimiter, async (req, res, next) => {
   try {
-    const credentials = loginSchema.parse(req.body);
-    const identifier = (credentials.email || credentials.username || credentials.identifier || '')
-      .trim()
-      .toLowerCase();
-
-    if (!jwtSecret) {
-      res.status(503).json({ error: 'Employee sign-in is not configured' });
+    const input = loginSchema.parse(req.body);
+    const identifier = (input.identifier || input.username || input.email || '').trim();
+    const account = await resolvePortalAccount(identifier);
+    if (!account) {
+      res.status(401).json({ error: 'Invalid username or password' });
       return;
     }
 
-    let account: LoginAccount | null = null;
-    const configuredPassword = process.env.ADMIN_INITIAL_PASSWORD;
-    const isAdministratorIdentifier = identifier === administratorEmail || identifier === 'admin';
-
-    if (
-      isAdministratorIdentifier
-      && configuredPassword
-      && secureEquals(credentials.password, configuredPassword)
-    ) {
-      const administrator = await resolveAdministrator();
-      const firstName = process.env.ADMIN_FIRST_NAME?.trim() || 'Sulpitius';
-      const lastName = process.env.ADMIN_LAST_NAME?.trim() || 'Gwabil';
-      account = {
-        ...administrator,
-        username: 'admin',
-        displayName: `${firstName} ${lastName}`,
-        mustChangePassword: false,
-      };
-    } else {
-      const employee = await resolvePortalAccount(identifier);
-      const locked = employee?.lockedUntil && employee.lockedUntil.getTime() > Date.now();
-      if (!employee || locked || !verifyPortalPassword(credentials.password, employee.passwordHash)) {
-        if (employee && !locked && employee.passwordHash) {
-          await recordFailedPortalLogin(employee.userId);
-        }
-        res.status(401).json({ error: 'Invalid username or password' });
-        return;
-      }
-
-      await recordSuccessfulPortalLogin(employee.userId);
-      account = employee;
+    const authAccount = account as LoginAccount & {
+      passwordHash: string | null;
+      failedLoginAttempts: number;
+      lockedUntil: Date | null;
+    };
+    if (authAccount.lockedUntil && authAccount.lockedUntil > new Date()) {
+      res.status(423).json({ error: 'Account is temporarily locked. Please try again later.' });
+      return;
     }
 
+    if (!verifyPortalPassword(input.password, authAccount.passwordHash)) {
+      await recordFailedPortalLogin(authAccount.userId);
+      res.status(401).json({ error: 'Invalid username or password' });
+      return;
+    }
+
+    await recordSuccessfulPortalLogin(authAccount.userId);
     res.json(buildSessionPayload(account));
   } catch (error) {
     next(error);
   }
 });
 
-app.use((req, res, next) => {
-  if (req.path.startsWith('/public/') || req.path === '/health' || req.path === '/live') {
-    next();
-    return;
-  }
-
+const authenticate: express.RequestHandler = async (req, res, next) => {
   const auth = internalAuth(req) ?? tokenAuth(req);
   if (!auth) {
-    res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  res.locals.auth = {
-    ...auth,
-    ipAddress: req.ip || req.socket.remoteAddress || '0.0.0.0',
-    userAgent: req.get('user-agent')?.trim() || 'Sulandra Health API',
-  };
-  next();
-});
-
-app.use(createEntityAccessMiddleware({ prisma }));
-
-const authOf = (response: express.Response) => response.locals.auth as AuthContext;
-
-app.get('/api/session', async (_req, res, next) => {
   try {
-    const auth = authOf(res);
-    const authorization = accessForRole(auth.role);
-    const entityContext = await getUserEntityContext(prisma, auth);
-    res.json({
-      data: {
-        ...auth,
-        permissions: authorization.permissions,
-        access: authorization.access,
-        apps: authorization.apps,
-        landingRoute: authorization.landingRoute,
-        entityAccess: entityAccessOf(res),
-        entityContext,
-      },
-    });
+    res.locals.auth = await getUserEntityContext(prisma, auth);
+    next();
   } catch (error) {
     next(error);
   }
+};
+
+const scopedAccess = createEntityAccessMiddleware({
+  prisma,
+  authOf: (res) => res.locals.auth as ScopedAuthContext,
+  entityAccessOf,
 });
 
-const requireRoles = (...roles: UserRole[]): express.RequestHandler => (_req, res, next) => {
+app.use('/api', authenticate);
+app.use('/api', scopedAccess);
+
+const authOf = (res: express.Response) => res.locals.auth as ScopedAuthContext;
+const requireRoles = (...allowed: UserRole[]): express.RequestHandler => (_req, res, next) => {
   const auth = authOf(res);
-  if (!auth || !roles.includes(auth.role)) {
-    res.status(403).json({ error: 'Insufficient permissions' });
+  if (!allowed.includes(auth.role)) {
+    res.status(403).json({ error: 'Forbidden' });
     return;
   }
   next();
 };
 
-type AuditColumn = {
-  columnName: string;
-  isNullable: 'YES' | 'NO';
-  dataType: string;
-  udtName: string;
-  columnDefault: string | null;
-};
-
-let auditColumns: AuditColumn[] | null = null;
-
 const audit = async (
-  auth: Partial<AuthContext>,
+  auth: ScopedAuthContext,
   action: string,
   resourceType: string,
-  resourceId?: string,
-  metadata?: object,
+  resourceId?: string | null,
+  metadata?: unknown,
 ) => {
   try {
-    const organizationId = auth.organizationId
-      ?? process.env.CAREERS_ORGANIZATION_ID?.trim()
-      ?? null;
-    const userId = auth.userId
-      ?? process.env.PRIMARY_ADMIN_USER_ID?.trim()
-      ?? null;
-    let actorEmail = auth.email?.trim().toLowerCase() || null;
-    if (!actorEmail && userId) {
-      try {
-        const users = await prisma.$queryRawUnsafe<Array<{ email: string | null }>>(
-          `SELECT "email" FROM "User" WHERE "id"=$1 LIMIT 1`,
-          userId,
-        );
-        actorEmail = users[0]?.email?.trim().toLowerCase() || null;
-      } catch (error) {
-        console.warn('[audit] actor email lookup failed; using the configured HR identity', {
-          userId,
-          error,
+    const columns = await prisma.$queryRawUnsafe<Array<{
+      column_name: string;
+      data_type: string;
+    }>>(
+      `SELECT column_name, data_type
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'AuditEvent'`,
+    );
+    if (!columns.length) return;
+
+    const available = new Map(columns.map((column) => [column.column_name, column.data_type]));
+    const metadataJson = JSON.stringify(metadata ?? {});
+    const candidates: Array<{ name: string; value: unknown; cast?: string }> = [];
+    const add = (names: string[], value: unknown) => {
+      for (const name of names) {
+        if (!available.has(name)) continue;
+        const dataType = available.get(name) || '';
+        const jsonLike = dataType === 'json' || dataType === 'jsonb';
+        const booleanLike = dataType === 'boolean';
+        const numericLike = ['smallint', 'integer', 'bigint', 'numeric', 'real', 'double precision'].includes(dataType);
+        const timestampLike = dataType.includes('timestamp') || dataType === 'date';
+        candidates.push({
+          name,
+          value: jsonLike ? metadataJson : booleanLike ? false : numericLike ? 0 : timestampLike ? new Date() : '',
+          cast: jsonLike ? '::jsonb' : undefined,
         });
       }
-    }
-    actorEmail ||= administratorEmail;
-    const ipAddress = auth.ipAddress?.trim() || '0.0.0.0';
-    const userAgent = auth.userAgent?.trim() || 'Sulandra Health API';
+    };
 
-    if (!auditColumns) {
-      auditColumns = await prisma.$queryRawUnsafe<AuditColumn[]>(
-        `SELECT
-           "column_name" AS "columnName",
-           "is_nullable" AS "isNullable",
-           "data_type" AS "dataType",
-           "udt_name" AS "udtName",
-           "column_default" AS "columnDefault"
-         FROM "information_schema"."columns"
-         WHERE "table_schema"=current_schema() AND "table_name"='AuditEvent'
-         ORDER BY "ordinal_position"`,
-      );
-    }
-
-    const available = new Map(auditColumns.map((column) => [column.columnName, column]));
-    const metadataJson = JSON.stringify(metadata ?? {});
-    const knownValues = new Map<string, { value: unknown; cast?: string }>([
-      ['id', { value: randomUUID() }],
-      ['organizationId', { value: organizationId }],
-      ['legalEntityId', { value: auth.legalEntityId ?? null }],
-      ['userId', { value: userId }],
-      ['actorId', { value: userId }],
-      ['actorUserId', { value: userId }],
-      ['performedById', { value: userId }],
-      ['actorEmail', { value: actorEmail }],
-      ['actorRole', { value: auth.role ?? UserRole.ADMINISTRATOR }],
-      ['ipAddress', { value: ipAddress }],
-      ['userAgent', { value: userAgent }],
-      ['action', { value: action }],
-      ['resourceType', { value: resourceType }],
-      ['resourceId', { value: resourceId ?? null }],
-      ['metadata', { value: metadataJson, cast: '::jsonb' }],
-      ['details', { value: metadataJson, cast: '::jsonb' }],
-      ['changes', { value: metadataJson, cast: '::jsonb' }],
-      ['description', { value: `${action} ${resourceType}${resourceId ? ` ${resourceId}` : ''}` }],
-    ]);
-
-    const candidates: Array<{ name: string; value: unknown; cast?: string }> = [];
-    for (const [name, candidate] of knownValues) {
-      if (available.has(name)) candidates.push({ name, ...candidate });
-    }
-
-    for (const column of auditColumns) {
-      if (
-        column.isNullable === 'YES'
-        || column.columnDefault
-        || candidates.some((candidate) => candidate.name === column.columnName)
-        || column.columnName === 'createdAt'
-      ) continue;
-
-      const jsonLike = column.dataType === 'json' || column.dataType === 'jsonb' || column.udtName === 'jsonb';
-      const booleanLike = column.dataType === 'boolean' || column.udtName === 'bool';
-      const numericLike = ['smallint', 'integer', 'bigint', 'numeric', 'real', 'double precision'].includes(column.dataType);
-      const timestampLike = column.dataType.includes('timestamp') || column.udtName.includes('timestamp');
-
-      candidates.push({
-        name: column.columnName,
-        value: jsonLike ? metadataJson : booleanLike ? false : numericLike ? 0 : timestampLike ? new Date() : '',
-        cast: jsonLike ? '::jsonb' : undefined,
-      });
-    }
+    add(['id'], randomUUID());
+    add(['organizationId'], auth.organizationId);
+    add(['legalEntityId'], auth.legalEntityId ?? '');
+    add(['userId', 'actorUserId', 'performedBy', 'createdBy'], auth.userId);
+    add(['action', 'eventType', 'event', 'activity'], action);
+    add(['resourceType', 'entityType', 'objectType'], resourceType);
+    add(['resourceId', 'entityId', 'objectId'], resourceId ?? '');
+    add(['metadata', 'details', 'payload', 'context'], metadataJson);
 
     const columnSql = candidates.map((candidate) => `"${candidate.name}"`);
     const valueSql = candidates.map((candidate, index) => `$${index + 1}${candidate.cast || ''}`);

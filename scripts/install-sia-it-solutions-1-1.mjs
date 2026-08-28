@@ -1,0 +1,21 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const target=path.join(root,'api','src','onboarding-bootstrap.ts');
+let source=await readFile(target,'utf8');
+const careersImport="import { registerCareersRoutes } from './careers-routes.js';";
+const siaImport="import { registerSIARoutes } from './sia-routes.js';";
+const profileImport="import { registerSIACopilotProfileRoutes } from './sia-copilot-profile.js';";
+const itImport="import { registerITSolutionsRoutes } from './it-solutions-routes.js';";
+if(!source.includes(careersImport))throw new Error('Careers import anchor missing');
+for(const line of [siaImport,profileImport,itImport]){if(!source.includes(line))source=source.replace(careersImport,`${careersImport}\n${line}`)}
+const careersRegister='registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });';
+const profileRegister='registerSIACopilotProfileRoutes({ app, prisma, authOf, requireRoles });';
+const siaRegister='registerSIARoutes({ app, prisma, authOf, requireRoles });';
+const itRegister='registerITSolutionsRoutes({ app, prisma, authOf, requireRoles });';
+for(const line of [profileRegister,siaRegister,itRegister])source=source.replaceAll(line,'');
+if(!source.includes(careersRegister))throw new Error('Careers registration anchor missing');
+source=source.replace(careersRegister,`${profileRegister}\n${siaRegister}\n${itRegister}\n${careersRegister}`);
+await writeFile(target,source,'utf8');
+console.log('Sulandra 1.1 SIA + IT Solutions route registration installed idempotently.');

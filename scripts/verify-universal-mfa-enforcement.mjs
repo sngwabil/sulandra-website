@@ -53,7 +53,6 @@ requireMarkers(bootstrap, [
   'mfaChallengeId: z.string().trim().uuid().optional()',
   "mfaCode: z.string().trim().regex(/^\\d{6}$/).optional()",
   'const smsMfaInput = {',
-  'const smsMfa = credentials.mfaChallengeId || credentials.mfaCode',
   '? await verifyEmployeeSmsLoginMfa',
   ': await beginEmployeeSmsLoginMfa',
   "reason: 'SMS verification challenge issued'",
@@ -66,7 +65,11 @@ forbidMarkers(bootstrap, [
   'await recordSuccessfulPortalLogin(employee.userId);\n      account = employee;',
 ], 'onboarding-bootstrap.ts pre-MFA path');
 
-const mfaGateIndex = bootstrap.indexOf('const smsMfa = credentials.mfaChallengeId || credentials.mfaCode');
+const mfaGateMatch = bootstrap.match(/const smsMfa = (credentials|input)\.mfaChallengeId \|\| \1\.mfaCode/);
+if (!mfaGateMatch) {
+  failures.push('onboarding-bootstrap.ts missing canonical SMS MFA challenge gate for the parsed login input');
+}
+const mfaGateIndex = mfaGateMatch?.index ?? -1;
 const successIndex = bootstrap.indexOf('await recordSuccessfulPortalLogin(account.userId);');
 const jwtIndex = bootstrap.indexOf('const payload = await buildSessionPayload(account);');
 if (mfaGateIndex < 0 || successIndex < 0 || jwtIndex < 0 || mfaGateIndex > successIndex || successIndex > jwtIndex) {

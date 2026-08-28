@@ -39,11 +39,16 @@ expect(routes.includes('actualIdentity(prisma, auth)'), 'Owner access does not r
 expect(routes.includes('sharedAccess'), 'Entity context does not preserve shared intranet and education access');
 expect(bootstrap.includes("from './multi-company-routes.js'"), 'Multi-company routes are not imported by the backend bootstrap');
 expect(bootstrap.includes('registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, audit });'), 'Multi-company routes are not registered');
-expect(bootstrap.includes('entityContext = await getUserEntityContext(prisma, auth)'), 'Authenticated session does not expose entity memberships');
+expect(
+  /const entityContext = await getUserEntityContext\(prisma, (account|auth)\);/.test(bootstrap)
+    && bootstrap.includes('entityContext,'),
+  'Authenticated session does not expose authorized entity memberships',
+);
+expect(bootstrap.includes("app.use('/api', scopedAccess);"), 'Authenticated API requests do not enforce canonical entity access middleware');
 
 if (failures.length) {
   console.error(`Multi-company foundation verification failed:\n- ${failures.join('\n- ')}`);
   process.exit(1);
 }
 
-console.log('Multi-company foundation verified: legal entities, departments, employments, entity-scoped grants, client enrollments, SCLS compatibility backfill, and session context are wired into the backend.');
+console.log('Multi-company foundation verified: legal entities, departments, employments, entity-scoped grants, client enrollments, SCLS compatibility backfill, session memberships, and request-scoped entity access are wired into the backend.');
