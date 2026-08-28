@@ -87,19 +87,28 @@ if(!source.includes('  const sessionId = randomUUID();')){
 if(!source.includes('      jwtid: sessionId,')){
   source=source.replace("      subject: account.userId,\n      expiresIn: '8h',", "      subject: account.userId,\n      jwtid: sessionId,\n      expiresIn: '8h',");
 }
+if(!source.includes('  const entityContext = await getUserEntityContext(prisma, account);')){
+  const expiresAnchor="  const expiresAt = new Date(Date.now() + expiresIn * 1_000).toISOString();";
+  if(!source.includes(expiresAnchor))throw new Error('Employee auth installer could not find the session expiry anchor for entity context');
+  source=source.replace(expiresAnchor,`${expiresAnchor}\n  const entityContext = await getUserEntityContext(prisma, account);`);
+}
 if(!source.includes('await createEmployeeSession(prisma')){
   const canonicalReturn="  return {\n    token,\n    accessToken: token,";
   if(source.includes(canonicalReturn)){
     source=source.replace(canonicalReturn,`  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt), sessionId });
   return {
     sessionId,
+    entityContext,
     token,
     accessToken: token,`);
   }else{
     const legacyReturn="  return {\n    ...session,\n    session,\n    data: session,\n  };\n};\n\napp.disable";
     if(!source.includes(legacyReturn))throw new Error('Employee auth installer could not find the canonical session payload return');
-    source=source.replace(legacyReturn,"  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt), sessionId });\n  return {\n    ...session,\n    sessionId,\n    session: { ...session, sessionId },\n    data: { ...session, sessionId },\n  };\n};\n\napp.disable");
+    source=source.replace(legacyReturn,"  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt), sessionId });\n  return {\n    ...session,\n    sessionId,\n    entityContext,\n    session: { ...session, sessionId, entityContext },\n    data: { ...session, sessionId, entityContext },\n  };\n};\n\napp.disable");
   }
+}else if(!source.includes('    entityContext,')){
+  const sessionReturn='  return {\n    sessionId,';
+  if(source.includes(sessionReturn))source=source.replace(sessionReturn,'  return {\n    sessionId,\n    entityContext,');
 }
 
 const smsLoginMarker='const smsMfaInput = {';
@@ -144,5 +153,8 @@ if(!source.includes(smsLoginMarker)){
   }
 }
 
+if(!source.includes('const entityContext = await getUserEntityContext(prisma, account);')||!source.includes('entityContext,')){
+  throw new Error('Employee auth installer did not expose multi-company entity memberships in the session payload');
+}
 await writeFile(bootstrapPath,source,'utf8');
-console.log('Employee authentication security installer is idempotent across normalized login variants and direct session responses.');
+console.log('Employee authentication security installer is idempotent, session-revocable, universal-MFA aware, and exposes authorized multi-company entity memberships at sign-in.');
