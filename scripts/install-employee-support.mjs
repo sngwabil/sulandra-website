@@ -47,3 +47,7 @@ await import('./install-it-specialist-autonomy.mjs');
 // Keep one campaign through draft -> review -> revision -> explicit send, then
 // store completion/attestation in the canonical EducationAssignment record.
 await import('./install-it-agent-training-workflow.mjs');
+
+// The review/attestation page is a required production artifact. The canonical
+// static builder must fail instead of silently omitting it.
+await import('./install-it-agent-training-publication.mjs');
