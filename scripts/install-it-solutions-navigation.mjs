@@ -10,6 +10,7 @@ for(const marker of ['Sulandra IT Solutions','Operations Overview','Resolved Com
 
 const topLauncher='        <li><a href="/it-solutions.html">IT Solutions</a></li>';
 const sideLauncher='          <button class="side-btn" type="button" onclick="window.location.href=\'/it-solutions.html\'">IT Solutions <small>Support & Diagnostics</small></button>';
+const heroLauncher='<script src="/assets/admin-it-solutions-hero-launcher.js?v=20260827-it-solutions-hero-1"></script>';
 const topSpire=/<li>\s*<a\b[^>]*href=["'][^"']*spire-admin\.html["'][^>]*>\s*Admin Spire\s*<\/a>\s*<\/li>/i;
 const topSettings=/<li>\s*<a\b[^>]*data-module=["']settings["'][^>]*>\s*Settings\s*<\/a>\s*<\/li>/i;
 const sideSpire=/<button\b[^>]*class=["'][^"']*side-btn[^"']*["'][^>]*onclick=["'][^"']*spire-admin\.html[^"']*["'][^>]*>\s*Admin Spire\s*<small>\s*Clinical\s*<\/small>\s*<\/button>/i;
@@ -50,12 +51,24 @@ async function publish(target,name){
   }
 }
 
+async function publishHero(target,name){
+  let html=await readFile(target,'utf8');
+  if(!html.includes('admin-it-solutions-hero-launcher.js')){
+    if(!html.includes('</body>'))throw new Error(`${name} has no body insertion point for IT Solutions Command Center launcher`);
+    html=html.replace('</body>',`${heroLauncher}\n</body>`);
+    await writeFile(target,html,'utf8');
+  }
+  const published=await readFile(target,'utf8');
+  if(!published.includes(heroLauncher))throw new Error(`${name} failed to publish IT Solutions Command Center launcher`);
+}
+
 // Install into canonical source before static publication. This keeps the owner
 // Admin invariant intact: dist-web is copied from the canonical Admin source,
 // rather than rewriting the owner desktop after publication.
 for(const name of ['admin.html','admin-operations.html']){
   await publish(path.join(root,name),name);
 }
+await publishHero(path.join(root,'admin.html'),'admin.html');
 
 // The script is intentionally idempotent. When invoked after static publication,
 // verify/preserve the already-canonical launchers instead of introducing a delta.
@@ -65,6 +78,7 @@ try{
   for(const name of ['admin.html','admin-operations.html']){
     await publish(path.join(dist,name),`dist-web/${name}`);
   }
+  await publishHero(path.join(dist,'admin.html'),'dist-web/admin.html');
   const distPortal=await readFile(path.join(dist,'it-solutions.html'),'utf8');
   for(const marker of ['Sulandra IT Solutions','Operations Overview','Resolved Compliance Archive']){
     if(!distPortal.includes(marker))throw new Error(`Published IT Solutions portal missing ${marker}`);
@@ -73,4 +87,4 @@ try{
   if(error?.code!=='ENOENT')throw error;
 }
 
-console.log('IT Solutions launchers installed in canonical Admin source so static publication preserves both Admin architectures without post-publication rewriting.');
+console.log('IT Solutions launchers installed in canonical Admin source, including the Command Center button next to Operations, so static publication preserves both Admin architectures without post-publication rewriting.');
