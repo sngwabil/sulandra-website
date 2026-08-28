@@ -33,3 +33,7 @@ await import('./install-it-solutions-powerhouse.mjs');
 // execute only its allowlisted operational tools after explicit Admin review;
 // code/system changes remain controlled engineering handoffs.
 await import('./install-it-agent-workbench.mjs');
+
+// Section 9C resolves approved code-change handoffs into a dedicated, exact-repo
+// Codex worker. It is fail-closed unless explicitly enabled and remains PR-only.
+await import('./install-it-coding-worker.mjs');
