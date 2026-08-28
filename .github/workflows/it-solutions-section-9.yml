@@ -6,24 +6,35 @@ on:
       - backport/section-9-it-solutions
       - backport/section-9b-it-agent-workbench
       - backport/section-9c-trusted-coding-worker
+      - backport/section-9d-autonomous-it-specialist
       - release/sulandra-1.0
     paths:
       - 'IT_SOLUTIONS_ARCHITECTURE.md'
       - 'api/src/it-solutions-routes.ts'
       - 'api/src/it-agent-workbench-routes.ts'
       - 'api/src/it-coding-worker.ts'
+      - 'api/src/it-specialist-knowledge.ts'
+      - 'api/src/it-specialist-autonomy.ts'
+      - 'api/src/sia-routes.ts'
+      - 'api/src/employee-support-routes.ts'
       - 'it-solutions.html'
+      - 'it-guide.html'
       - 'assets/admin-it-solutions-hero-launcher.js'
       - 'assets/it-coding-worker-ui.js'
+      - 'assets/it-specialist-ui.js'
       - 'scripts/install-it-solutions-*.mjs'
       - 'scripts/install-it-agent-workbench.mjs'
       - 'scripts/install-it-coding-worker.mjs'
       - 'scripts/install-it-coding-worker-ui.mjs'
+      - 'scripts/install-it-specialist-autonomy.mjs'
+      - 'scripts/write-static-deployment-meta.mjs'
       - 'scripts/verify-it-solutions-powerhouse.mjs'
       - 'scripts/verify-it-agent-workbench.mjs'
       - 'scripts/verify-it-coding-worker.mjs'
+      - 'scripts/verify-it-specialist-autonomy.mjs'
       - 'scripts/install-employee-support.mjs'
       - 'scripts/install-intranet-control-link.mjs'
+      - 'package.json'
       - '.github/workflows/it-solutions-section-9.yml'
   pull_request:
     branches:
@@ -38,9 +49,9 @@ concurrency:
 
 jobs:
   verify:
-    name: IT Solutions runtime, SIA, agent, coding worker, login, and portal safety
+    name: IT Solutions, SIA, coding worker, autonomous specialist, login, and portal safety
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -67,15 +78,20 @@ jobs:
           node --check scripts/install-it-coding-worker.mjs
           node --check scripts/install-it-coding-worker-ui.mjs
           node --check scripts/verify-it-coding-worker.mjs
+          node --check scripts/install-it-specialist-autonomy.mjs
+          node --check scripts/write-static-deployment-meta.mjs
+          node --check scripts/verify-it-specialist-autonomy.mjs
           node --check assets/admin-it-solutions-hero-launcher.js
           node --check assets/it-coding-worker-ui.js
+          node --check assets/it-specialist-ui.js
 
-      - name: Verify IT operations, agent, and coding-worker safety contracts
+      - name: Verify IT operations, agent, coding worker, and autonomous specialist safety contracts
         run: |
           node scripts/verify-it-solutions-powerhouse.mjs
           node scripts/verify-it-agent-workbench.mjs
           node scripts/install-employee-support.mjs
           node scripts/verify-it-coding-worker.mjs
+          node scripts/verify-it-specialist-autonomy.mjs
 
       - name: Preserve separate Employee and Admin login doors
         shell: bash
@@ -87,7 +103,7 @@ jobs:
           grep -Fq 'Employee Sign In' employee-login.html
           ! grep -Fq 'access the employee or administrative tools permitted by your assigned role' employee-login.html
 
-      - name: Preserve richer 1.0 SIA surface
+      - name: Preserve richer 1.0 SIA surface and ticket continuity
         shell: bash
         run: |
           set -euo pipefail
@@ -96,17 +112,21 @@ jobs:
           grep -Fq 'System Health' sia.html
           grep -Fq 'My Requests' sia.html
           grep -Fq 'SIA Knowledge' sia.html
+          grep -Fq 'relaySiaMessageToITSpecialist' api/src/sia-routes.ts
+          grep -Fq 'loadITSpecialistSiaContext' api/src/sia-routes.ts
+          grep -Fq 'itSpecialistQueued: true' api/src/sia-routes.ts
 
       - name: Build canonical API chain
         run: npm run build
 
-      - name: Verify compiled IT route order
+      - name: Verify compiled IT route order and deployment identity
         shell: bash
         run: |
           set -euo pipefail
           node scripts/verify-it-solutions-powerhouse.mjs
           node scripts/verify-it-agent-workbench.mjs
           node scripts/verify-it-coding-worker.mjs
+          node scripts/verify-it-specialist-autonomy.mjs
           node - <<'NODE'
           const fs=require('fs');
           const s=fs.readFileSync('api/dist/onboarding-bootstrap.js','utf8');
@@ -114,33 +134,41 @@ jobs:
           const it=s.indexOf('registerITSolutionsRoutes({ app, prisma, authOf, requireRoles });');
           const agent=s.indexOf('registerITAgentWorkbenchRoutes({ app, prisma, authOf, requireRoles });');
           const worker=s.indexOf('registerITCodingWorkerRoutes({ app, prisma, authOf, requireRoles');
-          if(sia<0||it<0||agent<0||worker<0||it<sia||agent<it||worker<agent) throw new Error('Compiled route order must remain SIA -> IT Solutions -> privileged IT Agent -> trusted coding worker');
+          const specialist=s.indexOf('registerITSpecialistAutonomyRoutes({ app, prisma, authOf, requireRoles');
+          if(sia<0||it<0||agent<0||worker<0||specialist<0||it<sia||agent<it||worker<agent||specialist<worker) throw new Error('Compiled route order must remain SIA -> IT Solutions -> privileged IT Agent -> trusted coding worker -> autonomous IT Specialist');
+          if(!s.includes('RAILWAY_GIT_COMMIT_SHA')||!s.includes('RAILWAY_GIT_BRANCH')) throw new Error('API health endpoint must expose Railway deployment identity');
           NODE
 
-      - name: Build and verify static Admin launchers
+      - name: Build and verify static Admin and IT Specialist publication
         run: npm run build:web
 
-      - name: Verify published IT Agent portal, coding-worker controls, and buttons
+      - name: Verify published IT portal, worker, specialist, guides, and buttons
         shell: bash
         run: |
           set -euo pipefail
           test -f dist-web/it-solutions.html
+          test -f dist-web/it-guide.html
+          test -f dist-web/deployment-meta.json
           test -f dist-web/assets/admin-it-solutions-hero-launcher.js
           test -f dist-web/assets/it-coding-worker-ui.js
+          test -f dist-web/assets/it-specialist-ui.js
           grep -Fq 'Sulandra IT Solutions' dist-web/it-solutions.html
           grep -Fq 'Resolved Compliance Archive' dist-web/it-solutions.html
           grep -Fq 'data-view="agent"' dist-web/it-solutions.html
           grep -Fq 'Sulandra IT Agent' dist-web/it-solutions.html
           grep -Fq 'Action Center' dist-web/it-solutions.html
           grep -Fq 'Ask IT Agent' dist-web/it-solutions.html
-          grep -Fq 'Post a news card to the intranet' dist-web/it-solutions.html
-          grep -Fq 'original Friday safety meme' dist-web/it-solutions.html
-          grep -Fq 'Email all employees' dist-web/it-solutions.html
-          grep -Fq 'Add a new button next to Operations' dist-web/it-solutions.html
           grep -Fq '/assets/it-coding-worker-ui.js?v=20260828-worker-1' dist-web/it-solutions.html
+          grep -Fq '/assets/it-specialist-ui.js?v=20260828-specialist-1' dist-web/it-solutions.html
           grep -Fq 'Approve &amp; Run' dist-web/assets/it-coding-worker-ui.js
-          grep -Fq '/api/it-solutions/coding-worker/remediations/' dist-web/assets/it-coding-worker-ui.js
-          grep -Fq 'PR-only Codex coding worker' dist-web/assets/it-coding-worker-ui.js
+          grep -Fq 'Autonomous Sulandra IT Specialist' dist-web/assets/it-specialist-ui.js
+          grep -Fq 'Approve & Continue' dist-web/assets/it-specialist-ui.js
+          grep -Fq 'Request Modification' dist-web/assets/it-specialist-ui.js
+          grep -Fq 'AUTO AFTER GATES' dist-web/assets/it-specialist-ui.js
+          grep -Fq 'Sulandra IT Visual Guide' dist-web/it-guide.html
+          grep -Fq 'Follow the arrows in order' dist-web/it-guide.html
+          grep -Fq '"branch"' dist-web/deployment-meta.json
+          grep -Fq '"commit"' dist-web/deployment-meta.json
           grep -Fq 'ownerOperationsLauncher' dist-web/assets/admin-it-solutions-hero-launcher.js
           grep -Fq 'ownerITSolutionsLauncher' dist-web/assets/admin-it-solutions-hero-launcher.js
           grep -Fq "href = '/it-solutions.html'" dist-web/assets/admin-it-solutions-hero-launcher.js

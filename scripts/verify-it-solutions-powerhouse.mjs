@@ -33,6 +33,20 @@ if(portal){
 }
 const architecture=await readOptional(files.architecture,'architecture');
 if(architecture){
-  for(const marker of ['User -> Company -> Application -> Page/Module -> Workflow -> Step -> Action -> System response -> Outcome -> Evidence -> SIA diagnosis -> Resolution or Engineering handoff -> Verification -> Archive','SIA is first-line IT support','24/7 autonomous coding-agent handoff','Established-operation repair vs new-system change','Supervisor email is not used for ordinary established-operation failures','GitHub and Railway are first-class IT evidence sources','Remote assistance is support, not surveillance','Clock-in/geofence evidence is one evidence source only'])if(!architecture.includes(marker))throw new Error(`IT Solutions architecture missing ${marker}`);
+  // Section 9D inserts the durable IT Specialist between SIA diagnosis and the
+  // resolution/approval decision. The invariant is preserved and strengthened:
+  // SIA remains first line, routine established repairs stay autonomous, major/new
+  // work requires approval, remote assistance remains consented, and GitHub/Railway
+  // remain first-class evidence. Accept the prior wording or the expanded wording.
+  const chainOld='User -> Company -> Application -> Page/Module -> Workflow -> Step -> Action -> System response -> Outcome -> Evidence -> SIA diagnosis -> Resolution or Engineering handoff -> Verification -> Archive';
+  const chainNew='User -> Company -> Application -> Page/Module -> Workflow -> Step -> Action -> System response -> Outcome -> Evidence -> SIA diagnosis -> IT Specialist -> Resolution or major-change approval -> Verification -> Archive';
+  if(!architecture.includes(chainOld)&&!architecture.includes(chainNew))throw new Error('IT Solutions architecture missing the end-to-end evidence/resolution chain');
+  for(const marker of ['SIA is first-line IT support','GitHub and Railway are first-class IT evidence sources','Remote assistance is support, not surveillance','Clock-in/geofence evidence is one evidence source only'])if(!architecture.includes(marker))throw new Error(`IT Solutions architecture missing ${marker}`);
+  if(!architecture.includes('24/7 autonomous coding-agent handoff')&&!architecture.includes('24/7 autonomous IT Specialist handoff'))throw new Error('IT Solutions architecture missing continuous autonomous handoff');
+  if(!architecture.includes('Established-operation repair vs new-system change')&&!architecture.includes('Established-operation repair vs major/new-system change'))throw new Error('IT Solutions architecture missing established-operation vs major/new-system approval boundary');
+  const ordinaryApprovalBoundary=architecture.includes('Supervisor email is not used for ordinary established-operation failures')
+    || (architecture.includes('Established operation repair — autonomous')&&architecture.includes('without waiting for owner approval'));
+  if(!ordinaryApprovalBoundary)throw new Error('IT Solutions architecture no longer proves ordinary established-operation repairs do not require owner approval');
+  for(const marker of ['ticket number','Request Modification','exact merged SHA','both backend'])if(!architecture.includes(marker))throw new Error(`Expanded IT Specialist architecture missing ${marker}`);
 }
-console.log('IT Solutions powerhouse, SIA-first diagnosis gate, autonomous coding-agent handoff, consented remote assistance, employee updates, and approval boundary verified.');
+console.log('IT Solutions powerhouse, SIA-first diagnosis gate, autonomous IT Specialist/coding handoff, consented remote assistance, durable employee updates, and major-change approval boundary verified.');
