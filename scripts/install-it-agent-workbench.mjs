@@ -28,6 +28,14 @@ const fixedHistory="input:history.map(item=>({role:item.role,content:[{type:item
 if(routeSource.includes(brokenHistory))routeSource=routeSource.replace(brokenHistory,fixedHistory);
 else if(!routeSource.includes(fixedHistory))throw new Error('IT Agent Responses API history anchor changed');
 
+// conversationId is guaranteed after the create-or-load branch, but TypeScript does
+// not retain that narrowing across the compressed route body. Make the invariant
+// explicit before constructing the strongly typed action row.
+const looseActionConversation='const action:AgentActionRow={id:actionId,conversationId,actionType:';
+const narrowedActionConversation='const action:AgentActionRow={id:actionId,conversationId:conversationId as string,actionType:';
+if(routeSource.includes(looseActionConversation))routeSource=routeSource.replace(looseActionConversation,narrowedActionConversation);
+else if(!routeSource.includes(narrowedActionConversation))throw new Error('IT Agent conversation-id narrowing anchor changed');
+
 routeSource=routeSource
   .replace('Propose publishing a real card, message, resource, hero, or news item to the Sulandra intranet.','Publish a real card, message, resource, hero, or news item to the Sulandra intranet when the authenticated administrator requests it.')
   .replace('Propose generating an original workplace-safe image/meme with GPT Image 2 and publishing it as an intranet news or side card.','Generate an original workplace-safe image/meme with GPT Image 2 and publish it as an intranet news or side card when requested.')
