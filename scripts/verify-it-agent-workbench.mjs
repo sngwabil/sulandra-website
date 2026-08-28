@@ -15,7 +15,7 @@ for(const marker of [
   'IntranetContentItem','EmployeeAnnouncement','EmployeeNotification','EmployeeCommunicationEvent',
   'ITRemediationApproval','ITAgentHandoff',"'WAITING_APPROVAL'",
   'codingWorkerConnected:Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)',
-  'do not fabricate a commit or deployment',
+  'will not fabricate a commit or deployment',
 ]) need(backend,marker,'IT Agent backend');
 if(backend.includes('OPENAI_API_KEY=')||backend.includes('SMTP_PASS='))failures.push('IT Agent backend appears to hard-code a credential');
 
