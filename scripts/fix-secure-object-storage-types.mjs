@@ -20,6 +20,42 @@ source=source.replace(
 );
 
 if(!source.includes("body: encrypted.body as any"))throw new Error('Secure object upload BodyInit typing was not repaired');
+
+// Railway Storage Buckets are S3-compatible but do not currently accept S3
+// server-side-encryption headers. Sulandra must therefore encrypt artifact bytes
+// client-side before sending them to Railway and omit unsupported SSE headers.
+// External S3-compatible providers retain the existing SSE-S3 / SSE-KMS path.
+const oldEncryptionBlock=`  let encryption: StoredObject['encryption'];
+  if (encrypted.encryption) {
+    encryption = 'CLIENT-AES-256-GCM';
+    headers['x-amz-server-side-encryption'] = kmsKeyId ? 'aws:kms' : 'AES256';
+  } else if (kmsKeyId) {
+    encryption = 'SSE-KMS';
+    headers['x-amz-server-side-encryption'] = 'aws:kms';
+    headers['x-amz-server-side-encryption-aws-kms-key-id'] = kmsKeyId;
+  } else {
+    encryption = 'SSE-S3';
+    headers['x-amz-server-side-encryption'] = 'AES256';
+  }`;
+const newEncryptionBlock=`  const railwayObjectStorage = (() => { try { return new URL(config.endpoint).hostname.toLowerCase().endsWith('storage.railway.app'); } catch { return false; } })();
+  let encryption: StoredObject['encryption'];
+  if (encrypted.encryption) {
+    encryption = 'CLIENT-AES-256-GCM';
+    if (!railwayObjectStorage) headers['x-amz-server-side-encryption'] = kmsKeyId ? 'aws:kms' : 'AES256';
+  } else if (railwayObjectStorage) {
+    throw Object.assign(new Error('Railway artifact storage requires EMPLOYEE_OBJECT_CLIENT_ENCRYPTION_KEY_BASE64 so files are encrypted before upload'), { status: 503 });
+  } else if (kmsKeyId) {
+    encryption = 'SSE-KMS';
+    headers['x-amz-server-side-encryption'] = 'aws:kms';
+    headers['x-amz-server-side-encryption-aws-kms-key-id'] = kmsKeyId;
+  } else {
+    encryption = 'SSE-S3';
+    headers['x-amz-server-side-encryption'] = 'AES256';
+  }`;
+if(source.includes(oldEncryptionBlock))source=source.replace(oldEncryptionBlock,newEncryptionBlock);
+else if(!source.includes('railwayObjectStorage'))throw new Error('Secure object encryption compatibility anchor changed');
+if(!source.includes("Railway artifact storage requires EMPLOYEE_OBJECT_CLIENT_ENCRYPTION_KEY_BASE64"))throw new Error('Railway object-storage encryption guard is missing');
+
 await writeFile(target,source,'utf8');
 
 // Spire administrator shortcuts must accept the full UserRole enum. Literal
@@ -51,4 +87,4 @@ try{
   await writeFile(emarFile,emar,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
-console.log('Secure object storage BodyInit and Spire administrator/eMAR UserRole typing are build-safe.');
+console.log('Secure object storage BodyInit, Railway client-encryption compatibility, and Spire administrator/eMAR UserRole typing are build-safe.');
