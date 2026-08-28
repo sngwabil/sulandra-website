@@ -58,8 +58,13 @@ let workbench=await readFile(workbenchPath,'utf8');
 const behaviorAnchor='Saying send is the authorization; do not ask for a second approval. Use get_training_status for completion counts or employee status.';
 const behaviorContract='Saying send is the authorization; do not ask for a second approval. After creating or revising a training draft, acknowledge completion, provide the review link, and wait for the Administrator. Do not ask what to change, do not suggest that a revision is expected, and do not tell the Administrator to say “send”; the Administrator decides the next step after reviewing. Use get_training_status for completion counts or employee status.';
 if(!workbench.includes(behaviorContract)){
-  if(!workbench.includes(behaviorAnchor))throw new Error('IT Agent education listening-behavior anchor changed');
-  workbench=workbench.replace(behaviorAnchor,behaviorContract);
+  if(workbench.includes(behaviorAnchor)){
+    workbench=workbench.replace(behaviorAnchor,behaviorContract);
+  }else if(workbench.includes("name:'create_training_draft'")||workbench.includes('create_training_draft -> Administrator review')){
+    throw new Error('IT Agent education listening-behavior anchor changed');
+  }else{
+    console.log('IT Agent education listening-behavior patch skipped because this static-only build has canonical unaugmented workbench source.');
+  }
 }
 await writeFile(workbenchPath,workbench,'utf8');
 
