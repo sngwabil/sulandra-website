@@ -1,0 +1,4 @@
+Validation-only round 27 for Item 7.
+Exact feature head: 8ad383447642368cb3ae81843488b5581c5bc59e
+Scope: guarded SPIRE shell resilience v3 plus duplicate-safe visible control waiting.
+Do not merge.
