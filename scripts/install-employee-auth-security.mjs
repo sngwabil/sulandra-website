@@ -36,8 +36,10 @@ if(!source.includes("portal: z.enum(['EMPLOYEE','ADMIN']).optional(),")){
   );
 }
 
-const portalBoundaryMarker='    const requestedPortal = credentials.portal || null;';
-if(!source.includes(portalBoundaryMarker)){
+const portalBoundaryPattern=/const requestedPortal = (credentials|input)\.portal \|\| null;/;
+let portalBoundaryMatch=source.match(portalBoundaryPattern);
+let loginInputName=portalBoundaryMatch?.[1]||null;
+if(!portalBoundaryMatch){
   const anchors=[
 `    const identifier = (credentials.email || credentials.username || credentials.identifier || '')
       .trim()
@@ -49,12 +51,12 @@ if(!source.includes(portalBoundaryMarker)){
   ];
   const identifierAnchor=anchors.find(anchor=>source.includes(anchor));
   if(!identifierAnchor)throw new Error('Employee auth installer could not find the login identifier boundary');
-  const credentialName=identifierAnchor.includes('credentials.')?'credentials':'input';
+  loginInputName=identifierAnchor.includes('credentials.')?'credentials':'input';
   const normalizedIdentifier=identifierAnchor.includes('.toLowerCase()')
     ? identifierAnchor
     : identifierAnchor.replace(';','.toLowerCase();');
   const portalBoundary=`${normalizedIdentifier}
-    const requestedPortal = ${credentialName}.portal || null;
+    const requestedPortal = ${loginInputName}.portal || null;
     if (requestedPortal === 'EMPLOYEE' && identifier.includes('@')) {
       res.status(400).json({ error: 'Employee Portal requires your assigned employee username, not an email address' });
       return;
@@ -64,7 +66,9 @@ if(!source.includes(portalBoundaryMarker)){
       return;
     }`;
   source=source.replace(identifierAnchor,portalBoundary);
+  portalBoundaryMatch=source.match(portalBoundaryPattern);
 }
+if(!loginInputName)loginInputName=portalBoundaryMatch?.[1]||(/const input = loginSchema\.parse/.test(source)?'input':'credentials');
 source=source.replace(
   "    const isAdministratorIdentifier = identifier === administratorEmail || identifier === 'admin';",
   "    const isAdministratorIdentifier = identifier === administratorEmail && requestedPortal !== 'EMPLOYEE';"
@@ -84,7 +88,18 @@ if(!source.includes('      jwtid: sessionId,')){
   source=source.replace("      subject: account.userId,\n      expiresIn: '8h',", "      subject: account.userId,\n      jwtid: sessionId,\n      expiresIn: '8h',");
 }
 if(!source.includes('await createEmployeeSession(prisma')){
-  source=source.replace("  return {\n    ...session,\n    session,\n    data: session,\n  };\n};\n\napp.disable", "  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt), sessionId });\n  return {\n    ...session,\n    sessionId,\n    session: { ...session, sessionId },\n    data: { ...session, sessionId },\n  };\n};\n\napp.disable");
+  const canonicalReturn="  return {\n    token,\n    accessToken: token,";
+  if(source.includes(canonicalReturn)){
+    source=source.replace(canonicalReturn,`  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt), sessionId });
+  return {
+    sessionId,
+    token,
+    accessToken: token,`);
+  }else{
+    const legacyReturn="  return {\n    ...session,\n    session,\n    data: session,\n  };\n};\n\napp.disable";
+    if(!source.includes(legacyReturn))throw new Error('Employee auth installer could not find the canonical session payload return');
+    source=source.replace(legacyReturn,"  await createEmployeeSession(prisma, { organizationId: account.organizationId, userId: account.userId, expiresAt: new Date(expiresAt), sessionId });\n  return {\n    ...session,\n    sessionId,\n    session: { ...session, sessionId },\n    data: { ...session, sessionId },\n  };\n};\n\napp.disable");
+  }
 }
 
 const smsLoginMarker='const smsMfaInput = {';
@@ -107,8 +122,8 @@ if(!source.includes(smsLoginMarker)){
       ipAddress: req.ip,
       userAgent: req.get('user-agent') || undefined,
     };
-    const smsMfa = credentials.mfaChallengeId || credentials.mfaCode
-      ? await verifyEmployeeSmsLoginMfa(prisma, { ...smsMfaInput, challengeId: credentials.mfaChallengeId, code: credentials.mfaCode })
+    const smsMfa = ${loginInputName}.mfaChallengeId || ${loginInputName}.mfaCode
+      ? await verifyEmployeeSmsLoginMfa(prisma, { ...smsMfaInput, challengeId: ${loginInputName}.mfaChallengeId, code: ${loginInputName}.mfaCode })
       : await beginEmployeeSmsLoginMfa(prisma, smsMfaInput);
     if (smsMfa.required) {
       await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: 'SMS verification challenge issued', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
