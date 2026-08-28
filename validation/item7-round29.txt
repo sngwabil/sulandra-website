@@ -1,0 +1,4 @@
+Item 7 round 29 validation only.
+Base feature head: bf227991e5b7f4b6e0269e95b9a74a9082122724
+Scope: revalidate the three remaining SPIRE-dependent paths after the canonical shell bootstrap became idempotent and immediate. Existing six passing business paths are unchanged.
+Do not merge this validation marker.
