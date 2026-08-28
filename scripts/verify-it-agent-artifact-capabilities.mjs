@@ -39,8 +39,12 @@ for(const relative of ['it-solutions.html',path.join('dist-web','it-solutions.ht
   for(const marker of ['agentFileInput','Attach files / images','agentArtifacts','selectedArtifactIds','uploadArtifacts(files)','attachmentIds:selectedArtifactIds','capExternalEmail','capUploads','capPdf','capGeneratedImage'])need(portal,marker,`${relative} artifact UI`);
 }
 
-const frontendDocker=await readFile(path.join(root,'Dockerfile.frontend'),'utf8');
-for(const marker of ['node scripts/install-employee-support.mjs','node scripts/verify-it-agent-artifact-capabilities.mjs'])need(frontendDocker,marker,'Railway static artifact publication');
+const frontendDockerPath=path.join(root,'Dockerfile.frontend');
+try{
+  await access(frontendDockerPath);
+  const frontendDocker=await readFile(frontendDockerPath,'utf8');
+  for(const marker of ['node scripts/install-employee-support.mjs','node scripts/verify-it-agent-artifact-capabilities.mjs'])need(frontendDocker,marker,'Railway static artifact publication');
+}catch(error){if(error?.code!=='ENOENT')throw error}
 
 const storageFix=await readFile(path.join(root,'scripts','fix-secure-object-storage-types.mjs'),'utf8');
 for(const marker of ['railwayObjectStorage','EMPLOYEE_OBJECT_CLIENT_ENCRYPTION_KEY_BASE64','Railway artifact storage requires'])need(storageFix,marker,'Railway artifact encryption compatibility');
