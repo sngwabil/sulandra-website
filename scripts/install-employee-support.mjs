@@ -23,3 +23,8 @@ console.log('Employee support request routes are registered before Careers.');
 // idempotent installer here keeps API typecheck/build flows aligned without
 // duplicating route registration commands across package scripts.
 await import('./install-sia-routes.mjs');
+
+// IT Solutions extends the canonical SIA support surface. Keep the richer 1.0
+// SIA implementation intact, then register the section-9 IT routes immediately
+// after SIA so every support workflow keeps the SIA-first diagnosis boundary.
+await import('./install-it-solutions-powerhouse.mjs');
