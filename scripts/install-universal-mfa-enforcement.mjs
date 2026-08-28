@@ -41,15 +41,21 @@ if (!importedNames.includes('registerEmployeeAuthSecurityRoutes')) {
 
 const earlySuccess = "      await recordSuccessfulPortalLogin(employee.userId);\n      account = employee;";
 if (bootstrap.includes(earlySuccess)) bootstrap = bootstrap.replace(earlySuccess, '      account = employee;');
-const payloadAnchors = [
-  '    const payload = await buildSessionPayload(account);',
-  '    const payload=await buildSessionPayload(account);',
-];
-const payloadAnchor = payloadAnchors.find((anchor) => bootstrap.includes(anchor));
-const successAlreadyInstalled = bootstrap.includes('await recordSuccessfulPortalLogin(account.userId);');
-if (!successAlreadyInstalled) {
-  if (!payloadAnchor) throw new Error('Universal MFA installer could not find post-MFA session payload anchor');
-  bootstrap = bootstrap.replace(payloadAnchor, `    await recordSuccessfulPortalLogin(account.userId);\n${payloadAnchor}`);
+
+const alreadyAccountsSuccessAfterMfa = bootstrap.includes('await recordSuccessfulPortalLogin(account.userId);');
+if (!alreadyAccountsSuccessAfterMfa) {
+  const payloadPattern = /^(\s*)const\s+payload\s*=\s*await\s+buildSessionPayload\s*\(\s*account\s*\)\s*;/m;
+  const payloadMatch = bootstrap.match(payloadPattern);
+  if (payloadMatch) {
+    const indent = payloadMatch[1] || '    ';
+    bootstrap = bootstrap.replace(payloadPattern, `${indent}await recordSuccessfulPortalLogin(account.userId);\n${payloadMatch[0]}`);
+  } else {
+    const responsePattern = /^(\s*)res\.json\s*\(\s*await\s+buildSessionPayload\s*\(\s*account\s*\)\s*\)\s*;/m;
+    const responseMatch = bootstrap.match(responsePattern);
+    if (!responseMatch) throw new Error('Universal MFA installer could not find a secure post-MFA session completion anchor');
+    const indent = responseMatch[1] || '    ';
+    bootstrap = bootstrap.replace(responsePattern, `${indent}await recordSuccessfulPortalLogin(account.userId);\n${responseMatch[0]}`);
+  }
 }
 
 const registration = 'registerEmployeeAuthSecurityRoutes({ app, prisma, authOf, requireRoles });';
@@ -65,10 +71,11 @@ for (const marker of [
   'const smsMfaInput = {',
   'await verifyEmployeeSmsLoginMfa',
   'await beginEmployeeSmsLoginMfa',
+  'await recordSuccessfulPortalLogin(account.userId);',
+  'await createEmployeeSession(prisma',
 ]) {
-  if (!bootstrap.includes(marker)) throw new Error(`Universal MFA installer expected canonical login marker: ${marker}`);
+  if (!bootstrap.includes(marker)) throw new Error(`Universal MFA installer expected canonical security marker: ${marker}`);
 }
-if (!payloadAnchors.some((anchor) => bootstrap.includes(anchor))) throw new Error('Universal MFA installer expected canonical session payload marker');
 
 await writeFile(bootstrapPath, bootstrap, 'utf8');
-console.log('Universal MFA enforcement installed by extending the canonical employee SMS challenge flow: governed Admin/PHI/regulated roles cannot receive an access token before successful MFA, and authentication security routes are registered.');
+console.log('Universal MFA enforcement installed idempotently: governed Admin/PHI/regulated roles must complete MFA before successful login accounting and server-side session issuance, and authentication security routes are registered.');
