@@ -7,6 +7,8 @@ const node = process.execPath;
 const lockNamespace = 1936749168;
 const lockKey = 20260810;
 const lockRetryMs = 1500;
+const stagingCanary = process.env.SULANDRA_STAGING_CANARY_BOOTSTRAP === '1'
+  && process.env.SULANDRA_ENVIRONMENT === 'release-1.1-staging-canary';
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -71,8 +73,7 @@ async function baselineFreshLegacyDatabase(tx) {
   const legacyBasePresent = Boolean(baseline.organization && baseline.userTable && baseline.employeeApplication && baseline.auditEvent);
   if (!legacyBasePresent) return;
 
-  const stagingGuarded = process.env.SULANDRA_STAGING_CANARY_BOOTSTRAP === '1' && process.env.SULANDRA_ENVIRONMENT === 'release-1.1-staging-canary';
-  if (!stagingGuarded) throw new Error('[db:predeploy] refusing Prisma baseline outside the guarded release-1.1 staging canary environment.');
+  if (!stagingCanary) throw new Error('[db:predeploy] refusing Prisma baseline outside the guarded release-1.1 staging canary environment.');
 
   const careersPipelinePresent = Boolean(baseline.jobOpening && baseline.applicantDocument && baseline.applicantMessage && baseline.interviewOption);
   if (!careersPipelinePresent) {
@@ -100,10 +101,22 @@ try {
       console.log('[db:predeploy] acquired deployment advisory lock.');
       runScript('db:check-prerequisites');
       await baselineFreshLegacyDatabase(tx);
-      runNodeScript('scripts/reconcile-staging-careers-baseline.mjs');
+
+      if (stagingCanary) {
+        runNodeScript('scripts/reconcile-staging-careers-baseline.mjs');
+      } else {
+        console.log('[db:predeploy] production/non-canary environment detected; skipping staging-only careers baseline reconciliation.');
+      }
+
       runScript('db:recover-failed-doo-migration');
       runScript('db:migrate:deploy');
-      runNodeScript('scripts/verify-release-staging-parity.mjs');
+
+      if (stagingCanary) {
+        runNodeScript('scripts/verify-release-staging-parity.mjs');
+      } else {
+        console.log('[db:predeploy] production/non-canary environment detected; skipping staging-only release parity verification.');
+      }
+
       runNodeScript('scripts/check-home-health-regulated-core.mjs');
       runNodeScript('scripts/promote-pinned-oasis-e2-spec.mjs');
       runScript('db:verify-careers-schema');
