@@ -12,20 +12,40 @@ for(const marker of ['Sulandra IT Solutions','Operations Overview','Resolved Com
 
 const topLauncher='        <li><a href="/it-solutions.html">IT Solutions</a></li>';
 const sideLauncher='          <button class="side-btn" type="button" onclick="window.location.href=\'/it-solutions.html\'">IT Solutions <small>Support & Diagnostics</small></button>';
-const topAnchor=/<li><a href=["']spire-admin\.html["']>Admin Spire<\/a><\/li>/;
-const sideAnchor=/<button class="side-btn" type="button" onclick="window\.location\.href=["']spire-admin\.html["']">Admin Spire <small>Clinical<\/small><\/button>/;
+const topSpire=/<li>\s*<a\b[^>]*href=["'][^"']*spire-admin\.html["'][^>]*>\s*Admin Spire\s*<\/a>\s*<\/li>/i;
+const topSettings=/<li>\s*<a\b[^>]*data-module=["']settings["'][^>]*>\s*Settings\s*<\/a>\s*<\/li>/i;
+const sideSpire=/<button\b[^>]*class=["'][^"']*side-btn[^"']*["'][^>]*onclick=["'][^"']*spire-admin\.html[^"']*["'][^>]*>\s*Admin Spire\s*<small>\s*Clinical\s*<\/small>\s*<\/button>/i;
+const sideSettings=/<button\b[^>]*class=["'][^"']*side-btn[^"']*["'][^>]*data-module=["']settings["'][^>]*>\s*Settings\s*<small>[^<]*<\/small>\s*<\/button>/i;
+
+function insertTop(html,name){
+  if(html.includes('href="/it-solutions.html"')) return html;
+  if(topSpire.test(html)) return html.replace(topSpire,match=>`${match}\n${topLauncher}`);
+  if(topSettings.test(html)) return html.replace(topSettings,match=>`${topLauncher}\n${match}`);
+  const navMatch=html.match(/(<ul\b[^>]*class=["'][^"']*nav-links[^"']*["'][^>]*>)([\s\S]*?)(<\/ul>)/i);
+  if(navMatch){
+    const replacement=`${navMatch[1]}${navMatch[2]}\n${topLauncher}\n${navMatch[3]}`;
+    return html.replace(navMatch[0],replacement);
+  }
+  throw new Error(`${name} has no canonical top-navigation insertion point for IT Solutions`);
+}
+
+function insertSide(html,name){
+  if(html.includes("window.location.href='/it-solutions.html'")) return html;
+  if(sideSpire.test(html)) return html.replace(sideSpire,match=>`${match}\n${sideLauncher}`);
+  if(sideSettings.test(html)) return html.replace(sideSettings,match=>`${sideLauncher}\n${match}`);
+  const sideMatch=html.match(/(<div\b[^>]*class=["'][^"']*side-btns[^"']*["'][^>]*>)([\s\S]*?)(<\/div>)/i);
+  if(sideMatch){
+    const replacement=`${sideMatch[1]}${sideMatch[2]}\n${sideLauncher}\n${sideMatch[3]}`;
+    return html.replace(sideMatch[0],replacement);
+  }
+  throw new Error(`${name} has no canonical sidebar insertion point for IT Solutions`);
+}
 
 for(const name of ['admin.html','admin-operations.html']){
   const target=path.join(dist,name);
   let html=await readFile(target,'utf8');
-  if(!html.includes('href="/it-solutions.html"')){
-    if(!topAnchor.test(html))throw new Error(`${name} is missing the Admin Spire top-navigation anchor for IT Solutions`);
-    html=html.replace(topAnchor,match=>`${match}\n${topLauncher}`);
-  }
-  if(!html.includes("window.location.href='/it-solutions.html'")){
-    if(!sideAnchor.test(html))throw new Error(`${name} is missing the Admin Spire sidebar anchor for IT Solutions`);
-    html=html.replace(sideAnchor,match=>`${match}\n${sideLauncher}`);
-  }
+  html=insertTop(html,name);
+  html=insertSide(html,name);
   await writeFile(target,html,'utf8');
   const published=await readFile(target,'utf8');
   for(const marker of ['href="/it-solutions.html"',"window.location.href='/it-solutions.html'",'>IT Solutions<']){
@@ -33,4 +53,4 @@ for(const name of ['admin.html','admin-operations.html']){
   }
 }
 
-console.log('IT Solutions launchers published in both canonical Admin desktops without replacing their existing navigation architecture.');
+console.log('IT Solutions launchers published in both canonical Admin desktops using resilient canonical navigation anchors without replacing either Admin architecture.');
