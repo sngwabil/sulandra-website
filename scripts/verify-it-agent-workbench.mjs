@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const backend=await readFile(path.join(root,'api','src','it-agent-workbench-routes.ts'),'utf8');
+const installer=await readFile(path.join(root,'scripts','install-it-agent-workbench.mjs'),'utf8');
 const failures=[];
 const need=(source,marker,label)=>{if(!source.includes(marker))failures.push(`${label} missing: ${marker}`)};
 for(const marker of [
@@ -21,6 +22,11 @@ const enabledWorkerStatus="codingWorkerConnected:String(process.env.IT_AGENT_COD
 if(!backend.includes(legacyWorkerStatus)&&!backend.includes(enabledWorkerStatus))failures.push('IT Agent backend missing coding-worker connection status');
 if(backend.includes('OPENAI_API_KEY=')||backend.includes('SMTP_PASS='))failures.push('IT Agent backend appears to hard-code a credential');
 
+const brokenHistory="input:history.map(item=>({role:item.role,content:[{type:'input_text',text:redact(item.content)}]})),";
+const fixedHistory="input:history.map(item=>({role:item.role,content:[{type:item.role==='assistant'?'output_text':'input_text',text:redact(item.content)}]})),";
+const installerRepairsHistory=installer.includes(brokenHistory)&&installer.includes(fixedHistory)&&installer.includes('routeSource=routeSource.replace(brokenHistory,fixedHistory)');
+if(!backend.includes(fixedHistory)&&!(backend.includes(brokenHistory)&&installerRepairsHistory))failures.push('IT Agent multi-turn history must replay assistant turns as output_text and user turns as input_text');
+
 const bootstrap=await readFile(path.join(root,'api','src','onboarding-bootstrap.ts'),'utf8');
 if(bootstrap.includes('registerITAgentWorkbenchRoutes')){
   const it=bootstrap.indexOf('registerITSolutionsRoutes({ app, prisma, authOf, requireRoles });');
@@ -35,4 +41,4 @@ try{
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
 if(failures.length){console.error('IT Agent workbench verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent workbench verified: privileged chat, review-before-execute operational tools, real intranet/communications/email actions, original image generation, and fail-closed code-change approval/handoff are present.');
+console.log('IT Agent workbench verified: privileged chat, role-correct multi-turn Responses API history, review-before-execute operational tools, real intranet/communications/email actions, original image generation, and fail-closed code-change approval/handoff are present.');
