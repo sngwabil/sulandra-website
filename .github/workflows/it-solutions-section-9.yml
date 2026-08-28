@@ -5,17 +5,23 @@ on:
     branches:
       - backport/section-9-it-solutions
       - backport/section-9b-it-agent-workbench
+      - backport/section-9c-trusted-coding-worker
       - release/sulandra-1.0
     paths:
       - 'IT_SOLUTIONS_ARCHITECTURE.md'
       - 'api/src/it-solutions-routes.ts'
       - 'api/src/it-agent-workbench-routes.ts'
+      - 'api/src/it-coding-worker.ts'
       - 'it-solutions.html'
       - 'assets/admin-it-solutions-hero-launcher.js'
+      - 'assets/it-coding-worker-ui.js'
       - 'scripts/install-it-solutions-*.mjs'
       - 'scripts/install-it-agent-workbench.mjs'
+      - 'scripts/install-it-coding-worker.mjs'
+      - 'scripts/install-it-coding-worker-ui.mjs'
       - 'scripts/verify-it-solutions-powerhouse.mjs'
       - 'scripts/verify-it-agent-workbench.mjs'
+      - 'scripts/verify-it-coding-worker.mjs'
       - 'scripts/install-employee-support.mjs'
       - 'scripts/install-intranet-control-link.mjs'
       - '.github/workflows/it-solutions-section-9.yml'
@@ -32,9 +38,9 @@ concurrency:
 
 jobs:
   verify:
-    name: IT Solutions runtime, SIA, agent, login, and portal safety
+    name: IT Solutions runtime, SIA, agent, coding worker, login, and portal safety
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -58,12 +64,17 @@ jobs:
           node --check scripts/verify-it-solutions-powerhouse.mjs
           node --check scripts/install-it-agent-workbench.mjs
           node --check scripts/verify-it-agent-workbench.mjs
+          node --check scripts/install-it-coding-worker.mjs
+          node --check scripts/install-it-coding-worker-ui.mjs
+          node --check scripts/verify-it-coding-worker.mjs
           node --check assets/admin-it-solutions-hero-launcher.js
+          node --check assets/it-coding-worker-ui.js
 
-      - name: Verify IT operations and agent safety contracts
+      - name: Verify IT operations, agent, and coding-worker safety contracts
         run: |
           node scripts/verify-it-solutions-powerhouse.mjs
           node scripts/verify-it-agent-workbench.mjs
+          node scripts/verify-it-coding-worker.mjs
 
       - name: Preserve separate Employee and Admin login doors
         shell: bash
@@ -94,24 +105,27 @@ jobs:
           set -euo pipefail
           node scripts/verify-it-solutions-powerhouse.mjs
           node scripts/verify-it-agent-workbench.mjs
+          node scripts/verify-it-coding-worker.mjs
           node - <<'NODE'
           const fs=require('fs');
           const s=fs.readFileSync('api/dist/onboarding-bootstrap.js','utf8');
           const sia=s.indexOf('registerSIARoutes({ app, prisma, authOf, requireRoles });');
           const it=s.indexOf('registerITSolutionsRoutes({ app, prisma, authOf, requireRoles });');
           const agent=s.indexOf('registerITAgentWorkbenchRoutes({ app, prisma, authOf, requireRoles });');
-          if(sia<0||it<0||agent<0||it<sia||agent<it) throw new Error('Compiled route order must remain SIA -> IT Solutions -> privileged IT Agent');
+          const worker=s.indexOf('registerITCodingWorkerRoutes({ app, prisma, authOf, requireRoles');
+          if(sia<0||it<0||agent<0||worker<0||it<sia||agent<it||worker<agent) throw new Error('Compiled route order must remain SIA -> IT Solutions -> privileged IT Agent -> trusted coding worker');
           NODE
 
       - name: Build and verify static Admin launchers
         run: npm run build:web
 
-      - name: Verify published IT Agent portal and buttons
+      - name: Verify published IT Agent portal, coding-worker controls, and buttons
         shell: bash
         run: |
           set -euo pipefail
           test -f dist-web/it-solutions.html
           test -f dist-web/assets/admin-it-solutions-hero-launcher.js
+          test -f dist-web/assets/it-coding-worker-ui.js
           grep -Fq 'Sulandra IT Solutions' dist-web/it-solutions.html
           grep -Fq 'Resolved Compliance Archive' dist-web/it-solutions.html
           grep -Fq 'data-view="agent"' dist-web/it-solutions.html
@@ -122,6 +136,10 @@ jobs:
           grep -Fq 'original Friday safety meme' dist-web/it-solutions.html
           grep -Fq 'Email all employees' dist-web/it-solutions.html
           grep -Fq 'Add a new button next to Operations' dist-web/it-solutions.html
+          grep -Fq '/assets/it-coding-worker-ui.js?v=20260828-worker-1' dist-web/it-solutions.html
+          grep -Fq 'Approve &amp; Run' dist-web/assets/it-coding-worker-ui.js
+          grep -Fq '/api/it-solutions/coding-worker/remediations/' dist-web/assets/it-coding-worker-ui.js
+          grep -Fq 'PR-only Codex coding worker' dist-web/assets/it-coding-worker-ui.js
           grep -Fq 'ownerOperationsLauncher' dist-web/assets/admin-it-solutions-hero-launcher.js
           grep -Fq 'ownerITSolutionsLauncher' dist-web/assets/admin-it-solutions-hero-launcher.js
           grep -Fq "href = '/it-solutions.html'" dist-web/assets/admin-it-solutions-hero-launcher.js
