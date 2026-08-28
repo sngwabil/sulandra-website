@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const dispatch=await readFile(path.join(root,'api','src','nmt-dispatch-routes.ts'),'utf8');
+const trip=await readFile(path.join(root,'api','src','nmt-trip-routes.ts'),'utf8');
 const qualification=await readFile(path.join(root,'api','src','nmt-driver-qualification.ts'),'utf8');
 const bootstrap=await readFile(path.join(root,'api','src','onboarding-bootstrap.ts'),'utf8');
 const failures=[];
@@ -13,7 +13,7 @@ const forbidMarkers=(source,markers,label)=>{for(const marker of markers)if(sour
 requireMarkers(qualification,[
   'NmtDriverQualification',
   'NmtDispatchQualificationDecision',
-  'NmtDriverProfile',
+  'NmtDriverAssignmentProfile',
   'licenseNumber',
   'licenseState',
   'licenseExpiresAt',
@@ -32,25 +32,27 @@ requireMarkers(qualification,[
   '/api/admin/nmt/drivers/:driverId/qualification',
   '/api/admin/nmt/drivers/:driverId/eligibility',
 ], 'nmt-driver-qualification.ts');
-forbidMarkers(qualification,['NmtDriverAssignmentProfile'],'parallel/legacy driver model');
+forbidMarkers(qualification,['FROM "NmtDriverProfile"'],'non-canonical driver table');
 
-requireMarkers(dispatch,[
+requireMarkers(trip,[
   "import { assertNmtDriverEligible } from './nmt-driver-qualification.js';",
-  'if(i.driverId){await assertNmtDriverEligible(prisma',
-  'serviceDate:new Date(i.scheduledPickupAt)',
-  'orderId:req.params.orderId',
-], 'nmt-dispatch-routes.ts');
-forbidMarkers(dispatch,["if(!d[0])throw httpError(404,'Active NMT driver was not found');"],'legacy active-only NMT assignment gate');
+  'if(!training)await assertNmtDriverEligible(prisma',
+  'driverId:i.driverProfileId',
+  'serviceDate:new Date(pickup)',
+  "orderId:String(t.orderId||'')",
+], 'nmt-trip-routes.ts');
 
 requireMarkers(bootstrap,[
   "import { registerNmtDriverQualificationRoutes } from './nmt-driver-qualification.js';",
-  "import { registerNmtDispatchRoutes } from './nmt-dispatch-routes.js';",
   'registerNmtDriverQualificationRoutes(app, prisma, { authOf });',
-  'registerNmtDispatchRoutes(app, prisma, { authOf });',
 ], 'onboarding-bootstrap.ts');
+forbidMarkers(bootstrap,[
+  "import { registerNmtDispatchRoutes } from './nmt-dispatch-routes.js';",
+  'registerNmtDispatchRoutes(app, prisma, { authOf });',
+], 'legacy NMT dispatch activation');
 
 if(failures.length){
   console.error('NMT workforce/dispatch lockout verification failed:\n- '+failures.join('\n- '));
   process.exit(1);
 }
-console.log('NMT workforce/dispatch lockouts verified on canonical 1.0 driver profiles with license/BMV/insurance/background evidence and fail-closed assignment decisions.');
+console.log('NMT workforce qualification verified on canonical NmtDriverAssignmentProfile trip assignment with fail-closed license/BMV/insurance/background evidence and no legacy dispatch activation.');
