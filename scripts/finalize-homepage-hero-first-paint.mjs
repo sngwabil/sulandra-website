@@ -74,6 +74,11 @@ console.log('Homepage hero final output hardened: inline SVG scene paints before
 // have run, then let the global SIA installer remain the last HTML mutation.
 await import('./fix-owner-onboarding-pay-benefits.mjs');
 
+// Apply the grounded IT Agent state renderer after dist-web exists so the live
+// static publication distinguishes approval, PR-open/in-progress, completed,
+// retrying, and failed work instead of calling every response a success.
+await import('./fix-it-agent-grounded-results.mjs');
+
 // This is deliberately the final static-page mutation in build:web. Publish the
 // same authenticated Ask SIA copilot drawer after all other HTML finalizers so
 // every Sulandra HTML destination receives one stable shared assistant surface.
