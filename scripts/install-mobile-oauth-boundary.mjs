@@ -28,12 +28,31 @@ if (!source.includes('res.locals.mobileTokenUse = mobile.tokenUse;')) {
   }
 
   const currentBlock = source.slice(start, end);
-  const mobileBlock = `const authenticate: express.RequestHandler = async (req, res, next) => {\n  const internal = internalAuth(req);\n  const auth = internal ?? tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Unauthorized' });\n    return;\n  }\n\n  if (!internal) {\n    const mobile = mobileTokenMeta(req);\n    if (mobile) {\n      if (!req.path.startsWith('/api/mobile/')) {\n        res.status(403).json({ error: 'This mobile token is restricted to the Sulandra field API' });\n        return;\n      }\n      res.locals.mobileTokenUse = mobile.tokenUse;\n      res.locals.mobileScopes = mobile.scopes;\n      res.locals.mobileLegalEntityId = mobile.legalEntityId;\n      res.locals.mobileClientId = mobile.clientId;\n      res.locals.mobileJti = mobile.jti;\n    }\n  }\n\n  try {\n    res.locals.auth = await getUserEntityContext(prisma, auth);\n    next();\n  } catch (error) {\n    next(error);\n  }\n};`;
+  const mobileBlock = `const authenticate: express.RequestHandler = async (req, res, next) => {\n  const internal = internalAuth(req);\n  const auth = internal ?? await tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Unauthorized' });\n    return;\n  }\n\n  if (!internal) {\n    const mobile = mobileTokenMeta(req);\n    if (mobile) {\n      if (!req.path.startsWith('/api/mobile/')) {\n        res.status(403).json({ error: 'This mobile token is restricted to the Sulandra field API' });\n        return;\n      }\n      res.locals.mobileTokenUse = mobile.tokenUse;\n      res.locals.mobileScopes = mobile.scopes;\n      res.locals.mobileLegalEntityId = mobile.legalEntityId;\n      res.locals.mobileClientId = mobile.clientId;\n      res.locals.mobileJti = mobile.jti;\n    }\n  }\n\n  try {\n    res.locals.auth = await getUserEntityContext(prisma, auth);\n    next();\n  } catch (error) {\n    next(error);\n  }\n};`;
   source = source.replace(currentBlock, mobileBlock);
 }
+
+const legacyScopedAccess = `const scopedAccess = createEntityAccessMiddleware({\n  prisma,\n  authOf: (res) => res.locals.auth as ScopedAuthContext,\n  entityAccessOf,\n});`;
+const canonicalScopedAccess = `const scopedAccess = createEntityAccessMiddleware({ prisma });`;
+if (source.includes(legacyScopedAccess)) source = source.replace(legacyScopedAccess, canonicalScopedAccess);
+
+const legacyAuditHeader = `const audit = async (\n  auth: ScopedAuthContext,\n  action: string,\n  resourceType: string,\n  resourceId?: string | null,\n  metadata?: unknown,\n) => {\n  try {`;
+const canonicalAuditHeader = `const audit = async (\n  auth: Partial<ScopedAuthContext>,\n  action: string,\n  resourceType: string,\n  resourceId?: string | null,\n  metadata?: unknown,\n) => {\n  const organizationId = auth.organizationId;\n  const userId = auth.userId;\n  if (!organizationId || !userId) {\n    console.warn('[audit] skipped event without complete actor context', { action, resourceType });\n    return;\n  }\n  try {`;
+if (source.includes(legacyAuditHeader)) source = source.replace(legacyAuditHeader, canonicalAuditHeader);
+source = source.replace(`    add(['organizationId'], auth.organizationId);`, `    add(['organizationId'], organizationId);`);
+source = source.replace(`    add(['userId', 'actorUserId', 'performedBy', 'createdBy'], auth.userId);`, `    add(['userId', 'actorUserId', 'performedBy', 'createdBy'], userId);`);
 
 if (!source.includes('res.locals.mobileTokenUse = mobile.tokenUse;')) {
   throw new Error('Mobile OAuth boundary was not installed.');
 }
+if (!source.includes('const auth = internal ?? await tokenAuth(req);')) {
+  throw new Error('Mobile OAuth boundary did not preserve async token authentication.');
+}
+if (!source.includes(canonicalScopedAccess)) {
+  throw new Error('Entity access middleware is not using the current canonical constructor.');
+}
+if (!source.includes('auth: Partial<ScopedAuthContext>')) {
+  throw new Error('Audit callback was not widened to the shared route contract.');
+}
 await writeFile(target, source, 'utf8');
-console.log('Scoped native OAuth boundary installed: mobile tokens are confined to /api/mobile, retain per-token scopes, and preserve the canonical authenticated entity context.');
+console.log('Scoped native OAuth boundary installed: mobile tokens are confined to /api/mobile, retain per-token scopes, preserve the canonical authenticated entity context, and align with current entity-access/audit contracts.');
