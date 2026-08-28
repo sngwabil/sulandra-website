@@ -89,17 +89,12 @@ if(!source.includes('await createEmployeeSession(prisma')){
 
 const smsLoginMarker='const smsMfaInput = {';
 if(!source.includes(smsLoginMarker)){
-  const legacyTotpBlock=`    const mfa = await verifyEmployeeLoginMfa(prisma, account.organizationId, account.userId, credentials.mfaCode);
-    if (!mfa.verified) {
-      await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: mfa.reason || 'MFA required', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
-      res.status(401).json({ error: mfa.reason || 'Multifactor authentication is required', mfaRequired: true });
-      return;
-    }
-    const payload = await buildSessionPayload(account);
-    await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'ALLOW', reason: 'Successful login', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined, sessionId: payload.sessionId });
-    res.json(payload);`;
-  if(source.includes(legacyTotpBlock)){
-    const smsBlock=`    if (requestedPortal === 'ADMIN' && !administrationRoles.has(account.role)) {
+  const directLoginAnchor='    res.json(buildSessionPayload(account));';
+  const awaitedLoginAnchor='    res.json(await buildSessionPayload(account));';
+  const payloadLoginAnchor='    const payload = await buildSessionPayload(account);';
+  const completionAnchor=source.includes(payloadLoginAnchor)?payloadLoginAnchor:(source.includes(awaitedLoginAnchor)?awaitedLoginAnchor:(source.includes(directLoginAnchor)?directLoginAnchor:null));
+  if(!completionAnchor)throw new Error('Employee auth installer could not find the login completion anchor');
+  const smsBlock=`    if (requestedPortal === 'ADMIN' && !administrationRoles.has(account.role)) {
       await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'DENY', reason: 'Admin portal entitlement required', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined });
       res.status(403).json({ error: 'This account does not have Sulandra administrator or management access' });
       return;
@@ -123,9 +118,16 @@ if(!source.includes(smsLoginMarker)){
     const payload = await buildSessionPayload(account);
     await recordLoginEvent(prisma, { organizationId: account.organizationId, userId: account.userId, identifier, decision: 'ALLOW', reason: 'Successful login', ipAddress: req.ip, userAgent: req.get('user-agent') || undefined, sessionId: payload.sessionId });
     res.json(payload);`;
-    source=source.replace(legacyTotpBlock,smsBlock);
+  if(completionAnchor===payloadLoginAnchor){
+    const end='    res.json(payload);';
+    const start=source.indexOf(payloadLoginAnchor);
+    const stop=source.indexOf(end,start);
+    if(stop<0)throw new Error('Employee auth installer could not find the payload response anchor');
+    source=source.slice(0,start)+smsBlock+source.slice(stop+end.length);
+  }else{
+    source=source.replace(completionAnchor,smsBlock);
   }
 }
 
 await writeFile(bootstrapPath,source,'utf8');
-console.log('Employee authentication security installer is idempotent across normalized login variants.');
+console.log('Employee authentication security installer is idempotent across normalized login variants and direct session responses.');
