@@ -13,7 +13,7 @@ for(const marker of [
   'scanBufferForMalware','putSecureObject','getSecureObject','deleteSecureObject','decryptClientEncryptedObject',
   'SEND_EXTERNAL_EMAIL','CREATE_PDF','GENERATE_IMAGE','executeITAgentArtifactRoutineAction','isITAgentArtifactRoutineAction',
   'buildITAgentAttachmentContent','input_image','input_file','gpt-image-2','%PDF-1.4',
-  'external-email hourly safety limit','bcc:recipients','messageSha256','X-Content-Type-Options',
+  'hourly safety limit reached','bcc:recipients','messageSha256','X-Content-Type-Options',
 ]) need(artifacts,marker,'IT Agent artifact backend');
 if(artifacts.includes('SMTP_PASS=')||artifacts.includes('OPENAI_API_KEY='))failures.push('IT Agent artifact backend appears to hard-code a credential');
 if(!artifacts.includes("blockedExtensions=new Set(['exe','dll','msi'"))failures.push('IT Agent upload executable blocklist is missing');
@@ -24,7 +24,7 @@ for(const marker of [
   "name:'send_external_email'","name:'create_pdf'","name:'generate_image'",
   "actionType:'SEND_EXTERNAL_EMAIL'","actionType:'CREATE_PDF'","actionType:'GENERATE_IMAGE'",
   'attachmentParts:Array<Record<string,unknown>>=[]','index===history.length-1',
-  'externalEmail:true','fileUpload:true','pdfCreation:true','imageCreation:Boolean(openAIKey())',
+  'externalEmail:Boolean(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS)','fileUpload:true','pdfCreation:true','imageCreation:Boolean(openAIKey())',
 ]) need(workbench,marker,'IT Agent reasoning workbench');
 
 const executor=await readFile(path.join(root,'api','src','it-agent-routine-executor.ts'),'utf8');
