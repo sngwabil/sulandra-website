@@ -28,3 +28,8 @@ await import('./install-sia-routes.mjs');
 // SIA implementation intact, then register the section-9 IT routes immediately
 // after SIA so every support workflow keeps the SIA-first diagnosis boundary.
 await import('./install-it-solutions-powerhouse.mjs');
+
+// The privileged owner/admin IT Agent workbench sits behind IT Solutions. It may
+// execute only its allowlisted operational tools after explicit Admin review;
+// code/system changes remain controlled engineering handoffs.
+await import('./install-it-agent-workbench.mjs');
