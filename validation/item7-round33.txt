@@ -1,0 +1,4 @@
+Item 7 round 33 validation only.
+Scope: exact current feature head with SPIRE canonical bootstrap v3, Home Health rail stability v2, explicit cache-busting, and backward verifier compatibility.
+Final acceptance remains all nine live production business paths.
+Do not merge this validation marker.
