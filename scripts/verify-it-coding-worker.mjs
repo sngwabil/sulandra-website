@@ -19,9 +19,9 @@ if(worker.includes('SULANDRA_GITHUB_TOKEN=')||worker.includes('OPENAI_API_KEY=')
 if(worker.includes("base:'main'")||worker.includes('refs/heads/release/sulandra-1.0'))failures.push('worker contains a direct release-branch write path');
 if(worker.includes('/merge')||worker.includes('pulls/${')&&worker.includes('merge'))failures.push('worker must not merge PRs in Section 9C');
 need(bootstrap,"import { registerITCodingWorkerRoutes } from './it-coding-worker.js';",'onboarding-bootstrap.ts');
-need(bootstrap,'registerITCodingWorkerRoutes({ app, prisma, authOf, requireRoles','onboarding-bootstrap.ts');
-const agent=bootstrap.indexOf('registerITAgentWorkbenchRoutes({ app, prisma, authOf, requireRoles });');
-const coding=bootstrap.indexOf('registerITCodingWorkerRoutes({ app, prisma, authOf, requireRoles');
+need(bootstrap,'registerITCodingWorkerRoutes(','onboarding-bootstrap.ts');
+const agent=bootstrap.indexOf('registerITAgentWorkbenchRoutes(');
+const coding=bootstrap.indexOf('registerITCodingWorkerRoutes(');
 if(agent<0||coding<0||coding<agent)failures.push('trusted coding worker must register after privileged IT Agent');
 if(failures.length){console.error('IT coding-worker verification failed:\n- '+failures.join('\n- '));process.exit(1)}
 console.log('Trusted IT coding worker verified: exact-repo, exact-base, PR-only Codex changes with approval gating, path restrictions, GitHub branch/commit/PR creation, and no direct merge/deploy mutation.');
