@@ -48,6 +48,10 @@ await import('./install-it-specialist-autonomy.mjs');
 // store completion/attestation in the canonical EducationAssignment record.
 await import('./install-it-agent-training-workflow.mjs');
 
+// Keep the Administrator-facing reply natural: create/update, provide a real
+// clickable review label, then wait for the Administrator to choose revise/send.
+await import('./install-it-agent-conversational-review-ux.mjs');
+
 // The review/attestation page is a required production artifact. The canonical
 // static builder must fail instead of silently omitting it.
 await import('./install-it-agent-training-publication.mjs');
