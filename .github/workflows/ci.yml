@@ -88,7 +88,7 @@ jobs:
           test ! -e dist-web/railway.frontend.json
           test ! -e dist-web/api
           test ! -e dist-web/prisma
-          unexpected_json="$(find dist-web -maxdepth 1 -type f -name '*.json' ! -name 'education-catalog.json' ! -name 'vercel.json' -print -quit)"
+          unexpected_json="$(find dist-web -maxdepth 1 -type f -name '*.json' ! -name 'education-catalog.json' ! -name 'vercel.json' ! -name 'deployment-meta.json' -print -quit)"
           test -z "$unexpected_json"
 
       - name: Audit production dependencies
