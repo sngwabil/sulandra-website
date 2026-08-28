@@ -1,0 +1,4 @@
+Validation-only trigger for Item 7 round 30.
+Exact feature head under test: 98ad703b85672076c5bcdfbb66ca0e81e709580c
+Requires deterministic canonical SPIRE bootstrap generation 20260810-spire-canonical-bootstrap-1 to be live before Playwright runs.
+Do not merge.
