@@ -1,0 +1,108 @@
+name: Section 9 IT Solutions Verification
+
+on:
+  push:
+    branches:
+      - backport/section-9-it-solutions
+      - release/sulandra-1.0
+    paths:
+      - 'IT_SOLUTIONS_ARCHITECTURE.md'
+      - 'api/src/it-solutions-routes.ts'
+      - 'it-solutions.html'
+      - 'scripts/install-it-solutions-*.mjs'
+      - 'scripts/verify-it-solutions-powerhouse.mjs'
+      - 'scripts/install-employee-support.mjs'
+      - 'scripts/install-intranet-control-link.mjs'
+      - '.github/workflows/it-solutions-section-9.yml'
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+
+permissions:
+  contents: read
+
+concurrency:
+  group: it9-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: IT Solutions runtime, SIA, login, and portal safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --include=dev
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Validate section 9 scripts
+        run: |
+          node --check scripts/install-it-solutions-powerhouse.mjs
+          node --check scripts/install-it-solutions-navigation.mjs
+          node --check scripts/verify-it-solutions-powerhouse.mjs
+
+      - name: Verify donor safety contract
+        run: node scripts/verify-it-solutions-powerhouse.mjs
+
+      - name: Preserve separate Employee and Admin login doors
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Administrator sign in' admin-login.html
+          grep -Fq 'AUTHORIZED ACCESS ONLY' admin-login.html
+          grep -Fq '/admin-login.html' employee-login.html
+          grep -Fq 'Employee Sign In' employee-login.html
+          ! grep -Fq 'access the employee or administrative tools permitted by your assigned role' employee-login.html
+
+      - name: Preserve richer 1.0 SIA surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Sulandra Intelligent Assistant' sia.html
+          grep -Fq 'Ask SIA anything' sia.html
+          grep -Fq 'System Health' sia.html
+          grep -Fq 'My Requests' sia.html
+          grep -Fq 'SIA Knowledge' sia.html
+
+      - name: Build canonical API chain
+        run: npm run build
+
+      - name: Verify compiled IT route order
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/verify-it-solutions-powerhouse.mjs
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('api/dist/onboarding-bootstrap.js','utf8');
+          const sia=s.indexOf('registerSIARoutes({ app, prisma, authOf, requireRoles });');
+          const it=s.indexOf('registerITSolutionsRoutes({ app, prisma, authOf, requireRoles });');
+          if(sia<0||it<0||it<sia) throw new Error('Compiled IT Solutions must register after canonical SIA');
+          NODE
+
+      - name: Build and verify static Admin launchers
+        run: npm run build:web
+
+      - name: Verify published IT portal and buttons
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist-web/it-solutions.html
+          grep -Fq 'Sulandra IT Solutions' dist-web/it-solutions.html
+          grep -Fq 'Resolved Compliance Archive' dist-web/it-solutions.html
+          for f in dist-web/admin.html dist-web/admin-operations.html; do
+            grep -Fq 'href="/it-solutions.html"' "$f"
+            grep -Fq "window.location.href='/it-solutions.html'" "$f"
+            grep -Fq '>IT Solutions<' "$f"
+          done

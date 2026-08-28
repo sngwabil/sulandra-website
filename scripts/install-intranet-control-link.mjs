@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
 
-// Admin navigation and drawers are canonical in assets/admin-company-context.js.
-// This compatibility publisher now owns only the historical Scheduling separation.
+// Admin navigation and drawers remain canonical in assets/admin-company-context.js.
+// This compatibility publisher owns the historical Scheduling separation and,
+// after the static site exists, chains the isolated Section 9 IT Solutions
+// launcher publisher without replacing either Admin desktop architecture.
 const schedulerAssetPath = path.join(dist, 'assets', 'time-attendance-location-scheduler.js');
 let scheduler = await readFile(schedulerAssetPath, 'utf8');
 scheduler = scheduler
@@ -35,4 +37,6 @@ let attendance = await readFile(attendancePath, 'utf8');
 attendance = attendance.replace(/\s*<script src="\/assets\/time-attendance-location-scheduler\.js(?:\?v=[^"']+)?"><\/script>\s*/g, '\n');
 await writeFile(attendancePath, attendance, 'utf8');
 
-console.log('Scheduling separation published without mutating Admin navigation, drawers, dashboard, or shell.');
+await import('./install-it-solutions-navigation.mjs');
+
+console.log('Scheduling separation and isolated IT Solutions Admin launchers published without replacing canonical Admin drawers, dashboard, or shell.');

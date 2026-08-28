@@ -18,4 +18,10 @@ for(const name of targets){
   html=html.replace('</body>',`${assets.join('\n')}\n</body>`);
   await writeFile(target,html,'utf8');
 }
-console.log('Intranet keeps its existing design while live data and managed editorial content are connected.');
+
+// Section 9 Admin navigation must be part of canonical source before
+// build-static-site copies it into dist-web. This preserves the owner Admin
+// canonical-source invariant while making IT Solutions directly reachable.
+await import('./install-it-solutions-navigation.mjs');
+
+console.log('Intranet keeps its existing design while live data and managed editorial content are connected; IT Solutions navigation is installed before static publication.');
