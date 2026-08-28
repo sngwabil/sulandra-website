@@ -11,21 +11,29 @@ for(const marker of [
   '/api/it-solutions/agent/actions/:actionId/execute',
   'ITAgentConversation','ITAgentMessage','ITAgentAction',
   'publish_intranet_content','post_intranet_meme','send_employee_announcement','send_employee_notification','send_employee_email','request_code_change',
-  'https://api.openai.com/v1/responses','gpt-image-2','https://api.openai.com/v1/images/generations',
-  'IntranetContentItem','EmployeeAnnouncement','EmployeeNotification','EmployeeCommunicationEvent',
+  'https://api.openai.com/v1/responses','gpt-image-2',
   "type:item.role==='assistant'?'output_text':'input_text'",
-  'executeRoutineITAgentAction','isRoutineITAgentAction','submitITAgentEngineeringRequest','reportITAgentRuntimeFailure',
-  "status:'EXECUTED'","status:'IN_PROGRESS'","status:'RETRYING'",'const outcomeMessages=proposals.map','recovering:true',
+  'getITSpecialistKnowledgeContext','approvedEvidenceCount','ESTABLISHED_OPERATION_REPAIR','NEW_SYSTEM_CHANGE',
+  'probeITCodingWorker','runApprovedITCodingWorker','codingWorkerConnected:connected',
+  'executeRoutineITAgentAction','isRoutineITAgentAction','reportITAgentRuntimeFailure',
+  "status:'PR_OPEN'","status:'FAILED'","status:'EXECUTED'","status:'RETRYING'",'recovering:true',
+  'Press Execute','start the trusted coding worker',
 ]) need(backend,marker,'IT Agent backend');
-const legacyWorkerStatus='codingWorkerConnected:Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)';
-const enabledWorkerStatus="codingWorkerConnected:String(process.env.IT_AGENT_CODING_WORKER_ENABLED||'').toLowerCase()==='true'&&Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)";
-if(!backend.includes(legacyWorkerStatus)&&!backend.includes(enabledWorkerStatus))failures.push('IT Agent backend missing coding-worker connection status');
+if(backend.includes("codingWorkerConnected:Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)"))failures.push('IT Agent backend still reports coding-worker connection from credential presence alone');
+if(backend.includes("if(name==='request_code_change')return{actionType:'REQUEST_CODE_CHANGE' as AgentActionType,risk:'HIGH',changeClass:'NEW_SYSTEM_CHANGE',approvalRequired:true"))failures.push('IT Agent backend still hard-codes every code request as a major change');
+if(backend.includes('submitITAgentEngineeringRequest(prisma'))failures.push('IT Agent backend still diverts Admin reasoning requests into the legacy canned engineering handoff');
 if(backend.includes('OPENAI_API_KEY=')||backend.includes('SMTP_PASS='))failures.push('IT Agent backend appears to hard-code a credential');
+
+const worker=await readFile(path.join(root,'api','src','it-coding-worker.ts'),'utf8');
+for(const marker of ['probeITCodingWorker','runApprovedITCodingWorker','PR_ONLY','ITCodingWorkerRun','/pulls','commitSha','prNumber'])need(worker,marker,'Trusted coding worker');
+
+const knowledge=await readFile(path.join(root,'api','src','it-specialist-knowledge.ts'),'utf8');
+for(const marker of ['getITSpecialistKnowledgeContext','REPOSITORY_MAP','APPROVED_WORK','approvedEvidenceCount','release/sulandra-1.0'])need(knowledge,marker,'IT repository knowledge');
 
 const executor=await readFile(path.join(root,'api','src','it-agent-routine-executor.ts'),'utf8');
 for(const marker of ['executeRoutineITAgentAction','SEND_EMAIL','SEND_ANNOUNCEMENT','SEND_NOTIFICATION','PUBLISH_INTRAnet_CONTENT','GENERATE_INTRAnet_MEME','recipientCount','EXECUTED'])need(executor,marker,'Routine IT Agent executor');
 const intake=await readFile(path.join(root,'api','src','it-specialist-intake.ts'),'utf8');
-for(const marker of ['submitITAgentEngineeringRequest','reportITAgentRuntimeFailure','enqueueITSpecialistTicket','IT Agent runtime failure','RETRYING','Established LOW/MEDIUM-risk repairs'])need(intake,marker,'IT Specialist intake');
+for(const marker of ['reportITAgentRuntimeFailure','enqueueITSpecialistTicket','IT Agent runtime failure','RETRYING'])need(intake,marker,'IT Agent recovery intake');
 
 const bootstrap=await readFile(path.join(root,'api','src','onboarding-bootstrap.ts'),'utf8');
 if(bootstrap.includes('registerITAgentWorkbenchRoutes')){
@@ -41,4 +49,4 @@ try{
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
 if(failures.length){console.error('IT Agent workbench verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent workbench verified: role-correct multi-turn chat, immediate authorized routine operations, direct autonomous-specialist engineering handoff, self-ticketing runtime recovery, and retained major-change safeguards are present.');
+console.log('IT Agent workbench verified: evidence-grounded reasoning, real worker readiness probing, direct PR-only coding execution for verified repairs/approved changes, immediate routine operations, truthful outcomes, and runtime recovery are present.');
