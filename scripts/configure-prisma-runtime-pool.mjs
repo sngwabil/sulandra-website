@@ -96,3 +96,7 @@ app.use((req, res, next) => {
 }
 
 await writeFile(targetPath, source, 'utf8');
+
+// Keep the IT Agent education-status read path compatible with the live User schema
+// before dev, typecheck, and production API builds compile the route.
+await import('./fix-it-agent-education-status-name.mjs');

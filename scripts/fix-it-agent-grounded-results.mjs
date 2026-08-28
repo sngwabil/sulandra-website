@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const marker = 'IT_AGENT_GROUNDED_RESULTS_V1';
+const educationNameMarker = 'IT_AGENT_EDUCATION_STATUS_NAME_V2';
 
 function replaceRequired(source, from, to, label) {
   if (source.includes(to)) return source;
@@ -33,12 +34,30 @@ campaigns = replaceRequired(
   'education status employee row type',
 );
 
-campaigns = replaceRequired(
-  campaigns,
-  '    `SELECT assignment."employeeId",usr."email",usr."role"::text AS "role",assignment."status",assignment."completedAt",assignment."legalEntityId"',
-  '    `SELECT assignment."employeeId",usr."displayName",usr."email",usr."role"::text AS "role",assignment."status",assignment."completedAt",assignment."legalEntityId"',
-  'education status employee identity query',
-);
+const schemaSafeIdentitySelect = `    \`SELECT /* ${educationNameMarker} */ assignment."employeeId",
+       COALESCE(
+         NULLIF(TRIM(CONCAT_WS(' ',
+           to_jsonb(usr)->>'firstName',
+           to_jsonb(usr)->>'middleName',
+           to_jsonb(usr)->>'lastName'
+         )), ''),
+         NULLIF(to_jsonb(usr)->>'displayName', ''),
+         usr."email",
+         'Employee'
+       ) AS "displayName",
+       usr."email",usr."role"::text AS "role",assignment."status",assignment."completedAt",assignment."legalEntityId"`;
+
+if (!campaigns.includes(educationNameMarker)) {
+  campaigns = replaceAny(
+    campaigns,
+    [
+      '    `SELECT assignment."employeeId",usr."email",usr."role"::text AS "role",assignment."status",assignment."completedAt",assignment."legalEntityId"',
+      '    `SELECT assignment."employeeId",usr."displayName",usr."email",usr."role"::text AS "role",assignment."status",assignment."completedAt",assignment."legalEntityId"',
+    ],
+    schemaSafeIdentitySelect,
+    'education status employee identity query',
+  );
+}
 
 campaigns = replaceRequired(
   campaigns,
@@ -75,9 +94,10 @@ if (!campaigns.includes(groundedStatus)) {
   campaigns = replaceAny(campaigns, [naturalStatus, aggregateStatus], groundedStatus, 'education grounded status reply');
 }
 
-for (const required of ['usr."displayName"', marker, 'Assigned employees:', 'displayName: person.displayName']) {
+for (const required of [educationNameMarker, "to_jsonb(usr)->>'firstName'", marker, 'Assigned employees:', 'displayName: person.displayName']) {
   if (!campaigns.includes(required)) throw new Error(`grounded education status missing ${required}`);
 }
+if (campaigns.includes('usr."displayName"')) throw new Error('grounded education status still references User.displayName directly');
 await writeFile(campaignPath, campaigns, 'utf8');
 
 // Keep execution state truthful in the Administrator UI. Opening a PR is work
