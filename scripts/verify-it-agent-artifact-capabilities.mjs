@@ -39,5 +39,15 @@ for(const relative of ['it-solutions.html',path.join('dist-web','it-solutions.ht
   for(const marker of ['agentFileInput','Attach files / images','agentArtifacts','selectedArtifactIds','uploadArtifacts(files)','attachmentIds:selectedArtifactIds','capExternalEmail','capUploads','capPdf','capGeneratedImage'])need(portal,marker,`${relative} artifact UI`);
 }
 
+const frontendDockerPath=path.join(root,'Dockerfile.frontend');
+try{
+  await access(frontendDockerPath);
+  const frontendDocker=await readFile(frontendDockerPath,'utf8');
+  for(const marker of ['node scripts/install-employee-support.mjs','node scripts/verify-it-agent-artifact-capabilities.mjs'])need(frontendDocker,marker,'Railway static artifact publication');
+}catch(error){if(error?.code!=='ENOENT')throw error}
+
+const storageFix=await readFile(path.join(root,'scripts','fix-secure-object-storage-types.mjs'),'utf8');
+for(const marker of ['railwayObjectStorage','EMPLOYEE_OBJECT_CLIENT_ENCRYPTION_KEY_BASE64','Railway artifact storage requires'])need(storageFix,marker,'Railway artifact encryption compatibility');
+
 if(failures.length){console.error('IT Agent artifact capability verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent artifact capabilities verified: secure uploads/download/delete, multimodal reasoning attachments, audited external email, PDF creation, standalone image generation, and existing code safety boundaries are present.');
+console.log('IT Agent artifact capabilities verified: secure uploads/download/delete, multimodal reasoning attachments, audited external email, PDF creation, standalone image generation, Railway static publication, and client-encrypted Railway bucket compatibility are present.');
