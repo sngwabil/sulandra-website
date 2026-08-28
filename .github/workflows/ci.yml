@@ -57,8 +57,11 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
-      - name: Run OASIS-E2 contract regressions
-        run: npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
+      - name: Run OASIS-E2 and iQIES boundary regressions
+        run: |
+          npx --no-install tsx --test tests/oasis-e2-contract.regression.test.ts
+          npx --no-install tsx --test tests/iqies-transport-boundary.regression.test.ts
+          npx --no-install tsx --test tests/production-adapter-boundaries.regression.test.ts
 
       - name: Validate OASIS promotion scripts
         run: |

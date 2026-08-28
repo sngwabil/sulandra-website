@@ -7,6 +7,7 @@ import {
   loadCanonicalEvvSnapshot,
   validateCanonicalEvvSnapshot,
 } from './spire-evv-canonical.js';
+import { getOhioSandataReadiness, validateOhioSandataVisitPackage } from './ohio-sandata-boundary.js';
 
 type AuthContext = {
   userId: string;
@@ -98,16 +99,18 @@ export const registerSpireEvvAdapterRoutes = (app: express.Express, prisma: Pris
           GROUP BY "environment","status" ORDER BY "environment","status"`,
         auth.organizationId, entity(auth),
       );
+      const readiness=getOhioSandataReadiness(process.env);
       res.json({ data: {
         adapter: 'OHIO_ALTERNATE_EVV',
-        mode: 'UAT_SIMULATOR_ONLY',
-        externalUatConfigured: false,
-        productionConfigured: false,
-        certified: false,
-        certificationState: 'NOT_CERTIFIED',
+        mode: readiness.enabled ? 'CERTIFICATION_READY_BOUNDARY' : 'UAT_SIMULATOR_ONLY',
+        externalUatConfigured: readiness.environment==='UAT'&&readiness.configured,
+        productionConfigured: readiness.environment==='PRODUCTION'&&readiness.configured,
+        certified: readiness.environment==='PRODUCTION'&&readiness.enabled,
+        certificationState: readiness.enabled ? (readiness.environment==='PRODUCTION'?'PRODUCTION_CERTIFIED':'UAT_READY') : 'NOT_READY',
+        sandataReadiness: readiness,
         productionBillingGate: 'REQUIRES_ACCEPTED_PRODUCTION_TRANSMISSION',
         counts,
-        message: 'SPIRE can build and validate canonical Ohio Alternate EVV payloads and simulate UAT responses locally. No external Sandata/ODM transmission or certification is represented by this console.',
+        message: 'SPIRE validates Ohio Alternate EVV 4.4 certification boundaries and canonical payloads. External transport stays fail-closed until vendor registration, UAT evidence, credential isolation and the explicit environment gate pass.',
       } });
     } catch (error) { next(error); }
   });
@@ -120,14 +123,17 @@ export const registerSpireEvvAdapterRoutes = (app: express.Express, prisma: Pris
       const snapshot = await loadCanonicalEvvSnapshot(prisma, auth.organizationId, patientId, visitId);
       const validationErrors = validateCanonicalEvvSnapshot(snapshot);
       const payload = buildCanonicalOhioEvvVisitPayload(snapshot, 'PREVIEW');
+      const sandataValidation=validateOhioSandataVisitPackage([payload]);
+      validationErrors.push(...sandataValidation.errors);
       res.json({ data: {
         environment: 'UAT',
         simulatorOnly: true,
         externalSubmission: false,
         sequenceConsumed: false,
         transmittable: validationErrors.length === 0,
-        validationErrors,
+        validationErrors:[...new Set(validationErrors)],
         payload,
+        sandataSpecificationVersion:sandataValidation.specificationVersion,
         certificationClaimed: false,
       } });
     } catch (error) { next(error); }
