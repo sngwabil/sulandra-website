@@ -18,22 +18,18 @@ if (!source.includes('const mobileTokenMeta = (req: express.Request) => {')) {
   source = source.replace(loginMarker, `${helper}${loginMarker}`);
 }
 
-const currentMiddlewareNeedle = `const authenticate: express.RequestHandler = async (req, res, next) => {\n  const auth = internalAuth(req) ?? tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Unauthorized' });\n    return;\n  }\n\n  try {\n    res.locals.auth = await getUserEntityContext(prisma, auth);\n    next();\n  } catch (error) {\n    next(error);\n  }\n};`;
-const legacySyncMiddlewareNeedle = `  const auth = internalAuth(req) ?? tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Authentication required' });\n    return;\n  }\n\n  res.locals.auth = {\n    ...auth,\n    ipAddress: req.ip || req.socket.remoteAddress || '0.0.0.0',\n    userAgent: req.get('user-agent')?.trim() || 'Sulandra Health API',\n  };\n  next();`;
-const legacyAsyncMiddlewareNeedle = `  const auth = internalAuth(req) ?? await tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Authentication required' });\n    return;\n  }\n\n  res.locals.auth = {\n    ...auth,\n    ipAddress: req.ip || req.socket.remoteAddress || '0.0.0.0',\n    userAgent: req.get('user-agent')?.trim() || 'Sulandra Health API',\n  };\n  next();`;
-const currentMiddlewareReplacement = `const authenticate: express.RequestHandler = async (req, res, next) => {\n  const internal = internalAuth(req);\n  const auth = internal ?? tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Unauthorized' });\n    return;\n  }\n\n  if (!internal) {\n    const mobile = mobileTokenMeta(req);\n    if (mobile) {\n      if (!req.path.startsWith('/api/mobile/')) {\n        res.status(403).json({ error: 'This mobile token is restricted to the Sulandra field API' });\n        return;\n      }\n      res.locals.mobileTokenUse = mobile.tokenUse;\n      res.locals.mobileScopes = mobile.scopes;\n      res.locals.mobileLegalEntityId = mobile.legalEntityId;\n      res.locals.mobileClientId = mobile.clientId;\n      res.locals.mobileJti = mobile.jti;\n    }\n  }\n\n  try {\n    res.locals.auth = await getUserEntityContext(prisma, auth);\n    next();\n  } catch (error) {\n    next(error);\n  }\n};`;
-const legacyMiddlewareReplacement = `  const internal = internalAuth(req);\n  const auth = internal ?? await tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Authentication required' });\n    return;\n  }\n\n  if (!internal) {\n    const mobile = mobileTokenMeta(req);\n    if (mobile) {\n      if (!req.path.startsWith('/api/mobile/')) {\n        res.status(403).json({ error: 'This mobile token is restricted to the Sulandra field API' });\n        return;\n      }\n      res.locals.mobileTokenUse = mobile.tokenUse;\n      res.locals.mobileScopes = mobile.scopes;\n      res.locals.mobileLegalEntityId = mobile.legalEntityId;\n      res.locals.mobileClientId = mobile.clientId;\n      res.locals.mobileJti = mobile.jti;\n    }\n  }\n\n  res.locals.auth = {\n    ...auth,\n    ipAddress: req.ip || req.socket.remoteAddress || '0.0.0.0',\n    userAgent: req.get('user-agent')?.trim() || 'Sulandra Health API',\n  };\n  next();`;
-
 if (!source.includes('res.locals.mobileTokenUse = mobile.tokenUse;')) {
-  if (source.includes(currentMiddlewareNeedle)) {
-    source = source.replace(currentMiddlewareNeedle, currentMiddlewareReplacement);
-  } else if (source.includes(legacyAsyncMiddlewareNeedle)) {
-    source = source.replace(legacyAsyncMiddlewareNeedle, legacyMiddlewareReplacement);
-  } else if (source.includes(legacySyncMiddlewareNeedle)) {
-    source = source.replace(legacySyncMiddlewareNeedle, legacyMiddlewareReplacement);
-  } else {
+  const authenticateStart = `const authenticate: express.RequestHandler = async (req, res, next) => {`;
+  const scopedAccessMarker = `\n\nconst scopedAccess = createEntityAccessMiddleware({`;
+  const start = source.indexOf(authenticateStart);
+  const end = start >= 0 ? source.indexOf(scopedAccessMarker, start) : -1;
+  if (start < 0 || end < 0) {
     throw new Error('Mobile OAuth authentication middleware marker was not found.');
   }
+
+  const currentBlock = source.slice(start, end);
+  const mobileBlock = `const authenticate: express.RequestHandler = async (req, res, next) => {\n  const internal = internalAuth(req);\n  const auth = internal ?? tokenAuth(req);\n  if (!auth) {\n    res.status(401).json({ error: 'Unauthorized' });\n    return;\n  }\n\n  if (!internal) {\n    const mobile = mobileTokenMeta(req);\n    if (mobile) {\n      if (!req.path.startsWith('/api/mobile/')) {\n        res.status(403).json({ error: 'This mobile token is restricted to the Sulandra field API' });\n        return;\n      }\n      res.locals.mobileTokenUse = mobile.tokenUse;\n      res.locals.mobileScopes = mobile.scopes;\n      res.locals.mobileLegalEntityId = mobile.legalEntityId;\n      res.locals.mobileClientId = mobile.clientId;\n      res.locals.mobileJti = mobile.jti;\n    }\n  }\n\n  try {\n    res.locals.auth = await getUserEntityContext(prisma, auth);\n    next();\n  } catch (error) {\n    next(error);\n  }\n};`;
+  source = source.replace(currentBlock, mobileBlock);
 }
 
 if (!source.includes('res.locals.mobileTokenUse = mobile.tokenUse;')) {
