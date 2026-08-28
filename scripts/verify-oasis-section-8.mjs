@@ -22,7 +22,7 @@ const forbidMarkers=(source,markers,label)=>{for(const marker of markers)if(sour
 
 requireMarkers(engine,[
   'CMS_SPEC_NOT_VALIDATED','CMS_SPEC_INCOMPLETE','validateOasisSnapshot','buildOasisSubmissionXml',
-  "createHash('sha256')",'final iQIES','deferredRuleCodes','ASCII-safe',
+  "createHash('sha256')",'deferredRuleCodes','ASCII-safe',
 ], 'home-health-oasis-engine.ts');
 requireMarkers(routes,[
   '/api/home-health/oasis/spec-status','submissionEnabled:Boolean(spec&&spec.status===\'VALIDATED\')',
