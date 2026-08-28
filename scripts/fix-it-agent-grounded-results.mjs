@@ -101,11 +101,9 @@ async function patchPortal(relativePath) {
   if (portal.includes(oldExecutionBubble)) portal = portal.replace(oldExecutionBubble, groundedExecutionBubble);
   else if (!portal.includes(groundedExecutionBubble)) throw new Error(`${relativePath} truthful execution-result anchor changed`);
 
-  portal = portal.replace(
-    "GET_TRAINING_STATUS:'Education status',EXECUTED:'Done',PROPOSED:'Needs approval',WAITING_APPROVAL:'Waiting for approval'",
-    "GET_TRAINING_STATUS:'Education status',EXECUTED:'Done',PR_OPEN:'PR open',IN_PROGRESS:'In progress',FAILED:'Failed',RETRYING:'Retry needed',PROPOSED:'Needs approval',WAITING_APPROVAL:'Waiting for approval'",
-  );
-
+  // Keep the conversational UX installer's canonical label map unchanged so the
+  // full Section 9 installer chain remains idempotent. Unknown states already use
+  // its humanizing fallback (for example PR_OPEN -> Pr Open).
   if (portal.includes('Action executed successfully.')) throw new Error(`${relativePath} still contains generic success wording`);
   if (!portal.includes('It is not deployed yet.')) throw new Error(`${relativePath} does not distinguish PR/work state from deployment`);
   await writeFile(file, portal, 'utf8');
