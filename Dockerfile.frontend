@@ -9,10 +9,17 @@ COPY . .
 # keeps the canonical Admin source as the publication input.
 RUN node scripts/optimize-admin-login-performance.mjs
 
+# The IT Agent workbench is build-time augmented on the API path. Railway's
+# static-only image previously skipped that installer chain, so production
+# published the older composer without upload/artifact controls even though the
+# backend capability existed. Install the same canonical IT/support chain before
+# static publication, then verify both source and dist-web contain the artifact UI.
+RUN node scripts/install-employee-support.mjs
+
 # DEVELOPMENT_WORKFLOW.md defines npm run build:web as the authoritative
 # Sulandra Static Website build. Running build-static-site.mjs directly skipped
 # the pre/post integration chain and silently published placeholder/legacy pages.
-RUN npm run build:web
+RUN npm run build:web && node scripts/verify-it-agent-artifact-capabilities.mjs
 
 ENV NODE_ENV=production
 ENV PORT=8080
