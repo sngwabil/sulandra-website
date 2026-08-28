@@ -65,3 +65,8 @@ await import('./install-it-agent-training-publication.mjs');
 // workbench with explicit external email, secure file/image uploads, multimodal
 // attachment reasoning, PDF creation, and standalone image generation.
 await import('./install-it-agent-artifact-capabilities.mjs');
+
+// The root build invokes this support chain more than once in a shared workspace.
+// Normalize repeated capability flags and resolve the explicit Administrator route
+// allowlist before TypeScript compilation so every build remains deterministic.
+await import('./fix-it-agent-artifact-build-idempotency.mjs');
