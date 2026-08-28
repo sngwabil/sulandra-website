@@ -60,3 +60,13 @@ await import('./install-it-agent-conversational-review-ux.mjs');
 // The review/attestation page is a required production artifact. The canonical
 // static builder must fail instead of silently omitting it.
 await import('./install-it-agent-training-publication.mjs');
+
+// Preserve the reasoning/coding safety boundary while extending the Administrator
+// workbench with explicit external email, secure file/image uploads, multimodal
+// attachment reasoning, PDF creation, and standalone image generation.
+await import('./install-it-agent-artifact-capabilities.mjs');
+
+// The root build invokes this support chain more than once in a shared workspace.
+// Normalize repeated capability flags and resolve the explicit Administrator route
+// allowlist before TypeScript compilation so every build remains deterministic.
+await import('./fix-it-agent-artifact-build-idempotency.mjs');

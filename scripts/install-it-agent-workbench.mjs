@@ -25,8 +25,9 @@ for(const marker of ['probeITCodingWorker','runApprovedITCodingWorker','getITSpe
 
 const brokenHistory="input:history.map(item=>({role:item.role,content:[{type:'input_text',text:redact(item.content)}]})),";
 const fixedHistory="input:history.map(item=>({role:item.role,content:[{type:item.role==='assistant'?'output_text':'input_text',text:redact(item.content)}]})),";
+const multimodalHistoryMarker="index===history.length-1&&item.role==='user'?attachmentParts";
 if(routeSource.includes(brokenHistory))routeSource=routeSource.replace(brokenHistory,fixedHistory);
-else if(!routeSource.includes(fixedHistory))throw new Error('IT Agent Responses API history anchor changed');
+else if(!routeSource.includes(fixedHistory)&&!routeSource.includes(multimodalHistoryMarker))throw new Error('IT Agent Responses API history anchor changed');
 
 // conversationId is guaranteed after the create-or-load branch, but TypeScript does
 // not retain that narrowing across the compressed route body. Make the invariant
