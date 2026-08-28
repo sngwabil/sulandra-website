@@ -74,6 +74,7 @@ jobs:
         run: |
           node scripts/verify-it-solutions-powerhouse.mjs
           node scripts/verify-it-agent-workbench.mjs
+          node scripts/install-it-coding-worker.mjs
           node scripts/verify-it-coding-worker.mjs
 
       - name: Preserve separate Employee and Admin login doors
