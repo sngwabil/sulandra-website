@@ -60,8 +60,24 @@ const chain=await readFile(path.join(root,'scripts','install-employee-support.mj
 
 const pkg=await readFile(path.join(root,'package.json'),'utf8');need(pkg,'node scripts/write-static-deployment-meta.mjs','Static build lifecycle');
 const writer=await readFile(path.join(root,'scripts','write-static-deployment-meta.mjs'),'utf8');for(const marker of ['deployment-meta.json','RAILWAY_GIT_BRANCH','RAILWAY_GIT_COMMIT_SHA','it-specialist-ui.js?v=20260828-specialist-1','Routine authorized work executes immediately','Major changes stop for owner approval'])need(writer,marker,'Static deployment writer');
-const guide=await readFile(path.join(root,'it-guide.html'),'utf8');for(const marker of ['Sulandra IT Visual Guide','Follow the arrows in order','/api/it-solutions/employee/guides/','Back to Ask SIA','arrow'])need(guide,marker,'Employee visual guide');
-const ui=await readFile(path.join(root,'assets','it-specialist-ui.js'),'utf8');for(const marker of ['Autonomous Sulandra IT Specialist','Refresh system map','Approve & Continue','Request Modification','Decline','/api/it-solutions/specialist/owner-decision','AUTO AFTER GATES','OWNER APPROVAL'])need(ui,marker,'IT Specialist Admin UI');
+
+try{
+  await access(path.join(root,'it-guide.html'));
+  const guide=await readFile(path.join(root,'it-guide.html'),'utf8');
+  for(const marker of ['Sulandra IT Visual Guide','Follow the arrows in order','/api/it-solutions/employee/guides/','Back to Ask SIA','arrow'])need(guide,marker,'Employee visual guide');
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  console.log('Employee visual-guide source verification skipped because it-guide.html is not present in this API-only build image.');
+}
+
+try{
+  await access(path.join(root,'assets','it-specialist-ui.js'));
+  const ui=await readFile(path.join(root,'assets','it-specialist-ui.js'),'utf8');
+  for(const marker of ['Autonomous Sulandra IT Specialist','Refresh system map','Approve & Continue','Request Modification','Decline','/api/it-solutions/specialist/owner-decision','AUTO AFTER GATES','OWNER APPROVAL'])need(ui,marker,'IT Specialist Admin UI');
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  console.log('IT Specialist Admin UI source verification skipped because frontend assets are not present in this API-only build image.');
+}
 
 try{
   await access(path.join(root,'dist-web','deployment-meta.json'));
