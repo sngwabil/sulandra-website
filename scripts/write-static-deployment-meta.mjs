@@ -30,8 +30,9 @@ try{
   await writeFile(itSolutionsPath,html,'utf8');
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
-// Final published IT Agent polish runs after dist-web exists, so the live portal
-// gets the same natural, clickable education-review behavior as the API runtime.
+// Final published IT Agent polish runs after dist-web exists. The frontend
+// image intentionally retains the canonical unaugmented workbench source, so
+// only frontend UX assertions apply in this static-only publication context.
 await import('./install-it-agent-conversational-review-ux.mjs');
 
 console.log(`Static deployment identity and immediate-execution IT Specialist UI published for ${payload.branch||'unknown-branch'} @ ${(payload.commit||'unknown-commit').slice(0,12)}.`);
