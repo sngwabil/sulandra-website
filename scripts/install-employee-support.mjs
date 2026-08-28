@@ -37,3 +37,17 @@ await import('./install-it-agent-workbench.mjs');
 // Section 9C resolves approved code-change handoffs into a dedicated, exact-repo
 // Codex worker. It is fail-closed unless explicitly enabled and remains PR-only.
 await import('./install-it-coding-worker.mjs');
+
+// Section 9D turns the same support chain into a durable IT Specialist: ticket
+// continuity with SIA, current repository/approved-work knowledge, autonomous
+// established-operation repair after gates, and owner approval for major work.
+await import('./install-it-specialist-autonomy.mjs');
+
+// Employee education is an operational IT workflow, not a code-change request.
+// Keep one campaign through draft -> review -> revision -> explicit send, then
+// store completion/attestation in the canonical EducationAssignment record.
+await import('./install-it-agent-training-workflow.mjs');
+
+// The review/attestation page is a required production artifact. The canonical
+// static builder must fail instead of silently omitting it.
+await import('./install-it-agent-training-publication.mjs');
