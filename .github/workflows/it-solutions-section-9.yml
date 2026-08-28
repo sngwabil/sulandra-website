@@ -9,6 +9,7 @@ on:
       - 'IT_SOLUTIONS_ARCHITECTURE.md'
       - 'api/src/it-solutions-routes.ts'
       - 'it-solutions.html'
+      - 'assets/admin-it-solutions-hero-launcher.js'
       - 'scripts/install-it-solutions-*.mjs'
       - 'scripts/verify-it-solutions-powerhouse.mjs'
       - 'scripts/install-employee-support.mjs'
@@ -51,6 +52,7 @@ jobs:
           node --check scripts/install-it-solutions-powerhouse.mjs
           node --check scripts/install-it-solutions-navigation.mjs
           node --check scripts/verify-it-solutions-powerhouse.mjs
+          node --check assets/admin-it-solutions-hero-launcher.js
 
       - name: Verify donor safety contract
         run: node scripts/verify-it-solutions-powerhouse.mjs
@@ -99,8 +101,14 @@ jobs:
         run: |
           set -euo pipefail
           test -f dist-web/it-solutions.html
+          test -f dist-web/assets/admin-it-solutions-hero-launcher.js
           grep -Fq 'Sulandra IT Solutions' dist-web/it-solutions.html
           grep -Fq 'Resolved Compliance Archive' dist-web/it-solutions.html
+          grep -Fq 'ownerOperationsLauncher' dist-web/assets/admin-it-solutions-hero-launcher.js
+          grep -Fq 'ownerITSolutionsLauncher' dist-web/assets/admin-it-solutions-hero-launcher.js
+          grep -Fq "href = '/it-solutions.html'" dist-web/assets/admin-it-solutions-hero-launcher.js
+          grep -Fq "insertAdjacentElement('afterend', link)" dist-web/assets/admin-it-solutions-hero-launcher.js
+          grep -Fq '/assets/admin-it-solutions-hero-launcher.js?v=20260827-it-solutions-hero-1' dist-web/admin.html
           for f in dist-web/admin.html dist-web/admin-operations.html; do
             grep -Fq 'href="/it-solutions.html"' "$f"
             grep -Fq "window.location.href='/it-solutions.html'" "$f"
