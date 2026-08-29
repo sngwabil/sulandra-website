@@ -70,3 +70,8 @@ await import('./install-it-agent-artifact-capabilities.mjs');
 // Normalize repeated capability flags and resolve the explicit Administrator route
 // allowlist before TypeScript compilation so every build remains deterministic.
 await import('./fix-it-agent-artifact-build-idempotency.mjs');
+
+// Follow-up questions must see the trusted results of actions that already ran in
+// the same conversation. Keep this after all capability installers so the API and
+// static Railway builds share the same evidence-continuity contract.
+await import('./fix-it-agent-trusted-action-continuity.mjs');
