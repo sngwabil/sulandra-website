@@ -22,7 +22,7 @@ const jsTag='<script src="/assets/it-agent-conversational-ui.js?v=20260829-chat-
 const repairCssTag='<link rel="stylesheet" href="/assets/it-agent-ui-regression-repair.css?v=20260829-regression-2">';
 const repairJsTag='<script src="/assets/it-agent-ui-regression-repair.js?v=20260829-regression-3"></script>';
 const statusBoardSplitCssTag='<link rel="stylesheet" href="/assets/it-agent-status-board-split.css?v=20260829-status-board-split-3">';
-const statusBoardFinalizerTag='<script src="/assets/it-agent-status-board-finalizer.js?v=20260829-status-board-4"></script>';
+const statusBoardFinalizerTag='<script src="/assets/it-agent-status-board-finalizer.js?v=20260829-status-board-5"></script>';
 const ipadGuardCssTag='<link rel="stylesheet" href="/assets/it-agent-ipad-load-guard.css?v=20260829-ipad-1">';
 const ipadGuardJsTag='<script src="/assets/it-agent-ipad-load-guard.js?v=20260829-ipad-1"></script>';
 const ipadPreboot='<style id="itws-preboot-critical">html.itws-preboot body>header,html.itws-preboot body>main.shell{opacity:0!important;visibility:hidden!important;pointer-events:none!important}html.itws-preboot::before{content:"Loading Sulandra IT…";position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#fff;color:#53616d;font:600 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}html.itws-preboot.itws-boot-failed::before{display:none!important}</style><script id="itws-preboot-script">document.documentElement.classList.add("itws-preboot")</script>';
@@ -38,7 +38,7 @@ if(!html.includes('/assets/it-agent-conversational-ui.js')){
 
 // Final presentation layers: Action Center remains a separate Operations view.
 // The main chat retains its working/countdown card. Status Board is a dedicated
-// persistent rail of authenticated per-request repository/system/action progress.
+// current-request rail of authenticated repository/system/action progress.
 // The iPad preboot guard prevents the legacy source markup from painting while
 // this canonical chat-first workspace is being constructed.
 html=html.replace(/\s*<style id="itws-preboot-critical">[\s\S]*?<\/style>\s*<script id="itws-preboot-script">[\s\S]*?<\/script>\s*/g,'\n');
@@ -66,7 +66,7 @@ if(repairJs.includes('restoreStatusBoard')||repairJs.includes('itws-action-cente
 for(const marker of ['IT_AGENT_STATUS_BOARD_SPLIT_V3','itws-status-board-open','--itws-status-board-width','itws-status-event','data-itws-status-board-ready','Main chat retains the normal Sulandra working/countdown presentation']){
   if(!statusBoardSplitCss.includes(marker))throw new Error(`IT Agent Status Board split layout missing ${marker}`);
 }
-for(const marker of ['IT_AGENT_STATUS_BOARD_FINALIZER_V4','itwsStatusBoardFeed','/api/it-solutions/agent/progress/','requestId','Verified work steps for this chat, in real time.','Private model chain-of-thought is not displayed.','Status Board']){
+for(const marker of ['IT_AGENT_STATUS_BOARD_FINALIZER_V5','IT_AGENT_STATUS_BOARD_API_ORIGIN_FIX_V1','itwsStatusBoardFeed','/api/it-solutions/agent/progress/','requestId','collapseProgressEvents','supersedeActiveRun()','await waitForTerminal(run);','event.stopImmediatePropagation();','Verified work for the current request, in real time.','Private model chain-of-thought is not displayed.','Status Board']){
   if(!statusBoardFinalizer.includes(marker))throw new Error(`IT Agent Status Board finalizer missing ${marker}`);
 }
 if(statusBoardFinalizer.includes('agentActions')||statusBoardFinalizer.includes('itws-action-center-panel'))throw new Error('Status Board must not reuse Action Center action-card DOM');
@@ -85,4 +85,4 @@ if(finalizerSyntax.status!==0)throw new Error(`IT Agent Status Board finalizer J
 const ipadGuardSyntax=spawnSync(process.execPath,['--check',ipadGuardJsPath],{encoding:'utf8'});
 if(ipadGuardSyntax.status!==0)throw new Error(`IT Agent iPad load guard JavaScript syntax failed: ${String(ipadGuardSyntax.stderr||ipadGuardSyntax.stdout||'unknown syntax error').trim()}`);
 await writeFile(portalPath,html,'utf8');
-console.log('IT Agent current chat-first workspace preserved: no legacy workbench paint during boot; iPad keyboard/composer geometry is stabilized; main chat keeps working/countdown feedback; Status Board remains split and persistent; Action Center remains separate under Operations.');
+console.log('IT Agent current chat-first workspace preserved: no legacy workbench paint during boot; iPad keyboard/composer geometry is stabilized; main chat keeps working/countdown feedback; Status Board remains request-scoped and split; Action Center remains separate under Operations.');
