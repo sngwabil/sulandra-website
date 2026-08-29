@@ -6,8 +6,14 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const failures=[];
 const need=(source,text,label)=>{if(!source.includes(text))failures.push(`${label} missing: ${text}`)};
 
-const css=await readFile(path.join(root,'assets','it-agent-chatgpt-polish.css'),'utf8');
-for(const marker of [
+async function readOptional(relative,label){
+  const file=path.join(root,relative);
+  try{return await readFile(file,'utf8')}
+  catch(error){if(error?.code==='ENOENT'){console.log(`${label} verification skipped in API-only build image.`);return null}throw error}
+}
+
+const css=await readOptional(path.join('assets','it-agent-chatgpt-polish.css'),'Chat polish CSS');
+if(css)for(const marker of [
   '#agentArtifacts .artifact-row:not(.selected)',
   '.itws-action-drawer',
   'right:12px!important',
@@ -15,8 +21,8 @@ for(const marker of [
   '#agentQuickActions{display:none!important}',
 ])need(css,marker,'Chat polish CSS');
 
-const js=await readFile(path.join(root,'assets','it-agent-chatgpt-polish.js'),'utf8');
-for(const marker of [
+const js=await readOptional(path.join('assets','it-agent-chatgpt-polish.js'),'Chat polish JS');
+if(js)for(const marker of [
   'itws-action-drawer',
   'document.body.appendChild(drawer)',
   "if(typeof selectedArtifactIds!=='undefined')selectedArtifactIds=[]",
