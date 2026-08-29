@@ -16,6 +16,11 @@ RUN node scripts/optimize-admin-login-performance.mjs
 # static publication, then verify both source and dist-web contain the artifact UI.
 RUN node scripts/install-employee-support.mjs
 
+# Layer the conversational presentation only after the canonical IT installers
+# have finished. This keeps every existing workbench/training/artifact anchor and
+# safety contract intact while publishing the ChatGPT-style live-activity UX.
+RUN node scripts/install-it-agent-conversational-ui.mjs
+
 # DEVELOPMENT_WORKFLOW.md defines npm run build:web as the authoritative
 # Sulandra Static Website build. Running build-static-site.mjs directly skipped
 # the pre/post integration chain and silently published placeholder/legacy pages.
