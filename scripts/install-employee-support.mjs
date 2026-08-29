@@ -75,3 +75,8 @@ await import('./fix-it-agent-artifact-build-idempotency.mjs');
 // the same conversation. Keep this after all capability installers so the API and
 // static Railway builds share the same evidence-continuity contract.
 await import('./fix-it-agent-trusted-action-continuity.mjs');
+
+// The final presentation layer makes the conversation the primary work surface:
+// persistent recent chats, a New chat action, sidebar navigation, an Activity
+// drawer, and composer-native attachment previews without changing action safety.
+await import('./install-it-agent-chatgpt-workspace.mjs');
