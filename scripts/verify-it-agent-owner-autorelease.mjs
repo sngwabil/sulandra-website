@@ -40,11 +40,16 @@ const optimizer=await readFile(path.join(root,'scripts','optimize-admin-login-pe
 if(optimizer.includes("await import('./install-it-agent-owner-autorelease.mjs')"))failures.push('Generic Admin optimizer must not install owner-release before the canonical IT Agent stack');
 need(optimizer,'IT Agent owner auto-release installation is deferred to the canonical IT Agent installer chain','Owner-release optimizer deferral');
 
-const frontendDocker=await readFile(path.join(root,'Dockerfile.frontend'),'utf8');
-need(frontendDocker,'RUN node scripts/install-employee-support.mjs','Static Railway canonical IT Agent chain');
-const frontendOptimizerIndex=frontendDocker.indexOf('RUN node scripts/optimize-admin-login-performance.mjs');
-const frontendSupportIndex=frontendDocker.indexOf('RUN node scripts/install-employee-support.mjs');
-if(frontendOptimizerIndex<0||frontendSupportIndex<frontendOptimizerIndex)failures.push('Static Railway build must run canonical IT Agent chain after the generic optimizer');
+try{
+  const frontendDocker=await readFile(path.join(root,'Dockerfile.frontend'),'utf8');
+  need(frontendDocker,'RUN node scripts/install-employee-support.mjs','Static Railway canonical IT Agent chain');
+  const frontendOptimizerIndex=frontendDocker.indexOf('RUN node scripts/optimize-admin-login-performance.mjs');
+  const frontendSupportIndex=frontendDocker.indexOf('RUN node scripts/install-employee-support.mjs');
+  if(frontendOptimizerIndex<0||frontendSupportIndex<frontendOptimizerIndex)failures.push('Static Railway build must run canonical IT Agent chain after the generic optimizer');
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  console.log('Static Dockerfile ordering verification skipped because Dockerfile.frontend is not present in this API-only build image.');
+}
 
 if(failures.length){console.error('IT Agent owner auto-release verification failed:\n- '+failures.join('\n- '));process.exit(1)}
 console.log('IT Agent owner auto-release verified: owner-request authorization is bounded to Administrator/CEO, code remains PR-first, required gates precede merge, three-service exact-commit verification precedes final reply, repository context includes exact counts plus bounded source inspection, and both Railway images install owner-release exactly once after the canonical IT Agent stack.');
