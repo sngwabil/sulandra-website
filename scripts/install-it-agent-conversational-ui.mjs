@@ -70,7 +70,7 @@ for(const marker of ['IT_AGENT_STATUS_BOARD_FINALIZER_V4','itwsStatusBoardFeed',
   if(!statusBoardFinalizer.includes(marker))throw new Error(`IT Agent Status Board finalizer missing ${marker}`);
 }
 if(statusBoardFinalizer.includes('agentActions')||statusBoardFinalizer.includes('itws-action-center-panel'))throw new Error('Status Board must not reuse Action Center action-card DOM');
-for(const marker of ['IT_AGENT_IPAD_STABLE_LOAD_V1','--itws-visual-height','--itws-keyboard-inset','itws-status-board-open','max-width:1180px','itws-boot-error']){
+for(const marker of ['IT_AGENT_IPAD_STABLE_LOAD_V1','--itws-keyboard-inset','itws-status-board-open','max-width:1180px','itws-boot-error']){
   if(!ipadGuardCss.includes(marker)&&!ipadGuardJs.includes(marker))throw new Error(`IT Agent iPad stable-load guard missing ${marker}`);
 }
 for(const marker of ['it-chatgpt-workspace','.itws-layout','#agent .agent-main','itwsIpadReady','visualViewport','The old Action Center page is intentionally not shown as a fallback.']){
@@ -85,4 +85,4 @@ if(finalizerSyntax.status!==0)throw new Error(`IT Agent Status Board finalizer J
 const ipadGuardSyntax=spawnSync(process.execPath,['--check',ipadGuardJsPath],{encoding:'utf8'});
 if(ipadGuardSyntax.status!==0)throw new Error(`IT Agent iPad load guard JavaScript syntax failed: ${String(ipadGuardSyntax.stderr||ipadGuardSyntax.stdout||'unknown syntax error').trim()}`);
 await writeFile(portalPath,html,'utf8');
-console.log('IT Agent current chat-first workspace preserved: no legacy workbench paint during boot; iPad viewport/composer geometry is stabilized; main chat keeps working/countdown feedback; Status Board remains split and persistent; Action Center remains separate under Operations.');
+console.log('IT Agent current chat-first workspace preserved: no legacy workbench paint during boot; iPad keyboard/composer geometry is stabilized; main chat keeps working/countdown feedback; Status Board remains split and persistent; Action Center remains separate under Operations.');
