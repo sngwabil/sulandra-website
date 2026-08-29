@@ -16,6 +16,7 @@ if(!workbench.includes(marker)){
 await writeFile(workbenchPath,workbench,'utf8');
 
 const cssTag='<link rel="stylesheet" href="/assets/it-agent-chatgpt-workspace.css?v=20260829-workspace-1"><style>body.it-chatgpt-workspace .itws-activity-toggle{display:block!important}body.it-chatgpt-workspace #agent .agent-status{right:108px!important}</style>';
+const composerCssTag='<link rel="stylesheet" href="/assets/it-agent-chatgpt-composer-layout.css?v=20260829-composer-1">';
 const jsTag='<script src="/assets/it-agent-chatgpt-workspace.js?v=20260829-workspace-1"></script>';
 const liveActivityTag='<script src="/assets/it-agent-conversational-ui.js?v=20260829-live-activity-3"></script>';
 const actionCenterTabTag='<script src="/assets/it-agent-action-center-tab.js?v=20260829-action-tab-1"></script>';
@@ -23,6 +24,9 @@ for(const relative of ['it-solutions.html',path.join('dist-web','it-solutions.ht
   const file=path.join(root,relative);try{await access(file)}catch(error){if(error?.code==='ENOENT')continue;throw error}
   let html=await readFile(file,'utf8');
   if(!html.includes('/assets/it-agent-chatgpt-workspace.css')){if(!html.includes('</head>'))throw new Error(`${relative} workspace head anchor changed`);html=html.replace('</head>',`${cssTag}</head>`)}
+  html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-chatgpt-composer-layout\.css(?:\?v=[^"']+)?">\s*/g,'\n');
+  if(!html.includes('</head>'))throw new Error(`${relative} composer head anchor changed`);
+  html=html.replace('</head>',`${composerCssTag}</head>`);
   html=html.replace(/\s*<script src="\/assets\/it-agent-conversational-ui\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
   html=html.replace(/\s*<script src="\/assets\/it-agent-action-center-tab\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
   if(!html.includes('/assets/it-agent-chatgpt-workspace.js')){if(!html.includes('</body>'))throw new Error(`${relative} workspace body anchor changed`);html=html.replace('</body>',`${jsTag}</body>`)}
@@ -32,4 +36,4 @@ for(const relative of ['it-solutions.html',path.join('dist-web','it-solutions.ht
 }
 
 await import('./verify-it-agent-chatgpt-workspace.mjs');
-console.log('IT Agent chat-first workspace installed: persistent recent chats, New chat, left navigation, Action Center tab, inline attachment previews, and grounded live execution activity use the existing safe agent backend.');
+console.log('IT Agent chat-first workspace installed: persistent recent chats, New chat, left navigation, Action Center tab, ChatGPT-style full-width composer attachments, and grounded live execution activity use the existing safe agent backend.');
