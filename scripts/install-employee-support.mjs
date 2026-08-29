@@ -33,6 +33,6 @@ await import('./fix-it-agent-artifact-build-idempotency.mjs');
 await import('./fix-it-agent-trusted-action-continuity.mjs');
 await import('./install-it-agent-chatgpt-workspace.mjs');
 
-// Final presentation polish keeps the Action Center as a true right-edge drawer and keeps
-// only current-message attachments visible inside the compact composer.
-await import('./install-it-agent-chatgpt-polish.mjs');
+// Emergency compatibility rollback: keep the stable chat-first workspace active while the
+// final PR #246 presentation layer is reworked and browser-tested. The disabled polish layer
+// reparented live DOM and wrapped global fetch, which is not required for core IT Agent use.
