@@ -1,7 +1,8 @@
-/* IT_AGENT_STATUS_BOARD_FINALIZER_V4
-   Dedicated per-chat Status Board for observable work progress.
-   Main-chat working/countdown cards stay in the conversation; this rail shows
-   authenticated request/repository/system/tool/action progress, not private reasoning. */
+/* IT_AGENT_STATUS_BOARD_FINALIZER_V5
+   Request-scoped Status Board for observable Sulandra IT work.
+   Every prompt owns one run. New prompts replace old board activity immediately,
+   stale callbacks cannot repaint a newer run, and the chat response is released
+   only after that run has reached a terminal observable state. */
 (()=>{
   'use strict';
   if(window.__SULANDRA_IT_STATUS_BOARD_FINALIZER__)return;
@@ -9,22 +10,42 @@
 
   const qs=(selector,root=document)=>root?.querySelector?.(selector)||null;
   const OPEN_KEY='sulandra:it-agent:status-board-open';
-  const REQUEST_KEY_PREFIX='sulandra:it-agent:status-request:';
   const previousFetch=window.fetch.bind(window);
+  const POLL_MS=700;
+  const TERMINAL_TIMEOUT_MS=120000;
+  const ACTION_CLOCK_SLOP_MS=3000;
+
   let drawer=null,button=null,backdrop=null,feed=null;
-  let activeRequestId='',activeConversationId='',activePollToken=0,pollTimer=null;
-  let activeHeaders=null,activeCredentials='same-origin';
-  let latestProgressEvents=[],latestActionEvents=[];
+  let activeRun=null;
+  let runSequence=0;
+  let pollTimer=null;
+  let fetchWrapper=null;
+  let selectedConversationId='';
 
   const compact=()=>window.matchMedia('(max-width:699px)').matches;
   const readOpen=()=>{try{return sessionStorage.getItem(OPEN_KEY)==='1'}catch{return false}};
   const writeOpen=open=>{try{sessionStorage.setItem(OPEN_KEY,open?'1':'0')}catch{}};
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch));
   const clean=(value,max=1400)=>String(value??'').replace(/\s+/g,' ').trim().slice(0,max);
-  const requestStorageKey=conversationId=>REQUEST_KEY_PREFIX+String(conversationId||'');
-  const storeRequest=(conversationId,requestId)=>{if(!conversationId||!requestId)return;try{sessionStorage.setItem(requestStorageKey(conversationId),requestId)}catch{}};
-  const storedRequest=conversationId=>{try{return sessionStorage.getItem(requestStorageKey(conversationId))||''}catch{return''}};
   const asObject=value=>value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+  const runIsCurrent=run=>Boolean(run&&activeRun===run&&!run.superseded);
+  const terminalProgressStatus=status=>['done','success','completed','error','failed','failure','waiting','pending','approval'].includes(clean(status,40).toLowerCase());
+  const safeTime=value=>{const time=value?new Date(value).getTime():NaN;return Number.isFinite(time)?time:0};
+  const collapseProgressEvents=events=>{
+    const latest=new Map();
+    (Array.isArray(events)?events:[]).forEach((event,index)=>{
+      const phase=clean(event?.phase,80)||`event-${index}`;
+      latest.set(phase,{...event,__order:index});
+    });
+    return [...latest.values()].sort((a,b)=>a.__order-b.__order).map(({__order,...event})=>event);
+  };
+  const uuid=()=>{
+    if(globalThis.crypto?.randomUUID)return globalThis.crypto.randomUUID();
+    const bytes=new Uint8Array(16);globalThis.crypto?.getRandomValues?.(bytes);
+    if(!bytes.some(Boolean))for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+    bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+    return [...bytes].map((byte,index)=>`${index===4||index===6||index===8||index===10?'-':''}${byte.toString(16).padStart(2,'0')}`).join('');
+  };
 
   function setOpen(open,{manual=false}={}){
     if(!drawer||!button)return;
@@ -46,21 +67,22 @@
   }
   function statusIcon(status){const kind=statusClass(status);return kind==='done'?'✓':kind==='error'?'×':kind==='waiting'?'!':''}
 
-  function renderEmpty(title='No active work in this chat.',detail='When Sulandra starts checking, searching, creating, executing, building, or deploying something, the verified work steps will appear here.'){
+  function renderEmpty(title='No work is running right now.',detail='Send a prompt and this board will replace the old activity with the verified steps for that request.'){
     if(!feed)return;
     feed.innerHTML=`<div class="itws-status-board-empty"><strong>${esc(title)}</strong><span>${esc(detail)}</span></div>`;
   }
-  function renderWaiting(message){
-    latestProgressEvents=[];latestActionEvents=[];
-    if(!feed)return;
-    const text=clean(message,320);
-    feed.innerHTML=`<div class="itws-status-event running itws-status-event-local"><span class="itws-status-event-icon"></span><span class="itws-status-event-body"><strong>Request sent</strong><span>${esc(text?`Waiting for the first verified work event for: ${text}`:'Waiting for the first verified work event from Sulandra IT.')}</span></span></div>`;
+
+  function renderWaiting(run){
+    if(!feed||!runIsCurrent(run))return;
+    run.progressEvents=[];run.actionEvents=[];
+    const text=clean(run.message,320);
+    feed.innerHTML=`<div class="itws-status-event running itws-status-event-local"><span class="itws-status-event-icon"></span><span class="itws-status-event-body"><strong>Request sent</strong><span>${esc(text?`Starting work on: ${text}`:'Starting this request…')}</span></span></div>`;
   }
 
-  function renderCombined(){
-    if(!feed)return;
-    const events=[...latestProgressEvents,...latestActionEvents];
-    if(!events.length)return;
+  function renderCombined(run){
+    if(!feed||!runIsCurrent(run))return;
+    const events=[...(run.progressEvents||[]),...(run.actionEvents||[])];
+    if(!events.length){renderWaiting(run);return}
     feed.innerHTML='';
     events.forEach(event=>{
       const kind=statusClass(event?.status);
@@ -75,9 +97,33 @@
     drawer?.scrollTo({top:drawer.scrollHeight,behavior:'smooth'});
   }
 
-  function actionEvents(actions){
-    if(!activeConversationId||!Array.isArray(actions))return{events:[],active:false,terminal:false};
-    const rows=actions.filter(action=>String(action?.conversationId||'')===String(activeConversationId)).slice(0,8).reverse();
+  function settleVisuals(run){
+    if(!runIsCurrent(run))return;
+    const settle=event=>statusClass(event?.status)==='running'?{...event,status:'done'}:event;
+    run.progressEvents=(run.progressEvents||[]).map(settle);
+    run.actionEvents=(run.actionEvents||[]).map(settle);
+    renderCombined(run);
+  }
+
+  function renderTerminalFallback(run,label,detail,status='done'){
+    if(!runIsCurrent(run)||!feed)return;
+    const row=document.createElement('div');row.className=`itws-status-event ${statusClass(status)}`;
+    const icon=document.createElement('span');icon.className='itws-status-event-icon';icon.textContent=statusIcon(status);
+    const body=document.createElement('span');body.className='itws-status-event-body';
+    const heading=document.createElement('strong');heading.textContent=clean(label,240);
+    const text=document.createElement('span');text.textContent=clean(detail,900);
+    body.append(heading,text);row.append(icon,body);feed.appendChild(row);
+    drawer?.scrollTo({top:drawer.scrollHeight,behavior:'smooth'});
+  }
+
+  function actionEvents(actions,run){
+    if(!run?.conversationId||!Array.isArray(actions))return{events:[],active:false,terminal:false};
+    const cutoff=run.startedAt-ACTION_CLOCK_SLOP_MS;
+    const rows=actions
+      .filter(action=>String(action?.conversationId||'')===String(run.conversationId))
+      .filter(action=>{const created=safeTime(action?.createdAt);return !created||created>=cutoff})
+      .slice(0,8)
+      .reverse();
     let active=false,terminal=false;
     const events=[];
     rows.forEach(action=>{
@@ -92,99 +138,250 @@
       }else if(status==='IN_PROGRESS'||status==='RETRYING'||status==='QUEUED'){
         active=true;event={status:'running',label:status==='RETRYING'?'Retrying IT action':'Executing IT action',detail:summary,createdAt:action.updatedAt||action.createdAt};
       }else if(status==='PROPOSED'){
-        event={status:action.approvalRequired?'waiting':'done',label:action.approvalRequired?'Waiting for owner approval':'Action prepared',detail:summary,createdAt:action.updatedAt||action.createdAt};
-        if(action.approvalRequired)active=true;
+        terminal=true;event={status:action.approvalRequired?'waiting':'done',label:action.approvalRequired?'Waiting for owner approval':'Action prepared',detail:summary,createdAt:action.updatedAt||action.createdAt};
       }else if(status==='PR_OPEN'){
-        event={status:'done',label:'Coding worker opened a pull request',detail:clean(result.message||`PR #${worker.prNumber||''} · ${worker.branch||''}`,1200),createdAt:action.updatedAt||action.createdAt};terminal=true;
+        terminal=true;event={status:'done',label:'Coding worker opened a pull request',detail:clean(result.message||`PR #${worker.prNumber||''} · ${worker.branch||''}`,1200),createdAt:action.updatedAt||action.createdAt};
       }else if(status==='EXECUTED'||status==='DONE'){
-        event={status:'done',label:String(release.phase||'').toUpperCase()==='PRODUCTION_GREEN'?'Railway production verification completed':'IT action completed',detail:clean(release.message||result.message||summary,1200),createdAt:action.updatedAt||action.createdAt};terminal=true;
+        terminal=true;event={status:'done',label:String(release.phase||'').toUpperCase()==='PRODUCTION_GREEN'?'Railway production verification completed':'IT action completed',detail:clean(release.message||result.message||summary,1200),createdAt:action.updatedAt||action.createdAt};
       }else if(status==='FAILED'||status==='REJECTED'){
-        event={status:'error',label:status==='REJECTED'?'Action rejected':'IT action failed',detail:clean(release.error||result.message||summary,1200),createdAt:action.updatedAt||action.createdAt};terminal=true;
+        terminal=true;event={status:'error',label:status==='REJECTED'?'Action rejected':'IT action failed',detail:clean(release.error||result.message||summary,1200),createdAt:action.updatedAt||action.createdAt};
       }
       if(event)events.push(event);
     });
     return{events,active,terminal};
   }
 
-  function stopPolling(){activePollToken+=1;if(pollTimer){clearTimeout(pollTimer);pollTimer=null}}
   function cloneHeaders(input,init){try{if(init?.headers)return new Headers(init.headers);if(input instanceof Request)return new Headers(input.headers)}catch{}return new Headers()}
   function requestCredentials(input,init){if(init?.credentials)return init.credentials;if(input instanceof Request&&input.credentials)return input.credentials;return'same-origin'}
 
-  async function readActionState(headers){
-    if(!activeConversationId)return{events:[],active:false,terminal:false};
-    try{
-      const response=await previousFetch('/api/it-solutions/agent/actions',{method:'GET',headers,credentials:activeCredentials,cache:'no-store'});
-      if(!response.ok)return{events:latestActionEvents,active:false,terminal:false};
-      const payload=await response.json().catch(()=>({}));
-      return actionEvents(payload?.data?.actions||payload?.actions||[]);
-    }catch{return{events:latestActionEvents,active:false,terminal:false}}
+  function clearPollTimer(){if(pollTimer){clearTimeout(pollTimer);pollTimer=null}}
+  function resolveRun(run,{reason='terminal'}={}){
+    if(!run||run.finished)return;
+    run.finished=true;run.finishReason=reason;clearPollTimer();
+    run.resolveTerminal?.(reason);
+  }
+  function supersedeActiveRun(){
+    const run=activeRun;
+    if(!run||run.finished)return;
+    run.superseded=true;
+    clearPollTimer();
+    run.resolveTerminal?.('superseded');
   }
 
-  async function pollOnce(requestId,token,{continuePolling=true}={}){
-    if(!requestId||token!==activePollToken)return;
-    let responseTerminal=false;let actionState={events:latestActionEvents,active:false,terminal:false};
+  async function readActionState(run,headers){
+    if(!runIsCurrent(run)||!run.conversationId)return{events:[],active:false,terminal:false};
     try{
-      const headers=new Headers(activeHeaders||{});headers.set('Accept','application/json');
-      const response=await previousFetch(`/api/it-solutions/agent/progress/${encodeURIComponent(requestId)}`,{method:'GET',headers,credentials:activeCredentials,cache:'no-store'});
+      const response=await previousFetch('/api/it-solutions/agent/actions',{method:'GET',headers,credentials:run.credentials,cache:'no-store'});
+      if(!response.ok)return{events:run.actionEvents||[],active:false,terminal:false};
+      const payload=await response.json().catch(()=>({}));
+      return actionEvents(payload?.data?.actions||payload?.actions||[],run);
+    }catch{return{events:run.actionEvents||[],active:false,terminal:false}}
+  }
+
+  async function pollOnce(run,{continuePolling=true}={}){
+    if(!runIsCurrent(run)||run.finished)return{done:false,active:false};
+    let responseTerminal=false;
+    let actionState={events:run.actionEvents||[],active:false,terminal:false};
+    try{
+      const headers=new Headers(run.headers||{});headers.set('Accept','application/json');
+      const response=await previousFetch(`/api/it-solutions/agent/progress/${encodeURIComponent(run.requestId)}`,{method:'GET',headers,credentials:run.credentials,cache:'no-store'});
       if(response.ok){
-        const payload=await response.json().catch(()=>({}));const events=payload?.data?.events||payload?.events||[];
-        if(token!==activePollToken)return;
-        if(events.length)latestProgressEvents=events;
-        responseTerminal=events.some(event=>String(event?.phase||'').toLowerCase()==='response'&&['done','error','failed'].includes(String(event?.status||'').toLowerCase()));
+        const payload=await response.json().catch(()=>({}));
+        const events=payload?.data?.events||payload?.events||[];
+        if(!runIsCurrent(run)||run.finished)return{done:false,active:false};
+        if(events.length)run.progressEvents=collapseProgressEvents(events);
+        responseTerminal=events.some(event=>String(event?.phase||'').toLowerCase()==='response'&&terminalProgressStatus(event?.status));
       }
-      actionState=await readActionState(headers);
-      if(token!==activePollToken)return;
-      latestActionEvents=actionState.events;renderCombined();
+      actionState=await readActionState(run,headers);
+      if(!runIsCurrent(run)||run.finished)return{done:false,active:false};
+      run.actionEvents=actionState.events;renderCombined(run);
     }catch{}
-    const done=(responseTerminal&&!actionState.active)||actionState.terminal;
-    if(!done&&continuePolling&&token===activePollToken)pollTimer=setTimeout(()=>void pollOnce(requestId,token),800);
+    const done=responseTerminal&&!actionState.active;
+    if(done){
+      settleVisuals(run);
+      resolveRun(run);
+    }else if(continuePolling&&runIsCurrent(run)&&!run.finished){
+      clearPollTimer();pollTimer=setTimeout(()=>void pollOnce(run),POLL_MS);
+    }
+    return{done,active:actionState.active,responseTerminal};
   }
 
   function beginRequest(requestId,message,input,init,conversationId=''){
-    stopPolling();activeRequestId=requestId;activeConversationId=conversationId||'';activeHeaders=cloneHeaders(input,init);activeCredentials=requestCredentials(input,init);const token=activePollToken;
-    renderWaiting(message);setOpen(true);void pollOnce(requestId,token);
+    supersedeActiveRun();
+    const run={
+      sequence:++runSequence,
+      requestId,
+      message,
+      conversationId:conversationId||'',
+      startedAt:Date.now(),
+      headers:cloneHeaders(input,init),
+      credentials:requestCredentials(input,init),
+      progressEvents:[],
+      actionEvents:[],
+      responseReceived:false,
+      finished:false,
+      superseded:false,
+      resolveTerminal:null,
+      terminalPromise:null,
+    };
+    run.terminalPromise=new Promise(resolve=>{run.resolveTerminal=resolve});
+    activeRun=run;selectedConversationId=run.conversationId||selectedConversationId;
+    renderWaiting(run);setOpen(true);void pollOnce(run);
+    return run;
   }
-  function showClientError(message){if(!feed)return;const row=document.createElement('div');row.className='itws-status-event error';row.innerHTML='<span class="itws-status-event-icon">×</span><span class="itws-status-event-body"><strong>Request did not complete</strong><span></span></span>';const detail=qs('.itws-status-event-body span',row);if(detail)detail.textContent=clean(message,900)||'The chat request failed before a completed progress event was returned.';feed.appendChild(row);drawer?.scrollTo({top:drawer.scrollHeight,behavior:'smooth'})}
+
+  function showClientError(run,message){
+    if(!runIsCurrent(run))return;
+    renderTerminalFallback(run,'Request did not complete',clean(message,900)||'The chat request failed before a completed progress event was returned.','error');
+    resolveRun(run,{reason:'error'});
+  }
+
+  async function waitForTerminal(run){
+    if(!runIsCurrent(run)||run.finished)return;
+    const timeout=new Promise(resolve=>setTimeout(()=>resolve('timeout'),TERMINAL_TIMEOUT_MS));
+    const outcome=await Promise.race([run.terminalPromise,timeout]);
+    if(outcome==='timeout'&&runIsCurrent(run)&&!run.finished){
+      renderTerminalFallback(run,'Status tracking stopped','The request returned, but live work tracking did not reach a terminal event in time. The board has stopped so the chat can continue.','error');
+      resolveRun(run,{reason:'timeout'});
+    }
+  }
 
   function installFetchProgress(){
-    window.fetch=async function(input,init){
-      const url=typeof input==='string'?input:String(input?.url||'');const method=String(init?.method||(input instanceof Request?input.method:'GET')||'GET').toUpperCase();
-      if(method!=='POST'||!url.includes('/api/it-solutions/agent/chat'))return previousFetch(input,init);
-      const nextInit=init?{...init}:{};let body=null;if(typeof nextInit.body==='string'){try{body=JSON.parse(nextInit.body)}catch{}}
-      if(!body||typeof body!=='object')return previousFetch(input,init);
-      const requestId=(globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`);body.requestId=requestId;nextInit.body=JSON.stringify(body);
-      beginRequest(requestId,clean(body.message,320),input,nextInit,clean(body.conversationId,120));
+    if(window.fetch===fetchWrapper)return;
+    const downstream=window.fetch.bind(window);
+    const wrapper=async function(input,init){
+      const url=typeof input==='string'?input:String(input?.url||'');
+      const method=String(init?.method||(input instanceof Request?input.method:'GET')||'GET').toUpperCase();
+      if(method!=='POST'||!url.includes('/api/it-solutions/agent/chat'))return downstream(input,init);
+
+      const nextInit=init?{...init}:{};
+      let body=null;
+      if(typeof nextInit.body==='string'){try{body=JSON.parse(nextInit.body)}catch{}}
+      if(!body||typeof body!=='object')return downstream(input,init);
+
+      /* A later UI layer can wrap this wrapper. requestId makes nested copies pass through
+         instead of starting a duplicate Status Board lifecycle. */
+      if(clean(body.requestId,100))return downstream(input,init);
+
+      const requestId=uuid();
+      body.requestId=requestId;
+      nextInit.body=JSON.stringify(body);
+      const run=beginRequest(requestId,clean(body.message,320),input,nextInit,clean(body.conversationId,120));
+
       try{
-        const response=await previousFetch(input,nextInit);const token=activePollToken;
-        response.clone().json().then(payload=>{const conversationId=payload?.data?.conversationId||payload?.conversationId||'';if(conversationId){activeConversationId=conversationId;storeRequest(conversationId,requestId);setTimeout(()=>void pollOnce(requestId,token,{continuePolling:false}),25)}}).catch(()=>{});
-        if(!response.ok){showClientError(`Server returned HTTP ${response.status}.`);stopPolling()}
+        const response=await downstream(input,nextInit);
+        run.responseReceived=true;
+        let payload={};
+        try{payload=await response.clone().json()}catch{}
+        if(runIsCurrent(run)){
+          const conversationId=payload?.data?.conversationId||payload?.conversationId||'';
+          if(conversationId){run.conversationId=String(conversationId);selectedConversationId=run.conversationId}
+        }
+
+        if(!response.ok){
+          showClientError(run,`Server returned HTTP ${response.status}.`);
+          return response;
+        }
+
+        /* The caller cannot render the assistant reply until the observable run is
+           terminal. This keeps "working" from remaining on screen behind an answer. */
+        if(runIsCurrent(run)&&!run.finished){
+          await pollOnce(run,{continuePolling:false});
+          await waitForTerminal(run);
+        }
         return response;
-      }catch(error){showClientError(error instanceof Error?error.message:String(error||'Request failed'));stopPolling();throw error}
+      }catch(error){
+        showClientError(run,error instanceof Error?error.message:String(error||'Request failed'));
+        throw error;
+      }
     };
+    fetchWrapper=wrapper;
+    window.fetch=wrapper;
   }
 
-  function loadConversationProgress(conversationId){
-    stopPolling();activeRequestId='';activeConversationId=conversationId;latestProgressEvents=[];latestActionEvents=[];
-    const requestId=storedRequest(conversationId);if(!requestId){renderEmpty();return}
-    activeRequestId=requestId;activeHeaders=new Headers();activeCredentials='same-origin';const token=activePollToken;
-    renderEmpty('Loading this chat’s latest work…','Retrieving the most recent verified Status Board events saved for this conversation.');void pollOnce(requestId,token,{continuePolling:false});
+  function ensureFetchProgress(){
+    if(window.fetch!==fetchWrapper)installFetchProgress();
   }
+
+  function clearForConversation(conversationId=''){
+    selectedConversationId=String(conversationId||'');
+    if(activeRun&&!activeRun.finished&&!activeRun.superseded){
+      if(!selectedConversationId||!activeRun.conversationId||String(activeRun.conversationId)===selectedConversationId){
+        renderCombined(activeRun);return;
+      }
+    }
+    renderEmpty();
+  }
+
   function installConversationTracking(){
-    document.getElementById('itwsNewChat')?.addEventListener('click',()=>{stopPolling();activeRequestId='';activeConversationId='';latestProgressEvents=[];latestActionEvents=[];renderEmpty()},true);
-    document.addEventListener('click',event=>{const target=event.target instanceof Element?event.target.closest('[data-itws-conversation]'):null;const conversationId=target?.getAttribute('data-itws-conversation')||'';if(conversationId)setTimeout(()=>loadConversationProgress(conversationId),40)},true);
-    const current=(()=>{try{return sessionStorage.getItem('sulandra:it-agent:conversation')||''}catch{return''}})();if(current)setTimeout(()=>loadConversationProgress(current),60);
+    document.getElementById('itwsNewChat')?.addEventListener('click',()=>{
+      selectedConversationId='';
+      if(!activeRun||activeRun.finished)renderEmpty();
+    },true);
+    document.addEventListener('click',event=>{
+      const target=event.target instanceof Element?event.target.closest('[data-itws-conversation]'):null;
+      const conversationId=target?.getAttribute('data-itws-conversation')||'';
+      if(conversationId)setTimeout(()=>clearForConversation(conversationId),40);
+    },true);
+    const current=(()=>{try{return sessionStorage.getItem('sulandra:it-agent:conversation')||''}catch{return''}})();
+    selectedConversationId=current;
+  }
+
+  function installComposerBehavior(){
+    /* Capture phase makes this survive dynamically replaced composers and prevents a
+       second older keydown listener from sending the same prompt twice. */
+    document.addEventListener('keydown',event=>{
+      const prompt=event.target instanceof Element?event.target.closest('#agentPrompt'):null;
+      if(!prompt||event.key!=='Enter'||event.isComposing)return;
+      if(event.shiftKey)return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      ensureFetchProgress();
+      const send=document.getElementById('agentSend');
+      if(send instanceof HTMLElement&&!send.hasAttribute('disabled'))send.click();
+    },true);
+
+    document.addEventListener('click',event=>{
+      const send=event.target instanceof Element?event.target.closest('#agentSend'):null;
+      if(!send)return;
+      ensureFetchProgress();
+    },true);
   }
 
   function installDedicatedBoard(){
-    const agent=document.getElementById('agent');const shell=qs('.agent-shell',agent);const main=qs('.agent-main',agent);const head=qs('.agent-head',main);if(!agent||!shell||!main||!head)return false;
+    const agent=document.getElementById('agent');const shell=qs('.agent-shell',agent);const main=qs('.agent-main',agent);const head=qs('.agent-head',main);
+    if(!agent||!shell||!main||!head)return false;
     drawer=qs('.itws-status-board-drawer',shell);
-    if(!drawer){drawer=document.createElement('aside');drawer.className='itws-status-board-drawer';drawer.setAttribute('aria-label','Status Board');drawer.innerHTML=`<button type="button" class="itws-status-board-close" aria-label="Close status board">×</button><div class="itws-status-board-head"><h2>Status Board</h2><p>Verified work steps for this chat, in real time.</p></div><div id="itwsStatusBoardFeed" class="itws-status-board-feed" role="status" aria-live="polite"></div><div class="itws-status-board-privacy">Shows observable request, repository, system, tool, action, GitHub-gate and Railway deployment evidence when actually checked. Private model chain-of-thought is not displayed.</div>`;shell.appendChild(drawer)}
+    if(!drawer){
+      drawer=document.createElement('aside');drawer.className='itws-status-board-drawer';drawer.setAttribute('aria-label','Status Board');
+      drawer.innerHTML=`<button type="button" class="itws-status-board-close" aria-label="Close status board">×</button><div class="itws-status-board-head"><h2>Status Board</h2><p>Verified work for the current request, in real time.</p></div><div id="itwsStatusBoardFeed" class="itws-status-board-feed" role="status" aria-live="polite"></div><div class="itws-status-board-privacy">Shows observable request, repository, system, tool, action, GitHub-gate and Railway deployment evidence when actually checked. Private model chain-of-thought is not displayed.</div>`;
+      shell.appendChild(drawer);
+    }else{
+      const subtitle=qs('.itws-status-board-head p',drawer);if(subtitle)subtitle.textContent='Verified work for the current request, in real time.';
+    }
     feed=qs('#itwsStatusBoardFeed',drawer)||qs('.itws-status-board-feed',drawer);
-    const oldButton=document.getElementById('itwsActivity');button=document.createElement('button');button.type='button';button.id='itwsActivity';button.className='itws-activity-toggle';button.textContent='Status Board';button.style.setProperty('display','block','important');button.style.setProperty('visibility','visible','important');button.style.setProperty('opacity','1','important');button.style.setProperty('pointer-events','auto','important');if(oldButton?.parentElement)oldButton.replaceWith(button);else head.appendChild(button);
-    backdrop=qs('.itws-drawer-backdrop');if(!backdrop){backdrop=document.createElement('div');backdrop.className='itws-drawer-backdrop';document.body.appendChild(backdrop)}
-    const close=qs('.itws-status-board-close',drawer);button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();setOpen(!drawer.classList.contains('itws-open'),{manual:true})});close?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();setOpen(false,{manual:true})});backdrop.addEventListener('click',()=>setOpen(false,{manual:true}));document.addEventListener('keydown',event=>{if(event.key==='Escape'&&drawer?.classList.contains('itws-open'))setOpen(false,{manual:true})});window.addEventListener('resize',()=>{if(drawer?.classList.contains('itws-open'))backdrop?.classList.toggle('open',compact())},{passive:true});
-    renderEmpty();setOpen(readOpen());installFetchProgress();installConversationTracking();document.body.dataset.itwsStatusBoardReady='1';return true;
+    const oldButton=document.getElementById('itwsActivity');
+    button=document.createElement('button');button.type='button';button.id='itwsActivity';button.className='itws-activity-toggle';button.textContent='Status Board';
+    button.style.setProperty('display','block','important');button.style.setProperty('visibility','visible','important');button.style.setProperty('opacity','1','important');button.style.setProperty('pointer-events','auto','important');
+    if(oldButton?.parentElement)oldButton.replaceWith(button);else head.appendChild(button);
+    backdrop=qs('.itws-drawer-backdrop');
+    if(!backdrop){backdrop=document.createElement('div');backdrop.className='itws-drawer-backdrop';document.body.appendChild(backdrop)}
+    const close=qs('.itws-status-board-close',drawer);
+    button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();setOpen(!drawer.classList.contains('itws-open'),{manual:true})});
+    close?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();setOpen(false,{manual:true})});
+    backdrop.addEventListener('click',()=>setOpen(false,{manual:true}));
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&drawer?.classList.contains('itws-open'))setOpen(false,{manual:true})});
+    window.addEventListener('resize',()=>{if(drawer?.classList.contains('itws-open'))backdrop?.classList.toggle('open',compact())},{passive:true});
+
+    renderEmpty();
+    setOpen(readOpen());
+    installFetchProgress();
+    installComposerBehavior();
+    installConversationTracking();
+    document.body.dataset.itwsStatusBoardReady='1';
+    return true;
   }
+
   function boot(){let attempts=0;const run=()=>{attempts+=1;if(installDedicatedBoard()||attempts>=50)return;setTimeout(run,50)};run()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
