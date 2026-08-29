@@ -32,8 +32,6 @@ const toolShapeOld="properties:{campaignId:{type:'string'}},required:['campaignI
 const toolShapeNew="properties:{campaignId:{type:'string'},campaignTitle:{type:'string'}},required:['campaignId','campaignTitle']";
 const instructionOld='Use get_training_status for completion counts or employee status.';
 const instructionNew='Use get_training_status for completion counts or employee status. When the Administrator refers to a recently created education item from another chat, pass the spoken training name in campaignTitle (campaignId may be empty); never guess between multiple matching campaigns.';
-const runtimeCatchOld="}catch(actionError){const incident=await reportITAgentRuntimeFailure(prisma,{organizationId:auth.organizationId,userId:auth.userId,conversationId,request:policy.summary,error:actionError instanceof Error?actionError.message:String(actionError),actionId});proposals.push({id:actionId,...policy,payload:args,status:'RETRYING',result:incident});trustedEvents.push(incident.message)}}else if(policy.actionType==='REQUEST_CODE_CHANGE'){";
-const runtimeCatchNew="}catch(actionError){const actionStatus=Number((actionError as any)?.status||0);const actionMessage=safeError(actionError);if([400,404,409].includes(actionStatus)){const expected={message:actionMessage,requestResolution:true,httpStatus:actionStatus};await prisma.$executeRawUnsafe(`UPDATE \"ITAgentAction\" SET \"status\"='FAILED',\"result\"=$1::jsonb,\"updatedAt\"=NOW() WHERE \"organizationId\"=$2 AND \"id\"=$3`,JSON.stringify(expected),auth.organizationId,actionId).catch(()=>{});proposals.push({id:actionId,...policy,payload:args,status:'FAILED',result:expected});trustedEvents.push(actionMessage)}else{const incident=await reportITAgentRuntimeFailure(prisma,{organizationId:auth.organizationId,userId:auth.userId,conversationId,request:policy.summary,error:actionMessage,actionId});proposals.push({id:actionId,...policy,payload:args,status:'RETRYING',result:incident});trustedEvents.push(incident.message)}}}else if(policy.actionType==='REQUEST_CODE_CHANGE'){";
 
 let installer=await readFile(installerPath,'utf8');
 if(!installer.includes(toolShapeNew)){
@@ -43,20 +41,16 @@ if(!installer.includes(toolShapeNew)){
 }
 if(installer.includes(instructionOld))installer=installer.replace(instructionOld,instructionNew);
 else must(installer.includes('pass the spoken training name in campaignTitle'),'training reasoning instruction changed');
-if(installer.includes(runtimeCatchOld))installer=installer.replace(runtimeCatchOld,runtimeCatchNew);
-else must(installer.includes('requestResolution:true'),'training expected-error boundary changed');
 await writeFile(installerPath,installer,'utf8');
 
 let workbench=await readFile(workbenchPath,'utf8');
 if(workbench.includes("name:'send_training'")){
   if(!workbench.includes(toolShapeNew))workbench=workbench.replaceAll(toolShapeOld,toolShapeNew);
   if(workbench.includes(instructionOld))workbench=workbench.replace(instructionOld,instructionNew);
-  if(workbench.includes(runtimeCatchOld))workbench=workbench.replace(runtimeCatchOld,runtimeCatchNew);
   must(workbench.includes(toolShapeNew),'live workbench campaignTitle tool contract missing');
-  must(workbench.includes('requestResolution:true'),'live workbench expected-error boundary missing');
   await writeFile(workbenchPath,workbench,'utf8');
 }
 
 must(routes.includes(marker),'route resolution marker missing');
 must(routes.includes('campaignTitle: clean(input.payload.campaignTitle, 300) || null'),'campaignTitle execution mapping missing');
-console.log('IT Agent recent education campaign repair installed: recent cross-chat campaigns resolve safely by title or unique open campaign, and expected 400/404/409 resolution errors no longer create false runtime incidents.');
+console.log('IT Agent recent education campaign repair installed: recent cross-chat campaigns resolve safely by title or a unique open campaign while preserving the existing runtime-incident boundary.');
