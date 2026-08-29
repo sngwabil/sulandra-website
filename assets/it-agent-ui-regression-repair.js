@@ -27,7 +27,15 @@
     const drawer=qs('.itws-action-center-panel',view)||qs('aside',shell)||qs('#agentActions')?.closest('aside');
     if(!agent||!shell||!main||!drawer)return;
 
+    // PR #252's Action Center tab is not being restored. The existing hidden
+    // action/evidence DOM is only reused as the data body for the current
+    // chat-first Status Board drawer, with all visible legacy labeling removed.
     qsa('[data-itws-view="action-center"]').forEach(node=>node.remove());
+    const title=qs('h2',drawer);if(title)title.textContent='Status Board';
+    const intro=qs('p',drawer);if(intro)intro.textContent='Live request status, approvals, execution evidence, and connected capabilities.';
+    qsa('*',drawer).forEach(node=>{
+      if(node.children.length===0&&/Action Center/i.test(node.textContent||''))node.textContent=String(node.textContent||'').replace(/Action Center/gi,'Status Board');
+    });
     drawer.classList.remove('itws-action-center-panel');
     drawer.classList.add('itws-status-board-drawer');
     if(drawer.parentElement!==shell)shell.appendChild(drawer);
