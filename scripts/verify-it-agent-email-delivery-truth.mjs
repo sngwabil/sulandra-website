@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const education=await readFile(path.join(root,'api','src','education-campaign-routes.ts'),'utf8');
 const artifact=await readFile(path.join(root,'api','src','it-agent-artifact-routes.ts'),'utf8');
+const workbench=await readFile(path.join(root,'api','src','it-agent-workbench-routes.ts'),'utf8');
 const pkg=JSON.parse(await readFile(path.join(root,'api','package.json'),'utf8'));
 const failures=[];
 const requireText=(text,needle,label)=>{if(!text.includes(needle))failures.push(label)};
@@ -23,6 +24,17 @@ requireText(artifact,'mailboxDeliveryConfirmed:false','external email mailbox-de
 requireText(artifact,'Final inbox delivery is not confirmed by SMTP','external email truthful delivery wording missing');
 if(artifact.includes('External email sent to ${recipients.length} recipient'))failures.push('legacy external-email sent wording still present');
 
+requireText(workbench,'IT_AGENT_GENERAL_EMAIL_DELIVERY_TRUTH_V1','general employee email truth marker missing');
+requireText(workbench,'sendEmployeeEmailWithTruth','general employee email truth helper missing');
+requireText(workbench,'smtpAcceptedCount','general employee SMTP accepted count missing');
+requireText(workbench,"deliveryBasis:'SMTP_ACCEPTANCE_ONLY'",'general employee SMTP-only delivery basis missing');
+requireText(workbench,'mailboxDeliveryConfirmed:false','general employee mailbox-delivery boundary missing');
+requireText(workbench,"if(delivery.smtpAcceptedCount===0)finalStatus='FAILED'",'general employee zero-acceptance failure boundary missing');
+requireText(workbench,'No intended recipient was confirmed accepted by SMTP. This email must not be described as sent or delivered.','general employee truthful failure wording missing');
+requireText(workbench,'smtpAccepted or smtpAcceptedCount proves only SMTP handoff, not inbox delivery','agent email-result truth instruction missing');
+if(workbench.includes('result={sent:true,recipientCount:emails.length,audience}'))failures.push('legacy general employee sent=true result still present');
+if(workbench.includes('await sendMail(emails,clean(payload.subject,240),clean(payload.message,12000))'))failures.push('legacy general employee bulk sendMail path still present');
+
 for(const scriptName of ['prebuild','pretypecheck']){
   const value=String(pkg.scripts?.[scriptName]||'');
   if(!value.includes('fix-it-agent-email-delivery-truth.mjs'))failures.push(`${scriptName} does not install email truth repair`);
@@ -30,4 +42,4 @@ for(const scriptName of ['prebuild','pretypecheck']){
 }
 
 if(failures.length){console.error('IT Agent email delivery truth verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent email delivery truth verified: SMTP acceptance, assignment state, and final inbox delivery are reported as separate facts.');
+console.log('IT Agent email delivery truth verified: education, external email, and general employee email separate SMTP acceptance from final inbox delivery.');
