@@ -58,8 +58,12 @@
       actionButton.type='button';
       actionButton.dataset.itwsView='action-center';
       actionButton.textContent='Action Center';
-      const agentButton=nav.querySelector('[data-itws-view="agent"]');
-      if(agentButton)agentButton.insertAdjacentElement('afterend',actionButton);else nav.prepend(actionButton);
+      const approvalsButton=nav.querySelector('[data-itws-view="approvals"]');
+      if(approvalsButton)approvalsButton.insertAdjacentElement('afterend',actionButton);
+      else{
+        const agentButton=nav.querySelector('[data-itws-view="agent"]');
+        if(agentButton)agentButton.insertAdjacentElement('afterend',actionButton);else nav.prepend(actionButton);
+      }
     }
 
     actionButton.addEventListener('click',()=>{
