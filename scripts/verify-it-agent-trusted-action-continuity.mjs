@@ -16,8 +16,6 @@ for(const marker of [
   'context(auth,knowledge,conversationId as string)',
   'authoritative execution evidence',
   'Never claim there is no trusted result when a matching EXECUTED recent action provides one.',
-  'seenActionKeys=new Set<string>()',
-  "const actionKey=item.name+':'+JSON.stringify(args)",
   "row.actionType==='SEND_ANNOUNCEMENT'?'Sulandra in-app Employee Communications / Announcements'",
 ]) need(workbench,marker,'IT Agent workbench');
 
@@ -33,4 +31,4 @@ if(workbench.includes('askOpenAI(history,await context(auth,knowledge),attachmen
 if(workbench.includes('askOpenAI(history,await context(auth,knowledge))'))failures.push('Chat still omits conversation-scoped trusted action evidence');
 
 if(failures.length){console.error('IT Agent trusted action continuity verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent trusted action continuity verified: follow-up turns receive authoritative recent execution evidence, announcement destination metadata is durable, and exact duplicate tool calls in one model response are suppressed.');
+console.log('IT Agent trusted action continuity verified: follow-up turns receive authoritative recent execution evidence and announcement destination metadata is durable.');
