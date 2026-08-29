@@ -16,6 +16,11 @@ COPY interview-scheduling.html ./interview-scheduling.html
 RUN npm run db:generate
 
 COPY api ./api
+# The owner-authorized IT release installer verifies the same live activity
+# runtime used by the Static Website. Copy only that verification asset into the
+# API image; it is not served by the API and does not turn the API into a static
+# host.
+COPY assets/it-agent-conversational-ui.js ./assets/it-agent-conversational-ui.js
 RUN node scripts/optimize-admin-login-performance.mjs && npm run build
 
 ENV NODE_ENV=production
