@@ -47,7 +47,7 @@ if(!workbench.includes('IT_AGENT_GENERAL_EMAIL_DELIVERY_TRUTH_V1')){
   workbench=replaceSection(
     workbench,
     "    } else if(action.actionType==='SEND_EMAIL'){",
-    '\n    await prisma.$executeRawUnsafe(`UPDATE \\"ITAgentAction\\" SET',
+    '\n    await prisma.$executeRawUnsafe(`UPDATE ',
     executeBlock,
     'General employee email execution',
   );
