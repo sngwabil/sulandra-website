@@ -36,16 +36,6 @@ if(!route.includes(marker)){
   const basicContextCallFixed='askOpenAI(history,await context(auth,knowledge,conversationId as string))';
   if(route.includes(basicContextCall))route=route.replace(basicContextCall,basicContextCallFixed);
   if(!route.includes('context(auth,knowledge,conversationId as string)'))throw new Error('IT Agent conversation-scoped trusted-context call anchor changed');
-
-  const eventAnchor='const proposals:any[]=[];const trustedEvents:string[]=[];';
-  const eventFixed='const proposals:any[]=[];const trustedEvents:string[]=[];const seenActionKeys=new Set<string>();';
-  if(route.includes(eventAnchor))route=route.replace(eventAnchor,eventFixed);
-  else if(!route.includes('seenActionKeys=new Set<string>()'))throw new Error('IT Agent action dedupe anchor changed');
-
-  const parseAnchor="try{args=JSON.parse(item.arguments||'{}')}catch{continue}const policy=actionPolicy(item.name,args,knowledge);";
-  const parseFixed="try{args=JSON.parse(item.arguments||'{}')}catch{continue}const actionKey=item.name+':'+JSON.stringify(args);if(seenActionKeys.has(actionKey))continue;seenActionKeys.add(actionKey);const policy=actionPolicy(item.name,args,knowledge);";
-  if(route.includes(parseAnchor))route=route.replace(parseAnchor,parseFixed);
-  else if(!route.includes("const actionKey=item.name+':'+JSON.stringify(args)"))throw new Error('IT Agent same-response action dedupe anchor changed');
 }
 await writeFile(routePath,route,'utf8');
 
@@ -63,4 +53,4 @@ else if(!executor.includes('in-app Employee Communications / Announcements area'
 await writeFile(executorPath,executor,'utf8');
 
 await import('./verify-it-agent-trusted-action-continuity.mjs');
-console.log('IT Agent trusted action continuity repaired: recent conversation execution evidence is authoritative on follow-up turns, announcement results identify their in-app destination, and duplicate tool calls in one model response are suppressed.');
+console.log('IT Agent trusted action continuity repaired: recent conversation execution evidence is authoritative on follow-up turns and announcement results identify their in-app destination.');
