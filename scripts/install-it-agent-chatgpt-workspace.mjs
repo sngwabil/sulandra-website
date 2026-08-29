@@ -15,7 +15,7 @@ if(!workbench.includes(marker)){
 }
 await writeFile(workbenchPath,workbench,'utf8');
 
-const cssTag='<link rel="stylesheet" href="/assets/it-agent-chatgpt-workspace.css?v=20260829-workspace-1">';
+const cssTag='<link rel="stylesheet" href="/assets/it-agent-chatgpt-workspace.css?v=20260829-workspace-1"><style>body.it-chatgpt-workspace .itws-activity-toggle{display:block!important}body.it-chatgpt-workspace #agent .agent-status{right:108px!important}</style>';
 const jsTag='<script src="/assets/it-agent-chatgpt-workspace.js?v=20260829-workspace-1"></script>';
 for(const relative of ['it-solutions.html',path.join('dist-web','it-solutions.html')]){
   const file=path.join(root,relative);try{await access(file)}catch(error){if(error?.code==='ENOENT')continue;throw error}
