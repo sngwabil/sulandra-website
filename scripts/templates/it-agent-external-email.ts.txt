@@ -1,0 +1,35 @@
+/* IT_AGENT_EXTERNAL_EMAIL_DELIVERY_TRUTH_V1 */
+async function sendExternalEmail(prisma:PrismaClient,input:RoutineInput){
+  const payload=externalEmailSchema.parse(obj(input.payload));
+  const recipients=[...new Set(payload.recipients.map((value)=>clean(value,320).toLowerCase()).filter(Boolean))];
+  await ensureSchema(prisma);
+  const [hourRows,dayRows]=await Promise.all([
+    prisma.$queryRawUnsafe<Array<{count:number}>>(`SELECT COALESCE(SUM("recipientCount"),0)::int AS count FROM "ITAgentExternalEmailAudit" WHERE "organizationId"=$1 AND "actorUserId"=$2 AND "createdAt">NOW()-INTERVAL '1 hour'`,input.auth.organizationId,input.auth.userId),
+    prisma.$queryRawUnsafe<Array<{count:number}>>(`SELECT COALESCE(SUM("recipientCount"),0)::int AS count FROM "ITAgentExternalEmailAudit" WHERE "organizationId"=$1 AND "actorUserId"=$2 AND "createdAt">NOW()-INTERVAL '24 hours'`,input.auth.organizationId,input.auth.userId),
+  ]);
+  if(Number(hourRows[0]?.count||0)>=externalEmailHourlyLimit())throw httpError(429,'External-email hourly safety limit reached. Try again later.');
+  if(Number(dayRows[0]?.count||0)+recipients.length>externalRecipientDailyLimit())throw httpError(429,'External-email daily recipient safety limit reached.');
+  const host=process.env.SMTP_HOST,port=Number(process.env.SMTP_PORT||587),user=process.env.SMTP_USER,pass=process.env.SMTP_PASS;
+  if(!host||!user||!pass)throw httpError(503,'Sulandra SMTP is not configured on this API deployment.');
+  const auditId=randomUUID();
+  await prisma.$executeRawUnsafe(`INSERT INTO "ITAgentExternalEmailAudit" ("id","organizationId","actorUserId","actionId","recipientCount","recipients","subject","messageSha256","status") VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,'SENDING')`,auditId,input.auth.organizationId,input.auth.userId,input.actionId,recipients.length,JSON.stringify(recipients),payload.subject,sha256(payload.message));
+  const fromAddress=(process.env.FROM_EMAIL||process.env.SMTP_FROM||user).trim();
+  const normalizedAddress=(value:unknown)=>{if(typeof value==='string')return clean(value,320).toLowerCase();if(value&&typeof value==='object'&&'address' in value)return clean((value as {address?:unknown}).address,320).toLowerCase();return''};
+  try{
+    const transporter=nodemailer.createTransport({host,port,secure:port===465,auth:{user,pass},connectionTimeout:10000,greetingTimeout:10000,socketTimeout:20000});
+    const safeSubject=clean(payload.subject,240),safeMessage=clean(payload.message,12000);
+    const info=await transporter.sendMail({from:{name:'Sulandra Health IT Solutions',address:fromAddress},replyTo:user.trim(),to:fromAddress,bcc:recipients,subject:safeSubject,text:safeMessage,html:`<div style="font-family:Segoe UI,Arial,sans-serif;color:#18324a;line-height:1.6"><h2 style="color:#082f5b">${safeSubject.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]||c))}</h2><p>${safeMessage.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]||c)).replace(/\n/g,'<br>')}</p><p style="color:#64748b;font-size:12px">Sent by Sulandra Health IT Solutions.</p></div>`});
+    const acceptedSet=new Set((Array.isArray(info.accepted)?info.accepted:[]).map(normalizedAddress).filter(Boolean));
+    const rejectedSet=new Set((Array.isArray(info.rejected)?info.rejected:[]).map(normalizedAddress).filter(Boolean));
+    const acceptedCount=recipients.filter((email)=>acceptedSet.has(email)).length;
+    const rejectedCount=recipients.filter((email)=>rejectedSet.has(email)).length;
+    const unconfirmedCount=Math.max(0,recipients.length-acceptedCount-rejectedCount);
+    const status=acceptedCount===recipients.length?'SMTP_ACCEPTED':acceptedCount>0?'PARTIAL':'FAILED';
+    await prisma.$executeRawUnsafe(`UPDATE "ITAgentExternalEmailAudit" SET "status"=$1,"providerMessageId"=$2,"error"=$3,"sentAt"=CASE WHEN $1<>'FAILED' THEN NOW() ELSE "sentAt" END WHERE "id"=$4`,status,clean(info.messageId,500),status==='PARTIAL'?`rejected=${rejectedCount}; unconfirmed=${unconfirmedCount}`:'',auditId);
+    if(!acceptedCount)throw httpError(502,'SMTP did not accept any external recipients.');
+    return{sent:true,smtpAccepted:true,mailboxDeliveryConfirmed:false,recipientCount:recipients.length,acceptedCount,rejectedCount,unconfirmedCount,audience:'EXTERNAL',auditId,message:`SMTP accepted the external email for ${acceptedCount} of ${recipients.length} recipient${recipients.length===1?'':'s'}${rejectedCount?`; ${rejectedCount} rejected`:''}${unconfirmedCount?`; ${unconfirmedCount} unconfirmed`:''}. Final inbox delivery is not confirmed by SMTP.`};
+  }catch(error){
+    await prisma.$executeRawUnsafe(`UPDATE "ITAgentExternalEmailAudit" SET "status"='FAILED',"error"=$1 WHERE "id"=$2`,clean(error instanceof Error?error.message:error,1200),auditId).catch(()=>{});
+    throw error;
+  }
+}

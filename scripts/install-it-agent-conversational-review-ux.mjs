@@ -42,18 +42,22 @@ campaigns=replaceRequired(
   'message: `“${current.title}” is ready to send.`,',
   'education ready reply',
 );
-campaigns=replaceRequired(
-  campaigns,
-  'return { ...status, message: `“${campaign.title}” was already sent. I did not create duplicate assignments or resend it.` };',
-  'return { ...status, message: `“${campaign.title}” was already sent. Nothing was sent twice.` };',
-  'already-sent education reply',
-);
-campaigns=replaceRequired(
-  campaigns,
-  'message: `Sent “${campaign.title}” to ${uniqueEmployees.length} employee${uniqueEmployees.length === 1 ? \'\' : \'s\'} and created ${recipients.length} company-scoped education assignment${recipients.length === 1 ? \'\' : \'s\'}. Email delivery: ${emailSentCount} sent${emailFailedCount ? `, ${emailFailedCount} failed` : \'\'}. Completion and attestation are now being tracked in each employee’s EducationAssignment record.`,',
-  'message: `Sent “${campaign.title}” to ${uniqueEmployees.length} employee${uniqueEmployees.length === 1 ? \'\' : \'s\'}. Completion and attestation tracking is active.`,',
-  'education send reply',
-);
+// The email-delivery truth repair owns sent/SMTP wording once installed. Do not
+// rewrite it back to the old "sent" language on a repeated/Docker build pass.
+if(!campaigns.includes('IT_AGENT_EDUCATION_EMAIL_DELIVERY_TRUTH_V1')){
+  campaigns=replaceRequired(
+    campaigns,
+    'return { ...status, message: `“${campaign.title}” was already sent. I did not create duplicate assignments or resend it.` };',
+    'return { ...status, message: `“${campaign.title}” was already sent. Nothing was sent twice.` };',
+    'already-sent education reply',
+  );
+  campaigns=replaceRequired(
+    campaigns,
+    'message: `Sent “${campaign.title}” to ${uniqueEmployees.length} employee${uniqueEmployees.length === 1 ? \'\' : \'s\'} and created ${recipients.length} company-scoped education assignment${recipients.length === 1 ? \'\' : \'s\'}. Email delivery: ${emailSentCount} sent${emailFailedCount ? `, ${emailFailedCount} failed` : \'\'}. Completion and attestation are now being tracked in each employee’s EducationAssignment record.`,',
+    'message: `Sent “${campaign.title}” to ${uniqueEmployees.length} employee${uniqueEmployees.length === 1 ? \'\' : \'s\'}. Completion and attestation tracking is active.`,',
+    'education send reply',
+  );
+}
 await writeFile(campaignPath,campaigns,'utf8');
 
 // The IT Agent should acknowledge the completed step and then listen. It must
