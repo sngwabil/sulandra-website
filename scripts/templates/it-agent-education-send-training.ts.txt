@@ -1,0 +1,154 @@
+/* IT_AGENT_EDUCATION_EMAIL_DELIVERY_TRUTH_V1 */
+export async function sendTrainingCampaign(prisma: PrismaClient, input: AgentCampaignInput) {
+  const campaign = await currentCampaign(prisma, input);
+  if (!campaign) throw httpError(404, 'No education draft is active in this IT conversation.');
+  if (campaign.status === 'ACTIVE' || campaign.status === 'CLOSED') {
+    const status = await getTrainingCampaignStatus(prisma, { ...input, campaignId: campaign.id });
+    return { ...status, message: `“${campaign.title}” is already assigned. I did not create duplicate assignments or claim a second email delivery.` };
+  }
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user || !pass) throw httpError(503, 'Sulandra SMTP is not configured on this API deployment, so the education was not distributed.');
+
+  const recipients = await eligibleRecipients(prisma, campaign);
+  if (!recipients.length) throw httpError(409, 'No active employees match this education audience.');
+  const uniqueEmployees = [...new Set(recipients.map((row) => row.userId))];
+  const reviewUrl = educationCampaignReviewUrl(campaign.id);
+  let assignmentCount = 0;
+
+  await prisma.$transaction(async (tx) => {
+    for (const row of recipients) {
+      const existing = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT "id" FROM "EducationAssignment"
+          WHERE "organizationId"=$1 AND "campaignId"=$2 AND "employeeId"=$3 AND "legalEntityId"=$4
+          LIMIT 1`,
+        campaign.organizationId,
+        campaign.id,
+        row.userId,
+        row.legalEntityId,
+      );
+      if (existing[0]) continue;
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "EducationAssignment"
+          ("id","organizationId","legalEntityId","departmentId","employeeId","courseCode","title","packageCode","status","dueDate","reason","assignedById","assignedAt","completionEvidence","campaignId","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,'CUSTOM','ASSIGNED',$8,$9,$10,NOW(),$11::jsonb,$12,NOW(),NOW())`,
+        randomUUID(),
+        campaign.organizationId,
+        row.legalEntityId,
+        row.departmentId,
+        row.userId,
+        campaign.courseCode,
+        campaign.title,
+        campaign.dueDate,
+        `Required Sulandra employee education distributed through IT Solutions: ${campaign.title}`,
+        input.userId,
+        JSON.stringify({
+          source: 'IT_AGENT_EDUCATION_CAMPAIGN',
+          campaignId: campaign.id,
+          campaignVersion: campaign.version,
+          assignedAt: new Date().toISOString(),
+          attested: false,
+        }),
+        campaign.id,
+      );
+      assignmentCount += 1;
+    }
+  });
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+  });
+  const from = (process.env.FROM_EMAIL || process.env.SMTP_FROM || user).trim();
+  const emailByUser = new Map<string, string>();
+  for (const row of recipients) {
+    const email = clean(row.email, 320).toLowerCase();
+    if (email && !emailByUser.has(row.userId)) emailByUser.set(row.userId, email);
+  }
+  const normalizedAddress = (value: unknown) => {
+    if (typeof value === 'string') return clean(value, 320).toLowerCase();
+    if (value && typeof value === 'object' && 'address' in value) return clean((value as { address?: unknown }).address, 320).toLowerCase();
+    return '';
+  };
+  let emailAcceptedCount = 0;
+  let emailRejectedCount = 0;
+  let emailTransportFailedCount = 0;
+  let emailUnconfirmedCount = 0;
+  for (const [employeeId, email] of emailByUser) {
+    try {
+      const dueText = campaign.dueDate ? new Date(campaign.dueDate).toLocaleDateString('en-US') : 'the assigned due date';
+      const text = `${campaign.emailMessage}\n\nDue: ${dueText}\nReview and attest: ${reviewUrl}`;
+      const info = await transporter.sendMail({
+        from: { name: 'Sulandra Health Education', address: from },
+        replyTo: user.trim(),
+        to: email,
+        subject: campaign.emailSubject || `${campaign.title} — Sulandra Health Education`,
+        text,
+        html: `<div style="font-family:Segoe UI,Arial,sans-serif;color:#18324a;line-height:1.6"><h2 style="color:#082f5b">${html(campaign.title)}</h2><p>${html(campaign.emailMessage).replace(/\n/g, '<br>')}</p><p><strong>Due:</strong> ${html(dueText)}</p><p><a href="${html(reviewUrl)}" style="display:inline-block;background:#0b6fb8;color:white;text-decoration:none;padding:10px 16px;border-radius:8px">Review education and attest</a></p><p style="color:#64748b;font-size:12px">Assigned by Sulandra Health Education through IT Solutions.</p></div>`,
+      });
+      const accepted = new Set((Array.isArray(info.accepted) ? info.accepted : []).map(normalizedAddress).filter(Boolean));
+      const rejected = new Set((Array.isArray(info.rejected) ? info.rejected : []).map(normalizedAddress).filter(Boolean));
+      if (accepted.has(email)) emailAcceptedCount += 1;
+      else if (rejected.has(email)) emailRejectedCount += 1;
+      else emailUnconfirmedCount += 1;
+    } catch {
+      emailTransportFailedCount += 1;
+    }
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "EmployeeNotification" ("id","organizationId","employeeId","title","message","category","actionUrl","createdById")
+       VALUES ($1,$2,$3,$4,$5,'COMPLIANCE',$6,$7)`,
+      randomUUID(),
+      campaign.organizationId,
+      employeeId,
+      `Required education: ${campaign.title}`,
+      campaign.dueDate
+        ? `Review and attest by ${new Date(campaign.dueDate).toLocaleDateString('en-US')}.`
+        : 'Review this required education and complete the attestation.',
+      reviewUrl,
+      input.userId,
+    ).catch(() => undefined);
+  }
+
+  const emailFailedCount = emailRejectedCount + emailTransportFailedCount;
+  const deliverySummary = {
+    assignedEmployees: uniqueEmployees.length,
+    assignmentRows: recipients.length,
+    newAssignmentRows: assignmentCount,
+    emailEligibleCount: emailByUser.size,
+    emailAcceptedCount,
+    emailRejectedCount,
+    emailTransportFailedCount,
+    emailUnconfirmedCount,
+    emailSentCount: emailAcceptedCount,
+    emailFailedCount,
+    mailboxDeliveryConfirmed: false,
+    deliveryBasis: 'SMTP_ACCEPTANCE_PLUS_IN_APP_ASSIGNMENT',
+    sentAt: new Date().toISOString(),
+  };
+  await prisma.$executeRawUnsafe(
+    `UPDATE "EducationCampaign"
+        SET "status"='ACTIVE',"sentAt"=COALESCE("sentAt",NOW()),"deliverySummary"=$1::jsonb,"updatedAt"=NOW()
+      WHERE "organizationId"=$2 AND "id"=$3 AND "status" IN ('DRAFT','READY_TO_SEND')`,
+    JSON.stringify(deliverySummary),
+    campaign.organizationId,
+    campaign.id,
+  );
+  const handoff = emailByUser.size
+    ? `Email handoff: ${emailAcceptedCount} accepted by SMTP${emailRejectedCount ? `, ${emailRejectedCount} rejected` : ''}${emailTransportFailedCount ? `, ${emailTransportFailedCount} transport failed` : ''}${emailUnconfirmedCount ? `, ${emailUnconfirmedCount} unconfirmed` : ''}.`
+    : 'No employee email addresses were available for SMTP handoff.';
+  return {
+    campaignId: campaign.id,
+    status: 'ACTIVE',
+    version: campaign.version,
+    reviewUrl,
+    ...deliverySummary,
+    message: `Assigned “${campaign.title}” to ${uniqueEmployees.length} employee${uniqueEmployees.length === 1 ? '' : 's'} and created ${recipients.length} company-scoped education assignment${recipients.length === 1 ? '' : 's'}. ${handoff} SMTP acceptance is not proof that a message reached an inbox; the in-app education assignment and notification remain the authoritative distribution record.`,
+  };
+}
