@@ -19,64 +19,20 @@ source=source.replace(careersRegister,`${registerLine}\n\n${careersRegister}`);
 await writeFile(target,source,'utf8');
 console.log('Employee support request routes are registered before Careers.');
 
-// SIA is part of the same authenticated employee-support surface. Chaining its
-// idempotent installer here keeps API typecheck/build flows aligned without
-// duplicating route registration commands across package scripts.
 await import('./install-sia-routes.mjs');
-
-// IT Solutions extends the canonical SIA support surface. Keep the richer 1.0
-// SIA implementation intact, then register the section-9 IT routes immediately
-// after SIA so every support workflow keeps the SIA-first diagnosis boundary.
 await import('./install-it-solutions-powerhouse.mjs');
-
-// The privileged owner/admin IT Agent workbench sits behind IT Solutions. It may
-// execute only its allowlisted operational tools after explicit Admin review;
-// code/system changes remain controlled engineering handoffs.
 await import('./install-it-agent-workbench.mjs');
-
-// Section 9C resolves approved code-change handoffs into a dedicated, exact-repo
-// Codex worker. It is fail-closed unless explicitly enabled and remains PR-only.
 await import('./install-it-coding-worker.mjs');
-
-// Section 9D turns the same support chain into a durable IT Specialist: ticket
-// continuity with SIA, current repository/approved-work knowledge, autonomous
-// established-operation repair after gates, and owner approval for major work.
 await import('./install-it-specialist-autonomy.mjs');
-
-// Employee education is an operational IT workflow, not a code-change request.
-// Keep one campaign through draft -> review -> revision -> explicit send, then
-// store completion/attestation in the canonical EducationAssignment record.
 await import('./install-it-agent-training-workflow.mjs');
-
-// Status questions are read-only conversations, not work orders. Answer draft/
-// sent state directly, avoid unnecessary assignment joins before distribution,
-// and keep read-only status checks out of the Action Center.
 await import('./fix-it-agent-readonly-training-status.mjs');
-
-// Keep the Administrator-facing reply natural: create/update, provide a real
-// clickable review label, then wait for the Administrator to choose revise/send.
 await import('./install-it-agent-conversational-review-ux.mjs');
-
-// The review/attestation page is a required production artifact. The canonical
-// static builder must fail instead of silently omitting it.
 await import('./install-it-agent-training-publication.mjs');
-
-// Preserve the reasoning/coding safety boundary while extending the Administrator
-// workbench with explicit external email, secure file/image uploads, multimodal
-// attachment reasoning, PDF creation, and standalone image generation.
 await import('./install-it-agent-artifact-capabilities.mjs');
-
-// The root build invokes this support chain more than once in a shared workspace.
-// Normalize repeated capability flags and resolve the explicit Administrator route
-// allowlist before TypeScript compilation so every build remains deterministic.
 await import('./fix-it-agent-artifact-build-idempotency.mjs');
-
-// Follow-up questions must see the trusted results of actions that already ran in
-// the same conversation. Keep this after all capability installers so the API and
-// static Railway builds share the same evidence-continuity contract.
 await import('./fix-it-agent-trusted-action-continuity.mjs');
-
-// The final presentation layer makes the conversation the primary work surface:
-// persistent recent chats, a New chat action, sidebar navigation, an Activity
-// drawer, and composer-native attachment previews without changing action safety.
 await import('./install-it-agent-chatgpt-workspace.mjs');
+
+// Final presentation polish keeps the Action Center as a true right-edge drawer and keeps
+// only current-message attachments visible inside the compact composer.
+await import('./install-it-agent-chatgpt-polish.mjs');
