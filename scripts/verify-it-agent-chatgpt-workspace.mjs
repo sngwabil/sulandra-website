@@ -14,10 +14,12 @@ for(const marker of [
   'await ownedConversation(auth,clean(req.params.conversationId,120))',
 ])need(workbench,marker,'IT Agent workbench');
 
-const css=await readFile(path.join(root,'assets','it-agent-chatgpt-workspace.css'),'utf8');
-for(const marker of ['.itws-layout','.itws-sidebar','.itws-new-chat','#agentArtifacts','.itws-thumb','.itws-activity-toggle'])need(css,marker,'Workspace CSS');
-const js=await readFile(path.join(root,'assets','it-agent-chatgpt-workspace.js'),'utf8');
-for(const marker of ['itwsNewChat','itwsRecents','loadConversation','agentArtifacts','fetchArtifactBlob','itwsActivity'])need(js,marker,'Workspace JS');
+async function verifyOptionalAsset(relative,markers,label){
+  const file=path.join(root,relative);try{await access(file)}catch(error){if(error?.code==='ENOENT'){console.log(`${label} verification skipped in API-only build image.`);return}throw error}
+  const source=await readFile(file,'utf8');for(const marker of markers)need(source,marker,label);
+}
+await verifyOptionalAsset(path.join('assets','it-agent-chatgpt-workspace.css'),['.itws-layout','.itws-sidebar','.itws-new-chat','#agentArtifacts','.itws-thumb','.itws-activity-toggle'],'Workspace CSS');
+await verifyOptionalAsset(path.join('assets','it-agent-chatgpt-workspace.js'),['itwsNewChat','itwsRecents','loadConversation','agentArtifacts','fetchArtifactBlob','itwsActivity'],'Workspace JS');
 
 for(const relative of ['it-solutions.html',path.join('dist-web','it-solutions.html')]){
   const file=path.join(root,relative);try{await access(file)}catch(error){if(error?.code==='ENOENT')continue;throw error}
