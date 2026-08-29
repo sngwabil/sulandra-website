@@ -1,0 +1,78 @@
+/* Sulandra IT Agent conversation workspace. Keeps Sulandra identity while making chat the canonical work surface. */
+:root{--itws-side:#f7f7f8;--itws-main:#fff;--itws-hover:#ececee;--itws-line:#e7e7e8;--itws-text:#202123;--itws-muted:#6f7075;--itws-accent:#0b5f9e;--itws-composer:#f4f4f4}
+body.it-chatgpt-workspace{background:var(--itws-main)!important;color:var(--itws-text)!important;overflow:hidden}
+body.it-chatgpt-workspace>header{display:none!important}
+body.it-chatgpt-workspace .shell{max-width:none!important;width:100%!important;height:100vh!important;margin:0!important;padding:0!important}
+body.it-chatgpt-workspace .itws-layout{display:grid;grid-template-columns:270px minmax(0,1fr);height:100vh;width:100%;background:var(--itws-main)}
+body.it-chatgpt-workspace .itws-sidebar{background:var(--itws-side);border-right:1px solid var(--itws-line);display:flex;flex-direction:column;min-width:0;overflow:hidden;padding:12px 10px 10px;z-index:70}
+body.it-chatgpt-workspace .itws-brand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 7px 10px;font-size:17px;font-weight:800;letter-spacing:-.02em;color:#15344f}
+body.it-chatgpt-workspace .itws-brand-mark{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:9px;background:linear-gradient(145deg,#082f5b,#1685d1);color:white;font-size:10px;font-weight:900}
+body.it-chatgpt-workspace .itws-icon-btn{border:0;background:transparent;border-radius:9px;width:34px;height:34px;display:grid;place-items:center;cursor:pointer;color:#4b5560;font-size:18px}
+body.it-chatgpt-workspace .itws-icon-btn:hover{background:var(--itws-hover)}
+body.it-chatgpt-workspace .itws-new-chat{width:100%;border:0;background:transparent;border-radius:10px;padding:10px 11px;display:flex;align-items:center;gap:10px;text-align:left;font:inherit;font-weight:700;color:#2a2b2f;cursor:pointer}
+body.it-chatgpt-workspace .itws-new-chat:hover{background:var(--itws-hover)}
+body.it-chatgpt-workspace .itws-search-wrap{padding:6px 4px 10px}
+body.it-chatgpt-workspace .itws-search{width:100%;border:1px solid transparent;background:#efeff0;border-radius:9px;padding:8px 10px;font:inherit;font-size:12px;outline:0;color:#303136}
+body.it-chatgpt-workspace .itws-search:focus{border-color:#c9d5de;background:#fff}
+body.it-chatgpt-workspace .itws-nav{display:grid;gap:2px;padding:3px 0 10px;border-bottom:1px solid var(--itws-line)}
+body.it-chatgpt-workspace .itws-nav button{border:0;background:transparent;border-radius:9px;padding:8px 10px;text-align:left;color:#45464b;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+body.it-chatgpt-workspace .itws-nav button:hover,body.it-chatgpt-workspace .itws-nav button.active{background:var(--itws-hover);color:#142f47}
+body.it-chatgpt-workspace .itws-recent-title{padding:14px 10px 7px;color:#77787d;font-size:11px;font-weight:750}
+body.it-chatgpt-workspace .itws-recents{overflow:auto;display:grid;gap:2px;padding-bottom:14px;scrollbar-width:thin}
+body.it-chatgpt-workspace .itws-conversation{border:0;background:transparent;border-radius:9px;padding:8px 10px;display:block;width:100%;text-align:left;cursor:pointer;color:#36373b;min-width:0}
+body.it-chatgpt-workspace .itws-conversation:hover,body.it-chatgpt-workspace .itws-conversation.active{background:var(--itws-hover)}
+body.it-chatgpt-workspace .itws-conversation strong{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+body.it-chatgpt-workspace .itws-conversation small{display:block;color:#8a8b90;margin-top:3px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.it-chatgpt-workspace .itws-sidebar-foot{margin-top:auto;padding:9px 7px 3px;border-top:1px solid var(--itws-line);display:flex;align-items:center;justify-content:space-between;gap:8px;color:#6f7075;font-size:11px}
+body.it-chatgpt-workspace .itws-content{min-width:0;height:100vh;overflow:auto;background:#fff;position:relative}
+body.it-chatgpt-workspace .banner,body.it-chatgpt-workspace .tabs{display:none!important}
+body.it-chatgpt-workspace .view{min-height:100%;margin:0!important;padding:0!important}
+body.it-chatgpt-workspace .view:not(#agent){padding:28px!important;background:#fafbfc}
+body.it-chatgpt-workspace #agent{height:100%;overflow:hidden}
+body.it-chatgpt-workspace #agent .agent-shell{display:block!important;height:100%!important}
+body.it-chatgpt-workspace #agent .agent-main{height:100%!important;min-height:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:0!important;background:#fff!important;display:flex!important;flex-direction:column!important}
+body.it-chatgpt-workspace #agent .agent-head{height:56px;min-height:56px;border-bottom:0!important;padding:10px 18px!important;display:flex!important;align-items:center!important;justify-content:center!important;position:relative;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);z-index:20}
+body.it-chatgpt-workspace #agent .agent-head>div:first-child h2{font-size:15px!important;margin:0!important;color:#303136!important}
+body.it-chatgpt-workspace #agent .agent-head>div:first-child p{display:none!important}
+body.it-chatgpt-workspace #agent .agent-status{position:absolute;right:16px;top:12px;gap:5px!important}
+body.it-chatgpt-workspace #agent .agent-status .pill{font-size:9px!important;background:#f3f4f5!important;color:#6a7075!important}
+body.it-chatgpt-workspace .itws-mobile-menu{position:absolute!important;left:12px!important;top:10px!important;display:none!important}
+body.it-chatgpt-workspace .itws-activity-toggle{position:absolute;right:16px;top:10px;border:0;background:#f4f4f4;border-radius:10px;height:36px;padding:0 11px;font:inherit;font-size:11px;font-weight:700;color:#4b4c50;cursor:pointer;display:none}
+body.it-chatgpt-workspace .examples,body.it-chatgpt-workspace #agentQuickActions{width:min(880px,calc(100% - 40px))!important;margin:0 auto!important;padding:4px 4px 8px!important;overflow-x:auto!important;flex-wrap:nowrap!important;flex:0 0 auto}
+body.it-chatgpt-workspace #agentChat,body.it-chatgpt-workspace .agent-chat,body.it-chatgpt-workspace .chat-log{flex:1!important;min-height:0!important;max-height:none!important;overflow-y:auto!important;border:0!important;background:#fff!important;padding:20px max(20px,calc((100% - 900px)/2)) 160px!important;margin:0!important;border-radius:0!important;scroll-behavior:smooth}
+body.it-chatgpt-workspace .bubble,body.it-chatgpt-workspace .chat-bubble{width:min(820px,100%)!important;max-width:min(820px,100%)!important;margin:0 auto 24px!important;font-size:15px!important;line-height:1.62!important}
+body.it-chatgpt-workspace .bubble.agent,body.it-chatgpt-workspace .chat-bubble.agent,body.it-chatgpt-workspace .chat-bubble.assistant{background:transparent!important;border:0!important;padding:5px 8px 5px 46px!important;color:#303136!important}
+body.it-chatgpt-workspace .bubble.user,body.it-chatgpt-workspace .chat-bubble.user{width:auto!important;max-width:min(660px,86%)!important;margin-left:auto!important;margin-right:0!important;background:#f1f1f1!important;color:#292a2d!important;border-radius:20px!important;padding:11px 15px!important}
+body.it-chatgpt-workspace .itws-empty{width:min(820px,calc(100% - 30px));margin:auto;padding:12vh 0 20px;text-align:center;color:#26272a}
+body.it-chatgpt-workspace .itws-empty h2{font-size:28px;letter-spacing:-.03em;margin:0 0 18px;font-weight:650}
+body.it-chatgpt-workspace .itws-empty p{color:#7b7c81;margin:0;font-size:13px}
+body.it-chatgpt-workspace .agent-compose,body.it-chatgpt-workspace #agentForm{position:fixed!important;left:calc(270px + (100vw - 270px)/2)!important;bottom:22px!important;transform:translateX(-50%)!important;width:min(790px,calc(100vw - 330px))!important;margin:0!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;grid-template-rows:auto auto!important;align-items:end!important;gap:6px 8px!important;background:var(--itws-composer)!important;border:1px solid #e2e2e2!important;border-radius:27px!important;padding:8px 9px 9px!important;box-shadow:0 8px 30px rgba(0,0,0,.08)!important;z-index:35}
+body.it-chatgpt-workspace .agent-compose textarea,body.it-chatgpt-workspace #agentPrompt{grid-column:2;grid-row:2;border:0!important;outline:0!important;background:transparent!important;min-height:44px!important;max-height:150px!important;padding:11px 4px 8px!important;resize:none!important;font-size:15px!important;color:#292a2d!important}
+body.it-chatgpt-workspace #agentSend,body.it-chatgpt-workspace #askAgentBtn{grid-column:3;grid-row:2;align-self:center!important;width:38px!important;min-width:38px!important;height:38px!important;min-height:38px!important;border-radius:50%!important;padding:0!important;font-size:0!important;background:#1467a0!important;position:relative}
+body.it-chatgpt-workspace #agentSend::after,body.it-chatgpt-workspace #askAgentBtn::after{content:'↑';font-size:20px;font-weight:900;color:white;position:absolute;inset:0;display:grid;place-items:center}
+body.it-chatgpt-workspace .artifact-toolbar{grid-column:1;grid-row:2;width:auto!important;margin:0!important;display:flex!important;align-items:center!important;gap:4px!important}
+body.it-chatgpt-workspace #agentAttach{width:38px!important;height:38px!important;min-width:38px!important;padding:0!important;border:0!important;border-radius:50%!important;background:#e8e8e8!important;color:#333!important;font-size:0!important;position:relative!important}
+body.it-chatgpt-workspace #agentAttach::after{content:'+';font-size:27px;font-weight:300;position:absolute;inset:0;display:grid;place-items:center;line-height:1}
+body.it-chatgpt-workspace #artifactUploadStatus{display:none!important}
+body.it-chatgpt-workspace #agentArtifacts{grid-column:1/4;grid-row:1;display:flex!important;gap:7px!important;overflow-x:auto!important;width:100%!important;margin:0!important;padding:1px 2px!important;scrollbar-width:none}
+body.it-chatgpt-workspace #agentArtifacts::-webkit-scrollbar{display:none}
+body.it-chatgpt-workspace #agentArtifacts>p{display:none!important}
+body.it-chatgpt-workspace .artifact-row{position:relative!important;flex:0 0 auto!important;width:128px!important;height:72px!important;border:1px solid #dbdcdf!important;background:#fff!important;border-radius:12px!important;padding:6px!important;display:grid!important;grid-template-columns:52px 1fr!important;grid-template-rows:1fr auto!important;gap:2px 6px!important;overflow:hidden!important;font-size:10px!important;cursor:pointer!important}
+body.it-chatgpt-workspace .artifact-row.selected{border-color:#c6c7ca!important;background:#fff!important}
+body.it-chatgpt-workspace .artifact-row strong{grid-column:2;grid-row:1;align-self:center;max-width:61px!important;white-space:normal!important;line-height:1.15!important;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden!important;color:#36373a;font-size:10px}
+body.it-chatgpt-workspace .artifact-row>span:not(.itws-thumb){display:none!important}
+body.it-chatgpt-workspace .artifact-row .artifact-mini{display:none!important}
+body.it-chatgpt-workspace .artifact-row [data-select-artifact]{display:grid!important;position:absolute!important;right:4px!important;top:4px!important;width:20px!important;height:20px!important;min-width:20px!important;border:0!important;background:#fff!important;border-radius:50%!important;box-shadow:0 1px 5px rgba(0,0,0,.2)!important;padding:0!important;color:#333!important;font-size:14px!important;place-items:center!important;z-index:3}
+body.it-chatgpt-workspace .itws-thumb{grid-column:1;grid-row:1/3;width:52px;height:58px;border-radius:8px;background:#eceff1;display:grid;place-items:center;overflow:hidden;color:#6b6d72;font-size:21px;font-weight:700}
+body.it-chatgpt-workspace .itws-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+body.it-chatgpt-workspace .itws-file-meta{grid-column:2;grid-row:2;color:#8a8b90;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.it-chatgpt-workspace .agent-main>small.note{display:none!important}
+body.it-chatgpt-workspace .agent-shell>aside{position:fixed!important;right:16px!important;top:16px!important;bottom:16px!important;width:min(390px,calc(100vw - 32px))!important;max-height:none!important;overflow:auto!important;transform:translateX(calc(100% + 34px));transition:transform .2s ease!important;z-index:90!important;border-radius:16px!important;box-shadow:0 18px 55px rgba(0,0,0,.18)!important;background:#fff!important}
+body.it-chatgpt-workspace .agent-shell>aside.itws-open{transform:translateX(0)!important}
+body.it-chatgpt-workspace .itws-drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:80;display:none}
+body.it-chatgpt-workspace .itws-drawer-backdrop.open{display:block}
+body.it-chatgpt-workspace .sulandra-live-activity{width:min(820px,100%)!important;margin:0 auto 22px!important}
+body.it-chatgpt-workspace .itws-toast{position:fixed;left:50%;bottom:116px;transform:translateX(-50%);background:#2f3033;color:#fff;border-radius:999px;padding:8px 13px;font-size:11px;z-index:100;box-shadow:0 6px 18px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .15s}
+body.it-chatgpt-workspace .itws-toast.show{opacity:1}
+@media(max-width:1100px){body.it-chatgpt-workspace .itws-layout{grid-template-columns:230px minmax(0,1fr)}body.it-chatgpt-workspace .agent-compose,body.it-chatgpt-workspace #agentForm{left:calc(230px + (100vw - 230px)/2)!important;width:min(760px,calc(100vw - 280px))!important}}
+@media(max-width:820px){body.it-chatgpt-workspace .itws-layout{grid-template-columns:1fr}body.it-chatgpt-workspace .itws-sidebar{position:fixed;left:0;top:0;bottom:0;width:270px;transform:translateX(-100%);transition:transform .2s ease;box-shadow:0 14px 45px rgba(0,0,0,.16)}body.it-chatgpt-workspace .itws-sidebar.open{transform:translateX(0)}body.it-chatgpt-workspace .itws-mobile-menu{display:grid!important}body.it-chatgpt-workspace #agent .agent-head{justify-content:center!important}body.it-chatgpt-workspace #agent .agent-status{display:none!important}body.it-chatgpt-workspace .itws-activity-toggle{display:block!important}body.it-chatgpt-workspace .agent-compose,body.it-chatgpt-workspace #agentForm{left:50%!important;width:min(760px,calc(100vw - 28px))!important;bottom:14px!important}body.it-chatgpt-workspace #agentChat,body.it-chatgpt-workspace .agent-chat,body.it-chatgpt-workspace .chat-log{padding-left:16px!important;padding-right:16px!important}}
