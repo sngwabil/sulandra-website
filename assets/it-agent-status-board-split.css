@@ -1,19 +1,9 @@
-/* IT_AGENT_STATUS_BOARD_SPLIT_V2
-   Dedicated split-screen Status Board for the current chat working trace.
-   Action Center remains a separate Operations workspace. */
+/* IT_AGENT_STATUS_BOARD_SPLIT_V3
+   Dedicated split-screen Status Board for verified per-chat work events.
+   The main conversation keeps its own working/countdown card. Action Center remains separate. */
 body.it-chatgpt-workspace{
   --itws-status-board-width:clamp(300px,24vw,330px);
   --itws-left-rail:270px;
-}
-
-/* Once the dedicated Status Board is available, the canonical live trace stays
-   as the grounded source DOM but is presented in the right rail instead of
-   duplicated in the main conversation. */
-body.it-chatgpt-workspace[data-itws-status-board-ready="1"] #agentChat>.sulandra-live-activity,
-body.it-chatgpt-workspace[data-itws-status-board-ready="1"] #agentChat>.itws-progress-fallback,
-body.it-chatgpt-workspace[data-itws-status-board-ready="1"] .agent-chat>.sulandra-live-activity,
-body.it-chatgpt-workspace[data-itws-status-board-ready="1"] .agent-chat>.itws-progress-fallback{
-  display:none!important;
 }
 
 @media(min-width:700px){
@@ -85,51 +75,54 @@ body.it-chatgpt-workspace .itws-status-board-head p{
 }
 body.it-chatgpt-workspace .itws-status-board-feed{
   display:grid!important;
-  gap:10px!important;
+  gap:8px!important;
   min-height:80px!important;
 }
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-activity,
-body.it-chatgpt-workspace .itws-status-board-feed .itws-progress-fallback{
-  display:block!important;
-  width:100%!important;
-  max-width:none!important;
-  margin:0!important;
-  padding:0!important;
-  color:#465766!important;
-  font-size:11.5px!important;
+
+body.it-chatgpt-workspace .itws-status-event{
+  display:grid!important;
+  grid-template-columns:20px minmax(0,1fr)!important;
+  gap:8px!important;
+  align-items:start!important;
+  padding:8px 0!important;
+  border-bottom:1px solid #f0f2f4!important;
+  color:#4d5d6a!important;
 }
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-activity::before,
-body.it-chatgpt-workspace .itws-status-board-feed .itws-progress-fallback::before{display:none!important}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-card{
-  width:100%!important;
-  max-width:none!important;
-  padding:9px 10px!important;
-  border:1px solid #e4e8eb!important;
-  border-radius:12px!important;
-  background:#fafbfc!important;
+body.it-chatgpt-workspace .itws-status-event:last-child{border-bottom:0!important}
+body.it-chatgpt-workspace .itws-status-event-icon{
+  width:18px!important;
+  height:18px!important;
+  margin-top:1px!important;
+  border-radius:50%!important;
+  border:1px solid #d8e0e6!important;
+  display:grid!important;
+  place-items:center!important;
+  background:#fff!important;
+  color:#60717e!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  position:relative!important;
 }
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-head{
-  min-height:22px!important;
-  gap:6px!important;
+body.it-chatgpt-workspace .itws-status-event.running .itws-status-event-icon{font-size:0!important;border-color:#b8cfdf!important}
+body.it-chatgpt-workspace .itws-status-event.running .itws-status-event-icon::after{
+  content:''!important;
+  width:8px!important;
+  height:8px!important;
+  border:2px solid #d5e2eb!important;
+  border-top-color:#1685d1!important;
+  border-radius:50%!important;
+  animation:sulandraStatusSpin .75s linear infinite!important;
 }
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-label{font-size:11.5px!important}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-time{font-size:9.5px!important}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-steps{gap:1px!important;margin-top:5px!important}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-step{
-  grid-template-columns:19px minmax(0,1fr)!important;
-  gap:6px!important;
-  padding:4px 0!important;
-}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-step-icon{width:16px!important;height:16px!important;font-size:9px!important}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-step-label{font-size:10.5px!important;line-height:1.3!important}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-step-detail{font-size:9.5px!important;line-height:1.3!important}
-body.it-chatgpt-workspace .itws-status-board-feed .sulandra-live-foot{display:none!important}
-body.it-chatgpt-workspace .itws-status-board-feed .itws-progress-fallback-card{
-  padding:10px!important;
-  border:1px solid #e4e8eb!important;
-  border-radius:12px!important;
-  background:#fafbfc!important;
-}
+body.it-chatgpt-workspace .itws-status-event.done .itws-status-event-icon{background:#eef8f2!important;border-color:#cde7d7!important;color:#176b43!important}
+body.it-chatgpt-workspace .itws-status-event.waiting .itws-status-event-icon{background:#fff9ec!important;border-color:#eedca9!important;color:#8a6410!important}
+body.it-chatgpt-workspace .itws-status-event.error .itws-status-event-icon{background:#fff0f0!important;border-color:#eccaca!important;color:#a22b2b!important}
+body.it-chatgpt-workspace .itws-status-event-body{display:grid!important;gap:2px!important;min-width:0!important}
+body.it-chatgpt-workspace .itws-status-event-body strong{font-size:11px!important;line-height:1.3!important;color:#34495a!important;font-weight:720!important}
+body.it-chatgpt-workspace .itws-status-event-body>span{font-size:9.8px!important;line-height:1.38!important;color:#788792!important;overflow-wrap:anywhere!important}
+body.it-chatgpt-workspace .itws-status-event-body small{font-size:8.8px!important;line-height:1.2!important;color:#a0a8af!important;font-variant-numeric:tabular-nums!important}
+body.it-chatgpt-workspace .itws-status-event-local{padding:10px!important;border:1px solid #e4e8eb!important;border-radius:12px!important;background:#fafbfc!important}
+@keyframes sulandraStatusSpin{to{transform:rotate(360deg)}}
+
 body.it-chatgpt-workspace .itws-status-board-empty{
   display:grid!important;
   gap:5px!important;
@@ -151,6 +144,14 @@ body.it-chatgpt-workspace .itws-status-board-privacy{
   line-height:1.35!important;
 }
 
+/* Main chat retains the normal Sulandra working/countdown presentation. */
+body.it-chatgpt-workspace[data-itws-status-board-ready="1"] #agentChat>.sulandra-live-activity,
+body.it-chatgpt-workspace[data-itws-status-board-ready="1"] #agentChat>.itws-progress-fallback,
+body.it-chatgpt-workspace[data-itws-status-board-ready="1"] .agent-chat>.sulandra-live-activity,
+body.it-chatgpt-workspace[data-itws-status-board-ready="1"] .agent-chat>.itws-progress-fallback{
+  display:block!important;
+}
+
 @media(max-width:1100px) and (min-width:821px){
   body.it-chatgpt-workspace{--itws-left-rail:230px;--itws-status-board-width:clamp(290px,29vw,315px)}
   body.it-chatgpt-workspace.itws-status-board-open #agent .agent-status{right:104px!important;gap:3px!important}
@@ -168,5 +169,4 @@ body.it-chatgpt-workspace .itws-status-board-privacy{
   body.it-chatgpt-workspace.itws-status-board-open #agent .agent-status{display:none!important}
 }
 
-/* Phones keep a modal rail because two usable columns cannot fit. */
 @media(max-width:699px){body.it-chatgpt-workspace{--itws-left-rail:0px}}
