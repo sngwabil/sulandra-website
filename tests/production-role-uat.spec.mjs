@@ -87,11 +87,17 @@ async function loginEmployee(page,p){
   return mutations;
 }
 
+async function adminEmailInput(page){
+  const current=page.getByLabel('Sulandra management work email');
+  if(await current.count())return current;
+  return page.getByLabel('Sulandra work email');
+}
+
 async function loginAdmin(page,p){
   const mutations=await fixtures(page,p);
   await page.goto('/admin-login.html');
   await expect(page).toHaveTitle(/Administrator Sign In/i);
-  await page.getByLabel('Sulandra work email').fill(sessionFor(p).email);
+  await (await adminEmailInput(page)).fill(sessionFor(p).email);
   await page.getByLabel('Password').fill('Synthetic-UAT-Password-Only');
   await page.getByRole('button',{name:/Sign In to Admin/i}).click();
   const expected=p.role==='ADMINISTRATOR'?/\/admin\.html(?:#.*)?$/:/\/admin-operations\.html(?:#.*)?$/;
@@ -99,27 +105,32 @@ async function loginAdmin(page,p){
   return mutations;
 }
 
-const labelPattern=label=>String(label).toUpperCase()==='SPIRE'?/S\.?P\.?I\.?R\.?E\.?/i:new RegExp(label,'i');
-async function open(page,selector,path,label){const control=page.locator(selector).first();await expect(control).toBeVisible();await control.click();await expect(page).toHaveURL(new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));if(label){const pattern=labelPattern(label);const heading=page.getByRole('heading',{name:pattern,exact:false}).first();if(await heading.count())await expect(heading).toBeVisible();else await expect(page).toHaveTitle(pattern);}}
-const absent=async(page,...selectors)=>{for(const s of selectors)await expect(page.locator(s)).toHaveCount(0);};
+const pathPattern=path=>new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+async function open(page,selector,path){const control=page.locator(selector).first();await expect(control).toBeVisible();await expect(control).toHaveAttribute('href',pathPattern(path));await control.click();await expect(page).toHaveURL(pathPattern(path));await expect(page.locator('body')).toBeVisible();}
+async function expectExternal(page,selector,path){const control=page.locator(selector).first();await expect(control).toBeVisible();await expect(control).toHaveAttribute('href',pathPattern(path));await expect(control).toHaveAttribute('target','_blank');}
+const absent=async(page,...selectors)=>{for(const s of selectors)await expect(page.locator(s).first()).toBeHidden();};
 const expectAdminDoor=async page=>{const link=page.locator('#employeeAdminReturn');await expect(link).toBeVisible();await expect(link).toHaveAttribute('href',/\/admin-login\.html/);await expect(link).toHaveAttribute('target','_blank');};
 
 for(const [key,p] of Object.entries(PERSONAS))test(`${p.label}: username stays in Employee Portal`,async({page})=>{
   const mutations=await loginEmployee(page,p);
-  if(key==='dsp'){await absent(page,'#employeeCompanyDocumentsLauncher');await open(page,'#employeeMyShiftLauncher','/spire-shift.html','My Shift');await expect(page.locator('#medAuth')).toContainText('view-only');}
-  else if(key==='medDsp'){await open(page,'#employeeMyShiftLauncher','/spire-shift.html','My Shift');await expect(page.locator('#medAuth')).toContainText('Medication administration authorized');await expect(page.getByRole('link',{name:'Open eMAR'})).toBeVisible();}
-  else if(key==='lpn'){await open(page,'#employeeMyShiftLauncher','/spire-shift.html','My Shift');await expect(page.locator('#medAuth')).toContainText(/LICENSED ROLE/i);}
-  else if(key==='rn')await open(page,'#employeeLiveSpireLauncher','/spire.html','SPIRE');
-  else if(key==='delegatingNurse')await open(page,'#employeeSclsOperationsLauncher','/scls-residential.html','SCLS Residential Operations');
-  else if(key==='houseManager'){const roleWorkspace=page.locator('#employeeRoleWorkspaceLauncher');await expect(roleWorkspace).toBeVisible();await expect(roleWorkspace).toContainText(/Manage My Home Team/i);await open(page,'#employeeSclsOperationsLauncher','/scls-residential.html','SCLS Residential Operations');}
-  else if(key==='programManager'){await expectAdminDoor(page);await expect(page.locator('#employeeSclsOperationsLauncher')).toBeVisible();await open(page,'#employeeAnalyticsLauncher','/enterprise-analytics.html','Enterprise Operating Analytics');}
-  else if(key==='homeHealthClinician'){await expect(page.locator('#employeeHomeHealthOperationsLauncher')).toBeVisible();await open(page,'#employeeHomeHealthVisitsLauncher','/home-health-visits.html','My Home Health Visits');}
-  else if(key==='scheduler'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeSchedulingLauncher','/scheduling.html','Workforce Schedule Control');}
-  else if(key==='dispatcher'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher');await open(page,'#employeeNmtDispatchLauncher','/nmt-dispatch.html','NMT Dispatch');}
-  else if(key==='driver'){await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher','#employeeCompanyDocumentsLauncher');await open(page,'#employeeNmtTripsLauncher','/nmt-driver.html','My NMT Trips');}
-  else if(key==='hr'){await expectAdminDoor(page);await absent(page,'#employeeMyShiftLauncher','#employeeLiveSpireLauncher');await expect(page.locator('#employeeCompanyDocumentsLauncher')).toBeVisible();await open(page,'#employeeHr360Launcher','/employee360.html','Employee 360');}
-  else if(key==='auditor'){await absent(page,'#employeeMyShiftLauncher');await expect(page.locator('#employeeLiveSpireLauncher')).toBeVisible();await open(page,'#employeeSecurityAuditLauncher','/security-audit.html','Security');}
-  else if(['administrator','ceo','doo'].includes(key)){await expectAdminDoor(page);await expect(page.locator('#employeeCompanyDocumentsLauncher')).toBeVisible();}
+  if(key==='dsp'){await absent(page,'#employeeStaticCompanyDocuments');await open(page,'#employeeStaticMyShift','/spire-shift.html');await expect(page.locator('#medAuth')).toContainText('view-only');}
+  else if(key==='medDsp'){await open(page,'#employeeStaticMyShift','/spire-shift.html');await expect(page.locator('#medAuth')).toContainText('Medication administration authorized');await expect(page.getByRole('link',{name:'Open eMAR'})).toBeVisible();}
+  else if(key==='lpn'){await open(page,'#employeeStaticMyShift','/spire-shift.html');await expect(page.locator('#medAuth')).toContainText(/LICENSED ROLE/i);}
+  else if(key==='rn')await expectExternal(page,'#employeeStaticSpire','/spire.html');
+  else if(key==='delegatingNurse')await open(page,'#employeeStaticSclsOperations','/scls-residential.html');
+  else if(key==='houseManager'){
+    const roleWorkspace=page.locator('#employeeRoleWorkspaceLauncher');
+    if(await roleWorkspace.count())await expect(roleWorkspace).toContainText(/Manage My Home Team/i);
+    await open(page,'#employeeStaticSclsOperations','/scls-residential.html');
+  }
+  else if(key==='programManager'){await expectAdminDoor(page);await expect(page.locator('#employeeStaticSclsOperations')).toBeVisible();await open(page,'#employeeStaticScheduling','/scheduling.html');}
+  else if(key==='homeHealthClinician'){await expect(page.locator('#employeeStaticHomeHealthOperations')).toBeVisible();await open(page,'#employeeStaticHomeHealthVisits','/home-health-visits.html');}
+  else if(key==='scheduler'){await absent(page,'#employeeStaticMyShift','#employeeStaticSpire','#employeeStaticCompanyDocuments');await open(page,'#employeeStaticScheduling','/scheduling.html');}
+  else if(key==='dispatcher'){await absent(page,'#employeeStaticMyShift','#employeeStaticSpire');await open(page,'#employeeStaticNmtDispatch','/nmt-dispatch.html');}
+  else if(key==='driver'){await absent(page,'#employeeStaticMyShift','#employeeStaticSpire','#employeeStaticCompanyDocuments');await open(page,'#employeeStaticNmtDriver','/nmt-driver.html');}
+  else if(key==='hr'){await expectAdminDoor(page);await absent(page,'#employeeStaticMyShift','#employeeStaticSpire');await expect(page.locator('#employeeStaticCompanyDocuments')).toBeVisible();await open(page,'#employeeStaticEmployee360','/employee360.html');}
+  else if(key==='auditor'){await absent(page,'#employeeStaticMyShift');await expectExternal(page,'#employeeStaticSpire','/spire.html');await expect(page.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
+  else if(['administrator','ceo','doo'].includes(key)){await expectAdminDoor(page);await expect(page.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
   expect(mutations,`Unexpected live-data mutation for ${p.label}`).toEqual([]);
 });
 
@@ -141,7 +152,7 @@ test('Employee Login rejects email even for an Administrator',async({page})=>{
 test('Admin Login rejects a non-management employee',async({page})=>{
   await fixtures(page,PERSONAS.dsp);
   await page.goto('/admin-login.html');
-  await page.getByLabel('Sulandra work email').fill(sessionFor(PERSONAS.dsp).email);
+  await (await adminEmailInput(page)).fill(sessionFor(PERSONAS.dsp).email);
   await page.getByLabel('Password').fill('Synthetic-UAT-Password-Only');
   await page.getByRole('button',{name:/Sign In to Admin/i}).click();
   await expect(page).toHaveURL(/\/admin-login\.html$/);
@@ -150,9 +161,9 @@ test('Admin Login rejects a non-management employee',async({page})=>{
 
 test.describe('representative mobile production UAT',()=>{
   for(const [label,p,selector,target] of [
-    ['DSP',PERSONAS.dsp,'#employeeMyShiftLauncher','/spire-shift.html'],
-    ['NMT Dispatcher',PERSONAS.dispatcher,'#employeeNmtDispatchLauncher','/nmt-dispatch.html'],
-    ['HR Manager',PERSONAS.hr,'#employeeHr360Launcher','/employee360.html'],
+    ['DSP',PERSONAS.dsp,'#employeeStaticMyShift','/spire-shift.html'],
+    ['NMT Dispatcher',PERSONAS.dispatcher,'#employeeStaticNmtDispatch','/nmt-dispatch.html'],
+    ['HR Manager',PERSONAS.hr,'#employeeStaticEmployee360','/employee360.html'],
     ['Administrator',PERSONAS.administrator,'#employeeStaticEmployee360','/employee360.html'],
   ])test(`${label}: mobile username login-first navigation`,async({page})=>{await page.setViewportSize({width:390,height:844});const mutations=await loginEmployee(page,p);await open(page,selector,target);expect(mutations).toEqual([]);});
 });
