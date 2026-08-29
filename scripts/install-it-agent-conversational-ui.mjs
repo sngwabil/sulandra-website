@@ -9,13 +9,15 @@ const cssPath=path.join(root,'assets','it-agent-conversational-ui.css');
 const jsPath=path.join(root,'assets','it-agent-conversational-ui.js');
 const repairCssPath=path.join(root,'assets','it-agent-ui-regression-repair.css');
 const repairJsPath=path.join(root,'assets','it-agent-ui-regression-repair.js');
+const statusBoardFinalizerPath=path.join(root,'assets','it-agent-status-board-finalizer.js');
 
-await Promise.all([access(portalPath),access(cssPath),access(jsPath),access(repairCssPath),access(repairJsPath)]);
+await Promise.all([access(portalPath),access(cssPath),access(jsPath),access(repairCssPath),access(repairJsPath),access(statusBoardFinalizerPath)]);
 let html=await readFile(portalPath,'utf8');
 const cssTag='<link rel="stylesheet" href="/assets/it-agent-conversational-ui.css?v=20260829-chat-1">';
 const jsTag='<script src="/assets/it-agent-conversational-ui.js?v=20260829-chat-1"></script>';
 const repairCssTag='<link rel="stylesheet" href="/assets/it-agent-ui-regression-repair.css?v=20260829-regression-2">';
 const repairJsTag='<script src="/assets/it-agent-ui-regression-repair.js?v=20260829-regression-2"></script>';
+const statusBoardFinalizerTag='<script src="/assets/it-agent-status-board-finalizer.js?v=20260829-status-board-1"></script>';
 
 if(!html.includes('/assets/it-agent-conversational-ui.css')){
   if(!html.includes('</head>'))throw new Error('IT Agent conversational UI head anchor changed');
@@ -32,19 +34,25 @@ if(!html.includes('/assets/it-agent-conversational-ui.js')){
 // generated artifacts, visible working state, and iPad composer clearance.
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-ui-regression-repair\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-ui-regression-repair\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
+html=html.replace(/\s*<script src="\/assets\/it-agent-status-board-finalizer\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 if(!html.includes('</head>')||!html.includes('</body>'))throw new Error('IT Agent regression repair publication anchors changed');
 html=html.replace('</head>',`${repairCssTag}</head>`);
-html=html.replace('</body>',`${repairJsTag}</body>`);
+html=html.replace('</body>',`${repairJsTag}${statusBoardFinalizerTag}</body>`);
 
-for(const marker of ['Sulandra IT Agent','Ask IT Agent','/assets/it-agent-chatgpt-workspace.css','/assets/it-agent-chatgpt-workspace.js','/assets/it-agent-conversational-ui.css','/assets/it-agent-conversational-ui.js','/assets/it-agent-ui-regression-repair.css','/assets/it-agent-ui-regression-repair.js']){
+for(const marker of ['Sulandra IT Agent','Ask IT Agent','/assets/it-agent-chatgpt-workspace.css','/assets/it-agent-chatgpt-workspace.js','/assets/it-agent-conversational-ui.css','/assets/it-agent-conversational-ui.js','/assets/it-agent-ui-regression-repair.css','/assets/it-agent-ui-regression-repair.js','/assets/it-agent-status-board-finalizer.js']){
   if(!html.includes(marker))throw new Error(`IT Agent current chat-first UI missing ${marker}`);
 }
-const [repairCss,repairJs]=await Promise.all([readFile(repairCssPath,'utf8'),readFile(repairJsPath,'utf8')]);
+const [repairCss,repairJs,statusBoardFinalizer]=await Promise.all([readFile(repairCssPath,'utf8'),readFile(repairJsPath,'utf8'),readFile(statusBoardFinalizerPath,'utf8')]);
 for(const marker of ['IT_AGENT_UI_REGRESSION_REPAIR_V1','#agentArtifacts','itws-status-board-drawer','Status Board','data-itws-view="action-center"','itws-inline-artifact','itws-composer-clearance']){
   if(!repairCss.includes(marker)&&!repairJs.includes(marker))throw new Error(`IT Agent regression repair missing ${marker}`);
 }
 if(!repairJs.includes("qsa('[data-itws-view=\"action-center\"]')")&&!repairJs.includes('data-itws-view="action-center"'))throw new Error('IT Agent regression repair must remove the legacy Action Center navigation entry');
+for(const marker of ['IT_AGENT_STATUS_BOARD_FINALIZER_V1','itws-action-center-tab-style','itwsStatusBoardReady','Status Board']){
+  if(!statusBoardFinalizer.includes(marker))throw new Error(`IT Agent Status Board finalizer missing ${marker}`);
+}
 const syntax=spawnSync(process.execPath,['--check',repairJsPath],{encoding:'utf8'});
 if(syntax.status!==0)throw new Error(`IT Agent regression repair JavaScript syntax failed: ${String(syntax.stderr||syntax.stdout||'unknown syntax error').trim()}`);
+const finalizerSyntax=spawnSync(process.execPath,['--check',statusBoardFinalizerPath],{encoding:'utf8'});
+if(finalizerSyntax.status!==0)throw new Error(`IT Agent Status Board finalizer JavaScript syntax failed: ${String(finalizerSyntax.stderr||finalizerSyntax.stdout||'unknown syntax error').trim()}`);
 await writeFile(portalPath,html,'utf8');
 console.log('IT Agent current chat-first workspace preserved: grounded activity plus final Status Board, inline generated-artifact, compact-suggestion, and iPad composer regression repairs.');
