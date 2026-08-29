@@ -1,6 +1,6 @@
 /* IT_AGENT_IPAD_STABLE_LOAD_V1
    Reveals the page only after the canonical chat-first workspace is actually ready.
-   Also keeps iPad VisualViewport geometry synchronized with the fixed composer. */
+   Also keeps iPad software-keyboard clearance synchronized with the fixed composer. */
 (()=>{
   'use strict';
   if(window.__SULANDRA_IT_IPAD_LOAD_GUARD__)return;
@@ -21,13 +21,11 @@
   function syncViewport(){
     const target=body();if(!target)return;
     const vv=window.visualViewport;
-    const visualHeight=Math.max(320,Math.round(vv?.height||window.innerHeight||document.documentElement.clientHeight||0));
-    const layoutHeight=Math.max(visualHeight,Math.round(window.innerHeight||visualHeight));
+    const layoutHeight=Math.max(320,Math.round(window.innerHeight||document.documentElement.clientHeight||vv?.height||0));
     let keyboardInset=0;
     if(vv&&vv.height<layoutHeight*.84){
       keyboardInset=Math.max(0,Math.round(layoutHeight-vv.height-vv.offsetTop));
     }
-    target.style.setProperty('--itws-visual-height',`${visualHeight}px`);
     target.style.setProperty('--itws-keyboard-inset',`${keyboardInset}px`);
   }
 
