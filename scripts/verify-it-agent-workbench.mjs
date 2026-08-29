@@ -16,9 +16,12 @@ for(const marker of [
   'getITSpecialistKnowledgeContext','approvedEvidenceCount','ESTABLISHED_OPERATION_REPAIR','NEW_SYSTEM_CHANGE',
   'probeITCodingWorker','runApprovedITCodingWorker','codingWorkerConnected:connected',
   'executeRoutineITAgentAction','isRoutineITAgentAction','reportITAgentRuntimeFailure',
-  "status:'PR_OPEN'","status:'FAILED'","status:'EXECUTED'","status:'RETRYING'",'recovering:true',
+  "status:'FAILED'","status:'EXECUTED'","status:'RETRYING'",'recovering:true',
   'Press Execute','start the trusted coding worker',
 ]) need(backend,marker,'IT Agent backend');
+const hasLegacyPrOpen=backend.includes("status:'PR_OPEN'");
+const hasGatedOwnerRelease=backend.includes("release?'WAITING_CI':'PR_OPEN'")&&backend.includes('queueITAgentOwnerRelease(prisma');
+if(!hasLegacyPrOpen&&!hasGatedOwnerRelease)failures.push("IT Agent backend missing PR-first coding transition (legacy PR_OPEN or gated WAITING_CI -> PR_OPEN fallback)");
 if(backend.includes("codingWorkerConnected:Boolean(process.env.SULANDRA_GITHUB_TOKEN||process.env.GITHUB_TOKEN)"))failures.push('IT Agent backend still reports coding-worker connection from credential presence alone');
 if(backend.includes("if(name==='request_code_change')return{actionType:'REQUEST_CODE_CHANGE' as AgentActionType,risk:'HIGH',changeClass:'NEW_SYSTEM_CHANGE',approvalRequired:true"))failures.push('IT Agent backend still hard-codes every code request as a major change');
 if(backend.includes('submitITAgentEngineeringRequest(prisma'))failures.push('IT Agent backend still diverts Admin reasoning requests into the legacy canned engineering handoff');
@@ -49,4 +52,4 @@ try{
 }catch(error){if(error?.code!=='ENOENT')throw error}
 
 if(failures.length){console.error('IT Agent workbench verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent workbench verified: evidence-grounded reasoning, real worker readiness probing, direct PR-only coding execution for verified repairs/approved changes, immediate routine operations, truthful outcomes, and runtime recovery are present.');
+console.log('IT Agent workbench verified: evidence-grounded reasoning, real worker readiness probing, PR-first coding execution for verified repairs/approved owner changes, gated release transitions, immediate routine operations, truthful outcomes, and runtime recovery are present.');

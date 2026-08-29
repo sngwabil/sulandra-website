@@ -57,4 +57,9 @@ try {
   console.log('Admin HTML is not present in this build image; skipping static fast-bootstrap rewrite.');
 }
 
-console.log('Admin login performance optimized: auth schema DDL is process-cached and Admin authorization/bootstrap assets are discovered early when the static Admin document is present. Password security parameters are unchanged.');
+// 3) Install the Administrator IT Agent owner-authorized release workflow before
+// either Railway image compiles/publishes. The installer is idempotent and fails
+// closed if any canonical workbench/knowledge/UI anchor drifts.
+await import('./install-it-agent-owner-autorelease.mjs');
+
+console.log('Admin login performance optimized: auth schema DDL is process-cached and Admin authorization/bootstrap assets are discovered early when the static Admin document is present. Password security parameters are unchanged. IT Agent owner auto-release integration is installed before build.');
