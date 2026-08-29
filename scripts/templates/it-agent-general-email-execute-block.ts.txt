@@ -1,0 +1,28 @@
+    } else if(action.actionType==='SEND_EMAIL'){
+      const audience=clean(payload.audience,40);
+      const custom=Array.isArray(payload.recipientUserIds)?payload.recipientUserIds.map(v=>clean(v,160)).filter(Boolean):[];
+      const managerRoleNames=['ADMINISTRATOR','PROGRAM_MANAGER','HR_MANAGER','HOUSE_MANAGER','CEO','COO','DOO'];
+      const hrRoles=['ADMINISTRATOR','HR_MANAGER','CEO','COO','DOO'];
+      let query=`SELECT "id","email","role"::text AS role FROM "User" WHERE "organizationId"=$1 AND COALESCE("email",'')<>''`;
+      const args:any[]=[auth.organizationId];
+      if(audience==='CUSTOM'){query+=' AND "id"=ANY($2::text[])';args.push(custom)}
+      else if(audience==='MANAGERS'){query+=' AND "role"::text=ANY($2::text[])';args.push(managerRoleNames)}
+      else if(audience==='HR_ADMIN'){query+=' AND "role"::text=ANY($2::text[])';args.push(hrRoles)}
+      const recipients=await prisma.$queryRawUnsafe<Array<{email:string}>>(query,...args);
+      const emails=[...new Set(recipients.map(row=>clean(row.email,320).toLowerCase()).filter(Boolean))];
+      const delivery=await sendEmployeeEmailWithTruth(emails,clean(payload.subject,240),clean(payload.message,12000));
+      if(delivery.smtpAcceptedCount===0)finalStatus='FAILED';
+      const deliveryMessage=delivery.smtpAcceptedCount===emails.length
+        ? `All ${delivery.smtpAcceptedCount} intended recipient${delivery.smtpAcceptedCount===1?' was':'s were'} accepted by SMTP. Final inbox delivery is not confirmed.`
+        : delivery.smtpAcceptedCount>0
+          ? `${delivery.smtpAcceptedCount} of ${emails.length} intended recipients were accepted by SMTP. Final inbox delivery is not confirmed.`
+          : `No intended recipient was confirmed accepted by SMTP. This email must not be described as sent or delivered.`;
+      result={
+        smtpAccepted:delivery.smtpAcceptedCount>0,
+        recipientCount:emails.length,
+        audience,
+        ...delivery,
+        partialFailure:delivery.smtpAcceptedCount<emails.length,
+        deliveryMessage,
+      };
+    }
