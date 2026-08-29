@@ -32,6 +32,7 @@ await import('./install-it-agent-artifact-capabilities.mjs');
 await import('./fix-it-agent-artifact-build-idempotency.mjs');
 await import('./fix-it-agent-trusted-action-continuity.mjs');
 await import('./install-it-agent-chatgpt-workspace.mjs');
+await import('./install-it-agent-ephemeral-attachments.mjs');
 
 // Emergency compatibility rollback: keep the stable chat-first workspace active while the
 // final PR #246 presentation layer is reworked and browser-tested. The disabled polish layer
