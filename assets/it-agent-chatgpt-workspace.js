@@ -36,7 +36,7 @@
     const head=agentMain.querySelector('.agent-head');
     if(head){
       const mobile=document.createElement('button');mobile.type='button';mobile.className='itws-icon-btn itws-mobile-menu';mobile.id='itwsMenu';mobile.setAttribute('aria-label','Open menu');mobile.textContent='☰';head.appendChild(mobile);
-      const activity=document.createElement('button');activity.type='button';activity.className='itws-activity-toggle';activity.id='itwsActivity';activity.textContent='Activity';head.appendChild(activity);
+      const activity=document.createElement('button');activity.type='button';activity.className='itws-activity-toggle';activity.id='itwsActivity';activity.textContent='Activity';activity.setAttribute('aria-expanded','false');head.appendChild(activity);
     }
     const actionCenter=agent.querySelector('.agent-shell>aside');
     const backdrop=document.createElement('div');backdrop.className='itws-drawer-backdrop';document.body.appendChild(backdrop);
@@ -45,14 +45,34 @@
     const closeSide=()=>sidebar.classList.remove('open');
     document.getElementById('itwsMenu')?.addEventListener('click',()=>sidebar.classList.add('open'));
     document.getElementById('itwsCloseSide')?.addEventListener('click',closeSide);
-    const closeDrawer=()=>{actionCenter?.classList.remove('itws-open');backdrop.classList.remove('open')};
-    document.getElementById('itwsActivity')?.addEventListener('click',()=>{actionCenter?.classList.add('itws-open');backdrop.classList.add('open')});
+
+    /*
+      iPad/Safari interaction guard:
+      Action Center is modal only on the compact mobile layout. On tablet/desktop the
+      old full-screen backdrop sat above the fixed composer (z-index 80 vs 35), so it
+      intercepted every touch intended for #agentPrompt. Keep the drawer non-modal on
+      wider layouts, make Activity a true toggle, and close the drawer when the user
+      returns to the composer.
+    */
+    const activityButton=document.getElementById('itwsActivity');
+    const drawerIsModal=()=>window.matchMedia('(max-width:820px)').matches;
+    const setDrawer=open=>{
+      actionCenter?.classList.toggle('itws-open',!!open);
+      backdrop.classList.toggle('open',!!open&&drawerIsModal());
+      activityButton?.setAttribute('aria-expanded',open?'true':'false');
+    };
+    const closeDrawer=()=>setDrawer(false);
+    activityButton?.addEventListener('click',()=>setDrawer(!actionCenter?.classList.contains('itws-open')));
     backdrop.addEventListener('click',()=>{closeDrawer();closeSide()});
+    window.addEventListener('resize',()=>{
+      if(actionCenter?.classList.contains('itws-open'))backdrop.classList.toggle('open',drawerIsModal());
+      else backdrop.classList.remove('open');
+    });
 
     const originalTabs=[...content.querySelectorAll('.tab[data-view]')];
     const setNav=(view)=>sidebar.querySelectorAll('[data-itws-view]').forEach(btn=>btn.classList.toggle('active',btn.dataset.itwsView===view));
     sidebar.querySelectorAll('[data-itws-view]').forEach(btn=>btn.addEventListener('click',()=>{
-      const view=btn.dataset.itwsView;const tab=originalTabs.find(item=>item.dataset.view===view);if(tab)tab.click();setNav(view);closeSide();
+      const view=btn.dataset.itwsView;const tab=originalTabs.find(item=>item.dataset.view===view);if(tab)tab.click();setNav(view);closeSide();closeDrawer();
     }));
 
     const chatNode=()=>document.getElementById('agentChat')||document.querySelector('.chat-log')||document.querySelector('.agent-chat');
@@ -62,6 +82,21 @@
     sendButton?.addEventListener('click',removeEmpty,true);
 
     const compose=document.querySelector('.agent-compose')||document.getElementById('agentForm');
+    const promptInput=document.getElementById('agentPrompt');
+    const returnToComposer=()=>{if(!drawerIsModal())closeDrawer()};
+    if(compose){
+      compose.style.pointerEvents='auto';
+      compose.addEventListener('pointerdown',returnToComposer,true);
+      compose.addEventListener('touchstart',returnToComposer,{capture:true,passive:true});
+    }
+    if(promptInput){
+      promptInput.disabled=false;
+      promptInput.readOnly=false;
+      promptInput.style.pointerEvents='auto';
+      promptInput.style.webkitUserSelect='text';
+      promptInput.style.userSelect='text';
+    }
+
     const artifactToolbar=document.querySelector('.artifact-toolbar');
     const artifactList=document.getElementById('agentArtifacts');
     if(compose&&artifactToolbar&&artifactToolbar.parentElement!==compose)compose.appendChild(artifactToolbar);
@@ -85,13 +120,13 @@
         conversationId=id;sessionStorage.setItem('sulandra:it-agent:conversation',id);selectedArtifactIds=[];
         const chat=chatNode();if(chat)chat.innerHTML='';
         (data.messages||[]).forEach(message=>bubble(message.role==='user'?'user':'agent',message.content||''));
-        await loadArtifacts();renderConversations();setNav('agent');originalTabs.find(item=>item.dataset.view==='agent')?.click();closeSide();
+        await loadArtifacts();renderConversations();setNav('agent');originalTabs.find(item=>item.dataset.view==='agent')?.click();closeSide();closeDrawer();
       }catch(error){showToast(error.message||'Unable to open this chat')}
     }
     window.__sulandraITLoadConversation=loadConversation;
 
     document.getElementById('itwsNewChat')?.addEventListener('click',()=>{
-      conversationId='';sessionStorage.removeItem('sulandra:it-agent:conversation');selectedArtifactIds=[];artifactRows=[];try{renderArtifacts()}catch{}showEmpty();renderConversations();document.getElementById('agentPrompt')?.focus();setNav('agent');originalTabs.find(item=>item.dataset.view==='agent')?.click();closeSide();
+      conversationId='';sessionStorage.removeItem('sulandra:it-agent:conversation');selectedArtifactIds=[];artifactRows=[];try{renderArtifacts()}catch{}showEmpty();renderConversations();closeDrawer();document.getElementById('agentPrompt')?.focus();setNav('agent');originalTabs.find(item=>item.dataset.view==='agent')?.click();closeSide();
     });
 
     function showToast(message){if(!message)return;toast.textContent=String(message);toast.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>toast.classList.remove('show'),2400)}
