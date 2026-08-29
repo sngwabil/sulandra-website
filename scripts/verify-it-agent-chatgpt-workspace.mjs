@@ -21,7 +21,7 @@ async function verifyOptionalAsset(relative,markers,label){
 await verifyOptionalAsset(path.join('assets','it-agent-chatgpt-workspace.css'),['.itws-layout','.itws-sidebar','.itws-new-chat','#agentArtifacts','.itws-thumb','.itws-activity-toggle'],'Workspace CSS');
 await verifyOptionalAsset(path.join('assets','it-agent-chatgpt-workspace.js'),['itwsNewChat','itwsRecents','loadConversation','agentArtifacts','fetchArtifactBlob','itwsActivity'],'Workspace JS');
 await verifyOptionalAsset(path.join('assets','it-agent-conversational-ui.js'),['sulandra-live-activity','Loading conversation and trusted system context','Live operational activity only','/api/it-solutions/agent/actions'],'Live activity JS');
-await verifyOptionalAsset(path.join('assets','it-agent-action-center-tab.js'),['IT_AGENT_ACTION_CENTER_TAB_V1','dataItwsView','Action Center','itwsActionCenterView','itws-action-center-panel'],'Action Center tab JS');
+await verifyOptionalAsset(path.join('assets','it-agent-action-center-tab.js'),['IT_AGENT_ACTION_CENTER_TAB_V1','dataset.itwsView','Action Center','itwsActionCenterView','itws-action-center-panel'],'Action Center tab JS');
 
 for(const relative of ['it-solutions.html',path.join('dist-web','it-solutions.html')]){
   const file=path.join(root,relative);try{await access(file)}catch(error){if(error?.code==='ENOENT')continue;throw error}
