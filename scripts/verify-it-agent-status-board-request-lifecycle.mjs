@@ -10,6 +10,11 @@ new Function(source);
 
 const required=[
   'IT_AGENT_STATUS_BOARD_FINALIZER_V5',
+  'IT_AGENT_STATUS_BOARD_API_ORIGIN_FIX_V1',
+  'apiBaseFromRequest',
+  "apiUrl(run,'/api/it-solutions/agent/actions')",
+  'apiUrl(run,`/api/it-solutions/agent/progress/',
+  'apiBase:apiBaseFromRequest(input)',
   'collapseProgressEvents',
   'supersedeActiveRun()',
   'run.startedAt-ACTION_CLOCK_SLOP_MS',
@@ -39,4 +44,9 @@ if(source.includes('Loading this chat’s latest work…')||source.includes('sto
   process.exit(1);
 }
 
-console.log('IT Agent Status Board request lifecycle verified: each prompt resets the board, stale runs are isolated, running phase duplicates collapse, the answer waits for terminal status, and Enter/Shift+Enter use standard composer behavior.');
+if(source.includes("previousFetch('/api/it-solutions/agent/actions'")||source.includes('previousFetch(`/api/it-solutions/agent/progress/')){
+  console.error('IT Agent Status Board request-lifecycle verification failed: progress/action polling bypasses the request-scoped Railway API origin.');
+  process.exit(1);
+}
+
+console.log('IT Agent Status Board request lifecycle verified: each prompt resets the board, stale runs are isolated, phase duplicates collapse, Railway API-origin continuity is preserved, the answer waits for terminal status, and Enter/Shift+Enter use standard composer behavior.');
