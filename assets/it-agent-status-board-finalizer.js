@@ -28,6 +28,21 @@
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]||ch));
   const clean=(value,max=1400)=>String(value??'').replace(/\s+/g,' ').trim().slice(0,max);
   const asObject=value=>value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+  /* IT_AGENT_STATUS_BOARD_API_ORIGIN_FIX_V1: Status Board polling follows the same
+     Railway API origin as the intercepted chat request instead of assuming the
+     static website origin owns authenticated IT Agent routes. */
+  const apiBaseFromRequest=input=>{
+    const raw=typeof input==='string'?input:String(input?.url||'');
+    try{
+      const parsed=new URL(raw,window.location.href);
+      if(!parsed.pathname.includes('/api/it-solutions/agent/chat'))return'';
+      return parsed.origin===window.location.origin?'':parsed.origin;
+    }catch{return''}
+  };
+  const apiUrl=(run,pathname)=>{
+    const configured=String(run?.apiBase||window.SULANDRA_API_BASE||'').trim().replace(/\/$/,'');
+    return configured?configured+pathname:pathname;
+  };
   const runIsCurrent=run=>Boolean(run&&activeRun===run&&!run.superseded);
   const terminalProgressStatus=status=>['done','success','completed','error','failed','failure','waiting','pending','approval'].includes(clean(status,40).toLowerCase());
   const safeTime=value=>{const time=value?new Date(value).getTime():NaN;return Number.isFinite(time)?time:0};
@@ -171,7 +186,7 @@
   async function readActionState(run,headers){
     if(!runIsCurrent(run)||!run.conversationId)return{events:[],active:false,terminal:false};
     try{
-      const response=await previousFetch('/api/it-solutions/agent/actions',{method:'GET',headers,credentials:run.credentials,cache:'no-store'});
+      const response=await previousFetch(apiUrl(run,'/api/it-solutions/agent/actions'),{method:'GET',headers,credentials:run.credentials,cache:'no-store'});
       if(!response.ok)return{events:run.actionEvents||[],active:false,terminal:false};
       const payload=await response.json().catch(()=>({}));
       return actionEvents(payload?.data?.actions||payload?.actions||[],run);
@@ -184,7 +199,7 @@
     let actionState={events:run.actionEvents||[],active:false,terminal:false};
     try{
       const headers=new Headers(run.headers||{});headers.set('Accept','application/json');
-      const response=await previousFetch(`/api/it-solutions/agent/progress/${encodeURIComponent(run.requestId)}`,{method:'GET',headers,credentials:run.credentials,cache:'no-store'});
+      const response=await previousFetch(apiUrl(run,`/api/it-solutions/agent/progress/${encodeURIComponent(run.requestId)}`),{method:'GET',headers,credentials:run.credentials,cache:'no-store'});
       if(response.ok){
         const payload=await response.json().catch(()=>({}));
         const events=payload?.data?.events||payload?.events||[];
@@ -216,6 +231,7 @@
       startedAt:Date.now(),
       headers:cloneHeaders(input,init),
       credentials:requestCredentials(input,init),
+      apiBase:apiBaseFromRequest(input),
       progressEvents:[],
       actionEvents:[],
       responseReceived:false,
