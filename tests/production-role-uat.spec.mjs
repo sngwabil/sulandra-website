@@ -78,7 +78,7 @@ async function loginEmployee(page,p){
   const mutations=await fixtures(page,p);
   await page.goto('/employee-login.html');
   await expect(page).toHaveTitle(/Employee Login/i);
-  await page.getByLabel('Employee username').fill(sessionFor(p).username);
+  await page.locator('#username').fill(sessionFor(p).username);
   await page.getByLabel('Password').fill('Synthetic-UAT-Password-Only');
   await page.getByRole('button',{name:/Sign In to Employee Portal/i}).click();
   await expect(page).toHaveURL(/\/employee-portal\.html$/);
@@ -142,7 +142,7 @@ for(const p of [PERSONAS.administrator,PERSONAS.programManager,PERSONAS.hr,PERSO
 test('Employee Login rejects email even for an Administrator',async({page})=>{
   await fixtures(page,PERSONAS.administrator);
   await page.goto('/employee-login.html');
-  await page.getByLabel('Employee username').fill(sessionFor(PERSONAS.administrator).email);
+  await page.locator('#username').fill(sessionFor(PERSONAS.administrator).email);
   await page.getByLabel('Password').fill('Synthetic-UAT-Password-Only');
   await page.getByRole('button',{name:/Sign In to Employee Portal/i}).click();
   await expect(page).toHaveURL(/\/employee-login\.html$/);

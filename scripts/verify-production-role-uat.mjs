@@ -15,7 +15,7 @@ await import('./install-home-manager-residential-scope.mjs');
 await import('./install-role-workspaces.mjs');
 await import('./verify-role-workspaces.mjs');
 
-const [portal,runtime,guard,portalInstaller,adminCrossInstaller,adminCross,loginHtml,loginAsset,adminLoginHtml,adminLoginAsset,authInstaller,nmt,testSource,config,workflow,pkg,roleRuntime,residentialApi,residentialHtml,homeManagerInstaller,apiPackage]=await Promise.all([
+const [portal,runtime,guard,portalInstaller,adminCrossInstaller,adminCross,loginHtml,loginAsset,adminLoginHtml,adminLoginAsset,authInstaller,nmt,testSource,preparer,config,workflow,pkg,roleRuntime,residentialApi,residentialHtml,homeManagerInstaller,apiPackage]=await Promise.all([
   read('employee-portal.html'),
   read('employee-portal-railway.js'),
   read('assets/employee-role-navigation-guard.js'),
@@ -29,6 +29,7 @@ const [portal,runtime,guard,portalInstaller,adminCrossInstaller,adminCross,login
   read('scripts/install-employee-auth-security.mjs'),
   read('api/src/nmt-dispatch-routes.ts'),
   read('tests/production-role-uat.spec.mjs'),
+  read('scripts/prepare-production-role-uat-current.mjs'),
   read('playwright.role-uat.config.mjs'),
   read('.github/workflows/production-role-uat.yml'),
   read('package.json'),
@@ -125,19 +126,32 @@ for(const label of ['DSP','Medication-Certified DSP','LPN','RN','Delegating Nurs
 for(const marker of [
   'username stays in Employee Portal',
   "page.goto('/employee-login.html')",
-  "page.getByLabel('Employee username')",
+  "page.locator('#username')",
   "page.goto('/admin-login.html')",
-  "page.getByLabel('Sulandra work email')",
+  'Sulandra management work email',
   'Sulandra email opens entitled Admin workspace',
   'Employee Login rejects email even for an Administrator',
   'Admin Login rejects a non-management employee',
   'expectAdminDoor',
   "key==='houseManager'",
   'Manage My Home Team',
+  '#employeeStaticMyShift',
+  '#employeeStaticSpire',
+  '#employeeStaticSclsOperations',
+  '#employeeStaticScheduling',
+  '#employeeStaticNmtDispatch',
+  '#employeeStaticNmtDriver',
+  '#employeeStaticCompanyDocuments',
+  '#employeeStaticEmployee360',
   'UAT blocks live mutations',
   'representative mobile production UAT',
 ]) expect(testSource.includes(marker),`Production role browser UAT missing ${marker}`);
+expect(!testSource.includes('#employeeMyShiftLauncher')&&!testSource.includes('#employeeLiveSpireLauncher'),'Production UAT still contains retired Employee Portal launcher selectors');
 expect(!testSource.includes("p.role==='DOO'")&&!testSource.includes("p.role==='CEO'"),'Production UAT still contains Employee-login privileged-role redirect expectations');
+
+for(const marker of ['requiredCurrentContract','no runtime source rewriting is required']) expect(preparer.includes(marker),`Production Role UAT preparer missing canonical verification marker ${marker}`);
+expect(!preparer.includes('writeFile'),'Production Role UAT preparer must not rewrite the canonical test source at runtime');
+
 expect(config.includes('https://www.sulandrahealth.com'),'Role UAT Playwright config is not pinned to the live production website');
 expect(config.includes('workers: 1'),'Production UAT is not serialized for deterministic role testing');
 
@@ -172,6 +186,7 @@ for(const rel of [
   'scripts/install-role-workspaces.mjs',
   'scripts/verify-role-workspaces.mjs',
   'scripts/install-home-manager-residential-scope.mjs',
+  'scripts/prepare-production-role-uat-current.mjs',
   'playwright.role-uat.config.mjs',
   'tests/production-role-uat.spec.mjs',
 ]) {
