@@ -34,6 +34,12 @@ await import('./fix-it-agent-trusted-action-continuity.mjs');
 await import('./install-it-agent-chatgpt-workspace.mjs');
 await import('./install-it-agent-ephemeral-attachments.mjs');
 
+// Owner-authorized release orchestration must be the final IT Agent transform in
+// backend builds. Running it here prevents the canonical workbench installers
+// above from seeing a future-state source shape and failing their idempotency
+// guards, while still applying the change before TypeScript compilation.
+await import('./install-it-agent-owner-autorelease.mjs');
+
 // Emergency compatibility rollback: keep the stable chat-first workspace active while the
 // final PR #246 presentation layer is reworked and browser-tested. The disabled polish layer
 // reparented live DOM and wrapped global fetch, which is not required for core IT Agent use.
