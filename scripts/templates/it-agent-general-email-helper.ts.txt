@@ -1,0 +1,56 @@
+/* IT_AGENT_GENERAL_EMAIL_DELIVERY_TRUTH_V1 */
+async function sendEmployeeEmailWithTruth(recipients:string[],subject:string,message:string){
+  const host=process.env.SMTP_HOST;
+  const port=Number(process.env.SMTP_PORT||587);
+  const user=process.env.SMTP_USER;
+  const pass=process.env.SMTP_PASS;
+  if(!host||!user||!pass)throw httpError(503,'Sulandra SMTP is not configured on this API deployment.');
+  const addresses=[...new Set(recipients.map(value=>clean(value,320).toLowerCase()).filter(Boolean))];
+  if(!addresses.length)throw httpError(409,'No eligible employee email recipients were found.');
+  const transporter=nodemailer.createTransport({host,port,secure:port===465,auth:{user,pass},connectionTimeout:10000,greetingTimeout:10000,socketTimeout:20000});
+  const from=(process.env.FROM_EMAIL||process.env.SMTP_FROM||user).trim();
+  const normalizedAddress=(value:unknown)=>{
+    if(typeof value==='string')return clean(value,320).toLowerCase();
+    if(value&&typeof value==='object'&&'address' in value)return clean((value as {address?:unknown}).address,320).toLowerCase();
+    return '';
+  };
+  let smtpAcceptedCount=0;
+  let smtpRejectedCount=0;
+  let smtpTransportFailedCount=0;
+  let smtpUnconfirmedCount=0;
+  const smtpMessageIds:string[]=[];
+  let lastTransportError='';
+  for(const email of addresses){
+    try{
+      const info=await transporter.sendMail({
+        from:{name:'Sulandra Health IT Solutions',address:from},
+        replyTo:user.trim(),
+        to:email,
+        subject:clean(subject,240),
+        text:clean(message,12000),
+        html:`<div style="font-family:Segoe UI,Arial,sans-serif;color:#18324a;line-height:1.6"><h2 style="color:#082f5b">${clean(subject,240).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c))}</h2><p>${clean(message,12000).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c)).replace(/\n/g,'<br>')}</p><p style="color:#64748b;font-size:12px">Sent by Sulandra Health IT Solutions.</p></div>`,
+      });
+      const accepted=new Set((Array.isArray(info.accepted)?info.accepted:[]).map(normalizedAddress).filter(Boolean));
+      const rejected=new Set((Array.isArray(info.rejected)?info.rejected:[]).map(normalizedAddress).filter(Boolean));
+      if(accepted.has(email))smtpAcceptedCount+=1;
+      else if(rejected.has(email))smtpRejectedCount+=1;
+      else smtpUnconfirmedCount+=1;
+      const messageId=clean(info.messageId,320);
+      if(messageId)smtpMessageIds.push(messageId);
+    }catch(error){
+      smtpTransportFailedCount+=1;
+      lastTransportError=safeError(error);
+    }
+  }
+  return{
+    smtpAttemptedCount:addresses.length,
+    smtpAcceptedCount,
+    smtpRejectedCount,
+    smtpTransportFailedCount,
+    smtpUnconfirmedCount,
+    smtpMessageIds,
+    lastTransportError:lastTransportError||undefined,
+    mailboxDeliveryConfirmed:false,
+    deliveryBasis:'SMTP_ACCEPTANCE_ONLY',
+  };
+}
