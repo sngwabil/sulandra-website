@@ -1,0 +1,76 @@
+/* ChatGPT-style Sulandra IT Agent composer geometry.
+   Attachments occupy their own row, the prompt keeps the full composer width,
+   and controls remain on a separate bottom row. */
+body.it-chatgpt-workspace .agent-compose,
+body.it-chatgpt-workspace #agentForm{
+  grid-template-columns:auto minmax(0,1fr) auto!important;
+  grid-template-rows:auto auto auto!important;
+  align-items:end!important;
+  column-gap:8px!important;
+  row-gap:4px!important;
+  padding:9px 10px 10px!important;
+}
+
+body.it-chatgpt-workspace #agentArtifacts{
+  grid-column:1/4!important;
+  grid-row:1!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  align-items:center!important;
+  padding:1px 2px 4px!important;
+}
+
+body.it-chatgpt-workspace #agentArtifacts:not(:has(.artifact-row)){
+  display:none!important;
+}
+
+body.it-chatgpt-workspace .agent-compose textarea,
+body.it-chatgpt-workspace #agentPrompt{
+  grid-column:1/4!important;
+  grid-row:2!important;
+  width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  min-height:44px!important;
+  max-height:160px!important;
+  padding:8px 10px 5px!important;
+  margin:0!important;
+  line-height:1.45!important;
+  text-align:left!important;
+  align-self:stretch!important;
+}
+
+body.it-chatgpt-workspace .artifact-toolbar{
+  grid-column:1!important;
+  grid-row:3!important;
+  align-self:center!important;
+  justify-self:start!important;
+}
+
+body.it-chatgpt-workspace #agentSend,
+body.it-chatgpt-workspace #askAgentBtn{
+  grid-column:3!important;
+  grid-row:3!important;
+  align-self:center!important;
+  justify-self:end!important;
+}
+
+body.it-chatgpt-workspace .artifact-row{
+  flex:0 0 132px!important;
+  width:132px!important;
+}
+
+@media(max-width:820px){
+  body.it-chatgpt-workspace .agent-compose,
+  body.it-chatgpt-workspace #agentForm{
+    grid-template-columns:auto minmax(0,1fr) auto!important;
+    grid-template-rows:auto auto auto!important;
+  }
+  body.it-chatgpt-workspace .agent-compose textarea,
+  body.it-chatgpt-workspace #agentPrompt{
+    grid-column:1/4!important;
+    grid-row:2!important;
+  }
+}
