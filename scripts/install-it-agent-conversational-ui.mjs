@@ -1,4 +1,5 @@
 import { access, readFile, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,5 +43,7 @@ const [repairCss,repairJs]=await Promise.all([readFile(repairCssPath,'utf8'),rea
 for(const marker of ['IT_AGENT_UI_REGRESSION_REPAIR_V1','#agentArtifacts','itws-status-board-drawer','itws-inline-artifact','itws-composer-clearance']){
   if(!repairCss.includes(marker)&&!repairJs.includes(marker))throw new Error(`IT Agent regression repair missing ${marker}`);
 }
+const syntax=spawnSync(process.execPath,['--check',repairJsPath],{encoding:'utf8'});
+if(syntax.status!==0)throw new Error(`IT Agent regression repair JavaScript syntax failed: ${String(syntax.stderr||syntax.stdout||'unknown syntax error').trim()}`);
 await writeFile(portalPath,html,'utf8');
 console.log('IT Agent conversational UI installed after canonical augmentation: grounded activity plus final Status Board, inline generated-artifact, compact-suggestion, and iPad composer regression repairs.');
