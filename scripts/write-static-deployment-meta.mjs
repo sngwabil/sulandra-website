@@ -34,5 +34,6 @@ try{
 // image intentionally retains the canonical unaugmented workbench source, so
 // only frontend UX assertions apply in this static-only publication context.
 await import('./install-it-agent-conversational-review-ux.mjs');
+await import('./fix-it-agent-status-board-api-origin.mjs');
 
 console.log(`Static deployment identity and immediate-execution IT Specialist UI published for ${payload.branch||'unknown-branch'} @ ${(payload.commit||'unknown-commit').slice(0,12)}.`);
