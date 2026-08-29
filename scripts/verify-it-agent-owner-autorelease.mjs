@@ -30,13 +30,26 @@ const ui=await readFile(path.join(root,'assets','it-agent-conversational-ui.js')
 for(const marker of ["status==='WAITING_CI'","status==='DEPLOYING'",'All three Railway production services are green','renderDeferredFinal','activity.deferred=Boolean(data.deferred)','Release workflow continues'])need(ui,marker,'Live release UI');
 
 const employeeSupport=await readFile(path.join(root,'scripts','install-employee-support.mjs'),'utf8');
-need(employeeSupport,"await import('./install-it-agent-owner-autorelease.mjs')",'Backend owner-release installer order');
+need(employeeSupport,"await import('./install-it-agent-owner-autorelease.mjs')",'Canonical owner-release installer order');
 const canonicalIndex=employeeSupport.indexOf("await import('./install-it-agent-ephemeral-attachments.mjs')");
 const ownerIndex=employeeSupport.indexOf("await import('./install-it-agent-owner-autorelease.mjs')");
-if(canonicalIndex<0||ownerIndex<canonicalIndex)failures.push('Backend owner-release installer must run after the canonical IT Agent stack');
+if(canonicalIndex<0||ownerIndex<canonicalIndex)failures.push('Owner-release installer must run after the canonical IT Agent stack');
+if((employeeSupport.match(/install-it-agent-owner-autorelease\.mjs/g)||[]).length!==1)failures.push('Canonical IT Agent chain must install owner-release exactly once');
 
 const optimizer=await readFile(path.join(root,'scripts','optimize-admin-login-performance.mjs'),'utf8');
-for(const marker of ['let staticFrontendPresent = false','if (staticFrontendPresent)',"await import('./install-it-agent-owner-autorelease.mjs')",'API owner auto-release installation is deferred to the canonical IT Agent installer chain'])need(optimizer,marker,'Static/API owner-release build split');
+if(optimizer.includes("await import('./install-it-agent-owner-autorelease.mjs')"))failures.push('Generic Admin optimizer must not install owner-release before the canonical IT Agent stack');
+need(optimizer,'IT Agent owner auto-release installation is deferred to the canonical IT Agent installer chain','Owner-release optimizer deferral');
+
+try{
+  const frontendDocker=await readFile(path.join(root,'Dockerfile.frontend'),'utf8');
+  need(frontendDocker,'RUN node scripts/install-employee-support.mjs','Static Railway canonical IT Agent chain');
+  const frontendOptimizerIndex=frontendDocker.indexOf('RUN node scripts/optimize-admin-login-performance.mjs');
+  const frontendSupportIndex=frontendDocker.indexOf('RUN node scripts/install-employee-support.mjs');
+  if(frontendOptimizerIndex<0||frontendSupportIndex<frontendOptimizerIndex)failures.push('Static Railway build must run canonical IT Agent chain after the generic optimizer');
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  console.log('Static Dockerfile ordering verification skipped because Dockerfile.frontend is not present in this API-only build image.');
+}
 
 if(failures.length){console.error('IT Agent owner auto-release verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent owner auto-release verified: owner-request authorization is bounded to Administrator/CEO, code remains PR-first, required gates precede merge, three-service exact-commit verification precedes final reply, repository context includes exact counts plus bounded source inspection, and API/static installer order is deterministic.');
+console.log('IT Agent owner auto-release verified: owner-request authorization is bounded to Administrator/CEO, code remains PR-first, required gates precede merge, three-service exact-commit verification precedes final reply, repository context includes exact counts plus bounded source inspection, and both Railway images install owner-release exactly once after the canonical IT Agent stack.');
