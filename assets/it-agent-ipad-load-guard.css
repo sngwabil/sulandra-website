@@ -22,10 +22,7 @@ html.itws-preboot::before{
 }
 html.itws-preboot.itws-boot-failed::before{display:none!important}
 
-body.it-chatgpt-workspace{
-  --itws-keyboard-inset:0px;
-  --itws-visual-height:100dvh;
-}
+body.it-chatgpt-workspace{--itws-keyboard-inset:0px}
 body.it-chatgpt-workspace .shell,
 body.it-chatgpt-workspace .itws-layout,
 body.it-chatgpt-workspace .itws-content,
@@ -37,8 +34,8 @@ body.it-chatgpt-workspace #agent .agent-main{
 body.it-chatgpt-workspace .shell,
 body.it-chatgpt-workspace .itws-layout,
 body.it-chatgpt-workspace .itws-content{
-  height:var(--itws-visual-height,100dvh)!important;
-  max-height:var(--itws-visual-height,100dvh)!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
 }
 body.it-chatgpt-workspace #agent,
 body.it-chatgpt-workspace #agent .agent-shell,
@@ -101,16 +98,6 @@ body.it-chatgpt-workspace #agentForm{
   body.it-chatgpt-workspace.itws-status-board-open .chat-log{
     padding-left:12px!important;
     padding-right:12px!important;
-  }
-}
-
-/* Phone fallback remains modal; do not force the tablet split layout below 700px. */
-@media(max-width:699px){
-  body.it-chatgpt-workspace .shell,
-  body.it-chatgpt-workspace .itws-layout,
-  body.it-chatgpt-workspace .itws-content{
-    height:var(--itws-visual-height,100dvh)!important;
-    max-height:var(--itws-visual-height,100dvh)!important;
   }
 }
 
