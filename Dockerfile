@@ -9,6 +9,21 @@ RUN apt-get update -y \
       ca-certificates \
       build-essential \
       python3 \
+      python3-pip \
+      python3-venv \
+      jq \
+      ripgrep \
+      less \
+      nano \
+      vim-tiny \
+      procps \
+      tmux \
+      sqlite3 \
+      tree \
+      zip \
+      unzip \
+      rsync \
+      openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

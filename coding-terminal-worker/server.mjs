@@ -143,6 +143,15 @@ const shellEnv = workspace => ({
   LC_ALL: 'C.UTF-8',
   FORCE_COLOR: '1',
   npm_config_color: 'always',
+  PS1: '\\[\\033[1;32m\\]sulandra\\[\\033[0m\\]:\\w\\$ ',
+  HISTFILE: path.join(workspace.cwd, '.bash_history'),
+  HISTCONTROL: 'ignoredups:erasedups',
+  HISTSIZE: '5000',
+  HISTFILESIZE: '10000',
+  EDITOR: 'vim',
+  VISUAL: 'vim',
+  PAGER: 'less',
+  LESS: '-R',
   SULANDRA_TERMINAL_ISOLATED: '1',
   SULANDRA_TERMINAL_WORKSPACE: workspace.id,
 });
@@ -153,7 +162,7 @@ const createSession = (workspace, owner, cols = 120, rows = 32) => {
     throw Object.assign(new Error(`Terminal limit reached (${maxSessionsPerWorkspace})`), { status: 429 });
   }
   const sessionId = id('term');
-  const process = pty.spawn('/bin/bash', ['--noprofile', '--norc'], {
+  const process = pty.spawn('/bin/bash', ['--noprofile', '--norc', '-i'], {
     name: 'xterm-256color',
     cols: Math.max(40, Math.min(240, Number(cols) || 120)),
     rows: Math.max(12, Math.min(80, Number(rows) || 32)),
@@ -193,8 +202,8 @@ const createSession = (workspace, owner, cols = 120, rows = 32) => {
     push(`\r\n[terminal exited with code ${event.exitCode}]\r\n`);
   });
   sessions.set(sessionId, session);
-  process.write("printf '\\033[1;36mSulandra isolated coding terminal ready.\\033[0m\\r\\n'\r");
-  process.write("printf 'Workspace: %s\\r\\n' \"$PWD\"\r");
+  push('\x1b[1;36mSulandra isolated coding terminal ready.\x1b[0m\r\n');
+  push(`Workspace: ${workspace.cwd}\r\n`);
   return session;
 };
 

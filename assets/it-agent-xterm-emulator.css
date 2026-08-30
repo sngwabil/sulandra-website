@@ -1,0 +1,21 @@
+/* IT_AGENT_XTERM_EMULATOR_V1
+   Browser terminal presentation for the isolated Sulandra PTY worker. */
+.itws-xterm-ready .itws-rt-terminal-surface,
+.itws-xterm-ready .itws-rt-direct-line{display:none!important}
+.itws-xterm-host{position:relative;min-height:390px;height:clamp(390px,52vh,720px);background:#06131d;border-top:1px solid rgba(36,211,137,.38);border-bottom:1px solid rgba(36,211,137,.26);overflow:hidden;padding:10px 8px 4px}
+.itws-xterm-pane{position:absolute;inset:10px 8px 4px;display:none;overflow:hidden}
+.itws-xterm-pane.active{display:block}
+.itws-xterm-pane .xterm{height:100%;padding:0 2px}
+.itws-xterm-pane .xterm-viewport{background:#06131d!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.itws-xterm-pane .xterm-screen{cursor:text}
+.itws-xterm-ready .itws-rt-input-switch{border-top:1px solid rgba(69,134,169,.28);background:#071925}
+.itws-xterm-ready [data-rt-input-mode="direct"]::first-letter{font-size:0}
+.itws-xterm-ready.itws-rt-direct-mode .itws-rt-commandbar{display:none!important}
+.itws-xterm-ready.itws-rt-box-mode .itws-rt-commandbar{display:flex!important}
+.itws-xterm-ready .itws-rt-input-hint{color:#86a8bb}
+.itws-xterm-ready .itws-rt-scroll-state{color:#7094a7}
+.itws-xterm-ready .itws-rt-copy,.itws-xterm-ready .itws-rt-latest{border-color:#28536a;background:#0c2a3b;color:#d7edf7}
+.itws-xterm-ready .itws-xterm-connection{position:absolute;right:12px;top:8px;z-index:5;padding:4px 8px;border-radius:999px;background:rgba(5,31,45,.78);border:1px solid rgba(36,211,137,.28);color:#72e4ad;font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;pointer-events:none;opacity:.9}
+.itws-xterm-ready .itws-xterm-connection.bad{color:#ff9b9b;border-color:rgba(255,93,93,.35)}
+@media(max-width:820px){.itws-xterm-host{height:52vh;min-height:340px;padding:8px 4px 2px}.itws-xterm-pane{inset:8px 4px 2px}}
+@media(prefers-reduced-motion:reduce){.itws-xterm-pane *{scroll-behavior:auto!important}}
