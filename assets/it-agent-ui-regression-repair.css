@@ -225,3 +225,127 @@ body.it-chatgpt-workspace .itws-inline-artifact-meta button{
     margin-left:42px;
   }
 }
+
+/* IT_SOLUTIONS_ENTERPRISE_HEADING_V1
+   Presentation-only: give IT Solutions the same page hierarchy as Scheduling
+   and improve legibility without changing chat, actions, approvals, or APIs. */
+body.it-chatgpt-workspace>header{
+  display:flex!important;
+  min-height:104px!important;
+  padding:16px 30px!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:24px!important;
+  flex-wrap:nowrap!important;
+  background:rgba(255,255,255,.98)!important;
+  color:#17324b!important;
+  border-bottom:1px solid #d4e0eb!important;
+  box-shadow:0 3px 12px rgba(20,50,75,.04)!important;
+  position:relative!important;
+  z-index:75!important;
+}
+body.it-chatgpt-workspace>header::before{
+  content:'';
+  width:180px!important;
+  height:68px!important;
+  flex:0 0 180px!important;
+  background:url('/assets/mainlogo.png') left center/166px 62px no-repeat!important;
+}
+body.it-chatgpt-workspace>header>div:first-child{
+  min-width:260px!important;
+  flex:1!important;
+}
+body.it-chatgpt-workspace>header>div:first-child::before{
+  content:'Technology Operations';
+  display:block!important;
+  margin-bottom:7px!important;
+  color:#0c789e!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:.12em!important;
+  text-transform:uppercase!important;
+}
+body.it-chatgpt-workspace>header h1{
+  margin:0!important;
+  color:#0a4e80!important;
+  font-size:34px!important;
+  line-height:1.05!important;
+  letter-spacing:-.025em!important;
+}
+body.it-chatgpt-workspace>header p{
+  margin:7px 0 0!important;
+  color:#617487!important;
+  font-size:16px!important;
+  line-height:1.4!important;
+  font-weight:520!important;
+}
+body.it-chatgpt-workspace>header .btn{
+  min-height:42px!important;
+  padding:10px 15px!important;
+  border:1px solid #c9d8e5!important;
+  border-radius:10px!important;
+  background:#f4f8fb!important;
+  color:#0a4e80!important;
+  font-size:14px!important;
+  font-weight:850!important;
+}
+body.it-chatgpt-workspace .shell,
+body.it-chatgpt-workspace .itws-layout,
+body.it-chatgpt-workspace .itws-content{
+  height:calc(100dvh - 104px)!important;
+  min-height:calc(100dvh - 104px)!important;
+}
+
+/* Larger IT Solutions typography, scoped only to this workspace. */
+body.it-chatgpt-workspace{font-size:16px!important}
+body.it-chatgpt-workspace .itws-brand{font-size:19px!important}
+body.it-chatgpt-workspace .itws-new-chat{font-size:15px!important;padding:11px 12px!important}
+body.it-chatgpt-workspace .itws-search{font-size:14px!important;padding:9px 11px!important}
+body.it-chatgpt-workspace .itws-nav button{font-size:14px!important;padding:9px 11px!important}
+body.it-chatgpt-workspace .itws-recent-title{font-size:12px!important}
+body.it-chatgpt-workspace .itws-conversation strong{font-size:14px!important}
+body.it-chatgpt-workspace .itws-conversation small{font-size:11px!important}
+body.it-chatgpt-workspace .itws-sidebar-foot{font-size:12px!important}
+body.it-chatgpt-workspace #agent .agent-head>div:first-child h2{font-size:18px!important;font-weight:750!important}
+body.it-chatgpt-workspace #agent .agent-status .pill{font-size:11px!important;padding:5px 8px!important}
+body.it-chatgpt-workspace .itws-activity-toggle{font-size:13px!important;height:38px!important;padding:0 13px!important}
+body.it-chatgpt-workspace .example,
+body.it-chatgpt-workspace #agentQuickActions button{font-size:12.5px!important;min-height:36px!important;max-height:40px!important;padding:8px 11px!important}
+body.it-chatgpt-workspace .bubble,
+body.it-chatgpt-workspace .chat-bubble{font-size:16px!important;line-height:1.65!important}
+body.it-chatgpt-workspace .itws-empty h2{font-size:30px!important}
+body.it-chatgpt-workspace .itws-empty p{font-size:14px!important}
+body.it-chatgpt-workspace .agent-compose textarea,
+body.it-chatgpt-workspace #agentPrompt{font-size:16px!important}
+body.it-chatgpt-workspace .itws-progress-fallback{font-size:14px!important}
+body.it-chatgpt-workspace .itws-inline-artifact.itws-inline-artifact-pending{font-size:14px!important}
+body.it-chatgpt-workspace .itws-inline-artifact-meta{font-size:13px!important}
+body.it-chatgpt-workspace .itws-status-board-drawer{font-size:14px!important;top:118px!important}
+body.it-chatgpt-workspace .itws-status-board-drawer h2,
+body.it-chatgpt-workspace .itws-status-board-drawer h3{font-size:18px!important}
+
+@media(max-width:1100px){
+  body.it-chatgpt-workspace>header{min-height:94px!important;padding:13px 18px!important;gap:18px!important}
+  body.it-chatgpt-workspace>header::before{width:165px!important;height:62px!important;flex-basis:165px!important;background-size:150px 56px!important}
+  body.it-chatgpt-workspace>header h1{font-size:30px!important}
+  body.it-chatgpt-workspace .shell,
+  body.it-chatgpt-workspace .itws-layout,
+  body.it-chatgpt-workspace .itws-content{height:calc(100dvh - 94px)!important;min-height:calc(100dvh - 94px)!important}
+  body.it-chatgpt-workspace .itws-status-board-drawer{top:108px!important}
+}
+@media(max-width:820px){
+  body.it-chatgpt-workspace>header{min-height:84px!important;padding:10px 14px!important;gap:12px!important}
+  body.it-chatgpt-workspace>header::before{width:116px!important;height:54px!important;flex-basis:116px!important;background-size:110px 48px!important}
+  body.it-chatgpt-workspace>header>div:first-child{min-width:0!important}
+  body.it-chatgpt-workspace>header>div:first-child::before{font-size:10px!important;margin-bottom:5px!important}
+  body.it-chatgpt-workspace>header h1{font-size:26px!important}
+  body.it-chatgpt-workspace>header p{font-size:13px!important;margin-top:4px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.it-chatgpt-workspace>header>div:last-child{display:none!important}
+  body.it-chatgpt-workspace .shell,
+  body.it-chatgpt-workspace .itws-layout,
+  body.it-chatgpt-workspace .itws-content{height:calc(100dvh - 84px)!important;min-height:calc(100dvh - 84px)!important}
+  body.it-chatgpt-workspace .itws-status-board-drawer{top:8px!important;font-size:14px!important}
+  body.it-chatgpt-workspace .bubble,
+  body.it-chatgpt-workspace .chat-bubble{font-size:15.5px!important}
+}
