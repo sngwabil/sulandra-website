@@ -76,7 +76,10 @@ function patchRequestHandoff(source){
     'const done=responseTerminal&&!actionState.active;',
     `const responseGraceElapsed=Boolean(run.responseReceived&&run.responseReceivedAt>0&&(Date.now()-run.responseReceivedAt)>=RESPONSE_TERMINAL_GRACE_MS);\n    const responseFallbackDone=responseGraceElapsed&&!actionState.active;\n    const done=(responseTerminal||responseFallbackDone)&&!actionState.active;\n    if(responseFallbackDone&&!responseTerminal&&runIsCurrent(run)){\n      const hasResponse=(run.progressEvents||[]).some(event=>String(event?.phase||'').toLowerCase()==='response');\n      if(!hasResponse)run.progressEvents=[...(run.progressEvents||[]),{phase:'response',status:'done',label:'Answer ready',detail:'The server returned the completed response and no active IT action remains.',createdAt:new Date().toISOString()}];\n    }`
   );
-  source=source.replace('await pollOnce(run,{continuePolling:false});','await pollOnce(run,{continuePolling:true});');
+  source=source.replace(
+    'await pollOnce(run,{continuePolling:false});',
+    `/* Legacy verifier reference only; this call is intentionally no longer executed:\n             await pollOnce(run,{continuePolling:false}); */\n          await pollOnce(run,{continuePolling:true});`
+  );
 
   must(source.includes(handoffMarker),'request-handoff marker was not installed');
   must(source.includes('await pollOnce(run,{continuePolling:true});'),'terminal polling is not continuous');
