@@ -1,0 +1,100 @@
+name: Real Terminal Verification
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/it-agent-xterm-emulator.js
+      - assets/it-agent-xterm-emulator.css
+      - coding-terminal-worker/**
+      - terminal-browser/**
+      - scripts/install-it-agent-xterm-emulator.mjs
+      - Dockerfile
+      - Dockerfile.frontend
+      - .github/workflows/real-terminal-verification.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/it-agent-xterm-emulator.js
+      - assets/it-agent-xterm-emulator.css
+      - coding-terminal-worker/**
+      - terminal-browser/**
+      - scripts/install-it-agent-xterm-emulator.mjs
+      - Dockerfile
+      - Dockerfile.frontend
+      - .github/workflows/real-terminal-verification.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-real-terminal:
+    name: Verify xterm to real PTY
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate browser terminal source
+        run: |
+          node --check assets/it-agent-xterm-emulator.js
+          node --check coding-terminal-worker/server.mjs
+          node --check scripts/install-it-agent-xterm-emulator.mjs
+
+      - name: Install pinned xterm browser runtime
+        run: npm --prefix terminal-browser install --omit=dev --no-audit --no-fund
+
+      - name: Verify xterm browser artifacts
+        run: |
+          test -f terminal-browser/node_modules/@xterm/xterm/lib/xterm.js
+          test -f terminal-browser/node_modules/@xterm/xterm/css/xterm.css
+          test -f terminal-browser/node_modules/@xterm/addon-fit/lib/addon-fit.js
+
+      - name: Install terminal worker dependencies
+        run: npm --prefix coding-terminal-worker install --omit=dev --no-audit --no-fund
+
+      - name: Start real PTY worker
+        env:
+          TERMINAL_AUTH_TOKEN: ci-terminal-token
+          TERMINAL_SEED_PATH: ${{ github.workspace }}
+          TERMINAL_WORKSPACE_ROOT: /tmp/sulandra-terminal-workspaces
+          PORT: 18080
+        run: |
+          node coding-terminal-worker/server.mjs > /tmp/sulandra-terminal-worker.log 2>&1 &
+          echo $! > /tmp/sulandra-terminal-worker.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/health >/tmp/terminal-health.json; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/sulandra-terminal-worker.log
+          exit 1
+
+      - name: Execute command through real Bash PTY
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers=(-H 'x-sulandra-terminal-token: ci-terminal-token' -H 'x-sulandra-terminal-owner: ci-owner' -H 'Content-Type: application/json')
+          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18080/workspaces -d '{}')"
+          workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.workspaceId)' "$workspace_json")"
+          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
+          session_id="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.sessionId)' "$session_json")"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d '{"data":"printf \\"REAL_PTY_OK:%s\\n\\" \\"$SHELL\\"\\r"}' >/dev/null
+          sleep 1
+          output_json="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18080/sessions/${session_id}/output?cursor=0")"
+          node -e 'const x=JSON.parse(process.argv[1]); if(!String(x.data||"").includes("REAL_PTY_OK:/bin/bash")){console.error(x.data);process.exit(1)}' "$output_json"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/resize" -d '{"cols":132,"rows":40}' | grep -q '"cols":132'
+          echo 'Real Bash PTY command and resize verified.'
+
+      - name: Stop PTY worker
+        if: always()
+        run: |
+          if test -f /tmp/sulandra-terminal-worker.pid; then kill "$(cat /tmp/sulandra-terminal-worker.pid)" || true; fi
+          cat /tmp/sulandra-terminal-worker.log || true
