@@ -86,7 +86,7 @@ for(const marker of ['it-chatgpt-workspace','.itws-layout','#agent .agent-main',
 for(const marker of ['IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1','itwsEnterprisePlatformBar','itwsReturnToAdminPortal','itwsEngineeringTerminal','Engineering Terminal','Sulandra Health Platform']){
   if(!enterpriseShellCss.includes(marker)&&!enterpriseShellJs.includes(marker))throw new Error(`IT Agent engineering shell missing ${marker}`);
 }
-if(enterpriseShellJs.includes("['Service Homes'" )||enterpriseShellJs.includes('itwsEnterpriseAdminTabs'))throw new Error('IT Solutions must not recreate Administrator module navigation');
+if(enterpriseShellJs.includes("['Service Homes'")||enterpriseShellJs.includes("nav.id='itwsEnterpriseAdminTabs'")||enterpriseShellJs.includes("className='itws-enterprise-admin-tabs'"))throw new Error('IT Solutions must not recreate Administrator module navigation');
 for(const marker of ['No unrestricted host shell','controlled Sulandra coding-worker workflow','Action Center','Completed Work']){
   if(!enterpriseShellJs.includes(marker))throw new Error(`IT engineering workspace safety/navigation missing ${marker}`);
 }
