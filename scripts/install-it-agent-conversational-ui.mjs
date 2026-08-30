@@ -27,8 +27,8 @@ const statusBoardSplitCssTag='<link rel="stylesheet" href="/assets/it-agent-stat
 const statusBoardFinalizerTag='<script src="/assets/it-agent-status-board-finalizer.js?v=20260829-status-board-5"></script>';
 const ipadGuardCssTag='<link rel="stylesheet" href="/assets/it-agent-ipad-load-guard.css?v=20260829-ipad-1">';
 const ipadGuardJsTag='<script src="/assets/it-agent-ipad-load-guard.js?v=20260829-ipad-1"></script>';
-const enterpriseShellCssTag='<link rel="stylesheet" href="/assets/it-agent-enterprise-shell.css?v=20260830-enterprise-shell-1">';
-const enterpriseShellJsTag='<script src="/assets/it-agent-enterprise-shell.js?v=20260830-enterprise-shell-1"></script>';
+const enterpriseShellCssTag='<link rel="stylesheet" href="/assets/it-agent-enterprise-shell.css?v=20260830-engineering-shell-2">';
+const enterpriseShellJsTag='<script src="/assets/it-agent-enterprise-shell.js?v=20260830-engineering-shell-2"></script>';
 const ipadPreboot='<style id="itws-preboot-critical">html.itws-preboot body>header,html.itws-preboot body>main.shell{opacity:0!important;visibility:hidden!important;pointer-events:none!important}html.itws-preboot::before{content:"Loading Sulandra IT…";position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#fff;color:#53616d;font:600 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}html.itws-preboot.itws-boot-failed::before{display:none!important}</style><script id="itws-preboot-script">document.documentElement.classList.add("itws-preboot")</script>';
 
 if(!html.includes('/assets/it-agent-conversational-ui.css')){
@@ -40,12 +40,12 @@ if(!html.includes('/assets/it-agent-conversational-ui.js')){
   html=html.replace('</body>',`${jsTag}</body>`);
 }
 
-// Final presentation layers: Action Center remains a separate Operations view.
-// The main chat retains its working/countdown card. Status Board is a dedicated
-// current-request rail of authenticated repository/system/action progress.
-// The iPad preboot guard prevents the legacy source markup from painting while
-// this canonical chat-first workspace is being constructed. The enterprise shell
-// is layered last so IT Solutions uses the same platform/admin hierarchy as Scheduling.
+// Final presentation layers: Action Center remains separate from Status Board.
+// The main chat keeps its normal working/countdown feedback. The iPad preboot guard
+// prevents legacy markup from painting while the canonical workspace is built.
+// The final enterprise layer now makes IT Solutions a dedicated engineering surface:
+// global Sulandra platform identity + one Return to Admin Portal action + controlled
+// terminal-style coding requests, without duplicating Admin module navigation.
 html=html.replace(/\s*<style id="itws-preboot-critical">[\s\S]*?<\/style>\s*<script id="itws-preboot-script">[\s\S]*?<\/script>\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-ui-regression-repair\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-status-board-split\.css(?:\?v=[^"']+)?">\s*/g,'\n');
@@ -83,8 +83,12 @@ for(const marker of ['IT_AGENT_IPAD_STABLE_LOAD_V1','--itws-keyboard-inset','itw
 for(const marker of ['it-chatgpt-workspace','.itws-layout','#agent .agent-main','itwsIpadReady','visualViewport','The old Action Center page is intentionally not shown as a fallback.']){
   if(!ipadGuardJs.includes(marker))throw new Error(`IT Agent iPad boot verification missing ${marker}`);
 }
-for(const marker of ['IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1','itwsEnterprisePlatformBar','itwsEnterpriseAdminTabs','Sulandra Health Platform','IT Solutions']){
-  if(!enterpriseShellCss.includes(marker)&&!enterpriseShellJs.includes(marker))throw new Error(`IT Agent enterprise shell missing ${marker}`);
+for(const marker of ['IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1','itwsEnterprisePlatformBar','itwsReturnToAdminPortal','itwsEngineeringTerminal','Engineering Terminal','Sulandra Health Platform']){
+  if(!enterpriseShellCss.includes(marker)&&!enterpriseShellJs.includes(marker))throw new Error(`IT Agent engineering shell missing ${marker}`);
+}
+if(enterpriseShellJs.includes("['Service Homes'")||enterpriseShellJs.includes("nav.id='itwsEnterpriseAdminTabs'")||enterpriseShellJs.includes("className='itws-enterprise-admin-tabs'"))throw new Error('IT Solutions must not recreate Administrator module navigation');
+for(const marker of ['No unrestricted host shell','controlled Sulandra coding-worker workflow','Action Center','Completed Work']){
+  if(!enterpriseShellJs.includes(marker))throw new Error(`IT engineering workspace safety/navigation missing ${marker}`);
 }
 const repairSyntax=spawnSync(process.execPath,['--check',repairJsPath],{encoding:'utf8'});
 if(repairSyntax.status!==0)throw new Error(`IT Agent regression repair JavaScript syntax failed: ${String(repairSyntax.stderr||repairSyntax.stdout||'unknown syntax error').trim()}`);
@@ -95,6 +99,6 @@ if(finalizerSyntax.status!==0)throw new Error(`IT Agent Status Board finalizer J
 const ipadGuardSyntax=spawnSync(process.execPath,['--check',ipadGuardJsPath],{encoding:'utf8'});
 if(ipadGuardSyntax.status!==0)throw new Error(`IT Agent iPad load guard JavaScript syntax failed: ${String(ipadGuardSyntax.stderr||ipadGuardSyntax.stdout||'unknown syntax error').trim()}`);
 const enterpriseShellSyntax=spawnSync(process.execPath,['--check',enterpriseShellJsPath],{encoding:'utf8'});
-if(enterpriseShellSyntax.status!==0)throw new Error(`IT Agent enterprise shell JavaScript syntax failed: ${String(enterpriseShellSyntax.stderr||enterpriseShellSyntax.stdout||'unknown syntax error').trim()}`);
+if(enterpriseShellSyntax.status!==0)throw new Error(`IT Agent engineering shell JavaScript syntax failed: ${String(enterpriseShellSyntax.stderr||enterpriseShellSyntax.stdout||'unknown syntax error').trim()}`);
 await writeFile(portalPath,html,'utf8');
-console.log('IT Agent current chat-first workspace preserved: shared Scheduling-style enterprise platform/admin navigation is present; no legacy workbench paint during boot; iPad keyboard/composer geometry is stabilized; main chat keeps working/countdown feedback; Status Board remains request-scoped and split; Action Center remains separate under Operations.');
+console.log('IT Solutions engineering workspace preserved: global Sulandra platform bar remains; local Admin module tabs are removed in favor of Return to Admin Portal; controlled Engineering Terminal is present; main chat retains working feedback; Status Board remains request-scoped and split; Action Center remains separate.');
