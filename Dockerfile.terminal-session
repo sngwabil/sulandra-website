@@ -20,11 +20,12 @@ WORKDIR /agent
 COPY terminal-session-agent/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 COPY terminal-session-agent/server.mjs ./server.mjs
-
-RUN mkdir -p /workspace /home/terminal \
+COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
+RUN chmod 0755 /agent/entrypoint.sh \
+    && mkdir -p /workspace /home/terminal \
     && chown -R 10001:10001 /workspace /home/terminal /agent
 
 USER 10001:10001
 WORKDIR /workspace
 EXPOSE 9000
-CMD ["node", "/agent/server.mjs"]
+CMD ["/agent/entrypoint.sh"]
