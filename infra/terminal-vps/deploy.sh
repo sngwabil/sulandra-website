@@ -29,7 +29,7 @@ if [[ ! -S /var/run/docker.sock ]]; then
   exit 1
 fi
 
-install -d -m 0700 /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state
+install -d -o 10001 -g 10001 -m 0700 /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state
 if ! docker network inspect sulandra-terminal-internal >/dev/null 2>&1; then
   docker network create --internal sulandra-terminal-internal >/dev/null
 fi
