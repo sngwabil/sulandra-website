@@ -7,6 +7,7 @@ on:
     paths:
       - assets/it-agent-xterm-emulator.js
       - assets/it-agent-xterm-emulator.css
+      - assets/it-agent-xterm-interrupt-fix.js
       - coding-terminal-worker/**
       - terminal-browser/**
       - scripts/install-it-agent-xterm-emulator.mjs
@@ -19,6 +20,7 @@ on:
     paths:
       - assets/it-agent-xterm-emulator.js
       - assets/it-agent-xterm-emulator.css
+      - assets/it-agent-xterm-interrupt-fix.js
       - coding-terminal-worker/**
       - terminal-browser/**
       - scripts/install-it-agent-xterm-emulator.mjs
@@ -46,6 +48,7 @@ jobs:
       - name: Validate browser terminal source
         run: |
           node --check assets/it-agent-xterm-emulator.js
+          node --check assets/it-agent-xterm-interrupt-fix.js
           node --check coding-terminal-worker/server.mjs
           node --check scripts/install-it-agent-xterm-emulator.mjs
 
@@ -77,7 +80,7 @@ jobs:
           cat /tmp/sulandra-terminal-worker.log
           exit 1
 
-      - name: Execute command through real Bash PTY
+      - name: Execute, interrupt and resume through real Bash PTY
         shell: bash
         run: |
           set -euo pipefail
@@ -86,14 +89,35 @@ jobs:
           workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.workspaceId)' "$workspace_json")"
           session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
           session_id="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.sessionId)' "$session_json")"
+
           command=$'printf "REAL_PTY_OK:%s\\n" "$SHELL"\r'
           input_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
           curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$input_json" >/dev/null
           sleep 1
           output_json="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18080/sessions/${session_id}/output?cursor=0")"
           node -e 'const x=JSON.parse(process.argv[1]); if(!String(x.data||"").includes("REAL_PTY_OK:/bin/bash")){console.error(x.data);process.exit(1)}' "$output_json"
+
+          rm -f /tmp/sulandra-pty-interrupt-resumed
+          long_command=$'node -e "setInterval(()=>{},1000)"\r'
+          long_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$long_command")"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$long_json" >/dev/null
+          sleep 0.5
+
+          interrupt_json="$(node -e 'process.stdout.write(JSON.stringify({data:"\u0003"}))')"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$interrupt_json" >/dev/null
+          sleep 0.5
+
+          resume_command=$'touch /tmp/sulandra-pty-interrupt-resumed\r'
+          resume_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$resume_command")"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$resume_json" >/dev/null
+          for i in {1..20}; do
+            test -f /tmp/sulandra-pty-interrupt-resumed && break
+            sleep 0.1
+          done
+          test -f /tmp/sulandra-pty-interrupt-resumed
+
           curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/resize" -d '{"cols":132,"rows":40}' | grep -q '"cols":132'
-          echo 'Real Bash PTY command and resize verified.'
+          echo 'Real Bash PTY command, Ctrl+C interrupt, shell resume and resize verified.'
 
       - name: Stop PTY worker
         if: always()
