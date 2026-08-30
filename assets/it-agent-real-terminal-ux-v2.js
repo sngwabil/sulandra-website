@@ -1,10 +1,11 @@
 /* IT_AGENT_REAL_TERMINAL_UX_V2
-   Enhances the isolated terminal with direct keyboard input, command-box fallback,
+   IT_AGENT_REAL_TERMINAL_UX_V3
+   Enhances the isolated terminal with a visible in-terminal line editor, command-box fallback,
    stable scrollback and reliable copy controls without changing worker isolation. */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_IT_REAL_TERMINAL_UX_V2__)return;
-  window.__SULANDRA_IT_REAL_TERMINAL_UX_V2__=true;
+  if(window.__SULANDRA_IT_REAL_TERMINAL_UX_V3__)return;
+  window.__SULANDRA_IT_REAL_TERMINAL_UX_V3__=true;
 
   const INPUT_MODE_KEY='sulandra:it-solutions:terminal-input-mode';
   const API_FALLBACK='https://sulandra-website-production-5fc4.up.railway.app';
@@ -19,12 +20,12 @@
 
   const postInput=async(root,data)=>{
     const sessionId=activeSessionId(root);
-    if(!sessionId||!data)return;
+    if(!sessionId||data===undefined||data===null)return;
     const base=typeof window.API==='string'&&window.API?window.API:API_FALLBACK;
     const response=await fetch(base+'/api/it-solutions/terminal/sessions/'+encodeURIComponent(sessionId)+'/input',{
       method:'POST',
       headers:{Accept:'application/json','Content-Type':'application/json',Authorization:'Bearer '+authToken()},
-      body:JSON.stringify({data}),
+      body:JSON.stringify({data:String(data)}),
     });
     if(!response.ok){
       const payload=await response.json().catch(()=>({}));
@@ -92,12 +93,25 @@
   };
 
   const enhance=root=>{
-    if(!root||root.dataset.rtUxV2==='1')return;
+    if(!root||root.dataset.rtUxV3==='1')return;
     const shell=root.querySelector('#itwsRtShell');
     const screen=root.querySelector('#itwsRtScreen');
     const commandbar=root.querySelector('.itws-rt-commandbar');
     if(!shell||!screen||!commandbar)return;
-    root.dataset.rtUxV2='1';
+    root.dataset.rtUxV3='1';
+
+    const shellMode=root.querySelector('.itws-rt-mode[data-mode="shell"]');
+    if(shellMode)shellMode.textContent='Terminal';
+    root.querySelectorAll('#itwsRtAi .itws-rt-ai-card p').forEach(node=>{
+      node.textContent=String(node.textContent||'').replace(/Real Terminal/g,'Terminal');
+    });
+
+    const directLine=document.createElement('div');
+    directLine.className='itws-rt-direct-line';
+    directLine.innerHTML=`
+      <span class="itws-rt-direct-prompt" aria-hidden="true">$</span>
+      <textarea id="itwsRtDirectInput" class="itws-rt-direct-input" rows="1" spellcheck="false" autocomplete="off" autocapitalize="none" autocorrect="off" enterkeyhint="go" aria-label="Terminal input" placeholder="Type here, edit normally, then press Enter"></textarea>`;
+    screen.after(directLine);
 
     const switcher=document.createElement('div');
     switcher.className='itws-rt-input-switch';
@@ -110,20 +124,11 @@
         <button type="button" class="itws-rt-latest" id="itwsRtLatest">Latest</button>
         <button type="button" class="itws-rt-copy" id="itwsRtCopy">Copy</button>
       </span>`;
-    commandbar.before(switcher);
+    directLine.after(switcher);
 
-    const capture=document.createElement('textarea');
-    capture.id='itwsRtDirectCapture';
-    capture.className='itws-rt-direct-capture';
-    capture.setAttribute('aria-label','Direct terminal keyboard input');
-    capture.setAttribute('autocapitalize','none');
-    capture.setAttribute('autocomplete','off');
-    capture.setAttribute('autocorrect','off');
-    capture.spellcheck=false;
-    shell.appendChild(capture);
-
+    const directInput=directLine.querySelector('#itwsRtDirectInput');
     screen.tabIndex=0;
-    screen.setAttribute('aria-label','Interactive terminal output. In Direct typing mode, tap the terminal and type.');
+    screen.setAttribute('aria-label','Interactive terminal output. In Direct typing mode, tap the terminal and type in the visible line below the output.');
 
     let inputMode='direct';
     try{inputMode=sessionStorage.getItem(INPUT_MODE_KEY)==='box'?'box':'direct'}catch{}
@@ -132,6 +137,8 @@
     let interactionUntil=0;
     let suppressScroll=false;
     let savedSelection=null;
+    const history=[];
+    let historyIndex=0;
 
     const hint=switcher.querySelector('#itwsRtInputHint');
     const scrollState=switcher.querySelector('#itwsRtScrollState');
@@ -142,8 +149,16 @@
     };
 
     const focusDirect=()=>{
-      if(inputMode!=='direct')return;
-      try{capture.focus({preventScroll:true})}catch{capture.focus()}
+      if(inputMode!=='direct'||!directInput)return;
+      try{directInput.focus({preventScroll:true})}catch{directInput.focus()}
+      const end=directInput.value.length;
+      try{directInput.setSelectionRange(end,end)}catch{}
+    };
+
+    const resizeDirectInput=()=>{
+      if(!directInput)return;
+      directInput.style.height='auto';
+      directInput.style.height=Math.min(120,Math.max(34,directInput.scrollHeight))+'px';
     };
 
     const setInputMode=mode=>{
@@ -152,8 +167,8 @@
       root.classList.toggle('itws-rt-box-mode',inputMode==='box');
       switcher.querySelectorAll('[data-rt-input-mode]').forEach(button=>button.classList.toggle('active',button.dataset.rtInputMode===inputMode));
       if(hint)hint.textContent=inputMode==='direct'
-        ?'Tap inside the terminal and type normally. Enter runs the command; paste and control keys go straight to the shell.'
-        :'Use the command box below exactly as before, then press Run or Enter.';
+        ?'Type in the terminal line above. The blinking caret shows your position; Backspace/Delete edit the line before Enter sends it.'
+        :'Use the command box exactly as before, then press Run or Enter.';
       try{sessionStorage.setItem(INPUT_MODE_KEY,inputMode)}catch{}
       if(inputMode==='direct')window.setTimeout(focusDirect,30);
       else root.querySelector('#itwsRtCommand')?.focus();
@@ -212,43 +227,70 @@
       if(selection&&!selection.isCollapsed)return;
       focusDirect();
     });
+    directLine.addEventListener('click',event=>{
+      if(event.target===directLine||event.target.classList?.contains('itws-rt-direct-prompt'))focusDirect();
+    });
 
-    capture.addEventListener('focus',()=>root.classList.add('itws-rt-direct-focus'));
-    capture.addEventListener('blur',()=>root.classList.remove('itws-rt-direct-focus'));
-    capture.addEventListener('paste',event=>{
-      if(inputMode!=='direct')return;
-      event.preventDefault();
-      const text=event.clipboardData?.getData('text')||'';
-      if(text)void postInput(root,text).catch(()=>{});
-    });
-    capture.addEventListener('input',()=>{
-      if(inputMode!=='direct'){capture.value='';return}
-      const value=capture.value;
-      capture.value='';
-      if(value)void postInput(root,value).catch(()=>{});
-    });
-    capture.addEventListener('keydown',event=>{
-      if(inputMode!=='direct')return;
-      if(event.metaKey)return;
-      let data='';
-      if(event.ctrlKey&&!event.altKey&&event.key.length===1){
-        const code=event.key.toUpperCase().charCodeAt(0)&31;
-        if(code>0)data=String.fromCharCode(code);
-      }else{
-        const keys={
-          Enter:'\r',Backspace:'\x7f',Tab:'\t',Escape:'\x1b',
-          ArrowUp:'\x1b[A',ArrowDown:'\x1b[B',ArrowRight:'\x1b[C',ArrowLeft:'\x1b[D',
-          Home:'\x1b[H',End:'\x1b[F',Delete:'\x1b[3~',PageUp:'\x1b[5~',PageDown:'\x1b[6~'
-        };
-        data=keys[event.key]||'';
-        if(!data&&!event.ctrlKey&&!event.altKey&&event.key.length===1)data=event.key;
+    const submitDirect=async()=>{
+      if(inputMode!=='direct'||!directInput)return;
+      const value=String(directInput.value||'');
+      directInput.value='';resizeDirectInput();
+      if(value.trim()){
+        if(history[history.length-1]!==value)history.push(value);
+        if(history.length>100)history.shift();
       }
-      if(!data)return;
-      event.preventDefault();event.stopPropagation();capture.value='';
-      void postInput(root,data).catch(()=>{});
+      historyIndex=history.length;
+      stickToBottom=true;savedSelection=null;setScrollState();screen.scrollTop=screen.scrollHeight;
+      try{await postInput(root,value.replace(/\r?\n/g,'\n')+'\r')}
+      catch(error){if(hint)hint.textContent=error.message||'Unable to send terminal input.'}
+      window.setTimeout(focusDirect,0);
+    };
+
+    directInput.addEventListener('focus',()=>root.classList.add('itws-rt-direct-focus'));
+    directInput.addEventListener('blur',()=>root.classList.remove('itws-rt-direct-focus'));
+    directInput.addEventListener('input',resizeDirectInput);
+    directInput.addEventListener('keydown',event=>{
+      if(inputMode!=='direct')return;
+
+      if(event.key==='Backspace'||event.key==='Delete'){
+        event.stopPropagation();
+        return;
+      }
+
+      if((event.ctrlKey||event.metaKey)&&!event.altKey&&String(event.key).toLowerCase()==='c'){
+        event.preventDefault();event.stopPropagation();directInput.value='';resizeDirectInput();
+        void postInput(root,'\x03').catch(()=>{});
+        return;
+      }
+      if(event.ctrlKey&&!event.altKey&&String(event.key).toLowerCase()==='d'&&!directInput.value){
+        event.preventDefault();event.stopPropagation();
+        void postInput(root,'\x04').catch(()=>{});
+        return;
+      }
+      if(event.key==='Enter'&&!event.shiftKey){
+        event.preventDefault();event.stopPropagation();
+        void submitDirect();
+        return;
+      }
+      if(event.key==='ArrowUp'&&!event.shiftKey&&!event.altKey&&!event.ctrlKey&&!event.metaKey&&history.length){
+        event.preventDefault();event.stopPropagation();
+        historyIndex=Math.max(0,historyIndex-1);
+        directInput.value=history[historyIndex]||'';resizeDirectInput();
+        const end=directInput.value.length;try{directInput.setSelectionRange(end,end)}catch{}
+        return;
+      }
+      if(event.key==='ArrowDown'&&!event.shiftKey&&!event.altKey&&!event.ctrlKey&&!event.metaKey&&history.length){
+        event.preventDefault();event.stopPropagation();
+        historyIndex=Math.min(history.length,historyIndex+1);
+        directInput.value=historyIndex<history.length?(history[historyIndex]||''):'';resizeDirectInput();
+        const end=directInput.value.length;try{directInput.setSelectionRange(end,end)}catch{}
+        return;
+      }
+      event.stopPropagation();
     });
 
     setScrollState();
+    resizeDirectInput();
     setInputMode(inputMode);
   };
 

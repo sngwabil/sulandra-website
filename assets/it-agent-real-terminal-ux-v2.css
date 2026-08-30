@@ -1,5 +1,6 @@
 /* IT_AGENT_REAL_TERMINAL_UX_V2
-   Direct keyboard terminal mode, command-box fallback, stable scrollback and copy controls. */
+   IT_AGENT_REAL_TERMINAL_UX_V3
+   Visible direct terminal line editor, command-box fallback, stable scrollback and copy controls. */
 body.it-chatgpt-workspace .itws-rt-input-switch{
   display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 10px;
   background:#071925;border-bottom:1px solid var(--rt-line);color:#89a2b3
@@ -26,18 +27,35 @@ body.it-chatgpt-workspace .itws-rt-screen{
 }
 body.it-chatgpt-workspace .itws-rt-screen:focus{outline:0}
 body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-mode .itws-rt-screen{
-  box-shadow:inset 0 0 0 1px rgba(59,217,138,.12)
+  box-shadow:inset 0 0 0 1px rgba(59,217,138,.12);padding-bottom:8px
 }
 body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-focus .itws-rt-screen{
   box-shadow:inset 0 0 0 1px rgba(59,217,138,.5),inset 0 0 22px rgba(59,217,138,.035)
 }
+body.it-chatgpt-workspace .itws-rt-direct-line{
+  display:none;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:8px;
+  padding:4px 16px 10px;background:#04121c;border-top:0;color:#d2e5ef
+}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-mode .itws-rt-direct-line{display:grid}
+body.it-chatgpt-workspace .itws-rt-direct-prompt{
+  color:var(--rt-green);font:900 14px/34px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+  user-select:none;-webkit-user-select:none
+}
+body.it-chatgpt-workspace .itws-rt-direct-input{
+  display:block;width:100%;min-height:34px;max-height:120px;resize:none;overflow:auto;
+  margin:0;padding:6px 0;border:0!important;border-radius:0;background:transparent!important;color:#d2e5ef!important;
+  -webkit-text-fill-color:#d2e5ef;caret-color:var(--rt-green)!important;outline:0!important;box-shadow:none!important;
+  font:500 12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+  white-space:pre-wrap;overflow-wrap:anywhere;tab-size:2
+}
+body.it-chatgpt-workspace .itws-rt-direct-input::placeholder{color:#5f7a8b;-webkit-text-fill-color:#5f7a8b;opacity:1}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-focus .itws-rt-direct-line{
+  box-shadow:inset 0 -1px 0 rgba(59,217,138,.5)
+}
 body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-mode .itws-rt-commandbar{display:none!important}
 body.it-chatgpt-workspace .itws-real-terminal.itws-rt-box-mode .itws-rt-commandbar{display:grid!important}
-body.it-chatgpt-workspace .itws-rt-direct-capture{
-  position:fixed!important;left:-10000px!important;top:auto!important;bottom:0!important;
-  width:2px!important;height:2px!important;opacity:.001!important;border:0!important;padding:0!important;
-  pointer-events:none!important;resize:none!important
-}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-box-mode .itws-rt-direct-line{display:none!important}
+body.it-chatgpt-workspace .itws-rt-direct-capture{display:none!important}
 body.it-chatgpt-workspace .itws-rt-scroll-state{
   display:inline-flex;align-items:center;gap:5px;color:#84a1b2;font-size:9.5px;white-space:nowrap
 }
@@ -46,6 +64,7 @@ body.it-chatgpt-workspace .itws-rt-scroll-state.paused{color:#ffd58b}
   body.it-chatgpt-workspace .itws-rt-input-switch{align-items:stretch}
   body.it-chatgpt-workspace .itws-rt-input-hint{order:3;flex-basis:100%;min-width:0}
   body.it-chatgpt-workspace .itws-rt-input-actions{margin-left:0}
+  body.it-chatgpt-workspace .itws-rt-direct-line{padding-left:13px;padding-right:13px}
 }
 @media(max-width:520px){
   body.it-chatgpt-workspace .itws-rt-input-mode{flex:1}
