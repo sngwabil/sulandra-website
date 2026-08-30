@@ -18,8 +18,10 @@ const enterpriseShellCssPath=path.join(root,'assets','it-agent-enterprise-shell.
 const enterpriseShellJsPath=path.join(root,'assets','it-agent-enterprise-shell.js');
 const headerPolishCssPath=path.join(root,'assets','it-agent-header-polish.css');
 const headerPolishJsPath=path.join(root,'assets','it-agent-header-polish.js');
+const darkConversationCssPath=path.join(root,'assets','it-agent-dark-conversation.css');
+const sidebarPersistenceJsPath=path.join(root,'assets','it-agent-sidebar-persistence.js');
 
-await Promise.all([access(portalPath),access(cssPath),access(jsPath),access(actionCenterPath),access(repairCssPath),access(repairJsPath),access(statusBoardSplitCssPath),access(statusBoardFinalizerPath),access(ipadGuardCssPath),access(ipadGuardJsPath),access(enterpriseShellCssPath),access(enterpriseShellJsPath),access(headerPolishCssPath),access(headerPolishJsPath)]);
+await Promise.all([access(portalPath),access(cssPath),access(jsPath),access(actionCenterPath),access(repairCssPath),access(repairJsPath),access(statusBoardSplitCssPath),access(statusBoardFinalizerPath),access(ipadGuardCssPath),access(ipadGuardJsPath),access(enterpriseShellCssPath),access(enterpriseShellJsPath),access(headerPolishCssPath),access(headerPolishJsPath),access(darkConversationCssPath),access(sidebarPersistenceJsPath)]);
 let html=await readFile(portalPath,'utf8');
 const cssTag='<link rel="stylesheet" href="/assets/it-agent-conversational-ui.css?v=20260829-chat-1">';
 const jsTag='<script src="/assets/it-agent-conversational-ui.js?v=20260829-chat-1"></script>';
@@ -33,6 +35,8 @@ const enterpriseShellCssTag='<link rel="stylesheet" href="/assets/it-agent-enter
 const enterpriseShellJsTag='<script src="/assets/it-agent-enterprise-shell.js?v=20260830-engineering-shell-2"></script>';
 const headerPolishCssTag='<link rel="stylesheet" href="/assets/it-agent-header-polish.css?v=20260830-header-polish-1">';
 const headerPolishJsTag='<script src="/assets/it-agent-header-polish.js?v=20260830-header-polish-1"></script>';
+const darkConversationCssTag='<link rel="stylesheet" href="/assets/it-agent-dark-conversation.css?v=20260830-dark-chat-1">';
+const sidebarPersistenceJsTag='<script src="/assets/it-agent-sidebar-persistence.js?v=20260830-sidebar-persist-1"></script>';
 const ipadPreboot='<style id="itws-preboot-critical">html.itws-preboot body>header,html.itws-preboot body>main.shell{opacity:0!important;visibility:hidden!important;pointer-events:none!important}html.itws-preboot::before{content:"Loading Sulandra IT…";position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#fff;color:#53616d;font:600 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}html.itws-preboot.itws-boot-failed::before{display:none!important}</style><script id="itws-preboot-script">document.documentElement.classList.add("itws-preboot")</script>';
 
 if(!html.includes('/assets/it-agent-conversational-ui.css')){
@@ -45,30 +49,30 @@ if(!html.includes('/assets/it-agent-conversational-ui.js')){
 }
 
 // Final presentation layers: Action Center remains separate from Status Board.
-// The main chat keeps its normal working/countdown feedback. The iPad preboot guard
-// prevents legacy markup from painting while the canonical workspace is built.
-// The enterprise layer makes IT Solutions a dedicated engineering surface, and
-// the final header-polish layer keeps the IT Agent identity centered between
-// symmetrical navigation / Status Board controls with a live connected-worker cue.
+// The engineering shell and centered header remain intact. The dark-conversation
+// layer gives the IT workspace a cohesive SIA-style navy surface and one aligned
+// chat lane, while sidebar persistence makes the left rail explicitly user-controlled.
 html=html.replace(/\s*<style id="itws-preboot-critical">[\s\S]*?<\/style>\s*<script id="itws-preboot-script">[\s\S]*?<\/script>\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-ui-regression-repair\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-status-board-split\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-ipad-load-guard\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-enterprise-shell\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-header-polish\.css(?:\?v=[^"']+)?">\s*/g,'\n');
+html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-dark-conversation\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-ui-regression-repair\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-status-board-finalizer\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-ipad-load-guard\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-enterprise-shell\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-header-polish\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
+html=html.replace(/\s*<script src="\/assets\/it-agent-sidebar-persistence\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 if(!html.includes('</head>')||!html.includes('</body>'))throw new Error('IT Agent final publication anchors changed');
-html=html.replace('</head>',`${ipadPreboot}${repairCssTag}${statusBoardSplitCssTag}${ipadGuardCssTag}${enterpriseShellCssTag}${headerPolishCssTag}</head>`);
-html=html.replace('</body>',`${repairJsTag}${statusBoardFinalizerTag}${ipadGuardJsTag}${enterpriseShellJsTag}${headerPolishJsTag}</body>`);
+html=html.replace('</head>',`${ipadPreboot}${repairCssTag}${statusBoardSplitCssTag}${ipadGuardCssTag}${enterpriseShellCssTag}${headerPolishCssTag}${darkConversationCssTag}</head>`);
+html=html.replace('</body>',`${repairJsTag}${statusBoardFinalizerTag}${ipadGuardJsTag}${enterpriseShellJsTag}${headerPolishJsTag}${sidebarPersistenceJsTag}</body>`);
 
-for(const marker of ['Sulandra IT Agent','Ask IT Agent','/assets/it-agent-chatgpt-workspace.css','/assets/it-agent-chatgpt-workspace.js','/assets/it-agent-conversational-ui.css','/assets/it-agent-conversational-ui.js','/assets/it-agent-action-center-tab.js','/assets/it-agent-ui-regression-repair.css','/assets/it-agent-ui-regression-repair.js','/assets/it-agent-status-board-split.css','/assets/it-agent-status-board-finalizer.js','/assets/it-agent-ipad-load-guard.css','/assets/it-agent-ipad-load-guard.js','/assets/it-agent-enterprise-shell.css','/assets/it-agent-enterprise-shell.js','/assets/it-agent-header-polish.css','/assets/it-agent-header-polish.js','itws-preboot-critical','itws-preboot-script']){
+for(const marker of ['Sulandra IT Agent','Ask IT Agent','/assets/it-agent-chatgpt-workspace.css','/assets/it-agent-chatgpt-workspace.js','/assets/it-agent-conversational-ui.css','/assets/it-agent-conversational-ui.js','/assets/it-agent-action-center-tab.js','/assets/it-agent-ui-regression-repair.css','/assets/it-agent-ui-regression-repair.js','/assets/it-agent-status-board-split.css','/assets/it-agent-status-board-finalizer.js','/assets/it-agent-ipad-load-guard.css','/assets/it-agent-ipad-load-guard.js','/assets/it-agent-enterprise-shell.css','/assets/it-agent-enterprise-shell.js','/assets/it-agent-header-polish.css','/assets/it-agent-header-polish.js','/assets/it-agent-dark-conversation.css','/assets/it-agent-sidebar-persistence.js','itws-preboot-critical','itws-preboot-script']){
   if(!html.includes(marker))throw new Error(`IT Agent current chat-first UI missing ${marker}`);
 }
-const [actionCenter,repairCss,repairJs,statusBoardSplitCss,statusBoardFinalizer,ipadGuardCss,ipadGuardJs,enterpriseShellCss,enterpriseShellJs,headerPolishCss,headerPolishJs]=await Promise.all([readFile(actionCenterPath,'utf8'),readFile(repairCssPath,'utf8'),readFile(repairJsPath,'utf8'),readFile(statusBoardSplitCssPath,'utf8'),readFile(statusBoardFinalizerPath,'utf8'),readFile(ipadGuardCssPath,'utf8'),readFile(ipadGuardJsPath,'utf8'),readFile(enterpriseShellCssPath,'utf8'),readFile(enterpriseShellJsPath,'utf8'),readFile(headerPolishCssPath,'utf8'),readFile(headerPolishJsPath,'utf8')]);
+const [actionCenter,repairCss,repairJs,statusBoardSplitCss,statusBoardFinalizer,ipadGuardCss,ipadGuardJs,enterpriseShellCss,enterpriseShellJs,headerPolishCss,headerPolishJs,darkConversationCss,sidebarPersistenceJs]=await Promise.all([readFile(actionCenterPath,'utf8'),readFile(repairCssPath,'utf8'),readFile(repairJsPath,'utf8'),readFile(statusBoardSplitCssPath,'utf8'),readFile(statusBoardFinalizerPath,'utf8'),readFile(ipadGuardCssPath,'utf8'),readFile(ipadGuardJsPath,'utf8'),readFile(enterpriseShellCssPath,'utf8'),readFile(enterpriseShellJsPath,'utf8'),readFile(headerPolishCssPath,'utf8'),readFile(headerPolishJsPath,'utf8'),readFile(darkConversationCssPath,'utf8'),readFile(sidebarPersistenceJsPath,'utf8')]);
 for(const marker of ['IT_AGENT_ACTION_CENTER_TAB_V2','Action Center','data-itws-view="overview"','itwsActionCenterView']){
   if(!actionCenter.includes(marker))throw new Error(`Separate Action Center missing ${marker}`);
 }
@@ -99,6 +103,12 @@ for(const marker of ['No unrestricted host shell','controlled Sulandra coding-wo
 for(const marker of ['IT_AGENT_HEADER_POLISH_V1','itws-agent-centered-title','itws-live-connected','itws-live-connected-pulse','itws-status-compact']){
   if(!headerPolishCss.includes(marker)&&!headerPolishJs.includes(marker))throw new Error(`IT Agent header polish missing ${marker}`);
 }
+for(const marker of ['IT_AGENT_DARK_CONVERSATION_V1','--itws-navy-950','--itws-chat-lane','itws-status-board-drawer','bubble.user']){
+  if(!darkConversationCss.includes(marker))throw new Error(`IT Agent dark conversation theme missing ${marker}`);
+}
+for(const marker of ['IT_AGENT_SIDEBAR_PERSISTENCE_V1','preserveAfterClick','applyOpenState(true)','itws-left-sidebar-closed','sessionStorage']){
+  if(!sidebarPersistenceJs.includes(marker))throw new Error(`IT Agent sidebar persistence missing ${marker}`);
+}
 const repairSyntax=spawnSync(process.execPath,['--check',repairJsPath],{encoding:'utf8'});
 if(repairSyntax.status!==0)throw new Error(`IT Agent regression repair JavaScript syntax failed: ${String(repairSyntax.stderr||repairSyntax.stdout||'unknown syntax error').trim()}`);
 const actionCenterSyntax=spawnSync(process.execPath,['--check',actionCenterPath],{encoding:'utf8'});
@@ -111,5 +121,7 @@ const enterpriseShellSyntax=spawnSync(process.execPath,['--check',enterpriseShel
 if(enterpriseShellSyntax.status!==0)throw new Error(`IT Agent engineering shell JavaScript syntax failed: ${String(enterpriseShellSyntax.stderr||enterpriseShellSyntax.stdout||'unknown syntax error').trim()}`);
 const headerPolishSyntax=spawnSync(process.execPath,['--check',headerPolishJsPath],{encoding:'utf8'});
 if(headerPolishSyntax.status!==0)throw new Error(`IT Agent header polish JavaScript syntax failed: ${String(headerPolishSyntax.stderr||headerPolishSyntax.stdout||'unknown syntax error').trim()}`);
+const sidebarPersistenceSyntax=spawnSync(process.execPath,['--check',sidebarPersistenceJsPath],{encoding:'utf8'});
+if(sidebarPersistenceSyntax.status!==0)throw new Error(`IT Agent sidebar persistence JavaScript syntax failed: ${String(sidebarPersistenceSyntax.stderr||sidebarPersistenceSyntax.stdout||'unknown syntax error').trim()}`);
 await writeFile(portalPath,html,'utf8');
-console.log('IT Solutions engineering workspace preserved: centered green IT Agent identity is protected between symmetrical edge controls; connected coding worker receives a pulsing green live cue; Status Board remains separate; controlled Engineering Terminal and Action Center remain intact.');
+console.log('IT Solutions engineering workspace preserved: aligned navy SIA-style conversation lane is active; the left rail remains open through ordinary workspace interactions until the user explicitly closes it; centered IT Agent identity, connected-worker pulse, Status Board, Engineering Terminal, and Action Center remain intact.');
