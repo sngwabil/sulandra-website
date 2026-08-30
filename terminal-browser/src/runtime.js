@@ -7,6 +7,7 @@ import { SearchAddon } from '@xterm/addon-search';
 import { ImageAddon } from '@xterm/addon-image';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { SerializeAddon } from '@xterm/addon-serialize';
+import { LigaturesAddon } from '@xterm/addon-ligatures';
 
 export {
   Terminal,
@@ -18,4 +19,5 @@ export {
   ImageAddon,
   Unicode11Addon,
   SerializeAddon,
+  LigaturesAddon,
 };
