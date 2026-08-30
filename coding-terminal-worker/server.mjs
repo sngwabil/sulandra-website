@@ -15,6 +15,10 @@ const seedPath = path.resolve(process.env.TERMINAL_SEED_PATH || '/seed');
 const workspaceRoot = path.resolve(process.env.TERMINAL_WORKSPACE_ROOT || '/workspaces');
 const terminalUid = Math.max(1000, Number(process.env.TERMINAL_UID || 10001));
 const terminalGid = Math.max(1000, Number(process.env.TERMINAL_GID || 10001));
+const runtimeUid = typeof process.getuid === 'function' ? process.getuid() : terminalUid;
+const runtimeGid = typeof process.getgid === 'function' ? process.getgid() : terminalGid;
+const canSwitchIdentity = runtimeUid === 0;
+const childIdentity = canSwitchIdentity ? { uid: terminalUid, gid: terminalGid } : {};
 const maxWorkspaces = Math.max(1, Math.min(12, Number(process.env.TERMINAL_MAX_WORKSPACES || 6)));
 const maxSessionsPerWorkspace = Math.max(1, Math.min(12, Number(process.env.TERMINAL_MAX_SESSIONS_PER_WORKSPACE || 6)));
 const idleMinutes = Math.max(15, Math.min(720, Number(process.env.TERMINAL_IDLE_MINUTES || 120)));
@@ -43,6 +47,7 @@ app.get('/health', (_req, res) => {
     ok: true,
     service: 'sulandra-coding-terminal-worker',
     isolation: 'dedicated-worker-unprivileged-shell',
+    runtimeUid,
     workspaces: workspaces.size,
     sessions: sessions.size,
   });
@@ -80,8 +85,7 @@ const git = (cwd, args) => spawnSync('git', args, {
   cwd,
   encoding: 'utf8',
   stdio: 'ignore',
-  uid: terminalUid,
-  gid: terminalGid,
+  ...childIdentity,
   env: {
     PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
     HOME: cwd,
@@ -113,8 +117,10 @@ const createWorkspace = async owner => {
       return !parts.some(part => part === 'node_modules' || part === '.git' || part === 'dist-web' || part === 'coverage');
     },
   });
-  const ownership = spawnSync('chown', ['-R', `${terminalUid}:${terminalGid}`, cwd], { encoding: 'utf8' });
-  if (ownership.status !== 0) throw new Error(`Unable to prepare terminal workspace ownership: ${String(ownership.stderr || '').trim()}`);
+  if (canSwitchIdentity) {
+    const ownership = spawnSync('chown', ['-R', `${terminalUid}:${terminalGid}`, cwd], { encoding: 'utf8' });
+    if (ownership.status !== 0) throw new Error(`Unable to prepare terminal workspace ownership: ${String(ownership.stderr || '').trim()}`);
+  }
   initializeLocalGit(cwd);
   const workspace = {
     id: workspaceId,
@@ -153,8 +159,7 @@ const createSession = (workspace, owner, cols = 120, rows = 32) => {
     rows: Math.max(12, Math.min(80, Number(rows) || 32)),
     cwd: workspace.cwd,
     env: shellEnv(workspace),
-    uid: terminalUid,
-    gid: terminalGid,
+    ...childIdentity,
   });
   const session = {
     id: sessionId,
