@@ -1,0 +1,171 @@
+/* IT_AGENT_HEADER_POLISH_V1
+   Keeps the IT Agent title truly centered between symmetrical left/right controls,
+   gives the agent identity a bold green treatment, and makes connected worker
+   state visually live without changing underlying health/status semantics. */
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-head{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:minmax(52px,1fr) auto minmax(52px,1fr)!important;
+  align-items:center!important;
+  justify-content:stretch!important;
+  min-height:58px!important;
+  height:auto!important;
+  gap:14px!important;
+  padding:8px 62px!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-head>div:first-child{
+  grid-column:2!important;
+  justify-self:center!important;
+  min-width:0!important;
+  max-width:100%!important;
+  text-align:center!important;
+  z-index:2!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-head>div:first-child h2,
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .itws-agent-centered-title{
+  margin:0!important;
+  color:#15834a!important;
+  font-size:19px!important;
+  font-weight:950!important;
+  letter-spacing:-.015em!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Left navigation and Status Board are matching edge controls so neither can
+   crowd the centered title. */
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle{
+  position:absolute!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid #d9e1e7!important;
+  border-radius:11px!important;
+  background:#fff!important;
+  color:#385065!important;
+  box-shadow:0 2px 8px rgba(15,23,42,.07)!important;
+  cursor:pointer!important;
+  z-index:8!important;
+  -webkit-tap-highlight-color:transparent!important;
+  touch-action:manipulation!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu{
+  left:14px!important;
+  font-size:27px!important;
+  font-weight:500!important;
+  line-height:1!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle{
+  right:14px!important;
+  margin:0!important;
+  font-size:0!important;
+  line-height:1!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle::before{
+  content:'≡'!important;
+  display:block!important;
+  font-size:22px!important;
+  font-weight:850!important;
+  line-height:1!important;
+  transform:translateY(-1px)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu:focus-visible,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle:focus-visible{
+  background:#eef7f2!important;
+  color:#137a46!important;
+  border-color:#b8d9c5!important;
+  outline:none!important;
+}
+
+/* Health pills occupy only the right side and leave the center title untouched. */
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status{
+  position:static!important;
+  inset:auto!important;
+  grid-column:3!important;
+  justify-self:end!important;
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+  min-width:0!important;
+  max-width:100%!important;
+  gap:5px!important;
+  padding-right:48px!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status .pill{
+  white-space:nowrap!important;
+  max-width:170px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Live coding-worker connection indicator. */
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status .pill.itws-live-connected{
+  position:relative!important;
+  padding-left:23px!important;
+  border-color:#b8e4c9!important;
+  background:#eaf8ef!important;
+  color:#147a43!important;
+  font-weight:900!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status .pill.itws-live-connected::before{
+  content:''!important;
+  position:absolute!important;
+  left:8px!important;
+  top:50%!important;
+  width:8px!important;
+  height:8px!important;
+  border-radius:50%!important;
+  background:#20b766!important;
+  transform:translateY(-50%)!important;
+  box-shadow:0 0 0 0 rgba(32,183,102,.44)!important;
+  animation:itws-live-connected-pulse 1.55s ease-out infinite!important;
+}
+@keyframes itws-live-connected-pulse{
+  0%{box-shadow:0 0 0 0 rgba(32,183,102,.44)}
+  65%{box-shadow:0 0 0 7px rgba(32,183,102,0)}
+  100%{box-shadow:0 0 0 0 rgba(32,183,102,0)}
+}
+
+/* Medium widths keep the most important worker signal and remove the less
+   important pills before they can collide with the centered title. */
+@media(max-width:1180px) and (min-width:901px){
+  body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status{
+    display:flex!important;
+  }
+  body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status .pill:not(.itws-live-connected){
+    display:none!important;
+  }
+}
+
+@media(max-width:900px){
+  body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-head{
+    grid-template-columns:1fr auto 1fr!important;
+    padding:8px 56px!important;
+  }
+  body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status{
+    display:none!important;
+  }
+  body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-head>div:first-child h2,
+  body.it-chatgpt-workspace.itws-enterprise-shell #agent .itws-agent-centered-title{
+    font-size:18px!important;
+  }
+  body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu{left:10px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle{right:10px!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status .pill.itws-live-connected::before{
+    animation:none!important;
+  }
+}
