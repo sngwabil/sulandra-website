@@ -51,7 +51,7 @@ for (const [name, source] of [['Policy Center', policiesJs], ['Policy Studio', s
   assert.doesNotThrow(() => new Function(source), `${name} browser JavaScript is invalid`);
 }
 
-for (const marker of ['Policy Center','Search & Browse','Bookmarks','Recent','Ask SIA about policies','policy-pdf.html']) {
+for (const marker of ['Policy Center','Search & Browse','Bookmarks','Recent','Ask SIA about policies','pdfUrl']) {
   assert.ok(policiesHtml.includes(marker) || policiesJs.includes(marker), `Policy Center missing ${marker}`);
 }
 for (const marker of ['Policy Studio','Objective / Purpose','Documentation & Records','Compliance & Monitoring','Submit for Review','Publish Policy']) {
@@ -59,6 +59,7 @@ for (const marker of ['Policy Studio','Objective / Purpose','Documentation & Rec
 }
 assert.ok(studioJs.includes('/api/admin/policies/templates'), 'Policy Studio is not connected to governed templates.');
 assert.ok(studioJs.includes('/api/admin/policies'), 'Policy Studio is not connected to policy authoring APIs.');
+assert.ok(pdfHtml.includes('Protected Policy PDF'), 'Protected Policy PDF viewer surface is missing.');
 assert.ok(pdfJs.includes('/api/policies/') && pdfJs.includes('/pdf'), 'Protected PDF viewer is not connected to the policy PDF route.');
 assert.ok(itRepair.includes('Policy Studio · templates & publishing'), 'IT Solutions does not expose Policy Studio.');
 
