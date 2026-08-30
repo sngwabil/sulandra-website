@@ -88,9 +88,6 @@ function patchRequestHandoff(source){
 }
 
 function patchLiveActivity(source){
-  // Match the executable delayed-completion call itself instead of the surrounding
-  // `else` formatting. That makes this safe across pretty-printed and compact
-  // publication variants while preserving the existing control-flow branch.
   const delayedCompletion=/setTimeout\s*\(\s*\(\s*\)\s*=>\s*\{\s*if\s*\(\s*activity\s*&&\s*!activity\.finished\s*\)\s*finishActivity\s*\(\s*activity\s*,\s*(['"])Sulandra IT Agent finished\1\s*\)\s*;?\s*\}\s*,\s*4000\s*\)/g;
   source=source.replace(delayedCompletion,()=>"finishActivity(activity,'Sulandra IT Agent finished')");
 
@@ -105,8 +102,6 @@ function patchLiveActivity(source){
 }
 
 function patchPublishedHtml(source){
-  // Publication layers are allowed to rewrite/remove older query strings. Force the
-  // cache key by stable filename so the exact repaired runtime is fetched on iPad/Safari.
   return source
     .replace(/it-agent-conversational-ui\.js(?:\?v=[^"']*)?/g,'it-agent-conversational-ui.js?v=20260829-chat-2')
     .replace(/it-agent-status-board-finalizer\.js(?:\?v=[^"']*)?/g,'it-agent-status-board-finalizer.js?v=20260829-status-board-6');
@@ -151,9 +146,13 @@ for(const file of activityCandidates){
 for(const file of htmlCandidates){
   try{
     const text=await readFile(file,'utf8');
-    must(text.includes('it-agent-conversational-ui.js?v=20260829-chat-2'),`${path.basename(file)} conversational runtime cache key was not bumped`);
-    must(text.includes('it-agent-status-board-finalizer.js?v=20260829-status-board-6'),`${path.basename(file)} Status Board cache key was not bumped`);
+    if(text.includes('it-agent-conversational-ui.js')){
+      must(text.includes('it-agent-conversational-ui.js?v=20260829-chat-2'),`${path.basename(file)} conversational runtime cache key was not bumped`);
+    }
+    if(text.includes('it-agent-status-board-finalizer.js')){
+      must(text.includes('it-agent-status-board-finalizer.js?v=20260829-status-board-6'),`${path.basename(file)} Status Board cache key was not bumped`);
+    }
   }catch(error){if(error?.code!=='ENOENT')throw error}
 }
 
-console.log(`IT Agent request handoff repaired: Status Board keeps polling through terminal completion, successful HTTP responses cannot deadlock the next prompt, completed live activity stops immediately, and published cache keys were bumped (finalizer ${finalizerResult.changed}, activity ${activityResult.changed}, html ${htmlResult.changed}).`);
+console.log(`IT Agent request handoff repaired: Status Board keeps polling through terminal completion, successful HTTP responses cannot deadlock the next prompt, completed live activity stops immediately, and any installed published runtime receives the new cache key (finalizer ${finalizerResult.changed}, activity ${activityResult.changed}, html ${htmlResult.changed}).`);
