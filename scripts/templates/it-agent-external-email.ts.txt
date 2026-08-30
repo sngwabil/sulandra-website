@@ -1,4 +1,5 @@
 /* IT_AGENT_EXTERNAL_EMAIL_DELIVERY_TRUTH_V1 */
+/* IT_AGENT_AUTHENTICATED_SMTP_SENDER_V1 */
 async function sendExternalEmail(prisma:PrismaClient,input:RoutineInput){
   const payload=externalEmailSchema.parse(obj(input.payload));
   const recipients=[...new Set(payload.recipients.map((value)=>clean(value,320).toLowerCase()).filter(Boolean))];
@@ -13,12 +14,12 @@ async function sendExternalEmail(prisma:PrismaClient,input:RoutineInput){
   if(!host||!user||!pass)throw httpError(503,'Sulandra SMTP is not configured on this API deployment.');
   const auditId=randomUUID();
   await prisma.$executeRawUnsafe(`INSERT INTO "ITAgentExternalEmailAudit" ("id","organizationId","actorUserId","actionId","recipientCount","recipients","subject","messageSha256","status") VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,$8,'SENDING')`,auditId,input.auth.organizationId,input.auth.userId,input.actionId,recipients.length,JSON.stringify(recipients),payload.subject,sha256(payload.message));
-  const fromAddress=(process.env.FROM_EMAIL||process.env.SMTP_FROM||user).trim();
+  const fromAddress=user.trim();
   const normalizedAddress=(value:unknown)=>{if(typeof value==='string')return clean(value,320).toLowerCase();if(value&&typeof value==='object'&&'address' in value)return clean((value as {address?:unknown}).address,320).toLowerCase();return''};
   try{
     const transporter=nodemailer.createTransport({host,port,secure:port===465,auth:{user,pass},connectionTimeout:10000,greetingTimeout:10000,socketTimeout:20000});
     const safeSubject=clean(payload.subject,240),safeMessage=clean(payload.message,12000);
-    const info=await transporter.sendMail({from:{name:'Sulandra Health IT Solutions',address:fromAddress},replyTo:user.trim(),to:fromAddress,bcc:recipients,subject:safeSubject,text:safeMessage,html:`<div style="font-family:Segoe UI,Arial,sans-serif;color:#18324a;line-height:1.6"><h2 style="color:#082f5b">${safeSubject.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]||c))}</h2><p>${safeMessage.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]||c)).replace(/\n/g,'<br>')}</p><p style="color:#64748b;font-size:12px">Sent by Sulandra Health IT Solutions.</p></div>`});
+    const info=await transporter.sendMail({from:{name:'Sulandra Health IT Solutions',address:fromAddress},replyTo:fromAddress,to:fromAddress,bcc:recipients,subject:safeSubject,text:safeMessage,html:`<div style="font-family:Segoe UI,Arial,sans-serif;color:#18324a;line-height:1.6"><h2 style="color:#082f5b">${safeSubject.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]||c))}</h2><p>${safeMessage.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]||c)).replace(/\n/g,'<br>')}</p><p style="color:#64748b;font-size:12px">Sent by Sulandra Health IT Solutions.</p></div>`});
     const acceptedSet=new Set((Array.isArray(info.accepted)?info.accepted:[]).map(normalizedAddress).filter(Boolean));
     const rejectedSet=new Set((Array.isArray(info.rejected)?info.rejected:[]).map(normalizedAddress).filter(Boolean));
     const acceptedCount=recipients.filter((email)=>acceptedSet.has(email)).length;
@@ -36,7 +37,7 @@ async function sendExternalEmail(prisma:PrismaClient,input:RoutineInput){
     const transportCode=clean(source?.code,40).toUpperCase();
     const responseCode=Number(source?.responseCode||0)||null;
     const command=clean(source?.command,80)||null;
-    const transportEvidence={auditId,actionId:input.actionId,recipientCount:recipients.length,transportCode:transportCode||null,responseCode,command,fromMatchesSmtpUser:fromAddress.toLowerCase()===user.trim().toLowerCase(),message:safeTransportMessage||'SMTP handoff failed.'};
+    const transportEvidence={auditId,actionId:input.actionId,recipientCount:recipients.length,transportCode:transportCode||null,responseCode,command,fromMatchesSmtpUser:true,message:safeTransportMessage||'SMTP handoff failed.'};
     console.error('[it-agent-external-email] SMTP handoff failed',JSON.stringify(transportEvidence));
     await prisma.$executeRawUnsafe(`UPDATE "ITAgentExternalEmailAudit" SET "status"='FAILED',"error"=$1 WHERE "id"=$2`,JSON.stringify(transportEvidence),auditId).catch(()=>{});
     throw Object.assign(new Error(safeTransportMessage||'External email SMTP handoff failed.'),{status:Number(source?.status||0)||502,code:transportCode||undefined,responseCode:responseCode||undefined,command:command||undefined,itAgentOperationalFailure:true,itAgentActionType:'SEND_EXTERNAL_EMAIL',itAgentAuditId:auditId});

@@ -20,6 +20,9 @@ function replaceSection(source,startMarker,endMarker,replacement,label){
   return source.slice(0,start)+replacement.trimEnd()+'\n'+source.slice(end);
 }
 
+const legacyFromExpression='(process.env.FROM_EMAIL||process.env.SMTP_FROM||user).trim()';
+const enforceAuthenticatedSender=(source)=>source.split(legacyFromExpression).join('user.trim()');
+
 const educationPath=path.join(root,'api','src','education-campaign-routes.ts');
 let education=await readFile(educationPath,'utf8');
 if(!education.includes('IT_AGENT_EDUCATION_EMAIL_DELIVERY_TRUTH_V1')){
@@ -33,8 +36,17 @@ let artifact=await readFile(artifactPath,'utf8');
 if(!artifact.includes('IT_AGENT_EXTERNAL_EMAIL_DELIVERY_TRUTH_V1')){
   const template=await readFile(path.join(root,'scripts','templates','it-agent-external-email.ts.txt'),'utf8');
   artifact=replaceFunction(artifact,'async function sendExternalEmail','\nasync function createPdf',template,'External email delivery');
-  await writeFile(artifactPath,artifact,'utf8');
 }
+artifact=enforceAuthenticatedSender(artifact);
+if(artifact.includes('const fromAddress=user.trim();')&&!artifact.includes('IT_AGENT_AUTHENTICATED_SMTP_SENDER_V1')){
+  artifact=artifact.replace('/* IT_AGENT_EXTERNAL_EMAIL_DELIVERY_TRUTH_V1 */','/* IT_AGENT_EXTERNAL_EMAIL_DELIVERY_TRUTH_V1 */\n/* IT_AGENT_AUTHENTICATED_SMTP_SENDER_V1 */');
+}
+await writeFile(artifactPath,artifact,'utf8');
+
+const routinePath=path.join(root,'api','src','it-agent-routine-executor.ts');
+let routine=await readFile(routinePath,'utf8');
+routine=enforceAuthenticatedSender(routine);
+await writeFile(routinePath,routine,'utf8');
 
 const workbenchPath=path.join(root,'api','src','it-agent-workbench-routes.ts');
 let workbench=await readFile(workbenchPath,'utf8');
@@ -57,8 +69,8 @@ if(!workbench.includes('IT_AGENT_GENERAL_EMAIL_DELIVERY_TRUTH_V1')){
     instructionAnchor,
     instructionAnchor+' For email execution results, smtpAccepted or smtpAcceptedCount proves only SMTP handoff, not inbox delivery. Describe it as accepted by SMTP and explicitly state that mailbox delivery is unconfirmed; never say delivered or imply the recipient saw it unless mailboxDeliveryConfirmed is true.',
   );
-  await writeFile(workbenchPath,workbench,'utf8');
 }
+workbench=enforceAuthenticatedSender(workbench);
 
 // IT_AGENT_ROUTINE_OPERATIONAL_FAILURE_BOUNDARY_V1
 // A mail-provider rejection, timeout, rate limit, or SMTP configuration problem is an
@@ -66,10 +78,18 @@ if(!workbench.includes('IT_AGENT_GENERAL_EMAIL_DELIVERY_TRUTH_V1')){
 // Preserve self-ticketing for unexpected programming/runtime faults only.
 if(!workbench.includes('IT_AGENT_ROUTINE_OPERATIONAL_FAILURE_BOUNDARY_V1')){
   const legacyRoutineFailure="catch(actionError){const incident=await reportITAgentRuntimeFailure(prisma,{organizationId:auth.organizationId,userId:auth.userId,conversationId,request:policy.summary,error:actionError instanceof Error?actionError.message:String(actionError),actionId});proposals.push({id:actionId,...policy,payload:args,status:'RETRYING',result:incident});trustedEvents.push(incident.message)}";
-  const boundedRoutineFailure=String.raw`catch(actionError){/* IT_AGENT_ROUTINE_OPERATIONAL_FAILURE_BOUNDARY_V1 */const actionStatus=Number((actionError as any)?.status||0);const transportCode=clean((actionError as any)?.code,40).toUpperCase();const providerResponseCode=Number((actionError as any)?.responseCode||0);const expectedExternalEmailFailure=policy.actionType==='SEND_EXTERNAL_EMAIL'&&((actionError as any)?.itAgentOperationalFailure===true||(actionStatus>=400&&actionStatus<500)||actionStatus===502||actionStatus===503||['EAUTH','ETIMEDOUT','ECONNECTION','ESOCKET','EENVELOPE','EMESSAGE','ESTREAM','EDNS'].includes(transportCode)||providerResponseCode>=400);if(expectedExternalEmailFailure){const safeReason=clean(actionError instanceof Error?actionError.message:String(actionError),600).replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[email]').replace(/\b(?:Bearer\s+[A-Za-z0-9._~-]{12,}|(?:api[_ -]?key|access[_ -]?token|secret|password|mfa|otp)\s*[:=]\s*[^\s,;]+|sk-[A-Za-z0-9_-]{12,})\b/gi,'[REDACTED]');const failureResult={sent:false,smtpAccepted:false,mailboxDeliveryConfirmed:false,operationalFailure:true,statusCode:actionStatus||null,transportCode:transportCode||null,providerResponseCode:providerResponseCode||null,message:'External email was not sent. '+(safeReason||'The mail service did not accept the SMTP handoff.')};await prisma.$executeRawUnsafe("UPDATE \"ITAgentAction\" SET \"status\"='FAILED',\"result\"=$1::jsonb,\"updatedAt\"=NOW() WHERE \"organizationId\"=$2 AND \"id\"=$3",JSON.stringify(failureResult),auth.organizationId,actionId).catch(()=>{});proposals.push({id:actionId,...policy,payload:args,status:'FAILED',result:failureResult});trustedEvents.push(failureResult.message)}else{const incident=await reportITAgentRuntimeFailure(prisma,{organizationId:auth.organizationId,userId:auth.userId,conversationId,request:policy.summary,error:actionError instanceof Error?actionError.message:String(actionError),actionId});proposals.push({id:actionId,...policy,payload:args,status:'RETRYING',result:incident});trustedEvents.push(incident.message)}}`;
+  const boundedRoutineFailure=String.raw`catch(actionError){/* IT_AGENT_ROUTINE_OPERATIONAL_FAILURE_BOUNDARY_V1 */const actionStatus=Number((actionError as any)?.status||0);const transportCode=clean((actionError as any)?.code,40).toUpperCase();const providerResponseCode=Number((actionError as any)?.responseCode||0);const expectedMailFailure=['SEND_EMAIL','SEND_EXTERNAL_EMAIL'].includes(policy.actionType)&&((actionError as any)?.itAgentOperationalFailure===true||(actionStatus>=400&&actionStatus<500)||actionStatus===502||actionStatus===503||['EAUTH','ETIMEDOUT','ECONNECTION','ESOCKET','EENVELOPE','EMESSAGE','ESTREAM','EDNS'].includes(transportCode)||providerResponseCode>=400);if(expectedMailFailure){const safeReason=clean(actionError instanceof Error?actionError.message:String(actionError),600).replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[email]').replace(/\b(?:Bearer\s+[A-Za-z0-9._~-]{12,}|(?:api[_ -]?key|access[_ -]?token|secret|password|mfa|otp)\s*[:=]\s*[^\s,;]+|sk-[A-Za-z0-9_-]{12,})\b/gi,'[REDACTED]');const failureResult={sent:false,smtpAccepted:false,mailboxDeliveryConfirmed:false,operationalFailure:true,statusCode:actionStatus||null,transportCode:transportCode||null,providerResponseCode:providerResponseCode||null,message:'Email action was not sent. '+(safeReason||'The mail service did not accept the SMTP handoff.')};await prisma.$executeRawUnsafe("UPDATE \"ITAgentAction\" SET \"status\"='FAILED',\"result\"=$1::jsonb,\"updatedAt\"=NOW() WHERE \"organizationId\"=$2 AND \"id\"=$3",JSON.stringify(failureResult),auth.organizationId,actionId).catch(()=>{});proposals.push({id:actionId,...policy,payload:args,status:'FAILED',result:failureResult});trustedEvents.push(failureResult.message)}else{const incident=await reportITAgentRuntimeFailure(prisma,{organizationId:auth.organizationId,userId:auth.userId,conversationId,request:policy.summary,error:actionError instanceof Error?actionError.message:String(actionError),actionId});proposals.push({id:actionId,...policy,payload:args,status:'RETRYING',result:incident});trustedEvents.push(incident.message)}}`;
   if(!workbench.includes(legacyRoutineFailure))throw new Error('IT Agent routine operational-failure boundary anchor changed');
   workbench=workbench.replace(legacyRoutineFailure,boundedRoutineFailure);
-  await writeFile(workbenchPath,workbench,'utf8');
 }
 
-console.log('IT Agent email delivery truth installed: education, external email, and general employee email separate SMTP acceptance from final inbox delivery; expected external-email transport failures remain action failures instead of false runtime incidents.');
+// Older generated variants from the first boundary patch classified only external
+// email. Upgrade them in-place when this finalizer is re-run after later installers.
+workbench=workbench
+  .replace("const expectedExternalEmailFailure=policy.actionType==='SEND_EXTERNAL_EMAIL'&&","const expectedMailFailure=['SEND_EMAIL','SEND_EXTERNAL_EMAIL'].includes(policy.actionType)&&")
+  .replace('if(expectedExternalEmailFailure){','if(expectedMailFailure){')
+  .replace("message:'External email was not sent. '+","message:'Email action was not sent. '+");
+
+await writeFile(workbenchPath,workbench,'utf8');
+
+console.log('IT Agent email delivery truth installed: authenticated SMTP mailbox is the sender; employee and external mail separate SMTP acceptance from inbox delivery; recognized provider failures remain FAILED actions instead of false runtime incidents.');
