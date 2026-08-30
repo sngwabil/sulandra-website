@@ -36,7 +36,7 @@ const enterpriseShellJsTag='<script src="/assets/it-agent-enterprise-shell.js?v=
 const headerPolishCssTag='<link rel="stylesheet" href="/assets/it-agent-header-polish.css?v=20260830-header-polish-1">';
 const headerPolishJsTag='<script src="/assets/it-agent-header-polish.js?v=20260830-header-polish-1"></script>';
 const darkConversationCssTag='<link rel="stylesheet" href="/assets/it-agent-dark-conversation.css?v=20260830-dark-chat-1">';
-const sidebarPersistenceJsTag='<script src="/assets/it-agent-sidebar-persistence.js?v=20260830-sidebar-persist-1"></script>';
+const sidebarPersistenceJsTag='<script src="/assets/it-agent-sidebar-persistence.js?v=20260830-sidebar-persist-2"></script>';
 const ipadPreboot='<style id="itws-preboot-critical">html.itws-preboot body>header,html.itws-preboot body>main.shell{opacity:0!important;visibility:hidden!important;pointer-events:none!important}html.itws-preboot::before{content:"Loading Sulandra IT…";position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#fff;color:#53616d;font:600 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}html.itws-preboot.itws-boot-failed::before{display:none!important}</style><script id="itws-preboot-script">document.documentElement.classList.add("itws-preboot")</script>';
 
 if(!html.includes('/assets/it-agent-conversational-ui.css')){
@@ -51,7 +51,8 @@ if(!html.includes('/assets/it-agent-conversational-ui.js')){
 // Final presentation layers: Action Center remains separate from Status Board.
 // The engineering shell and centered header remain intact. The dark-conversation
 // layer gives the IT workspace a cohesive SIA-style navy surface and one aligned
-// chat lane, while sidebar persistence makes the left rail explicitly user-controlled.
+// chat lane. Sidebar persistence is authoritative so only explicit user controls
+// change the left rail state, and non-chat views retain readable dark contrast.
 html=html.replace(/\s*<style id="itws-preboot-critical">[\s\S]*?<\/style>\s*<script id="itws-preboot-script">[\s\S]*?<\/script>\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-ui-regression-repair\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-status-board-split\.css(?:\?v=[^"']+)?">\s*/g,'\n');
@@ -106,8 +107,8 @@ for(const marker of ['IT_AGENT_HEADER_POLISH_V1','itws-agent-centered-title','it
 for(const marker of ['IT_AGENT_DARK_CONVERSATION_V1','--itws-navy-950','--itws-chat-lane','itws-status-board-drawer','bubble.user']){
   if(!darkConversationCss.includes(marker))throw new Error(`IT Agent dark conversation theme missing ${marker}`);
 }
-for(const marker of ['IT_AGENT_SIDEBAR_PERSISTENCE_V1','preserveAfterClick','applyOpenState(true)','itws-left-sidebar-closed','sessionStorage']){
-  if(!sidebarPersistenceJs.includes(marker))throw new Error(`IT Agent sidebar persistence missing ${marker}`);
+for(const marker of ['IT_AGENT_SIDEBAR_PERSISTENCE_V2','desiredOpen','MutationObserver','itwsViewContrastStyle','sessionStorage']){
+  if(!sidebarPersistenceJs.includes(marker))throw new Error(`IT Agent authoritative sidebar/contrast repair missing ${marker}`);
 }
 const repairSyntax=spawnSync(process.execPath,['--check',repairJsPath],{encoding:'utf8'});
 if(repairSyntax.status!==0)throw new Error(`IT Agent regression repair JavaScript syntax failed: ${String(repairSyntax.stderr||repairSyntax.stdout||'unknown syntax error').trim()}`);
@@ -124,4 +125,4 @@ if(headerPolishSyntax.status!==0)throw new Error(`IT Agent header polish JavaScr
 const sidebarPersistenceSyntax=spawnSync(process.execPath,['--check',sidebarPersistenceJsPath],{encoding:'utf8'});
 if(sidebarPersistenceSyntax.status!==0)throw new Error(`IT Agent sidebar persistence JavaScript syntax failed: ${String(sidebarPersistenceSyntax.stderr||sidebarPersistenceSyntax.stdout||'unknown syntax error').trim()}`);
 await writeFile(portalPath,html,'utf8');
-console.log('IT Solutions engineering workspace preserved: aligned navy SIA-style conversation lane is active; the left rail remains open through ordinary workspace interactions until the user explicitly closes it; centered IT Agent identity, connected-worker pulse, Status Board, Engineering Terminal, and Action Center remain intact.');
+console.log('IT Solutions engineering workspace preserved: aligned navy SIA-style conversation remains active; non-chat engineering views retain readable contrast; the left rail obeys the user-selected open state through saved-chat and synthetic navigation events; only one rail close control is visible while open; Status Board, Engineering Terminal, and Action Center remain intact.');
