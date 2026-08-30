@@ -12,6 +12,14 @@ async function patch(relativePath, transform) {
   return after !== before;
 }
 
+const policyRoutesChanged = await patch('api/src/policy-routes.ts', (source) => {
+  const oldType = '  legalEntityId?: string | null;';
+  const newType = '  legalEntityId?: string;';
+  if (source.includes(oldType)) return source.replace(oldType, newType);
+  if (!source.includes(newType)) throw new Error('Policy Manager installer could not normalize Policy route legalEntityId typing.');
+  return source;
+});
+
 const bootstrapChanged = await patch('api/src/onboarding-bootstrap.ts', (source) => {
   const importLine = "import { registerPolicyRoutes } from './policy-routes.js';";
   if (!source.includes(importLine)) {
@@ -76,4 +84,4 @@ const siaChanged = await patch('api/src/sia-routes.ts', (source) => {
   return source;
 });
 
-console.log(`Policy Manager installed: bootstrap=${bootstrapChanged ? 'updated' : 'ready'}, SIA router=${routerChanged ? 'updated' : 'ready'}, SIA grounding=${siaChanged ? 'updated' : 'ready'}.`);
+console.log(`Policy Manager installed: policy routes=${policyRoutesChanged ? 'updated' : 'ready'}, bootstrap=${bootstrapChanged ? 'updated' : 'ready'}, SIA router=${routerChanged ? 'updated' : 'ready'}, SIA grounding=${siaChanged ? 'updated' : 'ready'}.`);
