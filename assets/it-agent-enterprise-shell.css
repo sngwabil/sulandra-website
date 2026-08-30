@@ -1,7 +1,8 @@
 /* IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1
    Shared visual chrome for IT Solutions. Presentation-only.
-   V2 repair keeps Status Board and Action Center separate while hardening the
-   IT Solutions expanded SIA environment, drawer layering, and brand geometry. */
+   V3 repair keeps Status Board and Action Center separate while hardening the
+   IT Solutions expanded SIA environment, drawer layering, left navigation,
+   and brand geometry without changing the global platform bar. */
 body.it-chatgpt-workspace.itws-enterprise-shell{
   --itws-platform-height:60px;
   --itws-page-header-height:92px;
@@ -60,13 +61,14 @@ body.it-chatgpt-workspace.itws-enterprise-shell>header{
   box-shadow:none!important;
   border-bottom:1px solid #d4e0eb!important;
 }
-/* Preserve the logo's intrinsic proportions. Never force width + height into a
-   distorted bitmap box. The pseudo-element is only the layout container. */
+/* Enlarge only the page-header Sulandra logo. The global blue platform bar is
+   untouched. Width drives the image and height stays automatic, so proportions
+   remain correct instead of being stretched into a fixed rectangle. */
 body.it-chatgpt-workspace.itws-enterprise-shell>header::before{
-  width:164px!important;
-  height:62px!important;
-  flex:0 0 164px!important;
-  background-size:contain!important;
+  width:210px!important;
+  height:66px!important;
+  flex:0 0 210px!important;
+  background-size:200px auto!important;
   background-position:left center!important;
   background-repeat:no-repeat!important;
 }
@@ -194,7 +196,7 @@ body.it-chatgpt-workspace .itws-status-board-close:focus-visible{
   body.it-chatgpt-workspace .itws-enterprise-platform{padding-left:14px!important;padding-right:14px!important}
   body.it-chatgpt-workspace .itws-enterprise-platform strong{font-size:16px!important}
   body.it-chatgpt-workspace.itws-enterprise-shell>header{padding-left:18px!important;padding-right:18px!important}
-  body.it-chatgpt-workspace.itws-enterprise-shell>header::before{width:145px!important;height:58px!important;flex-basis:145px!important;background-size:contain!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header::before{width:185px!important;height:62px!important;flex-basis:185px!important;background-size:176px auto!important}
   body.it-chatgpt-workspace.itws-enterprise-shell>header h1{font-size:29px!important}
   body.it-chatgpt-workspace .itws-enterprise-admin-tabs{padding-left:12px!important;padding-right:12px!important}
 }
@@ -210,7 +212,7 @@ body.it-chatgpt-workspace .itws-status-board-close:focus-visible{
   body.it-chatgpt-workspace .itws-enterprise-platform strong{font-size:15px!important}
   body.it-chatgpt-workspace .itws-enterprise-platform a{font-size:12px!important;padding:7px 10px!important}
   body.it-chatgpt-workspace.itws-enterprise-shell>header{padding:9px 12px!important;gap:10px!important}
-  body.it-chatgpt-workspace.itws-enterprise-shell>header::before{width:112px!important;height:50px!important;flex-basis:112px!important;background-size:contain!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header::before{width:138px!important;height:52px!important;flex-basis:138px!important;background-size:132px auto!important}
   body.it-chatgpt-workspace.itws-enterprise-shell>header>div:first-child::before{font-size:9px!important;margin-bottom:4px!important}
   body.it-chatgpt-workspace.itws-enterprise-shell>header h1{font-size:24px!important}
   body.it-chatgpt-workspace.itws-enterprise-shell>header p{font-size:12px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
