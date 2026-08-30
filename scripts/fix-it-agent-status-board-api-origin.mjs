@@ -88,21 +88,24 @@ function patchRequestHandoff(source){
 }
 
 function patchLiveActivity(source){
-  if(source.includes(liveActivityMarker))return source;
-  const delayed="else setTimeout(()=>{if(activity&&!activity.finished)finishActivity(activity,'Sulandra IT Agent finished')},4000);";
-  if(source.includes(delayed)){
-    return source.replace(
-      delayed,
-      `else { /* ${liveActivityMarker}: the server response is completion evidence for this synchronous chat request. */ finishActivity(activity,'Sulandra IT Agent finished'); }`
-    );
-  }
+  // Match the executable delayed-completion call itself instead of the surrounding
+  // `else` formatting. That makes this safe across pretty-printed and compact
+  // publication variants while preserving the existing control-flow branch.
+  const delayedCompletion=/setTimeout\s*\(\s*\(\s*\)\s*=>\s*\{\s*if\s*\(\s*activity\s*&&\s*!activity\.finished\s*\)\s*finishActivity\s*\(\s*activity\s*,\s*(['"])Sulandra IT Agent finished\1\s*\)\s*;?\s*\}\s*,\s*4000\s*\)/g;
+  let replacements=0;
+  source=source.replace(delayedCompletion,()=>{
+    replacements+=1;
+    return "finishActivity(activity,'Sulandra IT Agent finished')";
+  });
 
-  // Some publication layers may already have normalized this completion branch.
-  // If the exact stale four-second delay is gone, mark the runtime as verified
-  // rather than failing the build because an earlier idempotent layer got there first.
   must(source.includes("finishActivity(activity,'Sulandra IT Agent finished')")||source.includes('function finishActivity('),'live activity completion contract missing');
-  must(!/Sulandra IT Agent finished[^\n]{0,180}4000|4000[^\n]{0,180}Sulandra IT Agent finished/.test(source),'alternate four-second completion delay remains');
-  return source+`\n/* ${liveActivityMarker}: no stale four-second post-response completion delay remains in this published runtime. */\n`;
+  delayedCompletion.lastIndex=0;
+  must(!delayedCompletion.test(source),'four-second post-response completion delay remains executable');
+
+  if(!source.includes(liveActivityMarker)){
+    source+=`\n/* ${liveActivityMarker}: synchronous chat completion now ends the working card immediately; publication-normalized copies are accepted when no executable four-second delay remains. */\n`;
+  }
+  return source;
 }
 
 function patchPublishedHtml(source){
@@ -140,7 +143,12 @@ for(const file of finalizerCandidates){
   }catch(error){if(error?.code!=='ENOENT')throw error}
 }
 for(const file of activityCandidates){
-  try{const text=await readFile(file,'utf8');must(text.includes(liveActivityMarker),`${path.basename(file)} still delays completed chat activity`)}catch(error){if(error?.code!=='ENOENT')throw error}
+  try{
+    const text=await readFile(file,'utf8');
+    must(text.includes(liveActivityMarker),`${path.basename(file)} lost live-activity handoff marker`);
+    const delayed=/setTimeout\s*\(\s*\(\s*\)\s*=>\s*\{\s*if\s*\(\s*activity\s*&&\s*!activity\.finished\s*\)\s*finishActivity\s*\(\s*activity\s*,\s*(['"])Sulandra IT Agent finished\1\s*\)\s*;?\s*\}\s*,\s*4000\s*\)/;
+    must(!delayed.test(text),`${path.basename(file)} still contains an executable four-second post-response completion delay`);
+  }catch(error){if(error?.code!=='ENOENT')throw error}
 }
 for(const file of htmlCandidates){
   try{
