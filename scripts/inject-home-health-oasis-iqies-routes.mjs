@@ -15,3 +15,4 @@ source=source.replace(new RegExp(`\\n?${callLine.replace(/[.*+?^${}()|[\]\\]/g,'
 source=source.replace(callAnchor,`${callLine}\n${callAnchor}`);
 await writeFile(target,source,'utf8');
 console.log('Spec-driven OASIS/iQIES routes registered before legacy regulated-core OASIS handlers.');
+await import('./inject-it-terminal-proxy-runtime.mjs');
