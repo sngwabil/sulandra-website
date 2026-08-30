@@ -22,3 +22,6 @@ if (!source.includes(registrationLine)) {
 
 await writeFile(bootstrapPath, source, 'utf8');
 console.log('Owner authority and internal leadership profile routes are registered.');
+
+await import('./install-policy-manager.mjs');
+await import('./verify-policy-manager.mjs');

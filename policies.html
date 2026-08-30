@@ -3,37 +3,62 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Policy Library | Sulandra Health</title>
+  <title>Policy Center | Sulandra Health</title>
   <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" href="/favicon-48x48.png">
   <style>
-    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.shell{max-width:1400px;margin:auto;padding:24px}.top{display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap}.top a{padding:10px 14px;border-radius:9px;background:#edf4fb;color:#174e8f;text-decoration:none;font-weight:700}.top .spacer{flex:1}.top button{border:1px solid #cdd7e4;border-radius:9px;padding:9px 14px;background:#fff;color:#172033;font:inherit;cursor:pointer}.hero,.panel{background:#fff;border:1px solid #dce3ec;border-radius:14px;box-shadow:0 4px 20px rgba(31,64,104,.06)}.hero{padding:26px}.eyebrow{margin:0 0 8px;color:#174e8f;font-size:.82rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.hero h1{margin:0 0 10px;font-size:clamp(2rem,4vw,3rem);line-height:1.05}.muted{color:#637083}.hero p{margin:0;max-width:760px;font-size:1.05rem;line-height:1.55}.panel{padding:24px;margin-top:16px}.panel h2{margin:0 0 7px;font-size:1.35rem}.panel-intro{margin:0 0 20px;max-width:800px;line-height:1.55}.library-empty{min-height:220px;border:1px dashed #c8d5e4;border-radius:14px;background:#f8fbff;display:grid;place-items:center;padding:30px;text-align:center}.library-empty-inner{max-width:620px}.library-icon{width:56px;height:56px;margin:0 auto 14px;border-radius:14px;display:grid;place-items:center;background:#eaf2fb;font-size:1.65rem}.library-empty h3{margin:0 0 8px;font-size:1.2rem}.library-empty p{margin:0;line-height:1.55}.library-note{margin-top:20px;padding:13px 15px;border-radius:10px;background:#edf4fb;color:#174e8f;font-weight:700;line-height:1.45}@media(max-width:760px){.shell{padding:14px}.top{gap:8px}.top a{padding:9px 11px}.top .spacer{display:none}.top button{width:100%;text-align:left}.hero{padding:22px}.panel{padding:18px}.library-empty{min-height:190px;padding:24px 18px}}
+    :root{font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;color:#172033;background:#f3f7fb;--navy:#083b68;--blue:#126fae;--line:#d9e4ed;--muted:#657487;--panel:#fff;--gold:#c59a28;--soft:#eef6fc}*{box-sizing:border-box}body{margin:0}.top{min-height:74px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:10px 22px;position:sticky;top:0;z-index:30}.brand{display:flex;align-items:center;gap:10px;margin-right:auto;text-decoration:none;color:var(--navy);font-weight:900}.brand img{width:128px;height:48px;object-fit:contain}.top>a:not(.brand),.top button{border:0;border-radius:10px;padding:10px 13px;background:#edf5fb;color:#174e8f;text-decoration:none;font-weight:800;cursor:pointer}.layout{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1500px;margin:0 auto;min-height:calc(100vh - 74px)}aside{background:#0a3762;color:#fff;padding:24px 14px}.side-title{padding:0 12px 16px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#bcd5e9;font-weight:900}.side-btn{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:#eaf4fb;padding:12px;border-radius:10px;text-align:left;font:700 14px inherit;cursor:pointer}.side-btn:hover,.side-btn.active{background:#ffffff18}.side-icon{width:24px;text-align:center;font-size:18px}.side-divider{height:1px;background:#ffffff1f;margin:13px 8px}.content{padding:28px}.hero{background:linear-gradient(135deg,#fff 0%,#f6fbff 100%);border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:0 8px 28px rgba(20,63,96,.06)}.eyebrow{color:#2375ab;text-transform:uppercase;letter-spacing:.1em;font-weight:900;font-size:12px}.hero h1{font-size:clamp(30px,4vw,48px);line-height:1.05;margin:8px 0;color:#132238}.hero p{font-size:17px;line-height:1.55;color:var(--muted);max-width:850px;margin:0}.search-shell{display:grid;grid-template-columns:minmax(240px,1fr) 200px 190px auto;gap:10px;margin-top:20px}.search-shell input,.search-shell select{width:100%;border:1px solid #bfd0de;border-radius:12px;padding:13px 14px;background:#fff;font:inherit}.search-shell button{border:0;border-radius:12px;padding:13px 18px;background:var(--navy);color:#fff;font-weight:900;cursor:pointer}.summary-row{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}.chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 11px;color:#415d73;font-size:13px;font-weight:800}.results-wrap{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}.panel{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 5px 18px rgba(20,63,96,.05)}.panel-head{padding:17px 19px;border-bottom:1px solid #e8eef3;display:flex;justify-content:space-between;align-items:center;gap:10px}.panel-head h2{margin:0;font-size:20px}.count{color:var(--muted);font-size:13px}.policy-list{min-height:220px}.policy-row{padding:18px 20px;border-bottom:1px solid #e8eef3;display:grid;grid-template-columns:1fr auto;gap:15px}.policy-row:last-child{border-bottom:0}.policy-code{font-size:12px;color:#3b7399;font-weight:900;letter-spacing:.04em}.policy-row h3{margin:4px 0 6px;font-size:18px}.policy-row p{margin:0;color:var(--muted);line-height:1.45}.meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.badge{display:inline-flex;border-radius:999px;padding:5px 8px;background:#edf4f8;color:#36576f;font-size:11px;font-weight:800}.badge.enterprise{background:#f8f1dc;color:#74580d}.row-actions{display:flex;gap:6px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end}.row-actions button,.row-actions a{border:1px solid #c7d7e3;border-radius:9px;padding:8px 10px;background:#fff;color:#174e8f;text-decoration:none;font-weight:800;font-size:12px;cursor:pointer}.row-actions .primary{background:#174e8f;color:#fff;border-color:#174e8f}.empty{padding:42px 24px;text-align:center;color:var(--muted)}.empty strong{display:block;color:#263a4d;font-size:18px;margin-bottom:5px}.right-card{padding:18px}.right-card h3{margin:0 0 10px;color:var(--navy)}.right-card p{font-size:13px;color:var(--muted);line-height:1.55}.right-card a{display:block;text-decoration:none;color:#174e8f;font-weight:800;padding:8px 0;border-bottom:1px solid #edf1f4}.right-card a:last-child{border-bottom:0}.notice{display:none;margin:12px 0;padding:11px 13px;border-radius:10px;background:#fff4d6;border:1px solid #e7c861;color:#6e570c}.notice.show{display:block}.detail-backdrop{position:fixed;inset:0;background:#0719288f;z-index:80;display:none;padding:3vh 4vw}.detail-backdrop.show{display:block}.detail{max-width:1180px;height:94vh;margin:auto;background:#f5f7f9;border-radius:16px;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 285px}.document{overflow:auto;background:#fff;padding:36px 42px}.doc-head{border:1px solid #9ba9b5;margin-bottom:26px}.doc-brand{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #9ba9b5}.doc-brand strong{font-size:22px;color:#0a3762}.doc-grid{display:grid;grid-template-columns:165px 1fr 190px}.doc-grid>div{padding:8px 10px;border-right:1px solid #9ba9b5;border-bottom:1px solid #9ba9b5}.doc-grid>div:nth-child(3n){border-right:0}.doc-grid .label{font-weight:800;background:#f5f7f9}.doc-section{margin:24px 0}.doc-section h3{font-size:15px;margin:0 0 8px;letter-spacing:.03em}.doc-section .doc-text{white-space:pre-wrap;line-height:1.6;color:#273746}.details{background:#eef3f7;border-left:1px solid var(--line);padding:20px;overflow:auto}.details h3{margin:0 0 16px}.detail-item{margin:0 0 15px}.detail-item span{display:block;font-size:11px;text-transform:uppercase;color:#788899;font-weight:900}.detail-item strong{display:block;margin-top:3px;font-size:13px}.detail-actions{display:grid;gap:8px;margin-top:18px}.detail-actions a,.detail-actions button{border:0;border-radius:10px;padding:11px;text-align:center;text-decoration:none;background:#174e8f;color:#fff;font-weight:900;cursor:pointer}.detail-actions .secondary{background:#fff;color:#174e8f;border:1px solid #bfd0de}.close{position:absolute;right:5.5vw;top:4.5vh;z-index:90;border:0;background:#fff;border-radius:50%;width:36px;height:36px;font-size:22px;cursor:pointer;box-shadow:0 3px 12px #0002}@media(max-width:1040px){.results-wrap{grid-template-columns:1fr}.right{display:none}.search-shell{grid-template-columns:1fr 1fr}.search-shell input{grid-column:1/-1}.detail{grid-template-columns:1fr}.details{display:none}}@media(max-width:760px){.top{padding:8px 10px;flex-wrap:wrap}.brand img{width:105px}.layout{grid-template-columns:1fr}.layout aside{display:flex;overflow:auto;padding:8px;background:#0a3762}.side-title,.side-divider{display:none}.side-btn{width:auto;white-space:nowrap;padding:9px}.content{padding:14px}.hero{padding:19px}.search-shell{grid-template-columns:1fr}.search-shell input{grid-column:auto}.policy-row{grid-template-columns:1fr}.row-actions{justify-content:flex-start}.detail-backdrop{padding:0}.detail{height:100vh;border-radius:0}.document{padding:72px 20px 28px}.close{right:14px;top:14px}}
   </style>
 </head>
 <body>
-<div class="shell">
-  <div class="top"><a href="/intranet.html">Intranet</a><a href="/employee-portal.html?stay=1">Employee Portal</a><a href="/education-portal.html">Education</a><span class="spacer"></span><button id="logout" type="button">Sign out</button></div>
-
-  <section class="hero">
-    <div class="eyebrow">Sulandra Health</div>
-    <h1>Policy Library</h1>
-    <p class="muted">Official Sulandra policies, standards, procedures, and organizational guidance will be stored here.</p>
-  </section>
-
-  <section class="panel" aria-labelledby="policyLibraryTitle">
-    <h2 id="policyLibraryTitle">Sulandra policies</h2>
-    <p class="panel-intro muted">This is the central intranet repository for current Sulandra policy documents. It is separate from employee education, training, assignments, and course completion.</p>
-
-    <div class="library-empty">
-      <div class="library-empty-inner">
-        <div class="library-icon" aria-hidden="true">📘</div>
-        <h3>Policy library is ready</h3>
-        <p class="muted">No Sulandra policies have been published here yet. The official policies we build next will appear in this library.</p>
+  <nav class="top" aria-label="Sulandra navigation">
+    <a class="brand" href="/intranet.html"><img src="/assets/mainlogo.png" alt="Sulandra Health"><span>Policy Center</span></a>
+    <a href="/intranet.html">Intranet</a><a href="/employee-portal.html?stay=1">Employee Portal</a><a href="/education-portal.html">Education</a><button id="logout">Sign out</button>
+  </nav>
+  <div class="layout">
+    <aside aria-label="Policy Center navigation">
+      <div class="side-title">Policy Manager</div>
+      <button class="side-btn active" data-view="all"><span class="side-icon">⌕</span>Search & Browse</button>
+      <button class="side-btn" data-view="bookmarks"><span class="side-icon">★</span>Bookmarks</button>
+      <button class="side-btn" data-view="recent"><span class="side-icon">◷</span>Recent</button>
+      <div class="side-divider"></div>
+      <button class="side-btn" data-category="Governance & Administration"><span class="side-icon">▦</span>Governance</button>
+      <button class="side-btn" data-category="Clinical & Care"><span class="side-icon">✚</span>Clinical & Care</button>
+      <button class="side-btn" data-category="Workforce & Human Resources"><span class="side-icon">♟</span>Workforce</button>
+      <button class="side-btn" data-category="Safety & Compliance"><span class="side-icon">✓</span>Safety & Compliance</button>
+      <button class="side-btn" data-category="Technology & Security"><span class="side-icon">⌘</span>Technology</button>
+    </aside>
+    <main class="content">
+      <section class="hero">
+        <div class="eyebrow">Sulandra Health · Controlled documents</div>
+        <h1>Policy Center</h1>
+        <p>The authoritative library for published Sulandra policies and procedures. Search by topic, policy code, company, department, or wording inside the policy. Ask SIA anywhere in Sulandra for a policy explanation or the protected PDF link.</p>
+        <div id="notice" class="notice"></div>
+        <form id="searchForm" class="search-shell">
+          <input id="search" type="search" autocomplete="off" placeholder="Search policies, procedures, codes, departments, or policy text…" aria-label="Search policies">
+          <select id="companyFilter" aria-label="Company scope"><option value="CURRENT">Enterprise + current company</option><option value="ALL">All companies I can manage</option></select>
+          <select id="categoryFilter" aria-label="Policy category"><option value="">All categories</option></select>
+          <button type="submit">Search</button>
+        </form>
+      </section>
+      <div class="summary-row"><span class="chip" id="scopeChip">Enterprise + selected company</span><span class="chip" id="publishedChip">Published policies</span><span class="chip">Version-controlled PDFs</span><span class="chip">SIA policy-aware</span></div>
+      <div class="results-wrap">
+        <section class="panel">
+          <div class="panel-head"><h2 id="resultTitle">Published policies</h2><span id="resultCount" class="count">Loading…</span></div>
+          <div id="policies" class="policy-list"><div class="empty"><strong>Loading Policy Center…</strong></div></div>
+        </section>
+        <div class="right">
+          <section class="panel right-card"><h3>Browse faster</h3><p>Published policies carry their policy code, company scope, responsible department, version, effective date, review date, and protected PDF.</p><a href="#" data-preset="clinical">Clinical & care policies</a><a href="#" data-preset="workforce">Workforce policies</a><a href="#" data-preset="safety">Safety & compliance</a><a href="#" data-preset="technology">Technology & security</a></section>
+          <section class="panel right-card" style="margin-top:14px"><h3>Ask SIA</h3><p>Examples: “What is our attendance policy?”, “Explain the medication documentation policy,” or “Send me the PDF for the incident reporting policy.” SIA searches only published policies the signed-in user is allowed to access.</p><button id="askSiaGeneral" class="side-btn" style="background:#0a3762;color:#fff;justify-content:center">Ask SIA about policies</button></section>
+        </div>
       </div>
-    </div>
+    </main>
+  </div>
 
-    <div class="library-note">Policies will be organized here as they are published.</div>
-  </section>
-</div>
-<script src="/assets/policies-app.js?v=20260830-policy-library-1"></script>
+  <div id="detailBackdrop" class="detail-backdrop" aria-hidden="true"><button id="closeDetail" class="close" aria-label="Close policy">×</button><div id="detail" class="detail"></div></div>
+  <script>window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app';</script>
+  <script src="/assets/sulandra-entity-context.js?v=20260809-admin-company-context-2"></script>
+  <script src="/assets/policies-app.js?v=20260830-policy-center-2"></script>
+  <script src="/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1"></script>
 </body>
 </html>
