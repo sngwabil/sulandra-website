@@ -13,10 +13,24 @@ async function patch(relativePath, transform) {
 }
 
 const policyRoutesChanged = await patch('api/src/policy-routes.ts', (source) => {
-  const oldType = '  legalEntityId?: string | null;';
-  const newType = '  legalEntityId?: string;';
-  if (source.includes(oldType)) return source.replace(oldType, newType);
-  if (!source.includes(newType)) throw new Error('Policy Manager installer could not normalize Policy route legalEntityId typing.');
+  const scopedImport = "import type { ScopedAuthContext } from './entity-access.js';";
+  if (!source.includes(scopedImport)) {
+    const anchor = "import { z } from 'zod';";
+    if (!source.includes(anchor)) throw new Error('Policy Manager installer could not find the policy-route import anchor.');
+    source = source.replace(anchor, `${anchor}\n${scopedImport}`);
+  }
+
+  source = source.replace('  legalEntityId?: string;', '  legalEntityId?: string | null;');
+  source = source.replace('  auth: Partial<AuthContext>,', '  auth: Partial<ScopedAuthContext>,');
+
+  if (!source.includes('const auditContext = (auth: AuthContext): Partial<ScopedAuthContext> =>')) {
+    const anchor = "const POLICY_PUBLIC_BASE = () =>";
+    if (!source.includes(anchor)) throw new Error('Policy Manager installer could not find the policy audit-adapter anchor.');
+    const helper = `const auditContext = (auth: AuthContext): Partial<ScopedAuthContext> => ({\n  userId: auth.userId,\n  organizationId: auth.organizationId,\n  role: auth.role,\n  email: auth.email,\n  legalEntityId: auth.legalEntityId ?? undefined,\n  enterpriseOwner: auth.enterpriseOwner,\n});\n\n`;
+    source = source.replace(anchor, `${helper}${anchor}`);
+  }
+
+  source = source.replaceAll('await audit(auth,', 'await audit(auditContext(auth),');
   return source;
 });
 
