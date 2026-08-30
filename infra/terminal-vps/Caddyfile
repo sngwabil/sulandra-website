@@ -18,7 +18,10 @@
         max_size 1MB
     }
 
-    @terminal path /healthz /v1/*
+    @terminal {
+        path /healthz /v1/*
+        header Authorization "Bearer {$TERMINAL_EXECUTION_TOKEN}"
+    }
     handle @terminal {
         reverse_proxy executor:8081 {
             header_up Host {host}
@@ -29,6 +32,11 @@
                 keepalive 30s
             }
         }
+    }
+
+    @terminalPath path /healthz /v1/*
+    handle @terminalPath {
+        respond "Unauthorized" 401
     }
 
     handle {
