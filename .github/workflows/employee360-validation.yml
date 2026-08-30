@@ -95,6 +95,12 @@ jobs:
       - name: Run API and database integration test contract
         run: node --test tests/employee360-enterprise.integration.test.mjs
 
+      - name: Run multi-company entity access integration test contract
+        run: node --test tests/entity-access.integration.test.mjs
+
+      - name: Run time attendance day board integration test contract
+        run: node --test tests/time-attendance-day-board.integration.test.mjs
+
       - name: Install Playwright test runtime
         run: |
           npm install --no-save @playwright/test@1.55.0
