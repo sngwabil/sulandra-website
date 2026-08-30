@@ -17,14 +17,20 @@ RUN node scripts/optimize-admin-login-performance.mjs
 RUN node scripts/install-employee-support.mjs
 
 # Layer the conversational presentation only after the canonical IT installers
-# have finished. This keeps every existing workbench/training/artifact anchor and
-# safety contract intact while publishing the ChatGPT-style live-activity UX.
-RUN node scripts/install-it-agent-conversational-ui.mjs
+# have finished. Immediately apply the request-handoff repair to the canonical
+# source assets so build:web copies a non-deadlocking Status Board/composer into
+# dist-web. The repair is idempotent and preserves the Railway API-origin guard.
+RUN node scripts/install-it-agent-conversational-ui.mjs \
+ && node scripts/fix-it-agent-status-board-api-origin.mjs
 
 # DEVELOPMENT_WORKFLOW.md defines npm run build:web as the authoritative
 # Sulandra Static Website build. Running build-static-site.mjs directly skipped
 # the pre/post integration chain and silently published placeholder/legacy pages.
-RUN npm run build:web && node scripts/verify-it-agent-artifact-capabilities.mjs
+# Re-run the idempotent handoff fixer after publication as a deployment guard so
+# both canonical source and the exact dist-web bytes served by Railway are fixed.
+RUN npm run build:web \
+ && node scripts/fix-it-agent-status-board-api-origin.mjs \
+ && node scripts/verify-it-agent-artifact-capabilities.mjs
 
 ENV NODE_ENV=production
 ENV PORT=8080
