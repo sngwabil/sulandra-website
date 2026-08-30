@@ -2,9 +2,9 @@
    Presentation-only shared Administrator chrome for the Sulandra IT workspace.
    Adds the same platform/admin navigation hierarchy used by Scheduling without
    changing IT Agent actions, approvals, APIs, or authorization.
-   V2 repair: IT Solutions is the full SIA environment, so the global floating
-   Ask SIA launcher is suppressed; Status Board close/overlay/Escape controls
-   are hardened without changing the separate Action Center. */
+   V3 repair: IT Solutions is the full SIA environment, the floating Ask SIA
+   launcher stays suppressed, Status Board and Action Center stay separate, and
+   the left navigation now has a real open/collapse control with outside-click close. */
 (()=>{
   'use strict';
   if(window.__SULANDRA_IT_ENTERPRISE_SHELL__)return;
@@ -134,6 +134,122 @@
     },true);
   }
 
+  function installLeftSidebarController(){
+    if(window.__SULANDRA_IT_LEFT_SIDEBAR_CONTROLLER__)return true;
+    const body=document.body;
+    const sidebar=document.querySelector('.itws-sidebar');
+    const layout=document.querySelector('.itws-layout');
+    const closeButton=document.getElementById('itwsCloseSide');
+    const openButton=document.getElementById('itwsMenu');
+    if(!body||!sidebar||!layout||!closeButton||!openButton)return false;
+    window.__SULANDRA_IT_LEFT_SIDEBAR_CONTROLLER__=true;
+
+    if(!document.getElementById('itwsLeftSidebarRepairStyle')){
+      const style=document.createElement('style');
+      style.id='itwsLeftSidebarRepairStyle';
+      style.textContent=`
+        body.it-chatgpt-workspace #itwsCloseSide,
+        body.it-chatgpt-workspace #itwsMenu{
+          width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;
+          display:grid;place-items:center;border:1px solid #d9e1e7!important;border-radius:11px!important;
+          background:#fff!important;color:#385065!important;box-shadow:0 2px 8px rgba(15,23,42,.07)!important;
+          font-size:27px!important;font-weight:500!important;line-height:1!important;cursor:pointer!important;
+          -webkit-tap-highlight-color:transparent!important;touch-action:manipulation!important;
+        }
+        body.it-chatgpt-workspace #itwsCloseSide:hover,
+        body.it-chatgpt-workspace #itwsMenu:hover{background:#eef3f6!important;color:#0b5f9e!important}
+        body.it-chatgpt-workspace #itwsCloseSide:focus-visible,
+        body.it-chatgpt-workspace #itwsMenu:focus-visible{outline:3px solid rgba(22,133,209,.25)!important;outline-offset:2px!important}
+        body.it-chatgpt-workspace .itws-sidebar-scrim{display:none!important}
+        @media(min-width:821px){
+          body.it-chatgpt-workspace.itws-left-sidebar-closed .itws-layout{grid-template-columns:minmax(0,1fr)!important}
+          body.it-chatgpt-workspace.itws-left-sidebar-closed .itws-sidebar{display:none!important}
+          body.it-chatgpt-workspace.itws-left-sidebar-closed #itwsMenu{display:grid!important;z-index:60!important}
+          body.it-chatgpt-workspace.itws-left-sidebar-closed .agent-compose,
+          body.it-chatgpt-workspace.itws-left-sidebar-closed #agentForm{
+            left:50%!important;width:min(790px,calc(100vw - 56px))!important;
+          }
+        }
+        @media(max-width:820px){
+          body.it-chatgpt-workspace .itws-sidebar{z-index:2147483000!important}
+          body.it-chatgpt-workspace #itwsMenu{display:grid!important;z-index:2147482980!important}
+          body.it-chatgpt-workspace .itws-sidebar-scrim.open{
+            display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;
+            background:rgba(8,31,51,.28)!important;z-index:2147482990!important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    let scrim=document.querySelector('.itws-sidebar-scrim');
+    if(!scrim){
+      scrim=document.createElement('div');
+      scrim.className='itws-sidebar-scrim';
+      scrim.setAttribute('aria-hidden','true');
+      document.body.appendChild(scrim);
+    }
+
+    const isCompact=()=>window.matchMedia('(max-width:820px)').matches;
+    const isOpen=()=>isCompact()?sidebar.classList.contains('open'):!body.classList.contains('itws-left-sidebar-closed');
+    const setOpen=(open,{focus=false}={})=>{
+      const next=Boolean(open);
+      if(isCompact()){
+        body.classList.remove('itws-left-sidebar-closed');
+        sidebar.classList.toggle('open',next);
+        scrim.classList.toggle('open',next);
+      }else{
+        sidebar.classList.remove('open');
+        scrim.classList.remove('open');
+        body.classList.toggle('itws-left-sidebar-closed',!next);
+      }
+      closeButton.textContent='‹';
+      closeButton.setAttribute('aria-label','Collapse navigation');
+      closeButton.setAttribute('title','Collapse navigation');
+      closeButton.setAttribute('aria-expanded',next?'true':'false');
+      openButton.textContent=next?'‹':'›';
+      openButton.setAttribute('aria-label',next?'Close navigation':'Open navigation');
+      openButton.setAttribute('title',next?'Close navigation':'Open navigation');
+      openButton.setAttribute('aria-expanded',next?'true':'false');
+      sidebar.setAttribute('aria-hidden',next?'false':'true');
+      if(focus){
+        const target=next?closeButton:openButton;
+        window.setTimeout(()=>target?.focus?.(),0);
+      }
+    };
+
+    closeButton.addEventListener('click',event=>{
+      event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+      setOpen(false,{focus:true});
+    },true);
+    openButton.addEventListener('click',event=>{
+      event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+      setOpen(!isOpen(),{focus:true});
+    },true);
+    scrim.addEventListener('click',()=>setOpen(false,{focus:true}));
+
+    document.addEventListener('pointerdown',event=>{
+      if(!isOpen())return;
+      const target=event.target instanceof Element?event.target:null;
+      if(!target||sidebar.contains(target)||openButton.contains(target)||closeButton.contains(target))return;
+      setOpen(false);
+    },true);
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape'&&isOpen())setOpen(false,{focus:true});
+    },true);
+
+    let compact=isCompact();
+    window.addEventListener('resize',()=>{
+      const nextCompact=isCompact();
+      if(nextCompact===compact)return;
+      compact=nextCompact;
+      setOpen(nextCompact?false:true);
+    },{passive:true});
+
+    setOpen(isCompact()?sidebar.classList.contains('open'):true);
+    return true;
+  }
+
   function install(){
     const body=document.body;
     const header=document.querySelector('body > header');
@@ -168,6 +284,7 @@
     }
 
     body.classList.add('itws-enterprise-shell');
+    installLeftSidebarController();
     const legacyBack=header.querySelector('a.btn[href*="admin.html"]');
     if(legacyBack)legacyBack.setAttribute('aria-hidden','true');
   }
