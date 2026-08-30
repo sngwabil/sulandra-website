@@ -161,9 +161,23 @@
     },true);
   }
 
+  function installPolicyStudioLauncher(){
+    if(document.getElementById('itwsPolicyStudio'))return;
+    const host=qs('.examples')||qs('.agent-head')||qs('header');
+    if(!host)return;
+    const link=document.createElement('a');
+    link.id='itwsPolicyStudio';
+    link.href='/policy-studio.html';
+    link.className=host.classList?.contains('examples')?'example':'btn secondary';
+    link.textContent='Policy Studio · templates & publishing';
+    link.title='Create enterprise or company-specific Sulandra policy drafts from governed templates';
+    link.style.textDecoration='none';
+    host.appendChild(link);
+  }
+
   function start(){
     document.body.classList.add('itws-regression-repair');
-    syncConversationState();syncComposerClearance();installSendGuard();installObservers();
+    syncConversationState();syncComposerClearance();installSendGuard();installObservers();installPolicyStudioLauncher();
     document.getElementById('itwsNewChat')?.addEventListener('click',()=>{removeFallback();removePendingImage();renderedArtifacts.clear();document.body.classList.remove('itws-has-conversation');setTimeout(syncComposerClearance,30)},true);
   }
 
