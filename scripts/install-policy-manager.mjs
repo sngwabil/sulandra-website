@@ -68,10 +68,10 @@ const siaChanged = await patch('api/src/sia-routes.ts', (source) => {
   }
 
   if (!source.includes('contextLines.push(...serializePolicyKnowledgeForSia(policyKnowledge))')) {
-    const anchor = "      if (routing.mode === 'SULANDRA') {\n        if (input.context?.environment)";
-    if (!source.includes(anchor)) throw new Error('Policy Manager installer could not find the SIA context serialization anchor.');
-    const block = `      if (policyIntent) {\n        contextLines.push(...serializePolicyKnowledgeForSia(policyKnowledge));\n      }\n\n`;
-    source = source.replace(anchor, `${block}${anchor}`);
+    const anchor = "      const contextLines: string[] = [\n        `serverNowUtc: ${new Date().toISOString()}`,\n        `automaticSiaMode: ${routing.mode}`,\n      ];";
+    if (!source.includes(anchor)) throw new Error('Policy Manager installer could not find the SIA trusted-context list anchor.');
+    const block = `\n      if (policyIntent) {\n        contextLines.push(...serializePolicyKnowledgeForSia(policyKnowledge));\n      }`;
+    source = source.replace(anchor, `${anchor}${block}`);
   }
   return source;
 });
