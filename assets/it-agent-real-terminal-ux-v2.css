@@ -1,0 +1,55 @@
+/* IT_AGENT_REAL_TERMINAL_UX_V2
+   Direct keyboard terminal mode, command-box fallback, stable scrollback and copy controls. */
+body.it-chatgpt-workspace .itws-rt-input-switch{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:7px 10px;
+  background:#071925;border-bottom:1px solid var(--rt-line);color:#89a2b3
+}
+body.it-chatgpt-workspace .itws-rt-input-mode,
+body.it-chatgpt-workspace .itws-rt-copy,
+body.it-chatgpt-workspace .itws-rt-latest{
+  border:1px solid #31546a;background:#0d2738;color:#b9cedb;border-radius:8px;
+  padding:6px 9px;font:750 10.5px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer
+}
+body.it-chatgpt-workspace .itws-rt-input-mode.active{
+  background:#15415a;border-color:#2d82ae;color:#fff;box-shadow:0 0 0 2px rgba(45,130,174,.1)
+}
+body.it-chatgpt-workspace .itws-rt-input-hint{font-size:10px;line-height:1.35;flex:1;min-width:220px}
+body.it-chatgpt-workspace .itws-rt-input-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+body.it-chatgpt-workspace .itws-rt-copy:hover,
+body.it-chatgpt-workspace .itws-rt-latest:hover{background:#15394e;color:#fff}
+body.it-chatgpt-workspace .itws-rt-screen{
+  overflow-y:auto!important;overflow-x:auto!important;
+  -webkit-overflow-scrolling:touch!important;touch-action:pan-y pan-x!important;
+  user-select:text!important;-webkit-user-select:text!important;
+  cursor:text!important;scrollbar-gutter:stable both-edges;
+  overscroll-behavior:contain
+}
+body.it-chatgpt-workspace .itws-rt-screen:focus{outline:0}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-mode .itws-rt-screen{
+  box-shadow:inset 0 0 0 1px rgba(59,217,138,.12)
+}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-focus .itws-rt-screen{
+  box-shadow:inset 0 0 0 1px rgba(59,217,138,.5),inset 0 0 22px rgba(59,217,138,.035)
+}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-mode .itws-rt-commandbar{display:none!important}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-box-mode .itws-rt-commandbar{display:grid!important}
+body.it-chatgpt-workspace .itws-rt-direct-capture{
+  position:fixed!important;left:-10000px!important;top:auto!important;bottom:0!important;
+  width:2px!important;height:2px!important;opacity:.001!important;border:0!important;padding:0!important;
+  pointer-events:none!important;resize:none!important
+}
+body.it-chatgpt-workspace .itws-rt-scroll-state{
+  display:inline-flex;align-items:center;gap:5px;color:#84a1b2;font-size:9.5px;white-space:nowrap
+}
+body.it-chatgpt-workspace .itws-rt-scroll-state.paused{color:#ffd58b}
+@media(max-width:760px){
+  body.it-chatgpt-workspace .itws-rt-input-switch{align-items:stretch}
+  body.it-chatgpt-workspace .itws-rt-input-hint{order:3;flex-basis:100%;min-width:0}
+  body.it-chatgpt-workspace .itws-rt-input-actions{margin-left:0}
+}
+@media(max-width:520px){
+  body.it-chatgpt-workspace .itws-rt-input-mode{flex:1}
+  body.it-chatgpt-workspace .itws-rt-input-actions{width:100%}
+  body.it-chatgpt-workspace .itws-rt-copy,
+  body.it-chatgpt-workspace .itws-rt-latest{flex:1}
+}
