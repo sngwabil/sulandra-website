@@ -60,7 +60,7 @@ const siaChanged = await patch('api/src/sia-routes.ts', (source) => {
     source = source.replace(anchor, `${block}${anchor}`);
   }
 
-  if (!source.includes('serverPolicyKnowledge is authoritative')) {
+  if (!source.includes('Policy grounding rules:')) {
     const anchor = 'Interactive support rules:';
     if (!source.includes(anchor)) throw new Error('Policy Manager installer could not find the SIA system-instruction anchor.');
     const rules = `Policy grounding rules:\n- When trusted context contains serverPolicyKnowledge, treat it as authoritative published Sulandra policy evidence.\n- Answer policy questions from those published records only; never invent a requirement that is absent from the supplied policy evidence.\n- State whether the policy is enterprise-wide or company-specific, include policy code/version/effective date when available, and provide the exact clickable policy PDF link supplied in trusted context.\n- If serverPolicyKnowledge is NO_MATCH, say no matching published policy was found and offer to refine the search; do not substitute an internet policy.\n- Draft and review-stage policies are never authoritative employee guidance.\n\n`;
