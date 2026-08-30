@@ -1,0 +1,292 @@
+/* IT_AGENT_DARK_CONVERSATION_V1
+   Final IT Solutions visual layer. Keeps the Sulandra platform/header chrome intact,
+   while giving the engineering workspace a cohesive SIA-style navy surface and a
+   single centered conversation lane. */
+
+body.it-chatgpt-workspace.itws-enterprise-shell{
+  --itws-navy-975:#06131f;
+  --itws-navy-950:#081927;
+  --itws-navy-925:#0a1d2d;
+  --itws-navy-900:#0d2234;
+  --itws-navy-875:#10283b;
+  --itws-navy-850:#133047;
+  --itws-navy-800:#173b55;
+  --itws-navy-line:#24465f;
+  --itws-navy-text:#e9f3fb;
+  --itws-navy-muted:#91a8b9;
+  --itws-navy-soft:#b9cad7;
+  --itws-sia-green:#26b96d;
+  --itws-chat-lane:860px;
+}
+
+/* Only the IT engineering workspace changes theme. The global platform bar and
+   Engineering Operations page header above it remain untouched. */
+body.it-chatgpt-workspace.itws-enterprise-shell .shell,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-layout,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-content,
+body.it-chatgpt-workspace.itws-enterprise-shell #agent,
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-shell,
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-main{
+  background:var(--itws-navy-950)!important;
+  color:var(--itws-navy-text)!important;
+}
+
+/* Left engineering rail. */
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-sidebar{
+  background:linear-gradient(180deg,#0b2235 0%,#081a29 100%)!important;
+  border-right:1px solid var(--itws-navy-line)!important;
+  color:var(--itws-navy-text)!important;
+  box-shadow:10px 0 30px rgba(0,0,0,.12)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-brand{
+  color:#eef8ff!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-brand-mark{
+  background:linear-gradient(145deg,#0d4167,#1685d1)!important;
+  box-shadow:0 0 0 1px rgba(102,190,234,.16),0 7px 18px rgba(0,0,0,.2)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-new-chat,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-nav button,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-conversation{
+  color:#bdceda!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-new-chat:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-nav button:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-nav button.active,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-conversation:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-conversation.active{
+  background:#12344d!important;
+  color:#eff8fe!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-nav button.active{
+  box-shadow:inset 3px 0 0 #2dbb72!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-search{
+  background:#0d273b!important;
+  color:#e4eff7!important;
+  border-color:#1c3e56!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-search::placeholder{color:#6f8798!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-search:focus{
+  background:#102f46!important;
+  border-color:#2b6a91!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-nav,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-sidebar-foot{
+  border-color:#18384f!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-recent-title,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-sidebar-foot,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-conversation small{
+  color:#7891a3!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-sidebar-foot a{color:#79b9df!important}
+
+/* The manually controlled sidebar buttons inherit the darker SIA treatment. */
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsCloseSide,
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu{
+  background:#0d2a40!important;
+  color:#b9d7e9!important;
+  border-color:#29506b!important;
+  box-shadow:0 4px 14px rgba(0,0,0,.2)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsCloseSide:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsCloseSide:focus-visible,
+body.it-chatgpt-workspace.itws-enterprise-shell #itwsMenu:focus-visible{
+  background:#143a54!important;
+  color:#ecf8ff!important;
+  border-color:#3a789e!important;
+}
+
+/* Balanced agent header on the navy work surface. */
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-head{
+  background:rgba(8,25,39,.96)!important;
+  border-bottom:1px solid #17374d!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.08)!important;
+  backdrop-filter:blur(14px)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-head>div:first-child h2,
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .itws-agent-centered-title{
+  color:#35c779!important;
+  text-shadow:0 0 18px rgba(53,199,121,.12)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status .pill{
+  background:#102b40!important;
+  color:#9db3c2!important;
+  border:1px solid #1b4059!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agent .agent-status .pill.itws-live-connected{
+  background:#0d3429!important;
+  color:#7de0a8!important;
+  border-color:#1d6948!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle{
+  background:#0d2a40!important;
+  color:#b9d7e9!important;
+  border-color:#29506b!important;
+  box-shadow:0 4px 14px rgba(0,0,0,.2)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle:hover,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-activity-toggle:focus-visible{
+  background:#143a54!important;
+  color:#ecf8ff!important;
+  border-color:#3a789e!important;
+}
+
+/* One conversation lane. Messages no longer drift across the entire page. */
+body.it-chatgpt-workspace.itws-enterprise-shell #agentChat,
+body.it-chatgpt-workspace.itws-enterprise-shell .agent-chat,
+body.it-chatgpt-workspace.itws-enterprise-shell .chat-log{
+  background:linear-gradient(180deg,#081927 0%,#091b2a 58%,#081927 100%)!important;
+  color:var(--itws-navy-text)!important;
+  padding-top:26px!important;
+  padding-left:max(24px,calc((100% - var(--itws-chat-lane))/2))!important;
+  padding-right:max(24px,calc((100% - var(--itws-chat-lane))/2))!important;
+  padding-bottom:176px!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .bubble,
+body.it-chatgpt-workspace.itws-enterprise-shell .chat-bubble{
+  width:auto!important;
+  max-width:760px!important;
+  margin-top:0!important;
+  margin-bottom:16px!important;
+  font-size:15px!important;
+  line-height:1.58!important;
+  letter-spacing:0!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .bubble.agent,
+body.it-chatgpt-workspace.itws-enterprise-shell .chat-bubble.agent,
+body.it-chatgpt-workspace.itws-enterprise-shell .chat-bubble.assistant{
+  margin-left:0!important;
+  margin-right:auto!important;
+  padding:13px 15px!important;
+  border:1px solid #1c4058!important;
+  border-radius:16px 16px 16px 6px!important;
+  background:#10283b!important;
+  color:#dce9f2!important;
+  box-shadow:0 7px 20px rgba(0,0,0,.08)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .bubble.user,
+body.it-chatgpt-workspace.itws-enterprise-shell .chat-bubble.user{
+  width:fit-content!important;
+  max-width:min(680px,88%)!important;
+  margin-left:auto!important;
+  margin-right:0!important;
+  padding:11px 15px!important;
+  border:1px solid #2a607e!important;
+  border-radius:18px 18px 6px 18px!important;
+  background:#17415c!important;
+  color:#f0f8fd!important;
+  box-shadow:0 7px 20px rgba(0,0,0,.08)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .sulandra-live-activity{
+  width:min(760px,100%)!important;
+  margin-left:0!important;
+  margin-right:auto!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-empty{
+  color:#dceaf3!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-empty p{color:#8ea5b6!important}
+
+/* Composer is visually part of the same conversation lane. Position calculations
+   from the split-screen Status Board remain authoritative. */
+body.it-chatgpt-workspace.itws-enterprise-shell .agent-compose,
+body.it-chatgpt-workspace.itws-enterprise-shell #agentForm{
+  max-width:760px!important;
+  background:#0d2537!important;
+  border-color:#264b63!important;
+  box-shadow:0 18px 42px rgba(0,0,0,.32)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .agent-compose textarea,
+body.it-chatgpt-workspace.itws-enterprise-shell #agentPrompt{
+  color:#eaf4fa!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agentPrompt::placeholder{color:#71899a!important}
+body.it-chatgpt-workspace.itws-enterprise-shell #agentAttach{
+  background:#16344a!important;
+  color:#c7d8e4!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell #agentSend,
+body.it-chatgpt-workspace.itws-enterprise-shell #askAgentBtn{
+  background:#1685c4!important;
+  box-shadow:0 0 0 1px rgba(92,190,239,.2),0 6px 18px rgba(0,0,0,.2)!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .artifact-row{
+  background:#10283b!important;
+  border-color:#244b65!important;
+  color:#d9e7f0!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .artifact-row strong{color:#d9e7f0!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-thumb{background:#16364d!important;color:#a9c1d1!important}
+
+/* Dark Status Board so opening it does not introduce a white panel into the SIA
+   workspace. Action Center remains a separate view. */
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-drawer,
+body.it-chatgpt-workspace.itws-enterprise-shell.itws-status-board-open .itws-status-board-drawer.itws-open{
+  background:#0a1e2e!important;
+  color:#dceaf3!important;
+  border-left-color:#21435a!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-head h2{color:#eaf5fc!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-head p{color:#8299aa!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-close{
+  background:#102d43!important;
+  color:#c9dce8!important;
+  border-color:#2b526b!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-event{
+  color:#b7c9d6!important;
+  border-bottom-color:#17384e!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-event-body strong{color:#dceaf3!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-event-body>span{color:#8ea6b6!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-event-body small{color:#688193!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-event-icon{background:#102c42!important;border-color:#2a5069!important;color:#a9c0cf!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-event-local,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-empty{
+  background:#0e2739!important;
+  border-color:#27485f!important;
+  color:#91a8b8!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-empty strong{color:#dbe8f0!important}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-privacy{
+  border-top-color:#18384d!important;
+  color:#6e8799!important;
+}
+
+/* Engineering Terminal already uses a dark surface; bring its outer frame into the
+   same navy family rather than placing a black card on a white page. */
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-engineering-terminal{
+  background:#081927!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-terminal-shell{
+  border-color:#274c64!important;
+  background:#091a28!important;
+}
+
+@media(min-width:700px){
+  body.it-chatgpt-workspace.itws-enterprise-shell.itws-status-board-open #agentChat,
+  body.it-chatgpt-workspace.itws-enterprise-shell.itws-status-board-open .agent-chat,
+  body.it-chatgpt-workspace.itws-enterprise-shell.itws-status-board-open .chat-log{
+    padding-left:max(20px,calc((100% - 760px)/2))!important;
+    padding-right:max(20px,calc((100% - 760px)/2))!important;
+  }
+}
+
+@media(max-width:820px){
+  body.it-chatgpt-workspace.itws-enterprise-shell #agentChat,
+  body.it-chatgpt-workspace.itws-enterprise-shell .agent-chat,
+  body.it-chatgpt-workspace.itws-enterprise-shell .chat-log{
+    padding-left:14px!important;
+    padding-right:14px!important;
+    padding-top:18px!important;
+  }
+  body.it-chatgpt-workspace.itws-enterprise-shell .bubble,
+  body.it-chatgpt-workspace.itws-enterprise-shell .chat-bubble{max-width:92%!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell .bubble.user,
+  body.it-chatgpt-workspace.itws-enterprise-shell .chat-bubble.user{max-width:88%!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell .agent-compose,
+  body.it-chatgpt-workspace.itws-enterprise-shell #agentForm{max-width:none!important}
+}
