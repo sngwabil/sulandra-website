@@ -1,18 +1,21 @@
 (()=>{
   'use strict';
-  const API='https://sulandra-website-production-5fc4.up.railway.app';
+
   const token=()=>sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra_token')||localStorage.getItem('token')||localStorage.getItem('accessToken')||'';
-  const state={envelopes:[],signatures:[]};
-  const $=id=>document.getElementById(id);
-  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const date=value=>value?new Date(value).toLocaleString():'—';
-  const headers=()=>({'content-type':'application/json',authorization:`Bearer ${token()}`});
-  function notice(message,error=false){const node=$('notice');node.textContent=message;node.classList.remove('hidden');node.style.background=error?'#ffe9ec':'#eaf7ef';node.style.borderColor=error?'#e8a9b2':'#9bd0ad';setTimeout(()=>node.classList.add('hidden'),7000)}
-  async function api(path,options={}){const response=await fetch(`${API}${path}`,{...options,headers:{...headers(),...(options.headers||{})}});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||`Request failed (${response.status})`);return payload}
-  function signed(envelope){return state.signatures.some(row=>row.envelopeId===envelope.id&&row.signerRole==='EMPLOYEE')}
-  function statusOf(envelope){if(envelope.status==='COMPLETED'||signed(envelope))return 'COMPLETED';return 'PENDING'}
-  function render(){const q=$('search').value.trim().toLowerCase();const filter=$('status').value;const rows=state.envelopes.filter(row=>String(row.templateName||'').toLowerCase().includes(q)||String(row.message||'').toLowerCase().includes(q)).filter(row=>filter==='ALL'||statusOf(row)===filter);$('policies').innerHTML=rows.map(row=>`<article class="policy"><h3>${esc(row.templateName||'Policy')}</h3><div class="muted">Version ${esc(row.templateVersion||'—')} • Sent ${date(row.sentAt||row.createdAt)}${row.dueAt?` • Due ${date(row.dueAt)}`:''}</div><div class="badges"><span class="badge ${statusOf(row)==='COMPLETED'?'complete':'pending'}">${statusOf(row)==='COMPLETED'?'Acknowledged':'Action required'}</span><span class="badge">${esc(row.status||'PENDING')}</span></div>${row.message?`<p>${esc(row.message)}</p>`:''}<details><summary>Read policy</summary><div style="padding:12px 0">${row.documentHtml||'<p>No policy content available.</p>'}</div></details><div class="actions">${statusOf(row)==='COMPLETED'?'':'<button data-sign="'+esc(row.id)+'">Acknowledge & sign</button>'}</div></article>`).join('')||'<p class="muted">No policy assignments found.</p>';document.querySelectorAll('[data-sign]').forEach(button=>button.addEventListener('click',()=>sign(button.dataset.sign)));}
-  async function sign(id){const name=prompt('Type your full legal name to acknowledge this policy.');if(!name||name.trim().length<2)return;try{await api(`/api/employee/me/documents/${encodeURIComponent(id)}/sign`,{method:'POST',body:JSON.stringify({signatureText:name.trim(),signatureType:'TYPED',consent:true,comments:''})});notice('Policy acknowledged successfully.');await load()}catch(error){notice(error.message,true)}}
-  async function load(){if(!token()){location.href='/employee-login.html';return}try{const payload=await api('/api/employee/me/documents');state.envelopes=(payload.data?.envelopes||[]).filter(row=>String(row.templateName||'').toLowerCase().includes('policy')||String(row.documentHtml||'').toLowerCase().includes('policy')||String(row.message||'').toLowerCase().includes('policy'));state.signatures=payload.data?.signatures||[];$('mAssigned').textContent=state.envelopes.length;$('mPending').textContent=state.envelopes.filter(row=>statusOf(row)==='PENDING').length;$('mCompleted').textContent=state.envelopes.filter(row=>statusOf(row)==='COMPLETED').length;render()}catch(error){notice(error.message,true)}}
-  $('search').addEventListener('input',render);$('status').addEventListener('change',render);$('logout').addEventListener('click',()=>{sessionStorage.removeItem('sulandra:employee:access-token');localStorage.removeItem('sulandra:employee:access-token');location.href='/employee-login.html'});load();
+
+  function signOut(){
+    sessionStorage.removeItem('sulandra:employee:access-token');
+    localStorage.removeItem('sulandra:employee:access-token');
+    localStorage.removeItem('sulandra_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('accessToken');
+    location.href='/employee-login.html';
+  }
+
+  if(!token()){
+    location.href='/employee-login.html';
+    return;
+  }
+
+  document.getElementById('logout')?.addEventListener('click',signOut);
 })();
