@@ -1,0 +1,163 @@
+/* IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1
+   Shared visual chrome for IT Solutions. Presentation-only. */
+body.it-chatgpt-workspace.itws-enterprise-shell{
+  --itws-platform-height:60px;
+  --itws-page-header-height:92px;
+  --itws-admin-tabs-height:46px;
+  --itws-enterprise-chrome:198px;
+}
+body.it-chatgpt-workspace .itws-enterprise-platform{
+  min-height:var(--itws-platform-height)!important;
+  background:#0b4778!important;
+  color:#fff!important;
+  border-bottom:3px solid #d4a72c!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:9px 22px!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+  position:relative!important;
+  z-index:120!important;
+  box-shadow:0 4px 16px rgba(5,45,82,.16)!important;
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;
+}
+body.it-chatgpt-workspace .itws-enterprise-platform::-webkit-scrollbar{display:none!important}
+body.it-chatgpt-workspace .itws-enterprise-platform strong{
+  margin-right:auto!important;
+  min-width:max-content!important;
+  font-size:17px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:-.01em!important;
+}
+body.it-chatgpt-workspace .itws-enterprise-platform a{
+  color:#fff!important;
+  text-decoration:none!important;
+  border:1px solid rgba(255,255,255,.28)!important;
+  background:rgba(255,255,255,.055)!important;
+  padding:8px 13px!important;
+  border-radius:999px!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+}
+body.it-chatgpt-workspace .itws-enterprise-platform a:hover,
+body.it-chatgpt-workspace .itws-enterprise-platform a:focus-visible{
+  background:#fff!important;
+  color:#0b4f86!important;
+  border-color:#fff!important;
+  outline:none!important;
+}
+
+body.it-chatgpt-workspace.itws-enterprise-shell>header{
+  min-height:var(--itws-page-header-height)!important;
+  height:var(--itws-page-header-height)!important;
+  padding:12px 26px!important;
+  gap:20px!important;
+  box-shadow:none!important;
+  border-bottom:1px solid #d4e0eb!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell>header::before{
+  width:164px!important;
+  height:62px!important;
+  flex:0 0 164px!important;
+  background-size:152px 56px!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell>header>div:first-child::before{
+  content:'Technology Operations'!important;
+  margin-bottom:5px!important;
+  font-size:11px!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell>header h1{
+  font-size:32px!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell>header p{
+  margin-top:5px!important;
+  font-size:14px!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell>header>div:last-child{
+  display:none!important;
+}
+
+body.it-chatgpt-workspace .itws-enterprise-admin-tabs{
+  min-height:var(--itws-admin-tabs-height)!important;
+  background:#fff!important;
+  border-bottom:1px solid #d4e0eb!important;
+  display:flex!important;
+  align-items:stretch!important;
+  gap:3px!important;
+  padding:0 22px!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+  position:relative!important;
+  z-index:115!important;
+  box-shadow:0 3px 10px rgba(20,50,75,.035)!important;
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif!important;
+}
+body.it-chatgpt-workspace .itws-enterprise-admin-tabs::-webkit-scrollbar{display:none!important}
+body.it-chatgpt-workspace .itws-enterprise-admin-tabs a{
+  display:flex!important;
+  align-items:center!important;
+  color:#2e455a!important;
+  text-decoration:none!important;
+  padding:0 13px!important;
+  border-bottom:3px solid transparent!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+}
+body.it-chatgpt-workspace .itws-enterprise-admin-tabs a:hover{
+  color:#07558f!important;
+  background:#f5f9fc!important;
+}
+body.it-chatgpt-workspace .itws-enterprise-admin-tabs a.active{
+  color:#07558f!important;
+  background:#eef7ff!important;
+  border-bottom-color:#0b75b7!important;
+}
+
+body.it-chatgpt-workspace.itws-enterprise-shell .shell,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-layout,
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-content{
+  height:calc(100dvh - var(--itws-enterprise-chrome))!important;
+  min-height:calc(100dvh - var(--itws-enterprise-chrome))!important;
+}
+body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-drawer{
+  top:calc(var(--itws-enterprise-chrome) + 12px)!important;
+}
+
+@media(max-width:1100px){
+  body.it-chatgpt-workspace.itws-enterprise-shell{
+    --itws-platform-height:58px;
+    --itws-page-header-height:86px;
+    --itws-admin-tabs-height:44px;
+    --itws-enterprise-chrome:188px;
+  }
+  body.it-chatgpt-workspace .itws-enterprise-platform{padding-left:14px!important;padding-right:14px!important}
+  body.it-chatgpt-workspace .itws-enterprise-platform strong{font-size:16px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header{padding-left:18px!important;padding-right:18px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header::before{width:145px!important;height:58px!important;flex-basis:145px!important;background-size:136px 52px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header h1{font-size:29px!important}
+  body.it-chatgpt-workspace .itws-enterprise-admin-tabs{padding-left:12px!important;padding-right:12px!important}
+}
+
+@media(max-width:820px){
+  body.it-chatgpt-workspace.itws-enterprise-shell{
+    --itws-platform-height:54px;
+    --itws-page-header-height:78px;
+    --itws-admin-tabs-height:42px;
+    --itws-enterprise-chrome:174px;
+  }
+  body.it-chatgpt-workspace .itws-enterprise-platform{padding:8px 10px!important;gap:7px!important}
+  body.it-chatgpt-workspace .itws-enterprise-platform strong{font-size:15px!important}
+  body.it-chatgpt-workspace .itws-enterprise-platform a{font-size:12px!important;padding:7px 10px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header{padding:9px 12px!important;gap:10px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header::before{width:112px!important;height:50px!important;flex-basis:112px!important;background-size:106px 46px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header>div:first-child::before{font-size:9px!important;margin-bottom:4px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header h1{font-size:24px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell>header p{font-size:12px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.it-chatgpt-workspace .itws-enterprise-admin-tabs{padding:0 8px!important}
+  body.it-chatgpt-workspace .itws-enterprise-admin-tabs a{font-size:12px!important;padding:0 10px!important}
+  body.it-chatgpt-workspace.itws-enterprise-shell .itws-status-board-drawer{top:8px!important}
+}
