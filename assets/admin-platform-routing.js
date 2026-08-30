@@ -4,7 +4,7 @@
 
   const routes = {
     scheduling: '/scheduling.html',
-    time: '/time-attendance.html#admin',
+    time: '/time-attendance.html#attendanceSheet',
     documents: '/employee360.html#files',
     reports: '/employee360.html#audit',
   };
