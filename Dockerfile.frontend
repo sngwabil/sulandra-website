@@ -16,19 +16,29 @@ RUN node scripts/optimize-admin-login-performance.mjs
 # static publication, then verify both source and dist-web contain the artifact UI.
 RUN node scripts/install-employee-support.mjs
 
+# Install the browser terminal emulator in an isolated dependency folder instead
+# of changing the application dependency graph. xterm.js is the presentation
+# layer only; command execution remains in the dedicated node-pty worker.
+RUN npm --prefix terminal-browser install --omit=dev --no-audit --no-fund
+
 # Layer the conversational presentation only after the canonical IT installers
-# have finished. Immediately apply the request-handoff repair to the canonical
-# source assets so build:web copies a non-deadlocking Status Board/composer into
-# dist-web. The repair is idempotent and preserves the Railway API-origin guard.
+# have finished. Publish the xterm loader after the generated IT Solutions shell
+# exists, then apply the request-handoff repair.
 RUN node scripts/install-it-agent-conversational-ui.mjs \
+ && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs
 
 # DEVELOPMENT_WORKFLOW.md defines npm run build:web as the authoritative
-# Sulandra Static Website build. Running build-static-site.mjs directly skipped
-# the pre/post integration chain and silently published placeholder/legacy pages.
-# Re-run the idempotent handoff fixer after publication as a deployment guard so
-# both canonical source and the exact dist-web bytes served by Railway are fixed.
+# Sulandra Static Website build. After publication, copy the pinned xterm browser
+# runtime into the same-origin static assets and re-assert the xterm HTML hooks.
 RUN npm run build:web \
+ && mkdir -p dist-web/assets/vendor \
+ && cp terminal-browser/node_modules/@xterm/xterm/lib/xterm.js dist-web/assets/vendor/xterm.js \
+ && cp terminal-browser/node_modules/@xterm/xterm/css/xterm.css dist-web/assets/vendor/xterm.css \
+ && cp terminal-browser/node_modules/@xterm/addon-fit/lib/addon-fit.js dist-web/assets/vendor/addon-fit.js \
+ && cp terminal-browser/node_modules/@xterm/xterm/LICENSE dist-web/assets/vendor/XTERM-LICENSE \
+ && cp terminal-browser/node_modules/@xterm/addon-fit/LICENSE dist-web/assets/vendor/XTERM-ADDON-FIT-LICENSE \
+ && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
  && node scripts/verify-it-agent-artifact-capabilities.mjs
 
