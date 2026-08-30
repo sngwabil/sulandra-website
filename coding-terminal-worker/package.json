@@ -1,13 +1,17 @@
 {
   "name": "sulandra-coding-terminal-worker",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "engines": {
     "node": "22.x"
   },
   "dependencies": {
+    "dockerode": "^4.0.7",
     "express": "^4.21.2",
-    "node-pty": "^1.0.0"
+    "firebase-admin": "^13.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.3"
   }
 }
