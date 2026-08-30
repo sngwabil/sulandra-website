@@ -48,6 +48,7 @@ services:
     environment:
       ACME_EMAIL: ${ACME_EMAIL}
       TERMINAL_EXECUTION_DOMAIN: ${TERMINAL_EXECUTION_DOMAIN}
+      TERMINAL_EXECUTION_TOKEN: ${TERMINAL_EXECUTION_TOKEN}
     ports:
       - "80:80"
       - "443:443"
