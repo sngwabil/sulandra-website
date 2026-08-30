@@ -167,7 +167,7 @@
       root.classList.toggle('itws-rt-box-mode',inputMode==='box');
       switcher.querySelectorAll('[data-rt-input-mode]').forEach(button=>button.classList.toggle('active',button.dataset.rtInputMode===inputMode));
       if(hint)hint.textContent=inputMode==='direct'
-        ?'Type in the terminal line above. The blinking caret shows your position; Backspace/Delete edit the line before Enter sends it.'
+        ?'Type at the live shell prompt inside the terminal. Backspace/Delete edit before Enter sends the line.'
         :'Use the command box exactly as before, then press Run or Enter.';
       try{sessionStorage.setItem(INPUT_MODE_KEY,inputMode)}catch{}
       if(inputMode==='direct')window.setTimeout(focusDirect,30);
@@ -299,4 +299,20 @@
   else scan();
   new MutationObserver(scan).observe(document.documentElement,{childList:true,subtree:true});
   window.setInterval(scan,1500);
+})();
+
+/* Load the inline-prompt terminal surface as a final presentation/controller layer.
+   It intentionally leaves the Command box and isolated-worker boundary untouched. */
+(()=>{
+  if(document.querySelector('link[data-itws-inline-terminal="1"]'))return;
+  const style=document.createElement('link');
+  style.rel='stylesheet';
+  style.href='/assets/it-agent-terminal-inline-prompt.css?v=20260830-inline-prompt-1';
+  style.dataset.itwsInlineTerminal='1';
+  document.head.appendChild(style);
+  const script=document.createElement('script');
+  script.src='/assets/it-agent-terminal-inline-prompt.js?v=20260830-inline-prompt-1';
+  script.defer=true;
+  script.dataset.itwsInlineTerminal='1';
+  document.head.appendChild(script);
 })();
