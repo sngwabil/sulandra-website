@@ -92,11 +92,7 @@ function patchLiveActivity(source){
   // `else` formatting. That makes this safe across pretty-printed and compact
   // publication variants while preserving the existing control-flow branch.
   const delayedCompletion=/setTimeout\s*\(\s*\(\s*\)\s*=>\s*\{\s*if\s*\(\s*activity\s*&&\s*!activity\.finished\s*\)\s*finishActivity\s*\(\s*activity\s*,\s*(['"])Sulandra IT Agent finished\1\s*\)\s*;?\s*\}\s*,\s*4000\s*\)/g;
-  let replacements=0;
-  source=source.replace(delayedCompletion,()=>{
-    replacements+=1;
-    return "finishActivity(activity,'Sulandra IT Agent finished')";
-  });
+  source=source.replace(delayedCompletion,()=>"finishActivity(activity,'Sulandra IT Agent finished')");
 
   must(source.includes("finishActivity(activity,'Sulandra IT Agent finished')")||source.includes('function finishActivity('),'live activity completion contract missing');
   delayedCompletion.lastIndex=0;
@@ -109,9 +105,11 @@ function patchLiveActivity(source){
 }
 
 function patchPublishedHtml(source){
+  // Publication layers are allowed to rewrite/remove older query strings. Force the
+  // cache key by stable filename so the exact repaired runtime is fetched on iPad/Safari.
   return source
-    .replace(/it-agent-conversational-ui\.js\?v=20260829-chat-[^"']+/g,'it-agent-conversational-ui.js?v=20260829-chat-2')
-    .replace(/it-agent-status-board-finalizer\.js\?v=20260829-status-board-[^"']+/g,'it-agent-status-board-finalizer.js?v=20260829-status-board-6');
+    .replace(/it-agent-conversational-ui\.js(?:\?v=[^"']*)?/g,'it-agent-conversational-ui.js?v=20260829-chat-2')
+    .replace(/it-agent-status-board-finalizer\.js(?:\?v=[^"']*)?/g,'it-agent-status-board-finalizer.js?v=20260829-status-board-6');
 }
 
 async function patchFiles(files,patcher){
