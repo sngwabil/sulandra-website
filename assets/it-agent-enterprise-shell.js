@@ -1,10 +1,9 @@
 /* IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1
-   Presentation-only shared Administrator chrome for the Sulandra IT workspace.
-   Adds the same platform/admin navigation hierarchy used by Scheduling without
-   changing IT Agent actions, approvals, APIs, or authorization.
-   V3 repair: IT Solutions is the full SIA environment, the floating Ask SIA
-   launcher stays suppressed, Status Board and Action Center stay separate, and
-   the left navigation now has a real open/collapse control with outside-click close. */
+   Dedicated Sulandra engineering chrome for IT Solutions.
+   Keeps the global Sulandra platform identity, removes Administrator module tabs
+   from the engineering workspace, preserves Status Board / Action Center separation,
+   and routes terminal-style coding requests through the existing controlled IT Agent
+   coding-worker and approval workflow rather than exposing an unrestricted shell. */
 (()=>{
   'use strict';
   if(window.__SULANDRA_IT_ENTERPRISE_SHELL__)return;
@@ -18,19 +17,6 @@
     ['Education Portal','/education-portal.html'],
     ['Spire Clinical','/spire.html'],
   ];
-  const adminLinks=[
-    ['Dashboard','/admin.html#dashboard'],
-    ['Service Homes','/admin.html#service-homes'],
-    ['Employees','/admin.html#employees'],
-    ['Scheduling','/scheduling.html'],
-    ['Time & Attendance','/time-attendance.html#admin'],
-    ['Documents','/employee360.html#files'],
-    ['Reports','/employee360.html#audit'],
-    ['Admin Spire','/spire-admin.html'],
-    ['Onboarding','/admin.html#onboarding'],
-    ['Settings','/admin.html#settings'],
-    ['IT Solutions','/it-solutions.html'],
-  ];
   const OPEN_KEY='sulandra:it-agent:status-board-open';
   const launcherSelectors=[
     '[data-sia-launcher]',
@@ -43,11 +29,10 @@
     '.ask-sia-launcher',
   ];
 
-  const link=(label,href,active=false)=>{
+  const link=(label,href)=>{
     const a=document.createElement('a');
     a.textContent=label;
     a.href=href;
-    if(active){a.className='active';a.setAttribute('aria-current','page')}
     return a;
   };
 
@@ -250,6 +235,171 @@
     return true;
   }
 
+  function installReturnToPortal(header){
+    document.getElementById('itwsEnterpriseAdminTabs')?.remove();
+    document.querySelectorAll('.itws-enterprise-admin-tabs').forEach(node=>node.remove());
+    let button=header.querySelector('a.btn[href*="admin.html"]');
+    if(!button){
+      let actions=header.querySelector(':scope > div:last-child');
+      if(!actions){actions=document.createElement('div');header.appendChild(actions)}
+      button=document.createElement('a');
+      button.className='btn itws-return-portal';
+      actions.appendChild(button);
+    }
+    button.id='itwsReturnToAdminPortal';
+    button.classList.add('itws-return-portal');
+    button.href='/admin.html#dashboard';
+    button.textContent='Return to Admin Portal';
+    button.title='Return to Admin Portal';
+    button.removeAttribute('aria-hidden');
+  }
+
+  function appendTerminalLine(root,text,kind='info'){
+    if(!root)return;
+    const line=document.createElement('div');
+    line.className=`itws-terminal-line ${kind}`;
+    line.textContent=String(text||'');
+    root.appendChild(line);
+    root.scrollTop=root.scrollHeight;
+  }
+
+  function installEngineeringWorkspace(){
+    if(window.__SULANDRA_IT_ENGINEERING_WORKSPACE__)return true;
+    const body=document.body;
+    const sidebar=document.querySelector('.itws-sidebar');
+    const nav=sidebar?.querySelector('.itws-nav');
+    const agent=document.getElementById('agent');
+    const agentMain=agent?.querySelector('.agent-main');
+    const agentHead=agentMain?.querySelector('.agent-head');
+    const prompt=document.getElementById('agentPrompt');
+    const send=document.getElementById('agentSend')||document.getElementById('askAgentBtn');
+    if(!body||!nav||!agent||!agentMain||!agentHead||!prompt||!send)return false;
+    window.__SULANDRA_IT_ENGINEERING_WORKSPACE__=true;
+
+    const buttons=[...nav.querySelectorAll('[data-itws-view]')];
+    buttons.forEach(button=>{
+      const view=button.dataset.itwsView;
+      if(view==='agent')button.textContent='IT Agent';
+      else if(view==='overview')button.textContent='Action Center';
+      else if(view==='diagnostics')button.textContent='Diagnostics';
+      else if(view==='approvals')button.textContent='Approvals';
+      else if(view==='resolved')button.textContent='Completed Work';
+      else if(view==='incidents'||view==='remote')button.remove();
+    });
+
+    const agentButton=nav.querySelector('[data-itws-view="agent"]');
+    const terminalButton=document.createElement('button');
+    terminalButton.type='button';
+    terminalButton.id='itwsEngineeringTerminalNav';
+    terminalButton.dataset.itwsEngineeringView='terminal';
+    terminalButton.textContent='Engineering Terminal';
+    if(agentButton?.nextSibling)nav.insertBefore(terminalButton,agentButton.nextSibling);else nav.prepend(terminalButton);
+
+    const terminal=document.createElement('section');
+    terminal.id='itwsEngineeringTerminal';
+    terminal.className='itws-engineering-terminal';
+    terminal.setAttribute('aria-label','Engineering Terminal');
+    terminal.innerHTML=`
+      <div class="itws-terminal-shell">
+        <div class="itws-terminal-topbar">
+          <div><span class="itws-terminal-kicker">CONTROLLED ENGINEERING</span><h2>Engineering Terminal</h2><p>Code, dependency, test, build, and deployment requests are routed through Sulandra's coding worker and approval gates.</p></div>
+          <span class="itws-terminal-mode">Protected worker</span>
+        </div>
+        <div class="itws-terminal-context">
+          <span>Repository · sngwabil/sulandra-website</span><span>Production · release/sulandra-1.0</span><span>No unrestricted host shell</span>
+        </div>
+        <div class="itws-terminal-quick" aria-label="Terminal shortcuts">
+          <button type="button" data-terminal-command="Run the relevant tests and report any failures before making changes.">Run tests</button>
+          <button type="button" data-terminal-command="Inspect the current build and deployment health and tell me what needs attention.">Check build</button>
+          <button type="button" data-terminal-command="Install the dependency I name using the correct workspace and update the lockfile safely: ">Install dependency</button>
+          <button type="button" data-terminal-command="Prepare the requested code change, verify it, and use the normal approval and release gates: ">Code change</button>
+        </div>
+        <div id="itwsTerminalOutput" class="itws-terminal-output" role="log" aria-live="polite"></div>
+        <form id="itwsTerminalForm" class="itws-terminal-form">
+          <span class="itws-terminal-prompt" aria-hidden="true">$</span>
+          <input id="itwsTerminalInput" autocomplete="off" spellcheck="false" aria-label="Engineering command" placeholder="Describe a coding, install, test, build, or deployment task…">
+          <button type="submit">Run</button>
+        </form>
+        <div class="itws-terminal-footer">
+          <span>Never paste passwords, tokens, MFA codes, patient data, or other secrets.</span>
+          <div><button type="button" id="itwsTerminalOpenChat">Open IT Agent</button><button type="button" id="itwsTerminalOpenStatus">Status Board</button></div>
+        </div>
+      </div>`;
+    agentMain.insertBefore(terminal,agentHead.nextSibling);
+
+    const output=terminal.querySelector('#itwsTerminalOutput');
+    const form=terminal.querySelector('#itwsTerminalForm');
+    const input=terminal.querySelector('#itwsTerminalInput');
+    const openChat=terminal.querySelector('#itwsTerminalOpenChat');
+    const openStatus=terminal.querySelector('#itwsTerminalOpenStatus');
+    appendTerminalLine(output,'Sulandra Engineering Terminal ready.','system');
+    appendTerminalLine(output,'Requests run through the authenticated IT Agent coding-worker workflow; this browser does not expose a raw server shell.','muted');
+    appendTerminalLine(output,'Type /help for local terminal commands.','muted');
+
+    const clearTerminalActive=()=>{
+      body.classList.remove('itws-terminal-open');
+      terminalButton.classList.remove('active');
+    };
+    const showAgent=()=>{
+      clearTerminalActive();
+      agentButton?.click();
+      window.setTimeout(()=>prompt.focus(),0);
+    };
+    const showTerminal=()=>{
+      document.querySelector('.tab[data-view="agent"]')?.click();
+      body.classList.add('itws-terminal-open');
+      nav.querySelectorAll('button').forEach(button=>button.classList.remove('active'));
+      terminalButton.classList.add('active');
+      window.setTimeout(()=>input?.focus(),0);
+    };
+
+    terminalButton.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();showTerminal()});
+    nav.querySelectorAll('[data-itws-view]').forEach(button=>button.addEventListener('click',clearTerminalActive));
+    openChat?.addEventListener('click',showAgent);
+    openStatus?.addEventListener('click',()=>document.getElementById('itwsActivity')?.click());
+    terminal.querySelectorAll('[data-terminal-command]').forEach(button=>button.addEventListener('click',()=>{
+      input.value=button.dataset.terminalCommand||'';
+      input.focus();
+      input.setSelectionRange(input.value.length,input.value.length);
+    }));
+
+    form?.addEventListener('submit',event=>{
+      event.preventDefault();
+      const command=String(input?.value||'').trim();
+      if(!command)return;
+      input.value='';
+      appendTerminalLine(output,`$ ${command}`,'command');
+      if(command==='/clear'){
+        output.innerHTML='';
+        appendTerminalLine(output,'Terminal cleared.','system');
+        return;
+      }
+      if(command==='/help'){
+        appendTerminalLine(output,'Local commands: /help · /clear · /status · /chat. Any other text is submitted as a controlled engineering request.','system');
+        return;
+      }
+      if(command==='/chat'){
+        appendTerminalLine(output,'Opening IT Agent chat.','system');
+        showAgent();
+        return;
+      }
+      if(command==='/status'){
+        const states=[...document.querySelectorAll('#agent .agent-status .pill')].map(node=>node.textContent?.trim()).filter(Boolean);
+        appendTerminalLine(output,states.length?states.join(' · '):'Runtime status pills are not currently available; use Status Board for verified work state.','system');
+        return;
+      }
+      prompt.value=command;
+      prompt.dispatchEvent(new Event('input',{bubbles:true}));
+      prompt.dispatchEvent(new Event('change',{bubbles:true}));
+      send.click();
+      appendTerminalLine(output,'→ Submitted to the controlled Sulandra coding-worker workflow. Status Board will show verified GitHub/Railway work; open IT Agent for the full response.','submitted');
+    });
+
+    const title=agentHead.querySelector('h2');
+    if(title)title.textContent='Sulandra IT Agent';
+    return true;
+  }
+
   function install(){
     const body=document.body;
     const header=document.querySelector('body > header');
@@ -274,19 +424,12 @@
       body.insertBefore(nav,header);
     }
 
-    if(!document.getElementById('itwsEnterpriseAdminTabs')){
-      const nav=document.createElement('nav');
-      nav.id='itwsEnterpriseAdminTabs';
-      nav.className='itws-enterprise-admin-tabs';
-      nav.setAttribute('aria-label','Administrator navigation');
-      for(const [label,href] of adminLinks)nav.appendChild(link(label,href,label==='IT Solutions'));
-      header.insertAdjacentElement('afterend',nav);
-    }
-
+    installReturnToPortal(header);
+    const headerCopy=header.querySelector('p');
+    if(headerCopy)headerCopy.textContent='Engineering, code, dependencies, diagnostics, release controls, and deployment.';
     body.classList.add('itws-enterprise-shell');
     installLeftSidebarController();
-    const legacyBack=header.querySelector('a.btn[href*="admin.html"]');
-    if(legacyBack)legacyBack.setAttribute('aria-hidden','true');
+    installEngineeringWorkspace();
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
