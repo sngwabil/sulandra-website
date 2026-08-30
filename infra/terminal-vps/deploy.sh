@@ -7,6 +7,8 @@ ENV_FILE="$INFRA/.env"
 DOMAIN="${1:-${TERMINAL_EXECUTION_DOMAIN:-}}"
 EMAIL="${2:-${ACME_EMAIL:-}}"
 TAG="${TERMINAL_STACK_TAG:-2026-08-30-v2}"
+SEED_ROOT="/srv/sulandra-terminal/seed"
+SEED_NEXT="/srv/sulandra-terminal/seed.next"
 
 if [[ $EUID -ne 0 ]]; then
   echo "Run with sudo: sudo $0 <terminal-domain> <acme-email>" >&2
@@ -30,6 +32,29 @@ if [[ ! -S /var/run/docker.sock ]]; then
 fi
 
 install -d -o 10001 -g 10001 -m 0700 /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state
+rm -rf "$SEED_NEXT"
+install -d -o root -g root -m 0755 "$SEED_NEXT"
+tar -C "$ROOT" \
+  --exclude='./.git' \
+  --exclude='./node_modules' \
+  --exclude='./api/node_modules' \
+  --exclude='./dist-web' \
+  --exclude='./coverage' \
+  --exclude='./.env' \
+  --exclude='./.env.*' \
+  --exclude='./infra/terminal-vps/.env' \
+  --exclude='*.pem' \
+  --exclude='*.key' \
+  --exclude='*.p12' \
+  --exclude='*.pfx' \
+  --exclude='.npmrc' \
+  --exclude='*service-account*.json' \
+  --exclude='*firebase-admin*.json' \
+  -cf - . | tar -C "$SEED_NEXT" -xf -
+chmod -R go-w "$SEED_NEXT"
+rm -rf "$SEED_ROOT"
+mv "$SEED_NEXT" "$SEED_ROOT"
+
 if ! docker network inspect sulandra-terminal-internal >/dev/null 2>&1; then
   docker network create --internal sulandra-terminal-internal >/dev/null
 fi
