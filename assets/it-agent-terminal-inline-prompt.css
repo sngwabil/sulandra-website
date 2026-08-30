@@ -1,0 +1,46 @@
+/* IT_AGENT_TERMINAL_INLINE_PROMPT_V1
+   Keeps the editable prompt/caret inside the same visual terminal scrollback. */
+body.it-chatgpt-workspace .itws-rt-terminal-surface{
+  flex:1;min-height:330px;max-height:calc(100vh - 500px);overflow:auto;
+  -webkit-overflow-scrolling:touch;touch-action:pan-y pan-x;overscroll-behavior:contain;
+  background:#04121c;color:#d2e5ef;scrollbar-gutter:stable both-edges;
+  user-select:text;-webkit-user-select:text;cursor:text
+}
+body.it-chatgpt-workspace .itws-rt-terminal-surface .itws-rt-screen{
+  flex:none!important;min-height:0!important;max-height:none!important;height:auto!important;
+  overflow:visible!important;margin:0!important;padding:14px 16px 0!important;
+  background:transparent!important;box-shadow:none!important;border:0!important
+}
+body.it-chatgpt-workspace .itws-rt-terminal-surface .itws-rt-direct-line{
+  display:none;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:8px;
+  margin:0;padding:0 16px 18px;background:transparent!important;border:0!important;
+  box-shadow:none!important;color:#d2e5ef
+}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-mode .itws-rt-terminal-surface .itws-rt-direct-line{
+  display:grid!important
+}
+body.it-chatgpt-workspace .itws-rt-terminal-surface .itws-rt-direct-prompt{
+  color:var(--rt-green);font:900 12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+  padding-top:6px;white-space:pre;user-select:none;-webkit-user-select:none
+}
+body.it-chatgpt-workspace .itws-rt-terminal-surface .itws-rt-direct-input{
+  width:100%;min-height:32px;max-height:120px;margin:0;padding:6px 0!important;
+  resize:none;overflow:auto;border:0!important;border-radius:0!important;background:transparent!important;
+  color:#d2e5ef!important;-webkit-text-fill-color:#d2e5ef!important;caret-color:var(--rt-green)!important;
+  outline:0!important;box-shadow:none!important;
+  font:500 12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace
+}
+body.it-chatgpt-workspace .itws-rt-terminal-surface .itws-rt-direct-input::placeholder{color:transparent!important}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-focus .itws-rt-terminal-surface{
+  box-shadow:inset 0 0 0 1px rgba(59,217,138,.46),inset 0 0 22px rgba(59,217,138,.03)
+}
+body.it-chatgpt-workspace .itws-real-terminal.itws-rt-direct-focus .itws-rt-terminal-surface .itws-rt-direct-line{
+  box-shadow:none!important
+}
+@media(max-width:900px){
+  body.it-chatgpt-workspace .itws-rt-terminal-surface{max-height:none;min-height:45vh}
+}
+@media(max-width:760px){
+  body.it-chatgpt-workspace .itws-rt-terminal-surface .itws-rt-screen{padding-left:13px!important;padding-right:13px!important}
+  body.it-chatgpt-workspace .itws-rt-terminal-surface .itws-rt-direct-line{padding-left:13px;padding-right:13px}
+}
