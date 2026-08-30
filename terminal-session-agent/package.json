@@ -1,0 +1,12 @@
+{
+  "name": "sulandra-terminal-session-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "express": "^4.21.2",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.3"
+  }
+}
