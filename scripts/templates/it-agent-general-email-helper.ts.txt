@@ -1,4 +1,5 @@
 /* IT_AGENT_GENERAL_EMAIL_DELIVERY_TRUTH_V1 */
+/* IT_AGENT_AUTHENTICATED_SMTP_SENDER_V1 */
 async function sendEmployeeEmailWithTruth(recipients:string[],subject:string,message:string){
   const host=process.env.SMTP_HOST;
   const port=Number(process.env.SMTP_PORT||587);
@@ -8,7 +9,7 @@ async function sendEmployeeEmailWithTruth(recipients:string[],subject:string,mes
   const addresses=[...new Set(recipients.map(value=>clean(value,320).toLowerCase()).filter(Boolean))];
   if(!addresses.length)throw httpError(409,'No eligible employee email recipients were found.');
   const transporter=nodemailer.createTransport({host,port,secure:port===465,auth:{user,pass},connectionTimeout:10000,greetingTimeout:10000,socketTimeout:20000});
-  const from=(process.env.FROM_EMAIL||process.env.SMTP_FROM||user).trim();
+  const from=user.trim();
   const normalizedAddress=(value:unknown)=>{
     if(typeof value==='string')return clean(value,320).toLowerCase();
     if(value&&typeof value==='object'&&'address' in value)return clean((value as {address?:unknown}).address,320).toLowerCase();
@@ -24,7 +25,7 @@ async function sendEmployeeEmailWithTruth(recipients:string[],subject:string,mes
     try{
       const info=await transporter.sendMail({
         from:{name:'Sulandra Health IT Solutions',address:from},
-        replyTo:user.trim(),
+        replyTo:from,
         to:email,
         subject:clean(subject,240),
         text:clean(message,12000),
