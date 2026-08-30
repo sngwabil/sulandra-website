@@ -228,12 +228,12 @@
     },true);
     scrim.addEventListener('click',()=>setOpen(false,{focus:true}));
 
-    document.addEventListener('pointerdown',event=>{
+    document.addEventListener('click',event=>{
       if(!isOpen())return;
       const target=event.target instanceof Element?event.target:null;
       if(!target||sidebar.contains(target)||openButton.contains(target)||closeButton.contains(target))return;
       setOpen(false);
-    },true);
+    });
     document.addEventListener('keydown',event=>{
       if(event.key==='Escape'&&isOpen())setOpen(false,{focus:true});
     },true);
