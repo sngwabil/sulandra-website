@@ -20,6 +20,7 @@ const wsBurstBytes = Math.max(wsBytesPerSecond, Number(process.env.TERMINAL_WS_B
 const wsAuthProvider = String(process.env.TERMINAL_WS_AUTH_PROVIDER || 'sulandra').trim().toLowerCase();
 const jwtSecret = String(process.env.JWT_SECRET || '').trim();
 const firebaseProjectId = String(process.env.FIREBASE_PROJECT_ID || '').trim();
+const firebaseCheckRevoked = String(process.env.TERMINAL_FIREBASE_CHECK_REVOKED || 'false').trim().toLowerCase() === 'true';
 const allowedRoles = new Set(['ADMINISTRATOR', 'CEO', 'COO']);
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a valid TCP port');
@@ -114,6 +115,7 @@ app.get('/health', async (_req, res) => {
     gateway: true,
     websocket: true,
     websocketAuthProvider: wsAuthProvider,
+    firebaseCheckRevoked: wsAuthProvider === 'firebase' ? firebaseCheckRevoked : undefined,
     executionPlane: { configured: true, healthy: executionHealthy, status: executionStatus },
     rateLimit: { bytesPerSecond: wsBytesPerSecond, burstBytes: wsBurstBytes },
   });
@@ -197,7 +199,7 @@ const verifyBrowserToken = async token => {
   if (!token) return null;
   if (wsAuthProvider === 'firebase') {
     try {
-      const claims = await getAuth().verifyIdToken(token, true);
+      const claims = await getAuth().verifyIdToken(token, firebaseCheckRevoked);
       const organizationId = typeof claims.organizationId === 'string' ? claims.organizationId : typeof claims.orgId === 'string' ? claims.orgId : '';
       const role = typeof claims.role === 'string' ? claims.role : '';
       if (!claims.uid || !organizationId || !allowedRoles.has(role)) return null;
@@ -248,6 +250,9 @@ wss.on('connection', (browser, req) => {
   const { auth, sessionId } = req.sulandraTerminal;
   const owner = `${auth.organizationId}:${auth.userId}`;
   const bucket = makeBucket();
+  const pendingFrames = [];
+  let pendingBytes = 0;
+  const maxPendingBytes = 65_536;
   const upstream = new WebSocket(executionWsUrl(`/v1/ws/sessions/${encodeURIComponent(sessionId)}`), ['sulandra-executor.v1'], {
     headers: {
       Authorization: `Bearer ${executionToken}`,
@@ -268,7 +273,8 @@ wss.on('connection', (browser, req) => {
   };
 
   upstream.on('open', () => {
-    if (browser.readyState === WebSocket.OPEN) browser.send(JSON.stringify({ type: 'gateway-ready' }));
+    for (const frame of pendingFrames.splice(0)) upstream.send(frame.data, { binary: frame.isBinary });
+    pendingBytes = 0;
   });
   upstream.on('message', (data, isBinary) => {
     if (browser.readyState !== WebSocket.OPEN) return;
@@ -288,9 +294,19 @@ wss.on('connection', (browser, req) => {
       closeBoth(1008, 'Terminal input rate limit exceeded');
       return;
     }
-    if (upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary: isBinary });
+    if (upstream.readyState === WebSocket.OPEN) {
+      upstream.send(data, { binary: isBinary });
+      return;
+    }
+    if (pendingBytes + bytes > maxPendingBytes) {
+      closeBoth(1008, 'Terminal startup input buffer exceeded');
+      return;
+    }
+    pendingFrames.push({ data: isBinary ? Buffer.from(data) : String(data), isBinary });
+    pendingBytes += bytes;
   });
   browser.on('close', () => {
+    pendingFrames.length = 0;
     if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) upstream.close(1000, 'Browser disconnected');
   });
   browser.on('error', () => closeBoth(1011, 'Browser WSS error'));
