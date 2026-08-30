@@ -22,6 +22,9 @@ requireText(artifact,'IT_AGENT_EXTERNAL_EMAIL_DELIVERY_TRUTH_V1','external email
 requireText(artifact,'smtpAccepted:true','external email SMTP acceptance evidence missing');
 requireText(artifact,'mailboxDeliveryConfirmed:false','external email mailbox-delivery boundary missing');
 requireText(artifact,'Final inbox delivery is not confirmed by SMTP','external email truthful delivery wording missing');
+requireText(artifact,"[it-agent-external-email] SMTP handoff failed",'external email sanitized transport log missing');
+requireText(artifact,'itAgentOperationalFailure:true','external email operational-failure marker missing');
+requireText(artifact,'fromMatchesSmtpUser','external email sender-authorization diagnostic missing');
 if(artifact.includes('External email sent to ${recipients.length} recipient'))failures.push('legacy external-email sent wording still present');
 
 requireText(workbench,'IT_AGENT_GENERAL_EMAIL_DELIVERY_TRUTH_V1','general employee email truth marker missing');
@@ -32,6 +35,10 @@ requireText(workbench,'mailboxDeliveryConfirmed:false','general employee mailbox
 requireText(workbench,"if(delivery.smtpAcceptedCount===0)finalStatus='FAILED'",'general employee zero-acceptance failure boundary missing');
 requireText(workbench,'No intended recipient was confirmed accepted by SMTP. This email must not be described as sent or delivered.','general employee truthful failure wording missing');
 requireText(workbench,'smtpAccepted or smtpAcceptedCount proves only SMTP handoff, not inbox delivery','agent email-result truth instruction missing');
+requireText(workbench,'IT_AGENT_ROUTINE_OPERATIONAL_FAILURE_BOUNDARY_V1','routine operational-failure boundary missing');
+requireText(workbench,"policy.actionType==='SEND_EXTERNAL_EMAIL'",'external-email failure classifier missing');
+requireText(workbench,"status:'FAILED',result:failureResult",'external-email failed action result missing');
+requireText(workbench,'itAgentOperationalFailure===true','external-email marked operational failure handling missing');
 if(workbench.includes('result={sent:true,recipientCount:emails.length,audience}'))failures.push('legacy general employee sent=true result still present');
 if(workbench.includes('await sendMail(emails,clean(payload.subject,240),clean(payload.message,12000))'))failures.push('legacy general employee bulk sendMail path still present');
 
@@ -42,4 +49,4 @@ for(const scriptName of ['prebuild','pretypecheck']){
 }
 
 if(failures.length){console.error('IT Agent email delivery truth verification failed:\n- '+failures.join('\n- '));process.exit(1)}
-console.log('IT Agent email delivery truth verified: education, external email, and general employee email separate SMTP acceptance from final inbox delivery.');
+console.log('IT Agent email delivery truth verified: education, external email, and general employee email separate SMTP acceptance from final inbox delivery; expected external-email transport failures are reported as failed actions with sanitized transport evidence instead of false runtime incidents.');
