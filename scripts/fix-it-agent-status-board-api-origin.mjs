@@ -90,12 +90,19 @@ function patchRequestHandoff(source){
 function patchLiveActivity(source){
   if(source.includes(liveActivityMarker))return source;
   const delayed="else setTimeout(()=>{if(activity&&!activity.finished)finishActivity(activity,'Sulandra IT Agent finished')},4000);";
-  must(source.includes(delayed),'live activity delayed-finish anchor missing');
-  source=source.replace(
-    delayed,
-    `else { /* ${liveActivityMarker}: the server response is completion evidence for this synchronous chat request. */ finishActivity(activity,'Sulandra IT Agent finished'); }`
-  );
-  return source;
+  if(source.includes(delayed)){
+    return source.replace(
+      delayed,
+      `else { /* ${liveActivityMarker}: the server response is completion evidence for this synchronous chat request. */ finishActivity(activity,'Sulandra IT Agent finished'); }`
+    );
+  }
+
+  // Some publication layers may already have normalized this completion branch.
+  // If the exact stale four-second delay is gone, mark the runtime as verified
+  // rather than failing the build because an earlier idempotent layer got there first.
+  must(source.includes("finishActivity(activity,'Sulandra IT Agent finished')")||source.includes('function finishActivity('),'live activity completion contract missing');
+  must(!/Sulandra IT Agent finished[^\n]{0,180}4000|4000[^\n]{0,180}Sulandra IT Agent finished/.test(source),'alternate four-second completion delay remains');
+  return source+`\n/* ${liveActivityMarker}: no stale four-second post-response completion delay remains in this published runtime. */\n`;
 }
 
 function patchPublishedHtml(source){
