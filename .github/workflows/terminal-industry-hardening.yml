@@ -188,12 +188,27 @@ jobs:
           session_id="$(cat /tmp/session-id)"
           cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
           test -n "$cid"
-          # Use a real Node process whose argv contains a build marker. This is
-          # what the executor sees through Docker top; exec -a is not preserved
-          # consistently by the host ps implementation used on Actions runners.
-          command=$'node -e '\''setTimeout(()=>{},10000)'\'' build\r'
+          # Keep the synthetic build alive across many monitor scans and prove
+          # it is actually visible in the recovered session before evaluating
+          # the resource profile transition.
+          command=$'node -e '\''setTimeout(()=>{},30000)'\'' build\r'
           body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
           curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/sessions/${session_id}/input" -d "$body" >/dev/null
+          process_seen=0
+          for i in {1..20}; do
+            if docker top "$cid" -eo pid,args 2>/dev/null | grep -Eq 'node .*build'; then
+              process_seen=1
+              break
+            fi
+            sleep 0.5
+          done
+          if [[ "$process_seen" != "1" ]]; then
+            echo 'Synthetic build process never appeared in the session container.' >&2
+            curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/output?cursor=0" >&2 || true
+            docker top "$cid" -eo pid,args >&2 || true
+            exit 1
+          fi
+          curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/resources" >/tmp/resources-before.json || true
           burst=0
           for i in {1..18}; do
             memory="$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")"
@@ -202,13 +217,15 @@ jobs:
             sleep 1
           done
           if [[ "$burst" != "1" ]]; then
-            echo 'Build burst was not observed. Container process view:' >&2
+            echo 'Build burst was not observed. Resource endpoint before check:' >&2
+            cat /tmp/resources-before.json >&2 || true
+            echo 'Container process view:' >&2
             docker top "$cid" -eo pid,args >&2 || true
             echo 'Executor A diagnostics:' >&2
             docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=120 executor-a >&2 || true
             exit 1
           fi
-          sleep 30
+          sleep 55
           [[ "$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")" == "536870912" ]]
           [[ "$(docker inspect -f '{{.HostConfig.NanoCpus}}' "$cid")" == "500000000" ]]
 
