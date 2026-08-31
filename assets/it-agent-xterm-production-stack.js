@@ -73,6 +73,21 @@
     if(reset)state.term.reset();
     if(String(data))state.term.write(String(data));
   };
+  const hydrateState=async state=>{
+    if(!state||state.disposed||state.connected)return;
+    let snapshot=restBridge()?.snapshot?.(state.id);
+    if(!snapshot?.data){
+      try{snapshot=await restBridge()?.hydrate?.(state.id)}
+      catch(error){renderStatus(state,error?.message||'REST PTY hydration failed',true);return}
+    }
+    if(state.disposed||state.connected)return;
+    if(snapshot?.data){
+      writeRestOutput(state,snapshot.data,true);
+      state.hydrated=true;
+      renderStatus(state,'REST PTY active · WSS reconnecting');
+    }
+    if(directMode()&&state.id===activeSessionId())requestAnimationFrame(()=>state.term.focus());
+  };
   const sendControl=(state,message)=>{
     if(!state?.ws||state.ws.readyState!==WebSocket.OPEN)return false;
     state.ws.send(JSON.stringify(message));return true;
@@ -129,7 +144,15 @@
     try{ws=new WebSocket(`${WSS_ORIGIN}/ws/sessions/${encodeURIComponent(state.id)}`,['sulandra-terminal.v2','auth.'+base64url(token)])}
     catch(error){renderStatus(state,'WSS unavailable',true);scheduleReconnect(state);return}
     state.ws=ws;ws.binaryType='arraybuffer';
+    if(state.connectTimer)clearTimeout(state.connectTimer);
+    state.connectTimer=setTimeout(()=>{
+      if(state.disposed||state.ws!==ws||ws.readyState!==WebSocket.CONNECTING)return;
+      state.connectTimer=0;
+      renderStatus(state,state.hydrated?'REST PTY active · WSS timed out':'WSS timed out · REST fallback active',true);
+      try{ws.close()}catch{}
+    },8_000);
     ws.onopen=()=>{
+      if(state.connectTimer){clearTimeout(state.connectTimer);state.connectTimer=0}
       state.reconnects=0;setTransportReady(state,true);renderStatus(state,`WSS · ${state.renderer==='webgl'?'WebGL':state.renderer==='canvas'?'Canvas':'DOM'}`);
       fitState(state);if(directMode()&&state.id===activeSessionId())state.term.focus();
     };
@@ -143,6 +166,7 @@
     };
     ws.onerror=()=>{setTransportReady(state,false);renderStatus(state,'WSS connection error',true)};
     ws.onclose=event=>{
+      if(state.connectTimer){clearTimeout(state.connectTimer);state.connectTimer=0}
       state.ws=null;setTransportReady(state,false);
       if(state.disposed)return;
       const rejected=event.code===1008;
@@ -161,10 +185,11 @@
       scrollOnUserInput:true,rightClickSelectsWord:true,macOptionIsMeta:true,allowProposedApi:false,
       theme:{background:'#06131d',foreground:'#d7e8ef',cursor:'#50e39a',cursorAccent:'#06131d',selectionBackground:'#245774',black:'#07151f',red:'#ff6b6b',green:'#50e39a',yellow:'#f3c969',blue:'#61a9ff',magenta:'#c792ea',cyan:'#56d4dd',white:'#e8f3f7',brightBlack:'#6f8794',brightRed:'#ff8c8c',brightGreen:'#75efb2',brightYellow:'#ffe08a',brightBlue:'#8cc3ff',brightMagenta:'#d9a7f2',brightCyan:'#8ae7ec',brightWhite:'#ffffff'}
     });
-    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,reconnects:0,reconnectTimer:0,disposed:false};
+    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,hydrated:false,reconnects:0,reconnectTimer:0,connectTimer:0,disposed:false};
     states.set(id,state);loadCapabilities(state);term.open(pane);
     const snapshot=restBridge()?.snapshot?.(id);
-    if(snapshot?.data)writeRestOutput(state,snapshot.data,true);
+    if(snapshot?.data){writeRestOutput(state,snapshot.data,true);state.hydrated=true}
+    void hydrateState(state);
     try{
       const webgl=new Runtime.WebglAddon();term.loadAddon(webgl);state.webgl=webgl;state.renderer='webgl';
       if(typeof webgl.onContextLoss==='function')webgl.onContextLoss(()=>fallbackRenderer(state));
@@ -172,12 +197,13 @@
     term.onData(data=>{if(state.id===activeSessionId()&&directMode())sendInput(state,data)});
     term.onResize(()=>fitState(state));
     const observer=new ResizeObserver(()=>requestAnimationFrame(()=>fitState(state)));observer.observe(pane);state.observer=observer;
-    setTimeout(()=>{fitState(state);connect(state)},40);return state;
+    setTimeout(()=>{fitState(state);if(directMode()&&state.id===activeSessionId())state.term.focus();connect(state)},40);return state;
   };
 
   const disposeState=state=>{
     if(!state||state.disposed)return;state.disposed=true;setTransportReady(state,false);
     if(state.reconnectTimer)clearTimeout(state.reconnectTimer);
+    if(state.connectTimer)clearTimeout(state.connectTimer);
     try{state.ws?.close(1000,'Terminal tab closed')}catch{}
     try{state.observer?.disconnect()}catch{}
     for(const addon of ['webgl','canvas','image','serializer','search','links','unicode','fit'])try{state[addon]?.dispose?.()}catch{}
@@ -197,7 +223,7 @@
     if(!root||!host)return;
     const tabs=[...root.querySelectorAll('#itwsRtTabs .itws-rt-tab[data-terminal-id]')];const ids=new Set(tabs.map(tab=>tab.dataset.terminalId).filter(Boolean));
     ids.forEach(id=>makeState(id));[...states.values()].forEach(state=>{if(!ids.has(state.id))disposeState(state)});
-    const active=activeSessionId();states.forEach(state=>{const on=state.id===active;state.pane.classList.toggle('active',on);state.term.options.disableStdin=!on||!directMode();if(on)requestAnimationFrame(()=>{fitState(state);if(directMode()&&state.connected)state.term.focus()})});
+    const active=activeSessionId();states.forEach(state=>{const on=state.id===active;state.pane.classList.toggle('active',on);state.term.options.disableStdin=!on||!directMode();if(on)requestAnimationFrame(()=>{fitState(state);if(directMode())state.term.focus()})});
     updateFallbackClass();
     const hint=root.querySelector('#itwsRtInputHint');if(hint)hint.textContent=states.get(active)?.connected?(directMode()?'Native WSS PTY: type at the live cursor; tmux preserves the shell across reconnects.':'Command box sends complete commands; live WSS output remains above.'):(directMode()?'WSS is reconnecting; xterm remains interactive through the authenticated REST PTY bridge.':'WSS is reconnecting; Command box output continues in xterm through the REST PTY bridge.');
   };
