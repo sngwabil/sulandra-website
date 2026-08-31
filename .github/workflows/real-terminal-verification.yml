@@ -7,6 +7,8 @@ on:
     paths:
       - assets/it-agent-xterm-*.js
       - assets/it-agent-xterm-emulator.css
+      - assets/it-agent-real-terminal.js
+      - assets/it-agent-real-terminal.css
       - coding-terminal-worker/**
       - terminal-browser/**
       - terminal-execution-plane/**
@@ -17,6 +19,7 @@ on:
       - Dockerfile.terminal-session
       - Dockerfile.frontend
       - scripts/install-it-agent-xterm-emulator.mjs
+      - scripts/install-it-agent-conversational-ui.mjs
       - .github/workflows/real-terminal-verification.yml
   push:
     branches:
@@ -24,6 +27,8 @@ on:
     paths:
       - assets/it-agent-xterm-*.js
       - assets/it-agent-xterm-emulator.css
+      - assets/it-agent-real-terminal.js
+      - assets/it-agent-real-terminal.css
       - coding-terminal-worker/**
       - terminal-browser/**
       - terminal-execution-plane/**
@@ -34,6 +39,7 @@ on:
       - Dockerfile.terminal-session
       - Dockerfile.frontend
       - scripts/install-it-agent-xterm-emulator.mjs
+      - scripts/install-it-agent-conversational-ui.mjs
       - .github/workflows/real-terminal-verification.yml
 
 permissions:
@@ -67,7 +73,17 @@ jobs:
         run: |
           set -euo pipefail
           node --check assets/it-agent-xterm-production-stack.js
+          node --check assets/it-agent-real-terminal.js
           node --check coding-terminal-worker/server.mjs
+          grep -q "DOM renderer ready · loading PTY" assets/it-agent-xterm-production-stack.js
+          grep -q "root?.classList.add('itws-xterm-ready')" assets/it-agent-xterm-production-stack.js
+          if grep -q "new Runtime.WebglAddon" assets/it-agent-xterm-production-stack.js; then
+            echo "WebGL must not initialize the production terminal renderer"
+            exit 1
+          fi
+          grep -q 'width:100%' assets/it-agent-real-terminal.css
+          grep -q 'max-width:none' assets/it-agent-real-terminal.css
+          grep -q 'REST output session=' coding-terminal-worker/server.mjs
           node --check terminal-execution-plane/server.mjs
           node --check terminal-session-agent/server.mjs
           node --check scripts/install-it-agent-xterm-emulator.mjs

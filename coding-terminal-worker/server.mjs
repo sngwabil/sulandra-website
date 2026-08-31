@@ -158,7 +158,11 @@ app.get('/sessions/:sessionId/output', async (req, res, next) => {
     const cursor = Math.max(0, Math.trunc(Number(req.query.cursor) || 0));
     res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
-    res.json(await executionRequest(req, `/v1/sessions/${encodeURIComponent(req.params.sessionId)}/output?cursor=${cursor}`));
+    const data = await executionRequest(req, `/v1/sessions/${encodeURIComponent(req.params.sessionId)}/output?cursor=${cursor}`);
+    if (cursor === 0) {
+      console.info(`[terminal-gateway] REST output session=${req.params.sessionId} requestCursor=0 responseCursor=${Number(data?.cursor) || 0} bytes=${Buffer.byteLength(String(data?.data || ''))} alive=${data?.alive !== false} reset=${Boolean(data?.reset)}`);
+    }
+    res.json(data);
   } catch (error) { next(error); }
 });
 app.post('/sessions/:sessionId/input', async (req, res, next) => {
