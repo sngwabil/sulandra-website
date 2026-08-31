@@ -5,7 +5,9 @@ ENV NODE_ENV=production \
     DOCKER_SOCKET_PATH=/var/run/docker.sock \
     TERMINAL_SEED_PATH=/seed \
     TERMINAL_WORKSPACE_ROOT=/workspaces \
-    TERMINAL_STATE_ROOT=/state
+    TERMINAL_STATE_ROOT=/state \
+    TERMINAL_AUDIT_ROOT=/state/audit \
+    TERMINAL_AUDIT_RETENTION_DAYS=2190
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ca-certificates \
@@ -21,14 +23,16 @@ COPY scripts/install-terminal-industry-hardening.mjs /tmp/install-terminal-indus
 COPY scripts/fix-terminal-resource-monitor.mjs /tmp/fix-terminal-resource-monitor.mjs
 COPY scripts/install-workspace-ide-live-preview.mjs /tmp/install-workspace-ide-live-preview.mjs
 COPY scripts/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-proxy-abort.mjs
+COPY scripts/install-terminal-security-audit.mjs /tmp/install-terminal-security-audit.mjs
 RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/fix-terminal-resource-monitor.mjs /app/server.mjs \
     && node /tmp/install-workspace-ide-live-preview.mjs /app/server.mjs \
     && node /tmp/fix-workspace-proxy-abort.mjs /app/server.mjs \
+    && node /tmp/install-terminal-security-audit.mjs /app/server.mjs \
     && node --check /app/server.mjs \
-    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs
+    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/install-terminal-security-audit.mjs
 
-RUN mkdir -p /workspaces /state /seed \
+RUN mkdir -p /workspaces /state /state/audit /seed \
     && chown -R 10001:10001 /workspaces /state /app
 
 EXPOSE 8081
