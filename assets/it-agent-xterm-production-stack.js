@@ -82,11 +82,19 @@
   };
   const hydrateState=async state=>{
     if(!state||state.disposed||state.connected)return;
-    let snapshot=restBridge()?.snapshot?.(state.id);
-    if(!snapshot?.data){
-      try{snapshot=await restBridge()?.hydrate?.(state.id)}
-      catch(error){renderStatus(state,error?.message||'REST PTY hydration failed',true);return}
-    }
+    let snapshot=null;
+    try{
+      for(let attempt=0;attempt<20&&!state.disposed&&!state.connected;attempt+=1){
+        const bridge=restBridge();
+        snapshot=bridge?.snapshot?.(state.id)||null;
+        if(snapshot?.data)break;
+        if(bridge?.hydrate){
+          snapshot=await bridge.hydrate(state.id);
+          if(snapshot)break;
+        }
+        await new Promise(resolve=>setTimeout(resolve,50));
+      }
+    }catch(error){renderStatus(state,error?.message||'REST PTY hydration failed',true);return}
     if(state.disposed||state.connected)return;
     state.restReady=Boolean(snapshot&&snapshot.alive!==false);
     if(snapshot?.data){
@@ -94,7 +102,9 @@
       state.hydrated=true;
       renderStatus(state,'REST PTY active · WSS reconnecting');
     }else if(state.restReady){
-      renderStatus(state,'REST PTY connected · requesting shell prompt');
+      renderStatus(state,'REST PTY connected · waiting for shell output');
+    }else{
+      renderStatus(state,'REST PTY bridge unavailable',true);
     }
     if(directMode()&&state.id===activeSessionId())requestAnimationFrame(()=>state.term.focus());
   };
@@ -103,31 +113,24 @@
     state.ws.send(JSON.stringify(message));return true;
   };
 
-  const fallbackRenderer=state=>{
-    if(state.renderer==='canvas')return;
-    try{state.webgl?.dispose()}catch{}
-    state.webgl=null;
-    try{
-      const canvas=new Runtime.CanvasAddon();
-      state.term.loadAddon(canvas);state.canvas=canvas;state.renderer='canvas';
-      renderStatus(state,state.connected?'WSS · Canvas':'WSS connecting…');
-    }catch{state.renderer='dom';renderStatus(state,state.connected?'WSS · DOM':'WSS connecting…')}
-  };
-
   const loadCapabilities=state=>{
-    const fit=new Runtime.FitAddon();state.term.loadAddon(fit);state.fit=fit;
-    const links=new Runtime.WebLinksAddon();state.term.loadAddon(links);state.links=links;
-    const search=new Runtime.SearchAddon();state.term.loadAddon(search);state.search=search;
-    const unicode=new Runtime.Unicode11Addon();state.term.loadAddon(unicode);state.unicode=unicode;
+    const install=(key,factory)=>{
+      try{
+        const addon=factory();
+        state.term.loadAddon(addon);
+        state[key]=addon;
+        return addon;
+      }catch(error){
+        console.warn(`[Sulandra Terminal] optional ${key} addon unavailable`,error);
+        return null;
+      }
+    };
+    install('fit',()=>new Runtime.FitAddon());
+    install('links',()=>new Runtime.WebLinksAddon());
+    install('search',()=>new Runtime.SearchAddon());
+    install('unicode',()=>new Runtime.Unicode11Addon());
     try{state.term.unicode.activeVersion='11'}catch{}
-    const serializer=new Runtime.SerializeAddon();state.term.loadAddon(serializer);state.serializer=serializer;
-    try{
-      const image=new Runtime.ImageAddon({
-        enableSizeReports:true,sixelSupport:true,sixelScrolling:true,sixelPaletteLimit:256,sixelSizeLimit:25_000_000,
-        storageLimit:96,showPlaceholder:true,iipSupport:true,iipSizeLimit:20_000_000,pixelLimit:16_777_216,
-      });
-      state.term.loadAddon(image);state.image=image;
-    }catch(error){console.warn('[Sulandra Terminal] image addon unavailable',error)}
+    install('serializer',()=>new Runtime.SerializeAddon());
   };
 
   const fitState=state=>{
@@ -205,14 +208,22 @@
       theme:{background:'#06131d',foreground:'#d7e8ef',cursor:'#50e39a',cursorAccent:'#06131d',selectionBackground:'#245774',black:'#07151f',red:'#ff6b6b',green:'#50e39a',yellow:'#f3c969',blue:'#61a9ff',magenta:'#c792ea',cyan:'#56d4dd',white:'#e8f3f7',brightBlack:'#6f8794',brightRed:'#ff8c8c',brightGreen:'#75efb2',brightYellow:'#ffe08a',brightBlue:'#8cc3ff',brightMagenta:'#d9a7f2',brightCyan:'#8ae7ec',brightWhite:'#ffffff'}
     });
     const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,hydrated:false,restReady:false,reconnects:0,reconnectTimer:0,connectTimer:0,disposed:false};
-    states.set(id,state);loadCapabilities(state);term.open(pane);
+    states.set(id,state);
+    try{
+      term.open(pane);
+      term.write('\x1b[?25h');
+      root?.classList.add('itws-xterm-ready');
+      renderStatus(state,'DOM renderer ready · loading PTY');
+    }catch(error){
+      state.disposed=true;
+      renderStatus(state,'Terminal renderer failed to initialize',true);
+      console.error('[Sulandra Terminal] core renderer initialization failed',error);
+      return state;
+    }
+    loadCapabilities(state);
     const snapshot=restBridge()?.snapshot?.(id);
     if(snapshot?.data){writeRestOutput(state,snapshot.data,true);state.hydrated=true}
     void hydrateState(state);
-    try{
-      const webgl=new Runtime.WebglAddon();term.loadAddon(webgl);state.webgl=webgl;state.renderer='webgl';
-      if(typeof webgl.onContextLoss==='function')webgl.onContextLoss(()=>fallbackRenderer(state));
-    }catch{fallbackRenderer(state)}
     term.onData(data=>{if(state.id===activeSessionId()&&directMode())sendInput(state,data)});
     term.onResize(()=>fitState(state));
     const observer=new ResizeObserver(()=>requestAnimationFrame(()=>fitState(state)));observer.observe(pane);state.observer=observer;
@@ -250,7 +261,7 @@
   const enhance=terminalRoot=>{
     if(!Runtime?.Terminal||terminalRoot.dataset.productionXterm==='1')return;
     const shell=terminalRoot.querySelector('#itwsRtShell');const anchor=terminalRoot.querySelector('.itws-rt-terminal-surface')||terminalRoot.querySelector('#itwsRtScreen');if(!shell||!anchor)return;
-    root=terminalRoot;root.dataset.productionXterm='1';root.classList.add('itws-xterm-ready','itws-xterm-fallback-active');
+    root=terminalRoot;root.dataset.productionXterm='1';root.classList.add('itws-xterm-fallback-active');
     host=document.createElement('div');host.className='itws-xterm-host';host.id='itwsXtermHost';anchor.before(host);
     addToolbarButton('itwsRtSearch','Search','Regex search terminal scrollback');
     addToolbarButton('itwsRtExport','Export','Export terminal history as text');
