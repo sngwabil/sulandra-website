@@ -58,6 +58,8 @@ jobs:
           grep -q 'http_access deny all' infra/terminal-vps/squid.conf
           grep -q 'TERMINAL_BUILD_MEMORY_BYTES' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_GIT_REPOSITORY' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_MEMORY_BYTES: "4294967296"' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_NANO_CPUS: "2000000000"' infra/terminal-vps/docker-compose.yml
 
       - name: Prepare shared execution state
         run: |
@@ -182,16 +184,15 @@ jobs:
           done
           [[ "$ready" == "1" ]]
 
-      - name: Verify automatic build resource burst and cooldown
+      - name: Verify automatic build resource profile and cooldown
         run: |
           set -euo pipefail
           session_id="$(cat /tmp/session-id)"
           cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
           test -n "$cid"
-          # Keep the synthetic build alive across many monitor scans and prove
-          # it is actually visible in the recovered session before evaluating
-          # the resource profile transition. Append an actual CR byte in Node
-          # rather than relying on YAML/Bash escape interpretation.
+          # Active workspaces now have a 4 GiB / 2 vCPU floor. The build
+          # profile must never reduce those values; the burst is observable
+          # through the raised PID ceiling and the reported build profile.
           command="node -e 'setTimeout(()=>{},30000)' build"
           body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]+String.fromCharCode(13)}))' "$command")"
           curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/sessions/${session_id}/input" -d "$body" >/dev/null
@@ -203,32 +204,33 @@ jobs:
             fi
             sleep 0.5
           done
-          if [[ "$process_seen" != "1" ]]; then
-            echo 'Synthetic build process never appeared in the session container.' >&2
-            curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/output?cursor=0" >&2 || true
-            docker top "$cid" -eo pid,args >&2 || true
-            exit 1
-          fi
-          curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/resources" >/tmp/resources-before.json || true
+          [[ "$process_seen" == "1" ]]
           burst=0
+          resources='{}'
           for i in {1..18}; do
             memory="$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")"
             cpus="$(docker inspect -f '{{.HostConfig.NanoCpus}}' "$cid")"
-            if [[ "$memory" == "2147483648" && "$cpus" == "2000000000" ]]; then burst=1; break; fi
+            pids="$(docker inspect -f '{{.HostConfig.PidsLimit}}' "$cid")"
+            resources="$(curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/resources" 2>/dev/null || echo '{}')"
+            if [[ "$memory" == "4294967296" && "$cpus" == "2000000000" && "$pids" == "768" ]] && node -e 'const x=JSON.parse(process.argv[1]);process.exit(x.profile==="build"?0:1)' "$resources"; then
+              burst=1
+              break
+            fi
             sleep 1
           done
           if [[ "$burst" != "1" ]]; then
-            echo 'Build burst was not observed. Resource endpoint before check:' >&2
-            cat /tmp/resources-before.json >&2 || true
-            echo 'Container process view:' >&2
+            echo 'Build resource profile was not observed.' >&2
+            echo "$resources" >&2
             docker top "$cid" -eo pid,args >&2 || true
-            echo 'Executor A diagnostics:' >&2
             docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=120 executor-a >&2 || true
             exit 1
           fi
           sleep 55
-          [[ "$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")" == "536870912" ]]
-          [[ "$(docker inspect -f '{{.HostConfig.NanoCpus}}' "$cid")" == "500000000" ]]
+          [[ "$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")" == "4294967296" ]]
+          [[ "$(docker inspect -f '{{.HostConfig.NanoCpus}}' "$cid")" == "2000000000" ]]
+          [[ "$(docker inspect -f '{{.HostConfig.PidsLimit}}' "$cid")" == "256" ]]
+          resources="$(curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/resources")"
+          node -e 'const x=JSON.parse(process.argv[1]);if(x.profile!=="interactive"||x.memoryBytes!==4294967296||x.nanoCpus!==2000000000||x.pidsLimit!==256)throw new Error(JSON.stringify(x))' "$resources"
 
       - name: Cleanup
         if: always()
