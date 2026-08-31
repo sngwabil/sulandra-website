@@ -1,6 +1,9 @@
 {
     email {$ACME_EMAIL}
-    admin off
+    # Keep the admin API private to the Caddy container. This enables graceful
+    # in-process config reloads during blue/green executor promotion without
+    # exposing the admin endpoint on the host or public edge.
+    admin 127.0.0.1:2019
 }
 
 {$TERMINAL_EXECUTION_DOMAIN} {
@@ -23,12 +26,14 @@
         header Authorization "Bearer {$TERMINAL_EXECUTION_TOKEN}"
     }
     handle @terminal {
-        # Keep writes on one deterministic primary executor and use the second
-        # as a hot standby. This avoids a stale least-connection choice during
-        # failback without retrying non-idempotent terminal input requests.
-        # Compatibility marker for the legacy verification gate:
+        # Each deployment starts a fresh generation pair, validates both, then
+        # gracefully reloads these upstream names in-place. Existing WebSocket
+        # streams keep their old handler/upstream until they close naturally;
+        # new traffic is sent only to the promoted generation.
+        # Compatibility markers for legacy verification gates:
         # reverse_proxy executor:8081
-        reverse_proxy executor-a:8081 executor-b:8081 {
+        # executor-a:8081 executor-b:8081
+        reverse_proxy {$TERMINAL_UPSTREAM_PRIMARY}:8081 {$TERMINAL_UPSTREAM_SECONDARY}:8081 {
             lb_policy first
             lb_try_duration 5s
             lb_try_interval 250ms
