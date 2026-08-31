@@ -17,10 +17,7 @@
 .itws-xterm-ready .itws-rt-copy,.itws-xterm-ready .itws-rt-latest{border-color:#28536a;background:#0c2a3b;color:#d7edf7}
 .itws-xterm-ready .itws-xterm-connection{position:absolute;right:12px;top:8px;z-index:5;padding:4px 8px;border-radius:999px;background:rgba(5,31,45,.78);border:1px solid rgba(36,211,137,.28);color:#72e4ad;font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;pointer-events:none;opacity:.9}
 .itws-xterm-ready .itws-xterm-connection.bad{color:#ff9b9b;border-color:rgba(255,93,93,.35)}
-.itws-xterm-ready.itws-xterm-fallback-active .itws-xterm-host{display:none!important}
-.itws-xterm-ready.itws-xterm-fallback-active .itws-rt-terminal-surface{display:flex!important}
-.itws-xterm-ready.itws-xterm-fallback-active.itws-rt-direct-mode .itws-rt-direct-line{display:flex!important}
-.itws-xterm-ready.itws-xterm-fallback-active.itws-rt-direct-mode .itws-rt-commandbar{display:none!important}
-.itws-xterm-ready.itws-xterm-fallback-active.itws-rt-box-mode .itws-rt-commandbar{display:flex!important}
+.itws-xterm-ready.itws-xterm-fallback-active .itws-xterm-host{display:block!important}
+.itws-xterm-ready.itws-xterm-fallback-active .itws-xterm-connection{color:#f3c969;border-color:rgba(243,201,105,.4)}
 @media(max-width:820px){.itws-xterm-host{height:52vh;min-height:340px;padding:8px 4px 2px}.itws-xterm-pane{inset:8px 4px 2px}}
 @media(prefers-reduced-motion:reduce){.itws-xterm-pane *{scroll-behavior:auto!important}}
