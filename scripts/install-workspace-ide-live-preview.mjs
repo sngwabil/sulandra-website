@@ -114,7 +114,18 @@ const proxyWorkspaceIdeRequest = async (req, res, next) => {
   }
   const match = url.pathname.match(/^\/v1\/ws\/sessions\/([A-Za-z0-9_-]+)$/);`, 'executor IDE upgrade branch');
   replaceOnce("wss.on('connection', (gateway, req) => {", `ideWss.on('connection', (browser, req) => {\n  const session = req.sulandraIde.session;\n  session.lastUsedAt = now();\n  const requested = String(req.headers['sec-websocket-protocol'] || '').split(',').map(value => value.trim()).filter(Boolean);\n  const upstream = new WebSocket(req.sulandraIde.upstream, requested.length ? requested : undefined, {\n    headers: { 'user-agent': String(req.headers['user-agent'] || 'Sulandra-Workspace-Proxy') },\n  });\n  bridgeWorkspaceSockets(browser, upstream);\n});\n\nwss.on('connection', (gateway, req) => {`, 'executor IDE WSS bridge');
-  replaceOnce("cgroups: { memoryBytes, nanoCpus, pidsLimit },", "cgroups: { memoryBytes, nanoCpus, pidsLimit },\n      workspaceIde: { enabled: true, port: idePort, embeddedAuth: 'gateway-ticket' },", 'executor health IDE marker');
+  if (!source.includes("workspaceIde: { enabled: true, port: idePort, embeddedAuth: 'gateway-ticket' }")) {
+    const healthAnchors = [
+      "      cgroups: { interactive: { memoryBytes, nanoCpus, pidsLimit }, build: { memoryBytes: buildMemoryBytes, nanoCpus: buildNanoCpus, pidsLimit: buildPidsLimit } },",
+      "      cgroups: { memoryBytes, nanoCpus, pidsLimit },",
+    ];
+    const healthAnchor = healthAnchors.find(anchor => source.includes(anchor));
+    if (!healthAnchor) throw new Error('Workspace IDE installer anchor changed: executor health IDE marker');
+    source = source.replace(
+      healthAnchor,
+      `${healthAnchor}\n      workspaceIde: { enabled: true, port: idePort, embeddedAuth: 'gateway-ticket' },`,
+    );
+  }
 } else if (source.includes('const executionBaseUrl')) {
   replaceOnce("import { createServer } from 'node:http';", "import { createServer } from 'node:http';\nimport { Readable } from 'node:stream';", 'gateway stream import');
   replaceOnce("const app = express();\napp.disable('x-powered-by');\napp.use(express.json({ limit: '128kb' }));", String.raw`const app = express();
