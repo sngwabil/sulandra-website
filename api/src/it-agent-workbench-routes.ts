@@ -17,6 +17,8 @@ type AgentActionRow={id:string;conversationId:string;actionType:AgentActionType;
 type OpenAIResponse={output_text?:string;output?:Array<{type?:string;name?:string;arguments?:string;call_id?:string;content?:Array<{type?:string;text?:string}>}>;error?:{message?:string}};
 type KnowledgeContext={repository?:string;baseBranch?:string;headSha?:string;areas?:Record<string,number>;services?:unknown[];fileMatches?:unknown[];approvedWorkMatches?:unknown[];approvedEvidenceCount?:number;refreshedAt?:Date|string|null;error?:string};
 
+const OWNER_EMAIL='admin@sulandrahealth.com';
+
 const adminRoles=[UserRole.ADMINISTRATOR,UserRole.CEO,UserRole.DOO,UserRole.COO,UserRole.HR_MANAGER] as const;
 const chatSchema=z.object({conversationId:z.string().uuid().optional(),message:z.string().trim().min(1).max(12000)});
 const actionDecisionSchema=z.object({note:z.string().trim().max(2000).optional().default('')});
@@ -99,13 +101,15 @@ export function registerITAgentWorkbenchRoutes({app,prisma,authOf,requireRoles}:
 
   const ownedConversation=async(auth:AuthContext,id:string)=>{const rows=await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "ITAgentConversation" WHERE "organizationId"=$1 AND "userId"=$2 AND "id"=$3 LIMIT 1`,auth.organizationId,auth.userId,id);return rows[0]||null};
   const knowledgeFor=async(query:string):Promise<KnowledgeContext>=>{try{return await getITSpecialistKnowledgeContext(prisma,redact(query))}catch(error){return{approvedEvidenceCount:0,error:safeError(error)}}};
-  const context=async(auth:AuthContext,knowledge:KnowledgeContext)=>{const [tickets,approvals,handoffs,actions,worker]=await Promise.all([
+  const ownerRequestAuthorization=async(auth:AuthContext)=>{const rows=await prisma.$queryRawUnsafe<Array<{email:string}>>(`SELECT "email" FROM "User" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,auth.organizationId,auth.userId);return String(rows[0]?.email||'').toLowerCase()===OWNER_EMAIL};
+  const context=async(auth:AuthContext,knowledge:KnowledgeContext)=>{const [tickets,approvals,handoffs,actions,worker,isOwner]=await Promise.all([
     prisma.$queryRawUnsafe<any[]>(`SELECT "status","priority",COUNT(*)::int AS count FROM "EmployeeSupportRequest" WHERE "organizationId"=$1 GROUP BY "status","priority"`,auth.organizationId).catch(()=>[]),
     prisma.$queryRawUnsafe<any[]>(`SELECT "status","risk",COUNT(*)::int AS count FROM "ITRemediationApproval" WHERE "organizationId"=$1 GROUP BY "status","risk"`,auth.organizationId).catch(()=>[]),
     prisma.$queryRawUnsafe<any[]>(`SELECT "status","changeClass",COUNT(*)::int AS count FROM "ITAgentHandoff" WHERE "organizationId"=$1 GROUP BY "status","changeClass"`,auth.organizationId).catch(()=>[]),
     prisma.$queryRawUnsafe<any[]>(`SELECT "actionType","status",COUNT(*)::int AS count FROM "ITAgentAction" WHERE "organizationId"=$1 GROUP BY "actionType","status"`,auth.organizationId).catch(()=>[]),
     probeITCodingWorker().catch(error=>({configured:false,enabled:false,authenticated:false,baseBranchReachable:false,error:safeError(error)})),
-  ]);return clean(JSON.stringify({tickets,approvals,handoffs,agentActions:actions,codingWorker:worker,repositoryKnowledge:{repository:knowledge.repository,baseBranch:knowledge.baseBranch,headSha:knowledge.headSha,approvedEvidenceCount:knowledge.approvedEvidenceCount||0,approvedWorkMatches:(knowledge.approvedWorkMatches||[]).slice(0,15),fileMatches:(knowledge.fileMatches||[]).slice(0,50),services:knowledge.services||[],error:knowledge.error||''},openAIConfigured:Boolean(openAIKey()),smtpConfigured:Boolean(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS),railwayEvidence:'Production evidence is read-only in the reasoning context. The coding worker remains PR-only and cannot bypass CI, review, or deployment controls.'}),45000)};
+    ownerRequestAuthorization(auth).catch(()=>false),
+  ]);return clean(JSON.stringify({tickets,approvals,handoffs,agentActions:actions,codingWorker:worker,repositoryKnowledge:{repository:knowledge.repository,baseBranch:knowledge.baseBranch,headSha:knowledge.headSha,approvedEvidenceCount:knowledge.approvedEvidenceCount||0,approvedWorkMatches:(knowledge.approvedWorkMatches||[]).slice(0,15),fileMatches:(knowledge.fileMatches||[]).slice(0,50),services:knowledge.services||[],error:knowledge.error||''},authorization:{ownerRequestApprovalEnabled:isOwner},openAIConfigured:Boolean(openAIKey()),smtpConfigured:Boolean(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS),railwayEvidence:'Production evidence is read-only in the reasoning context. The coding worker remains PR-only and cannot bypass CI, review, or deployment controls.'}),45000)};
 
   const ensureCodeRemediation=async(action:AgentActionRow,auth:AuthContext,approveNow:boolean,note='')=>{
     const existing=obj(action.result);let ticketId=clean(existing.ticketId,180),approvalId=clean(existing.approvalId,180),handoffId=clean(existing.handoffId,180);
@@ -129,9 +133,9 @@ export function registerITAgentWorkbenchRoutes({app,prisma,authOf,requireRoles}:
     catch(error){const message=safeError(error);await prisma.$executeRawUnsafe(`UPDATE "ITAgentAction" SET "status"='FAILED',"result"=COALESCE("result",'{}'::jsonb)||$1::jsonb,"executedByUserId"=$2,"executedAt"=NOW(),"updatedAt"=NOW() WHERE "organizationId"=$3 AND "id"=$4`,JSON.stringify({codingWorker:{status:'FAILED',error:message}}),auth.userId,auth.organizationId,action.id).catch(()=>{});return{status:'FAILED',result:{...ids,codingWorker:{status:'FAILED',error:message},message:`The trusted coding worker did not complete: ${message}`}}}
   };
 
-  app.get('/api/it-solutions/agent/status',gate,async(_req,res,next)=>{try{await ready();const worker=await probeITCodingWorker();const connected=Boolean(worker.enabled&&worker.configured&&worker.authenticated&&worker.baseBranchReachable);res.json({data:{online:Boolean(openAIKey()),model:model(),capabilities:{intranetContent:true,intranetMeme:Boolean(openAIKey()),announcements:true,notifications:true,email:Boolean(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS),codeChangeRequests:true,codingWorkerConnected:connected,codingWorker:worker}}})}catch(error){next(error)}});
+  app.get('/api/it-solutions/agent/status',gate,async(_req,res,next)=>{try{await ready();const auth=authOf(res);const worker=await probeITCodingWorker();const connected=Boolean(worker.enabled&&worker.configured&&worker.authenticated&&worker.baseBranchReachable);const ownerAuthorized=await ownerRequestAuthorization(auth);res.json({data:{online:Boolean(openAIKey()),model:model(),capabilities:{intranetContent:true,intranetMeme:Boolean(openAIKey()),announcements:true,notifications:true,email:Boolean(process.env.SMTP_HOST&&process.env.SMTP_USER&&process.env.SMTP_PASS),codeChangeRequests:true,codingWorkerConnected:connected,codingWorker:worker,ownerRequestApproval:ownerAuthorized}}})}catch(error){next(error)}});
 
-  app.get('/api/it-solutions/agent/actions',gate,async(_req,res,next)=>{try{await ready();const auth=authOf(res);const rows=await prisma.$queryRawUnsafe<AgentActionRow[]>(`SELECT * FROM "ITAgentAction" WHERE "organizationId"=$1 ORDER BY "createdAt" DESC LIMIT 100`,auth.organizationId);res.json({data:{actions:rows.map(row=>({...row,payload:obj(row.payload),result:obj(row.result)}))}})}catch(error){next(error)}});
+  app.get('/api/it-solutions/agent/actions',gate,async(_req,res,next)=>{try{await ready();const auth=authOf(res);const ownerAuthorized=await ownerRequestAuthorization(auth);const rows=await prisma.$queryRawUnsafe<AgentActionRow[]>(`SELECT * FROM "ITAgentAction" WHERE "organizationId"=$1 ORDER BY "createdAt" DESC LIMIT 100`,auth.organizationId);res.json({data:{ownerRequestApproval:ownerAuthorized,actions:rows.map(row=>({...row,payload:obj(row.payload),result:obj(row.result)}))}})}catch(error){next(error)}});
 
   app.post('/api/it-solutions/agent/chat',gate,async(req,res,next)=>{try{await ready();const auth=authOf(res);const input=chatSchema.parse(req.body);let conversationId=input.conversationId;let conversation=conversationId?await ownedConversation(auth,conversationId):null;if(conversationId&&!conversation)return void res.status(404).json({error:'IT Agent conversation was not found'});if(!conversation){conversationId=randomUUID();await prisma.$executeRawUnsafe(`INSERT INTO "ITAgentConversation" ("id","organizationId","userId","title") VALUES ($1,$2,$3,$4)`,conversationId,auth.organizationId,auth.userId,clean(input.message,100));}
     await prisma.$executeRawUnsafe(`INSERT INTO "ITAgentMessage" ("id","organizationId","conversationId","userId","role","content") VALUES ($1,$2,$3,$4,'user',$5)`,randomUUID(),auth.organizationId,conversationId,auth.userId,redact(input.message));
@@ -151,7 +155,21 @@ export function registerITAgentWorkbenchRoutes({app,prisma,authOf,requireRoles}:
   app.post('/api/it-solutions/agent/actions/:actionId/execute',gate,async(req,res,next)=>{try{await ready();const auth=authOf(res);const input=actionDecisionSchema.parse(req.body);const rows=await prisma.$queryRawUnsafe<AgentActionRow[]>(`SELECT * FROM "ITAgentAction" WHERE "organizationId"=$1 AND "id"=$2 LIMIT 1`,auth.organizationId,req.params.actionId);const action=rows[0];if(!action)return void res.status(404).json({error:'IT Agent action was not found'});if(action.status!=='PROPOSED')return void res.status(409).json({error:`Action is ${action.status}, not PROPOSED`});const payload=obj(action.payload);let result:Record<string,unknown>={};let finalStatus='EXECUTED';
 
     if(action.actionType==='REQUEST_CODE_CHANGE'){
-      const execution=await runCodeAction(action,auth,input.note||'Approved from IT Agent workbench Execute');return void res.json({data:{id:action.id,status:execution.status,result:execution.result}});
+      const ownerAuthorized=await ownerRequestAuthorization(auth);
+      const highRisk=String(action.risk).toUpperCase()==='HIGH';
+      const blockedChangeClasses=['SECURITY_INCIDENT','SECRETS_CHANGE','DESTRUCTIVE_DATA_OPERATION','CLINICAL_DATA_MUTATION','PAYROLL_CHANGE','CROSS_TENANT_ACCESS'];
+      const blockedByClass=blockedChangeClasses.includes(String(action.changeClass||'').toUpperCase());
+      const blockedByPayload=/(secret|credential|token|password|mfa|otp|security incident|breach|destructive data|drop table|truncate|delete all|clinical|patient|phi|payroll|tenant)/i.test(JSON.stringify(payload));
+      if(action.approvalRequired){
+        if(!ownerAuthorized)return void res.status(403).json({error:'Explicit owner authorization is required to execute this approval-gated code request from IT Agent.'});
+        if(highRisk||blockedByClass||blockedByPayload)return void res.status(409).json({error:'Owner-request authorization cannot auto-approve this category. Use separately defined controls for security incidents, secrets, destructive data operations, clinical data, payroll, or cross-tenant access.'});
+      }
+      const executionNote=input.note||(action.approvalRequired&&ownerAuthorized?'Owner-request explicit approval applied in IT Agent Execute':'Approved from IT Agent workbench Execute');
+      const execution=await runCodeAction(action,auth,executionNote);
+      if(action.approvalRequired&&ownerAuthorized){
+        await prisma.$executeRawUnsafe(`UPDATE "ITAgentAction" SET "result"=COALESCE("result",'{}'::jsonb)||$1::jsonb,"updatedAt"=NOW() WHERE "organizationId"=$2 AND "id"=$3`,JSON.stringify({ownerRequestAuthorization:{applied:true,ownerEmail:OWNER_EMAIL,appliedAt:new Date().toISOString(),reason:'Sole enterprise owner explicit request treated as approval for standard code-change gate'}}),auth.organizationId,action.id).catch(()=>{});
+      }
+      return void res.json({data:{id:action.id,status:execution.status,result:{...execution.result,ownerRequestAuthorization:action.approvalRequired&&ownerAuthorized?{applied:true}:undefined}}});
     }
     if(action.actionType==='PUBLISH_INTRAnet_CONTENT'||action.actionType==='GENERATE_INTRAnet_MEME'){
       const id=randomUUID();let imageObjectKey:string|null=null;let externalImageUrl=clean(payload.externalImageUrl,2000);
