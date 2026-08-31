@@ -8,14 +8,16 @@
   const Runtime=window.SulandraTerminalRuntime;
   const WSS_ORIGIN='wss://sulandra-coding-terminal-worker-production.up.railway.app';
   const states=new Map();
+  const readySessions=window.__SULANDRA_XTERM_WSS_READY_SESSIONS__ instanceof Set?window.__SULANDRA_XTERM_WSS_READY_SESSIONS__:new Set();
+  window.__SULANDRA_XTERM_WSS_READY_SESSIONS__=readySessions;
   let root=null;
   let host=null;
   let syncTimer=0;
 
-  const authToken=()=>sessionStorage.getItem('sulandra:employee:access-token')
-    ||localStorage.getItem('sulandra:employee:access-token')
-    ||sessionStorage.getItem('sulandra:admin:access-token')
+  const authToken=()=>sessionStorage.getItem('sulandra:admin:access-token')
     ||localStorage.getItem('sulandra:admin:access-token')
+    ||sessionStorage.getItem('sulandra:employee:access-token')
+    ||localStorage.getItem('sulandra:employee:access-token')
     ||localStorage.getItem('token')||'';
   const base64url=value=>{
     const bytes=new TextEncoder().encode(String(value||''));
@@ -39,6 +41,21 @@
     state.badge.classList.toggle('bad',bad);
   };
 
+  const updateFallbackClass=()=>{
+    if(!root)return;
+    const state=states.get(activeSessionId());
+    root.classList.toggle('itws-xterm-fallback-active',!state?.connected);
+  };
+  const setTransportReady=(state,connected)=>{
+    if(!state)return;
+    const next=Boolean(connected);
+    const changed=state.connected!==next;
+    state.connected=next;
+    if(next)readySessions.add(state.id);else readySessions.delete(state.id);
+    updateFallbackClass();
+    if(changed)window.dispatchEvent(new CustomEvent('sulandra:xterm-wss-state',{detail:{sessionId:state.id,connected:next}}));
+  };
+
   const sendBinary=(state,data)=>{
     if(!state?.ws||state.ws.readyState!==WebSocket.OPEN||!data)return false;
     state.ws.send(new TextEncoder().encode(String(data)));
@@ -56,8 +73,8 @@
     try{
       const canvas=new Runtime.CanvasAddon();
       state.term.loadAddon(canvas);state.canvas=canvas;state.renderer='canvas';
-      renderStatus(state,'WSS · Canvas');
-    }catch{state.renderer='dom';renderStatus(state,'WSS · DOM')}
+      renderStatus(state,state.connected?'WSS · Canvas':'WSS connecting…');
+    }catch{state.renderer='dom';renderStatus(state,state.connected?'WSS · DOM':'WSS connecting…')}
   };
 
   const loadCapabilities=state=>{
@@ -82,18 +99,26 @@
     sendControl(state,{type:'resize',cols:Math.max(40,Math.min(240,state.term.cols||120)),rows:Math.max(12,Math.min(80,state.term.rows||32))});
   };
 
+  const scheduleReconnect=(state,minimumDelay=0)=>{
+    if(state.disposed||state.reconnectTimer)return;
+    state.reconnects=(state.reconnects||0)+1;
+    const delay=Math.max(minimumDelay,Math.min(10_000,400*Math.pow(1.7,Math.min(state.reconnects,7))));
+    state.reconnectTimer=setTimeout(()=>{state.reconnectTimer=0;connect(state)},delay);
+  };
+
   const connect=state=>{
     if(!state||state.disposed)return;
     const token=authToken();
-    if(!token){renderStatus(state,'Authentication required',true);return}
+    if(!token){setTransportReady(state,false);renderStatus(state,'Authentication required',true);scheduleReconnect(state,5_000);return}
     if(state.ws&&(state.ws.readyState===WebSocket.OPEN||state.ws.readyState===WebSocket.CONNECTING))return;
+    setTransportReady(state,false);
     renderStatus(state,state.reconnects?'WSS reconnecting…':'WSS connecting…');
     let ws;
     try{ws=new WebSocket(`${WSS_ORIGIN}/ws/sessions/${encodeURIComponent(state.id)}`,['sulandra-terminal.v2','auth.'+base64url(token)])}
     catch(error){renderStatus(state,'WSS unavailable',true);scheduleReconnect(state);return}
     state.ws=ws;ws.binaryType='arraybuffer';
     ws.onopen=()=>{
-      state.reconnects=0;renderStatus(state,`WSS · ${state.renderer==='webgl'?'WebGL':state.renderer==='canvas'?'Canvas':'DOM'}`);
+      state.reconnects=0;setTransportReady(state,true);renderStatus(state,`WSS · ${state.renderer==='webgl'?'WebGL':state.renderer==='canvas'?'Canvas':'DOM'}`);
       fitState(state);if(directMode()&&state.id===activeSessionId())state.term.focus();
     };
     ws.onmessage=async event=>{
@@ -104,19 +129,14 @@
       if(event.data instanceof ArrayBuffer){state.term.write(new Uint8Array(event.data));return}
       if(event.data instanceof Blob){state.term.write(new Uint8Array(await event.data.arrayBuffer()))}
     };
-    ws.onerror=()=>renderStatus(state,'WSS connection error',true);
+    ws.onerror=()=>{setTransportReady(state,false);renderStatus(state,'WSS connection error',true)};
     ws.onclose=event=>{
-      state.ws=null;
+      state.ws=null;setTransportReady(state,false);
       if(state.disposed)return;
-      renderStatus(state,event.code===1008?'WSS rate/auth rejected':'WSS reconnecting…',event.code===1008);
-      if(event.code!==1008)scheduleReconnect(state);
+      const rejected=event.code===1008;
+      renderStatus(state,rejected?'WSS auth rejected · fallback active':'WSS reconnecting · fallback active',rejected);
+      scheduleReconnect(state,rejected?15_000:0);
     };
-  };
-  const scheduleReconnect=state=>{
-    if(state.disposed||state.reconnectTimer)return;
-    state.reconnects=(state.reconnects||0)+1;
-    const delay=Math.min(10_000,400*Math.pow(1.7,Math.min(state.reconnects,7)));
-    state.reconnectTimer=setTimeout(()=>{state.reconnectTimer=0;connect(state)},delay);
   };
 
   const makeState=id=>{
@@ -129,7 +149,7 @@
       scrollOnUserInput:true,rightClickSelectsWord:true,macOptionIsMeta:true,allowProposedApi:false,
       theme:{background:'#06131d',foreground:'#d7e8ef',cursor:'#50e39a',cursorAccent:'#06131d',selectionBackground:'#245774',black:'#07151f',red:'#ff6b6b',green:'#50e39a',yellow:'#f3c969',blue:'#61a9ff',magenta:'#c792ea',cyan:'#56d4dd',white:'#e8f3f7',brightBlack:'#6f8794',brightRed:'#ff8c8c',brightGreen:'#75efb2',brightYellow:'#ffe08a',brightBlue:'#8cc3ff',brightMagenta:'#d9a7f2',brightCyan:'#8ae7ec',brightWhite:'#ffffff'}
     });
-    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,reconnects:0,reconnectTimer:0,disposed:false};
+    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,reconnects:0,reconnectTimer:0,disposed:false};
     states.set(id,state);loadCapabilities(state);term.open(pane);
     try{
       const webgl=new Runtime.WebglAddon();term.loadAddon(webgl);state.webgl=webgl;state.renderer='webgl';
@@ -142,12 +162,12 @@
   };
 
   const disposeState=state=>{
-    if(!state||state.disposed)return;state.disposed=true;
+    if(!state||state.disposed)return;state.disposed=true;setTransportReady(state,false);
     if(state.reconnectTimer)clearTimeout(state.reconnectTimer);
     try{state.ws?.close(1000,'Terminal tab closed')}catch{}
     try{state.observer?.disconnect()}catch{}
     for(const addon of ['webgl','canvas','image','serializer','search','links','unicode','fit'])try{state[addon]?.dispose?.()}catch{}
-    try{state.term.dispose()}catch{}state.pane.remove();states.delete(state.id);
+    try{state.term.dispose()}catch{}state.pane.remove();states.delete(state.id);updateFallbackClass();
   };
 
   const activeState=()=>states.get(activeSessionId());
@@ -163,14 +183,15 @@
     if(!root||!host)return;
     const tabs=[...root.querySelectorAll('#itwsRtTabs .itws-rt-tab[data-terminal-id]')];const ids=new Set(tabs.map(tab=>tab.dataset.terminalId).filter(Boolean));
     ids.forEach(id=>makeState(id));[...states.values()].forEach(state=>{if(!ids.has(state.id))disposeState(state)});
-    const active=activeSessionId();states.forEach(state=>{const on=state.id===active;state.pane.classList.toggle('active',on);state.term.options.disableStdin=!on||!directMode();if(on)requestAnimationFrame(()=>{fitState(state);if(directMode())state.term.focus()})});
-    const hint=root.querySelector('#itwsRtInputHint');if(hint)hint.textContent=directMode()?'Native WSS PTY: type at the live cursor; tmux preserves the shell across reconnects.':'Command box sends complete commands; live WSS output remains above.';
+    const active=activeSessionId();states.forEach(state=>{const on=state.id===active;state.pane.classList.toggle('active',on);state.term.options.disableStdin=!on||!directMode();if(on)requestAnimationFrame(()=>{fitState(state);if(directMode()&&state.connected)state.term.focus()})});
+    updateFallbackClass();
+    const hint=root.querySelector('#itwsRtInputHint');if(hint)hint.textContent=states.get(active)?.connected?(directMode()?'Native WSS PTY: type at the live cursor; tmux preserves the shell across reconnects.':'Command box sends complete commands; live WSS output remains above.'):(directMode()?'WSS is reconnecting; safe REST terminal input/output fallback is active.':'WSS is reconnecting; Command box and REST output fallback remain active.');
   };
 
   const enhance=terminalRoot=>{
     if(!Runtime?.Terminal||terminalRoot.dataset.productionXterm==='1')return;
     const shell=terminalRoot.querySelector('#itwsRtShell');const anchor=terminalRoot.querySelector('.itws-rt-terminal-surface')||terminalRoot.querySelector('#itwsRtScreen');if(!shell||!anchor)return;
-    root=terminalRoot;root.dataset.productionXterm='1';root.classList.add('itws-xterm-ready');
+    root=terminalRoot;root.dataset.productionXterm='1';root.classList.add('itws-xterm-ready','itws-xterm-fallback-active');
     host=document.createElement('div');host.className='itws-xterm-host';host.id='itwsXtermHost';anchor.before(host);
     addToolbarButton('itwsRtSearch','Search','Regex search terminal scrollback');
     addToolbarButton('itwsRtExport','Export','Export terminal history as text');
@@ -180,16 +201,16 @@
       if(target.closest('#itwsRtSearch')){event.preventDefault();search()}
       if(target.closest('#itwsRtExport')){event.preventDefault();exportHistory(false)}
       if(target.closest('#itwsRtExportHtml')){event.preventDefault();exportHistory(true)}
-      if(target.closest('#itwsRtCtrlC')){event.preventDefault();event.stopImmediatePropagation();sendBinary(activeState(),'\x03')}
+      if(target.closest('#itwsRtCtrlC')&&activeState()?.connected){event.preventDefault();event.stopImmediatePropagation();sendBinary(activeState(),'\x03')}
     },true);
     document.addEventListener('keydown',event=>{
       if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==='f'&&root?.contains(document.activeElement)){event.preventDefault();search()}
     },true);
-    root.querySelector('#itwsRtCopy')?.addEventListener('click',event=>{const state=activeState();if(!state?.term.hasSelection())return;event.preventDefault();event.stopImmediatePropagation();void copySelection()},true);
-    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();state?.term.scrollToBottom();state?.term.focus()},true);
+    root.querySelector('#itwsRtCopy')?.addEventListener('click',event=>{const state=activeState();if(!state?.connected||!state.term.hasSelection())return;event.preventDefault();event.stopImmediatePropagation();void copySelection()},true);
+    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();if(state?.connected){state.term.scrollToBottom();state.term.focus()}} ,true);
     root.querySelectorAll('[data-rt-input-mode]').forEach(button=>button.addEventListener('click',()=>setTimeout(sync,60)));
     root.querySelector('#itwsRtTabs')?.addEventListener('click',()=>setTimeout(sync,50));
-    host.addEventListener('pointerdown',()=>{const state=activeState();if(state&&directMode())setTimeout(()=>state.term.focus(),0)});
+    host.addEventListener('pointerdown',()=>{const state=activeState();if(state?.connected&&directMode())setTimeout(()=>state.term.focus(),0)});
     new MutationObserver(sync).observe(root.querySelector('#itwsRtTabs'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});sync();syncTimer=setInterval(sync,500);
   };
 
