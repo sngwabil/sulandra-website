@@ -11,6 +11,7 @@ const body=`\n<!-- ${marker} -->\n<script src="/assets/vendor/sulandra-terminal-
 for(const target of targets){
   try{await access(target)}catch{continue}
   let html=await readFile(target,'utf8');
+  html=html.replace(/\/assets\/it-agent-real-terminal\.js\?v=[^"']+/g,'/assets/it-agent-real-terminal.js?v=20260831-real-terminal-3');
   html=html.replace(/\n?<!-- IT_AGENT_XTERM_EMULATOR_PUBLICATION_V1 -->[\s\S]*?(?=<\/head>)/g,'\n');
   html=html.replace(/\n?<!-- IT_AGENT_XTERM_EMULATOR_PUBLICATION_V2 -->[\s\S]*?(?=<\/head>)/g,'\n');
   html=html.replace(/\n?<!-- IT_AGENT_XTERM_EMULATOR_PUBLICATION_V1 -->\n<script[^>]+xterm\.js[^>]*><\/script>\n<script[^>]+addon-fit\.js[^>]*><\/script>\n<script[^>]+it-agent-xterm-emulator\.js[^>]*><\/script>(?:\n<script[^>]+it-agent-xterm-interrupt-fix\.js[^>]*><\/script>)?\n?/g,'\n');
