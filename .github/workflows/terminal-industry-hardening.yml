@@ -190,9 +190,10 @@ jobs:
           test -n "$cid"
           # Keep the synthetic build alive across many monitor scans and prove
           # it is actually visible in the recovered session before evaluating
-          # the resource profile transition.
-          command=$'node -e '\''setTimeout(()=>{},30000)'\'' build\r'
-          body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          # the resource profile transition. Append an actual CR byte in Node
+          # rather than relying on YAML/Bash escape interpretation.
+          command="node -e 'setTimeout(()=>{},30000)' build"
+          body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]+String.fromCharCode(13)}))' "$command")"
           curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/sessions/${session_id}/input" -d "$body" >/dev/null
           process_seen=0
           for i in {1..20}; do
