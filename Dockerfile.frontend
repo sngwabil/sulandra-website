@@ -14,15 +14,19 @@ RUN npm --prefix terminal-browser install --no-audit --no-fund \
 
 RUN node scripts/install-it-agent-conversational-ui.mjs \
  && node scripts/install-it-agent-xterm-emulator.mjs \
- && node scripts/fix-it-agent-status-board-api-origin.mjs
+ && node scripts/fix-it-agent-status-board-api-origin.mjs \
+ && node scripts/install-workspace-ide-ui.mjs
 
 RUN npm run build:web \
  && mkdir -p dist-web/assets/vendor \
  && cp terminal-browser/dist/sulandra-terminal-runtime.js dist-web/assets/vendor/sulandra-terminal-runtime.js \
  && cp terminal-browser/node_modules/@xterm/xterm/css/xterm.css dist-web/assets/vendor/xterm.css \
  && cp terminal-browser/node_modules/@xterm/xterm/LICENSE dist-web/assets/vendor/XTERM-LICENSE \
+ && cp assets/it-agent-workspace-preview.css dist-web/assets/it-agent-workspace-preview.css \
+ && cp assets/it-agent-workspace-preview.js dist-web/assets/it-agent-workspace-preview.js \
  && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
+ && node scripts/install-workspace-ide-ui.mjs dist-web/it-solutions.html \
  && node scripts/verify-it-agent-artifact-capabilities.mjs
 
 ENV NODE_ENV=production
