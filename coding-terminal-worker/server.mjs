@@ -250,6 +250,14 @@ const consume = (bucket, bytes) => {
   return true;
 };
 
+/* RFC 6455 reserves 1005, 1006 and 1015 for local reporting. They must never
+   be serialized into a WebSocket Close frame. 1004 is also reserved. */
+const isSendableWsCloseCode = code =>
+  (code >= 1000 && code <= 1014 && ![1004, 1005, 1006].includes(code)) ||
+  (code >= 3000 && code <= 4999);
+const normalizeWsCloseCode = code => isSendableWsCloseCode(Number(code)) ? Number(code) : 1011;
+const closeReason = reason => String(reason || '').slice(0, 120);
+
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });
 
@@ -297,11 +305,13 @@ wss.on('connection', (browser, req) => {
   upstream.binaryType = 'arraybuffer';
 
   const closeBoth = (code = 1011, reason = 'Terminal proxy closed') => {
+    const safeCode = normalizeWsCloseCode(code);
+    const safeReason = closeReason(reason);
     if (browser.readyState === WebSocket.OPEN || browser.readyState === WebSocket.CONNECTING) {
-      try { browser.close(code, reason); } catch {}
+      try { browser.close(safeCode, safeReason); } catch {}
     }
     if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) {
-      try { upstream.close(code, reason); } catch {}
+      try { upstream.close(safeCode, safeReason); } catch {}
     }
   };
 
@@ -315,8 +325,10 @@ wss.on('connection', (browser, req) => {
     browser.send(data, { binary: isBinary });
   });
   upstream.on('close', (code, reason) => {
-    console.warn(`[terminal-gateway] execution WSS closed id=${upgradeId} session=${sessionId} code=${code} reason=${reason.toString().slice(0, 120)}`);
-    if (browser.readyState === WebSocket.OPEN) browser.close(code >= 1000 && code <= 4999 ? code : 1011, reason.toString().slice(0, 120));
+    const safeCode = normalizeWsCloseCode(code);
+    const safeReason = closeReason(reason);
+    console.warn(`[terminal-gateway] execution WSS closed id=${upgradeId} session=${sessionId} code=${code} forwardedCode=${safeCode} reason=${safeReason}`);
+    if (browser.readyState === WebSocket.OPEN) browser.close(safeCode, safeReason);
   });
   upstream.on('error', error => {
     console.error('[terminal-gateway] execution WSS error', error.message);
@@ -341,7 +353,7 @@ wss.on('connection', (browser, req) => {
     pendingBytes += bytes;
   });
   browser.on('close', (code, reason) => {
-    console.info(`[terminal-gateway] browser WSS closed id=${upgradeId} session=${sessionId} code=${code} reason=${reason.toString().slice(0, 120)}`);
+    console.info(`[terminal-gateway] browser WSS closed id=${upgradeId} session=${sessionId} code=${code} reason=${closeReason(reason)}`);
     pendingFrames.length = 0;
     if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) upstream.close(1000, 'Browser disconnected');
   });
