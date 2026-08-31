@@ -22,6 +22,7 @@ const jwtSecret = String(process.env.JWT_SECRET || '').trim();
 const firebaseProjectId = String(process.env.FIREBASE_PROJECT_ID || '').trim();
 const firebaseCheckRevoked = String(process.env.TERMINAL_FIREBASE_CHECK_REVOKED || 'false').trim().toLowerCase() === 'true';
 const allowedRoles = new Set(['ADMINISTRATOR', 'CEO', 'COO']);
+let wsUpgradeSequence = 0;
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a valid TCP port');
 if (!authToken) throw new Error('TERMINAL_AUTH_TOKEN is required');
@@ -115,6 +116,7 @@ app.get('/health', async (_req, res) => {
     gateway: true,
     websocket: true,
     websocketAuthProvider: wsAuthProvider,
+    browserJwtConfigured: wsAuthProvider === 'sulandra' ? Boolean(jwtSecret) : undefined,
     firebaseCheckRevoked: wsAuthProvider === 'firebase' ? firebaseCheckRevoked : undefined,
     executionPlane: { configured: true, healthy: executionHealthy, status: executionStatus },
     rateLimit: { bytesPerSecond: wsBytesPerSecond, burstBytes: wsBurstBytes },
@@ -154,6 +156,8 @@ app.post('/workspaces/:workspaceId/sessions', async (req, res, next) => {
 app.get('/sessions/:sessionId/output', async (req, res, next) => {
   try {
     const cursor = Math.max(0, Math.trunc(Number(req.query.cursor) || 0));
+    res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
     res.json(await executionRequest(req, `/v1/sessions/${encodeURIComponent(req.params.sessionId)}/output?cursor=${cursor}`));
   } catch (error) { next(error); }
 });
@@ -196,25 +200,39 @@ const wsTokenFromProtocols = header => {
 };
 
 const verifyBrowserToken = async token => {
-  if (!token) return null;
+  if (!token) return { auth: null, reason: 'token-missing' };
   if (wsAuthProvider === 'firebase') {
     try {
       const claims = await getAuth().verifyIdToken(token, firebaseCheckRevoked);
       const organizationId = typeof claims.organizationId === 'string' ? claims.organizationId : typeof claims.orgId === 'string' ? claims.orgId : '';
       const role = typeof claims.role === 'string' ? claims.role : '';
-      if (!claims.uid || !organizationId || !allowedRoles.has(role)) return null;
-      return { userId: claims.uid, organizationId, role };
-    } catch { return null; }
+      if (!claims.uid) return { auth: null, reason: 'subject-missing' };
+      if (!organizationId) return { auth: null, reason: 'organization-missing' };
+      if (!allowedRoles.has(role)) return { auth: null, reason: 'role-rejected' };
+      return { auth: { userId: claims.uid, organizationId, role }, reason: '' };
+    } catch (error) {
+      const reason = error?.code === 'auth/id-token-expired' ? 'token-expired' : 'token-verification-failed';
+      return { auth: null, reason };
+    }
   }
   try {
     const claims = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
-    if (typeof claims === 'string') return null;
+    if (typeof claims === 'string') return { auth: null, reason: 'claims-invalid' };
     const userId = typeof claims.sub === 'string' ? claims.sub : '';
     const organizationId = typeof claims.organizationId === 'string' ? claims.organizationId : '';
     const role = typeof claims.role === 'string' ? claims.role : '';
-    if (!userId || !organizationId || !allowedRoles.has(role)) return null;
-    return { userId, organizationId, role };
-  } catch { return null; }
+    if (!userId) return { auth: null, reason: 'subject-missing' };
+    if (!organizationId) return { auth: null, reason: 'organization-missing' };
+    if (!allowedRoles.has(role)) return { auth: null, reason: 'role-rejected' };
+    return { auth: { userId, organizationId, role }, reason: '' };
+  } catch (error) {
+    const reason = error?.name === 'TokenExpiredError'
+      ? 'token-expired'
+      : error?.name === 'JsonWebTokenError'
+        ? 'token-invalid'
+        : 'token-verification-failed';
+    return { auth: null, reason };
+  }
 };
 
 const makeBucket = () => ({ tokens: wsBurstBytes, updatedAt: Date.now() });
@@ -232,22 +250,33 @@ const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });
 
 server.on('upgrade', async (req, socket, head) => {
+  const upgradeId = ++wsUpgradeSequence;
   let url;
-  try { url = new URL(req.url || '/', 'http://localhost'); } catch { socket.destroy(); return; }
-  const match = url.pathname.match(/^\/ws\/sessions\/([A-Za-z0-9_-]+)$/);
-  if (!match) { socket.destroy(); return; }
-  const auth = await verifyBrowserToken(wsTokenFromProtocols(req.headers['sec-websocket-protocol']));
-  if (!auth) {
-    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+  try { url = new URL(req.url || '/', 'http://localhost'); } catch {
+    console.warn(`[terminal-gateway] browser WSS rejected id=${upgradeId} reason=url-invalid`);
     socket.destroy();
     return;
   }
-  req.sulandraTerminal = { auth, sessionId: match[1] };
+  const match = url.pathname.match(/^\/ws\/sessions\/([A-Za-z0-9_-]+)$/);
+  if (!match) {
+    console.warn(`[terminal-gateway] browser WSS rejected id=${upgradeId} reason=path-invalid`);
+    socket.destroy();
+    return;
+  }
+  const verification = await verifyBrowserToken(wsTokenFromProtocols(req.headers['sec-websocket-protocol']));
+  if (!verification.auth) {
+    console.warn(`[terminal-gateway] browser WSS rejected id=${upgradeId} session=${match[1]} reason=${verification.reason}`);
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  req.sulandraTerminal = { auth: verification.auth, sessionId: match[1], upgradeId };
+  console.info(`[terminal-gateway] browser WSS authorized id=${upgradeId} session=${match[1]}`);
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
 wss.on('connection', (browser, req) => {
-  const { auth, sessionId } = req.sulandraTerminal;
+  const { auth, sessionId, upgradeId } = req.sulandraTerminal;
   const owner = `${auth.organizationId}:${auth.userId}`;
   const bucket = makeBucket();
   const pendingFrames = [];
@@ -273,6 +302,7 @@ wss.on('connection', (browser, req) => {
   };
 
   upstream.on('open', () => {
+    console.info(`[terminal-gateway] execution WSS open id=${upgradeId} session=${sessionId}`);
     for (const frame of pendingFrames.splice(0)) upstream.send(frame.data, { binary: frame.isBinary });
     pendingBytes = 0;
   });
@@ -281,6 +311,7 @@ wss.on('connection', (browser, req) => {
     browser.send(data, { binary: isBinary });
   });
   upstream.on('close', (code, reason) => {
+    console.warn(`[terminal-gateway] execution WSS closed id=${upgradeId} session=${sessionId} code=${code} reason=${reason.toString().slice(0, 120)}`);
     if (browser.readyState === WebSocket.OPEN) browser.close(code >= 1000 && code <= 4999 ? code : 1011, reason.toString().slice(0, 120));
   });
   upstream.on('error', error => {
@@ -305,7 +336,8 @@ wss.on('connection', (browser, req) => {
     pendingFrames.push({ data: isBinary ? Buffer.from(data) : String(data), isBinary });
     pendingBytes += bytes;
   });
-  browser.on('close', () => {
+  browser.on('close', (code, reason) => {
+    console.info(`[terminal-gateway] browser WSS closed id=${upgradeId} session=${sessionId} code=${code} reason=${reason.toString().slice(0, 120)}`);
     pendingFrames.length = 0;
     if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) upstream.close(1000, 'Browser disconnected');
   });
