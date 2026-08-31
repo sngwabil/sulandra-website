@@ -15,14 +15,19 @@
   let pollTimer=0;
   let workerOnline=false;
   let terminalRoot=null;
+  let workspaceCreationPromise=null;
+  let terminalCreationPromise=null;
+  let terminalRetryTimer=0;
+  let terminalRetryAttempt=0;
 
-  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]));
   const stripAnsi=value=>String(value||'')
     .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g,'')
     .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g,'')
     .replace(/\x1B[()][A-Z0-2]/g,'')
     .replace(/\r(?!\n)/g,'\n')
     .replace(/\u0000/g,'');
+  const xtermActive=()=>Boolean(window.__SULANDRA_XTERM_PRODUCTION_STACK_V2__);
 
   const authToken=()=>sessionStorage.getItem('sulandra:employee:access-token')
     ||localStorage.getItem('sulandra:employee:access-token')
@@ -30,17 +35,28 @@
     ||localStorage.getItem('sulandra:admin:access-token')
     ||localStorage.getItem('token')||'';
 
+  const retryAfterMs=response=>{
+    const value=String(response?.headers?.get?.('retry-after')||'').trim();
+    if(!value)return 0;
+    const seconds=Number(value);
+    if(Number.isFinite(seconds)&&seconds>=0)return Math.min(60_000,seconds*1000);
+    const date=Date.parse(value);
+    return Number.isFinite(date)?Math.max(0,Math.min(60_000,date-Date.now())):0;
+  };
+
   const apiRequest=async(path,options={})=>{
-    try{
-      if(typeof api==='function')return await api(path,options);
-    }catch(error){throw error}
     const base=typeof API==='string'&&API?API:'https://sulandra-website-production-5fc4.up.railway.app';
     const response=await fetch(base+path,{
       ...options,
       headers:{Accept:'application/json',Authorization:'Bearer '+authToken(),...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})},
     });
     const payload=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(payload.error||payload.message||`Request failed (${response.status})`);
+    if(!response.ok){
+      const error=new Error(payload.error||payload.message||`Request failed (${response.status})`);
+      error.status=response.status;
+      error.retryAfterMs=retryAfterMs(response);
+      throw error;
+    }
     return payload.data??payload;
   };
 
@@ -90,29 +106,77 @@
     if(session.id===activeId)renderScreen();
   };
 
+  const clearStoredWorkspace=()=>{
+    workspaceId='';
+    try{sessionStorage.removeItem(WORKSPACE_KEY)}catch{}
+  };
+
   const ensureWorkspace=async()=>{
     if(workspaceId){
-      try{await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(workspaceId));return workspaceId}
-      catch{workspaceId='';try{sessionStorage.removeItem(WORKSPACE_KEY)}catch{}}
+      try{
+        await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(workspaceId));
+        return workspaceId;
+      }catch(error){
+        if(Number(error?.status)!==404&&Number(error?.status)!==410)throw error;
+        clearStoredWorkspace();
+      }
     }
-    const data=await apiRequest('/api/it-solutions/terminal/workspaces',{method:'POST',body:'{}'});
-    workspaceId=String(data.workspaceId||'');
-    if(!workspaceId)throw new Error('Terminal worker did not return a workspace ID');
-    try{sessionStorage.setItem(WORKSPACE_KEY,workspaceId)}catch{}
-    return workspaceId;
+    if(workspaceCreationPromise)return workspaceCreationPromise;
+    const pending=(async()=>{
+      const data=await apiRequest('/api/it-solutions/terminal/workspaces',{method:'POST',body:'{}'});
+      workspaceId=String(data.workspaceId||'');
+      if(!workspaceId)throw new Error('Terminal worker did not return a workspace ID');
+      try{sessionStorage.setItem(WORKSPACE_KEY,workspaceId)}catch{}
+      return workspaceId;
+    })();
+    workspaceCreationPromise=pending;
+    try{return await pending}
+    finally{if(workspaceCreationPromise===pending)workspaceCreationPromise=null}
+  };
+
+  const scheduleTerminalRetry=error=>{
+    if(terminalRetryTimer||sessions.length)return;
+    terminalRetryAttempt=Math.min(5,terminalRetryAttempt+1);
+    const serverDelay=Math.max(0,Number(error?.retryAfterMs)||0);
+    const backoff=Math.min(15_000,750*Math.pow(2,terminalRetryAttempt-1));
+    const delay=Math.max(serverDelay,backoff);
+    appendSystem(`Terminal capacity is recovering. Retrying in ${Math.max(1,Math.ceil(delay/1000))}s…`);
+    terminalRetryTimer=window.setTimeout(()=>{
+      terminalRetryTimer=0;
+      if(!sessions.length)void createTerminal();
+    },delay);
   };
 
   const createTerminal=async()=>{
-    try{
-      setWorkerState(true,'Starting terminal…');
-      await ensureWorkspace();
-      const data=await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(workspaceId)+'/sessions',{method:'POST',body:JSON.stringify({cols:120,rows:34})});
-      const session={id:String(data.sessionId||''),cursor:0,output:'',alive:true,polling:false};
-      if(!session.id)throw new Error('Terminal worker did not return a session ID');
-      sessions.push(session);activeId=session.id;renderTabs();renderScreen();
-      await pollSession(session);
-      terminalRoot?.querySelector('#itwsRtCommand')?.focus();
-    }catch(error){setWorkerState(false,error.message||'Unable to start terminal');appendSystem(error.message||'Unable to start terminal')}
+    if(terminalCreationPromise)return terminalCreationPromise;
+    const pending=(async()=>{
+      try{
+        setWorkerState(true,'Starting terminal…');
+        const currentWorkspace=await ensureWorkspace();
+        const data=await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(currentWorkspace)+'/sessions',{method:'POST',body:JSON.stringify({cols:120,rows:34})});
+        const session={id:String(data.sessionId||''),cursor:0,output:'',alive:true,polling:false};
+        if(!session.id)throw new Error('Terminal worker did not return a session ID');
+        if(!sessionById(session.id))sessions.push(session);
+        activeId=session.id;
+        terminalRetryAttempt=0;
+        if(terminalRetryTimer){window.clearTimeout(terminalRetryTimer);terminalRetryTimer=0}
+        setWorkerState(true);
+        renderTabs();renderScreen();
+        if(!xtermActive())await pollSession(session);
+        terminalRoot?.querySelector('#itwsRtCommand')?.focus();
+        return session;
+      }catch(error){
+        const message=error?.message||'Unable to start terminal';
+        setWorkerState(false,message);
+        appendSystem(message);
+        if(Number(error?.status)===429||/too many|rate.?limit/i.test(message))scheduleTerminalRetry(error);
+        throw error;
+      }
+    })();
+    terminalCreationPromise=pending;
+    try{return await pending}
+    catch{return null}
+    finally{if(terminalCreationPromise===pending)terminalCreationPromise=null}
   };
 
   const closeTerminal=async(id)=>{
@@ -124,6 +188,7 @@
   };
 
   const pollSession=async session=>{
+    if(xtermActive())return;
     if(!session||session.polling)return;
     session.polling=true;
     try{
@@ -140,12 +205,19 @@
     }finally{session.polling=false;renderTabs();if(session.id===activeId)renderScreen()}
   };
 
-  const pollAll=()=>sessions.filter(session=>session.alive).forEach(session=>void pollSession(session));
+  const pollAll=()=>{
+    if(xtermActive()){
+      if(pollTimer)window.clearInterval(pollTimer);
+      pollTimer=0;
+      return;
+    }
+    sessions.filter(session=>session.alive).forEach(session=>void pollSession(session));
+  };
 
   const sendRaw=async data=>{
     const session=activeSession();if(!session?.alive)return;
     await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/input',{method:'POST',body:JSON.stringify({data})});
-    window.setTimeout(()=>void pollSession(session),80);
+    if(!xtermActive())window.setTimeout(()=>void pollSession(session),80);
   };
 
   const runCommand=async()=>{
@@ -174,11 +246,15 @@
   };
 
   const resetWorkspace=async()=>{
-    if(!workspaceId)return;
+    if(!workspaceId&&!workspaceCreationPromise)return;
     if(!window.confirm('Reset this isolated coding workspace? All uncommitted terminal files and terminal sessions in this workspace will be deleted. Production is not affected.'))return;
+    if(terminalRetryTimer){window.clearTimeout(terminalRetryTimer);terminalRetryTimer=0}
+    terminalRetryAttempt=0;
     for(const session of [...sessions])await closeTerminal(session.id);
-    try{await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(workspaceId),{method:'DELETE'})}catch{}
-    workspaceId='';try{sessionStorage.removeItem(WORKSPACE_KEY)}catch{}
+    const current=workspaceId;
+    if(current)try{await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(current),{method:'DELETE'})}catch{}
+    clearStoredWorkspace();
+    workspaceCreationPromise=null;
     appendSystem('Isolated workspace reset.');
     await createTerminal();
   };
@@ -268,8 +344,11 @@
     let mode='shell';try{mode=sessionStorage.getItem(MODE_KEY)||'shell'}catch{}
     setMode(mode);
     if(healthy&&mode!=='ai'&&!sessions.length)void createTerminal();
-    pollTimer=window.setInterval(pollAll,350);
-    window.addEventListener('beforeunload',()=>{if(pollTimer)window.clearInterval(pollTimer)},{once:true});
+    if(!xtermActive())pollTimer=window.setInterval(pollAll,350);
+    window.addEventListener('beforeunload',()=>{
+      if(pollTimer)window.clearInterval(pollTimer);
+      if(terminalRetryTimer)window.clearTimeout(terminalRetryTimer);
+    },{once:true});
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>void install(),{once:true});
