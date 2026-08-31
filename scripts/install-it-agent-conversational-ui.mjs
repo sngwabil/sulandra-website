@@ -39,13 +39,13 @@ const tags={
   ipadCss:'<link rel="stylesheet" href="/assets/it-agent-ipad-load-guard.css?v=20260829-ipad-1">',
   ipadJs:'<script src="/assets/it-agent-ipad-load-guard.js?v=20260829-ipad-1"></script>',
   enterpriseCss:'<link rel="stylesheet" href="/assets/it-agent-enterprise-shell.css?v=20260830-engineering-shell-2">',
-  enterpriseJs:'<script src="/assets/it-agent-enterprise-shell.js?v=20260830-engineering-shell-2"></script>',
+  enterpriseJs:'<script src="/assets/it-agent-enterprise-shell.js?v=20260831-engineering-shell-3"></script>',
   headerCss:'<link rel="stylesheet" href="/assets/it-agent-header-polish.css?v=20260830-header-polish-1">',
   headerJs:'<script src="/assets/it-agent-header-polish.js?v=20260830-header-polish-1"></script>',
   darkCss:'<link rel="stylesheet" href="/assets/it-agent-dark-conversation.css?v=20260830-dark-chat-1">',
   sidebarJs:'<script src="/assets/it-agent-sidebar-persistence.js?v=20260830-sidebar-persist-2"></script>',
   realTerminalCss:'<link rel="stylesheet" href="/assets/it-agent-real-terminal.css?v=20260830-real-terminal-1">',
-  realTerminalJs:'<script src="/assets/it-agent-real-terminal.js?v=20260831-real-terminal-2"></script>',
+  realTerminalJs:'<script src="/assets/it-agent-real-terminal.js?v=20260831-real-terminal-4"></script>',
   realTerminalUxCss:'<link rel="stylesheet" href="/assets/it-agent-real-terminal-ux-v2.css?v=20260830-real-terminal-ux-2">',
   realTerminalUxJs:'<script src="/assets/it-agent-real-terminal-ux-v2.js?v=20260830-real-terminal-ux-2"></script>',
 };
@@ -91,13 +91,13 @@ for(const marker of ['IT_AGENT_STATUS_BOARD_FINALIZER_V5','IT_AGENT_STATUS_BOARD
 if(assets.statusJs.includes('agentActions')||assets.statusJs.includes('itws-action-center-panel'))throw new Error('Status Board must not reuse Action Center action-card DOM');
 for(const marker of ['IT_AGENT_IPAD_STABLE_LOAD_V1','--itws-keyboard-inset','itws-status-board-open','max-width:1180px','itws-boot-error'])requireAny(['ipadCss','ipadJs'],marker,'IT Agent iPad stable-load guard');
 for(const marker of ['it-chatgpt-workspace','.itws-layout','#agent .agent-main','itwsIpadReady','visualViewport','The old Action Center page is intentionally not shown as a fallback.'])requireAny(['ipadJs'],marker,'IT Agent iPad boot verification');
-for(const marker of ['IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1','itwsEnterprisePlatformBar','itwsReturnToAdminPortal','itwsEngineeringTerminal','Engineering Terminal','Sulandra Health Platform'])requireAny(['enterpriseCss','enterpriseJs'],marker,'IT Agent engineering shell');
+for(const marker of ['IT_SOLUTIONS_SHARED_ENTERPRISE_SHELL_V1','itwsEnterprisePlatformBar','itwsReturnToAdminPortal','itwsEngineeringTerminal','Engineering Terminal','Sulandra Health Platform','sulandra:it-solutions:active-view',"restoredView==='terminal'"])requireAny(['enterpriseCss','enterpriseJs'],marker,'IT Agent engineering shell');
 if(assets.enterpriseJs.includes("['Service Homes'")||assets.enterpriseJs.includes("nav.id='itwsEnterpriseAdminTabs'")||assets.enterpriseJs.includes("className='itws-enterprise-admin-tabs'"))throw new Error('IT Solutions must not recreate Administrator module navigation');
 for(const marker of ['No unrestricted host shell','controlled Sulandra coding-worker workflow','Action Center','Completed Work'])requireAny(['enterpriseJs'],marker,'IT engineering workspace safety/navigation');
 for(const marker of ['IT_AGENT_HEADER_POLISH_V1','itws-agent-centered-title','itws-live-connected','itws-live-connected-pulse','itws-status-compact'])requireAny(['headerCss','headerJs'],marker,'IT Agent header polish');
 for(const marker of ['IT_AGENT_DARK_CONVERSATION_V1','--itws-navy-950','--itws-chat-lane','itws-status-board-drawer','bubble.user'])requireAny(['darkCss'],marker,'IT Agent dark conversation theme');
 for(const marker of ['IT_AGENT_SIDEBAR_PERSISTENCE_V2','desiredOpen','MutationObserver','itwsViewContrastStyle','sessionStorage'])requireAny(['sidebarJs'],marker,'IT Agent authoritative sidebar/contrast repair');
-for(const marker of ['IT_AGENT_REAL_TERMINAL_V1','itwsRealTerminal','itwsRtNewTab','/api/it-solutions/terminal/','Tell Sulandra','Real Terminal'])requireAny(['realTerminalJs'],marker,'IT Agent real terminal');
+for(const marker of ['IT_AGENT_REAL_TERMINAL_V1','itwsRealTerminal','itwsRtNewTab','/api/it-solutions/terminal/','Tell Sulandra','Real Terminal','__SULANDRA_TERMINAL_REST_BRIDGE__','sulandra:terminal-rest-output'])requireAny(['realTerminalJs'],marker,'IT Agent real terminal');
 for(const marker of ['IT_AGENT_REAL_TERMINAL_V1','.itws-real-terminal','.itws-rt-screen','itws-status-board-open'])requireAny(['realTerminalCss'],marker,'IT Agent real terminal presentation');
 for(const marker of ['IT_AGENT_REAL_TERMINAL_UX_V2','Direct typing','Command box','itwsRtCopy','itwsRtLatest','postInput','selectionSnapshot'])requireAny(['realTerminalUxJs'],marker,'IT Agent direct terminal UX');
 for(const marker of ['IT_AGENT_REAL_TERMINAL_UX_V2','.itws-rt-input-switch','.itws-rt-direct-mode','user-select:text','touch-action:pan-y'])requireAny(['realTerminalUxCss'],marker,'IT Agent direct terminal presentation');

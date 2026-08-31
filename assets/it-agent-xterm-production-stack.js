@@ -14,6 +14,7 @@
   let host=null;
   let syncTimer=0;
 
+  const restBridge=()=>window.__SULANDRA_TERMINAL_REST_BRIDGE__;
   const authToken=()=>sessionStorage.getItem('sulandra:admin:access-token')
     ||localStorage.getItem('sulandra:admin:access-token')
     ||sessionStorage.getItem('sulandra:employee:access-token')
@@ -60,6 +61,17 @@
     if(!state?.ws||state.ws.readyState!==WebSocket.OPEN||!data)return false;
     state.ws.send(new TextEncoder().encode(String(data)));
     return true;
+  };
+  const sendInput=(state,data)=>{
+    if(!state||data===undefined||data===null)return false;
+    if(sendBinary(state,data))return true;
+    Promise.resolve(restBridge()?.sendInput?.(state.id,data)).catch(error=>renderStatus(state,error?.message||'REST terminal input failed',true));
+    return true;
+  };
+  const writeRestOutput=(state,data,reset=false)=>{
+    if(!state||state.connected||data===undefined||data===null)return;
+    if(reset)state.term.reset();
+    if(String(data))state.term.write(String(data));
   };
   const sendControl=(state,message)=>{
     if(!state?.ws||state.ws.readyState!==WebSocket.OPEN)return false;
@@ -151,11 +163,13 @@
     });
     const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,reconnects:0,reconnectTimer:0,disposed:false};
     states.set(id,state);loadCapabilities(state);term.open(pane);
+    const snapshot=restBridge()?.snapshot?.(id);
+    if(snapshot?.data)writeRestOutput(state,snapshot.data,true);
     try{
       const webgl=new Runtime.WebglAddon();term.loadAddon(webgl);state.webgl=webgl;state.renderer='webgl';
       if(typeof webgl.onContextLoss==='function')webgl.onContextLoss(()=>fallbackRenderer(state));
     }catch{fallbackRenderer(state)}
-    term.onData(data=>{if(state.id===activeSessionId()&&directMode())sendBinary(state,data)});
+    term.onData(data=>{if(state.id===activeSessionId()&&directMode())sendInput(state,data)});
     term.onResize(()=>fitState(state));
     const observer=new ResizeObserver(()=>requestAnimationFrame(()=>fitState(state)));observer.observe(pane);state.observer=observer;
     setTimeout(()=>{fitState(state);connect(state)},40);return state;
@@ -185,7 +199,7 @@
     ids.forEach(id=>makeState(id));[...states.values()].forEach(state=>{if(!ids.has(state.id))disposeState(state)});
     const active=activeSessionId();states.forEach(state=>{const on=state.id===active;state.pane.classList.toggle('active',on);state.term.options.disableStdin=!on||!directMode();if(on)requestAnimationFrame(()=>{fitState(state);if(directMode()&&state.connected)state.term.focus()})});
     updateFallbackClass();
-    const hint=root.querySelector('#itwsRtInputHint');if(hint)hint.textContent=states.get(active)?.connected?(directMode()?'Native WSS PTY: type at the live cursor; tmux preserves the shell across reconnects.':'Command box sends complete commands; live WSS output remains above.'):(directMode()?'WSS is reconnecting; safe REST terminal input/output fallback is active.':'WSS is reconnecting; Command box and REST output fallback remain active.');
+    const hint=root.querySelector('#itwsRtInputHint');if(hint)hint.textContent=states.get(active)?.connected?(directMode()?'Native WSS PTY: type at the live cursor; tmux preserves the shell across reconnects.':'Command box sends complete commands; live WSS output remains above.'):(directMode()?'WSS is reconnecting; xterm remains interactive through the authenticated REST PTY bridge.':'WSS is reconnecting; Command box output continues in xterm through the REST PTY bridge.');
   };
 
   const enhance=terminalRoot=>{
@@ -201,19 +215,24 @@
       if(target.closest('#itwsRtSearch')){event.preventDefault();search()}
       if(target.closest('#itwsRtExport')){event.preventDefault();exportHistory(false)}
       if(target.closest('#itwsRtExportHtml')){event.preventDefault();exportHistory(true)}
-      if(target.closest('#itwsRtCtrlC')&&activeState()?.connected){event.preventDefault();event.stopImmediatePropagation();sendBinary(activeState(),'\x03')}
+      if(target.closest('#itwsRtCtrlC')){event.preventDefault();event.stopImmediatePropagation();sendInput(activeState(),'\x03')}
     },true);
     document.addEventListener('keydown',event=>{
       if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==='f'&&root?.contains(document.activeElement)){event.preventDefault();search()}
     },true);
-    root.querySelector('#itwsRtCopy')?.addEventListener('click',event=>{const state=activeState();if(!state?.connected||!state.term.hasSelection())return;event.preventDefault();event.stopImmediatePropagation();void copySelection()},true);
-    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();if(state?.connected){state.term.scrollToBottom();state.term.focus()}} ,true);
+    root.querySelector('#itwsRtCopy')?.addEventListener('click',event=>{const state=activeState();if(!state?.term.hasSelection())return;event.preventDefault();event.stopImmediatePropagation();void copySelection()},true);
+    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();if(state){state.term.scrollToBottom();state.term.focus()}} ,true);
     root.querySelectorAll('[data-rt-input-mode]').forEach(button=>button.addEventListener('click',()=>setTimeout(sync,60)));
     root.querySelector('#itwsRtTabs')?.addEventListener('click',()=>setTimeout(sync,50));
-    host.addEventListener('pointerdown',()=>{const state=activeState();if(state?.connected&&directMode())setTimeout(()=>state.term.focus(),0)});
+    host.addEventListener('pointerdown',()=>{const state=activeState();if(state&&directMode())setTimeout(()=>state.term.focus(),0)});
     new MutationObserver(sync).observe(root.querySelector('#itwsRtTabs'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});sync();syncTimer=setInterval(sync,500);
   };
 
+  window.addEventListener('sulandra:terminal-rest-output',event=>{
+    const detail=event?.detail||{};
+    const state=states.get(String(detail.sessionId||''));
+    writeRestOutput(state,detail.data,Boolean(detail.reset));
+  });
   const scan=()=>document.querySelectorAll('#itwsRealTerminal').forEach(enhance);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scan,{once:true});else scan();
   new MutationObserver(scan).observe(document.documentElement,{childList:true,subtree:true});
