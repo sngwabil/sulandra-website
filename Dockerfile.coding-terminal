@@ -8,9 +8,13 @@ COPY coding-terminal-worker/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 COPY coding-terminal-worker/server.mjs ./server.mjs
 COPY scripts/install-terminal-gateway-ha.mjs /tmp/install-terminal-gateway-ha.mjs
+COPY scripts/install-workspace-ide-live-preview.mjs /tmp/install-workspace-ide-live-preview.mjs
+COPY scripts/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-proxy-abort.mjs
 RUN node /tmp/install-terminal-gateway-ha.mjs /gateway/server.mjs \
+    && node /tmp/install-workspace-ide-live-preview.mjs /gateway/server.mjs \
+    && node /tmp/fix-workspace-proxy-abort.mjs /gateway/server.mjs \
     && node --check /gateway/server.mjs \
-    && rm -f /tmp/install-terminal-gateway-ha.mjs
+    && rm -f /tmp/install-terminal-gateway-ha.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs
 
 EXPOSE 8080
 USER node

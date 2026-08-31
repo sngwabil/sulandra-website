@@ -10,4 +10,14 @@ if [[ ! -d .git ]]; then
   git commit -m "Isolated terminal workspace baseline" --no-gpg-sign >/dev/null 2>&1 || true
 fi
 
+IDE_PORT="${SULANDRA_IDE_PORT:-13337}"
+mkdir -p "${HOME}/.config/code-server" "${HOME}/.local/share/code-server"
+code-server \
+  --bind-addr "0.0.0.0:${IDE_PORT}" \
+  --auth none \
+  --disable-telemetry \
+  --disable-update-check \
+  --disable-getting-started-override \
+  /workspace >/tmp/sulandra-code-server.log 2>&1 &
+
 exec node /agent/server.mjs

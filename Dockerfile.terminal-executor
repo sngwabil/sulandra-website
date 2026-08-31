@@ -19,10 +19,14 @@ RUN npm install --omit=dev --no-audit --no-fund
 COPY terminal-execution-plane/server.mjs ./server.mjs
 COPY scripts/install-terminal-industry-hardening.mjs /tmp/install-terminal-industry-hardening.mjs
 COPY scripts/fix-terminal-resource-monitor.mjs /tmp/fix-terminal-resource-monitor.mjs
+COPY scripts/install-workspace-ide-live-preview.mjs /tmp/install-workspace-ide-live-preview.mjs
+COPY scripts/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-proxy-abort.mjs
 RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/fix-terminal-resource-monitor.mjs /app/server.mjs \
+    && node /tmp/install-workspace-ide-live-preview.mjs /app/server.mjs \
+    && node /tmp/fix-workspace-proxy-abort.mjs /app/server.mjs \
     && node --check /app/server.mjs \
-    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs
+    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs
 
 RUN mkdir -p /workspaces /state /seed \
     && chown -R 10001:10001 /workspaces /state /app
