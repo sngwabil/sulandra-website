@@ -148,10 +148,13 @@
     state.connectTimer=setTimeout(()=>{
       if(state.disposed||state.ws!==ws||ws.readyState!==WebSocket.CONNECTING)return;
       state.connectTimer=0;
+      state.ws=null;
       renderStatus(state,state.hydrated?'REST PTY active · WSS timed out':'WSS timed out · REST fallback active',true);
       try{ws.close()}catch{}
+      scheduleReconnect(state);
     },8_000);
     ws.onopen=()=>{
+      if(state.ws!==ws){try{ws.close(1000,'Stale terminal connection')}catch{}return}
       if(state.connectTimer){clearTimeout(state.connectTimer);state.connectTimer=0}
       state.reconnects=0;setTransportReady(state,true);renderStatus(state,`WSS · ${state.renderer==='webgl'?'WebGL':state.renderer==='canvas'?'Canvas':'DOM'}`);
       fitState(state);if(directMode()&&state.id===activeSessionId())state.term.focus();
