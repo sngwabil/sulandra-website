@@ -417,6 +417,9 @@ wss.on('connection', async (gateway, req) => {
   session.connections += 1;
   session.disconnectedAt = null;
   session.lastUsedAt = now();
+  const pendingFrames = [];
+  let pendingBytes = 0;
+  const maxPendingBytes = 65_536;
   let agent;
   try {
     const url = new URL(await agentUrl(session, '/ws'));
@@ -440,20 +443,38 @@ wss.on('connection', async (gateway, req) => {
     }
   };
 
+  agent.on('open', () => {
+    for (const frame of pendingFrames.splice(0)) agent.send(frame.data, { binary: frame.isBinary });
+    pendingBytes = 0;
+  });
   gateway.on('message', (data, isBinary) => {
     session.lastUsedAt = now();
-    if (agent.readyState === WebSocket.OPEN) agent.send(data, { binary: isBinary });
+    const bytes = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
+    if (agent.readyState === WebSocket.OPEN) {
+      agent.send(data, { binary: isBinary });
+      return;
+    }
+    if (pendingBytes + bytes > maxPendingBytes) {
+      close(1008, 'Terminal startup input buffer exceeded');
+      return;
+    }
+    pendingFrames.push({ data: isBinary ? Buffer.from(data) : String(data), isBinary });
+    pendingBytes += bytes;
   });
   agent.on('message', (data, isBinary) => {
     session.lastUsedAt = now();
     if (gateway.readyState === WebSocket.OPEN) gateway.send(data, { binary: isBinary });
   });
   agent.on('close', (code, reason) => {
+    pendingFrames.length = 0;
+    pendingBytes = 0;
     if (gateway.readyState === WebSocket.OPEN) gateway.close(code >= 1000 && code <= 4999 ? code : 1011, reason.toString().slice(0, 120));
   });
   agent.on('error', () => close(1011, 'Session agent WSS error'));
   gateway.on('error', () => close(1011, 'Gateway WSS error'));
   gateway.on('close', () => {
+    pendingFrames.length = 0;
+    pendingBytes = 0;
     if (agent.readyState === WebSocket.OPEN || agent.readyState === WebSocket.CONNECTING) agent.close(1000, 'Gateway disconnected');
     session.connections = Math.max(0, session.connections - 1);
     if (session.connections === 0) session.disconnectedAt = now();
