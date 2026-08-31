@@ -167,8 +167,12 @@
       if(event.data instanceof ArrayBuffer){state.term.write(new Uint8Array(event.data));return}
       if(event.data instanceof Blob){state.term.write(new Uint8Array(await event.data.arrayBuffer()))}
     };
-    ws.onerror=()=>{setTransportReady(state,false);renderStatus(state,'WSS connection error',true)};
+    ws.onerror=()=>{
+      if(state.ws!==ws)return;
+      setTransportReady(state,false);renderStatus(state,'WSS connection error',true);
+    };
     ws.onclose=event=>{
+      if(state.ws!==ws)return;
       if(state.connectTimer){clearTimeout(state.connectTimer);state.connectTimer=0}
       state.ws=null;setTransportReady(state,false);
       if(state.disposed)return;
