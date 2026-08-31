@@ -18,6 +18,7 @@
     ['Spire Clinical','/spire.html'],
   ];
   const OPEN_KEY='sulandra:it-agent:status-board-open';
+  const ACTIVE_VIEW_KEY='sulandra:it-solutions:active-view';
   const launcherSelectors=[
     '[data-sia-launcher]',
     '[data-sia-floating-launcher]',
@@ -336,16 +337,19 @@
     appendTerminalLine(output,'Requests run through the authenticated IT Agent coding-worker workflow; this browser does not expose a raw server shell.','muted');
     appendTerminalLine(output,'Type /help for local terminal commands.','muted');
 
+    const persistActiveView=view=>{try{sessionStorage.setItem(ACTIVE_VIEW_KEY,String(view||'agent'))}catch{}};
     const clearTerminalActive=()=>{
       body.classList.remove('itws-terminal-open');
       terminalButton.classList.remove('active');
     };
     const showAgent=()=>{
+      persistActiveView('agent');
       clearTerminalActive();
       agentButton?.click();
       window.setTimeout(()=>prompt.focus(),0);
     };
     const showTerminal=()=>{
+      persistActiveView('terminal');
       document.querySelector('.tab[data-view="agent"]')?.click();
       body.classList.add('itws-terminal-open');
       nav.querySelectorAll('button').forEach(button=>button.classList.remove('active'));
@@ -354,7 +358,10 @@
     };
 
     terminalButton.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();showTerminal()});
-    nav.querySelectorAll('[data-itws-view]').forEach(button=>button.addEventListener('click',clearTerminalActive));
+    nav.querySelectorAll('[data-itws-view]').forEach(button=>button.addEventListener('click',()=>{
+      persistActiveView(button.dataset.itwsView||'agent');
+      clearTerminalActive();
+    }));
     openChat?.addEventListener('click',showAgent);
     openStatus?.addEventListener('click',()=>document.getElementById('itwsActivity')?.click());
     terminal.querySelectorAll('[data-terminal-command]').forEach(button=>button.addEventListener('click',()=>{
@@ -397,6 +404,8 @@
 
     const title=agentHead.querySelector('h2');
     if(title)title.textContent='Sulandra IT Agent';
+    let restoredView='';try{restoredView=sessionStorage.getItem(ACTIVE_VIEW_KEY)||''}catch{}
+    if(restoredView==='terminal')window.requestAnimationFrame(showTerminal);
     return true;
   }
 
