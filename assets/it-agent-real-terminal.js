@@ -20,7 +20,7 @@
   let terminalRetryTimer=0;
   let terminalRetryAttempt=0;
 
-  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]));
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const stripAnsi=value=>String(value||'')
     .replace(/\x1B\][^\x07]*(?:\x07|\x1B\\)/g,'')
     .replace(/\x1B\[[0-?]*[ -/]*[@-~]/g,'')
