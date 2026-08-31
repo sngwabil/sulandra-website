@@ -1,0 +1,99 @@
+name: Terminal Production SLO Monitor
+
+on:
+  schedule:
+    - cron: '7 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  synthetic-slo:
+    name: Probe production terminal and IT Solutions availability
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GATEWAY_URL: https://sulandra-coding-terminal-worker-production.up.railway.app/health
+      FRONTEND_URL: https://www.sulandrahealth.com/it-solutions.html
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect synthetic SLI samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe() {
+            local name="$1" url="$2" out="$3"
+            : > "$out"
+            for i in $(seq 1 10); do
+              result="$(curl -L -sS -o /dev/null --max-time 8 -w '%{http_code} %{time_total}' "$url" || echo '000 8.000')"
+              printf '%s %s\n' "$name" "$result" >> "$out"
+              sleep 1
+            done
+          }
+          probe gateway "$GATEWAY_URL" /tmp/gateway-sli.txt
+          probe frontend "$FRONTEND_URL" /tmp/frontend-sli.txt
+      - name: Evaluate current SLI window
+        id: evaluate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          function evaluate(file, maxP95Ms) {
+            const rows = fs.readFileSync(file, 'utf8').trim().split(/\n/).filter(Boolean).map(line => {
+              const [, status, seconds] = line.trim().split(/\s+/);
+              return { status: Number(status), ms: Number(seconds) * 1000 };
+            });
+            const good = rows.filter(r => r.status >= 200 && r.status < 500).length;
+            const availability = rows.length ? good / rows.length : 0;
+            const sorted = rows.map(r => r.ms).sort((a,b)=>a-b);
+            const p95 = sorted.length ? sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)] : Infinity;
+            return { availability, p95: Math.round(p95), samples: rows.length, ok: availability >= 0.9 && p95 <= maxP95Ms };
+          }
+          const gateway = evaluate('/tmp/gateway-sli.txt', 1000);
+          const frontend = evaluate('/tmp/frontend-sli.txt', 1500);
+          const report = { timestamp: new Date().toISOString(), gateway, frontend, monthlySlo: { gatewayAvailability: 0.999, frontendAvailability: 0.999, gatewayP95Ms: 750 } };
+          fs.writeFileSync('/tmp/slo-report.json', JSON.stringify(report, null, 2));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `ok=${gateway.ok && frontend.ok ? 'true' : 'false'}\n`);
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+      - name: Open or update incident issue on SLI breach
+        if: steps.evaluate.outputs.ok != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          title='[ALERT] Terminal production synthetic SLO breach'
+          number="$(gh issue list --state open --search 'Terminal production synthetic SLO breach in:title' --json number --jq '.[0].number // empty')"
+          report="$(cat /tmp/slo-report.json)"
+          body="Synthetic production monitoring detected an availability/latency breach. Railway healthchecks remain the immediate traffic gate. Current evidence:\n\n\`\`\`json\n${report}\n\`\`\`\n\nRunbook: docs/TERMINAL_ENTERPRISE_ASSURANCE.md"
+          if [[ -n "$number" ]]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
+      - name: Close active synthetic incident after recovery
+        if: steps.evaluate.outputs.ok == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          number="$(gh issue list --state open --search 'Terminal production synthetic SLO breach in:title' --json number --jq '.[0].number // empty')"
+          if [[ -n "$number" ]]; then
+            gh issue comment "$number" --body "Synthetic SLI window recovered. Evidence: \`$(tr '\n' ' ' </tmp/slo-report.json)\`"
+            gh issue close "$number" --reason completed
+          fi
+      - name: Upload SLI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terminal-slo-${{ github.run_id }}
+          path: |
+            /tmp/gateway-sli.txt
+            /tmp/frontend-sli.txt
+            /tmp/slo-report.json
+          retention-days: 30
+      - name: Fail monitor run on breach
+        if: steps.evaluate.outputs.ok != 'true'
+        run: exit 1
