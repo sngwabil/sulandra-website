@@ -220,24 +220,32 @@ jobs:
         run: |
           set -euo pipefail
           cat > /tmp/Caddyfile.ci <<'CADDY'
-          :443 {
+          localhost:443 {
             tls internal
             reverse_proxy sulandra-terminal-executor-ci:8081
           }
           CADDY
           docker run -d --name sulandra-terminal-caddy-ci \
             --network "$PROXY_NETWORK" \
-            -p 127.0.0.1:18443:443 \
+            -p 18443:443 \
             -v /tmp/Caddyfile.ci:/etc/caddy/Caddyfile:ro \
             caddy:2.10-alpine
+          proxy_ready=0
           for i in {1..30}; do
-            if curl -kfsS -H "Authorization: Bearer $EXECUTION_TOKEN" https://127.0.0.1:18443/healthz >/dev/null; then break; fi
+            if curl -kfsS -H "Authorization: Bearer $EXECUTION_TOKEN" https://localhost:18443/healthz >/dev/null; then
+              proxy_ready=1
+              break
+            fi
             sleep 1
           done
+          if [ "$proxy_ready" -ne 1 ]; then
+            docker logs sulandra-terminal-caddy-ci
+            exit 1
+          fi
 
           NODE_TLS_REJECT_UNAUTHORIZED=0 \
           TERMINAL_AUTH_TOKEN="$INTERNAL_TOKEN" \
-          TERMINAL_EXECUTION_BASE_URL=https://127.0.0.1:18443 \
+          TERMINAL_EXECUTION_BASE_URL=https://localhost:18443 \
           TERMINAL_EXECUTION_TOKEN="$EXECUTION_TOKEN" \
           TERMINAL_WS_AUTH_PROVIDER=sulandra \
           JWT_SECRET="$JWT_SECRET" \
