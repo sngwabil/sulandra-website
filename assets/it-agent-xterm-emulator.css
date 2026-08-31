@@ -3,8 +3,8 @@
 .itws-xterm-ready .itws-rt-terminal-surface,
 .itws-xterm-ready .itws-rt-direct-line{display:none!important}
 .itws-xterm-host{position:relative;min-height:390px;height:clamp(390px,52vh,720px);background:#06131d;border-top:1px solid rgba(36,211,137,.38);border-bottom:1px solid rgba(36,211,137,.26);overflow:hidden;padding:10px 8px 4px}
-.itws-xterm-pane{position:absolute;inset:10px 8px 4px;display:none;overflow:hidden}
-.itws-xterm-pane.active{display:block}
+.itws-xterm-pane{position:absolute;inset:10px 8px 4px;display:block;visibility:hidden;pointer-events:none;overflow:hidden}
+.itws-xterm-pane.active{visibility:visible;pointer-events:auto}
 .itws-xterm-pane .xterm{height:100%;padding:0 2px}
 .itws-xterm-pane .xterm-viewport{background:#06131d!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .itws-xterm-pane .xterm-screen{cursor:text}

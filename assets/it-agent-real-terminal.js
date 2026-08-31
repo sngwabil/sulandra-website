@@ -315,8 +315,18 @@
       if(session.rawOutput)return Promise.resolve(snapshotOfSession(session));
       if(session.hydrationPromise)return session.hydrationPromise;
       const pending=(async()=>{
-        const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/output?cursor=0',{cache:'no-store'});
-        const raw=String(data.data||'');
+        const outputPath='/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/output?cursor=0';
+        let data=await apiRequest(outputPath,{cache:'no-store'});
+        let raw=String(data.data||'');
+        if(!raw&&data.alive!==false&&!session.promptNudged){
+          session.promptNudged=true;
+          await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/input',{method:'POST',body:JSON.stringify({data:'\r'})});
+          for(let attempt=0;attempt<5&&!raw;attempt+=1){
+            await new Promise(resolve=>window.setTimeout(resolve,120*(attempt+1)));
+            data=await apiRequest(outputPath,{cache:'no-store'});
+            raw=String(data.data||'');
+          }
+        }
         const responseCursor=Number(data.cursor)||0;
         if(raw&&!session.rawOutput){
           session.rawOutput=raw.slice(-1_500_000);
