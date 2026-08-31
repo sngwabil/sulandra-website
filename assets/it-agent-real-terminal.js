@@ -9,6 +9,7 @@
 
   const WORKSPACE_KEY='sulandra:it-solutions:terminal-workspace';
   const MODE_KEY='sulandra:it-solutions:terminal-mode';
+  const SESSION_KEY_PREFIX='sulandra:it-solutions:terminal-sessions:';
   const sessions=[];
   let workspaceId='';
   let activeId='';
@@ -17,6 +18,7 @@
   let terminalRoot=null;
   let workspaceCreationPromise=null;
   let terminalCreationPromise=null;
+  let startupPromise=null;
   let terminalRetryTimer=0;
   let terminalRetryAttempt=0;
 
@@ -27,12 +29,15 @@
     .replace(/\x1B[()][A-Z0-2]/g,'')
     .replace(/\r(?!\n)/g,'\n')
     .replace(/\u0000/g,'');
-  const xtermActive=()=>Boolean(window.__SULANDRA_XTERM_PRODUCTION_STACK_V2__);
+  const xtermActive=sessionId=>{
+    const ready=window.__SULANDRA_XTERM_WSS_READY_SESSIONS__;
+    return Boolean(sessionId&&ready&&typeof ready.has==='function'&&ready.has(sessionId));
+  };
 
-  const authToken=()=>sessionStorage.getItem('sulandra:employee:access-token')
-    ||localStorage.getItem('sulandra:employee:access-token')
-    ||sessionStorage.getItem('sulandra:admin:access-token')
+  const authToken=()=>sessionStorage.getItem('sulandra:admin:access-token')
     ||localStorage.getItem('sulandra:admin:access-token')
+    ||sessionStorage.getItem('sulandra:employee:access-token')
+    ||localStorage.getItem('sulandra:employee:access-token')
     ||localStorage.getItem('token')||'';
 
   const retryAfterMs=response=>{
@@ -62,6 +67,21 @@
 
   const sessionById=id=>sessions.find(session=>session.id===id)||null;
   const activeSession=()=>sessionById(activeId);
+  const sessionStorageKey=id=>id?SESSION_KEY_PREFIX+id:'';
+  const readStoredSessions=id=>{
+    if(!id)return {ids:[],activeId:''};
+    try{
+      const value=JSON.parse(sessionStorage.getItem(sessionStorageKey(id))||'{}');
+      const ids=Array.isArray(value?.ids)?value.ids.map(String).filter(Boolean).slice(0,12):[];
+      return {ids:[...new Set(ids)],activeId:String(value?.activeId||'')};
+    }catch{return {ids:[],activeId:''}}
+  };
+  const persistSessions=()=>{
+    if(!workspaceId)return;
+    const ids=sessions.filter(session=>session.alive!==false).map(session=>session.id).filter(Boolean).slice(0,12);
+    try{sessionStorage.setItem(sessionStorageKey(workspaceId),JSON.stringify({ids,activeId:ids.includes(activeId)?activeId:(ids[0]||'')}))}catch{}
+  };
+  const clearStoredSessions=id=>{if(!id)return;try{sessionStorage.removeItem(sessionStorageKey(id))}catch{}};
 
   const setWorkerState=(online,message='')=>{
     workerOnline=Boolean(online);
@@ -78,7 +98,7 @@
     root.innerHTML=sessions.map((session,index)=>`<button type="button" class="itws-rt-tab ${session.id===activeId?'active':''} ${session.alive?'alive':''}" data-terminal-id="${escapeHtml(session.id)}"><span class="itws-rt-tab-status"></span><span>Terminal ${index+1}</span><span class="itws-rt-tab-close" data-close-terminal="${escapeHtml(session.id)}" title="Close terminal">×</span></button>`).join('')+'<button type="button" class="itws-rt-new-tab" id="itwsRtNewTab" title="New terminal" aria-label="New terminal">＋</button>';
     root.querySelectorAll('[data-terminal-id]').forEach(button=>button.addEventListener('click',event=>{
       if(event.target instanceof Element&&event.target.closest('[data-close-terminal]'))return;
-      activeId=button.dataset.terminalId||'';renderTabs();renderScreen();terminalRoot?.querySelector('#itwsRtCommand')?.focus();
+      activeId=button.dataset.terminalId||'';persistSessions();renderTabs();renderScreen();terminalRoot?.querySelector('#itwsRtCommand')?.focus();
     }));
     root.querySelectorAll('[data-close-terminal]').forEach(button=>button.addEventListener('click',event=>{
       event.preventDefault();event.stopPropagation();void closeTerminal(button.dataset.closeTerminal||'');
@@ -107,7 +127,9 @@
   };
 
   const clearStoredWorkspace=()=>{
+    const previous=workspaceId;
     workspaceId='';
+    if(previous)clearStoredSessions(previous);
     try{sessionStorage.removeItem(WORKSPACE_KEY)}catch{}
   };
 
@@ -134,9 +156,39 @@
     finally{if(workspaceCreationPromise===pending)workspaceCreationPromise=null}
   };
 
+  const removeLocalSession=id=>{
+    const session=sessionById(id);if(!session)return;
+    const index=sessions.indexOf(session);if(index>=0)sessions.splice(index,1);
+    if(activeId===id)activeId=sessions[Math.max(0,index-1)]?.id||sessions[0]?.id||'';
+    persistSessions();renderTabs();renderScreen();
+  };
+
+  const restoreStoredSessions=async()=>{
+    const currentWorkspace=await ensureWorkspace();
+    const saved=readStoredSessions(currentWorkspace);
+    if(!saved.ids.length)return 0;
+    for(const id of saved.ids){
+      if(sessionById(id))continue;
+      try{
+        const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(id)+'/output?cursor=0');
+        const session={id,cursor:Number(data.cursor)||0,output:stripAnsi(data.data||''),alive:data.alive!==false,polling:false};
+        if(session.alive)sessions.push(session);
+      }catch(error){
+        if(Number(error?.status)!==404&&Number(error?.status)!==410)console.warn('[Sulandra Terminal] session restore failed',String(error?.message||error));
+      }
+    }
+    activeId=sessionById(saved.activeId)?.id||sessions[0]?.id||'';
+    persistSessions();renderTabs();renderScreen();
+    return sessions.length;
+  };
+
   const scheduleTerminalRetry=error=>{
     if(terminalRetryTimer||sessions.length)return;
-    terminalRetryAttempt=Math.min(5,terminalRetryAttempt+1);
+    if(terminalRetryAttempt>=5){
+      appendSystem('Terminal session capacity is still unavailable. Existing disconnected sessions will be reaped automatically; Reset workspace remains available if you want to discard that workspace.');
+      return;
+    }
+    terminalRetryAttempt+=1;
     const serverDelay=Math.max(0,Number(error?.retryAfterMs)||0);
     const backoff=Math.min(15_000,750*Math.pow(2,terminalRetryAttempt-1));
     const delay=Math.max(serverDelay,backoff);
@@ -158,18 +210,19 @@
         if(!session.id)throw new Error('Terminal worker did not return a session ID');
         if(!sessionById(session.id))sessions.push(session);
         activeId=session.id;
+        persistSessions();
         terminalRetryAttempt=0;
         if(terminalRetryTimer){window.clearTimeout(terminalRetryTimer);terminalRetryTimer=0}
         setWorkerState(true);
         renderTabs();renderScreen();
-        if(!xtermActive())await pollSession(session);
+        if(!xtermActive(session.id))await pollSession(session);
         terminalRoot?.querySelector('#itwsRtCommand')?.focus();
         return session;
       }catch(error){
         const message=error?.message||'Unable to start terminal';
         setWorkerState(false,message);
         appendSystem(message);
-        if(Number(error?.status)===429||/too many|rate.?limit/i.test(message))scheduleTerminalRetry(error);
+        if(Number(error?.status)===429||/too many|rate.?limit|limit reached/i.test(message))scheduleTerminalRetry(error);
         throw error;
       }
     })();
@@ -179,17 +232,26 @@
     finally{if(terminalCreationPromise===pending)terminalCreationPromise=null}
   };
 
-  const closeTerminal=async(id)=>{
+  const ensureTerminalStartup=()=>{
+    if(startupPromise)return startupPromise;
+    const pending=(async()=>{
+      try{
+        const restored=await restoreStoredSessions();
+        if(!restored)await createTerminal();
+      }catch(error){setWorkerState(false,error?.message||'Unable to restore terminal')}
+    })();
+    startupPromise=pending;
+    return pending.finally(()=>{if(startupPromise===pending)startupPromise=null});
+  };
+
+  const closeTerminal=async id=>{
     const session=sessionById(id);if(!session)return;
     try{await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(id),{method:'DELETE'})}catch{}
-    const index=sessions.indexOf(session);if(index>=0)sessions.splice(index,1);
-    if(activeId===id)activeId=sessions[Math.max(0,index-1)]?.id||sessions[0]?.id||'';
-    renderTabs();renderScreen();
+    removeLocalSession(id);
   };
 
   const pollSession=async session=>{
-    if(xtermActive())return;
-    if(!session||session.polling)return;
+    if(!session||session.polling||xtermActive(session.id))return;
     session.polling=true;
     try{
       const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/output?cursor='+encodeURIComponent(String(session.cursor||0)));
@@ -200,24 +262,17 @@
       if(data.exitCode!==null&&data.exitCode!==undefined)session.exitCode=data.exitCode;
       setWorkerState(true);
     }catch(error){
-      if(/not found/i.test(String(error.message||'')))session.alive=false;
-      else setWorkerState(false,error.message||'Terminal connection interrupted');
+      if(Number(error?.status)===404||Number(error?.status)===410||/not found/i.test(String(error.message||''))){removeLocalSession(session.id);return}
+      setWorkerState(false,error.message||'Terminal connection interrupted');
     }finally{session.polling=false;renderTabs();if(session.id===activeId)renderScreen()}
   };
 
-  const pollAll=()=>{
-    if(xtermActive()){
-      if(pollTimer)window.clearInterval(pollTimer);
-      pollTimer=0;
-      return;
-    }
-    sessions.filter(session=>session.alive).forEach(session=>void pollSession(session));
-  };
+  const pollAll=()=>sessions.filter(session=>session.alive&&!xtermActive(session.id)).forEach(session=>void pollSession(session));
 
   const sendRaw=async data=>{
     const session=activeSession();if(!session?.alive)return;
     await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/input',{method:'POST',body:JSON.stringify({data})});
-    if(!xtermActive())window.setTimeout(()=>void pollSession(session),80);
+    if(!xtermActive(session.id))window.setTimeout(()=>void pollSession(session),80);
   };
 
   const runCommand=async()=>{
@@ -250,13 +305,15 @@
     if(!window.confirm('Reset this isolated coding workspace? All uncommitted terminal files and terminal sessions in this workspace will be deleted. Production is not affected.'))return;
     if(terminalRetryTimer){window.clearTimeout(terminalRetryTimer);terminalRetryTimer=0}
     terminalRetryAttempt=0;
-    for(const session of [...sessions])await closeTerminal(session.id);
     const current=workspaceId;
+    for(const session of [...sessions])await closeTerminal(session.id);
     if(current)try{await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(current),{method:'DELETE'})}catch{}
+    clearStoredSessions(current);
     clearStoredWorkspace();
     workspaceCreationPromise=null;
+    startupPromise=null;
     appendSystem('Isolated workspace reset.');
-    await createTerminal();
+    await ensureTerminalStartup();
   };
 
   const openAgent=()=>{
@@ -281,7 +338,7 @@
     terminalRoot?.querySelector('#itwsRtShell')?.classList.toggle('hidden',selected!=='shell');
     terminalRoot?.querySelector('#itwsRtAi')?.classList.toggle('hidden',selected!=='ai');
     try{sessionStorage.setItem(MODE_KEY,selected)}catch{}
-    if(selected==='shell'&&!sessions.length)void createTerminal();
+    if(selected==='shell'&&workerOnline&&!sessions.length)void ensureTerminalStartup();
   };
 
   const installMarkup=terminal=>{
@@ -326,6 +383,7 @@
     terminalRoot.querySelector('#itwsRtSendAi')?.addEventListener('click',sendNaturalLanguage);
     terminalRoot.querySelector('#itwsRtAiInput')?.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();sendNaturalLanguage()}});
     terminalRoot.querySelectorAll('[data-ai-prompt]').forEach(button=>button.addEventListener('click',()=>{const input=terminalRoot.querySelector('#itwsRtAiInput');if(input){input.value=button.dataset.aiPrompt||'';input.focus()}}));
+    window.addEventListener('sulandra:xterm-wss-state',()=>pollAll());
   };
 
   const checkWorker=async()=>{
@@ -343,9 +401,10 @@
     const healthy=await checkWorker();
     let mode='shell';try{mode=sessionStorage.getItem(MODE_KEY)||'shell'}catch{}
     setMode(mode);
-    if(healthy&&mode!=='ai'&&!sessions.length)void createTerminal();
-    if(!xtermActive())pollTimer=window.setInterval(pollAll,350);
+    if(healthy&&mode!=='ai')void ensureTerminalStartup();
+    pollTimer=window.setInterval(pollAll,500);
     window.addEventListener('beforeunload',()=>{
+      persistSessions();
       if(pollTimer)window.clearInterval(pollTimer);
       if(terminalRetryTimer)window.clearTimeout(terminalRetryTimer);
     },{once:true});
