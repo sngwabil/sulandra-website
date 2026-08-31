@@ -70,8 +70,15 @@
   };
   const writeRestOutput=(state,data,reset=false)=>{
     if(!state||state.connected||data===undefined||data===null)return;
+    const text=String(data||'');
     if(reset)state.term.reset();
-    if(String(data))state.term.write(String(data));
+    if(!text)return;
+    state.term.write(text,()=>requestAnimationFrame(()=>{
+      if(state.disposed)return;
+      try{state.term.refresh(0,Math.max(0,state.term.rows-1))}catch{}
+      fitState(state);
+      if(directMode()&&state.id===activeSessionId())state.term.focus();
+    }));
   };
   const hydrateState=async state=>{
     if(!state||state.disposed||state.connected)return;
@@ -81,10 +88,13 @@
       catch(error){renderStatus(state,error?.message||'REST PTY hydration failed',true);return}
     }
     if(state.disposed||state.connected)return;
+    state.restReady=Boolean(snapshot&&snapshot.alive!==false);
     if(snapshot?.data){
       writeRestOutput(state,snapshot.data,true);
       state.hydrated=true;
       renderStatus(state,'REST PTY active · WSS reconnecting');
+    }else if(state.restReady){
+      renderStatus(state,'REST PTY connected · requesting shell prompt');
     }
     if(directMode()&&state.id===activeSessionId())requestAnimationFrame(()=>state.term.focus());
   };
@@ -139,7 +149,8 @@
     if(!token){setTransportReady(state,false);renderStatus(state,'Authentication required',true);scheduleReconnect(state,5_000);return}
     if(state.ws&&(state.ws.readyState===WebSocket.OPEN||state.ws.readyState===WebSocket.CONNECTING))return;
     setTransportReady(state,false);
-    renderStatus(state,state.reconnects?'WSS reconnecting…':'WSS connecting…');
+    const fallbackReady=state.hydrated||state.restReady;
+    renderStatus(state,state.reconnects?(fallbackReady?'REST PTY active · WSS reconnecting…':'WSS reconnecting…'):(fallbackReady?'REST PTY active · WSS connecting…':'WSS connecting…'));
     let ws;
     try{ws=new WebSocket(`${WSS_ORIGIN}/ws/sessions/${encodeURIComponent(state.id)}`,['sulandra-terminal.v2','auth.'+base64url(token)])}
     catch(error){renderStatus(state,'WSS unavailable',true);scheduleReconnect(state);return}
@@ -149,7 +160,7 @@
       if(state.disposed||state.ws!==ws||ws.readyState!==WebSocket.CONNECTING)return;
       state.connectTimer=0;
       state.ws=null;
-      renderStatus(state,state.hydrated?'REST PTY active · WSS timed out':'WSS timed out · REST fallback active',true);
+      renderStatus(state,state.hydrated||state.restReady?'REST PTY active · WSS timed out':'WSS timed out · REST fallback active',true);
       try{ws.close()}catch{}
       scheduleReconnect(state);
     },8_000);
@@ -185,6 +196,7 @@
   const makeState=id=>{
     if(states.has(id))return states.get(id);
     const pane=document.createElement('div');pane.className='itws-xterm-pane';pane.dataset.sessionId=id;
+    if(id===activeSessionId())pane.classList.add('active');
     const badge=document.createElement('span');badge.className='itws-xterm-connection';badge.textContent='WSS connecting…';pane.appendChild(badge);host.appendChild(pane);
     const term=new Runtime.Terminal({
       cursorBlink:true,cursorStyle:'block',cursorInactiveStyle:'outline',scrollback:25_000,allowTransparency:false,convertEol:false,
@@ -192,7 +204,7 @@
       scrollOnUserInput:true,rightClickSelectsWord:true,macOptionIsMeta:true,allowProposedApi:false,
       theme:{background:'#06131d',foreground:'#d7e8ef',cursor:'#50e39a',cursorAccent:'#06131d',selectionBackground:'#245774',black:'#07151f',red:'#ff6b6b',green:'#50e39a',yellow:'#f3c969',blue:'#61a9ff',magenta:'#c792ea',cyan:'#56d4dd',white:'#e8f3f7',brightBlack:'#6f8794',brightRed:'#ff8c8c',brightGreen:'#75efb2',brightYellow:'#ffe08a',brightBlue:'#8cc3ff',brightMagenta:'#d9a7f2',brightCyan:'#8ae7ec',brightWhite:'#ffffff'}
     });
-    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,hydrated:false,reconnects:0,reconnectTimer:0,connectTimer:0,disposed:false};
+    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,hydrated:false,restReady:false,reconnects:0,reconnectTimer:0,connectTimer:0,disposed:false};
     states.set(id,state);loadCapabilities(state);term.open(pane);
     const snapshot=restBridge()?.snapshot?.(id);
     if(snapshot?.data){writeRestOutput(state,snapshot.data,true);state.hydrated=true}
