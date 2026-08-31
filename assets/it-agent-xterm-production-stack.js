@@ -57,14 +57,16 @@
     updateFallbackClass();
     if(changed)window.dispatchEvent(new CustomEvent('sulandra:xterm-wss-state',{detail:{sessionId:state.id,connected:next}}));
   };
-  const focusState=state=>{
+  const focusState=(state,rearm=false)=>{
     if(!state||state.disposed||!directMode()||state.id!==activeSessionId())return;
     requestAnimationFrame(()=>{
       if(state.disposed||state.id!==activeSessionId()||!directMode())return;
       try{
-        /* Re-arming the option restarts xterm's cursor timer after a DOM restore. */
-        state.term.options.cursorBlink=false;
-        state.term.options.cursorBlink=true;
+        if(rearm){
+          /* Chromium can leave the DOM cursor timer stale after a restored pane. */
+          state.term.options.cursorBlink=false;
+          state.term.options.cursorBlink=true;
+        }
         state.term.focus();
         state.term.refresh(0,Math.max(0,state.term.rows-1));
       }catch{}
@@ -75,7 +77,7 @@
     state.inputReady=true;
     state.awaitingSnapshot=false;
     if(state.snapshotTimer){clearTimeout(state.snapshotTimer);state.snapshotTimer=0}
-    focusState(state);
+    focusState(state,true);
   };
 
   const sendBinary=(state,data)=>{
@@ -315,8 +317,14 @@
     const tabs=[...root.querySelectorAll('#itwsRtTabs .itws-rt-tab[data-terminal-id]')];const ids=new Set(tabs.map(tab=>tab.dataset.terminalId).filter(Boolean));
     ids.forEach(id=>makeState(id));[...states.values()].forEach(state=>{if(!ids.has(state.id))disposeState(state)});
     const active=activeSessionId();states.forEach(state=>{
-      const on=state.id===active;state.pane.classList.toggle('active',on);state.term.options.disableStdin=!on||!directMode();
-      if(on)requestAnimationFrame(()=>{fitState(state);if(state.inputReady)focusState(state)});
+      const on=state.id===active;
+      const wasOn=state.pane.classList.contains('active');
+      state.pane.classList.toggle('active',on);
+      state.term.options.disableStdin=!on||!directMode();
+      if(on){
+        requestAnimationFrame(()=>fitState(state));
+        if(!wasOn&&state.inputReady)focusState(state,true);
+      }
     });
     updateFallbackClass();
     const hint=root.querySelector('#itwsRtInputHint');if(hint)hint.textContent=states.get(active)?.connected?(directMode()?'Native WSS PTY: type at the live cursor; tmux preserves the shell across reconnects.':'Command box sends complete commands; live WSS output remains above.'):(directMode()?'WSS is reconnecting; xterm remains interactive through the authenticated REST PTY bridge.':'WSS is reconnecting; Command box output continues in xterm through the REST PTY bridge.');
@@ -341,11 +349,11 @@
       if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==='f'&&root?.contains(document.activeElement)){event.preventDefault();search()}
     },true);
     root.querySelector('#itwsRtCopy')?.addEventListener('click',event=>{const state=activeState();if(!state?.term.hasSelection())return;event.preventDefault();event.stopImmediatePropagation();void copySelection()},true);
-    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();if(state){state.term.scrollToBottom();focusState(state)}} ,true);
+    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();if(state){state.term.scrollToBottom();focusState(state,false)}} ,true);
     root.querySelectorAll('[data-rt-input-mode]').forEach(button=>button.addEventListener('click',()=>setTimeout(sync,60)));
     root.querySelector('#itwsRtTabs')?.addEventListener('click',()=>setTimeout(sync,50));
-    host.addEventListener('pointerdown',()=>{const state=activeState();if(state&&state.inputReady&&directMode())setTimeout(()=>focusState(state),0)});
-    window.addEventListener('focus',()=>{const state=activeState();if(state?.inputReady)focusState(state)});
+    host.addEventListener('pointerdown',()=>{const state=activeState();if(state&&state.inputReady&&directMode())setTimeout(()=>focusState(state,false),0)});
+    window.addEventListener('focus',()=>{const state=activeState();if(state?.inputReady)focusState(state,true)});
     new MutationObserver(sync).observe(root.querySelector('#itwsRtTabs'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});sync();syncTimer=setInterval(sync,500);
   };
 
