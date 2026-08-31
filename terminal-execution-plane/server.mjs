@@ -412,45 +412,31 @@ server.on('upgrade', async (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
-wss.on('connection', async (gateway, req) => {
+wss.on('connection', (gateway, req) => {
   const session = req.sulandraSession;
   session.connections += 1;
   session.disconnectedAt = null;
   session.lastUsedAt = now();
+
   const pendingFrames = [];
   let pendingBytes = 0;
   const maxPendingBytes = 65_536;
-  let agent;
-  try {
-    const url = new URL(await agentUrl(session, '/ws'));
-    url.protocol = 'ws:';
-    agent = new WebSocket(url.toString(), ['sulandra-session.v1'], {
-      headers: { 'x-sulandra-session-token': session.agentToken },
-      handshakeTimeout: 10_000,
-      maxPayload: 1_048_576,
-    });
-  } catch {
-    gateway.close(1011, 'Session agent unavailable');
-    return;
-  }
+  let agent = null;
+  let gatewayClosed = false;
 
   const close = (code = 1011, reason = 'Terminal session proxy closed') => {
     if (gateway.readyState === WebSocket.OPEN || gateway.readyState === WebSocket.CONNECTING) {
       try { gateway.close(code, reason); } catch {}
     }
-    if (agent.readyState === WebSocket.OPEN || agent.readyState === WebSocket.CONNECTING) {
+    if (agent && (agent.readyState === WebSocket.OPEN || agent.readyState === WebSocket.CONNECTING)) {
       try { agent.close(code, reason); } catch {}
     }
   };
 
-  agent.on('open', () => {
-    for (const frame of pendingFrames.splice(0)) agent.send(frame.data, { binary: frame.isBinary });
-    pendingBytes = 0;
-  });
   gateway.on('message', (data, isBinary) => {
     session.lastUsedAt = now();
     const bytes = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
-    if (agent.readyState === WebSocket.OPEN) {
+    if (agent?.readyState === WebSocket.OPEN) {
       agent.send(data, { binary: isBinary });
       return;
     }
@@ -461,24 +447,54 @@ wss.on('connection', async (gateway, req) => {
     pendingFrames.push({ data: isBinary ? Buffer.from(data) : String(data), isBinary });
     pendingBytes += bytes;
   });
-  agent.on('message', (data, isBinary) => {
-    session.lastUsedAt = now();
-    if (gateway.readyState === WebSocket.OPEN) gateway.send(data, { binary: isBinary });
-  });
-  agent.on('close', (code, reason) => {
-    pendingFrames.length = 0;
-    pendingBytes = 0;
-    if (gateway.readyState === WebSocket.OPEN) gateway.close(code >= 1000 && code <= 4999 ? code : 1011, reason.toString().slice(0, 120));
-  });
-  agent.on('error', () => close(1011, 'Session agent WSS error'));
+
   gateway.on('error', () => close(1011, 'Gateway WSS error'));
   gateway.on('close', () => {
+    gatewayClosed = true;
     pendingFrames.length = 0;
     pendingBytes = 0;
-    if (agent.readyState === WebSocket.OPEN || agent.readyState === WebSocket.CONNECTING) agent.close(1000, 'Gateway disconnected');
+    if (agent && (agent.readyState === WebSocket.OPEN || agent.readyState === WebSocket.CONNECTING)) {
+      agent.close(1000, 'Gateway disconnected');
+    }
     session.connections = Math.max(0, session.connections - 1);
     if (session.connections === 0) session.disconnectedAt = now();
   });
+
+  void (async () => {
+    try {
+      const url = new URL(await agentUrl(session, '/ws'));
+      if (gatewayClosed || gateway.readyState !== WebSocket.OPEN) return;
+      url.protocol = 'ws:';
+      agent = new WebSocket(url.toString(), ['sulandra-session.v1'], {
+        headers: { 'x-sulandra-session-token': session.agentToken },
+        handshakeTimeout: 10_000,
+        maxPayload: 1_048_576,
+      });
+
+      agent.on('open', () => {
+        if (gatewayClosed || gateway.readyState !== WebSocket.OPEN) {
+          try { agent.close(1000, 'Gateway disconnected before session agent opened'); } catch {}
+          return;
+        }
+        for (const frame of pendingFrames.splice(0)) agent.send(frame.data, { binary: frame.isBinary });
+        pendingBytes = 0;
+      });
+      agent.on('message', (data, isBinary) => {
+        session.lastUsedAt = now();
+        if (gateway.readyState === WebSocket.OPEN) gateway.send(data, { binary: isBinary });
+      });
+      agent.on('close', (code, reason) => {
+        pendingFrames.length = 0;
+        pendingBytes = 0;
+        if (gateway.readyState === WebSocket.OPEN) {
+          gateway.close(code >= 1000 && code <= 4999 ? code : 1011, reason.toString().slice(0, 120));
+        }
+      });
+      agent.on('error', () => close(1011, 'Session agent WSS error'));
+    } catch {
+      close(1011, 'Session agent unavailable');
+    }
+  })();
 });
 
 const reaper = setInterval(async () => {
