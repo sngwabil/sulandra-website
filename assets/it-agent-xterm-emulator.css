@@ -1,4 +1,4 @@
-/* IT_AGENT_XTERM_EMULATOR_V2
+/* IT_AGENT_XTERM_EMULATOR_V1
    Browser terminal presentation for the isolated Sulandra PTY worker. */
 .itws-xterm-ready .itws-rt-terminal-surface,
 .itws-xterm-ready .itws-rt-direct-line{display:none!important}
@@ -8,16 +8,14 @@
 .itws-xterm-pane .xterm{height:100%;padding:0 2px}
 .itws-xterm-pane .xterm-viewport{background:#06131d!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .itws-xterm-pane .xterm-screen{cursor:text}
-/* The selected Direct Typing terminal owns the live caret visually even when
-   Chrome moves DOM focus to a tab/button elsewhere in the workspace. xterm's
-   default blink rule is focus-gated, so keep the active terminal cursor filled
-   and animated independently of .xterm.focus. Hidden terminals remain inert. */
+/* xterm repaints the cursor glyph during normal typing. Animate the stable
+   cursor layer instead so keystroke redraws, focus changes, and terminal-tab
+   switches cannot reset the selected In-Terminal caret blink. */
 @keyframes sulandra-xterm-cursor-blink{0%,45%{opacity:1}50%,95%{opacity:0}100%{opacity:1}}
-.itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm .xterm-cursor-layer .xterm-cursor{animation:sulandra-xterm-cursor-blink 1.1s step-end infinite!important}
+.itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm-cursor-layer{display:block!important;visibility:visible!important;animation:sulandra-xterm-cursor-blink 1.1s step-end infinite!important;animation-play-state:running!important;will-change:opacity}
+.itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm-cursor-layer .xterm-cursor{visibility:visible!important;opacity:1!important;animation:none!important}
 .itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm:not(.focus) .xterm-cursor-layer .xterm-cursor{background-color:#50e39a!important;border-color:#50e39a!important}
-.itws-xterm-pane:not(.active) .xterm-cursor-layer .xterm-cursor{animation:none!important}
 .itws-xterm-ready .itws-rt-input-switch{border-top:1px solid rgba(69,134,169,.28);background:#071925}
-.itws-xterm-ready [data-rt-input-mode="direct"]::first-letter{font-size:0}
 .itws-xterm-ready.itws-rt-direct-mode .itws-rt-commandbar{display:none!important}
 .itws-xterm-ready.itws-rt-box-mode .itws-rt-commandbar{display:flex!important}
 .itws-xterm-ready .itws-rt-input-hint{color:#86a8bb}
