@@ -44,10 +44,21 @@ jobs:
 
       - name: Configure SSH
         if: steps.gate.outputs.enabled == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           install -d -m 0700 ~/.ssh
-          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/terminal-vps
-          chmod 0600 ~/.ssh/terminal-vps
+          KEY_FILE="$HOME/.ssh/terminal-vps"
+          if grep -q 'BEGIN OPENSSH PRIVATE KEY' <<<"$VPS_SSH_KEY"; then
+            printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > "$KEY_FILE"
+          else
+            printf '%s' "$VPS_SSH_KEY" | tr -d '\r\n ' | base64 --decode > "$KEY_FILE"
+          fi
+          chmod 0600 "$KEY_FILE"
+          if ! ssh-keygen -y -f "$KEY_FILE" >/dev/null 2>&1; then
+            echo "::error::TERMINAL_VPS_SSH_KEY is not a valid OpenSSH private key. Store either the full multiline private key or its base64 encoding."
+            exit 1
+          fi
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
 
       - name: Package execution-plane release
