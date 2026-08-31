@@ -33,6 +33,10 @@
     const ready=window.__SULANDRA_XTERM_WSS_READY_SESSIONS__;
     return Boolean(sessionId&&ready&&typeof ready.has==='function'&&ready.has(sessionId));
   };
+  const emitRestOutput=(sessionId,data,reset=false)=>{
+    if(!sessionId)return;
+    window.dispatchEvent(new CustomEvent('sulandra:terminal-rest-output',{detail:{sessionId:String(sessionId),data:String(data||''),reset:Boolean(reset)}}));
+  };
 
   const authToken=()=>sessionStorage.getItem('sulandra:admin:access-token')
     ||localStorage.getItem('sulandra:admin:access-token')
@@ -119,10 +123,22 @@
   };
 
   const appendOutput=(session,text,{reset=false}={})=>{
-    const clean=stripAnsi(text);
-    if(reset)session.output=clean;
-    else session.output+=clean;
+    const raw=String(text||'');
+    const clean=stripAnsi(raw);
+    let bridgeReset=Boolean(reset);
+    if(reset){
+      session.output=clean;
+      session.rawOutput=raw;
+    }else{
+      session.output+=clean;
+      session.rawOutput=(session.rawOutput||'')+raw;
+    }
     if(session.output.length>1_500_000)session.output=session.output.slice(-1_500_000);
+    if(session.rawOutput.length>1_500_000){
+      session.rawOutput=session.rawOutput.slice(-1_500_000);
+      bridgeReset=true;
+    }
+    emitRestOutput(session.id,bridgeReset?session.rawOutput:raw,bridgeReset);
     if(session.id===activeId)renderScreen();
   };
 
@@ -171,8 +187,11 @@
       if(sessionById(id))continue;
       try{
         const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(id)+'/output?cursor=0');
-        const session={id,cursor:Number(data.cursor)||0,output:stripAnsi(data.data||''),alive:data.alive!==false,polling:false};
-        if(session.alive)sessions.push(session);
+        const session={id,cursor:Number(data.cursor)||0,output:'',rawOutput:'',alive:data.alive!==false,polling:false};
+        if(session.alive){
+          sessions.push(session);
+          appendOutput(session,data.data||'',{reset:true});
+        }
       }catch(error){
         if(Number(error?.status)!==404&&Number(error?.status)!==410)console.warn('[Sulandra Terminal] session restore failed',String(error?.message||error));
       }
@@ -206,7 +225,7 @@
         setWorkerState(true,'Starting terminal…');
         const currentWorkspace=await ensureWorkspace();
         const data=await apiRequest('/api/it-solutions/terminal/workspaces/'+encodeURIComponent(currentWorkspace)+'/sessions',{method:'POST',body:JSON.stringify({cols:120,rows:34})});
-        const session={id:String(data.sessionId||''),cursor:0,output:'',alive:true,polling:false};
+        const session={id:String(data.sessionId||''),cursor:0,output:'',rawOutput:'',alive:true,polling:false};
         if(!session.id)throw new Error('Terminal worker did not return a session ID');
         if(!sessionById(session.id))sessions.push(session);
         activeId=session.id;
@@ -255,8 +274,8 @@
     session.polling=true;
     try{
       const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/output?cursor='+encodeURIComponent(String(session.cursor||0)));
-      if(data.reset)session.output='';
-      if(data.data)appendOutput(session,data.data,{reset:false});
+      if(data.data)appendOutput(session,data.data,{reset:Boolean(data.reset)});
+      else if(data.reset)appendOutput(session,'',{reset:true});
       session.cursor=Number(data.cursor)||session.cursor||0;
       session.alive=data.alive!==false;
       if(data.exitCode!==null&&data.exitCode!==undefined)session.exitCode=data.exitCode;
@@ -269,10 +288,18 @@
 
   const pollAll=()=>sessions.filter(session=>session.alive&&!xtermActive(session.id)).forEach(session=>void pollSession(session));
 
-  const sendRaw=async data=>{
-    const session=activeSession();if(!session?.alive)return;
-    await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/input',{method:'POST',body:JSON.stringify({data})});
+  const sendRawToSession=async(sessionId,data)=>{
+    const session=sessionById(String(sessionId||''));if(!session?.alive)return;
+    await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/input',{method:'POST',body:JSON.stringify({data:String(data??'')})});
     if(!xtermActive(session.id))window.setTimeout(()=>void pollSession(session),80);
+  };
+  const sendRaw=data=>sendRawToSession(activeId,data);
+  window.__SULANDRA_TERMINAL_REST_BRIDGE__={
+    sendInput:(sessionId,data)=>sendRawToSession(sessionId,data),
+    snapshot:sessionId=>{
+      const session=sessionById(String(sessionId||''));
+      return session?{data:String(session.rawOutput||''),alive:session.alive!==false,cursor:Number(session.cursor)||0}:null;
+    },
   };
 
   const runCommand=async()=>{
