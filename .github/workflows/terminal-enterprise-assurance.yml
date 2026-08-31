@@ -1,0 +1,225 @@
+name: Terminal Enterprise Assurance
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.coding-terminal
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
+      - coding-terminal-worker/**
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - scripts/install-terminal-security-audit.mjs
+      - scripts/verify-independent-pentest-attestation.mjs
+      - security/terminal/**
+      - load/**
+      - docs/TERMINAL_ENTERPRISE_ASSURANCE.md
+      - .github/dependabot.yml
+      - .github/workflows/terminal-enterprise-assurance.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.coding-terminal
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
+      - coding-terminal-worker/**
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - scripts/install-terminal-security-audit.mjs
+      - scripts/verify-independent-pentest-attestation.mjs
+      - security/terminal/**
+      - load/**
+      - docs/TERMINAL_ENTERPRISE_ASSURANCE.md
+      - .github/dependabot.yml
+      - .github/workflows/terminal-enterprise-assurance.yml
+  schedule:
+    - cron: '23 8 * * 2'
+    - cron: '41 9 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: terminal-assurance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-controls:
+    name: Verify assurance controls
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate security-governance source
+        run: |
+          set -euo pipefail
+          node --check scripts/install-terminal-security-audit.mjs
+          node --check scripts/verify-independent-pentest-attestation.mjs
+          node scripts/verify-independent-pentest-attestation.mjs security/terminal/pentest-attestation.example.json --max-age-days=3650
+          test -s docs/TERMINAL_ENTERPRISE_ASSURANCE.md
+          test -s load/terminal-gateway.k6.js
+          grep -q '2190' scripts/install-terminal-security-audit.mjs
+          grep -q 'crypto.createHmac' scripts/install-terminal-security-audit.mjs
+          grep -q 'terminal keystrokes' scripts/install-terminal-security-audit.mjs
+          grep -q 'package-ecosystem: docker' .github/dependabot.yml
+          grep -q 'package-ecosystem: github-actions' .github/dependabot.yml
+
+  cve-governance:
+    name: Build and scan terminal images for fixable Critical CVEs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production terminal images
+        run: |
+          set -euo pipefail
+          docker build -f Dockerfile.terminal-session -t sulandra-terminal-session:assurance .
+          docker build -f Dockerfile.terminal-executor -t sulandra-terminal-executor:assurance .
+          docker build -f Dockerfile.coding-terminal -t sulandra-terminal-gateway:assurance .
+      - name: Scan Critical fixable vulnerabilities
+        run: |
+          set -euo pipefail
+          for image in sulandra-terminal-session:assurance sulandra-terminal-executor:assurance sulandra-terminal-gateway:assurance; do
+            echo "===== Critical CVE gate: $image ====="
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.72.0 image \
+              --scanners vuln \
+              --ignore-unfixed \
+              --severity CRITICAL \
+              --exit-code 1 \
+              --no-progress \
+              "$image"
+          done
+      - name: Produce High/Critical evidence reports
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p security-reports
+          for image in sulandra-terminal-session:assurance sulandra-terminal-executor:assurance sulandra-terminal-gateway:assurance; do
+            safe="$(printf '%s' "$image" | tr '/:' '__')"
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$PWD/security-reports:/reports" \
+              aquasec/trivy:0.72.0 image \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --format json \
+              --output "/reports/${safe}.json" \
+              --no-progress \
+              "$image" || true
+          done
+      - name: Upload CVE evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terminal-cve-evidence-${{ github.run_id }}
+          path: security-reports/
+          retention-days: 90
+
+  sustained-load:
+    name: Sustained multi-user gateway load gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build gateway image
+        run: docker build -f Dockerfile.coding-terminal -t sulandra-terminal-gateway:load .
+      - name: Start isolated gateway
+        run: |
+          set -euo pipefail
+          execution_token="$(printf 'load-execution-%s-%s-load-execution' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT")"
+          jwt_secret="$(printf 'load-gateway-%s-%s-load-gateway-secret' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT")"
+          docker run -d --name sulandra-terminal-gateway-load \
+            -p 127.0.0.1:18080:8080 \
+            -e TERMINAL_AUTH_TOKEN=load-internal-token \
+            -e TERMINAL_EXECUTION_BASE_URL=https://127.0.0.1:65535 \
+            -e TERMINAL_EXECUTION_TOKEN="$execution_token" \
+            -e TERMINAL_WS_AUTH_PROVIDER=sulandra \
+            -e JWT_SECRET="$jwt_secret" \
+            sulandra-terminal-gateway:load
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/health >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          docker logs sulandra-terminal-gateway-load >&2
+          exit 1
+      - name: Run sustained k6 virtual users
+        run: |
+          docker run --rm --network host \
+            -e TERMINAL_GATEWAY_BASE_URL=http://127.0.0.1:18080 \
+            -e K6_VUS=25 \
+            -e K6_DURATION=90s \
+            -v "$PWD/load:/load:ro" \
+            grafana/k6:2.2.0 run /load/terminal-gateway.k6.js
+      - name: Prove gateway survived load
+        run: |
+          curl -fsS http://127.0.0.1:18080/health >/tmp/post-load-health.json
+          node -e 'const x=require("/tmp/post-load-health.json");if(x.ok!==true||x.gateway!==true)throw new Error(JSON.stringify(x))'
+          test "$(docker inspect -f '{{.State.Running}}' sulandra-terminal-gateway-load)" = true
+      - name: Cleanup load container
+        if: always()
+        run: docker rm -f sulandra-terminal-gateway-load 2>/dev/null || true
+
+  automated-dast:
+    name: Automated DAST baseline (not independent pentest)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run OWASP ZAP baseline against published IT Solutions surface
+        run: |
+          set -euo pipefail
+          mkdir -p zap-report
+          chmod 0777 zap-report
+          docker run --rm \
+            -v "$PWD/zap-report:/zap/wrk/:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t https://www.sulandrahealth.com/it-solutions.html \
+            -I \
+            -m 1 \
+            -r terminal-zap.html \
+            -J terminal-zap.json
+      - name: Upload DAST evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terminal-dast-evidence-${{ github.run_id }}
+          path: zap-report/
+          retention-days: 90
+
+  independent-pentest-evidence:
+    name: Require current independent penetration-test attestation
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate external assessor evidence
+        id: pentest
+        continue-on-error: true
+        run: node scripts/verify-independent-pentest-attestation.mjs security/terminal/evidence/independent-pentest-attestation.json --max-age-days=365
+      - name: Open or update security tracking issue when evidence is missing or stale
+        if: steps.pentest.outcome != 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          title='[SECURITY] Independent terminal penetration-test evidence required'
+          number="$(gh issue list --state open --search 'Independent terminal penetration-test evidence required in:title' --json number --jq '.[0].number // empty')"
+          body='The scheduled Terminal Enterprise Assurance gate could not validate a current independent third-party penetration-test attestation. Commission/complete the external assessment, remediate blocking Critical/High findings, retain the full report outside the repository, and commit only the compact attestation JSON with the report SHA-256. Automated ZAP/Trivy/CI testing does not satisfy this independent control.'
+          if [[ -n "$number" ]]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
+      - name: Enforce independent evidence gate
+        if: steps.pentest.outcome != 'success'
+        run: exit 1
