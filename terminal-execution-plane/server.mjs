@@ -297,6 +297,14 @@ const agentRequest = async (session, pathname, options = {}) => {
   return payload;
 };
 
+/* RFC 6455 reserved close codes are local status values and cannot be put on
+   the wire. Normalize them before crossing either proxy boundary. */
+const isSendableWsCloseCode = code =>
+  (code >= 1000 && code <= 1014 && ![1004, 1005, 1006].includes(code)) ||
+  (code >= 3000 && code <= 4999);
+const normalizeWsCloseCode = code => isSendableWsCloseCode(Number(code)) ? Number(code) : 1011;
+const closeReason = reason => String(reason || '').slice(0, 120);
+
 app.use(authorize);
 app.get('/healthz', async (_req, res) => {
   try {
@@ -425,11 +433,13 @@ wss.on('connection', (gateway, req) => {
   let gatewayClosed = false;
 
   const close = (code = 1011, reason = 'Terminal session proxy closed') => {
+    const safeCode = normalizeWsCloseCode(code);
+    const safeReason = closeReason(reason);
     if (gateway.readyState === WebSocket.OPEN || gateway.readyState === WebSocket.CONNECTING) {
-      try { gateway.close(code, reason); } catch {}
+      try { gateway.close(safeCode, safeReason); } catch {}
     }
     if (agent && (agent.readyState === WebSocket.OPEN || agent.readyState === WebSocket.CONNECTING)) {
-      try { agent.close(code, reason); } catch {}
+      try { agent.close(safeCode, safeReason); } catch {}
     }
   };
 
@@ -486,9 +496,9 @@ wss.on('connection', (gateway, req) => {
       agent.on('close', (code, reason) => {
         pendingFrames.length = 0;
         pendingBytes = 0;
-        if (gateway.readyState === WebSocket.OPEN) {
-          gateway.close(code >= 1000 && code <= 4999 ? code : 1011, reason.toString().slice(0, 120));
-        }
+        const safeCode = normalizeWsCloseCode(code);
+        const safeReason = closeReason(reason);
+        if (gateway.readyState === WebSocket.OPEN) gateway.close(safeCode, safeReason);
       });
       agent.on('error', () => close(1011, 'Session agent WSS error'));
     } catch {
