@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
-import { cp, mkdir, rm, stat } from 'node:fs/promises';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import express from 'express';
-import pty from 'node-pty';
+import jwt from 'jsonwebtoken';
+import { WebSocket, WebSocketServer } from 'ws';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 const app = express();
 app.disable('x-powered-by');
@@ -11,358 +12,315 @@ app.use(express.json({ limit: '128kb' }));
 
 const port = Number(process.env.PORT || 8080);
 const authToken = String(process.env.TERMINAL_AUTH_TOKEN || '').trim();
-const seedPath = path.resolve(process.env.TERMINAL_SEED_PATH || '/seed');
-const workspaceRoot = path.resolve(process.env.TERMINAL_WORKSPACE_ROOT || '/workspaces');
-const terminalUid = Math.max(1000, Number(process.env.TERMINAL_UID || 10001));
-const terminalGid = Math.max(1000, Number(process.env.TERMINAL_GID || 10001));
-const runtimeUid = typeof process.getuid === 'function' ? process.getuid() : terminalUid;
-const runtimeGid = typeof process.getgid === 'function' ? process.getgid() : terminalGid;
-const canSwitchIdentity = runtimeUid === 0;
-const childIdentity = canSwitchIdentity ? { uid: terminalUid, gid: terminalGid } : {};
-const maxWorkspaces = Math.max(1, Math.min(12, Number(process.env.TERMINAL_MAX_WORKSPACES || 6)));
-const maxSessionsPerWorkspace = Math.max(1, Math.min(12, Number(process.env.TERMINAL_MAX_SESSIONS_PER_WORKSPACE || 6)));
-const idleMinutes = Math.max(15, Math.min(720, Number(process.env.TERMINAL_IDLE_MINUTES || 120)));
-const outputLimit = Math.max(256_000, Math.min(8_000_000, Number(process.env.TERMINAL_OUTPUT_LIMIT || 2_000_000)));
+const executionBaseUrl = String(process.env.TERMINAL_EXECUTION_BASE_URL || '').trim().replace(/\/$/, '');
+const executionToken = String(process.env.TERMINAL_EXECUTION_TOKEN || '').trim();
+const executionRequestTimeoutMs = Math.max(2_000, Number(process.env.TERMINAL_EXECUTION_TIMEOUT_MS || 20_000));
+const wsBytesPerSecond = Math.max(16_384, Number(process.env.TERMINAL_WS_BYTES_PER_SECOND || 262_144));
+const wsBurstBytes = Math.max(wsBytesPerSecond, Number(process.env.TERMINAL_WS_BURST_BYTES || 524_288));
+const wsAuthProvider = String(process.env.TERMINAL_WS_AUTH_PROVIDER || 'sulandra').trim().toLowerCase();
+const jwtSecret = String(process.env.JWT_SECRET || '').trim();
+const firebaseProjectId = String(process.env.FIREBASE_PROJECT_ID || '').trim();
+const firebaseCheckRevoked = String(process.env.TERMINAL_FIREBASE_CHECK_REVOKED || 'false').trim().toLowerCase() === 'true';
+const allowedRoles = new Set(['ADMINISTRATOR', 'CEO', 'COO']);
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a valid TCP port');
 if (!authToken) throw new Error('TERMINAL_AUTH_TOKEN is required');
-await mkdir(workspaceRoot, { recursive: true });
-await stat(seedPath);
+if (!executionBaseUrl || !/^https:\/\//i.test(executionBaseUrl)) {
+  throw new Error('TERMINAL_EXECUTION_BASE_URL must be an https:// URL');
+}
+if (!executionToken || executionToken.length < 32) throw new Error('TERMINAL_EXECUTION_TOKEN must be at least 32 characters');
+if (!['sulandra', 'firebase'].includes(wsAuthProvider)) throw new Error('TERMINAL_WS_AUTH_PROVIDER must be sulandra or firebase');
+if (wsAuthProvider === 'sulandra' && !jwtSecret) throw new Error('JWT_SECRET is required for Sulandra WebSocket authentication');
+if (wsAuthProvider === 'firebase' && !firebaseProjectId) throw new Error('FIREBASE_PROJECT_ID is required for Firebase WebSocket authentication');
+if (wsAuthProvider === 'firebase' && !getApps().length) initializeApp({ projectId: firebaseProjectId });
 
-const workspaces = new Map();
-const sessions = new Map();
-
-const now = () => Date.now();
-const id = prefix => `${prefix}_${crypto.randomUUID()}`;
-const ownerOf = req => String(req.header('x-sulandra-terminal-owner') || '').trim();
-const safeEquals = (a, b) => {
-  if (!a || !b) return false;
-  const aa = Buffer.from(String(a));
-  const bb = Buffer.from(String(b));
-  return aa.length === bb.length && crypto.timingSafeEqual(aa, bb);
+const secureEquals = (provided, configured) => {
+  if (!provided || !configured) return false;
+  const left = Buffer.from(String(provided));
+  const right = Buffer.from(String(configured));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
 };
 
-app.get('/health', (_req, res) => {
-  res.json({
-    ok: true,
-    service: 'sulandra-coding-terminal-worker',
-    isolation: 'dedicated-worker-unprivileged-shell',
-    runtimeUid,
-    workspaces: workspaces.size,
-    sessions: sessions.size,
-  });
-});
-
-app.use((req, res, next) => {
-  if (!safeEquals(req.header('x-sulandra-terminal-token'), authToken)) {
-    res.status(401).json({ error: 'Worker authentication required' });
+const ownerOf = req => String(req.header('x-sulandra-terminal-owner') || '').trim();
+const authenticateInternal = (req, res, next) => {
+  if (!secureEquals(req.header('x-sulandra-terminal-token'), authToken)) {
+    res.status(401).json({ error: 'Unauthorized terminal gateway request' });
     return;
   }
   if (!ownerOf(req)) {
-    res.status(400).json({ error: 'Terminal owner context is required' });
+    res.status(400).json({ error: 'Terminal owner is required' });
     return;
   }
   next();
-});
-
-const getWorkspace = (req, workspaceId) => {
-  const workspace = workspaces.get(workspaceId);
-  if (!workspace || workspace.owner !== ownerOf(req)) return null;
-  workspace.lastUsedAt = now();
-  return workspace;
 };
 
-const getSession = (req, sessionId) => {
-  const session = sessions.get(sessionId);
-  if (!session || session.owner !== ownerOf(req)) return null;
-  session.lastUsedAt = now();
-  const workspace = workspaces.get(session.workspaceId);
-  if (workspace) workspace.lastUsedAt = now();
-  return session;
+const executionUrl = pathname => new URL(pathname, executionBaseUrl + '/').toString();
+const executionWsUrl = pathname => {
+  const url = new URL(pathname, executionBaseUrl + '/');
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.toString();
 };
 
-const git = (cwd, args) => spawnSync('git', args, {
-  cwd,
-  encoding: 'utf8',
-  stdio: 'ignore',
-  ...childIdentity,
-  env: {
-    PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-    HOME: cwd,
-    LANG: 'C.UTF-8',
-  },
-});
-
-const initializeLocalGit = cwd => {
-  git(cwd, ['init', '-b', 'workbench']);
-  git(cwd, ['config', 'user.name', 'Sulandra Terminal']);
-  git(cwd, ['config', 'user.email', 'terminal@sulandra.local']);
-  git(cwd, ['add', '-A']);
-  git(cwd, ['commit', '-m', 'Isolated terminal workspace baseline', '--no-gpg-sign']);
-};
-
-const createWorkspace = async owner => {
-  const owned = [...workspaces.values()].filter(workspace => workspace.owner === owner);
-  if (owned.length >= maxWorkspaces) throw Object.assign(new Error(`Workspace limit reached (${maxWorkspaces})`), { status: 429 });
-  const workspaceId = id('ws');
-  const cwd = path.join(workspaceRoot, workspaceId);
-  await mkdir(cwd, { recursive: true });
-  await cp(seedPath, cwd, {
-    recursive: true,
-    force: true,
-    filter(source) {
-      const relative = path.relative(seedPath, source);
-      if (!relative) return true;
-      const parts = relative.split(path.sep);
-      return !parts.some(part => part === 'node_modules' || part === '.git' || part === 'dist-web' || part === 'coverage');
-    },
-  });
-  if (canSwitchIdentity) {
-    const ownership = spawnSync('chown', ['-R', `${terminalUid}:${terminalGid}`, cwd], { encoding: 'utf8' });
-    if (ownership.status !== 0) throw new Error(`Unable to prepare terminal workspace ownership: ${String(ownership.stderr || '').trim()}`);
-  }
-  initializeLocalGit(cwd);
-  const workspace = {
-    id: workspaceId,
-    owner,
-    cwd,
-    createdAt: now(),
-    lastUsedAt: now(),
-  };
-  workspaces.set(workspaceId, workspace);
-  return workspace;
-};
-
-const shellEnv = workspace => ({
-  PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-  HOME: workspace.cwd,
-  SHELL: '/bin/bash',
-  TERM: 'xterm-256color',
-  COLORTERM: 'truecolor',
-  LANG: 'C.UTF-8',
-  LC_ALL: 'C.UTF-8',
-  FORCE_COLOR: '1',
-  npm_config_color: 'always',
-  PS1: '\\[\\033[1;32m\\]sulandra\\[\\033[0m\\]:\\w\\$ ',
-  HISTFILE: path.join(workspace.cwd, '.bash_history'),
-  HISTCONTROL: 'ignoredups:erasedups',
-  HISTSIZE: '5000',
-  HISTFILESIZE: '10000',
-  EDITOR: 'vim',
-  VISUAL: 'vim',
-  PAGER: 'less',
-  LESS: '-R',
-  SULANDRA_TERMINAL_ISOLATED: '1',
-  SULANDRA_TERMINAL_WORKSPACE: workspace.id,
-});
-
-const createSession = (workspace, owner, cols = 120, rows = 32) => {
-  const workspaceSessions = [...sessions.values()].filter(session => session.workspaceId === workspace.id && session.alive);
-  if (workspaceSessions.length >= maxSessionsPerWorkspace) {
-    throw Object.assign(new Error(`Terminal limit reached (${maxSessionsPerWorkspace})`), { status: 429 });
-  }
-  const sessionId = id('term');
-  const process = pty.spawn('/bin/bash', ['--noprofile', '--norc', '-i'], {
-    name: 'xterm-256color',
-    cols: Math.max(40, Math.min(240, Number(cols) || 120)),
-    rows: Math.max(12, Math.min(80, Number(rows) || 32)),
-    cwd: workspace.cwd,
-    env: shellEnv(workspace),
-    ...childIdentity,
-  });
-  const session = {
-    id: sessionId,
-    workspaceId: workspace.id,
-    owner,
-    process,
-    alive: true,
-    exitCode: null,
-    createdAt: now(),
-    lastUsedAt: now(),
-    cursor: 0,
-    bufferedChars: 0,
-    chunks: [],
-  };
-  const push = data => {
-    const text = String(data || '');
-    if (!text) return;
-    const start = session.cursor;
-    session.cursor += text.length;
-    session.chunks.push({ start, end: session.cursor, data: text });
-    session.bufferedChars += text.length;
-    while (session.bufferedChars > outputLimit && session.chunks.length > 1) {
-      const removed = session.chunks.shift();
-      session.bufferedChars -= removed.data.length;
+const executionRequest = async (req, pathname, options = {}) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(2_000, options.timeoutMs ?? executionRequestTimeoutMs));
+  try {
+    const response = await fetch(executionUrl(pathname), {
+      method: options.method || 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${executionToken}`,
+        'x-sulandra-terminal-owner': ownerOf(req),
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    let payload = {};
+    if (text) {
+      try { payload = JSON.parse(text); } catch { payload = { error: text.slice(0, 2_000) }; }
     }
-  };
-  process.onData(push);
-  process.onExit(event => {
-    session.alive = false;
-    session.exitCode = event.exitCode;
-    push(`\r\n[terminal exited with code ${event.exitCode}]\r\n`);
+    if (!response.ok) {
+      const error = new Error(typeof payload.error === 'string' ? payload.error : `Execution plane request failed (${response.status})`);
+      error.status = response.status;
+      throw error;
+    }
+    return payload;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timeout = new Error('Terminal execution plane timed out');
+      timeout.status = 504;
+      throw timeout;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+app.get('/health', async (_req, res) => {
+  let executionHealthy = false;
+  let executionStatus = 'unreachable';
+  try {
+    const response = await fetch(executionUrl('/healthz'), {
+      headers: { Authorization: `Bearer ${executionToken}` },
+      signal: AbortSignal.timeout(2_500),
+    });
+    executionHealthy = response.ok;
+    executionStatus = response.ok ? 'ready' : `http-${response.status}`;
+  } catch {}
+  res.status(executionHealthy ? 200 : 503).json({
+    ok: executionHealthy,
+    gateway: true,
+    websocket: true,
+    websocketAuthProvider: wsAuthProvider,
+    firebaseCheckRevoked: wsAuthProvider === 'firebase' ? firebaseCheckRevoked : undefined,
+    executionPlane: { configured: true, healthy: executionHealthy, status: executionStatus },
+    rateLimit: { bytesPerSecond: wsBytesPerSecond, burstBytes: wsBurstBytes },
   });
-  sessions.set(sessionId, session);
-  push('\x1b[1;36mSulandra isolated coding terminal ready.\x1b[0m\r\n');
-  push(`Workspace: ${workspace.cwd}\r\n`);
-  return session;
-};
+});
 
-const sessionOutput = (session, cursorValue) => {
-  const cursor = Math.max(0, Number(cursorValue) || 0);
-  const first = session.chunks[0];
-  const reset = Boolean(first && cursor < first.start);
-  const effectiveCursor = reset ? first.start : cursor;
-  let data = '';
-  for (const chunk of session.chunks) {
-    if (chunk.end <= effectiveCursor) continue;
-    if (effectiveCursor > chunk.start) data += chunk.data.slice(effectiveCursor - chunk.start);
-    else data += chunk.data;
-  }
-  return {
-    data,
-    cursor: session.cursor,
-    reset,
-    alive: session.alive,
-    exitCode: session.exitCode,
-  };
-};
-
-const killSession = session => {
-  if (!session) return;
-  if (session.alive) {
-    try { session.process.kill(); } catch {}
-  }
-  session.alive = false;
-  sessions.delete(session.id);
-};
-
-const deleteWorkspace = async workspace => {
-  for (const session of [...sessions.values()]) {
-    if (session.workspaceId === workspace.id) killSession(session);
-  }
-  workspaces.delete(workspace.id);
-  await rm(workspace.cwd, { recursive: true, force: true });
-};
+app.use(authenticateInternal);
 
 app.post('/workspaces', async (req, res, next) => {
   try {
-    const workspace = await createWorkspace(ownerOf(req));
-    res.status(201).json({
-      workspaceId: workspace.id,
-      cwd: workspace.cwd,
-      isolated: true,
-      branch: 'workbench',
-    });
+    const data = await executionRequest(req, '/v1/workspaces', { method: 'POST', body: {} });
+    res.status(201).json(data);
   } catch (error) { next(error); }
 });
-
-app.get('/workspaces/:workspaceId', (req, res) => {
-  const workspace = getWorkspace(req, req.params.workspaceId);
-  if (!workspace) {
-    res.status(404).json({ error: 'Workspace not found' });
-    return;
-  }
-  const activeSessions = [...sessions.values()].filter(session => session.workspaceId === workspace.id && session.alive).length;
-  res.json({ workspaceId: workspace.id, cwd: workspace.cwd, activeSessions, isolated: true });
+app.get('/workspaces/:workspaceId', async (req, res, next) => {
+  try {
+    res.json(await executionRequest(req, `/v1/workspaces/${encodeURIComponent(req.params.workspaceId)}`));
+  } catch (error) { next(error); }
 });
-
 app.delete('/workspaces/:workspaceId', async (req, res, next) => {
   try {
-    const workspace = getWorkspace(req, req.params.workspaceId);
-    if (!workspace) {
-      res.status(404).json({ error: 'Workspace not found' });
-      return;
-    }
-    await deleteWorkspace(workspace);
-    res.json({ ok: true });
+    res.json(await executionRequest(req, `/v1/workspaces/${encodeURIComponent(req.params.workspaceId)}`, { method: 'DELETE' }));
   } catch (error) { next(error); }
 });
-
-app.post('/workspaces/:workspaceId/sessions', (req, res, next) => {
+app.post('/workspaces/:workspaceId/sessions', async (req, res, next) => {
   try {
-    const workspace = getWorkspace(req, req.params.workspaceId);
-    if (!workspace) {
-      res.status(404).json({ error: 'Workspace not found' });
-      return;
-    }
-    const session = createSession(workspace, ownerOf(req), req.body?.cols, req.body?.rows);
-    res.status(201).json({
-      sessionId: session.id,
-      workspaceId: workspace.id,
-      alive: true,
+    const body = {
+      cols: Math.max(40, Math.min(240, Number(req.body?.cols) || 120)),
+      rows: Math.max(12, Math.min(80, Number(req.body?.rows) || 32)),
+    };
+    const data = await executionRequest(req, `/v1/workspaces/${encodeURIComponent(req.params.workspaceId)}/sessions`, {
+      method: 'POST', body, timeoutMs: 60_000,
     });
+    res.status(201).json(data);
   } catch (error) { next(error); }
 });
-
-app.get('/sessions/:sessionId/output', (req, res) => {
-  const session = getSession(req, req.params.sessionId);
-  if (!session) {
-    res.status(404).json({ error: 'Terminal session not found' });
-    return;
-  }
-  res.json(sessionOutput(session, req.query.cursor));
+app.get('/sessions/:sessionId/output', async (req, res, next) => {
+  try {
+    const cursor = Math.max(0, Math.trunc(Number(req.query.cursor) || 0));
+    res.json(await executionRequest(req, `/v1/sessions/${encodeURIComponent(req.params.sessionId)}/output?cursor=${cursor}`));
+  } catch (error) { next(error); }
 });
-
-app.post('/sessions/:sessionId/input', (req, res) => {
-  const session = getSession(req, req.params.sessionId);
-  if (!session) {
-    res.status(404).json({ error: 'Terminal session not found' });
-    return;
-  }
-  if (!session.alive) {
-    res.status(409).json({ error: 'Terminal session has exited' });
-    return;
-  }
-  const data = typeof req.body?.data === 'string' ? req.body.data : '';
-  if (!data || data.length > 65_536) {
-    res.status(400).json({ error: 'Terminal input must be between 1 and 65536 characters' });
-    return;
-  }
-  session.process.write(data);
-  res.json({ ok: true, cursor: session.cursor });
+app.post('/sessions/:sessionId/input', async (req, res, next) => {
+  try {
+    const data = typeof req.body?.data === 'string' ? req.body.data : '';
+    if (!data || Buffer.byteLength(data) > 65_536) return res.status(400).json({ error: 'Terminal input must be between 1 and 65536 bytes' });
+    res.json(await executionRequest(req, `/v1/sessions/${encodeURIComponent(req.params.sessionId)}/input`, { method: 'POST', body: { data } }));
+  } catch (error) { next(error); }
 });
-
-app.post('/sessions/:sessionId/resize', (req, res) => {
-  const session = getSession(req, req.params.sessionId);
-  if (!session) {
-    res.status(404).json({ error: 'Terminal session not found' });
-    return;
-  }
-  const cols = Math.max(40, Math.min(240, Number(req.body?.cols) || 120));
-  const rows = Math.max(12, Math.min(80, Number(req.body?.rows) || 32));
-  try { session.process.resize(cols, rows); } catch {}
-  res.json({ ok: true, cols, rows });
+app.post('/sessions/:sessionId/resize', async (req, res, next) => {
+  try {
+    const body = {
+      cols: Math.max(40, Math.min(240, Number(req.body?.cols) || 120)),
+      rows: Math.max(12, Math.min(80, Number(req.body?.rows) || 32)),
+    };
+    res.json(await executionRequest(req, `/v1/sessions/${encodeURIComponent(req.params.sessionId)}/resize`, { method: 'POST', body }));
+  } catch (error) { next(error); }
 });
-
-app.delete('/sessions/:sessionId', (req, res) => {
-  const session = getSession(req, req.params.sessionId);
-  if (!session) {
-    res.status(404).json({ error: 'Terminal session not found' });
-    return;
-  }
-  killSession(session);
-  res.json({ ok: true });
+app.delete('/sessions/:sessionId', async (req, res, next) => {
+  try {
+    res.json(await executionRequest(req, `/v1/sessions/${encodeURIComponent(req.params.sessionId)}`, { method: 'DELETE' }));
+  } catch (error) { next(error); }
 });
 
 app.use((error, _req, res, _next) => {
   const status = Number(error?.status) || 500;
-  if (status >= 500) console.error('[terminal-worker]', error);
-  res.status(status).json({ error: String(error?.message || 'Terminal worker error') });
+  if (status >= 500) console.error('[terminal-gateway]', error);
+  res.status(status).json({ error: error?.message || 'Terminal gateway failure' });
 });
 
-setInterval(async () => {
-  const cutoff = now() - idleMinutes * 60_000;
-  for (const session of [...sessions.values()]) {
-    if (session.lastUsedAt < cutoff) killSession(session);
-  }
-  for (const workspace of [...workspaces.values()]) {
-    const active = [...sessions.values()].some(session => session.workspaceId === workspace.id && session.alive);
-    if (!active && workspace.lastUsedAt < cutoff) {
-      try { await deleteWorkspace(workspace); } catch (error) { console.warn('[terminal-worker] cleanup failed', error); }
+const decodeBase64Url = value => Buffer.from(String(value || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+const wsTokenFromProtocols = header => {
+  for (const part of String(header || '').split(',').map(value => value.trim()).filter(Boolean)) {
+    if (part.startsWith('auth.')) {
+      try { return decodeBase64Url(part.slice(5)); } catch { return ''; }
     }
   }
-}, 60_000).unref();
+  return '';
+};
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Sulandra coding terminal worker listening on 0.0.0.0:${port}`);
+const verifyBrowserToken = async token => {
+  if (!token) return null;
+  if (wsAuthProvider === 'firebase') {
+    try {
+      const claims = await getAuth().verifyIdToken(token, firebaseCheckRevoked);
+      const organizationId = typeof claims.organizationId === 'string' ? claims.organizationId : typeof claims.orgId === 'string' ? claims.orgId : '';
+      const role = typeof claims.role === 'string' ? claims.role : '';
+      if (!claims.uid || !organizationId || !allowedRoles.has(role)) return null;
+      return { userId: claims.uid, organizationId, role };
+    } catch { return null; }
+  }
+  try {
+    const claims = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] });
+    if (typeof claims === 'string') return null;
+    const userId = typeof claims.sub === 'string' ? claims.sub : '';
+    const organizationId = typeof claims.organizationId === 'string' ? claims.organizationId : '';
+    const role = typeof claims.role === 'string' ? claims.role : '';
+    if (!userId || !organizationId || !allowedRoles.has(role)) return null;
+    return { userId, organizationId, role };
+  } catch { return null; }
+};
+
+const makeBucket = () => ({ tokens: wsBurstBytes, updatedAt: Date.now() });
+const consume = (bucket, bytes) => {
+  const at = Date.now();
+  const elapsed = Math.max(0, at - bucket.updatedAt) / 1000;
+  bucket.tokens = Math.min(wsBurstBytes, bucket.tokens + elapsed * wsBytesPerSecond);
+  bucket.updatedAt = at;
+  if (bytes > bucket.tokens) return false;
+  bucket.tokens -= bytes;
+  return true;
+};
+
+const server = createServer(app);
+const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });
+
+server.on('upgrade', async (req, socket, head) => {
+  let url;
+  try { url = new URL(req.url || '/', 'http://localhost'); } catch { socket.destroy(); return; }
+  const match = url.pathname.match(/^\/ws\/sessions\/([A-Za-z0-9_-]+)$/);
+  if (!match) { socket.destroy(); return; }
+  const auth = await verifyBrowserToken(wsTokenFromProtocols(req.headers['sec-websocket-protocol']));
+  if (!auth) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  req.sulandraTerminal = { auth, sessionId: match[1] };
+  wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+});
+
+wss.on('connection', (browser, req) => {
+  const { auth, sessionId } = req.sulandraTerminal;
+  const owner = `${auth.organizationId}:${auth.userId}`;
+  const bucket = makeBucket();
+  const pendingFrames = [];
+  let pendingBytes = 0;
+  const maxPendingBytes = 65_536;
+  const upstream = new WebSocket(executionWsUrl(`/v1/ws/sessions/${encodeURIComponent(sessionId)}`), ['sulandra-executor.v1'], {
+    headers: {
+      Authorization: `Bearer ${executionToken}`,
+      'x-sulandra-terminal-owner': owner,
+    },
+    handshakeTimeout: 10_000,
+    maxPayload: 1_048_576,
+  });
+  upstream.binaryType = 'arraybuffer';
+
+  const closeBoth = (code = 1011, reason = 'Terminal proxy closed') => {
+    if (browser.readyState === WebSocket.OPEN || browser.readyState === WebSocket.CONNECTING) {
+      try { browser.close(code, reason); } catch {}
+    }
+    if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) {
+      try { upstream.close(code, reason); } catch {}
+    }
+  };
+
+  upstream.on('open', () => {
+    for (const frame of pendingFrames.splice(0)) upstream.send(frame.data, { binary: frame.isBinary });
+    pendingBytes = 0;
+  });
+  upstream.on('message', (data, isBinary) => {
+    if (browser.readyState !== WebSocket.OPEN) return;
+    browser.send(data, { binary: isBinary });
+  });
+  upstream.on('close', (code, reason) => {
+    if (browser.readyState === WebSocket.OPEN) browser.close(code >= 1000 && code <= 4999 ? code : 1011, reason.toString().slice(0, 120));
+  });
+  upstream.on('error', error => {
+    console.error('[terminal-gateway] execution WSS error', error.message);
+    closeBoth(1011, 'Execution plane unavailable');
+  });
+
+  browser.on('message', (data, isBinary) => {
+    const bytes = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
+    if (!consume(bucket, bytes)) {
+      closeBoth(1008, 'Terminal input rate limit exceeded');
+      return;
+    }
+    if (upstream.readyState === WebSocket.OPEN) {
+      upstream.send(data, { binary: isBinary });
+      return;
+    }
+    if (pendingBytes + bytes > maxPendingBytes) {
+      closeBoth(1008, 'Terminal startup input buffer exceeded');
+      return;
+    }
+    pendingFrames.push({ data: isBinary ? Buffer.from(data) : String(data), isBinary });
+    pendingBytes += bytes;
+  });
+  browser.on('close', () => {
+    pendingFrames.length = 0;
+    if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) upstream.close(1000, 'Browser disconnected');
+  });
+  browser.on('error', () => closeBoth(1011, 'Browser WSS error'));
+});
+
+const heartbeat = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.readyState === WebSocket.OPEN) {
+      try { ws.ping(); } catch {}
+    }
+  }
+}, 30_000);
+heartbeat.unref?.();
+
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Sulandra terminal gateway listening on 0.0.0.0:${port}`);
 });

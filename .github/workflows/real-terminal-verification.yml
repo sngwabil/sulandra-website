@@ -5,27 +5,35 @@ on:
     branches:
       - release/sulandra-1.0
     paths:
-      - assets/it-agent-xterm-emulator.js
+      - assets/it-agent-xterm-*.js
       - assets/it-agent-xterm-emulator.css
-      - assets/it-agent-xterm-interrupt-fix.js
       - coding-terminal-worker/**
       - terminal-browser/**
-      - scripts/install-it-agent-xterm-emulator.mjs
-      - Dockerfile
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - infra/terminal-vps/**
+      - Dockerfile.coding-terminal
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
       - Dockerfile.frontend
+      - scripts/install-it-agent-xterm-emulator.mjs
       - .github/workflows/real-terminal-verification.yml
   push:
     branches:
       - release/sulandra-1.0
     paths:
-      - assets/it-agent-xterm-emulator.js
+      - assets/it-agent-xterm-*.js
       - assets/it-agent-xterm-emulator.css
-      - assets/it-agent-xterm-interrupt-fix.js
       - coding-terminal-worker/**
       - terminal-browser/**
-      - scripts/install-it-agent-xterm-emulator.mjs
-      - Dockerfile
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - infra/terminal-vps/**
+      - Dockerfile.coding-terminal
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
       - Dockerfile.frontend
+      - scripts/install-it-agent-xterm-emulator.mjs
       - .github/workflows/real-terminal-verification.yml
 
 permissions:
@@ -33,9 +41,19 @@ permissions:
 
 jobs:
   verify-real-terminal:
-    name: Verify xterm to real PTY
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
+    name: Verify Railway gateway to Docker PTY
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXECUTION_TOKEN: ci-execution-token-0123456789abcdef0123456789abcdef
+      INTERNAL_TOKEN: ci-terminal-internal-token
+      JWT_SECRET: ci-jwt-secret-0123456789abcdef0123456789abcdef
+      OWNER: ci-org:ci-user
+      SESSION_IMAGE: sulandra-terminal-session:ci
+      EXECUTOR_IMAGE: sulandra-terminal-executor:ci
+      INTERNAL_NETWORK: sulandra-terminal-ci-internal
+      PROXY_NETWORK: sulandra-terminal-ci-proxy
+      CI_ROOT: /tmp/sulandra-terminal-ci
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -45,82 +63,251 @@ jobs:
         with:
           node-version: 22
 
-      - name: Validate browser terminal source
-        run: |
-          node --check assets/it-agent-xterm-emulator.js
-          node --check assets/it-agent-xterm-interrupt-fix.js
-          node --check coding-terminal-worker/server.mjs
-          node --check scripts/install-it-agent-xterm-emulator.mjs
-
-      - name: Install pinned xterm browser runtime
-        run: npm --prefix terminal-browser install --omit=dev --no-audit --no-fund
-
-      - name: Verify xterm browser artifacts
-        run: |
-          test -f terminal-browser/node_modules/@xterm/xterm/lib/xterm.js
-          test -f terminal-browser/node_modules/@xterm/xterm/css/xterm.css
-          test -f terminal-browser/node_modules/@xterm/addon-fit/lib/addon-fit.js
-
-      - name: Install terminal worker dependencies
-        run: npm --prefix coding-terminal-worker install --omit=dev --no-audit --no-fund
-
-      - name: Start real PTY worker
-        env:
-          TERMINAL_AUTH_TOKEN: ci-terminal-token
-          TERMINAL_SEED_PATH: ${{ github.workspace }}
-          TERMINAL_WORKSPACE_ROOT: /tmp/sulandra-terminal-workspaces
-          PORT: 18080
-        run: |
-          node coding-terminal-worker/server.mjs > /tmp/sulandra-terminal-worker.log 2>&1 &
-          echo $! > /tmp/sulandra-terminal-worker.pid
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:18080/health >/tmp/terminal-health.json; then exit 0; fi
-            sleep 1
-          done
-          cat /tmp/sulandra-terminal-worker.log
-          exit 1
-
-      - name: Execute, interrupt and resume through real Bash PTY
-        shell: bash
+      - name: Validate terminal source and VPS config
         run: |
           set -euo pipefail
-          headers=(-H 'x-sulandra-terminal-token: ci-terminal-token' -H 'x-sulandra-terminal-owner: ci-owner' -H 'Content-Type: application/json')
-          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18080/workspaces -d '{}')"
-          workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.workspaceId)' "$workspace_json")"
-          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
-          session_id="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(x.sessionId)' "$session_json")"
+          node --check assets/it-agent-xterm-production-stack.js
+          node --check coding-terminal-worker/server.mjs
+          node --check terminal-execution-plane/server.mjs
+          node --check terminal-session-agent/server.mjs
+          node --check scripts/install-it-agent-xterm-emulator.mjs
+          bash -n infra/terminal-vps/deploy.sh
+          grep -q 'reverse_proxy executor:8081' infra/terminal-vps/Caddyfile
+          grep -q 'TERMINAL_MEMORY_BYTES: "536870912"' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_NANO_CPUS: "500000000"' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_PIDS_LIMIT: "256"' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_IDLE_MINUTES: "15"' infra/terminal-vps/docker-compose.yml
 
-          command=$'printf "REAL_PTY_OK:%s\\n" "$SHELL"\r'
-          input_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
-          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$input_json" >/dev/null
-          sleep 1
-          output_json="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18080/sessions/${session_id}/output?cursor=0")"
-          node -e 'const x=JSON.parse(process.argv[1]); if(!String(x.data||"").includes("REAL_PTY_OK:/bin/bash")){console.error(x.data);process.exit(1)}' "$output_json"
-
-          rm -f /tmp/sulandra-pty-interrupt-resumed
-          long_command=$'node -e "setInterval(()=>{},1000)"\r'
-          long_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$long_command")"
-          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$long_json" >/dev/null
-          sleep 0.5
-
-          interrupt_json="$(node -e 'process.stdout.write(JSON.stringify({data:"\u0003"}))')"
-          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$interrupt_json" >/dev/null
-          sleep 0.5
-
-          resume_command=$'touch /tmp/sulandra-pty-interrupt-resumed\r'
-          resume_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$resume_command")"
-          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/input" -d "$resume_json" >/dev/null
-          for i in {1..20}; do
-            test -f /tmp/sulandra-pty-interrupt-resumed && break
-            sleep 0.1
+      - name: Install and build complete xterm runtime
+        run: |
+          set -euo pipefail
+          npm --prefix terminal-browser install --omit=dev --no-audit --no-fund
+          npm --prefix terminal-browser run build
+          test -f terminal-browser/dist/sulandra-terminal-runtime.js
+          test -f terminal-browser/node_modules/@xterm/xterm/css/xterm.css
+          for addon in canvas fit image search serialize unicode11 web-links webgl; do
+            test -d "terminal-browser/node_modules/@xterm/addon-${addon}"
           done
-          test -f /tmp/sulandra-pty-interrupt-resumed
 
-          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18080/sessions/${session_id}/resize" -d '{"cols":132,"rows":40}' | grep -q '"cols":132'
-          echo 'Real Bash PTY command, Ctrl+C interrupt, shell resume and resize verified.'
+      - name: Install gateway and executor test dependencies
+        run: |
+          npm --prefix coding-terminal-worker install --omit=dev --no-audit --no-fund
+          npm --prefix terminal-execution-plane install --omit=dev --no-audit --no-fund
 
-      - name: Stop PTY worker
+      - name: Build hardened executor and session images
+        run: |
+          set -euo pipefail
+          docker build -f Dockerfile.terminal-session -t "$SESSION_IMAGE" .
+          docker build -f Dockerfile.terminal-executor -t "$EXECUTOR_IMAGE" .
+
+      - name: Start Docker execution plane
+        run: |
+          set -euo pipefail
+          rm -rf "$CI_ROOT"
+          mkdir -p "$CI_ROOT/seed" "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          cp package.json "$CI_ROOT/seed/package.json"
+          printf 'Sulandra terminal CI seed\n' > "$CI_ROOT/seed/README.txt"
+          sudo chown -R 10001:10001 "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          docker network create "$PROXY_NETWORK"
+          docker network create --internal "$INTERNAL_NETWORK"
+          DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+          docker run -d --name sulandra-terminal-executor-ci \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --group-add "$DOCKER_GID" \
+            -e PORT=8081 \
+            -e TERMINAL_EXECUTION_TOKEN="$EXECUTION_TOKEN" \
+            -e DOCKER_SOCKET_PATH=/var/run/docker.sock \
+            -e TERMINAL_SESSION_IMAGE="$SESSION_IMAGE" \
+            -e TERMINAL_SEED_PATH=/seed \
+            -e TERMINAL_WORKSPACE_ROOT=/workspaces \
+            -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
+            -e TERMINAL_STATE_ROOT=/state \
+            -e TERMINAL_DOCKER_NETWORK="$INTERNAL_NETWORK" \
+            -e TERMINAL_IDLE_MINUTES=15 \
+            -e TERMINAL_MEMORY_BYTES=536870912 \
+            -e TERMINAL_NANO_CPUS=500000000 \
+            -e TERMINAL_PIDS_LIMIT=256 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$CI_ROOT/seed:/seed:ro" \
+            -v "$CI_ROOT/workspaces:/workspaces" \
+            -v "$CI_ROOT/state:/state" \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            --network "$PROXY_NETWORK" \
+            -p 127.0.0.1:18081:8081 \
+            "$EXECUTOR_IMAGE"
+          docker network connect "$INTERNAL_NETWORK" sulandra-terminal-executor-ci
+          for i in {1..45}; do
+            if curl -fsS -H "Authorization: Bearer $EXECUTION_TOKEN" http://127.0.0.1:18081/healthz > /tmp/executor-health.json; then
+              grep -q '"docker":true' /tmp/executor-health.json
+              grep -q '"idleMinutes":15' /tmp/executor-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sulandra-terminal-executor-ci
+          exit 1
+
+      - name: Verify per-session Docker limits and real PTY
+        run: |
+          set -euo pipefail
+          headers=(-H "Authorization: Bearer $EXECUTION_TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json')
+          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18081/v1/workspaces -d '{}')"
+          workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.workspaceId)' "$workspace_json")"
+          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
+          session_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.sessionId)' "$session_json")"
+          echo "$workspace_id" > /tmp/terminal-workspace-id
+          echo "$session_id" > /tmp/terminal-session-id
+
+          cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
+          test -n "$cid"
+          docker inspect "$cid" > /tmp/session-inspect.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('/tmp/session-inspect.json','utf8'))[0];
+          const h=x.HostConfig;
+          if(h.Memory!==536870912) throw new Error(`Memory=${h.Memory}`);
+          if(h.MemorySwap!==536870912) throw new Error(`MemorySwap=${h.MemorySwap}`);
+          if(h.NanoCpus!==500000000) throw new Error(`NanoCpus=${h.NanoCpus}`);
+          if(h.PidsLimit!==256) throw new Error(`PidsLimit=${h.PidsLimit}`);
+          if(h.ReadonlyRootfs!==true) throw new Error('ReadonlyRootfs not enabled');
+          if(!Array.isArray(h.CapDrop)||!h.CapDrop.includes('ALL')) throw new Error('CapDrop ALL missing');
+          if(!Array.isArray(h.SecurityOpt)||!h.SecurityOpt.some(v=>v.includes('no-new-privileges'))) throw new Error('no-new-privileges missing');
+          if(h.NetworkMode!==process.env.INTERNAL_NETWORK) throw new Error(`NetworkMode=${h.NetworkMode}`);
+          if(x.Config.User!=='10001:10001') throw new Error(`Session user=${x.Config.User}`);
+          NODE
+
+          command=$'printf "DOCKER_PTY_OK:%s\\n" "$SHELL"\r'
+          input_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/sessions/${session_id}/input" -d "$input_json" >/dev/null
+          for i in {1..30}; do
+            output_json="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18081/v1/sessions/${session_id}/output?cursor=0")"
+            if node -e 'const x=JSON.parse(process.argv[1]);process.exit(String(x.data||"").includes("DOCKER_PTY_OK:/bin/bash")?0:1)' "$output_json"; then break; fi
+            sleep 0.2
+          done
+          node -e 'const x=JSON.parse(process.argv[1]);if(!String(x.data||"").includes("DOCKER_PTY_OK:/bin/bash")){console.error(x.data);process.exit(1)}' "$output_json"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/sessions/${session_id}/resize" -d '{"cols":132,"rows":40}' | grep -q '"cols":132'
+
+      - name: Verify executor native WSS reconnect
+        working-directory: terminal-execution-plane
+        run: |
+          set -euo pipefail
+          SESSION_ID="$(cat /tmp/terminal-session-id)" node --input-type=module <<'NODE'
+          import { WebSocket } from 'ws';
+          const sessionId=process.env.SESSION_ID;
+          const token=process.env.EXECUTION_TOKEN;
+          const owner=process.env.OWNER;
+          const run=marker=>new Promise((resolve,reject)=>{
+            let seen='';
+            const timer=setTimeout(()=>reject(new Error(`Timeout waiting for ${marker}: ${seen}`)),10000);
+            const ws=new WebSocket(`ws://127.0.0.1:18081/v1/ws/sessions/${sessionId}`,['sulandra-executor.v1'],{
+              headers:{Authorization:`Bearer ${token}`,'x-sulandra-terminal-owner':owner}
+            });
+            ws.on('open',()=>ws.send(Buffer.from(`printf "${marker}\\n"\r`)));
+            ws.on('message',data=>{
+              seen+=Buffer.from(data).toString('utf8');
+              if(seen.includes(marker)){clearTimeout(timer);ws.close(1000,'CI reconnect check');resolve();}
+            });
+            ws.on('error',error=>{clearTimeout(timer);reject(error)});
+          });
+          await run('WSS_FIRST_OK');
+          await new Promise(resolve=>setTimeout(resolve,500));
+          await run('WSS_RECONNECT_OK');
+          NODE
+
+      - name: Start TLS proxy and Railway-style gateway
+        run: |
+          set -euo pipefail
+          cat > /tmp/Caddyfile.ci <<'CADDY'
+          localhost:443 {
+            tls internal
+            reverse_proxy sulandra-terminal-executor-ci:8081
+          }
+          CADDY
+          docker run -d --name sulandra-terminal-caddy-ci \
+            --network "$PROXY_NETWORK" \
+            -p 18443:443 \
+            -v /tmp/Caddyfile.ci:/etc/caddy/Caddyfile:ro \
+            caddy:2.10-alpine
+          proxy_ready=0
+          for i in {1..30}; do
+            if curl -kfsS -H "Authorization: Bearer $EXECUTION_TOKEN" https://localhost:18443/healthz >/dev/null; then
+              proxy_ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$proxy_ready" -ne 1 ]; then
+            docker logs sulandra-terminal-caddy-ci
+            exit 1
+          fi
+
+          NODE_TLS_REJECT_UNAUTHORIZED=0 \
+          TERMINAL_AUTH_TOKEN="$INTERNAL_TOKEN" \
+          TERMINAL_EXECUTION_BASE_URL=https://localhost:18443 \
+          TERMINAL_EXECUTION_TOKEN="$EXECUTION_TOKEN" \
+          TERMINAL_WS_AUTH_PROVIDER=sulandra \
+          JWT_SECRET="$JWT_SECRET" \
+          PORT=18080 \
+          node coding-terminal-worker/server.mjs > /tmp/terminal-gateway.log 2>&1 &
+          echo $! > /tmp/terminal-gateway.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/health > /tmp/gateway-health.json; then
+              grep -q '"healthy":true' /tmp/gateway-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/terminal-gateway.log
+          exit 1
+
+      - name: Verify JWT-authenticated browser WSS through gateway
+        working-directory: coding-terminal-worker
+        run: |
+          set -euo pipefail
+          SESSION_ID="$(cat /tmp/terminal-session-id)" NODE_TLS_REJECT_UNAUTHORIZED=0 node --input-type=module <<'NODE'
+          import jwt from 'jsonwebtoken';
+          import { WebSocket } from 'ws';
+          const token=jwt.sign({organizationId:'ci-org',role:'ADMINISTRATOR'},process.env.JWT_SECRET,{subject:'ci-user',expiresIn:'5m',algorithm:'HS256'});
+          const encoded=Buffer.from(token,'utf8').toString('base64url');
+          const sessionId=process.env.SESSION_ID;
+          await new Promise((resolve,reject)=>{
+            let seen='';
+            const timer=setTimeout(()=>reject(new Error(`Gateway WSS timeout: ${seen}`)),12000);
+            const ws=new WebSocket(`ws://127.0.0.1:18080/ws/sessions/${sessionId}`,['sulandra-terminal.v2',`auth.${encoded}`]);
+            ws.on('open',()=>ws.send(Buffer.from('printf "GATEWAY_WSS_OK\\n"\r')));
+            ws.on('message',data=>{
+              const text=Buffer.from(data).toString('utf8');
+              if(text.startsWith('{')){
+                try{const message=JSON.parse(text);if(message.type==='gateway-ready'||message.type==='resized')return}catch{}
+              }
+              seen+=text;
+              if(seen.includes('GATEWAY_WSS_OK')){clearTimeout(timer);ws.close(1000,'CI complete');resolve();}
+            });
+            ws.on('error',error=>{clearTimeout(timer);reject(error)});
+          });
+          NODE
+
+      - name: Verify explicit cleanup removes session container
+        run: |
+          set -euo pipefail
+          workspace_id="$(cat /tmp/terminal-workspace-id)"
+          session_id="$(cat /tmp/terminal-session-id)"
+          headers=(-H "Authorization: Bearer $EXECUTION_TOKEN" -H "x-sulandra-terminal-owner: $OWNER")
+          curl -fsS "${headers[@]}" -X DELETE "http://127.0.0.1:18081/v1/sessions/${session_id}" | grep -q '"ok":true'
+          sleep 0.5
+          test -z "$(docker ps -aq --filter "label=com.sulandra.session-id=${session_id}")"
+          curl -fsS "${headers[@]}" -X DELETE "http://127.0.0.1:18081/v1/workspaces/${workspace_id}" | grep -q '"ok":true'
+
+      - name: Stop terminal verification stack
         if: always()
         run: |
-          if test -f /tmp/sulandra-terminal-worker.pid; then kill "$(cat /tmp/sulandra-terminal-worker.pid)" || true; fi
-          cat /tmp/sulandra-terminal-worker.log || true
+          if test -f /tmp/terminal-gateway.pid; then kill "$(cat /tmp/terminal-gateway.pid)" || true; fi
+          cat /tmp/terminal-gateway.log 2>/dev/null || true
+          docker logs sulandra-terminal-caddy-ci 2>/dev/null || true
+          docker logs sulandra-terminal-executor-ci 2>/dev/null || true
+          docker ps -aq --filter label=com.sulandra.terminal=true | xargs -r docker rm -f || true
+          docker rm -f sulandra-terminal-caddy-ci sulandra-terminal-executor-ci 2>/dev/null || true
+          docker network rm "$INTERNAL_NETWORK" "$PROXY_NETWORK" 2>/dev/null || true
+          sudo rm -rf "$CI_ROOT"

@@ -1,0 +1,70 @@
+services:
+  executor:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.terminal-executor
+    image: sulandra-terminal-executor:${TERMINAL_STACK_TAG:-latest}
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    group_add:
+      - "${DOCKER_GID}"
+    environment:
+      NODE_ENV: production
+      PORT: "8081"
+      TERMINAL_EXECUTION_TOKEN: ${TERMINAL_EXECUTION_TOKEN}
+      DOCKER_SOCKET_PATH: /var/run/docker.sock
+      TERMINAL_SESSION_IMAGE: sulandra-terminal-session:${TERMINAL_STACK_TAG:-latest}
+      TERMINAL_SEED_PATH: /seed
+      TERMINAL_WORKSPACE_ROOT: /workspaces
+      TERMINAL_WORKSPACE_HOST_ROOT: /srv/sulandra-terminal/workspaces
+      TERMINAL_STATE_ROOT: /state
+      TERMINAL_DOCKER_NETWORK: sulandra-terminal-internal
+      TERMINAL_IDLE_MINUTES: "15"
+      TERMINAL_MEMORY_BYTES: "536870912"
+      TERMINAL_NANO_CPUS: "500000000"
+      TERMINAL_PIDS_LIMIT: "256"
+      TERMINAL_MAX_WORKSPACES_PER_OWNER: "4"
+      TERMINAL_MAX_SESSIONS_PER_WORKSPACE: "6"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/sulandra-terminal/seed:/seed:ro
+      - /srv/sulandra-terminal/workspaces:/workspaces
+      - /srv/sulandra-terminal/state:/state
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    networks:
+      - proxy
+      - terminal-internal
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - executor
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+      TERMINAL_EXECUTION_DOMAIN: ${TERMINAL_EXECUTION_DOMAIN}
+      TERMINAL_EXECUTION_TOKEN: ${TERMINAL_EXECUTION_TOKEN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - proxy
+
+networks:
+  proxy:
+  terminal-internal:
+    external: true
+    name: sulandra-terminal-internal
+
+volumes:
+  caddy_data:
+  caddy_config:

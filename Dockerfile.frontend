@@ -4,40 +4,23 @@ WORKDIR /app
 
 COPY . .
 
-# Apply the Admin authentication/bootstrap performance patch before the
-# authoritative static publication chain runs. The optimizer is idempotent and
-# keeps the canonical Admin source as the publication input.
 RUN node scripts/optimize-admin-login-performance.mjs
-
-# The IT Agent workbench is build-time augmented on the API path. Railway's
-# static-only image previously skipped that installer chain, so production
-# published the older composer without upload/artifact controls even though the
-# backend capability existed. Install the same canonical IT/support chain before
-# static publication, then verify both source and dist-web contain the artifact UI.
 RUN node scripts/install-employee-support.mjs
 
-# Install the browser terminal emulator in an isolated dependency folder instead
-# of changing the application dependency graph. xterm.js is the presentation
-# layer only; command execution remains in the dedicated node-pty worker.
-RUN npm --prefix terminal-browser install --omit=dev --no-audit --no-fund
+# Build a pinned same-origin browser terminal bundle containing xterm plus all
+# production addons. No CDN runtime dependency is used in production.
+RUN npm --prefix terminal-browser install --no-audit --no-fund \
+ && npm --prefix terminal-browser run build
 
-# Layer the conversational presentation only after the canonical IT installers
-# have finished. Publish the xterm loader after the generated IT Solutions shell
-# exists, then apply the request-handoff repair.
 RUN node scripts/install-it-agent-conversational-ui.mjs \
  && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs
 
-# DEVELOPMENT_WORKFLOW.md defines npm run build:web as the authoritative
-# Sulandra Static Website build. After publication, copy the pinned xterm browser
-# runtime into the same-origin static assets and re-assert the xterm HTML hooks.
 RUN npm run build:web \
  && mkdir -p dist-web/assets/vendor \
- && cp terminal-browser/node_modules/@xterm/xterm/lib/xterm.js dist-web/assets/vendor/xterm.js \
+ && cp terminal-browser/dist/sulandra-terminal-runtime.js dist-web/assets/vendor/sulandra-terminal-runtime.js \
  && cp terminal-browser/node_modules/@xterm/xterm/css/xterm.css dist-web/assets/vendor/xterm.css \
- && cp terminal-browser/node_modules/@xterm/addon-fit/lib/addon-fit.js dist-web/assets/vendor/addon-fit.js \
  && cp terminal-browser/node_modules/@xterm/xterm/LICENSE dist-web/assets/vendor/XTERM-LICENSE \
- && cp terminal-browser/node_modules/@xterm/addon-fit/LICENSE dist-web/assets/vendor/XTERM-ADDON-FIT-LICENSE \
  && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
  && node scripts/verify-it-agent-artifact-capabilities.mjs

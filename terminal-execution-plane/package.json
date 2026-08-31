@@ -1,0 +1,12 @@
+{
+  "name": "sulandra-terminal-execution-plane",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "dependencies": {
+    "dockerode": "^4.0.8",
+    "express": "^4.21.2",
+    "ws": "^8.18.3"
+  }
+}
