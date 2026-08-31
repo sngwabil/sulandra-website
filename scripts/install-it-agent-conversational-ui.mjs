@@ -45,7 +45,7 @@ const tags={
   darkCss:'<link rel="stylesheet" href="/assets/it-agent-dark-conversation.css?v=20260830-dark-chat-1">',
   sidebarJs:'<script src="/assets/it-agent-sidebar-persistence.js?v=20260830-sidebar-persist-2"></script>',
   realTerminalCss:'<link rel="stylesheet" href="/assets/it-agent-real-terminal.css?v=20260830-real-terminal-1">',
-  realTerminalJs:'<script src="/assets/it-agent-real-terminal.js?v=20260830-real-terminal-1"></script>',
+  realTerminalJs:'<script src="/assets/it-agent-real-terminal.js?v=20260831-real-terminal-2"></script>',
   realTerminalUxCss:'<link rel="stylesheet" href="/assets/it-agent-real-terminal-ux-v2.css?v=20260830-real-terminal-ux-2">',
   realTerminalUxJs:'<script src="/assets/it-agent-real-terminal-ux-v2.js?v=20260830-real-terminal-ux-2"></script>',
 };
