@@ -8,6 +8,11 @@
 .itws-xterm-pane .xterm{height:100%;padding:0 2px}
 .itws-xterm-pane .xterm-viewport{background:#06131d!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .itws-xterm-pane .xterm-screen{cursor:text}
+/* xterm normally owns cursor blinking. This scoped animation is a DOM-renderer
+   fallback for Chromium restores where the cursor-blink class survives but its
+   animation timer does not resume after the terminal pane is reattached. */
+@keyframes sulandra-xterm-cursor-blink{0%,45%{opacity:1}50%,95%{opacity:0}100%{opacity:1}}
+.itws-xterm-pane.active .xterm.focus .xterm-cursor-layer .xterm-cursor.xterm-cursor-blink{animation:sulandra-xterm-cursor-blink 1.1s step-end infinite!important}
 .itws-xterm-ready .itws-rt-input-switch{border-top:1px solid rgba(69,134,169,.28);background:#071925}
 .itws-xterm-ready [data-rt-input-mode="direct"]::first-letter{font-size:0}
 .itws-xterm-ready.itws-rt-direct-mode .itws-rt-commandbar{display:none!important}

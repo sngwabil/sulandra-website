@@ -1,9 +1,11 @@
-/* SULANDRA_XTERM_PRODUCTION_STACK_V2
-   Full xterm browser runtime over native WSS binary PTY streams. */
+/* SULANDRA_XTERM_PRODUCTION_STACK_V3
+   Full xterm browser runtime over native WSS binary PTY streams.
+   Historical PTY snapshots are replayed with stdin gated so xterm device
+   responses can never be echoed into Bash as user input after reconnect. */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_XTERM_PRODUCTION_STACK_V2__)return;
-  window.__SULANDRA_XTERM_PRODUCTION_STACK_V2__=true;
+  if(window.__SULANDRA_XTERM_PRODUCTION_STACK_V3__)return;
+  window.__SULANDRA_XTERM_PRODUCTION_STACK_V3__=true;
 
   const Runtime=window.SulandraTerminalRuntime;
   const WSS_ORIGIN='wss://sulandra-coding-terminal-worker-production.up.railway.app';
@@ -41,7 +43,6 @@
     state.badge.textContent=text;
     state.badge.classList.toggle('bad',bad);
   };
-
   const updateFallbackClass=()=>{
     if(!root)return;
     const state=states.get(activeSessionId());
@@ -56,6 +57,28 @@
     updateFallbackClass();
     if(changed)window.dispatchEvent(new CustomEvent('sulandra:xterm-wss-state',{detail:{sessionId:state.id,connected:next}}));
   };
+  const focusState=(state,rearm=false)=>{
+    if(!state||state.disposed||!directMode()||state.id!==activeSessionId())return;
+    requestAnimationFrame(()=>{
+      if(state.disposed||state.id!==activeSessionId()||!directMode())return;
+      try{
+        if(rearm){
+          /* Chromium can leave the DOM cursor timer stale after a restored pane. */
+          state.term.options.cursorBlink=false;
+          state.term.options.cursorBlink=true;
+        }
+        state.term.focus();
+        state.term.refresh(0,Math.max(0,state.term.rows-1));
+      }catch{}
+    });
+  };
+  const enableInput=state=>{
+    if(!state||state.disposed)return;
+    state.inputReady=true;
+    state.awaitingSnapshot=false;
+    if(state.snapshotTimer){clearTimeout(state.snapshotTimer);state.snapshotTimer=0}
+    focusState(state,true);
+  };
 
   const sendBinary=(state,data)=>{
     if(!state?.ws||state.ws.readyState!==WebSocket.OPEN||!data)return false;
@@ -63,51 +86,79 @@
     return true;
   };
   const sendInput=(state,data)=>{
-    if(!state||data===undefined||data===null)return false;
+    if(!state||!state.inputReady||data===undefined||data===null)return false;
     if(sendBinary(state,data))return true;
     Promise.resolve(restBridge()?.sendInput?.(state.id,data)).catch(error=>renderStatus(state,error?.message||'REST terminal input failed',true));
     return true;
   };
+
+  const fitState=state=>{
+    if(!state||state.disposed||!state.pane.classList.contains('active'))return;
+    try{state.fit?.fit?.()}catch{}
+    sendControl(state,{type:'resize',cols:Math.max(40,Math.min(240,state.term.cols||120)),rows:Math.max(12,Math.min(80,state.term.rows||32))});
+  };
+
+  const finishWrite=state=>{
+    if(!state||state.disposed)return;
+    try{state.term.refresh(0,Math.max(0,state.term.rows-1))}catch{}
+    fitState(state);
+  };
+  const writeSnapshot=(state,data)=>new Promise(resolve=>{
+    if(!state||state.disposed){resolve();return}
+    const payload=data instanceof Uint8Array?data:String(data||'');
+    state.inputReady=false;
+    try{state.term.reset()}catch{}
+    if((typeof payload==='string'&&!payload)||payload?.byteLength===0){
+      state.hydrated=true;finishWrite(state);enableInput(state);resolve();return;
+    }
+    state.term.write(payload,()=>requestAnimationFrame(()=>{
+      if(!state.disposed){state.hydrated=true;finishWrite(state);enableInput(state)}
+      resolve();
+    }));
+  });
+  const writeLive=(state,data)=>{
+    if(!state||state.disposed||data===undefined||data===null)return;
+    const payload=data instanceof Uint8Array?data:String(data||'');
+    if((typeof payload==='string'&&!payload)||payload?.byteLength===0)return;
+    state.term.write(payload);
+  };
   const writeRestOutput=(state,data,reset=false)=>{
     if(!state||state.connected||data===undefined||data===null)return;
-    const text=String(data||'');
-    if(reset)state.term.reset();
-    if(!text)return;
-    state.term.write(text,()=>requestAnimationFrame(()=>{
-      if(state.disposed)return;
-      try{state.term.refresh(0,Math.max(0,state.term.rows-1))}catch{}
-      fitState(state);
-      if(directMode()&&state.id===activeSessionId())state.term.focus();
-    }));
+    if(reset){void writeSnapshot(state,String(data||''));return}
+    writeLive(state,String(data||''));
   };
+
   const hydrateState=async state=>{
-    if(!state||state.disposed||state.connected)return;
+    if(!state||state.disposed||state.connected||state.hydrating)return;
+    state.hydrating=true;
     let snapshot=null;
     try{
       for(let attempt=0;attempt<20&&!state.disposed&&!state.connected;attempt+=1){
         const bridge=restBridge();
         snapshot=bridge?.snapshot?.(state.id)||null;
         if(snapshot?.data)break;
-        if(bridge?.hydrate){
-          snapshot=await bridge.hydrate(state.id);
-          if(snapshot)break;
-        }
+        if(bridge?.hydrate){snapshot=await bridge.hydrate(state.id);if(snapshot)break}
         await new Promise(resolve=>setTimeout(resolve,50));
       }
-    }catch(error){renderStatus(state,error?.message||'REST PTY hydration failed',true);return}
-    if(state.disposed||state.connected)return;
-    state.restReady=Boolean(snapshot&&snapshot.alive!==false);
-    if(snapshot?.data){
-      writeRestOutput(state,snapshot.data,true);
-      state.hydrated=true;
-      renderStatus(state,'REST PTY active · WSS reconnecting');
-    }else if(state.restReady){
-      renderStatus(state,'REST PTY connected · waiting for shell output');
-    }else{
-      renderStatus(state,'REST PTY bridge unavailable',true);
+      if(state.disposed||state.connected)return;
+      state.restReady=Boolean(snapshot&&snapshot.alive!==false);
+      if(snapshot?.data){
+        await writeSnapshot(state,snapshot.data);
+        renderStatus(state,'REST PTY active · WSS reconnecting');
+      }else if(state.restReady){
+        state.hydrated=true;enableInput(state);
+        renderStatus(state,'REST PTY connected · waiting for shell output');
+      }else{
+        state.inputReady=false;
+        renderStatus(state,'REST PTY bridge unavailable',true);
+      }
+    }catch(error){
+      renderStatus(state,error?.message||'REST PTY hydration failed',true);
+    }finally{
+      state.hydrating=false;
     }
-    if(directMode()&&state.id===activeSessionId())requestAnimationFrame(()=>state.term.focus());
   };
+
   const sendControl=(state,message)=>{
     if(!state?.ws||state.ws.readyState!==WebSocket.OPEN)return false;
     state.ws.send(JSON.stringify(message));return true;
@@ -115,15 +166,8 @@
 
   const loadCapabilities=state=>{
     const install=(key,factory)=>{
-      try{
-        const addon=factory();
-        state.term.loadAddon(addon);
-        state[key]=addon;
-        return addon;
-      }catch(error){
-        console.warn(`[Sulandra Terminal] optional ${key} addon unavailable`,error);
-        return null;
-      }
+      try{const addon=factory();state.term.loadAddon(addon);state[key]=addon;return addon}
+      catch(error){console.warn(`[Sulandra Terminal] optional ${key} addon unavailable`,error);return null}
     };
     install('fit',()=>new Runtime.FitAddon());
     install('links',()=>new Runtime.WebLinksAddon());
@@ -133,12 +177,6 @@
     install('serializer',()=>new Runtime.SerializeAddon());
   };
 
-  const fitState=state=>{
-    if(!state||state.disposed||!state.pane.classList.contains('active'))return;
-    try{state.fit.fit()}catch{}
-    sendControl(state,{type:'resize',cols:Math.max(40,Math.min(240,state.term.cols||120)),rows:Math.max(12,Math.min(80,state.term.rows||32))});
-  };
-
   const scheduleReconnect=(state,minimumDelay=0)=>{
     if(state.disposed||state.reconnectTimer)return;
     state.reconnects=(state.reconnects||0)+1;
@@ -146,40 +184,62 @@
     state.reconnectTimer=setTimeout(()=>{state.reconnectTimer=0;connect(state)},delay);
   };
 
+  const consumeWssOutput=(state,payload)=>{
+    if(state.awaitingSnapshot){
+      state.awaitingSnapshot=false;
+      void writeSnapshot(state,payload);
+      return;
+    }
+    writeLive(state,payload);
+  };
+
   const connect=state=>{
     if(!state||state.disposed)return;
     const token=authToken();
-    if(!token){setTransportReady(state,false);renderStatus(state,'Authentication required',true);scheduleReconnect(state,5_000);return}
+    if(!token){setTransportReady(state,false);renderStatus(state,'Authentication required',true);void hydrateState(state);scheduleReconnect(state,5_000);return}
     if(state.ws&&(state.ws.readyState===WebSocket.OPEN||state.ws.readyState===WebSocket.CONNECTING))return;
     setTransportReady(state,false);
     const fallbackReady=state.hydrated||state.restReady;
     renderStatus(state,state.reconnects?(fallbackReady?'REST PTY active · WSS reconnecting…':'WSS reconnecting…'):(fallbackReady?'REST PTY active · WSS connecting…':'WSS connecting…'));
     let ws;
     try{ws=new WebSocket(`${WSS_ORIGIN}/ws/sessions/${encodeURIComponent(state.id)}`,['sulandra-terminal.v2','auth.'+base64url(token)])}
-    catch(error){renderStatus(state,'WSS unavailable',true);scheduleReconnect(state);return}
+    catch(error){renderStatus(state,'WSS unavailable',true);void hydrateState(state);scheduleReconnect(state);return}
     state.ws=ws;ws.binaryType='arraybuffer';
     if(state.connectTimer)clearTimeout(state.connectTimer);
     state.connectTimer=setTimeout(()=>{
       if(state.disposed||state.ws!==ws||ws.readyState!==WebSocket.CONNECTING)return;
-      state.connectTimer=0;
-      state.ws=null;
+      state.connectTimer=0;state.ws=null;
       renderStatus(state,state.hydrated||state.restReady?'REST PTY active · WSS timed out':'WSS timed out · REST fallback active',true);
       try{ws.close()}catch{}
-      scheduleReconnect(state);
+      void hydrateState(state);scheduleReconnect(state);
     },8_000);
     ws.onopen=()=>{
       if(state.ws!==ws){try{ws.close(1000,'Stale terminal connection')}catch{}return}
       if(state.connectTimer){clearTimeout(state.connectTimer);state.connectTimer=0}
-      state.reconnects=0;setTransportReady(state,true);renderStatus(state,`WSS · ${state.renderer==='webgl'?'WebGL':state.renderer==='canvas'?'Canvas':'DOM'}`);
-      fitState(state);if(directMode()&&state.id===activeSessionId())state.term.focus();
+      state.reconnects=0;
+      /* The session agent sends a complete PTY snapshot as the first binary
+         frame on every WSS attach. Gate stdin until xterm has parsed that
+         frame so historical device-query replies cannot reach Bash. */
+      state.awaitingSnapshot=true;
+      state.inputReady=false;
+      setTransportReady(state,true);
+      renderStatus(state,`WSS · ${state.renderer==='webgl'?'WebGL':state.renderer==='canvas'?'Canvas':'DOM'}`);
+      fitState(state);
+      if(state.snapshotTimer)clearTimeout(state.snapshotTimer);
+      state.snapshotTimer=setTimeout(()=>{
+        if(state.disposed||state.ws!==ws||!state.awaitingSnapshot)return;
+        state.awaitingSnapshot=false;
+        if(state.hydrated)enableInput(state);
+        else{setTransportReady(state,false);try{ws.close(1011,'PTY snapshot timeout')}catch{}void hydrateState(state)}
+      },3_000);
     };
     ws.onmessage=async event=>{
       if(typeof event.data==='string'){
         try{const message=JSON.parse(event.data);if(message.type==='resized')return}catch{}
-        state.term.write(event.data);return;
+        consumeWssOutput(state,event.data);return;
       }
-      if(event.data instanceof ArrayBuffer){state.term.write(new Uint8Array(event.data));return}
-      if(event.data instanceof Blob){state.term.write(new Uint8Array(await event.data.arrayBuffer()))}
+      if(event.data instanceof ArrayBuffer){consumeWssOutput(state,new Uint8Array(event.data));return}
+      if(event.data instanceof Blob){consumeWssOutput(state,new Uint8Array(await event.data.arrayBuffer()))}
     };
     ws.onerror=()=>{
       if(state.ws!==ws)return;
@@ -188,10 +248,12 @@
     ws.onclose=event=>{
       if(state.ws!==ws)return;
       if(state.connectTimer){clearTimeout(state.connectTimer);state.connectTimer=0}
-      state.ws=null;setTransportReady(state,false);
+      if(state.snapshotTimer){clearTimeout(state.snapshotTimer);state.snapshotTimer=0}
+      state.ws=null;state.awaitingSnapshot=false;setTransportReady(state,false);
       if(state.disposed)return;
       const rejected=event.code===1008;
       renderStatus(state,rejected?'WSS auth rejected · fallback active':'WSS reconnecting · fallback active',rejected);
+      if(!state.hydrated)void hydrateState(state);else enableInput(state);
       scheduleReconnect(state,rejected?15_000:0);
     };
   };
@@ -207,7 +269,7 @@
       scrollOnUserInput:true,rightClickSelectsWord:true,macOptionIsMeta:true,allowProposedApi:false,
       theme:{background:'#06131d',foreground:'#d7e8ef',cursor:'#50e39a',cursorAccent:'#06131d',selectionBackground:'#245774',black:'#07151f',red:'#ff6b6b',green:'#50e39a',yellow:'#f3c969',blue:'#61a9ff',magenta:'#c792ea',cyan:'#56d4dd',white:'#e8f3f7',brightBlack:'#6f8794',brightRed:'#ff8c8c',brightGreen:'#75efb2',brightYellow:'#ffe08a',brightBlue:'#8cc3ff',brightMagenta:'#d9a7f2',brightCyan:'#8ae7ec',brightWhite:'#ffffff'}
     });
-    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,hydrated:false,restReady:false,reconnects:0,reconnectTimer:0,connectTimer:0,disposed:false};
+    const state={id,pane,badge,term,fit:null,search:null,serializer:null,image:null,unicode:null,links:null,webgl:null,canvas:null,renderer:'dom',ws:null,connected:false,hydrated:false,hydrating:false,restReady:false,inputReady:false,awaitingSnapshot:false,reconnects:0,reconnectTimer:0,connectTimer:0,snapshotTimer:0,disposed:false};
     states.set(id,state);
     try{
       term.open(pane);
@@ -215,25 +277,26 @@
       root?.classList.add('itws-xterm-ready');
       renderStatus(state,'DOM renderer ready · loading PTY');
     }catch(error){
-      state.disposed=true;
-      renderStatus(state,'Terminal renderer failed to initialize',true);
-      console.error('[Sulandra Terminal] core renderer initialization failed',error);
-      return state;
+      state.disposed=true;renderStatus(state,'Terminal renderer failed to initialize',true);
+      console.error('[Sulandra Terminal] core renderer initialization failed',error);return state;
     }
+    /* Register stdin before any snapshot replay, but keep it gated. xterm may
+       emit DA/DSR replies while parsing history; those are intentionally
+       discarded until the authoritative attach snapshot completes. */
+    term.onData(data=>{if(state.inputReady&&state.id===activeSessionId()&&directMode())sendInput(state,data)});
     loadCapabilities(state);
-    const snapshot=restBridge()?.snapshot?.(id);
-    if(snapshot?.data){writeRestOutput(state,snapshot.data,true);state.hydrated=true}
-    void hydrateState(state);
-    term.onData(data=>{if(state.id===activeSessionId()&&directMode())sendInput(state,data)});
     term.onResize(()=>fitState(state));
     const observer=new ResizeObserver(()=>requestAnimationFrame(()=>fitState(state)));observer.observe(pane);state.observer=observer;
-    setTimeout(()=>{fitState(state);if(directMode()&&state.id===activeSessionId())state.term.focus();connect(state)},40);return state;
+    setTimeout(()=>{fitState(state);connect(state)},40);
+    setTimeout(()=>{if(!state.disposed&&!state.connected&&!state.hydrated)void hydrateState(state)},1_200);
+    return state;
   };
 
   const disposeState=state=>{
     if(!state||state.disposed)return;state.disposed=true;setTransportReady(state,false);
     if(state.reconnectTimer)clearTimeout(state.reconnectTimer);
     if(state.connectTimer)clearTimeout(state.connectTimer);
+    if(state.snapshotTimer)clearTimeout(state.snapshotTimer);
     try{state.ws?.close(1000,'Terminal tab closed')}catch{}
     try{state.observer?.disconnect()}catch{}
     for(const addon of ['webgl','canvas','image','serializer','search','links','unicode','fit'])try{state[addon]?.dispose?.()}catch{}
@@ -253,7 +316,16 @@
     if(!root||!host)return;
     const tabs=[...root.querySelectorAll('#itwsRtTabs .itws-rt-tab[data-terminal-id]')];const ids=new Set(tabs.map(tab=>tab.dataset.terminalId).filter(Boolean));
     ids.forEach(id=>makeState(id));[...states.values()].forEach(state=>{if(!ids.has(state.id))disposeState(state)});
-    const active=activeSessionId();states.forEach(state=>{const on=state.id===active;state.pane.classList.toggle('active',on);state.term.options.disableStdin=!on||!directMode();if(on)requestAnimationFrame(()=>{fitState(state);if(directMode())state.term.focus()})});
+    const active=activeSessionId();states.forEach(state=>{
+      const on=state.id===active;
+      const wasOn=state.pane.classList.contains('active');
+      state.pane.classList.toggle('active',on);
+      state.term.options.disableStdin=!on||!directMode();
+      if(on){
+        requestAnimationFrame(()=>fitState(state));
+        if(!wasOn&&state.inputReady)focusState(state,true);
+      }
+    });
     updateFallbackClass();
     const hint=root.querySelector('#itwsRtInputHint');if(hint)hint.textContent=states.get(active)?.connected?(directMode()?'Native WSS PTY: type at the live cursor; tmux preserves the shell across reconnects.':'Command box sends complete commands; live WSS output remains above.'):(directMode()?'WSS is reconnecting; xterm remains interactive through the authenticated REST PTY bridge.':'WSS is reconnecting; Command box output continues in xterm through the REST PTY bridge.');
   };
@@ -277,16 +349,16 @@
       if((event.ctrlKey||event.metaKey)&&event.shiftKey&&event.key.toLowerCase()==='f'&&root?.contains(document.activeElement)){event.preventDefault();search()}
     },true);
     root.querySelector('#itwsRtCopy')?.addEventListener('click',event=>{const state=activeState();if(!state?.term.hasSelection())return;event.preventDefault();event.stopImmediatePropagation();void copySelection()},true);
-    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();if(state){state.term.scrollToBottom();state.term.focus()}} ,true);
+    root.querySelector('#itwsRtLatest')?.addEventListener('click',()=>{const state=activeState();if(state){state.term.scrollToBottom();focusState(state,false)}} ,true);
     root.querySelectorAll('[data-rt-input-mode]').forEach(button=>button.addEventListener('click',()=>setTimeout(sync,60)));
     root.querySelector('#itwsRtTabs')?.addEventListener('click',()=>setTimeout(sync,50));
-    host.addEventListener('pointerdown',()=>{const state=activeState();if(state&&directMode())setTimeout(()=>state.term.focus(),0)});
+    host.addEventListener('pointerdown',()=>{const state=activeState();if(state&&state.inputReady&&directMode())setTimeout(()=>focusState(state,false),0)});
+    window.addEventListener('focus',()=>{const state=activeState();if(state?.inputReady)focusState(state,true)});
     new MutationObserver(sync).observe(root.querySelector('#itwsRtTabs'),{childList:true,subtree:true,attributes:true,attributeFilter:['class']});sync();syncTimer=setInterval(sync,500);
   };
 
   window.addEventListener('sulandra:terminal-rest-output',event=>{
-    const detail=event?.detail||{};
-    const state=states.get(String(detail.sessionId||''));
+    const detail=event?.detail||{};const state=states.get(String(detail.sessionId||''));
     writeRestOutput(state,detail.data,Boolean(detail.reset));
   });
   const scan=()=>document.querySelectorAll('#itwsRealTerminal').forEach(enhance);
