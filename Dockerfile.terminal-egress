@@ -1,0 +1,11 @@
+FROM alpine:3.20
+
+RUN apk add --no-cache squid ca-certificates \
+    && mkdir -p /var/cache/squid /var/log/squid /var/run/squid \
+    && chown -R squid:squid /var/cache/squid /var/log/squid /var/run/squid
+
+COPY infra/terminal-vps/squid.conf /etc/squid/squid.conf
+
+USER squid
+EXPOSE 3128
+CMD ["squid", "-N", "-f", "/etc/squid/squid.conf"]

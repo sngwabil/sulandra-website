@@ -10,7 +10,7 @@ ENV NODE_ENV=production \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      bash git curl ca-certificates build-essential python3 python3-pip python3-venv \
+      bash git gh curl ca-certificates build-essential python3 python3-pip python3-venv \
       jq ripgrep less nano vim-tiny procps tmux sqlite3 tree zip unzip rsync openssh-client \
     && groupadd --gid 10001 terminal \
     && useradd --uid 10001 --gid 10001 --create-home --shell /bin/bash terminal \
@@ -21,7 +21,9 @@ COPY terminal-session-agent/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 COPY terminal-session-agent/server.mjs ./server.mjs
 COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
-RUN chmod 0755 /agent/entrypoint.sh \
+COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login
+COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
+RUN chmod 0755 /agent/entrypoint.sh /usr/local/bin/sulandra-github-login /usr/local/bin/sulandra-pr \
     && mkdir -p /workspace /home/terminal \
     && chown -R 10001:10001 /workspace /home/terminal /agent
 

@@ -1,0 +1,52 @@
+name: Terminal Chrome Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/it-agent-xterm-production-stack.js
+      - assets/it-agent-terminal-caret-clock.js
+      - assets/it-agent-xterm-emulator.css
+      - terminal-browser/**
+      - .github/workflows/terminal-browser-chrome.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/it-agent-xterm-production-stack.js
+      - assets/it-agent-terminal-caret-clock.js
+      - assets/it-agent-xterm-emulator.css
+      - terminal-browser/**
+      - .github/workflows/terminal-browser-chrome.yml
+
+permissions:
+  contents: read
+
+jobs:
+  chrome-terminal-regression:
+    name: Chrome terminal regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build xterm browser runtime
+        run: |
+          npm --prefix terminal-browser install --omit=dev --no-audit --no-fund
+          npm --prefix terminal-browser run build
+
+      - name: Install Playwright library
+        run: npm --prefix terminal-browser install --no-save --no-audit --no-fund playwright@1.55.0
+
+      - name: Verify Google Chrome is available
+        run: google-chrome --version
+
+      - name: Run fresh-load and interaction regression in Chrome
+        run: node terminal-browser/tests/chrome-regression.mjs

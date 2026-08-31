@@ -6,7 +6,7 @@ INFRA="$ROOT/infra/terminal-vps"
 ENV_FILE="$INFRA/.env"
 DOMAIN="${1:-${TERMINAL_EXECUTION_DOMAIN:-}}"
 EMAIL="${2:-${ACME_EMAIL:-}}"
-TAG="${TERMINAL_STACK_TAG:-2026-08-30-v2}"
+TAG="${TERMINAL_STACK_TAG:-2026-08-31-industry-v1}"
 SEED_ROOT="/srv/sulandra-terminal/seed"
 SEED_NEXT="/srv/sulandra-terminal/seed.next"
 
@@ -75,13 +75,23 @@ ACME_EMAIL=$EMAIL
 TERMINAL_EXECUTION_TOKEN=$TOKEN
 TERMINAL_STACK_TAG=$TAG
 DOCKER_GID=$DOCKER_GID
+TERMINAL_GIT_REPOSITORY=${TERMINAL_GIT_REPOSITORY:-https://github.com/sngwabil/sulandra-website.git}
+TERMINAL_GIT_BASE_BRANCH=${TERMINAL_GIT_BASE_BRANCH:-release/sulandra-1.0}
 ENV
 chmod 0600 "$ENV_FILE"
 
 cd "$ROOT"
 docker build -f Dockerfile.terminal-session -t "sulandra-terminal-session:$TAG" .
-docker compose --env-file "$ENV_FILE" -f infra/terminal-vps/docker-compose.yml build executor
-docker compose --env-file "$ENV_FILE" -f infra/terminal-vps/docker-compose.yml up -d
+docker compose --env-file "$ENV_FILE" -f infra/terminal-vps/docker-compose.yml build executor-a executor-b egress-proxy
+
+docker run --rm \
+  -e ACME_EMAIL="$EMAIL" \
+  -e TERMINAL_EXECUTION_DOMAIN="$DOMAIN" \
+  -e TERMINAL_EXECUTION_TOKEN="$TOKEN" \
+  -v "$INFRA/Caddyfile:/etc/caddy/Caddyfile:ro" \
+  caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile
+
+docker compose --env-file "$ENV_FILE" -f infra/terminal-vps/docker-compose.yml up -d --remove-orphans
 
 if command -v ufw >/dev/null 2>&1; then
   ufw allow OpenSSH >/dev/null || true
@@ -89,9 +99,12 @@ if command -v ufw >/dev/null 2>&1; then
   ufw allow 443/tcp >/dev/null || true
 fi
 
-for attempt in {1..30}; do
+for attempt in {1..45}; do
   if curl -fsS --max-time 5 -H "Authorization: Bearer $TOKEN" "https://$DOMAIN/healthz" >/dev/null 2>&1; then
     echo "Terminal execution plane is healthy at https://$DOMAIN"
+    echo "HA executors: executor-a + executor-b"
+    echo "Controlled egress: GitHub/npm/PyPI allowlist via Squid"
+    echo "Git workspaces: ${TERMINAL_GIT_REPOSITORY:-https://github.com/sngwabil/sulandra-website.git} @ ${TERMINAL_GIT_BASE_BRANCH:-release/sulandra-1.0}"
     echo "Set Railway TERMINAL_EXECUTION_BASE_URL=https://$DOMAIN"
     echo "Set Railway TERMINAL_EXECUTION_TOKEN to the value stored in $ENV_FILE"
     exit 0
@@ -100,5 +113,6 @@ for attempt in {1..30}; do
 done
 
 echo "Deployment started but health verification did not pass. Inspect:" >&2
+echo "  docker compose --env-file $ENV_FILE -f $INFRA/docker-compose.yml ps" >&2
 echo "  docker compose --env-file $ENV_FILE -f $INFRA/docker-compose.yml logs --tail=200" >&2
 exit 1
