@@ -1,9 +1,10 @@
-/* SULANDRA_TERMINAL_CARET_CLOCK_V1
-   JS-driven caret clock for Chromium/xterm startup and repaint edge cases. */
+/* SULANDRA_TERMINAL_CARET_CLOCK_V2
+   JS-driven caret clock for Chromium/xterm startup and repaint edge cases.
+   Supports xterm 5.x DOM cursors and legacy canvas cursor layers. */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_TERMINAL_CARET_CLOCK_V1__)return;
-  window.__SULANDRA_TERMINAL_CARET_CLOCK_V1__=true;
+  if(window.__SULANDRA_TERMINAL_CARET_CLOCK_V2__)return;
+  window.__SULANDRA_TERMINAL_CARET_CLOCK_V2__=true;
 
   let phase=true;
   let timer=0;
@@ -13,12 +14,22 @@
     if(!root)return;
     const enabled=root.classList.contains('itws-xterm-ready')&&root.classList.contains('itws-rt-direct-mode');
     root.querySelectorAll('.itws-xterm-pane').forEach(pane=>{
-      const layer=pane.querySelector('.xterm-cursor-layer');
-      if(!layer)return;
       const active=enabled&&pane.classList.contains('active');
-      layer.style.setProperty('display',active?'block':'none','important');
-      layer.style.setProperty('visibility',active?'visible':'hidden','important');
-      layer.style.setProperty('opacity',active&&phase?'1':'0','important');
+
+      // Legacy/canvas renderer: the entire cursor layer can be hidden when a
+      // pane is inactive without affecting terminal row layout.
+      pane.querySelectorAll('.xterm-cursor-layer').forEach(layer=>{
+        layer.style.setProperty('display',active?'block':'none','important');
+        layer.style.setProperty('visibility',active?'visible':'hidden','important');
+        layer.style.setProperty('opacity',active&&phase?'1':'0','important');
+      });
+
+      // xterm 5.x core renderer: the caret is a span inside the DOM rows. Do
+      // not use display:none here because that can alter cell geometry.
+      pane.querySelectorAll('.xterm-cursor').forEach(cursor=>{
+        cursor.style.setProperty('visibility',active?'visible':'hidden','important');
+        cursor.style.setProperty('opacity',active&&phase?'1':'0','important');
+      });
     });
   };
 
