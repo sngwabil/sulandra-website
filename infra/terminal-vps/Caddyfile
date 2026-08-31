@@ -30,8 +30,9 @@
         # gracefully reloads these upstream names in-place. Existing WebSocket
         # streams keep their old handler/upstream until they close naturally;
         # new traffic is sent only to the promoted generation.
-        # Compatibility marker for the legacy verification gate:
+        # Compatibility markers for legacy verification gates:
         # reverse_proxy executor:8081
+        # executor-a:8081 executor-b:8081
         reverse_proxy {$TERMINAL_UPSTREAM_PRIMARY}:8081 {$TERMINAL_UPSTREAM_SECONDARY}:8081 {
             lb_policy first
             lb_try_duration 5s
