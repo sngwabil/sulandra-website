@@ -11,6 +11,7 @@ on:
       - terminal-execution-plane/**
       - terminal-session-agent/**
       - scripts/install-terminal-industry-hardening.mjs
+      - scripts/fix-terminal-resource-monitor.mjs
       - infra/terminal-vps/**
       - .github/workflows/terminal-industry-hardening.yml
   push:
@@ -23,6 +24,7 @@ on:
       - terminal-execution-plane/**
       - terminal-session-agent/**
       - scripts/install-terminal-industry-hardening.mjs
+      - scripts/fix-terminal-resource-monitor.mjs
       - infra/terminal-vps/**
       - .github/workflows/terminal-industry-hardening.yml
 
@@ -48,6 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/install-terminal-industry-hardening.mjs
+          node --check scripts/fix-terminal-resource-monitor.mjs
           bash -n terminal-session-agent/github-login.sh
           bash -n terminal-session-agent/create-pr.sh
           bash -n infra/terminal-vps/deploy.sh
@@ -200,7 +203,7 @@ jobs:
           done
           if [[ "$burst" != "1" ]]; then
             echo 'Build burst was not observed. Container process view:' >&2
-            docker top "$cid" -eo args >&2 || true
+            docker top "$cid" -eo pid,args >&2 || true
             echo 'Executor A diagnostics:' >&2
             docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=120 executor-a >&2 || true
             exit 1
