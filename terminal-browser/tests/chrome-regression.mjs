@@ -60,9 +60,6 @@ try {
   page.on('console', message => console.log(`[chrome:${message.type()}] ${message.text()}`));
   page.on('pageerror', error => console.error(`[chrome:pageerror] ${error.stack || error.message}`));
 
-  // Navigate to a real HTTP origin. page.setContent/about:blank has an opaque
-  // origin in Chrome, which denies localStorage/sessionStorage and prevents the
-  // production terminal transport from bootstrapping.
   await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
   await page.addStyleTag({ path: xtermCss });
   await page.addStyleTag({ path: emulatorCss });
@@ -124,18 +121,26 @@ try {
   await page.addScriptTag({ path: productionStack });
   await page.addScriptTag({ path: caretClock });
 
-  const activeCursorSelector = '.itws-xterm-pane.active .xterm-cursor-layer, .itws-xterm-pane.active .xterm-cursor';
+  const activeCursorSelector = '.itws-xterm-pane.active .xterm-cursor, .itws-xterm-pane.active .xterm-cursor-layer';
+  await page.waitForSelector('#itwsRealTerminal.itws-xterm-ready', { state: 'attached', timeout: 10_000 });
   await page.waitForSelector(activeCursorSelector, { state: 'attached', timeout: 10_000 });
-  await page.waitForTimeout(700);
 
   const leakedDeviceReply = await page.evaluate(() => window.__fakeWsSent.some(item => item.binary && /276;0c|>0;[0-9]+;0c/.test(item.text)));
   if (leakedDeviceReply) throw new Error('Snapshot device-attribute reply leaked into PTY input');
 
-  const cursorOpacity = () => page.$eval(activeCursorSelector, node => getComputedStyle(node).opacity);
-  const firstPhase = await cursorOpacity();
-  await page.waitForTimeout(650);
-  const secondPhase = await cursorOpacity();
-  if (firstPhase === secondPhase) throw new Error(`Caret did not blink after fresh Chrome load (${firstPhase} -> ${secondPhase})`);
+  const cursorOpacity = () => page.$eval(activeCursorSelector, node => Number.parseFloat(getComputedStyle(node).opacity));
+  const assertBlinking = async label => {
+    const samples = [];
+    for (let i = 0; i < 12; i += 1) {
+      samples.push(await cursorOpacity());
+      await page.waitForTimeout(150);
+    }
+    const sawOn = samples.some(value => value >= 0.8);
+    const sawOff = samples.some(value => value <= 0.2);
+    if (!sawOn || !sawOff) throw new Error(`${label} did not traverse both caret phases: ${JSON.stringify(samples)}`);
+  };
+
+  await assertBlinking('Fresh Chrome load');
 
   await page.locator('.itws-xterm-pane.active .xterm-helper-textarea').focus();
   await page.keyboard.type('echo browser-ok');
@@ -144,16 +149,10 @@ try {
   const sentInput = await page.evaluate(() => window.__fakeWsSent.filter(item => item.binary).map(item => item.text).join(''));
   if (!sentInput.includes('echo browser-ok')) throw new Error(`Native terminal keystrokes did not reach WSS: ${JSON.stringify(sentInput)}`);
 
-  const afterTypingA = await cursorOpacity();
-  await page.waitForTimeout(650);
-  const afterTypingB = await cursorOpacity();
-  if (afterTypingA === afterTypingB) throw new Error('Caret stopped blinking after typing');
+  await assertBlinking('Caret after typing');
 
   await page.click('#outside');
-  const outsideA = await cursorOpacity();
-  await page.waitForTimeout(650);
-  const outsideB = await cursorOpacity();
-  if (outsideA === outsideB) throw new Error('Caret stopped blinking after focus moved to another workspace control');
+  await assertBlinking('Caret after focus moved to another workspace control');
 
   await page.evaluate(() => {
     const tabs = document.querySelector('#itwsRtTabs');
@@ -166,30 +165,28 @@ try {
   });
   await page.waitForFunction(() => document.querySelectorAll('.itws-xterm-pane').length === 2, null, { timeout: 10_000 });
   await page.waitForSelector(activeCursorSelector, { state: 'attached', timeout: 10_000 });
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(200);
 
   const panes = await page.evaluate(() => [...document.querySelectorAll('.itws-xterm-pane')].map(pane => {
-    const cursor = pane.querySelector('.xterm-cursor-layer') || pane.querySelector('.xterm-cursor');
+    const cursor = pane.querySelector('.xterm-cursor') || pane.querySelector('.xterm-cursor-layer');
     const style = cursor ? getComputedStyle(cursor) : null;
     return {
       id: pane.dataset.sessionId,
       active: pane.classList.contains('active'),
+      owner: pane.classList.contains('sulandra-caret-owner'),
       hasCursor: Boolean(cursor),
       hidden: !cursor || style.display === 'none' || style.visibility === 'hidden',
     };
   }));
   const inactive = panes.find(item => item.id === 'term-chrome-1');
   const active = panes.find(item => item.id === 'term-chrome-2');
-  if (!inactive || !active || inactive.active || !active.active || !inactive.hidden || !active.hasCursor || active.hidden) {
+  if (!inactive || !active || inactive.active || inactive.owner || !active.active || !active.owner || !inactive.hidden || !active.hasCursor || active.hidden) {
     throw new Error(`Terminal switching cursor ownership failed: ${JSON.stringify(panes)}`);
   }
 
-  const secondTerminalA = await cursorOpacity();
-  await page.waitForTimeout(650);
-  const secondTerminalB = await cursorOpacity();
-  if (secondTerminalA === secondTerminalB) throw new Error('Newly added active terminal caret did not keep blinking');
+  await assertBlinking('Newly active terminal caret');
 
-  console.log('Chrome regression passed: xterm DOM/canvas caret blink, typing persistence, focus changes, terminal switching, and snapshot stdin gating.');
+  console.log('Chrome regression passed: repaint-proof caret blink, typing persistence, focus changes, terminal switching, and snapshot stdin gating.');
 } finally {
   await browser?.close().catch(() => {});
   await new Promise(resolve => server.close(resolve));
