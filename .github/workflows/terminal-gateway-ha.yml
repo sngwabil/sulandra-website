@@ -37,19 +37,25 @@ jobs:
 
       - name: Start gateway with unavailable execution plane
         run: |
+          execution_token="$(printf 'execution-ci-%s-run-%s-execution-ci' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT")"
           jwt_secret="$(printf 'gateway-ci-%s-attempt-%s-gateway-ci' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT")"
           docker run -d --name sulandra-terminal-gateway-ci \
             -p 127.0.0.1:18080:8080 \
             -e TERMINAL_AUTH_TOKEN=ci-internal-token \
             -e TERMINAL_EXECUTION_BASE_URL=https://127.0.0.1:65535 \
-            -e TERMINAL_EXECUTION_TOKEN=ci-execution-token \
+            -e TERMINAL_EXECUTION_TOKEN="$execution_token" \
             -e TERMINAL_WS_AUTH_PROVIDER=sulandra \
             -e JWT_SECRET="$jwt_secret" \
             sulandra-terminal-gateway:ci
+          healthy=0
           for i in {1..20}; do
-            if curl -fsS http://127.0.0.1:18080/health >/tmp/gateway-health.json; then break; fi
+            if curl -fsS http://127.0.0.1:18080/health >/tmp/gateway-health.json; then healthy=1; break; fi
             sleep 0.5
           done
+          if [[ "$healthy" != "1" ]]; then
+            docker logs sulandra-terminal-gateway-ci >&2 || true
+            exit 1
+          fi
           node -e 'const x=require("/tmp/gateway-health.json");if(x.ok!==true||x.gateway!==true||x.ready!==false||x.executionPlane?.healthy!==false)throw new Error(JSON.stringify(x))'
 
       - name: Verify graceful SIGTERM drain
