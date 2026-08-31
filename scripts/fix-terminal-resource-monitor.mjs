@@ -27,7 +27,7 @@ const newScan = `      // Docker's top endpoint requires a PID column on some da
           const stream = await exec.start({ hijack: true, stdin: false });
           let containerPs = '';
           for await (const chunk of stream) containerPs += chunk.toString();
-          commandText = \`${commandText}\\n\${containerPs}\`;
+          commandText += '\\n' + containerPs;
         } catch (error) {
           console.warn(\`[terminal-executor] in-container ps scan failed session=\${session.id}: \${error?.message || error}\`);
         }
