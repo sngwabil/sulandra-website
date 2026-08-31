@@ -52,7 +52,13 @@ const bridgeWorkspaceSockets = (left, right) => {
 
 if (source.includes("const docker = new Docker")) {
   replaceOnce("import { createServer } from 'node:http';", "import { createServer } from 'node:http';\nimport { Readable } from 'node:stream';", 'executor stream import');
-  replaceOnce("const app = express();\napp.disable('x-powered-by');\napp.use(express.json({ limit: '128kb' }));", String.raw`const app = express();\napp.disable('x-powered-by');\napp.use((req, res, next) => {\n  if (/^\\/v1\\/ide\\//.test(req.url || '')) { void proxyWorkspaceIdeRequest(req, res, next); return; }\n  next();\n});\napp.use(express.json({ limit: '128kb' }));`, 'executor raw IDE middleware');
+  replaceOnce("const app = express();\napp.disable('x-powered-by');\napp.use(express.json({ limit: '128kb' }));", String.raw`const app = express();
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  if (/^\/v1\/ide\//.test(req.url || '')) { void proxyWorkspaceIdeRequest(req, res, next); return; }
+  next();
+});
+app.use(express.json({ limit: '128kb' }));`, 'executor raw IDE middleware');
   source = source.replace('Number(process.env.TERMINAL_MEMORY_BYTES || 536_870_912)', 'Number(process.env.TERMINAL_MEMORY_BYTES || 4_294_967_296)');
   source = source.replace('Number(process.env.TERMINAL_NANO_CPUS || 500_000_000)', 'Number(process.env.TERMINAL_NANO_CPUS || 2_000_000_000)');
   replaceOnce("const agentPort = Math.max(1, Number(process.env.TERMINAL_AGENT_PORT || 9000));", "const agentPort = Math.max(1, Number(process.env.TERMINAL_AGENT_PORT || 9000));\nconst idePort = Math.max(1024, Math.min(65535, Number(process.env.TERMINAL_IDE_PORT || 13337)));", 'executor IDE port');
@@ -91,12 +97,33 @@ const proxyWorkspaceIdeRequest = async (req, res, next) => {
 `;
   replaceOnce("app.use(authorize);", `${executorProxy}\napp.use(authorize);`, 'executor proxy helpers');
   replaceOnce("const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });", "const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });\nconst ideWss = new WebSocketServer({ noServer: true, maxPayload: 8_388_608 });", 'executor IDE WSS');
-  replaceOnce("  const match = url.pathname.match(/^\\/v1\\/ws\\/sessions\\/([A-Za-z0-9_-]+)$/);\n  const token = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '').trim();\n  const owner = String(req.headers['x-sulandra-terminal-owner'] || '').trim();", String.raw`  const ideMatch = url.pathname.match(/^\\/v1\\/ide\\/([A-Za-z0-9_-]+)(\\/.*)?$/);\n  const token = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '').trim();\n  const owner = String(req.headers['x-sulandra-terminal-owner'] || '').trim();\n  if (ideMatch) {\n    if (!secureEquals(token, executionToken) || !owner) { socket.write('HTTP/1.1 401 Unauthorized\\r\\nConnection: close\\r\\n\\r\\n'); socket.destroy(); return; }\n    const session = sessions.get(ideMatch[1]);\n    if (!session || session.owner !== owner) { socket.write('HTTP/1.1 404 Not Found\\r\\nConnection: close\\r\\n\\r\\n'); socket.destroy(); return; }\n    const rest = ideMatch[2] || '/';\n    const blocked = rest.match(/^\\/(?:abs)?proxy\\/(\\d+)(?:\\/|$)/);\n    if (blocked && [agentPort, idePort].includes(Number(blocked[1]))) { socket.write('HTTP/1.1 403 Forbidden\\r\\nConnection: close\\r\\n\\r\\n'); socket.destroy(); return; }\n    const address = await findContainerAddress(docker.getContainer(session.containerId));\n    req.sulandraIde = { session, upstream: 'ws://' + address + ':' + idePort + rest + url.search };\n    ideWss.handleUpgrade(req, socket, head, ws => ideWss.emit('connection', ws, req));\n    return;\n  }\n  const match = url.pathname.match(/^\\/v1\\/ws\\/sessions\\/([A-Za-z0-9_-]+)$/);`, 'executor IDE upgrade branch');
+  replaceOnce("  const match = url.pathname.match(/^\\/v1\\/ws\\/sessions\\/([A-Za-z0-9_-]+)$/);\n  const token = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '').trim();\n  const owner = String(req.headers['x-sulandra-terminal-owner'] || '').trim();", String.raw`  const ideMatch = url.pathname.match(/^\/v1\/ide\/([A-Za-z0-9_-]+)(\/.*)?$/);
+  const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+  const owner = String(req.headers['x-sulandra-terminal-owner'] || '').trim();
+  if (ideMatch) {
+    if (!secureEquals(token, executionToken) || !owner) { socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
+    const session = sessions.get(ideMatch[1]);
+    if (!session || session.owner !== owner) { socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
+    const rest = ideMatch[2] || '/';
+    const blocked = rest.match(/^\/(?:abs)?proxy\/(\d+)(?:\/|$)/);
+    if (blocked && [agentPort, idePort].includes(Number(blocked[1]))) { socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
+    const address = await findContainerAddress(docker.getContainer(session.containerId));
+    req.sulandraIde = { session, upstream: 'ws://' + address + ':' + idePort + rest + url.search };
+    ideWss.handleUpgrade(req, socket, head, ws => ideWss.emit('connection', ws, req));
+    return;
+  }
+  const match = url.pathname.match(/^\/v1\/ws\/sessions\/([A-Za-z0-9_-]+)$/);`, 'executor IDE upgrade branch');
   replaceOnce("wss.on('connection', (gateway, req) => {", `ideWss.on('connection', (browser, req) => {\n  const session = req.sulandraIde.session;\n  session.lastUsedAt = now();\n  const requested = String(req.headers['sec-websocket-protocol'] || '').split(',').map(value => value.trim()).filter(Boolean);\n  const upstream = new WebSocket(req.sulandraIde.upstream, requested.length ? requested : undefined, {\n    headers: { 'user-agent': String(req.headers['user-agent'] || 'Sulandra-Workspace-Proxy') },\n  });\n  bridgeWorkspaceSockets(browser, upstream);\n});\n\nwss.on('connection', (gateway, req) => {`, 'executor IDE WSS bridge');
   replaceOnce("cgroups: { memoryBytes, nanoCpus, pidsLimit },", "cgroups: { memoryBytes, nanoCpus, pidsLimit },\n      workspaceIde: { enabled: true, port: idePort, embeddedAuth: 'gateway-ticket' },", 'executor health IDE marker');
 } else if (source.includes('const executionBaseUrl')) {
   replaceOnce("import { createServer } from 'node:http';", "import { createServer } from 'node:http';\nimport { Readable } from 'node:stream';", 'gateway stream import');
-  replaceOnce("const app = express();\napp.disable('x-powered-by');\napp.use(express.json({ limit: '128kb' }));", String.raw`const app = express();\napp.disable('x-powered-by');\napp.use((req, res, next) => {\n  if (/^\\/workspace\\//.test(req.url || '') && !/^\\/workspace\\/ticket(?:\\?|$)/.test(req.url || '')) { void proxyBrowserWorkspace(req, res, next); return; }\n  next();\n});\napp.use(express.json({ limit: '128kb' }));`, 'gateway raw workspace middleware');
+  replaceOnce("const app = express();\napp.disable('x-powered-by');\napp.use(express.json({ limit: '128kb' }));", String.raw`const app = express();
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  if (/^\/workspace\//.test(req.url || '') && !/^\/workspace\/ticket(?:\?|$)/.test(req.url || '')) { void proxyBrowserWorkspace(req, res, next); return; }
+  next();
+});
+app.use(express.json({ limit: '128kb' }));`, 'gateway raw workspace middleware');
   replaceOnce("const allowedRoles = new Set(['ADMINISTRATOR', 'CEO', 'COO']);", "const allowedRoles = new Set(['ADMINISTRATOR', 'CEO', 'COO']);\nconst workspaceTicketSecret = crypto.createHash('sha256').update('sulandra-workspace-ticket:' + authToken).digest('hex');\nconst workspaceTicketSeconds = Math.max(60, Math.min(900, Number(process.env.TERMINAL_WORKSPACE_TICKET_SECONDS || 300)));", 'gateway ticket secret');
 
   const gatewayProxy = String.raw`${proxyHeaderHelpers}
@@ -179,7 +206,20 @@ app.post('/workspace/ticket', async (req, res) => {
 `;
   replaceOnce("app.use(authenticateInternal);", `${gatewayProxy}\napp.use(authenticateInternal);`, 'gateway browser workspace proxy');
   replaceOnce("const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });", "const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });\nconst workspaceWss = new WebSocketServer({ noServer: true, maxPayload: 8_388_608 });", 'gateway workspace WSS');
-  replaceOnce("  const match = url.pathname.match(/^\\/ws\\/sessions\\/([A-Za-z0-9_-]+)$/);\n  if (!match) {", String.raw`  const workspaceMatch = url.pathname.match(/^\\/workspace\\/([A-Za-z0-9_-]+)\\/ide(\\/.*)?$/);\n  if (workspaceMatch) {\n    const sessionId = workspaceMatch[1];\n    const rest = workspaceMatch[2] || '/';\n    if (!validateWorkspaceProxyPath(rest)) { socket.write('HTTP/1.1 403 Forbidden\\r\\nConnection: close\\r\\n\\r\\n'); socket.destroy(); return; }\n    const claims = verifyWorkspaceTicket(workspaceTicketFromUrl(req, url), sessionId);\n    if (!claims) { socket.write('HTTP/1.1 401 Unauthorized\\r\\nConnection: close\\r\\nCache-Control: no-store\\r\\n\\r\\n'); socket.destroy(); return; }\n    url.searchParams.delete('ticket');\n    req.sulandraWorkspace = { sessionId, owner: claims.owner, path: '/v1/ide/' + encodeURIComponent(sessionId) + rest + url.search };\n    workspaceWss.handleUpgrade(req, socket, head, ws => workspaceWss.emit('connection', ws, req));\n    return;\n  }\n  const match = url.pathname.match(/^\\/ws\\/sessions\\/([A-Za-z0-9_-]+)$/);\n  if (!match) {`, 'gateway workspace upgrade branch');
+  replaceOnce("  const match = url.pathname.match(/^\\/ws\\/sessions\\/([A-Za-z0-9_-]+)$/);\n  if (!match) {", String.raw`  const workspaceMatch = url.pathname.match(/^\/workspace\/([A-Za-z0-9_-]+)\/ide(\/.*)?$/);
+  if (workspaceMatch) {
+    const sessionId = workspaceMatch[1];
+    const rest = workspaceMatch[2] || '/';
+    if (!validateWorkspaceProxyPath(rest)) { socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); return; }
+    const claims = verifyWorkspaceTicket(workspaceTicketFromUrl(req, url), sessionId);
+    if (!claims) { socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n'); socket.destroy(); return; }
+    url.searchParams.delete('ticket');
+    req.sulandraWorkspace = { sessionId, owner: claims.owner, path: '/v1/ide/' + encodeURIComponent(sessionId) + rest + url.search };
+    workspaceWss.handleUpgrade(req, socket, head, ws => workspaceWss.emit('connection', ws, req));
+    return;
+  }
+  const match = url.pathname.match(/^\/ws\/sessions\/([A-Za-z0-9_-]+)$/);
+  if (!match) {`, 'gateway workspace upgrade branch');
   replaceOnce("wss.on('connection', (browser, req) => {", `workspaceWss.on('connection', (browser, req) => {\n  const requested = String(req.headers['sec-websocket-protocol'] || '').split(',').map(value => value.trim()).filter(Boolean);\n  const upstream = new WebSocket(executionWsUrl(req.sulandraWorkspace.path), requested.length ? requested : undefined, {\n    headers: { Authorization: 'Bearer ' + executionToken, 'x-sulandra-terminal-owner': req.sulandraWorkspace.owner },\n  });\n  bridgeWorkspaceSockets(browser, upstream);\n});\n\nwss.on('connection', (browser, req) => {`, 'gateway workspace WSS bridge');
   replaceOnce("rateLimit: { bytesPerSecond: wsBytesPerSecond, burstBytes: wsBurstBytes },", "rateLimit: { bytesPerSecond: wsBytesPerSecond, burstBytes: wsBurstBytes },\n    workspaceIde: { enabled: true, ticketSeconds: workspaceTicketSeconds, previewProxy: true },", 'gateway health workspace marker');
 } else {
