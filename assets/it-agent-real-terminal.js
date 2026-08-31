@@ -57,6 +57,7 @@
     const base=typeof API==='string'&&API?API:'https://sulandra-website-production-5fc4.up.railway.app';
     const response=await fetch(base+path,{
       ...options,
+      cache:options.cache||'no-store',
       headers:{Accept:'application/json',Authorization:'Bearer '+authToken(),...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})},
     });
     const payload=await response.json().catch(()=>({}));
@@ -71,6 +72,11 @@
 
   const sessionById=id=>sessions.find(session=>session.id===id)||null;
   const activeSession=()=>sessionById(activeId);
+  const snapshotOfSession=session=>session?{
+    data:String(session.rawOutput||''),
+    alive:session.alive!==false,
+    cursor:Number(session.cursor)||0,
+  }:null;
   const sessionStorageKey=id=>id?SESSION_KEY_PREFIX+id:'';
   const readStoredSessions=id=>{
     if(!id)return {ids:[],activeId:''};
@@ -272,11 +278,17 @@
   const pollSession=async session=>{
     if(!session||session.polling||xtermActive(session.id))return;
     session.polling=true;
+    const requestedCursor=Number(session.cursor)||0;
     try{
-      const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/output?cursor='+encodeURIComponent(String(session.cursor||0)));
-      if(data.data)appendOutput(session,data.data,{reset:Boolean(data.reset)});
-      else if(data.reset)appendOutput(session,'',{reset:true});
-      session.cursor=Number(data.cursor)||session.cursor||0;
+      const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/output?cursor='+encodeURIComponent(String(requestedCursor)),{cache:'no-store'});
+      const currentCursor=Number(session.cursor)||0;
+      const responseCursor=Number(data.cursor)||requestedCursor;
+      const stale=requestedCursor<currentCursor&&responseCursor<=currentCursor;
+      if(!stale){
+        if(data.data)appendOutput(session,data.data,{reset:Boolean(data.reset)});
+        else if(data.reset)appendOutput(session,'',{reset:true});
+      }
+      session.cursor=Math.max(currentCursor,responseCursor);
       session.alive=data.alive!==false;
       if(data.exitCode!==null&&data.exitCode!==undefined)session.exitCode=data.exitCode;
       setWorkerState(true);
@@ -296,9 +308,28 @@
   const sendRaw=data=>sendRawToSession(activeId,data);
   window.__SULANDRA_TERMINAL_REST_BRIDGE__={
     sendInput:(sessionId,data)=>sendRawToSession(sessionId,data),
-    snapshot:sessionId=>{
+    snapshot:sessionId=>snapshotOfSession(sessionById(String(sessionId||''))),
+    hydrate:sessionId=>{
       const session=sessionById(String(sessionId||''));
-      return session?{data:String(session.rawOutput||''),alive:session.alive!==false,cursor:Number(session.cursor)||0}:null;
+      if(!session)return Promise.resolve(null);
+      if(session.rawOutput)return Promise.resolve(snapshotOfSession(session));
+      if(session.hydrationPromise)return session.hydrationPromise;
+      const pending=(async()=>{
+        const data=await apiRequest('/api/it-solutions/terminal/sessions/'+encodeURIComponent(session.id)+'/output?cursor=0',{cache:'no-store'});
+        const raw=String(data.data||'');
+        const responseCursor=Number(data.cursor)||0;
+        if(raw&&!session.rawOutput){
+          session.rawOutput=raw.slice(-1_500_000);
+          session.output=stripAnsi(session.rawOutput).slice(-1_500_000);
+        }
+        session.cursor=Math.max(Number(session.cursor)||0,responseCursor);
+        session.alive=data.alive!==false;
+        if(data.exitCode!==null&&data.exitCode!==undefined)session.exitCode=data.exitCode;
+        if(session.id===activeId)renderScreen();
+        return snapshotOfSession(session);
+      })();
+      session.hydrationPromise=pending;
+      return pending.finally(()=>{if(session.hydrationPromise===pending)session.hydrationPromise=null});
     },
   };
 
