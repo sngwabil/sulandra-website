@@ -124,13 +124,14 @@ try {
   await page.addScriptTag({ path: productionStack });
   await page.addScriptTag({ path: caretClock });
 
-  await page.waitForSelector('.itws-xterm-pane.active .xterm-cursor-layer', { state: 'attached', timeout: 10_000 });
+  const activeCursorSelector = '.itws-xterm-pane.active .xterm-cursor-layer, .itws-xterm-pane.active .xterm-cursor';
+  await page.waitForSelector(activeCursorSelector, { state: 'attached', timeout: 10_000 });
   await page.waitForTimeout(700);
 
   const leakedDeviceReply = await page.evaluate(() => window.__fakeWsSent.some(item => item.binary && /276;0c|>0;[0-9]+;0c/.test(item.text)));
   if (leakedDeviceReply) throw new Error('Snapshot device-attribute reply leaked into PTY input');
 
-  const cursorOpacity = () => page.$eval('.itws-xterm-pane.active .xterm-cursor-layer', node => getComputedStyle(node).opacity);
+  const cursorOpacity = () => page.$eval(activeCursorSelector, node => getComputedStyle(node).opacity);
   const firstPhase = await cursorOpacity();
   await page.waitForTimeout(650);
   const secondPhase = await cursorOpacity();
@@ -164,16 +165,22 @@ try {
     tabs.appendChild(second);
   });
   await page.waitForFunction(() => document.querySelectorAll('.itws-xterm-pane').length === 2, null, { timeout: 10_000 });
+  await page.waitForSelector(activeCursorSelector, { state: 'attached', timeout: 10_000 });
   await page.waitForTimeout(700);
 
-  const panes = await page.evaluate(() => [...document.querySelectorAll('.itws-xterm-pane')].map(pane => ({
-    id: pane.dataset.sessionId,
-    active: pane.classList.contains('active'),
-    display: pane.querySelector('.xterm-cursor-layer') ? getComputedStyle(pane.querySelector('.xterm-cursor-layer')).display : 'missing',
-  })));
+  const panes = await page.evaluate(() => [...document.querySelectorAll('.itws-xterm-pane')].map(pane => {
+    const cursor = pane.querySelector('.xterm-cursor-layer') || pane.querySelector('.xterm-cursor');
+    const style = cursor ? getComputedStyle(cursor) : null;
+    return {
+      id: pane.dataset.sessionId,
+      active: pane.classList.contains('active'),
+      hasCursor: Boolean(cursor),
+      hidden: !cursor || style.display === 'none' || style.visibility === 'hidden',
+    };
+  }));
   const inactive = panes.find(item => item.id === 'term-chrome-1');
   const active = panes.find(item => item.id === 'term-chrome-2');
-  if (!inactive || !active || inactive.active || !active.active || inactive.display !== 'none') {
+  if (!inactive || !active || inactive.active || !active.active || !inactive.hidden || !active.hasCursor || active.hidden) {
     throw new Error(`Terminal switching cursor ownership failed: ${JSON.stringify(panes)}`);
   }
 
@@ -182,7 +189,7 @@ try {
   const secondTerminalB = await cursorOpacity();
   if (secondTerminalA === secondTerminalB) throw new Error('Newly added active terminal caret did not keep blinking');
 
-  console.log('Chrome regression passed: fresh-load caret blink, typing persistence, focus changes, terminal switching, and snapshot stdin gating.');
+  console.log('Chrome regression passed: xterm DOM/canvas caret blink, typing persistence, focus changes, terminal switching, and snapshot stdin gating.');
 } finally {
   await browser?.close().catch(() => {});
   await new Promise(resolve => server.close(resolve));
