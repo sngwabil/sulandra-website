@@ -18,9 +18,11 @@ COPY terminal-execution-plane/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 COPY terminal-execution-plane/server.mjs ./server.mjs
 COPY scripts/install-terminal-industry-hardening.mjs /tmp/install-terminal-industry-hardening.mjs
+COPY scripts/fix-terminal-resource-monitor.mjs /tmp/fix-terminal-resource-monitor.mjs
 RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
+    && node /tmp/fix-terminal-resource-monitor.mjs /app/server.mjs \
     && node --check /app/server.mjs \
-    && rm -f /tmp/install-terminal-industry-hardening.mjs
+    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs
 
 RUN mkdir -p /workspaces /state /seed \
     && chown -R 10001:10001 /workspaces /state /app
