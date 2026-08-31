@@ -1,0 +1,89 @@
+name: Terminal VPS Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
+      - Dockerfile.terminal-egress
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - scripts/install-terminal-industry-hardening.mjs
+      - infra/terminal-vps/**
+      - .github/workflows/terminal-vps-deploy.yml
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-terminal-vps:
+    name: Deploy terminal execution plane
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      VPS_HOST: ${{ secrets.TERMINAL_VPS_HOST }}
+      VPS_USER: ${{ secrets.TERMINAL_VPS_USER }}
+      VPS_SSH_KEY: ${{ secrets.TERMINAL_VPS_SSH_KEY }}
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v4
+
+      - name: Check deployment credentials
+        id: gate
+        shell: bash
+        run: |
+          if [[ -n "$VPS_HOST" && -n "$VPS_USER" && -n "$VPS_SSH_KEY" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Terminal VPS deploy skipped because TERMINAL_VPS_HOST, TERMINAL_VPS_USER, or TERMINAL_VPS_SSH_KEY is not configured."
+          fi
+
+      - name: Configure SSH
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          install -d -m 0700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/terminal-vps
+          chmod 0600 ~/.ssh/terminal-vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Package execution-plane release
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          tar -czf /tmp/sulandra-terminal-release.tgz \
+            --exclude='./.git' \
+            --exclude='./node_modules' \
+            --exclude='./api/node_modules' \
+            --exclude='./dist-web' \
+            --exclude='./coverage' \
+            --exclude='./infra/terminal-vps/.env' \
+            .
+
+      - name: Upload release
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          scp -i ~/.ssh/terminal-vps /tmp/sulandra-terminal-release.tgz "$VPS_USER@$VPS_HOST:/tmp/sulandra-terminal-release.tgz"
+
+      - name: Deploy and verify HA terminal stack
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          ssh -i ~/.ssh/terminal-vps "$VPS_USER@$VPS_HOST" 'bash -se' <<'REMOTE'
+          set -euo pipefail
+          SOURCE=/srv/sulandra-terminal/source
+          sudo mkdir -p "$SOURCE"
+          sudo tar -xzf /tmp/sulandra-terminal-release.tgz -C "$SOURCE"
+          sudo rm -f /tmp/sulandra-terminal-release.tgz
+          if [[ ! -f "$SOURCE/infra/terminal-vps/.env" ]]; then
+            echo "Existing terminal VPS .env is missing; refusing to rotate the execution token automatically." >&2
+            exit 1
+          fi
+          DOMAIN="$(sudo awk -F= '/^TERMINAL_EXECUTION_DOMAIN=/{print substr($0,index($0,"=")+1); exit}' "$SOURCE/infra/terminal-vps/.env")"
+          EMAIL="$(sudo awk -F= '/^ACME_EMAIL=/{print substr($0,index($0,"=")+1); exit}' "$SOURCE/infra/terminal-vps/.env")"
+          test -n "$DOMAIN"
+          test -n "$EMAIL"
+          cd "$SOURCE"
+          sudo ./infra/terminal-vps/deploy.sh "$DOMAIN" "$EMAIL"
+          REMOTE

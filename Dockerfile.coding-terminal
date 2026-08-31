@@ -7,6 +7,10 @@ WORKDIR /gateway
 COPY coding-terminal-worker/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 COPY coding-terminal-worker/server.mjs ./server.mjs
+COPY scripts/install-terminal-gateway-ha.mjs /tmp/install-terminal-gateway-ha.mjs
+RUN node /tmp/install-terminal-gateway-ha.mjs /gateway/server.mjs \
+    && node --check /gateway/server.mjs \
+    && rm -f /tmp/install-terminal-gateway-ha.mjs
 
 EXPOSE 8080
 USER node

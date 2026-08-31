@@ -1,0 +1,239 @@
+name: Terminal Industry Hardening
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
+      - Dockerfile.terminal-egress
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - scripts/install-terminal-industry-hardening.mjs
+      - scripts/fix-terminal-resource-monitor.mjs
+      - infra/terminal-vps/**
+      - .github/workflows/terminal-industry-hardening.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
+      - Dockerfile.terminal-egress
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - scripts/install-terminal-industry-hardening.mjs
+      - scripts/fix-terminal-resource-monitor.mjs
+      - infra/terminal-vps/**
+      - .github/workflows/terminal-industry-hardening.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-industry-terminal:
+    name: Verify HA Git egress and build bursting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TOKEN: ci-terminal-execution-token-0123456789abcdef0123456789abcdef
+      OWNER: ci-org:ci-user
+      TAG: industry-ci
+      COMPOSE_FILE: infra/terminal-vps/docker-compose.yml
+      ENV_FILE: /tmp/terminal-industry.env
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate hardening source
+        run: |
+          set -euo pipefail
+          node --check scripts/install-terminal-industry-hardening.mjs
+          node --check scripts/fix-terminal-resource-monitor.mjs
+          bash -n terminal-session-agent/github-login.sh
+          bash -n terminal-session-agent/create-pr.sh
+          bash -n infra/terminal-vps/deploy.sh
+          grep -q 'executor-a:8081 executor-b:8081' infra/terminal-vps/Caddyfile
+          grep -q 'http_access deny all' infra/terminal-vps/squid.conf
+          grep -q 'TERMINAL_BUILD_MEMORY_BYTES' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_GIT_REPOSITORY' infra/terminal-vps/docker-compose.yml
+
+      - name: Prepare shared execution state
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state /srv/sulandra-terminal/seed
+          sudo chown -R 10001:10001 /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state
+          echo 'unused compatibility seed' | sudo tee /srv/sulandra-terminal/seed/README.txt >/dev/null
+          if ! docker network inspect sulandra-terminal-internal >/dev/null 2>&1; then
+            docker network create --internal sulandra-terminal-internal
+          fi
+          cat > "$ENV_FILE" <<ENV
+          TERMINAL_EXECUTION_DOMAIN=localhost
+          ACME_EMAIL=ci@example.com
+          TERMINAL_EXECUTION_TOKEN=$TOKEN
+          TERMINAL_STACK_TAG=$TAG
+          DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)
+          TERMINAL_GIT_REPOSITORY=https://github.com/octocat/Hello-World.git
+          TERMINAL_GIT_BASE_BRANCH=master
+          ENV
+
+      - name: Build session executor and egress images
+        run: |
+          set -euo pipefail
+          docker build -f Dockerfile.terminal-session -t "sulandra-terminal-session:$TAG" .
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build executor-a executor-b egress-proxy
+
+      - name: Validate Caddy HA configuration
+        run: |
+          docker run --rm \
+            -e ACME_EMAIL=ci@example.com \
+            -e TERMINAL_EXECUTION_DOMAIN=localhost \
+            -e TERMINAL_EXECUTION_TOKEN="$TOKEN" \
+            -v "$PWD/infra/terminal-vps/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Start HA execution plane
+        run: |
+          set -euo pipefail
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d
+          for i in {1..60}; do
+            if curl -kfsS -H "Authorization: Bearer $TOKEN" https://localhost/healthz >/tmp/terminal-health.json; then
+              grep -q '"docker":true' /tmp/terminal-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=200
+          exit 1
+
+      - name: Create Git workspace on executor A
+        run: |
+          set -euo pipefail
+          workspace_json="$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T executor-a node --input-type=module -e '
+            const r=await fetch("http://127.0.0.1:8081/v1/workspaces",{method:"POST",headers:{Authorization:`Bearer ${process.env.TERMINAL_EXECUTION_TOKEN}`,"x-sulandra-terminal-owner":"ci-org:ci-user","Content-Type":"application/json"},body:"{}"});
+            const text=await r.text(); if(!r.ok){console.error(text);process.exit(1)}; console.log(text);
+          ')"
+          echo "$workspace_json" | tail -n1 > /tmp/workspace.json
+          node -e 'const x=require("/tmp/workspace.json");if(!x.gitBacked||!String(x.branch).startsWith("workbench/"))throw new Error(JSON.stringify(x));require("fs").writeFileSync("/tmp/workspace-id",x.workspaceId)'
+
+      - name: Fail executor A and create session through executor B
+        run: |
+          set -euo pipefail
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" stop executor-a
+          workspace_id="$(cat /tmp/workspace-id)"
+          session_json=""
+          for i in {1..30}; do
+            if session_json="$(curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}' 2>/dev/null)"; then
+              break
+            fi
+            sleep 1
+          done
+          echo "$session_json" > /tmp/session.json
+          node -e 'const x=require("/tmp/session.json");if(!x.sessionId)throw new Error(JSON.stringify(x));require("fs").writeFileSync("/tmp/session-id",x.sessionId)'
+
+      - name: Verify real Git checkout and controlled egress
+        run: |
+          set -euo pipefail
+          session_id="$(cat /tmp/session-id)"
+          # Markers are base64-decoded inside the PTY so the literal expected
+          # strings do not appear in Bash's echoed command line and create a
+          # false positive/negative in the output parser.
+          command=$'printf "REMOTE:%s\\nBRANCH:%s\\n" "$(git remote get-url origin)" "$(git branch --show-current)"; if curl -fsSI --max-time 15 https://github.com >/dev/null; then printf "RUdSRVNTX0dJVEhVQl9PSw==" | base64 -d; printf "\\n"; fi; if curl -fsSI --max-time 8 https://example.com >/dev/null; then printf "RUdSRVNTX0JMT0NLX0ZBSUw=" | base64 -d; printf "\\n"; else printf "RUdSRVNTX0JMT0NLX09L" | base64 -d; printf "\\n"; fi\r'
+          body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/sessions/${session_id}/input" -d "$body" >/dev/null
+          output='{}'
+          ready=0
+          for i in {1..60}; do
+            if output="$(curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/output?cursor=0" 2>/dev/null)"; then
+              if node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");process.exit(d.includes("EGRESS_GITHUB_OK")&&d.includes("EGRESS_BLOCK_OK")?0:1)' "$output"; then
+                ready=1
+                break
+              fi
+            fi
+            sleep 0.5
+          done
+          [[ "$ready" == "1" ]]
+          node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");if(!d.includes("REMOTE:https://github.com/octocat/Hello-World.git")||!d.includes("BRANCH:workbench/")||!d.includes("EGRESS_GITHUB_OK")||!d.includes("EGRESS_BLOCK_OK")||d.includes("EGRESS_BLOCK_FAIL")){console.error(d);process.exit(1)}' "$output"
+
+      - name: Recover executor A and fail executor B with live session retained
+        run: |
+          set -euo pipefail
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" start executor-a
+          sleep 3
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" stop executor-b
+          session_id="$(cat /tmp/session-id)"
+          command=$'printf "RVhFQ1VUT1JfRkFJTE9WRVJfT0s=" | base64 -d; printf "\\n"\r'
+          body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          for i in {1..30}; do
+            if curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/sessions/${session_id}/input" -d "$body" >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          output='{}'
+          ready=0
+          for i in {1..30}; do
+            if output="$(curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/output?cursor=0" 2>/dev/null)"; then
+              if node -e 'const x=JSON.parse(process.argv[1]);process.exit(String(x.data||"").includes("EXECUTOR_FAILOVER_OK")?0:1)' "$output"; then ready=1; break; fi
+            fi
+            sleep 0.5
+          done
+          [[ "$ready" == "1" ]]
+
+      - name: Verify automatic build resource burst and cooldown
+        run: |
+          set -euo pipefail
+          session_id="$(cat /tmp/session-id)"
+          cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
+          test -n "$cid"
+          # Keep the synthetic build alive across many monitor scans and prove
+          # it is actually visible in the recovered session before evaluating
+          # the resource profile transition. Append an actual CR byte in Node
+          # rather than relying on YAML/Bash escape interpretation.
+          command="node -e 'setTimeout(()=>{},30000)' build"
+          body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]+String.fromCharCode(13)}))' "$command")"
+          curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/sessions/${session_id}/input" -d "$body" >/dev/null
+          process_seen=0
+          for i in {1..20}; do
+            if docker top "$cid" -eo pid,args 2>/dev/null | grep -Eq 'node .*build'; then
+              process_seen=1
+              break
+            fi
+            sleep 0.5
+          done
+          if [[ "$process_seen" != "1" ]]; then
+            echo 'Synthetic build process never appeared in the session container.' >&2
+            curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/output?cursor=0" >&2 || true
+            docker top "$cid" -eo pid,args >&2 || true
+            exit 1
+          fi
+          curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/resources" >/tmp/resources-before.json || true
+          burst=0
+          for i in {1..18}; do
+            memory="$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")"
+            cpus="$(docker inspect -f '{{.HostConfig.NanoCpus}}' "$cid")"
+            if [[ "$memory" == "2147483648" && "$cpus" == "2000000000" ]]; then burst=1; break; fi
+            sleep 1
+          done
+          if [[ "$burst" != "1" ]]; then
+            echo 'Build burst was not observed. Resource endpoint before check:' >&2
+            cat /tmp/resources-before.json >&2 || true
+            echo 'Container process view:' >&2
+            docker top "$cid" -eo pid,args >&2 || true
+            echo 'Executor A diagnostics:' >&2
+            docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" logs --tail=120 executor-a >&2 || true
+            exit 1
+          fi
+          sleep 55
+          [[ "$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")" == "536870912" ]]
+          [[ "$(docker inspect -f '{{.HostConfig.NanoCpus}}' "$cid")" == "500000000" ]]
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" down -v --remove-orphans || true
+          docker ps -aq --filter label=com.sulandra.terminal=true | xargs -r docker rm -f || true
+          docker network rm sulandra-terminal-internal 2>/dev/null || true
+          sudo rm -rf /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state /srv/sulandra-terminal/seed

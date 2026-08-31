@@ -1,50 +1,90 @@
+x-executor-common: &executor-common
+  build:
+    context: ../..
+    dockerfile: Dockerfile.terminal-executor
+  image: sulandra-terminal-executor:${TERMINAL_STACK_TAG:-latest}
+  restart: unless-stopped
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  group_add:
+    - "${DOCKER_GID}"
+  environment:
+    NODE_ENV: production
+    PORT: "8081"
+    TERMINAL_EXECUTION_TOKEN: ${TERMINAL_EXECUTION_TOKEN}
+    DOCKER_SOCKET_PATH: /var/run/docker.sock
+    TERMINAL_SESSION_IMAGE: sulandra-terminal-session:${TERMINAL_STACK_TAG:-latest}
+    TERMINAL_SEED_PATH: /seed
+    TERMINAL_WORKSPACE_ROOT: /workspaces
+    TERMINAL_WORKSPACE_HOST_ROOT: /srv/sulandra-terminal/workspaces
+    TERMINAL_STATE_ROOT: /state
+    TERMINAL_DOCKER_NETWORK: sulandra-terminal-internal
+    TERMINAL_IDLE_MINUTES: "15"
+    TERMINAL_MEMORY_BYTES: "536870912"
+    TERMINAL_NANO_CPUS: "500000000"
+    TERMINAL_PIDS_LIMIT: "256"
+    TERMINAL_BUILD_MEMORY_BYTES: "2147483648"
+    TERMINAL_BUILD_NANO_CPUS: "2000000000"
+    TERMINAL_BUILD_PIDS_LIMIT: "768"
+    TERMINAL_BUILD_SCAN_MS: "2000"
+    TERMINAL_BUILD_COOLDOWN_SECONDS: "20"
+    TERMINAL_MAX_WORKSPACES_PER_OWNER: "4"
+    TERMINAL_MAX_SESSIONS_PER_WORKSPACE: "6"
+    TERMINAL_GIT_REPOSITORY: ${TERMINAL_GIT_REPOSITORY:-https://github.com/sngwabil/sulandra-website.git}
+    TERMINAL_GIT_BASE_BRANCH: ${TERMINAL_GIT_BASE_BRANCH:-release/sulandra-1.0}
+    TERMINAL_EGRESS_PROXY_URL: http://egress-proxy:3128
+    HTTP_PROXY: http://egress-proxy:3128
+    HTTPS_PROXY: http://egress-proxy:3128
+    NO_PROXY: localhost,127.0.0.1,executor-a,executor-b,egress-proxy
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - /srv/sulandra-terminal/seed:/seed:ro
+    - /srv/sulandra-terminal/workspaces:/workspaces
+    - /srv/sulandra-terminal/state:/state
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=64m
+  depends_on:
+    - egress-proxy
+  networks:
+    - gateway-internal
+    - terminal-internal
+
 services:
-  executor:
+  executor-a:
+    <<: *executor-common
+
+  executor-b:
+    <<: *executor-common
+
+  egress-proxy:
     build:
       context: ../..
-      dockerfile: Dockerfile.terminal-executor
-    image: sulandra-terminal-executor:${TERMINAL_STACK_TAG:-latest}
+      dockerfile: Dockerfile.terminal-egress
+    image: sulandra-terminal-egress:${TERMINAL_STACK_TAG:-latest}
     restart: unless-stopped
     read_only: true
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
-    group_add:
-      - "${DOCKER_GID}"
-    environment:
-      NODE_ENV: production
-      PORT: "8081"
-      TERMINAL_EXECUTION_TOKEN: ${TERMINAL_EXECUTION_TOKEN}
-      DOCKER_SOCKET_PATH: /var/run/docker.sock
-      TERMINAL_SESSION_IMAGE: sulandra-terminal-session:${TERMINAL_STACK_TAG:-latest}
-      TERMINAL_SEED_PATH: /seed
-      TERMINAL_WORKSPACE_ROOT: /workspaces
-      TERMINAL_WORKSPACE_HOST_ROOT: /srv/sulandra-terminal/workspaces
-      TERMINAL_STATE_ROOT: /state
-      TERMINAL_DOCKER_NETWORK: sulandra-terminal-internal
-      TERMINAL_IDLE_MINUTES: "15"
-      TERMINAL_MEMORY_BYTES: "536870912"
-      TERMINAL_NANO_CPUS: "500000000"
-      TERMINAL_PIDS_LIMIT: "256"
-      TERMINAL_MAX_WORKSPACES_PER_OWNER: "4"
-      TERMINAL_MAX_SESSIONS_PER_WORKSPACE: "6"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /srv/sulandra-terminal/seed:/seed:ro
-      - /srv/sulandra-terminal/workspaces:/workspaces
-      - /srv/sulandra-terminal/state:/state
     tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /tmp:rw,noexec,nosuid,nodev,size=32m
+      - /var/cache/squid:rw,nosuid,nodev,size=64m
+      - /var/log/squid:rw,nosuid,nodev,size=32m
+      - /var/run/squid:rw,nosuid,nodev,size=8m
     networks:
-      - proxy
       - terminal-internal
+      - edge
 
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
     depends_on:
-      - executor
+      - executor-a
+      - executor-b
     environment:
       ACME_EMAIL: ${ACME_EMAIL}
       TERMINAL_EXECUTION_DOMAIN: ${TERMINAL_EXECUTION_DOMAIN}
@@ -57,10 +97,13 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - proxy
+      - gateway-internal
+      - edge
 
 networks:
-  proxy:
+  gateway-internal:
+    internal: true
+  edge:
   terminal-internal:
     external: true
     name: sulandra-terminal-internal
