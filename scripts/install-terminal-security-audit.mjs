@@ -103,8 +103,8 @@ replaceOnce(
 );
 
 replaceOnce(
-  "  session.lastUsedAt = now();\n\n  const pendingFrames = [];",
-  `  session.lastUsedAt = now();
+  "  leaseTimer.unref?.();\n\n  const pendingFrames = [];",
+  `  leaseTimer.unref?.();
   void appendSecurityAudit('websocket_connected', {
     owner: session.owner,
     workspaceId: session.workspaceId,
@@ -116,8 +116,19 @@ replaceOnce(
 );
 
 replaceOnce(
-  "    if (session.connections === 0) session.disconnectedAt = now();\n  });",
-  `    if (session.connections === 0) session.disconnectedAt = now();
+  `    session.connections = Math.max(0, session.connections - 1);
+    if (session.connections === 0) {
+      session.disconnectedAt = now();
+      session.leaseUntil = 0;
+    }
+    void saveSession(session).catch(() => {});
+  });`,
+  `    session.connections = Math.max(0, session.connections - 1);
+    if (session.connections === 0) {
+      session.disconnectedAt = now();
+      session.leaseUntil = 0;
+    }
+    void saveSession(session).catch(() => {});
     void appendSecurityAudit('websocket_disconnected', {
       owner: session.owner,
       workspaceId: session.workspaceId,
