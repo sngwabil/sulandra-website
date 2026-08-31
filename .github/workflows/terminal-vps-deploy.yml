@@ -109,19 +109,36 @@ jobs:
           cat > /tmp/terminal-vps-remote-deploy.sh <<'REMOTE'
           set -euo pipefail
           SOURCE=/srv/sulandra-terminal/source
+          ARCHIVE=/tmp/sulandra-terminal-release.tgz
+
+          if [[ ! -f "$ARCHIVE" ]]; then
+            echo "Terminal release archive is missing on the VPS." >&2
+            exit 1
+          fi
+
           sudo mkdir -p "$SOURCE"
-          sudo tar -xzf /tmp/sulandra-terminal-release.tgz -C "$SOURCE"
-          sudo rm -f /tmp/sulandra-terminal-release.tgz
+          sudo tar -xzf "$ARCHIVE" -C "$SOURCE"
+
           if [[ ! -f "$SOURCE/infra/terminal-vps/.env" ]]; then
             echo "Existing terminal VPS .env is missing; refusing to rotate the execution token automatically." >&2
             exit 1
           fi
+          if [[ ! -f "$SOURCE/infra/terminal-vps/deploy.sh" ]]; then
+            echo "Release does not contain infra/terminal-vps/deploy.sh; refusing deployment." >&2
+            sudo find "$SOURCE" -maxdepth 4 -type f -print | sort | head -200 >&2 || true
+            exit 1
+          fi
+
           DOMAIN="$(sudo awk -F= '/^TERMINAL_EXECUTION_DOMAIN=/{print substr($0,index($0,"=")+1); exit}' "$SOURCE/infra/terminal-vps/.env")"
           EMAIL="$(sudo awk -F= '/^ACME_EMAIL=/{print substr($0,index($0,"=")+1); exit}' "$SOURCE/infra/terminal-vps/.env")"
           test -n "$DOMAIN"
           test -n "$EMAIL"
+
           cd "$SOURCE"
-          sudo ./infra/terminal-vps/deploy.sh "$DOMAIN" "$EMAIL"
+          sudo bash "$SOURCE/infra/terminal-vps/deploy.sh" "$DOMAIN" "$EMAIL"
+
+          # Delete the uploaded release only after the full deploy and health check succeed.
+          sudo rm -f "$ARCHIVE"
           REMOTE
 
           sleep 5
