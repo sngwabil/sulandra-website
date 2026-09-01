@@ -60,7 +60,9 @@ try{
   const footerBox=await page.locator('.itws-rt-foot').boundingBox();
   const ideToolBox=await page.locator('#itwsWorkspaceIdeButton').boundingBox();
   const previewToolBox=await page.locator('#itwsWorkspacePreviewButton').boundingBox();
-  for(const [name,box] of [['terminal',terminalBox],['input toolbar',inputSwitchBox],['terminal footer',footerBox],['IDE tool',ideToolBox],['Preview tool',previewToolBox]]){
+  if(!terminalBox)throw new Error('terminal disappeared while IDE rail was open');
+  if(terminalBox.y+terminalBox.height>901)throw new Error(`terminal bottom escaped the visible viewport while IDE rail was open: ${JSON.stringify(terminalBox)}`);
+  for(const [name,box] of [['input toolbar',inputSwitchBox],['terminal footer',footerBox],['IDE tool',ideToolBox],['Preview tool',previewToolBox]]){
     if(!box)throw new Error(`${name} disappeared while IDE rail was open`);
     if(box.y<0||box.y+box.height>901)throw new Error(`${name} escaped the visible viewport while IDE rail was open: ${JSON.stringify(box)}`);
   }
@@ -76,7 +78,7 @@ try{
   if(!(await panel.locator('.itws-workspace-close').isVisible()))throw new Error('Preview close control is not visible');
   await panel.locator('.itws-workspace-close').click();
 
-  console.log('Workspace panel Chrome regression passed: IDE remains bounded, has a persistent X, terminal/footer tools remain visible, and Preview retains its port controls.');
+  console.log('Workspace panel Chrome regression passed: IDE remains viewport-bound, has a persistent X, terminal/footer tools remain visible, and Preview retains its port controls.');
 }finally{
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));
