@@ -9,6 +9,9 @@ on:
       - assets/it-agent-terminal-wheel-scrollback.js
       - assets/it-agent-terminal-caret-clock.js
       - assets/it-agent-xterm-emulator.css
+      - assets/it-agent-workspace-preview.css
+      - assets/it-agent-workspace-preview.js
+      - scripts/install-workspace-ide-ui.mjs
       - terminal-browser/**
       - .github/workflows/terminal-browser-chrome.yml
   push:
@@ -19,6 +22,9 @@ on:
       - assets/it-agent-terminal-wheel-scrollback.js
       - assets/it-agent-terminal-caret-clock.js
       - assets/it-agent-xterm-emulator.css
+      - assets/it-agent-workspace-preview.css
+      - assets/it-agent-workspace-preview.js
+      - scripts/install-workspace-ide-ui.mjs
       - terminal-browser/**
       - .github/workflows/terminal-browser-chrome.yml
 
@@ -55,3 +61,6 @@ jobs:
 
       - name: Verify mouse wheel stays in scrollback
         run: node terminal-browser/tests/wheel-scrollback-regression.mjs
+
+      - name: Verify IDE and Preview stay inside the workspace rail
+        run: node terminal-browser/tests/workspace-panel-regression.mjs
