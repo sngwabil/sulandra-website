@@ -8,11 +8,11 @@
 .itws-xterm-pane .xterm{height:100%;padding:0 2px}
 .itws-xterm-pane .xterm-viewport{background:#06131d!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .itws-xterm-pane .xterm-screen{cursor:text}
-/* Chromium can leave xterm's CSS animation dormant until a tab/page repaint.
-   The production caret is therefore clocked by JS; CSS only keeps the active
-   cursor layer renderable and prevents a competing xterm glyph animation. */
-.itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm-cursor-layer{display:block!important;visibility:visible!important;animation:none!important;will-change:opacity}
-.itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm-cursor-layer .xterm-cursor{visibility:visible!important;opacity:1!important;animation:none!important}
+/* Keep the DOM cursor layer renderable, but never force its terminal visibility.
+   ESC[?25l / ESC[?25h remains owned by xterm. The focus-aware caret clock only
+   animates opacity while this pane owns real keyboard focus. */
+.itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm-cursor-layer{display:block!important;animation:none!important;will-change:opacity}
+.itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm-cursor-layer .xterm-cursor{animation:none!important}
 .itws-xterm-ready.itws-rt-direct-mode .itws-xterm-pane.active .xterm:not(.focus) .xterm-cursor-layer .xterm-cursor{background-color:#50e39a!important;border-color:#50e39a!important}
 .itws-xterm-ready .itws-rt-input-switch{border-top:1px solid rgba(69,134,169,.28);background:#071925}
 .itws-xterm-ready.itws-rt-direct-mode .itws-rt-commandbar{display:none!important}

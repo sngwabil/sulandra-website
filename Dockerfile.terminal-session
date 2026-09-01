@@ -37,9 +37,11 @@ COPY terminal-session-agent/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 COPY terminal-session-agent/server.mjs ./server.mjs
 COPY scripts/install-session-agent-ide-bridge.mjs /tmp/install-session-agent-ide-bridge.mjs
+COPY scripts/install-terminal-prompt-cursor.mjs /tmp/install-terminal-prompt-cursor.mjs
 RUN node /tmp/install-session-agent-ide-bridge.mjs /agent/server.mjs \
+    && node /tmp/install-terminal-prompt-cursor.mjs /agent/server.mjs \
     && node --check /agent/server.mjs \
-    && rm -f /tmp/install-session-agent-ide-bridge.mjs
+    && rm -f /tmp/install-session-agent-ide-bridge.mjs /tmp/install-terminal-prompt-cursor.mjs
 COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
 COPY terminal-session-agent/tmux.conf /home/terminal/.tmux.conf
 COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login

@@ -9,6 +9,7 @@
       "scripts/install-terminal-gateway-ha.mjs",
       "scripts/install-workspace-ide-live-preview.mjs",
       "scripts/fix-workspace-proxy-abort.mjs",
+      "scripts/fix-workspace-proxy-streaming.mjs",
       "scripts/fix-workspace-ticket-cors.mjs",
       "scripts/verify-workspace-ticket-cors.mjs",
       "railway.terminal-worker.json"
