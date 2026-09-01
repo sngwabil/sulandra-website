@@ -1,0 +1,63 @@
+# Sulandra Engineering Terminal interactive Bash profile.
+# Loaded explicitly by the session agent so every isolated terminal receives the
+# same professional shell experience even though /home/terminal is ephemeral.
+
+[[ $- == *i* ]] || return
+
+shopt -s histappend checkwinsize cmdhist
+
+# Preserve the session agent's persistent history/cursor PROMPT_COMMAND while
+# using a first-class prompt theme. The agent supplies COLORTERM=truecolor.
+export CLICOLOR=1
+export PYTHON_COLORS=1
+export FORCE_COLOR="${FORCE_COLOR:-1}"
+export npm_config_color="${npm_config_color:-always}"
+export LESS="${LESS:--R}"
+export PAGER="${PAGER:-less}"
+
+# Tool-specific palettes. These are standard ANSI SGR sequences understood by
+# xterm, tmux, Git, GNU grep and GCC-family diagnostics.
+export GREP_COLORS='ms=01;38;5;82:mc=01;38;5;82:sl=:cx=:fn=38;5;81:ln=38;5;220:bn=38;5;220:se=38;5;245'
+export GCC_COLORS='error=01;38;5;203:warning=01;38;5;220:note=01;38;5;81:caret=01;38;5;82:locus=01:quote=01'
+
+if command -v dircolors >/dev/null 2>&1; then
+  eval "$(dircolors -b 2>/dev/null || true)"
+fi
+
+alias ls='ls --color=auto'
+alias ll='ls -alF --color=auto'
+alias la='ls -A --color=auto'
+alias l='ls -CF --color=auto'
+alias grep='grep --color=auto'
+alias egrep='grep -E --color=auto'
+alias fgrep='grep -F --color=auto'
+alias diff='diff --color=auto'
+
+# Git supplies its own rich color output; set it only for this ephemeral user.
+git config --global color.ui auto >/dev/null 2>&1 || true
+git config --global color.branch auto >/dev/null 2>&1 || true
+git config --global color.diff auto >/dev/null 2>&1 || true
+git config --global color.status auto >/dev/null 2>&1 || true
+
+__sulandra_git_prompt() {
+  local branch dirty
+  branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --quiet --short HEAD 2>/dev/null)" || return 0
+  [[ -n "$branch" ]] || return 0
+  dirty=''
+  if [[ -n "$(git status --porcelain=v1 --untracked-files=normal 2>/dev/null | head -n 1)" ]]; then
+    dirty='*'
+  fi
+  printf ' \[\e[38;5;245m\](\[\e[38;5;213m\]%s%s\[\e[38;5;245m\])\[\e[0m\]' "$branch" "$dirty"
+}
+
+# Navy/teal Sulandra palette with a bright green input marker. Keep the prompt
+# compact so terminal history remains information-dense.
+PS1='\[\e[1;38;5;45m\]sulandra\[\e[0m\]:\[\e[1;38;5;117m\]\w\[\e[0m\]$(__sulandra_git_prompt) \[\e[1;38;5;82m\]❯\[\e[0m\] '
+PS2='\[\e[38;5;220m\]…\[\e[0m\] '
+
+# Readable helpers for scripts and manual diagnostics without changing command
+# semantics or rewriting arbitrary program output.
+ok()   { printf '\033[1;38;5;82m%s\033[0m\n' "$*"; }
+info() { printf '\033[1;38;5;81m%s\033[0m\n' "$*"; }
+warn() { printf '\033[1;38;5;220m%s\033[0m\n' "$*" >&2; }
+err()  { printf '\033[1;38;5;203m%s\033[0m\n' "$*" >&2; }
