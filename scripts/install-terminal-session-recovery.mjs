@@ -19,11 +19,11 @@ const oldAddress = `const findContainerAddress = async container => {
 };`;
 
 const newAddress = `/* ${marker}
-   Session containers are isolated and memory-capped. If one exits unexpectedly
-   (for example after an OOM), recover the same container and wait for Docker to
-   restore its private-network address instead of surfacing a transient raw
-   "no address" failure to the browser. Persistent workspace/history mounts
-   survive this restart. */
+   If an isolated session container exits or temporarily loses its Docker network
+   endpoint, recover the same container and wait for its private-network address
+   instead of surfacing a transient raw "no address" failure to the browser.
+   Persistent workspace mounts survive this restart. Production sessions are
+   configured separately by the VPS stack at 4 GiB / 2 vCPU. */
 const findContainerAddress = async container => {
   let lastError = null;
   for (let attempt = 0; attempt < 30; attempt += 1) {
