@@ -1,0 +1,161 @@
+name: Terminal Persistent History Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - Dockerfile.terminal-session
+      - terminal-execution-plane/**
+      - Dockerfile.terminal-executor
+      - coding-terminal-worker/**
+      - Dockerfile.coding-terminal
+      - scripts/install-terminal-prompt-cursor.mjs
+      - scripts/install-terminal-history-proxy.mjs
+      - scripts/inject-it-terminal-proxy-runtime.mjs
+      - scripts/install-it-agent-xterm-emulator.mjs
+      - assets/it-agent-terminal-persistent-history.js
+      - assets/it-agent-xterm-emulator.css
+      - railway.terminal-worker.json
+      - .github/workflows/terminal-persistent-history.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - Dockerfile.terminal-session
+      - terminal-execution-plane/**
+      - Dockerfile.terminal-executor
+      - coding-terminal-worker/**
+      - Dockerfile.coding-terminal
+      - scripts/install-terminal-prompt-cursor.mjs
+      - scripts/install-terminal-history-proxy.mjs
+      - scripts/inject-it-terminal-proxy-runtime.mjs
+      - scripts/install-it-agent-xterm-emulator.mjs
+      - assets/it-agent-terminal-persistent-history.js
+      - assets/it-agent-xterm-emulator.css
+      - railway.terminal-worker.json
+      - .github/workflows/terminal-persistent-history.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-persistent-history:
+    name: Retain output beyond live PTY buffer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      IMAGE: sulandra-terminal-session:persistent-history-ci
+      TOKEN: ci-session-token-0123456789abcdef0123456789abcdef
+      CONTAINER: sulandra-terminal-persistent-history-ci
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify complete-history route and browser publication contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check assets/it-agent-terminal-persistent-history.js
+          node --check scripts/install-terminal-history-proxy.mjs
+          node --check scripts/inject-it-terminal-proxy-runtime.mjs
+          node --check scripts/install-it-agent-xterm-emulator.mjs
+          grep -Fq "sessions/:sessionId/history" scripts/inject-it-terminal-proxy-runtime.mjs
+          grep -Fq "install-terminal-history-proxy.mjs" Dockerfile.terminal-executor
+          grep -Fq "install-terminal-history-proxy.mjs" Dockerfile.coding-terminal
+          node scripts/install-it-agent-xterm-emulator.mjs
+          grep -Fq "/assets/it-agent-terminal-persistent-history.js?v=20260901-history-1" it-solutions.html
+          grep -Fq "scripts/install-terminal-history-proxy.mjs" railway.terminal-worker.json
+
+      - name: Build real terminal session image
+        run: docker build -f Dockerfile.terminal-session -t "$IMAGE" .
+
+      - name: Start real PTY session
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name "$CONTAINER" \
+            -e SESSION_TOKEN="$TOKEN" \
+            -e WORKSPACE_ID=persistent-history-ci \
+            -e TMUX_SESSION=persistent-history-ci \
+            -e TERMINAL_COLS=120 \
+            -e TERMINAL_ROWS=32 \
+            -p 127.0.0.1:19001:9000 \
+            "$IMAGE"
+          for i in {1..45}; do
+            if curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19001/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$CONTAINER"
+          exit 1
+
+      - name: Generate output larger than old two-million-character cap
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=$'printf "PERSIST_HISTORY_BEGIN\\n"; for i in $(seq 1 40000); do printf "PERSIST_LINE_%05d_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\n" "$i"; done; printf "PERSIST_HISTORY_END\\n"\r'
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -fsS \
+            -H "x-sulandra-session-token: $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -X POST http://127.0.0.1:19001/input \
+            -d "$payload" >/dev/null
+
+          ready=false
+          for i in {1..120}; do
+            curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19001/health > /tmp/history-health.json
+            bytes="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(String(JSON.parse(s).transcriptBytes||0)))' < /tmp/history-health.json)"
+            if [[ "$bytes" -gt 2500000 ]]; then
+              curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/history?limit=1048576' > /tmp/history-tail.json
+              if node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.exit(String(JSON.parse(s).data||"").includes("PERSIST_HISTORY_END")?0:1))' < /tmp/history-tail.json; then
+                ready=true
+                break
+              fi
+            fi
+            sleep 0.25
+          done
+          test "$ready" = true
+
+      - name: Prove the beginning and end remain retrievable from disk
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/history?before=1048576&limit=1048576' > /tmp/history-first.json
+          node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);if(x.start!==0||!String(x.data||"").includes("PERSIST_HISTORY_BEGIN"))process.exit(1)})' < /tmp/history-first.json
+
+          curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/history?limit=1048576' > /tmp/history-tail.json
+          node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);if(!x.hasMore||!String(x.data||"").includes("PERSIST_HISTORY_END"))process.exit(1)})' < /tmp/history-tail.json
+
+          curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/output?cursor=0' > /tmp/history-live.json
+          node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);if(x.reset!==true)process.exit(1);if(String(x.data||"").includes("PERSIST_HISTORY_BEGIN"))process.exit(1)})' < /tmp/history-live.json
+
+          test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "1000000"
+
+          command=$'printf "HIST_LIMITS:%s:%s\\n" "$HISTSIZE" "$HISTFILESIZE"\r'
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -fsS \
+            -H "x-sulandra-session-token: $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -X POST http://127.0.0.1:19001/input \
+            -d "$payload" >/dev/null
+          for i in {1..30}; do
+            curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/history?limit=65536' > /tmp/history-limits.json
+            if node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.exit(String(JSON.parse(s).data||"").includes("HIST_LIMITS:-1:-1")?0:1))' < /tmp/history-limits.json; then
+              exit 0
+            fi
+            sleep 0.2
+          done
+          echo "Persistent Bash history limits were not observed in the real PTY session." >&2
+          exit 1
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs "$CONTAINER" || true
+
+      - name: Stop test session
+        if: always()
+        run: docker rm -f "$CONTAINER" >/dev/null 2>&1 || true

@@ -10,8 +10,17 @@
       "scripts/install-workspace-ide-live-preview.mjs",
       "scripts/fix-workspace-proxy-abort.mjs",
       "scripts/fix-workspace-proxy-streaming.mjs",
+      "scripts/fix-workspace-browser-session.mjs",
+      "scripts/verify-workspace-browser-session.mjs",
       "scripts/fix-workspace-ticket-cors.mjs",
       "scripts/verify-workspace-ticket-cors.mjs",
+      "scripts/install-terminal-history-proxy.mjs",
+      "terminal-session-agent/**",
+      "Dockerfile.terminal-session",
+      "terminal-execution-plane/**",
+      "Dockerfile.terminal-executor",
+      "infra/terminal-vps/**",
+      ".github/workflows/terminal-vps-deploy.yml",
       "railway.terminal-worker.json"
     ]
   },

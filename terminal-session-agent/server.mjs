@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { createServer } from 'node:http';
+import { appendFile, mkdir, open, stat } from 'node:fs/promises';
+import path from 'node:path';
 import express from 'express';
 import pty from 'node-pty';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -14,12 +16,18 @@ const workspaceId = String(process.env.WORKSPACE_ID || '').trim();
 const tmuxSession = String(process.env.TMUX_SESSION || 'sulandra').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80);
 const initialCols = Math.max(40, Math.min(240, Number(process.env.TERMINAL_COLS || 120)));
 const initialRows = Math.max(12, Math.min(80, Number(process.env.TERMINAL_ROWS || 32)));
-const outputLimit = Math.max(250_000, Number(process.env.TERMINAL_OUTPUT_LIMIT || 2_000_000));
+const liveOutputLimit = Math.max(250_000, Number(process.env.TERMINAL_OUTPUT_LIMIT || 2_000_000));
 const wsBytesPerSecond = Math.max(16_384, Number(process.env.TERMINAL_WS_BYTES_PER_SECOND || 262_144));
 const wsBurstBytes = Math.max(wsBytesPerSecond, Number(process.env.TERMINAL_WS_BURST_BYTES || 524_288));
+const historyDir = path.join('/workspace', '.sulandra-terminal-history');
+const historyPath = path.join(historyDir, `${tmuxSession}.log`);
+const historyPageDefault = 256 * 1024;
+const historyPageMax = 1024 * 1024;
 
 if (!sessionToken || sessionToken.length < 32) throw new Error('SESSION_TOKEN is required');
 if (!workspaceId) throw new Error('WORKSPACE_ID is required');
+
+await mkdir(historyDir, { recursive: true, mode: 0o700 });
 
 const secureEquals = (provided, configured) => {
   if (!provided || !configured) return false;
@@ -39,6 +47,7 @@ let cursor = 0;
 let bufferedChars = 0;
 const chunks = [];
 const sockets = new Set();
+let historyWrite = Promise.resolve();
 
 const shellEnv = {
   ...process.env,
@@ -51,29 +60,38 @@ const shellEnv = {
   FORCE_COLOR: '1',
   npm_config_color: 'always',
   HISTFILE: '/workspace/.bash_history',
-  HISTCONTROL: 'ignoredups:erasedups',
-  HISTSIZE: '5000',
-  HISTFILESIZE: '10000',
+  HISTCONTROL: '',
+  HISTSIZE: '-1',
+  HISTFILESIZE: '-1',
   EDITOR: 'vim',
   VISUAL: 'vim',
   PAGER: 'less',
   LESS: '-R',
   SULANDRA_TERMINAL_ISOLATED: '1',
   SULANDRA_TERMINAL_WORKSPACE: workspaceId,
+  SULANDRA_TERMINAL_HISTORY_FILE: historyPath,
 };
 
 const broadcast = data => {
   const bytes = Buffer.from(String(data || ''), 'utf8');
   for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(bytes, { binary: true });
 };
+
+const persistOutput = text => {
+  historyWrite = historyWrite
+    .then(() => appendFile(historyPath, text, { encoding: 'utf8', mode: 0o600 }))
+    .catch(error => console.error('[Sulandra Terminal] transcript append failed', error));
+};
+
 const pushOutput = data => {
   const text = String(data || '');
   if (!text) return;
+  persistOutput(text);
   const start = cursor;
   cursor += text.length;
   chunks.push({ start, end: cursor, data: text });
   bufferedChars += text.length;
-  while (bufferedChars > outputLimit && chunks.length > 1) {
+  while (bufferedChars > liveOutputLimit && chunks.length > 1) {
     const removed = chunks.shift();
     bufferedChars -= removed.data.length;
   }
@@ -116,11 +134,40 @@ const outputFrom = cursorValue => {
   return { data, cursor, reset, alive, exitCode };
 };
 
+const historyPage = async (beforeValue, limitValue) => {
+  await historyWrite;
+  const info = await stat(historyPath).catch(() => ({ size: 0 }));
+  const size = Math.max(0, Number(info.size) || 0);
+  const requestedBefore = beforeValue === undefined || beforeValue === null || beforeValue === '' ? size : Number(beforeValue);
+  const end = Math.max(0, Math.min(size, Number.isFinite(requestedBefore) ? requestedBefore : size));
+  const requestedLimit = Number(limitValue);
+  const limit = Math.max(4096, Math.min(historyPageMax, Number.isFinite(requestedLimit) && requestedLimit > 0 ? requestedLimit : historyPageDefault));
+  const start = Math.max(0, end - limit);
+  if (end <= start) return { data: '', start, end, size, hasMore: start > 0 };
+  const handle = await open(historyPath, 'r');
+  try {
+    const buffer = Buffer.allocUnsafe(end - start);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, start);
+    return { data: buffer.subarray(0, bytesRead).toString('utf8'), start, end: start + bytesRead, size, hasMore: start > 0 };
+  } finally {
+    await handle.close();
+  }
+};
+
 spawnBridge();
 pushOutput('\x1b[1;36mSulandra isolated Docker terminal ready.\x1b[0m\r\n');
 
-app.get('/health', authorize, (_req, res) => res.json({ ok: true, pty: true, tmux: true, workspaceId, alive }));
+app.get('/health', authorize, async (_req, res) => {
+  await historyWrite;
+  const info = await stat(historyPath).catch(() => ({ size: 0 }));
+  res.json({ ok: true, pty: true, tmux: true, workspaceId, alive, transcriptBytes: Number(info.size) || 0 });
+});
 app.get('/output', authorize, (req, res) => res.json(outputFrom(req.query.cursor)));
+app.get('/history', authorize, async (req, res, next) => {
+  try {
+    res.json(await historyPage(req.query.before, req.query.limit));
+  } catch (error) { next(error); }
+});
 app.post('/input', authorize, (req, res) => {
   const data = typeof req.body?.data === 'string' ? req.body.data : '';
   if (!data || Buffer.byteLength(data) > 65_536) return res.status(400).json({ error: 'Terminal input must be between 1 and 65536 bytes' });
