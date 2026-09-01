@@ -121,9 +121,11 @@ try {
   await page.addScriptTag({ path: productionStack });
   await page.addScriptTag({ path: caretClock });
 
-  const activeCursorSelector = '.itws-xterm-pane.active .xterm-cursor, .itws-xterm-pane.active .xterm-cursor-layer';
+  const activeCursorSelector = '.itws-xterm-pane.active .xterm-cursor-layer';
+  const activeTextareaSelector = '.itws-xterm-pane.active .xterm-helper-textarea';
   await page.waitForSelector('#itwsRealTerminal.itws-xterm-ready', { state: 'attached', timeout: 10_000 });
   await page.waitForSelector(activeCursorSelector, { state: 'attached', timeout: 10_000 });
+  await page.waitForFunction(() => document.querySelector('.itws-xterm-pane.active')?.classList.contains('sulandra-caret-focused'), null, { timeout: 10_000 });
 
   const leakedDeviceReply = await page.evaluate(() => window.__fakeWsSent.some(item => item.binary && /276;0c|>0;[0-9]+;0c/.test(item.text)));
   if (leakedDeviceReply) throw new Error('Snapshot device-attribute reply leaked into PTY input');
@@ -142,17 +144,37 @@ try {
 
   await assertBlinking('Fresh Chrome load');
 
-  await page.locator('.itws-xterm-pane.active .xterm-helper-textarea').focus();
+  await page.locator(activeTextareaSelector).focus();
   await page.keyboard.type('echo browser-ok');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(200);
   const sentInput = await page.evaluate(() => window.__fakeWsSent.filter(item => item.binary).map(item => item.text).join(''));
-  if (!sentInput.includes('echo browser-ok')) throw new Error(`Native terminal keystrokes did not reach WSS: ${JSON.stringify(sentInput)}`);
+  if (!sentInput.includes('echo browser-ok') || !sentInput.includes('\r')) throw new Error(`Native terminal keystrokes did not reach WSS: ${JSON.stringify(sentInput)}`);
 
   await assertBlinking('Caret after typing');
 
   await page.click('#outside');
-  await assertBlinking('Caret after focus moved to another workspace control');
+  await page.waitForTimeout(80);
+  const blurred = await page.evaluate(() => {
+    const pane = document.querySelector('.itws-xterm-pane.active');
+    const layer = pane?.querySelector('.xterm-cursor-layer');
+    return {
+      activeId: document.activeElement?.id || '',
+      focusedClass: Boolean(pane?.classList.contains('sulandra-caret-focused')),
+      animation: layer ? getComputedStyle(layer).animationName : '',
+    };
+  });
+  if (blurred.activeId !== 'outside' || blurred.focusedClass || blurred.animation !== 'none') {
+    throw new Error(`Blurred terminal still advertised a live input caret: ${JSON.stringify(blurred)}`);
+  }
+
+  await page.locator('.itws-xterm-pane.active').click({ position: { x: 100, y: 100 } });
+  await page.waitForFunction(() => document.activeElement?.classList?.contains('xterm-helper-textarea'), null, { timeout: 5_000 });
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(100);
+  const enterAfterRefocus = await page.evaluate(() => window.__fakeWsSent.filter(item => item.binary).map(item => item.text).join(''));
+  if ((enterAfterRefocus.match(/\r/g) || []).length < 2) throw new Error(`Enter did not return to PTY after terminal refocus: ${JSON.stringify(enterAfterRefocus)}`);
+  await assertBlinking('Caret after terminal refocus');
 
   await page.evaluate(() => {
     const tabs = document.querySelector('#itwsRtTabs');
@@ -174,19 +196,22 @@ try {
       id: pane.dataset.sessionId,
       active: pane.classList.contains('active'),
       owner: pane.classList.contains('sulandra-caret-owner'),
+      focused: pane.classList.contains('sulandra-caret-focused'),
       hasCursor: Boolean(cursor),
       hidden: !cursor || style.display === 'none' || style.visibility === 'hidden',
     };
   }));
   const inactive = panes.find(item => item.id === 'term-chrome-1');
   const active = panes.find(item => item.id === 'term-chrome-2');
-  if (!inactive || !active || inactive.active || inactive.owner || !active.active || !active.owner || !inactive.hidden || !active.hasCursor || active.hidden) {
+  if (!inactive || !active || inactive.active || inactive.owner || !active.active || !active.owner || !inactive.hidden || !active.hasCursor) {
     throw new Error(`Terminal switching cursor ownership failed: ${JSON.stringify(panes)}`);
   }
 
-  await assertBlinking('Newly active terminal caret');
+  await page.locator(activeTextareaSelector).focus();
+  await page.waitForFunction(() => document.querySelector('.itws-xterm-pane.active')?.classList.contains('sulandra-caret-focused'), null, { timeout: 5_000 });
+  await assertBlinking('Newly active focused terminal caret');
 
-  console.log('Chrome regression passed: repaint-proof caret blink, typing persistence, focus changes, terminal switching, and snapshot stdin gating.');
+  console.log('Chrome regression passed: real focus-aware caret, native Enter delivery, terminal refocus, terminal switching, and snapshot stdin gating.');
 } finally {
   await browser?.close().catch(() => {});
   await new Promise(resolve => server.close(resolve));
