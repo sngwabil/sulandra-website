@@ -91,31 +91,34 @@ jobs:
 
       - name: Stop session container and prove executor recovery
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          fail(){ echo "FAIL: $*" >&2; exit 1; }
           headers=(-H "Authorization: Bearer $EXECUTION_TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json')
-          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18082/v1/workspaces -d '{}')"
-          workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.workspaceId)' "$workspace_json")"
-          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
-          session_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.sessionId)' "$session_json")"
+          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18082/v1/workspaces -d '{}')" || fail "workspace creation"
+          workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.workspaceId)' "$workspace_json")" || fail "workspace id parse"
+          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')" || fail "session creation"
+          session_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.sessionId)' "$session_json")" || fail "session id parse"
           cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
-          test -n "$cid"
+          [[ -n "$cid" ]] || fail "session container missing after create"
+          echo "Created session=${session_id} container=${cid}"
 
-          # First verify the production container was created with both safety controls.
-          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" = "on-failure"
-          test "$(docker exec "$cid" tmux show-options -gv history-limit)" = "50000"
+          production_policy="$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" || fail "inspect production restart policy"
+          echo "Production restart policy=${production_policy}"
+          [[ "$production_policy" == "on-failure" ]] || fail "expected production restart policy on-failure, got ${production_policy}"
 
-          # Disable Docker's restart policy only on this disposable CI container so
-          # the test can isolate and prove the executor's own recovery path. This
-          # does not modify the production image/configuration asserted above.
-          docker update --restart=no "$cid" >/dev/null
-          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" = "no"
+          tmux_history="$(docker exec "$cid" tmux show-options -gv history-limit)" || fail "read tmux history-limit"
+          echo "tmux history-limit=${tmux_history}"
+          [[ "$tmux_history" == "50000" ]] || fail "expected tmux history-limit 50000, got ${tmux_history}"
 
-          # Reproduce the exact unavailable-session state deterministically. The
-          # next executor request must notice the stopped session, start the same
-          # container, wait for its private-network address and agent health, then
-          # return normally instead of surfacing "no address" to the browser.
-          docker stop -t 1 "$cid" >/dev/null
-          test "$(docker inspect -f '{{.State.Running}}' "$cid")" = "false"
+          docker update --restart=no "$cid" >/dev/null || fail "docker update --restart=no"
+          updated_policy="$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" || fail "inspect updated restart policy"
+          echo "Disposable CI restart policy=${updated_policy}"
+          [[ "$updated_policy" == "no" ]] || fail "expected disposable CI restart policy no, got ${updated_policy}"
+
+          docker stop -t 1 "$cid" >/dev/null || fail "docker stop"
+          running_after_stop="$(docker inspect -f '{{.State.Running}}' "$cid")" || fail "inspect stopped state"
+          echo "Running after stop=${running_after_stop}"
+          [[ "$running_after_stop" == "false" ]] || fail "container should remain stopped for executor recovery, got running=${running_after_stop}"
           stopped_address="$(docker inspect -f "{{with index .NetworkSettings.Networks \"$INTERNAL_NETWORK\"}}{{.IPAddress}}{{end}}" "$cid" 2>/dev/null || true)"
           echo "Stopped session=${session_id} container=${cid} address=${stopped_address:-none}"
 
@@ -133,17 +136,16 @@ jobs:
             exit 1
           fi
 
-          running="$(docker inspect -f '{{.State.Running}}' "$cid")"
-          address="$(docker inspect -f "{{with index .NetworkSettings.Networks \"$INTERNAL_NETWORK\"}}{{.IPAddress}}{{end}}" "$cid")"
+          running="$(docker inspect -f '{{.State.Running}}' "$cid")" || fail "inspect recovered running state"
+          address="$(docker inspect -f "{{with index .NetworkSettings.Networks \"$INTERNAL_NETWORK\"}}{{.IPAddress}}{{end}}" "$cid")" || fail "inspect recovered address"
           echo "Recovered session=${session_id} running=${running} address=${address:-none}"
-          test "$running" = "true"
-          test -n "$address"
+          [[ "$running" == "true" ]] || fail "recovered container not running"
+          [[ -n "$address" ]] || fail "recovered container missing private-network address"
 
-          # Prove the recovered same session id accepts and returns PTY data.
           marker="RECOVERED_SESSION_${RANDOM}_${RANDOM}"
           command="printf '${marker}\\n'\r"
-          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
-          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/sessions/${session_id}/input" -d "$payload" >/dev/null
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")" || fail "marker payload"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/sessions/${session_id}/input" -d "$payload" >/dev/null || fail "recovered session input"
 
           recovered_shell=false
           for i in {1..80}; do
@@ -155,10 +157,7 @@ jobs:
             fi
             sleep 0.25
           done
-          if [[ "$recovered_shell" != true ]]; then
-            echo "Recovered terminal transport was reachable but shell marker was not observed" >&2
-            exit 1
-          fi
+          [[ "$recovered_shell" == true ]] || fail "recovered transport reachable but shell marker not observed"
           echo "PASS: stopped terminal session recovered with the same session id and interactive PTY"
 
       - name: Show logs on failure
@@ -167,7 +166,7 @@ jobs:
           docker logs sulandra-terminal-executor-recovery-ci || true
           docker ps -a --filter label=com.sulandra.terminal=true
           for cid in $(docker ps -aq --filter label=com.sulandra.terminal=true); do
-            docker inspect "$cid" --format 'session={{.Name}} running={{.State.Running}} exit={{.State.ExitCode}} restarts={{.RestartCount}} networks={{json .NetworkSettings.Networks}}' || true
+            docker inspect "$cid" --format 'session={{.Name}} running={{.State.Running}} exit={{.State.ExitCode}} restarts={{.RestartCount}} restartPolicy={{.HostConfig.RestartPolicy.Name}} networks={{json .NetworkSettings.Networks}}' || true
             docker logs "$cid" --tail 100 || true
           done
 
