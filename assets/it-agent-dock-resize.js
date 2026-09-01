@@ -1,8 +1,8 @@
-/* SULANDRA_DOCK_RESIZE_CAPTURE_V1 */
+/* SULANDRA_DOCK_RESIZE_CAPTURE_V2 */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V1__)return;
-  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V1__=true;
+  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V2__)return;
+  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V2__=true;
   const LAYOUT_KEY='sulandra:engineering-workspace-layout-v2';
   const MIN=280;
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -18,7 +18,7 @@
     for(const panel of row.querySelectorAll(':scope > .itws-dock-panel'))sizes[panel.dataset.panelId]=Number(panel.dataset.size)||25;
     try{localStorage.setItem(LAYOUT_KEY,JSON.stringify({version:2,sizes}))}catch{}
   };
-  document.addEventListener('mousedown',event=>{
+  document.addEventListener('pointerdown',event=>{
     if(window.innerWidth<760||event.button!==0)return;
     const target=event.target instanceof Element?event.target:null;
     const splitter=target?.closest('.itws-dock-splitter');
@@ -48,16 +48,18 @@
       notify();
     };
     const end=()=>{
-      window.removeEventListener('mousemove',move,true);
-      window.removeEventListener('mouseup',end,true);
+      window.removeEventListener('pointermove',move,true);
+      window.removeEventListener('pointerup',end,true);
+      window.removeEventListener('pointercancel',end,true);
       window.removeEventListener('blur',end,true);
       document.body.classList.remove('itws-dock-resizing');
       normalize(row);
       persist(row);
       notify();
     };
-    window.addEventListener('mousemove',move,true);
-    window.addEventListener('mouseup',end,true);
+    window.addEventListener('pointermove',move,true);
+    window.addEventListener('pointerup',end,true);
+    window.addEventListener('pointercancel',end,true);
     window.addEventListener('blur',end,true);
   },true);
 })();
