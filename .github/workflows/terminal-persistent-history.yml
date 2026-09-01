@@ -7,7 +7,17 @@ on:
     paths:
       - terminal-session-agent/**
       - Dockerfile.terminal-session
+      - terminal-execution-plane/**
+      - Dockerfile.terminal-executor
+      - coding-terminal-worker/**
+      - Dockerfile.coding-terminal
       - scripts/install-terminal-prompt-cursor.mjs
+      - scripts/install-terminal-history-proxy.mjs
+      - scripts/inject-it-terminal-proxy-runtime.mjs
+      - scripts/install-it-agent-xterm-emulator.mjs
+      - assets/it-agent-terminal-persistent-history.js
+      - assets/it-agent-xterm-emulator.css
+      - railway.terminal-worker.json
       - .github/workflows/terminal-persistent-history.yml
   push:
     branches:
@@ -15,7 +25,17 @@ on:
     paths:
       - terminal-session-agent/**
       - Dockerfile.terminal-session
+      - terminal-execution-plane/**
+      - Dockerfile.terminal-executor
+      - coding-terminal-worker/**
+      - Dockerfile.coding-terminal
       - scripts/install-terminal-prompt-cursor.mjs
+      - scripts/install-terminal-history-proxy.mjs
+      - scripts/inject-it-terminal-proxy-runtime.mjs
+      - scripts/install-it-agent-xterm-emulator.mjs
+      - assets/it-agent-terminal-persistent-history.js
+      - assets/it-agent-xterm-emulator.css
+      - railway.terminal-worker.json
       - .github/workflows/terminal-persistent-history.yml
 
 permissions:
@@ -33,6 +53,21 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Verify complete-history route and browser publication contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check assets/it-agent-terminal-persistent-history.js
+          node --check scripts/install-terminal-history-proxy.mjs
+          node --check scripts/inject-it-terminal-proxy-runtime.mjs
+          node --check scripts/install-it-agent-xterm-emulator.mjs
+          grep -Fq "sessions/:sessionId/history" scripts/inject-it-terminal-proxy-runtime.mjs
+          grep -Fq "install-terminal-history-proxy.mjs" Dockerfile.terminal-executor
+          grep -Fq "install-terminal-history-proxy.mjs" Dockerfile.coding-terminal
+          node scripts/install-it-agent-xterm-emulator.mjs
+          grep -Fq "/assets/it-agent-terminal-persistent-history.js?v=20260901-history-1" it-solutions.html
+          grep -Fq "scripts/install-terminal-history-proxy.mjs" railway.terminal-worker.json
 
       - name: Build real terminal session image
         run: docker build -f Dockerfile.terminal-session -t "$IMAGE" .
