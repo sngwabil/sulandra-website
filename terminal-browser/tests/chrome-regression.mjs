@@ -121,7 +121,7 @@ try {
   await page.addScriptTag({ path: productionStack });
   await page.addScriptTag({ path: caretClock });
 
-  const activeCursorSelector = '.itws-xterm-pane.active .xterm-cursor-layer';
+  const activeCursorSelector = '.itws-xterm-pane.active .xterm-cursor, .itws-xterm-pane.active .xterm-cursor-layer';
   const activeTextareaSelector = '.itws-xterm-pane.active .xterm-helper-textarea';
   await page.waitForSelector('#itwsRealTerminal.itws-xterm-ready', { state: 'attached', timeout: 10_000 });
   await page.waitForSelector(activeCursorSelector, { state: 'attached', timeout: 10_000 });
@@ -157,11 +157,11 @@ try {
   await page.waitForTimeout(80);
   const blurred = await page.evaluate(() => {
     const pane = document.querySelector('.itws-xterm-pane.active');
-    const layer = pane?.querySelector('.xterm-cursor-layer');
+    const caret = pane?.querySelector('.xterm-cursor') || pane?.querySelector('.xterm-cursor-layer');
     return {
       activeId: document.activeElement?.id || '',
       focusedClass: Boolean(pane?.classList.contains('sulandra-caret-focused')),
-      animation: layer ? getComputedStyle(layer).animationName : '',
+      animation: caret ? getComputedStyle(caret).animationName : '',
     };
   });
   if (blurred.activeId !== 'outside' || blurred.focusedClass || blurred.animation !== 'none') {
