@@ -33,6 +33,17 @@
     const height=Math.max(320,window.innerHeight-top);
     panel.style.setProperty('--itws-workspace-panel-top',`${Math.round(top)}px`);
     panel.style.setProperty('--itws-workspace-panel-height',`${Math.round(height)}px`);
+
+    /* The terminal starts lower than the rail because it sits below the
+       Engineering Workspace controls. Size it from its own viewport position,
+       not from the rail top, so wrapped footer tools never fall below the page. */
+    const terminal=document.getElementById('itwsRealTerminal')||document.querySelector('.itws-real-terminal');
+    const terminalRect=terminal?.getBoundingClientRect();
+    if(Number.isFinite(terminalRect?.top)){
+      const terminalTop=Math.max(0,Math.min(window.innerHeight-260,terminalRect.top));
+      const terminalHeight=Math.max(360,window.innerHeight-terminalTop);
+      document.body?.style.setProperty('--itws-terminal-available-height',`${Math.round(terminalHeight)}px`);
+    }
   };
   const queueBounds=()=>{if(boundsRaf)return;boundsRaf=requestAnimationFrame(syncPanelBounds)};
   const focusActiveTerminal=()=>{
@@ -45,6 +56,7 @@
     panel?.style.removeProperty('--itws-workspace-panel-top');
     panel?.style.removeProperty('--itws-workspace-panel-height');
     document.body?.classList.remove('itws-workspace-panel-open');
+    document.body?.style.removeProperty('--itws-terminal-available-height');
     frame?.removeAttribute('src');
     if(loading){loading.hidden=false;loading.textContent='Choose IDE or a preview port.'}
     queueMicrotask(focusActiveTerminal);
