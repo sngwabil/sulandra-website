@@ -74,6 +74,8 @@ jobs:
           set -euo pipefail
           node --check assets/it-agent-xterm-production-stack.js
           node --check assets/it-agent-real-terminal.js
+          node --check assets/it-agent-terminal-session-resilience.js
+          node --check assets/it-agent-terminal-wheel-scrollback.js
           node --check coding-terminal-worker/server.mjs
           grep -q "DOM renderer ready · loading PTY" assets/it-agent-xterm-production-stack.js
           grep -q "root?.classList.add('itws-xterm-ready')" assets/it-agent-xterm-production-stack.js
@@ -89,10 +91,10 @@ jobs:
           node --check scripts/install-it-agent-xterm-emulator.mjs
           bash -n infra/terminal-vps/deploy.sh
           grep -q 'reverse_proxy executor:8081' infra/terminal-vps/Caddyfile
-          grep -q 'TERMINAL_MEMORY_BYTES: "536870912"' infra/terminal-vps/docker-compose.yml
-          grep -q 'TERMINAL_NANO_CPUS: "500000000"' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_MEMORY_BYTES: "4294967296"' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_NANO_CPUS: "2000000000"' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_PIDS_LIMIT: "256"' infra/terminal-vps/docker-compose.yml
-          grep -q 'TERMINAL_IDLE_MINUTES: "15"' infra/terminal-vps/docker-compose.yml
+          grep -q 'TERMINAL_IDLE_MINUTES: "480"' infra/terminal-vps/docker-compose.yml
 
       - name: Install and build complete xterm runtime
         run: |
@@ -141,9 +143,9 @@ jobs:
             -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
             -e TERMINAL_STATE_ROOT=/state \
             -e TERMINAL_DOCKER_NETWORK="$INTERNAL_NETWORK" \
-            -e TERMINAL_IDLE_MINUTES=15 \
-            -e TERMINAL_MEMORY_BYTES=536870912 \
-            -e TERMINAL_NANO_CPUS=500000000 \
+            -e TERMINAL_IDLE_MINUTES=480 \
+            -e TERMINAL_MEMORY_BYTES=4294967296 \
+            -e TERMINAL_NANO_CPUS=2000000000 \
             -e TERMINAL_PIDS_LIMIT=256 \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$CI_ROOT/seed:/seed:ro" \
@@ -157,7 +159,7 @@ jobs:
           for i in {1..45}; do
             if curl -fsS -H "Authorization: Bearer $EXECUTION_TOKEN" http://127.0.0.1:18081/healthz > /tmp/executor-health.json; then
               grep -q '"docker":true' /tmp/executor-health.json
-              grep -q '"idleMinutes":15' /tmp/executor-health.json
+              grep -q '"idleMinutes":480' /tmp/executor-health.json
               exit 0
             fi
             sleep 1
@@ -183,9 +185,9 @@ jobs:
           const fs=require('fs');
           const x=JSON.parse(fs.readFileSync('/tmp/session-inspect.json','utf8'))[0];
           const h=x.HostConfig;
-          if(h.Memory!==536870912) throw new Error(`Memory=${h.Memory}`);
-          if(h.MemorySwap!==536870912) throw new Error(`MemorySwap=${h.MemorySwap}`);
-          if(h.NanoCpus!==500000000) throw new Error(`NanoCpus=${h.NanoCpus}`);
+          if(h.Memory!==4294967296) throw new Error(`Memory=${h.Memory}`);
+          if(h.MemorySwap!==4294967296) throw new Error(`MemorySwap=${h.MemorySwap}`);
+          if(h.NanoCpus!==2000000000) throw new Error(`NanoCpus=${h.NanoCpus}`);
           if(h.PidsLimit!==256) throw new Error(`PidsLimit=${h.PidsLimit}`);
           if(h.ReadonlyRootfs!==true) throw new Error('ReadonlyRootfs not enabled');
           if(!Array.isArray(h.CapDrop)||!h.CapDrop.includes('ALL')) throw new Error('CapDrop ALL missing');
