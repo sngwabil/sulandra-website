@@ -1,4 +1,4 @@
-/* SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2
+/* SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V3
    Terminal, IDE and Preview are independent live panels. Maximize/restore and
    splitter resizing never recreate the terminal or iframe nodes. */
 body.it-chatgpt-workspace{--itws-dock-gap:7px;--itws-dock-head:38px}
@@ -34,14 +34,15 @@ body.it-chatgpt-workspace .itws-workspace-frame-tools[hidden]{display:none!impor
 body.it-chatgpt-workspace .itws-workspace-frame-tools label{display:flex;align-items:center;gap:6px;font:700 10px/1.2 inherit;color:#9db3c1}
 body.it-chatgpt-workspace .itws-workspace-port{width:78px;border:1px solid #36566e;border-radius:7px;background:#06131d;color:#d9e8ef;padding:6px 7px;font:700 11px/1.2 ui-monospace,monospace}
 body.it-chatgpt-workspace .itws-workspace-open-port{border:1px solid #36566e;border-radius:7px;background:#102f43;color:#e8f4fa;padding:6px 9px;font:800 11px/1 inherit;cursor:pointer}
-body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized{display:flex!important;position:fixed!important;inset:0!important;width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;min-width:0!important;min-height:0!important;flex-basis:auto!important;border:0!important;border-radius:0!important;z-index:2147483200!important;box-shadow:none!important}
-body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized .itws-dock-panel-head{height:46px;min-height:46px;flex-basis:46px;padding-left:14px;padding-right:10px}
-body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized .itws-dock-close{display:grid!important}
+body.it-chatgpt-workspace.itws-native-fullscreen-panel{overflow:hidden!important}
+body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized,body.it-chatgpt-workspace>.itws-dock-panel.itws-panel-maximized{display:flex!important;position:fixed!important;inset:0!important;width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;min-width:0!important;min-height:0!important;flex-basis:auto!important;border:0!important;border-radius:0!important;z-index:2147483646!important;box-shadow:none!important;margin:0!important}
+body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized .itws-dock-panel-head,body.it-chatgpt-workspace>.itws-dock-panel.itws-panel-maximized .itws-dock-panel-head{height:46px;min-height:46px;flex-basis:46px;padding-left:14px;padding-right:10px}
+body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized .itws-dock-close,body.it-chatgpt-workspace>.itws-dock-panel.itws-panel-maximized .itws-dock-close{display:grid!important;visibility:visible!important;opacity:1!important}
 body.it-chatgpt-workspace .itws-dock-workspace.itws-dock-maximized .itws-dock-splitter{visibility:hidden!important}
-body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized .itws-xterm-host{min-height:260px!important}
+body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized .itws-xterm-host,body.it-chatgpt-workspace>.itws-dock-panel.itws-panel-maximized .itws-xterm-host{min-height:260px!important}
 body.it-chatgpt-workspace.itws-workspace-panel-open #agent .agent-shell{display:block!important;width:100%!important;min-width:0!important}
 body.it-chatgpt-workspace.itws-workspace-panel-open #agent .agent-main{width:100%!important;max-width:100%!important;min-width:0!important}
 body.it-chatgpt-workspace .itws-workspace-panel{display:none!important}
 @media(max-width:1050px) and (min-width:760px){body.it-chatgpt-workspace .itws-dock-panel{min-width:230px}body.it-chatgpt-workspace .itws-dock-panel-head{padding-left:8px}body.it-chatgpt-workspace .itws-dock-panel-head>strong{font-size:11px}}
-@media(max-width:759px){body.it-chatgpt-workspace .itws-dock-workspace{min-height:480px}body.it-chatgpt-workspace .itws-dock-row{display:flex;flex-direction:column;height:auto;min-height:480px;overflow:visible;gap:7px}body.it-chatgpt-workspace .itws-dock-panel{width:100%!important;max-width:100%!important;min-width:0!important;min-height:440px;flex:0 0 auto!important}body.it-chatgpt-workspace .itws-dock-panel[data-panel-id="terminal"]{min-height:540px}body.it-chatgpt-workspace .itws-dock-splitter{display:none!important}body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized{min-height:0!important}}
+@media(max-width:759px){body.it-chatgpt-workspace .itws-dock-workspace{min-height:480px}body.it-chatgpt-workspace .itws-dock-row{display:flex;flex-direction:column;height:auto;min-height:480px;overflow:visible;gap:7px}body.it-chatgpt-workspace .itws-dock-panel{width:100%!important;max-width:100%!important;min-width:0!important;min-height:440px;flex:0 0 auto!important}body.it-chatgpt-workspace .itws-dock-panel[data-panel-id="terminal"]{min-height:540px}body.it-chatgpt-workspace .itws-dock-splitter{display:none!important}body.it-chatgpt-workspace .itws-dock-panel.itws-panel-maximized,body.it-chatgpt-workspace>.itws-dock-panel.itws-panel-maximized{min-height:0!important}}
 @media(prefers-reduced-motion:reduce){body.it-chatgpt-workspace .itws-dock-splitter::after,body.it-chatgpt-workspace .itws-workspace-tool{transition:none!important}}
