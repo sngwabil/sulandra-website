@@ -7,6 +7,7 @@ ARG NPM_VERSION=10.9.9
 ENV NODE_ENV=production \
     PORT=9000 \
     SULANDRA_IDE_PORT=13337 \
+    TERMINAL_ROWS=12 \
     VSCODE_PROXY_URI=./proxy/{{port}} \
     HOME=/home/terminal \
     SHELL=/bin/bash \
