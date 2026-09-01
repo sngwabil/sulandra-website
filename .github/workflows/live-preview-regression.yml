@@ -1,0 +1,150 @@
+name: Live Preview Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.terminal-session
+      - Dockerfile.terminal-executor
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - scripts/install-workspace-ide-live-preview.mjs
+      - .github/workflows/live-preview-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live-preview:
+    name: Verify IDE health and port proxy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TOKEN: ci-preview-token-0123456789abcdef0123456789abcdef
+      OWNER: ci-org:ci-user
+      SESSION_IMAGE: sulandra-terminal-session:preview-ci
+      EXECUTOR_IMAGE: sulandra-terminal-executor:preview-ci
+      NETWORK: sulandra-preview-ci-internal
+      CI_ROOT: /tmp/sulandra-preview-ci
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build session and executor images
+        run: |
+          set -euo pipefail
+          docker build -f Dockerfile.terminal-session -t "$SESSION_IMAGE" .
+          docker build -f Dockerfile.terminal-executor -t "$EXECUTOR_IMAGE" .
+
+      - name: Start isolated execution plane
+        run: |
+          set -euo pipefail
+          rm -rf "$CI_ROOT"
+          mkdir -p "$CI_ROOT/seed" "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          printf 'preview regression seed\n' > "$CI_ROOT/seed/README.txt"
+          sudo chown -R 10001:10001 "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          docker network create --internal "$NETWORK"
+          DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+          docker run -d --name sulandra-preview-executor-ci \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --group-add "$DOCKER_GID" \
+            -e PORT=8081 \
+            -e TERMINAL_EXECUTION_TOKEN="$TOKEN" \
+            -e DOCKER_SOCKET_PATH=/var/run/docker.sock \
+            -e TERMINAL_SESSION_IMAGE="$SESSION_IMAGE" \
+            -e TERMINAL_SEED_PATH=/seed \
+            -e TERMINAL_WORKSPACE_ROOT=/workspaces \
+            -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
+            -e TERMINAL_STATE_ROOT=/state \
+            -e TERMINAL_DOCKER_NETWORK="$NETWORK" \
+            -e TERMINAL_IDLE_MINUTES=15 \
+            -e TERMINAL_MEMORY_BYTES=536870912 \
+            -e TERMINAL_NANO_CPUS=500000000 \
+            -e TERMINAL_PIDS_LIMIT=256 \
+            -e TERMINAL_IDE_PORT=13337 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$CI_ROOT/seed:/seed:ro" \
+            -v "$CI_ROOT/workspaces:/workspaces" \
+            -v "$CI_ROOT/state:/state" \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            --network "$NETWORK" \
+            -p 127.0.0.1:18081:8081 \
+            "$EXECUTOR_IMAGE"
+          for i in {1..45}; do
+            if curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18081/healthz >/tmp/preview-health.json; then
+              grep -q '"docker":true' /tmp/preview-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sulandra-preview-executor-ci
+          exit 1
+
+      - name: Create real workspace session
+        run: |
+          set -euo pipefail
+          headers=(-H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json')
+          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18081/v1/workspaces -d '{}')"
+          workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.workspaceId)' "$workspace_json")"
+          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
+          session_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.sessionId)' "$session_json")"
+          printf '%s' "$workspace_id" >/tmp/preview-workspace-id
+          printf '%s' "$session_id" >/tmp/preview-session-id
+          cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
+          test -n "$cid"
+          printf '%s' "$cid" >/tmp/preview-container-id
+
+      - name: Verify code-server is actually ready
+        run: |
+          set -euo pipefail
+          session_id="$(cat /tmp/preview-session-id)"
+          headers=(-H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER")
+          ready=0
+          for i in {1..30}; do
+            if body="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18081/v1/ide/${session_id}/healthz" 2>/dev/null)"; then
+              if node -e 'const x=JSON.parse(process.argv[1]);process.exit(x.status==="alive"?0:1)' "$body"; then
+                ready=1
+                break
+              fi
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != "1" ]]; then
+            cid="$(cat /tmp/preview-container-id)"
+            echo 'code-server did not become healthy' >&2
+            docker exec "$cid" sh -lc 'cat /tmp/sulandra-code-server.log 2>/dev/null || true' >&2 || true
+            docker logs "$cid" >&2 || true
+            exit 1
+          fi
+
+      - name: Verify port 3000 preview through exact production proxy path
+        run: |
+          set -euo pipefail
+          session_id="$(cat /tmp/preview-session-id)"
+          cid="$(cat /tmp/preview-container-id)"
+          docker exec -d "$cid" node -e "require('http').createServer((req,res)=>{res.setHeader('content-type','application/json');res.end(JSON.stringify({ok:true,path:req.url}))}).listen(3000,'127.0.0.1')"
+          headers=(-H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER")
+          preview=''
+          for i in {1..30}; do
+            if preview="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18081/v1/ide/${session_id}/proxy/3000/test" 2>/dev/null)"; then
+              if node -e 'const x=JSON.parse(process.argv[1]);process.exit(x.ok===true&&x.path==="/test"?0:1)' "$preview"; then
+                exit 0
+              fi
+            fi
+            sleep 0.5
+          done
+          echo "Preview proxy failed: $preview" >&2
+          docker exec "$cid" sh -lc 'cat /tmp/sulandra-code-server.log 2>/dev/null || true' >&2 || true
+          docker logs sulandra-preview-executor-ci >&2 || true
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker ps -aq --filter label=com.sulandra.terminal=true | xargs -r docker rm -f || true
+          docker rm -f sulandra-preview-executor-ci 2>/dev/null || true
+          docker network rm "$NETWORK" 2>/dev/null || true
+          sudo rm -rf "$CI_ROOT"
