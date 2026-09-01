@@ -1,19 +1,37 @@
-/* SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V3
-   Keep ordinary mouse-wheel/trackpad navigation inside browser scrollback.
-   Intercept at the terminal pane in capture phase so events over xterm-screen
-   cannot reach xterm's alternate-scroll path and become Up/Down PTY input.
-   Preserve native mouse reporting only for applications that explicitly
-   enable terminal mouse tracking. */
+/* SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V4
+   Give the Engineering Terminal the same ordinary in-session scrollback users
+   expect from a normal terminal: wheel/trackpad/scrollbar navigation stays in
+   xterm's browser buffer and never becomes Bash cursor-key input. Full-screen
+   applications that explicitly enable terminal mouse tracking keep native mouse
+   reporting. The browser buffer is raised to a substantial 100k-line window. */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V3__)return;
-  window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V3__=true;
+  if(window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V4__)return;
+  window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V4__=true;
 
   const Runtime=window.SulandraTerminalRuntime;
   const Terminal=Runtime?.Terminal;
   if(!Terminal?.prototype?.open)return;
-  if(Terminal.prototype.__sulandraWheelScrollbackV3Patched)return;
 
+  /* The production stack historically requested 25k lines. Raise that request
+     before the stack constructs xterm so long command output remains naturally
+     reachable with the browser scrollbar/wheel during the same session. */
+  if(!Runtime.__sulandraScrollbackConstructorV4){
+    try{
+      Runtime.Terminal=new Proxy(Terminal,{
+        construct(Target,args){
+          const options={...((args&&args[0])||{})};
+          options.scrollback=Math.max(100000,Number(options.scrollback)||0);
+          return Reflect.construct(Target,[options,...((args||[]).slice(1))]);
+        }
+      });
+      Runtime.__sulandraScrollbackConstructorV4=true;
+    }catch(error){
+      console.warn('[Sulandra Terminal] unable to raise xterm scrollback window',error);
+    }
+  }
+
+  if(Terminal.prototype.__sulandraWheelScrollbackV4Patched)return;
   const originalOpen=Terminal.prototype.open;
   const wheelLines=event=>{
     const delta=Number(event?.deltaY)||0;
@@ -23,16 +41,19 @@
     const lines=mode===2?Math.max(1,Math.round(magnitude*18))
       :mode===1?Math.max(1,Math.round(magnitude))
       :Math.max(1,Math.ceil(magnitude/18));
-    return delta<0?-Math.min(lines,180):Math.min(lines,180);
+    return delta<0?-Math.min(lines,240):Math.min(lines,240);
   };
   const mouseTrackingActive=term=>String(term?.modes?.mouseTrackingMode||'none')!=='none';
 
   Terminal.prototype.open=function(parent){
     const result=originalOpen.call(this,parent);
-    if(this.__sulandraWheelScrollbackInstalledV3)return result;
-    this.__sulandraWheelScrollbackInstalledV3=true;
+    if(this.__sulandraWheelScrollbackInstalledV4)return result;
+    this.__sulandraWheelScrollbackInstalledV4=true;
 
     const xtermRoot=parent?.querySelector?.('.xterm')||null;
+    const viewport=parent?.querySelector?.('.xterm-viewport')||null;
+    viewport?.setAttribute?.('data-sulandra-scrollback','enabled');
+
     const localWheel=event=>{
       if(!xtermRoot?.contains?.(event.target))return;
       if(mouseTrackingActive(this))return;
@@ -43,11 +64,11 @@
       this.scrollLines(lines);
     };
 
-    /* Capture on the pane, not .xterm-viewport. xterm-screen is a sibling of
-       the viewport, so viewport-only listeners miss the normal pointer path. */
+    /* Capture at the pane because .xterm-screen and .xterm-viewport are
+       siblings. This guarantees normal pointer-wheel events are intercepted
+       before xterm can synthesize terminal input. */
     parent?.addEventListener?.('wheel',localWheel,{capture:true,passive:false});
 
-    /* Second line of defense for any wheel event that reaches xterm itself. */
     try{
       this.attachCustomWheelEventHandler?.(event=>{
         if(mouseTrackingActive(this))return true;
@@ -80,7 +101,7 @@
     return result;
   };
 
-  Object.defineProperty(Terminal.prototype,'__sulandraWheelScrollbackV3Patched',{
+  Object.defineProperty(Terminal.prototype,'__sulandraWheelScrollbackV4Patched',{
     value:true,configurable:false,enumerable:false,writable:false
   });
 })();

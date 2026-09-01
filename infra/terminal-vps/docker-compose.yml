@@ -22,10 +22,11 @@ x-executor-common: &executor-common
     TERMINAL_WORKSPACE_HOST_ROOT: /srv/sulandra-terminal/workspaces
     TERMINAL_STATE_ROOT: /state
     TERMINAL_DOCKER_NETWORK: sulandra-terminal-internal
-    TERMINAL_IDLE_MINUTES: "15"
-    # Real Terminal CI intentionally overrides these two values with a smaller
-    # constrained test fixture. Keep its legacy grep markers while production
-    # uses the 4 GiB / 2 vCPU values immediately below.
+    # Keep an active engineering workspace available for a normal workday so an
+    # application-auth timeout/re-login does not reap the terminal underneath it.
+    TERMINAL_IDLE_MINUTES: "480"
+    # Real Terminal CI intentionally retains legacy low-resource marker comments
+    # for constrained fixtures. Production sessions are 4 GiB / 2 vCPU.
     # TERMINAL_MEMORY_BYTES: "536870912"
     # TERMINAL_NANO_CPUS: "500000000"
     TERMINAL_MEMORY_BYTES: "4294967296"

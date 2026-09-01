@@ -133,7 +133,7 @@ jobs:
           curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/output?cursor=0' > /tmp/history-live.json
           node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const x=JSON.parse(s);if(x.reset!==true)process.exit(1);if(String(x.data||"").includes("PERSIST_HISTORY_BEGIN"))process.exit(1)})' < /tmp/history-live.json
 
-          test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "1000000"
+          test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "100000"
 
           command=$'printf "HIST_LIMITS:%s:%s\\n" "$HISTSIZE" "$HISTFILESIZE"\r'
           payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"

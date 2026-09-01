@@ -14,6 +14,7 @@ const port = Number(process.env.PORT || 9000);
 const sessionToken = String(process.env.SESSION_TOKEN || '').trim();
 const workspaceId = String(process.env.WORKSPACE_ID || '').trim();
 const tmuxSession = String(process.env.TMUX_SESSION || 'sulandra').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80);
+const tmuxConfigPath = '/home/terminal/.tmux.conf';
 const initialCols = Math.max(40, Math.min(240, Number(process.env.TERMINAL_COLS || 120)));
 const initialRows = Math.max(12, Math.min(80, Number(process.env.TERMINAL_ROWS || 32)));
 const liveOutputLimit = Math.max(250_000, Number(process.env.TERMINAL_OUTPUT_LIMIT || 2_000_000));
@@ -42,6 +43,7 @@ const authorize = (req, res, next) => {
 
 let proc = null;
 let alive = false;
+let bridgeReady = false;
 let exitCode = null;
 let cursor = 0;
 let bufferedChars = 0;
@@ -99,7 +101,11 @@ const pushOutput = data => {
 };
 
 const spawnBridge = (cols = initialCols, rows = initialRows) => {
-  const args = ['new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--norc', '-i'];
+  // Explicitly pass Sulandra's tmux configuration instead of depending on tmux
+  // home-directory discovery. This makes initial sessions and recovered sessions
+  // use the same mouse/scrollback policy every time.
+  const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--norc', '-i'];
+  bridgeReady = false;
   proc = pty.spawn('tmux', args, {
     name: 'xterm-256color',
     cols: Math.max(40, Math.min(240, Number(cols) || initialCols)),
@@ -109,9 +115,16 @@ const spawnBridge = (cols = initialCols, rows = initialRows) => {
   });
   alive = true;
   exitCode = null;
-  proc.onData(pushOutput);
+  proc.onData(data => {
+    // The first byte from the actual tmux/bash PTY proves tmux has started and
+    // its configuration has been consumed. Health stays 503 until this point so
+    // executor recovery cannot race input against PTY startup.
+    bridgeReady = true;
+    pushOutput(data);
+  });
   proc.onExit(event => {
     alive = false;
+    bridgeReady = false;
     exitCode = event.exitCode;
     pushOutput(`\r\n[terminal bridge exited with code ${event.exitCode}; tmux session retained]\r\n`);
   });
@@ -160,7 +173,10 @@ pushOutput('\x1b[1;36mSulandra isolated Docker terminal ready.\x1b[0m\r\n');
 app.get('/health', authorize, async (_req, res) => {
   await historyWrite;
   const info = await stat(historyPath).catch(() => ({ size: 0 }));
-  res.json({ ok: true, pty: true, tmux: true, workspaceId, alive, transcriptBytes: Number(info.size) || 0 });
+  if (!alive || !bridgeReady) {
+    return res.status(503).json({ ok: false, pty: true, tmux: true, workspaceId, alive, ready: false, transcriptBytes: Number(info.size) || 0 });
+  }
+  res.json({ ok: true, pty: true, tmux: true, workspaceId, alive, ready: true, transcriptBytes: Number(info.size) || 0 });
 });
 app.get('/output', authorize, (req, res) => res.json(outputFrom(req.query.cursor)));
 app.get('/history', authorize, async (req, res, next) => {
@@ -172,11 +188,13 @@ app.post('/input', authorize, (req, res) => {
   const data = typeof req.body?.data === 'string' ? req.body.data : '';
   if (!data || Buffer.byteLength(data) > 65_536) return res.status(400).json({ error: 'Terminal input must be between 1 and 65536 bytes' });
   ensureBridge();
+  if (!bridgeReady) return res.status(503).json({ error: 'Terminal PTY is still starting' });
   proc.write(data);
   res.json({ ok: true, cursor });
 });
 app.post('/resize', authorize, (req, res) => {
   ensureBridge();
+  if (!bridgeReady) return res.status(503).json({ error: 'Terminal PTY is still starting' });
   const cols = Math.max(40, Math.min(240, Number(req.body?.cols) || initialCols));
   const rows = Math.max(12, Math.min(80, Number(req.body?.rows) || initialRows));
   proc.resize(cols, rows);
@@ -220,6 +238,10 @@ wss.on('connection', socket => {
       return;
     }
     ensureBridge();
+    if (!bridgeReady) {
+      socket.close(1013, 'Terminal PTY is still starting');
+      return;
+    }
     if (isBinary) {
       proc.write(Buffer.isBuffer(data) ? data.toString('utf8') : String(data));
       return;
