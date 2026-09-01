@@ -25,7 +25,8 @@ jobs:
       OWNER: ci-org:ci-user
       SESSION_IMAGE: sulandra-terminal-session:preview-ci
       EXECUTOR_IMAGE: sulandra-terminal-executor:preview-ci
-      NETWORK: sulandra-preview-ci-internal
+      PROXY_NETWORK: sulandra-preview-ci-proxy
+      INTERNAL_NETWORK: sulandra-preview-ci-internal
       CI_ROOT: /tmp/sulandra-preview-ci
     steps:
       - name: Check out repository
@@ -37,7 +38,7 @@ jobs:
           docker build -f Dockerfile.terminal-session -t "$SESSION_IMAGE" .
           docker build -f Dockerfile.terminal-executor -t "$EXECUTOR_IMAGE" .
 
-      - name: Start isolated execution plane
+      - name: Start production-shaped execution plane
         run: |
           set -euo pipefail
           rm -rf "$CI_ROOT"
@@ -49,7 +50,8 @@ jobs:
           git -C "$CI_ROOT/seed" add README.txt
           git -C "$CI_ROOT/seed" commit -m 'Preview regression seed'
           sudo chown -R 10001:10001 "$CI_ROOT/workspaces" "$CI_ROOT/state"
-          docker network create --internal "$NETWORK"
+          docker network create "$PROXY_NETWORK"
+          docker network create --internal "$INTERNAL_NETWORK"
           DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
           docker run -d --name sulandra-preview-executor-ci \
             --read-only \
@@ -66,7 +68,7 @@ jobs:
             -e TERMINAL_WORKSPACE_ROOT=/workspaces \
             -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
             -e TERMINAL_STATE_ROOT=/state \
-            -e TERMINAL_DOCKER_NETWORK="$NETWORK" \
+            -e TERMINAL_DOCKER_NETWORK="$INTERNAL_NETWORK" \
             -e TERMINAL_IDLE_MINUTES=15 \
             -e TERMINAL_MEMORY_BYTES=536870912 \
             -e TERMINAL_NANO_CPUS=500000000 \
@@ -77,11 +79,12 @@ jobs:
             -v "$CI_ROOT/workspaces:/workspaces" \
             -v "$CI_ROOT/state:/state" \
             --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-            --network "$NETWORK" \
+            --network "$PROXY_NETWORK" \
             -p 127.0.0.1:18081:8081 \
             "$EXECUTOR_IMAGE"
+          docker network connect "$INTERNAL_NETWORK" sulandra-preview-executor-ci
           ready=0
-          for i in {1..180}; do
+          for i in {1..60}; do
             if curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18081/healthz >/tmp/preview-health.json 2>/dev/null; then
               if grep -q '"docker":true' /tmp/preview-health.json; then
                 ready=1
@@ -96,7 +99,7 @@ jobs:
             sleep 1
           done
           if [[ "$ready" != "1" ]]; then
-            echo 'Preview executor did not become healthy within 180 seconds.' >&2
+            echo 'Preview executor did not become healthy within 60 seconds.' >&2
             docker logs sulandra-preview-executor-ci >&2 || true
             exit 1
           fi
@@ -164,5 +167,5 @@ jobs:
         run: |
           docker ps -aq --filter label=com.sulandra.terminal=true | xargs -r docker rm -f || true
           docker rm -f sulandra-preview-executor-ci 2>/dev/null || true
-          docker network rm "$NETWORK" 2>/dev/null || true
+          docker network rm "$INTERNAL_NETWORK" "$PROXY_NETWORK" 2>/dev/null || true
           sudo rm -rf "$CI_ROOT"
