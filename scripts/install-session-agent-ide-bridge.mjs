@@ -97,7 +97,8 @@ const bridgeIdeSockets = (browser, upstream) => {
 };
 `;
 
-replaceOnce("spawnBridge();", `${ideBridge}\nspawnBridge();`, 'IDE HTTP bridge');
+const startupAnchor = "spawnBridge();\npushOutput('\\x1b[1;36mSulandra isolated Docker terminal ready.\\x1b[0m\\r\\n');";
+replaceOnce(startupAnchor, `${ideBridge}\n${startupAnchor}`, 'IDE HTTP bridge');
 
 replaceOnce(
   "const wss = new WebSocketServer({ noServer: true, maxPayload: 1_048_576 });",
