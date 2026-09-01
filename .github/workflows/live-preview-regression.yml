@@ -65,8 +65,8 @@ jobs:
             -e TERMINAL_STATE_ROOT=/state \
             -e TERMINAL_DOCKER_NETWORK="$INTERNAL_NETWORK" \
             -e TERMINAL_IDLE_MINUTES=15 \
-            -e TERMINAL_MEMORY_BYTES=536870912 \
-            -e TERMINAL_NANO_CPUS=500000000 \
+            -e TERMINAL_MEMORY_BYTES=4294967296 \
+            -e TERMINAL_NANO_CPUS=2000000000 \
             -e TERMINAL_PIDS_LIMIT=256 \
             -e TERMINAL_IDE_PORT=13337 \
             -v /var/run/docker.sock:/var/run/docker.sock \
