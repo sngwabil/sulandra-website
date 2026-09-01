@@ -42,7 +42,12 @@ jobs:
           set -euo pipefail
           rm -rf "$CI_ROOT"
           mkdir -p "$CI_ROOT/seed" "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          git -C "$CI_ROOT/seed" init -b main
+          git -C "$CI_ROOT/seed" config user.name 'Sulandra Preview CI'
+          git -C "$CI_ROOT/seed" config user.email 'preview-ci@sulandra.local'
           printf 'preview regression seed\n' > "$CI_ROOT/seed/README.txt"
+          git -C "$CI_ROOT/seed" add README.txt
+          git -C "$CI_ROOT/seed" commit -m 'Preview regression seed'
           sudo chown -R 10001:10001 "$CI_ROOT/workspaces" "$CI_ROOT/state"
           docker network create --internal "$NETWORK"
           DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
@@ -56,6 +61,8 @@ jobs:
             -e DOCKER_SOCKET_PATH=/var/run/docker.sock \
             -e TERMINAL_SESSION_IMAGE="$SESSION_IMAGE" \
             -e TERMINAL_SEED_PATH=/seed \
+            -e TERMINAL_GIT_REPOSITORY=/seed \
+            -e TERMINAL_GIT_BASE_BRANCH=main \
             -e TERMINAL_WORKSPACE_ROOT=/workspaces \
             -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
             -e TERMINAL_STATE_ROOT=/state \
@@ -73,15 +80,26 @@ jobs:
             --network "$NETWORK" \
             -p 127.0.0.1:18081:8081 \
             "$EXECUTOR_IMAGE"
-          for i in {1..90}; do
-            if curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18081/healthz >/tmp/preview-health.json; then
-              grep -q '"docker":true' /tmp/preview-health.json
-              exit 0
+          ready=0
+          for i in {1..180}; do
+            if curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18081/healthz >/tmp/preview-health.json 2>/dev/null; then
+              if grep -q '"docker":true' /tmp/preview-health.json; then
+                ready=1
+                break
+              fi
+            fi
+            if ! docker inspect -f '{{.State.Running}}' sulandra-preview-executor-ci 2>/dev/null | grep -q true; then
+              echo 'Preview executor exited before becoming healthy.' >&2
+              docker logs sulandra-preview-executor-ci >&2 || true
+              exit 1
             fi
             sleep 1
           done
-          docker logs sulandra-preview-executor-ci
-          exit 1
+          if [[ "$ready" != "1" ]]; then
+            echo 'Preview executor did not become healthy within 180 seconds.' >&2
+            docker logs sulandra-preview-executor-ci >&2 || true
+            exit 1
+          fi
 
       - name: Create real workspace session
         run: |
