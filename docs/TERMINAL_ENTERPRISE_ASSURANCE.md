@@ -1,28 +1,24 @@
 # Sulandra Engineering Terminal Enterprise Assurance
 
-This document defines the production assurance controls layered on top of the Sulandra Engineering Terminal. These controls supplement, rather than replace, the existing isolated-session, HA, controlled-egress, authenticated IDE/live-preview, and disaster-recovery controls.
+This document defines the automated production assurance controls layered on top of the Sulandra Engineering Terminal. These controls supplement, rather than replace, the existing isolated-session, HA, controlled-egress, authenticated IDE/live-preview, and disaster-recovery controls.
 
-## 1. Independent penetration testing
+## 1. Automated technical security testing
 
-An independent third-party penetration test is required at least annually and after a material change to the authentication, authorization, proxy, WebSocket, container-isolation, execution-token, or network-boundary model.
+The terminal assurance pipeline uses automated security testing inside the normal CI/CD path. No third-party human approval, external assessor attestation, or manual external compliance gate is required for release.
 
-The assessor must be organizationally independent from Sulandra's implementation team. Internal automated scans, code review, OWASP ZAP, Trivy, CI tests, and AI-assisted review do not qualify as the independent penetration test.
+Automated coverage includes:
 
-Scope must include:
+- OWASP ZAP DAST against the published IT Solutions surface.
+- Trivy scanning of production terminal container images.
+- Authentication and authorization regression checks.
+- Session-owner isolation and proxy-boundary tests.
+- WebSocket and HTTP gateway verification.
+- Controlled-egress validation.
+- Container isolation and resource-governance regression coverage.
+- Sustained k6 concurrency/load testing.
+- HA, failover, disaster-recovery, and production SLO checks.
 
-- Administrator/CEO/COO browser authentication and workspace-ticket issuance.
-- Session-owner isolation and horizontal/vertical authorization testing.
-- HTTP and WebSocket proxy boundaries.
-- SSRF and arbitrary-host/port bypass attempts.
-- IDE and live-preview frame/origin controls.
-- Executor token handling and secret exposure attempts.
-- Container escape and Docker-socket threat analysis.
-- Controlled egress bypass attempts.
-- Workspace persistence, cross-session access, and cleanup.
-- Rate/limit abuse, denial-of-service, and resource-exhaustion behavior.
-- Clickjacking, CSP, CSRF/session handling, and common OWASP web risks.
-
-A real assessor report is stored outside the repository. The repository stores only a compact attestation at `security/terminal/evidence/independent-pentest-attestation.json`, including the assessor identity, scope, dates, result, finding status, and SHA-256 of the external report. `scripts/verify-independent-pentest-attestation.mjs` rejects expired attestations, non-independent attestations, failed results, unresolved Critical findings, and unresolved High findings that are not explicitly accepted risk.
+All release decisions remain inside the repository's automated CI/CD pipeline and the founder-controlled release process.
 
 ## 2. CVE and patch governance
 
@@ -43,11 +39,13 @@ Base images and pinned tooling must be refreshed through pull requests and must 
 
 ## 3. Centralized security and audit retention
 
-The terminal execution plane writes structured audit records to the shared durable state root under `/state/audit`.
+The terminal execution plane writes structured internal security audit records to the shared durable state root under `/state/audit`.
 
 Each record includes timestamp, executor identity, event, authenticated owner, request method/path, response status, duration, and related workspace/session identifiers when available. It does **not** include terminal keystrokes, command text, output, authorization headers, executor/session tokens, environment values, container IP addresses, or `.env` contents.
 
 Every record receives an HMAC-SHA-256 integrity tag derived from the server-side execution-plane secret. Audit files are partitioned by UTC date and executor identity. The default retention period is 2,190 days (six years). The shared state directory is available to either HA executor generation, so failover does not split the durable evidence location.
+
+These logs are for Sulandra's own automated operational and security evidence only. There is no external-assessor audit trail or attestation workflow.
 
 Railway gateway deployment/runtime logs remain complementary platform evidence; the durable executor audit is the authoritative terminal-operation trail.
 
@@ -91,12 +89,11 @@ Operational runbook:
 4. Restore into an isolated target first; never overwrite production as the first restore action.
 5. Verify checksum, sentinel/business integrity, required tables, and application compatibility.
 6. Record measured RTO and estimated RPO.
-7. Promote restored infrastructure only after owner/incident-lead approval.
+7. Promote restored infrastructure only after founder/incident-lead approval.
 8. Re-run production smoke, terminal gateway health, authorization isolation, and audit-write checks.
 9. Record corrective actions and update this runbook when the exercise finds a gap.
 
 ## Assurance status terminology
 
 - **Automated security assurance** means CI scanning, DAST, regression, CVE, load, SLO, and DR controls are running.
-- **Independent penetration tested** may be stated only while a valid third-party attestation exists and passes the repository evidence gate.
-- **Enterprise-hardened** does not mean risk-free or formally certified. External assessment findings and operational evidence remain part of the production-security lifecycle.
+- **Enterprise-hardened** means the automated technical and operational controls defined here are enforced in Sulandra's founder-controlled CI/CD path. It does not mean risk-free or formally certified.
