@@ -117,6 +117,8 @@ const paneCommand = async () => {
   } catch { return ''; }
 };
 
+const canonicalPayload = snapshot => Buffer.from(`\x1bc\x1b[?25h${snapshot}`, 'utf8');
+
 const broadcastAuthoritativeSnapshot = async () => {
   if (reconcileRunning || !sockets.size || !alive) return;
   reconcileRunning = true;
@@ -125,7 +127,7 @@ const broadcastAuthoritativeSnapshot = async () => {
     if (command && !['bash', 'sh', 'zsh', 'dash'].includes(command)) return;
     const snapshot = await capturePaneSnapshot();
     if (!snapshot) return;
-    const payload = Buffer.from(`\x1bc\x1b[?25h${snapshot}`, 'utf8');
+    const payload = canonicalPayload(snapshot);
     for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(payload, { binary: true });
     reconcileBytes = 0;
     reconcileLines = 0;
@@ -134,8 +136,8 @@ const broadcastAuthoritativeSnapshot = async () => {
   }
 };
 
-const scheduleAuthoritativeSnapshot = () => {
-  if (reconcileBytes < 32 * 1024 && reconcileLines < 120) return;
+const scheduleAuthoritativeSnapshot = (force = false) => {
+  if (!force && reconcileBytes < 32 * 1024 && reconcileLines < 120) return;
   if (reconcileTimer) clearTimeout(reconcileTimer);
   reconcileTimer = setTimeout(() => {
     reconcileTimer = null;
@@ -205,6 +207,7 @@ const resizeBridge = (colsValue, rowsValue) => {
   currentCols = cols;
   currentRows = rows;
   proc.resize(cols, rows);
+  scheduleAuthoritativeSnapshot(true);
   return { cols, rows, changed: true };
 };
 
@@ -306,7 +309,7 @@ wss.on('connection', async socket => {
   sockets.add(socket);
   ensureBridge();
   const snapshot = await capturePaneSnapshot();
-  if (socket.readyState === WebSocket.OPEN && snapshot) socket.send(Buffer.from(snapshot, 'utf8'), { binary: true });
+  if (socket.readyState === WebSocket.OPEN && snapshot) socket.send(canonicalPayload(snapshot), { binary: true });
   socket.on('message', (data, isBinary) => {
     const bytes = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
     if (!consume(bucket, bytes)) {
