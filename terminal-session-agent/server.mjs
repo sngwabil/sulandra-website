@@ -52,6 +52,8 @@ let cursor = 0;
 let bufferedChars = 0;
 let currentCols = initialCols;
 let currentRows = initialRows;
+let reconcileBytes = 0;
+let reconcileLines = 0;
 const chunks = [];
 const sockets = new Set();
 let historyWrite = Promise.resolve();
@@ -125,12 +127,15 @@ const broadcastAuthoritativeSnapshot = async () => {
     if (!snapshot) return;
     const payload = Buffer.from(`\x1bc\x1b[?25h${snapshot}`, 'utf8');
     for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(payload, { binary: true });
+    reconcileBytes = 0;
+    reconcileLines = 0;
   } finally {
     reconcileRunning = false;
   }
 };
 
 const scheduleAuthoritativeSnapshot = () => {
+  if (reconcileBytes < 32 * 1024 && reconcileLines < 120) return;
   if (reconcileTimer) clearTimeout(reconcileTimer);
   reconcileTimer = setTimeout(() => {
     reconcileTimer = null;
@@ -153,6 +158,8 @@ const pushOutput = data => {
   cursor += text.length;
   chunks.push({ start, end: cursor, data: text });
   bufferedChars += text.length;
+  reconcileBytes += Buffer.byteLength(text);
+  reconcileLines += (text.match(/\n/g) || []).length;
   while (bufferedChars > liveOutputLimit && chunks.length > 1) {
     const removed = chunks.shift();
     bufferedChars -= removed.data.length;
