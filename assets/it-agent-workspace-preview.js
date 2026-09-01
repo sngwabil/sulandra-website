@@ -22,10 +22,10 @@ function bindSplitter(split){
   if(window.innerWidth<760||event.button!==0)return;
   const left=panels.get(split.dataset.left),right=panels.get(split.dataset.right);if(!left||!right)return;
   event.preventDefault();const start=event.clientX,lw=left.getBoundingClientRect().width,rw=right.getBoundingClientRect().width,totalPair=lw+rw;
-  document.body.classList.add('itws-dock-resizing');split.setPointerCapture?.(event.pointerId);
+  document.body.classList.add('itws-dock-resizing');
   const move=e=>{const nl=clamp(lw+(e.clientX-start),MIN,Math.max(MIN,totalPair-MIN)),nr=totalPair-nl;if(nr<MIN)return;const all=row.getBoundingClientRect().width||totalPair;left.dataset.size=String(nl/all*100);right.dataset.size=String(nr/all*100);left.style.flexBasis=`${nl}px`;right.style.flexBasis=`${nr}px`;notifyResize()};
-  const end=()=>{split.removeEventListener('pointermove',move);split.removeEventListener('pointerup',end);split.removeEventListener('pointercancel',end);document.body.classList.remove('itws-dock-resizing');save();normalize();notifyResize()};
-  split.addEventListener('pointermove',move);split.addEventListener('pointerup',end);split.addEventListener('pointercancel',end);
+  const end=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);document.body.classList.remove('itws-dock-resizing');save();normalize();notifyResize()};
+  window.addEventListener('pointermove',move,true);window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);
  });
  split.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight'].includes(event.key))return;const l=panels.get(split.dataset.left),r=panels.get(split.dataset.right);if(!l||!r)return;event.preventDefault();const d=(event.key==='ArrowRight'?1:-1)*(event.shiftKey?5:2);l.dataset.size=String(clamp((Number(l.dataset.size)||25)+d,10,80));r.dataset.size=String(clamp((Number(r.dataset.size)||25)-d,10,80));normalize();save();notifyResize()});
 }
