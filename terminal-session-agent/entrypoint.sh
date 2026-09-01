@@ -12,8 +12,11 @@ fi
 
 IDE_PORT="${SULANDRA_IDE_PORT:-13337}"
 mkdir -p "${HOME}/.config/code-server" "${HOME}/.local/share/code-server"
-code-server \
-  --bind-addr "0.0.0.0:${IDE_PORT}" \
+# The session agent owns PORT=9000. code-server also honors PORT, so scope its
+# environment to the dedicated IDE port. Keep the IDE loopback-only; the
+# authenticated session-agent bridge is the only network path into it.
+PORT="${IDE_PORT}" code-server \
+  --bind-addr "127.0.0.1:${IDE_PORT}" \
   --auth none \
   --disable-telemetry \
   --disable-update-check \
