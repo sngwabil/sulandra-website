@@ -5,18 +5,22 @@
     "dockerfilePath": "Dockerfile.coding-terminal",
     "watchPatterns": [
       "coding-terminal-worker/**",
-      "scripts/install-terminal-gateway-ha.mjs",
       "Dockerfile.coding-terminal",
+      "scripts/install-terminal-gateway-ha.mjs",
+      "scripts/install-workspace-ide-live-preview.mjs",
+      "scripts/fix-workspace-proxy-abort.mjs",
+      "scripts/fix-workspace-ticket-cors.mjs",
+      "scripts/verify-workspace-ticket-cors.mjs",
       "railway.terminal-worker.json"
     ]
   },
   "deploy": {
     "startCommand": "node /gateway/server.mjs",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 120,
+    "healthcheckTimeout": 300,
     "restartPolicyType": "ALWAYS",
     "multiRegionConfig": {
-      "us-west2": {
+      "sfo": {
         "numReplicas": 1
       },
       "us-east4-eqdc4a": {
