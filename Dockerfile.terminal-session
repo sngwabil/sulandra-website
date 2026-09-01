@@ -12,13 +12,14 @@ ENV NODE_ENV=production \
     HOME=/home/terminal \
     SHELL=/bin/bash \
     TERM=xterm-256color \
+    COLORTERM=truecolor \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
       bash git gh curl ca-certificates build-essential python3 python3-pip python3-venv \
-      jq ripgrep less nano vim-tiny procps tmux sqlite3 tree zip unzip rsync openssh-client \
+      jq ripgrep less nano vim-tiny procps tmux sqlite3 tree zip unzip rsync openssh-client file \
     && groupadd --gid 10001 terminal \
     && useradd --uid 10001 --gid 10001 --create-home --shell /bin/bash terminal \
     && curl -fsSL "https://github.com/coder/code-server/releases/download/v${CODE_SERVER_VERSION}/code-server-${CODE_SERVER_VERSION}-linux-amd64.tar.gz" -o /tmp/code-server.tar.gz \
@@ -46,18 +47,24 @@ RUN node /tmp/install-session-agent-ide-bridge.mjs /agent/server.mjs \
     && node --check /agent/server.mjs \
     && rm -f /tmp/install-session-agent-ide-bridge.mjs /tmp/install-terminal-prompt-cursor.mjs
 COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
+COPY terminal-session-agent/bashrc ./bashrc
 COPY scripts/verify-terminal-ide-settings.mjs /tmp/verify-terminal-ide-settings.mjs
 RUN node /tmp/verify-terminal-ide-settings.mjs /agent/entrypoint.sh \
     && rm -f /tmp/verify-terminal-ide-settings.mjs
 # /home/terminal is mounted as a tmpfs by the executor for each isolated session,
-# so files baked into that path are hidden at runtime. Keep the canonical tmux
-# config on the immutable image and copy it into the tmpfs immediately before
-# the session agent starts.
+# so files baked into that path are hidden at runtime. Keep canonical shell/tmux
+# configuration on the immutable image and load/copy it when a session starts.
 COPY terminal-session-agent/tmux.conf /agent/tmux.conf
 COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login
 COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
 RUN chmod 0755 /agent/entrypoint.sh /usr/local/bin/sulandra-github-login /usr/local/bin/sulandra-pr \
-    && chmod 0644 /agent/tmux.conf \
+    && chmod 0644 /agent/tmux.conf /agent/bashrc \
+    && bash --noprofile --norc -n /agent/bashrc \
+    && profile_check="$(PROMPT_COMMAND='printf "\\033[?25h"' bash --noprofile --rcfile /agent/bashrc -ic 'printf "PS1=%s\n" "$PS1"; alias ls; type ok; printf "PROMPT_COMMAND=%s\n" "$PROMPT_COMMAND"' 2>/dev/null)" \
+    && printf '%s\n' "$profile_check" | grep -q 'PS1=.*sulandra' \
+    && printf '%s\n' "$profile_check" | grep -q "alias ls='ls --color=auto'" \
+    && printf '%s\n' "$profile_check" | grep -q 'ok is a function' \
+    && printf '%s\n' "$profile_check" | grep -q '__sulandra_update_git_prompt' \
     && mkdir -p /workspace /home/terminal \
     && chown -R 10001:10001 /workspace /home/terminal /agent
 
