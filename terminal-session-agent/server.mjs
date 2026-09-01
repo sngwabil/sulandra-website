@@ -171,7 +171,7 @@ const pushOutput = data => {
 };
 
 const spawnBridge = (cols = initialCols, rows = initialRows) => {
-  const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--norc', '-i'];
+  const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--rcfile', '/agent/bashrc', '-i'];
   bridgeReady = false;
   currentCols = Math.max(40, Math.min(240, Number(cols) || initialCols));
   currentRows = Math.max(12, Math.min(80, Number(rows) || initialRows));
