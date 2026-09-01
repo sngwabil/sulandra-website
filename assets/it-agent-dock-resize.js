@@ -1,8 +1,9 @@
-/* SULANDRA_DOCK_RESIZE_CAPTURE_V3 */
+/* SULANDRA_DOCK_RESIZE_CAPTURE_V4 */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V3__)return;
-  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V3__=true;
+  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V4__)return;
+  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V4__=true;
+  const debug=window.__SULANDRA_DOCK_RESIZE_DEBUG__={down:0,move:0,up:0,lastTarget:'',lastType:''};
   const LAYOUT_KEY='sulandra:engineering-workspace-layout-v2';
   const MIN=280;
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -24,6 +25,7 @@
     return node;
   };
   const startDrag=event=>{
+    debug.down+=1;debug.lastType=event.type;debug.lastTarget=event.target instanceof Element?event.target.className||event.target.tagName:'';
     if(window.innerWidth<760||event.button!==0)return;
     const target=event.target instanceof Element?event.target:null;
     const splitter=target?.closest('.itws-dock-splitter');
@@ -32,43 +34,23 @@
     const left=panelBeside(splitter,-1);
     const right=panelBeside(splitter,1);
     if(!row||!left||!right)return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    const startX=event.clientX;
-    const leftWidth=left.getBoundingClientRect().width;
-    const rightWidth=right.getBoundingClientRect().width;
-    const pairWidth=leftWidth+rightWidth;
-    const pairShare=(Number(left.dataset.size)||25)+(Number(right.dataset.size)||25);
+    event.preventDefault();event.stopImmediatePropagation();
+    const startX=event.clientX,leftWidth=left.getBoundingClientRect().width,rightWidth=right.getBoundingClientRect().width,pairWidth=leftWidth+rightWidth,pairShare=(Number(left.dataset.size)||25)+(Number(right.dataset.size)||25);
     document.body.classList.add('itws-dock-resizing');
     const move=moveEvent=>{
+      debug.move+=1;debug.lastType=moveEvent.type;
       const nextLeft=clamp(leftWidth+(moveEvent.clientX-startX),MIN,Math.max(MIN,pairWidth-MIN));
-      const nextRight=pairWidth-nextLeft;
-      if(nextRight<MIN)return;
+      const nextRight=pairWidth-nextLeft;if(nextRight<MIN)return;
       const ratio=nextLeft/pairWidth;
-      left.dataset.size=String(pairShare*ratio);
-      right.dataset.size=String(pairShare*(1-ratio));
-      left.style.flexBasis=`${nextLeft}px`;
-      right.style.flexBasis=`${nextRight}px`;
-      notify();
+      left.dataset.size=String(pairShare*ratio);right.dataset.size=String(pairShare*(1-ratio));
+      left.style.flexBasis=`${nextLeft}px`;right.style.flexBasis=`${nextRight}px`;notify();
     };
     const end=()=>{
-      window.removeEventListener('pointermove',move,true);
-      window.removeEventListener('pointerup',end,true);
-      window.removeEventListener('pointercancel',end,true);
-      window.removeEventListener('mousemove',move,true);
-      window.removeEventListener('mouseup',end,true);
-      window.removeEventListener('blur',end,true);
-      document.body.classList.remove('itws-dock-resizing');
-      normalize(row);
-      persist(row);
-      notify();
+      debug.up+=1;
+      for(const [type,fn] of [['pointermove',move],['pointerup',end],['pointercancel',end],['mousemove',move],['mouseup',end],['blur',end]])window.removeEventListener(type,fn,true);
+      document.body.classList.remove('itws-dock-resizing');normalize(row);persist(row);notify();
     };
-    window.addEventListener('pointermove',move,true);
-    window.addEventListener('pointerup',end,true);
-    window.addEventListener('pointercancel',end,true);
-    window.addEventListener('mousemove',move,true);
-    window.addEventListener('mouseup',end,true);
-    window.addEventListener('blur',end,true);
+    for(const [type,fn] of [['pointermove',move],['pointerup',end],['pointercancel',end],['mousemove',move],['mouseup',end],['blur',end]])window.addEventListener(type,fn,true);
   };
   document.addEventListener('pointerdown',startDrag,true);
   document.addEventListener('mousedown',startDrag,true);
