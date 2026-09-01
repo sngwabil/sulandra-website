@@ -43,12 +43,7 @@ jobs:
           set -euo pipefail
           rm -rf "$CI_ROOT"
           mkdir -p "$CI_ROOT/seed" "$CI_ROOT/workspaces" "$CI_ROOT/state"
-          git -C "$CI_ROOT/seed" init -b main
-          git -C "$CI_ROOT/seed" config user.name 'Sulandra Preview CI'
-          git -C "$CI_ROOT/seed" config user.email 'preview-ci@sulandra.local'
           printf 'preview regression seed\n' > "$CI_ROOT/seed/README.txt"
-          git -C "$CI_ROOT/seed" add README.txt
-          git -C "$CI_ROOT/seed" commit -m 'Preview regression seed'
           sudo chown -R 10001:10001 "$CI_ROOT/workspaces" "$CI_ROOT/state"
           docker network create "$PROXY_NETWORK"
           docker network create --internal "$INTERNAL_NETWORK"
@@ -63,8 +58,8 @@ jobs:
             -e DOCKER_SOCKET_PATH=/var/run/docker.sock \
             -e TERMINAL_SESSION_IMAGE="$SESSION_IMAGE" \
             -e TERMINAL_SEED_PATH=/seed \
-            -e TERMINAL_GIT_REPOSITORY=/seed \
-            -e TERMINAL_GIT_BASE_BRANCH=main \
+            -e TERMINAL_GIT_REPOSITORY=https://github.com/octocat/Hello-World.git \
+            -e TERMINAL_GIT_BASE_BRANCH=master \
             -e TERMINAL_WORKSPACE_ROOT=/workspaces \
             -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
             -e TERMINAL_STATE_ROOT=/state \
@@ -108,9 +103,23 @@ jobs:
         run: |
           set -euo pipefail
           headers=(-H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json')
-          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18081/v1/workspaces -d '{}')"
+          workspace_response="$(curl -sS -w $'\n%{http_code}' "${headers[@]}" -X POST http://127.0.0.1:18081/v1/workspaces -d '{}')"
+          workspace_status="${workspace_response##*$'\n'}"
+          workspace_json="${workspace_response%$'\n'*}"
+          if [[ "$workspace_status" != "201" ]]; then
+            echo "Workspace creation failed with HTTP $workspace_status: $workspace_json" >&2
+            docker logs sulandra-preview-executor-ci >&2 || true
+            exit 1
+          fi
           workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.workspaceId)' "$workspace_json")"
-          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
+          session_response="$(curl -sS -w $'\n%{http_code}' "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
+          session_status="${session_response##*$'\n'}"
+          session_json="${session_response%$'\n'*}"
+          if [[ "$session_status" != "201" ]]; then
+            echo "Session creation failed with HTTP $session_status: $session_json" >&2
+            docker logs sulandra-preview-executor-ci >&2 || true
+            exit 1
+          fi
           session_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.sessionId)' "$session_json")"
           printf '%s' "$workspace_id" >/tmp/preview-workspace-id
           printf '%s' "$session_id" >/tmp/preview-session-id
@@ -138,6 +147,7 @@ jobs:
             echo 'code-server did not become healthy' >&2
             docker exec "$cid" sh -lc 'cat /tmp/sulandra-code-server.log 2>/dev/null || true' >&2 || true
             docker logs "$cid" >&2 || true
+            docker logs sulandra-preview-executor-ci >&2 || true
             exit 1
           fi
 
