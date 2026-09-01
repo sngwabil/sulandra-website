@@ -304,12 +304,10 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws));
 });
 
-wss.on('connection', async socket => {
+wss.on('connection', socket => {
   const bucket = makeBucket();
   sockets.add(socket);
   ensureBridge();
-  const snapshot = await capturePaneSnapshot();
-  if (socket.readyState === WebSocket.OPEN && snapshot) socket.send(canonicalPayload(snapshot), { binary: true });
   socket.on('message', (data, isBinary) => {
     const bytes = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
     if (!consume(bucket, bytes)) {
@@ -335,6 +333,10 @@ wss.on('connection', async socket => {
   });
   socket.on('close', () => sockets.delete(socket));
   socket.on('error', () => sockets.delete(socket));
+  void (async () => {
+    const snapshot = await capturePaneSnapshot();
+    if (socket.readyState === WebSocket.OPEN && snapshot) socket.send(canonicalPayload(snapshot), { binary: true });
+  })();
 });
 
 const heartbeat = setInterval(() => {
