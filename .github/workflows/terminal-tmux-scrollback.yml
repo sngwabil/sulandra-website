@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(docker exec "$CONTAINER" tmux show-options -gv mouse)" = "on"
-          test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "50000"
+          test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "1000000"
 
           command=$'for i in $(seq 1 240); do printf "SCROLLBACK_LINE_%03d\\n" "$i"; done\r'
           payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
