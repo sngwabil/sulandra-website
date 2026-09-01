@@ -100,14 +100,20 @@ jobs:
           cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
           test -n "$cid"
 
+          # First verify the production container was created with both safety controls.
           test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" = "on-failure"
           test "$(docker exec "$cid" tmux show-options -gv history-limit)" = "50000"
 
-          # Reproduce the exact unavailable-session state deterministically.
-          # A manual stop intentionally does not depend on Docker restart-policy
-          # semantics; the next executor request must notice the stopped session,
-          # start the same container, wait for its private-network address and
-          # agent health, then return normally.
+          # Disable Docker's restart policy only on this disposable CI container so
+          # the test can isolate and prove the executor's own recovery path. This
+          # does not modify the production image/configuration asserted above.
+          docker update --restart=no "$cid" >/dev/null
+          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" = "no"
+
+          # Reproduce the exact unavailable-session state deterministically. The
+          # next executor request must notice the stopped session, start the same
+          # container, wait for its private-network address and agent health, then
+          # return normally instead of surfacing "no address" to the browser.
           docker stop -t 1 "$cid" >/dev/null
           test "$(docker inspect -f '{{.State.Running}}' "$cid")" = "false"
           stopped_address="$(docker inspect -f "{{with index .NetworkSettings.Networks \"$INTERNAL_NETWORK\"}}{{.IPAddress}}{{end}}" "$cid" 2>/dev/null || true)"
