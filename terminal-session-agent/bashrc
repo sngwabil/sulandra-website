@@ -39,20 +39,37 @@ git config --global color.branch auto >/dev/null 2>&1 || true
 git config --global color.diff auto >/dev/null 2>&1 || true
 git config --global color.status auto >/dev/null 2>&1 || true
 
-__sulandra_git_prompt() {
+__SULANDRA_GIT_PREFIX=''
+__SULANDRA_GIT_TEXT=''
+__SULANDRA_GIT_SUFFIX=''
+
+__sulandra_update_git_prompt() {
   local branch dirty
-  branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --quiet --short HEAD 2>/dev/null)" || return 0
-  [[ -n "$branch" ]] || return 0
+  branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --quiet --short HEAD 2>/dev/null)" || branch=''
+  if [[ -z "$branch" ]]; then
+    __SULANDRA_GIT_PREFIX=''
+    __SULANDRA_GIT_TEXT=''
+    __SULANDRA_GIT_SUFFIX=''
+    return 0
+  fi
   dirty=''
   if [[ -n "$(git status --porcelain=v1 --untracked-files=normal 2>/dev/null | head -n 1)" ]]; then
     dirty='*'
   fi
-  printf ' \[\e[38;5;245m\](\[\e[38;5;213m\]%s%s\[\e[38;5;245m\])\[\e[0m\]' "$branch" "$dirty"
+  __SULANDRA_GIT_PREFIX=' ('
+  __SULANDRA_GIT_TEXT="${branch}${dirty}"
+  __SULANDRA_GIT_SUFFIX=')'
 }
+
+# Keep the session agent's history flush/cursor restoration and prepend the Git
+# segment updater. ANSI spans stay directly in PS1 so Readline knows their width.
+if [[ ${PROMPT_COMMAND:-} != *__sulandra_update_git_prompt* ]]; then
+  PROMPT_COMMAND="__sulandra_update_git_prompt${PROMPT_COMMAND:+; ${PROMPT_COMMAND}}"
+fi
 
 # Navy/teal Sulandra palette with a bright green input marker. Keep the prompt
 # compact so terminal history remains information-dense.
-PS1='\[\e[1;38;5;45m\]sulandra\[\e[0m\]:\[\e[1;38;5;117m\]\w\[\e[0m\]$(__sulandra_git_prompt) \[\e[1;38;5;82m\]❯\[\e[0m\] '
+PS1='\[\e[1;38;5;45m\]sulandra\[\e[0m\]:\[\e[1;38;5;117m\]\w\[\e[38;5;245m\]${__SULANDRA_GIT_PREFIX}\[\e[38;5;213m\]${__SULANDRA_GIT_TEXT}\[\e[38;5;245m\]${__SULANDRA_GIT_SUFFIX}\[\e[0m\] \[\e[1;38;5;82m\]❯\[\e[0m\] '
 PS2='\[\e[38;5;220m\]…\[\e[0m\] '
 
 # Readable helpers for scripts and manual diagnostics without changing command
