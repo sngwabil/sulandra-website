@@ -18,13 +18,15 @@
         50%, 100% { opacity: 0; }
       }
       #itwsRealTerminal.itws-xterm-ready.itws-rt-direct-mode
-        .itws-xterm-pane.sulandra-caret-owner.sulandra-caret-focused .xterm-cursor-layer {
+        .itws-xterm-pane.sulandra-caret-owner.sulandra-caret-focused .xterm-cursor-layer,
+      #itwsRealTerminal.itws-xterm-ready.itws-rt-direct-mode
+        .itws-xterm-pane.sulandra-caret-owner.sulandra-caret-focused .xterm-cursor {
         animation: sulandra-terminal-caret-blink-v4 1.08s steps(1, end) infinite !important;
       }
       #itwsRealTerminal.itws-xterm-ready.itws-rt-direct-mode
         .itws-xterm-pane.sulandra-caret-owner:not(.sulandra-caret-focused) .xterm-cursor-layer,
       #itwsRealTerminal.itws-xterm-ready.itws-rt-direct-mode
-        .itws-xterm-pane.sulandra-caret-owner .xterm-cursor {
+        .itws-xterm-pane.sulandra-caret-owner:not(.sulandra-caret-focused) .xterm-cursor {
         animation: none !important;
       }
       #itwsRealTerminal .itws-xterm-pane:not(.sulandra-caret-owner) .xterm-cursor-layer {
