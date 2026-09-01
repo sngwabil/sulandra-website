@@ -236,8 +236,10 @@ JSON
 
 # The session agent owns PORT=9000. code-server also honors PORT, so scope its
 # environment to the dedicated IDE port. Keep the IDE loopback-only; the
-# authenticated session-agent bridge is the only network path into it.
-PORT="${IDE_PORT}" code-server \
+# authenticated session-agent bridge is the only network path into it. Use the
+# absolute binary path so session startup does not depend on a shell PATH that
+# can differ between production and Docker-based verification environments.
+PORT="${IDE_PORT}" /usr/local/bin/code-server \
   --bind-addr "127.0.0.1:${IDE_PORT}" \
   --auth none \
   --disable-telemetry \
