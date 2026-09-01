@@ -73,7 +73,7 @@ jobs:
             --network "$NETWORK" \
             -p 127.0.0.1:18081:8081 \
             "$EXECUTOR_IMAGE"
-          for i in {1..45}; do
+          for i in {1..90}; do
             if curl -fsS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:18081/healthz >/tmp/preview-health.json; then
               grep -q '"docker":true' /tmp/preview-health.json
               exit 0
