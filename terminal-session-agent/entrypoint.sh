@@ -16,14 +16,15 @@ mkdir -p "${HOME}/.config/code-server" "${CODE_SERVER_DATA}/User"
 
 # This embedded IDE belongs to Sulandra IT Solutions. Disable upstream VS Code
 # AI/Copilot surfaces so SIA remains the only assistant presented to the user.
-# Also skip the generic Welcome/agent onboarding page on startup.
+# Keep the normal VS Code Welcome/Start page so New File/Open File and the
+# standard editor entry points remain available without restoring AI onboarding.
 cat > "${CODE_SERVER_DATA}/User/settings.json" <<'JSON'
 {
   "chat.disableAIFeatures": true,
   "workbench.settings.applyToAllProfiles": [
     "chat.disableAIFeatures"
   ],
-  "workbench.startupEditor": "none",
+  "workbench.startupEditor": "welcomePage",
   "workbench.welcomePage.walkthroughs.openOnInstall": false
 }
 JSON
