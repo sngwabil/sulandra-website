@@ -1,8 +1,8 @@
-/* SULANDRA_DOCK_RESIZE_CAPTURE_V2 */
+/* SULANDRA_DOCK_RESIZE_CAPTURE_V3 */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V2__)return;
-  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V2__=true;
+  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V3__)return;
+  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V3__=true;
   const LAYOUT_KEY='sulandra:engineering-workspace-layout-v2';
   const MIN=280;
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -18,16 +18,20 @@
     for(const panel of row.querySelectorAll(':scope > .itws-dock-panel'))sizes[panel.dataset.panelId]=Number(panel.dataset.size)||25;
     try{localStorage.setItem(LAYOUT_KEY,JSON.stringify({version:2,sizes}))}catch{}
   };
-  document.addEventListener('pointerdown',event=>{
+  const panelBeside=(splitter,direction)=>{
+    let node=direction<0?splitter.previousElementSibling:splitter.nextElementSibling;
+    while(node&&!node.classList?.contains('itws-dock-panel'))node=direction<0?node.previousElementSibling:node.nextElementSibling;
+    return node;
+  };
+  const startDrag=event=>{
     if(window.innerWidth<760||event.button!==0)return;
     const target=event.target instanceof Element?event.target:null;
     const splitter=target?.closest('.itws-dock-splitter');
     if(!splitter)return;
     const row=splitter.closest('.itws-dock-row');
-    if(!row)return;
-    const left=row.querySelector(`.itws-dock-panel[data-panel-id="${CSS.escape(splitter.dataset.left||'')}"]`);
-    const right=row.querySelector(`.itws-dock-panel[data-panel-id="${CSS.escape(splitter.dataset.right||'')}"]`);
-    if(!left||!right)return;
+    const left=panelBeside(splitter,-1);
+    const right=panelBeside(splitter,1);
+    if(!row||!left||!right)return;
     event.preventDefault();
     event.stopImmediatePropagation();
     const startX=event.clientX;
@@ -51,6 +55,8 @@
       window.removeEventListener('pointermove',move,true);
       window.removeEventListener('pointerup',end,true);
       window.removeEventListener('pointercancel',end,true);
+      window.removeEventListener('mousemove',move,true);
+      window.removeEventListener('mouseup',end,true);
       window.removeEventListener('blur',end,true);
       document.body.classList.remove('itws-dock-resizing');
       normalize(row);
@@ -60,6 +66,10 @@
     window.addEventListener('pointermove',move,true);
     window.addEventListener('pointerup',end,true);
     window.addEventListener('pointercancel',end,true);
+    window.addEventListener('mousemove',move,true);
+    window.addEventListener('mouseup',end,true);
     window.addEventListener('blur',end,true);
-  },true);
+  };
+  document.addEventListener('pointerdown',startDrag,true);
+  document.addEventListener('mousedown',startDrag,true);
 })();
