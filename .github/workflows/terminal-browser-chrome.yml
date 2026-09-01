@@ -6,6 +6,7 @@ on:
       - release/sulandra-1.0
     paths:
       - assets/it-agent-xterm-production-stack.js
+      - assets/it-agent-terminal-wheel-scrollback.js
       - assets/it-agent-terminal-caret-clock.js
       - assets/it-agent-xterm-emulator.css
       - terminal-browser/**
@@ -15,6 +16,7 @@ on:
       - release/sulandra-1.0
     paths:
       - assets/it-agent-xterm-production-stack.js
+      - assets/it-agent-terminal-wheel-scrollback.js
       - assets/it-agent-terminal-caret-clock.js
       - assets/it-agent-xterm-emulator.css
       - terminal-browser/**
@@ -50,3 +52,6 @@ jobs:
 
       - name: Run fresh-load and interaction regression in Chrome
         run: node terminal-browser/tests/chrome-regression.mjs
+
+      - name: Verify mouse wheel stays in scrollback
+        run: node terminal-browser/tests/wheel-scrollback-regression.mjs

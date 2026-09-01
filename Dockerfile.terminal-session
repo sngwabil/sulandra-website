@@ -37,6 +37,7 @@ COPY terminal-session-agent/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 COPY terminal-session-agent/server.mjs ./server.mjs
 COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
+COPY terminal-session-agent/tmux.conf /home/terminal/.tmux.conf
 COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login
 COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
 RUN chmod 0755 /agent/entrypoint.sh /usr/local/bin/sulandra-github-login /usr/local/bin/sulandra-pr \
