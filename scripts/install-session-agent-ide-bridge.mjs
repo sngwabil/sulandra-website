@@ -13,8 +13,8 @@ const replaceOnce = (from, to, label) => {
 
 replaceOnce(
   "import { createServer } from 'node:http';",
-  "import { createServer } from 'node:http';\nimport { Readable } from 'node:stream';",
-  'stream import',
+  "import { createServer, request as httpRequest } from 'node:http';",
+  'HTTP import',
 );
 
 replaceOnce(
@@ -22,7 +22,7 @@ replaceOnce(
   String.raw`const app = express();
 app.disable('x-powered-by');
 app.use((req, res, next) => {
-  if (/^\/ide(?:\/|\?|$)/.test(req.url || '')) { void proxyIdeRequest(req, res, next); return; }
+  if (/^\/ide(?:\/|\?|$)/.test(req.url || '')) { proxyIdeRequest(req, res, next); return; }
   next();
 });
 app.use(express.json({ limit: '128kb' }));`,
@@ -46,34 +46,41 @@ const copyIdeRequestHeaders = headers => {
   }
   return output;
 };
-const copyIdeResponseHeaders = (upstream, res) => {
-  for (const [key, value] of upstream.headers.entries()) {
-    const lower = key.toLowerCase();
-    if (ideHopHeaders.has(lower) || lower === 'content-length' || lower === 'set-cookie') continue;
+const copyIdeResponseHeaders = (headers, res) => {
+  for (const [key, value] of Object.entries(headers || {})) {
+    const lower = String(key).toLowerCase();
+    if (ideHopHeaders.has(lower) || lower === 'content-length' || lower === 'set-cookie' || value === undefined) continue;
     res.setHeader(key, value);
   }
-  const cookies = upstream.headers.getSetCookie?.() || [];
-  if (cookies.length) res.setHeader('set-cookie', cookies);
+  const cookies = headers?.['set-cookie'];
+  if (cookies?.length) res.setHeader('set-cookie', cookies);
 };
-const proxyIdeRequest = async (req, res, next) => {
-  try {
-    if (!secureEquals(req.header('x-sulandra-session-token'), sessionToken)) return res.status(401).json({ error: 'Unauthorized session IDE request' });
-    const parsed = new URL(req.url || '/ide/', 'http://localhost');
-    const rest = parsed.pathname.slice(4) || '/';
-    const controller = new AbortController();
-    req.once('aborted', () => controller.abort());
-    const headers = copyIdeRequestHeaders(req.headers);
-    const init = { method: req.method, headers, redirect: 'manual', signal: controller.signal };
-    if (!['GET','HEAD'].includes(String(req.method || 'GET').toUpperCase())) { init.body = req; init.duplex = 'half'; }
-    const upstream = await fetch('http://127.0.0.1:' + idePort + rest + parsed.search, init);
-    res.statusCode = upstream.status;
-    copyIdeResponseHeaders(upstream, res);
-    if (!upstream.body || req.method === 'HEAD') return res.end();
-    Readable.fromWeb(upstream.body).pipe(res);
-  } catch (error) {
-    if (error?.name === 'AbortError') return;
-    next(error);
+const proxyIdeRequest = (req, res, next) => {
+  if (!secureEquals(req.header('x-sulandra-session-token'), sessionToken)) {
+    res.status(401).json({ error: 'Unauthorized session IDE request' });
+    return;
   }
+  let parsed;
+  try { parsed = new URL(req.url || '/ide/', 'http://localhost'); }
+  catch (error) { next(error); return; }
+  const rest = parsed.pathname.slice(4) || '/';
+  let settled = false;
+  const upstream = httpRequest({
+    hostname: '127.0.0.1',
+    port: idePort,
+    method: req.method,
+    path: rest + parsed.search,
+    headers: copyIdeRequestHeaders(req.headers),
+  }, upstreamRes => {
+    settled = true;
+    res.statusCode = upstreamRes.statusCode || 502;
+    copyIdeResponseHeaders(upstreamRes.headers, res);
+    upstreamRes.on('error', next);
+    upstreamRes.pipe(res);
+  });
+  upstream.on('error', error => { if (!settled && !res.headersSent) next(error); else res.destroy(error); });
+  req.once('aborted', () => upstream.destroy());
+  req.pipe(upstream);
 };
 const bridgeIdeSockets = (browser, upstream) => {
   const pending = [];
