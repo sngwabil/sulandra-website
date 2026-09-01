@@ -118,7 +118,7 @@ const spawnBridge = (cols = initialCols, rows = initialRows) => {
   proc.onData(data => {
     // The first byte from the actual tmux/bash PTY proves tmux has started and
     // its configuration has been consumed. Health stays 503 until this point so
-    // recovery cannot race input/WebSocket traffic against PTY startup.
+    // executor recovery cannot race input against PTY startup.
     bridgeReady = true;
     pushOutput(data);
   });
@@ -219,11 +219,6 @@ server.on('upgrade', (req, socket, head) => {
   try { url = new URL(req.url || '/', 'http://localhost'); } catch { socket.destroy(); return; }
   if (url.pathname !== '/ws' || !secureEquals(req.headers['x-sulandra-session-token'], sessionToken)) {
     socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
-    socket.destroy();
-    return;
-  }
-  if (!alive || !bridgeReady) {
-    socket.write('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
     socket.destroy();
     return;
   }
