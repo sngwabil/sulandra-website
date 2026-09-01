@@ -1,0 +1,119 @@
+name: Terminal tmux Scrollback Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - Dockerfile.terminal-session
+      - .github/workflows/terminal-tmux-scrollback.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - Dockerfile.terminal-session
+      - .github/workflows/terminal-tmux-scrollback.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-tmux-scrollback:
+    name: Verify real wheel enters tmux history
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      IMAGE: sulandra-terminal-session:scrollback-ci
+      TOKEN: ci-session-token-0123456789abcdef0123456789abcdef
+      CONTAINER: sulandra-terminal-scrollback-ci
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build real terminal session image
+        run: docker build -f Dockerfile.terminal-session -t "$IMAGE" .
+
+      - name: Start real PTY session
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name "$CONTAINER" \
+            -e SESSION_TOKEN="$TOKEN" \
+            -e WORKSPACE_ID=scrollback-ci \
+            -e TMUX_SESSION=scrollback-ci \
+            -e TERMINAL_COLS=100 \
+            -e TERMINAL_ROWS=30 \
+            -p 127.0.0.1:19000:9000 \
+            "$IMAGE"
+          for i in {1..45}; do
+            if curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$CONTAINER"
+          exit 1
+
+      - name: Verify tmux owns mouse scrollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker exec "$CONTAINER" tmux show-options -gv mouse)" = "on"
+          test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "50000"
+
+          command=$'for i in $(seq 1 240); do printf "SCROLLBACK_LINE_%03d\\n" "$i"; done\r'
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -fsS \
+            -H "x-sulandra-session-token: $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -X POST http://127.0.0.1:19000/input \
+            -d "$payload" >/dev/null
+
+          for i in {1..30}; do
+            output="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19000/output?cursor=0')"
+            if node -e 'const x=JSON.parse(process.argv[1]); process.exit(String(x.data||"").includes("SCROLLBACK_LINE_240")?0:1)' "$output"; then
+              break
+            fi
+            sleep 0.2
+          done
+          node -e 'const x=JSON.parse(process.argv[1]); const d=String(x.data||""); if(!d.includes("SCROLLBACK_LINE_001")||!d.includes("SCROLLBACK_LINE_240")) process.exit(1)' "$output"
+
+          # This is the SGR mouse report xterm.js emits for wheel-up while
+          # tmux mouse tracking is active. It must enter tmux copy mode rather
+          # than becoming Bash Up/Down history input.
+          wheel=$'\033[<64;10;10M'
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$wheel")"
+          curl -fsS \
+            -H "x-sulandra-session-token: $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -X POST http://127.0.0.1:19000/input \
+            -d "$payload" >/dev/null
+          sleep 0.3
+
+          test "$(docker exec "$CONTAINER" tmux display-message -p -t scrollback-ci '#{pane_in_mode}')" = "1"
+
+          # Exit history and prove the live shell is still interactive.
+          docker exec "$CONTAINER" tmux send-keys -t scrollback-ci -X cancel
+          test "$(docker exec "$CONTAINER" tmux display-message -p -t scrollback-ci '#{pane_in_mode}')" = "0"
+
+          marker="SCROLLBACK_LIVE_$RANDOM$RANDOM"
+          command="printf '${marker}\\n'\r"
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -fsS \
+            -H "x-sulandra-session-token: $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -X POST http://127.0.0.1:19000/input \
+            -d "$payload" >/dev/null
+          sleep 0.3
+          output="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19000/output?cursor=0')"
+          node -e 'const x=JSON.parse(process.argv[1]); if(!String(x.data||"").includes(process.argv[2])) process.exit(1)' "$output" "$marker"
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs "$CONTAINER" || true
+
+      - name: Stop test session
+        if: always()
+        run: docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
