@@ -159,7 +159,13 @@ const ideConnection = String.raw`ideWss.on('connection', (browser, req) => {
 });
 
 `;
-replaceOnce("wss.on('connection', socket => {", `${ideConnection}wss.on('connection', socket => {`, 'IDE websocket bridge');
+const wssConnectionAnchor = source.includes("wss.on('connection', socket => {")
+  ? "wss.on('connection', socket => {"
+  : source.includes("wss.on('connection', async socket => {")
+    ? "wss.on('connection', async socket => {"
+    : null;
+if (!wssConnectionAnchor) throw new Error('Session IDE bridge installer anchor changed: IDE websocket bridge');
+replaceOnce(wssConnectionAnchor, `${ideConnection}${wssConnectionAnchor}`, 'IDE websocket bridge');
 
 await writeFile(target, source, 'utf8');
 console.log(`Session-agent IDE bridge installed into ${target}`);
