@@ -103,26 +103,45 @@ jobs:
           test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" = "on-failure"
           test "$(docker exec "$cid" tmux show-options -gv history-limit)" = "50000"
 
-          # Simulate the production failure mode: session process/container exits
-          # and consequently loses its Docker network address.
+          # Simulate the production failure mode: the isolated session exits and
+          # temporarily loses its private Docker-network address.
           docker kill "$cid" >/dev/null
 
-          recovered=false
-          for i in {1..40}; do
-            marker="RECOVERED_SESSION_${RANDOM}_${i}"
-            command="printf '${marker}\\n'\r"
-            payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
-            if curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/sessions/${session_id}/input" -d "$payload" >/dev/null 2>&1; then
-              sleep 0.25
-              output="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18082/v1/sessions/${session_id}/output?cursor=0")"
-              if node -e 'const x=JSON.parse(process.argv[1]);process.exit(String(x.data||"").includes(process.argv[2])?0:1)' "$output" "$marker"; then
-                recovered=true
+          # First prove Docker restarted the same container and restored its
+          # network attachment. A running container is not sufficient: the
+          # session agent inside it must also be ready before input is sent.
+          recovered_transport=false
+          for i in {1..120}; do
+            running="$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || echo false)"
+            address="$(docker inspect -f "{{with index .NetworkSettings.Networks \"$INTERNAL_NETWORK\"}}{{.IPAddress}}{{end}}" "$cid" 2>/dev/null || true)"
+            if [[ "$running" == true && -n "$address" ]]; then
+              if curl -fsS "${headers[@]}" "http://127.0.0.1:18082/v1/sessions/${session_id}/output?cursor=0" >/tmp/recovered-output.json 2>/dev/null; then
+                recovered_transport=true
                 break
               fi
             fi
             sleep 0.25
           done
-          test "$recovered" = true
+          test "$recovered_transport" = true
+
+          # Now prove the recovered *same session id* is interactive. Send one
+          # marker only after agent readiness, then poll without racing startup.
+          marker="RECOVERED_SESSION_${RANDOM}_${RANDOM}"
+          command="printf '${marker}\\n'\r"
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/sessions/${session_id}/input" -d "$payload" >/dev/null
+
+          recovered_shell=false
+          for i in {1..80}; do
+            if output="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18082/v1/sessions/${session_id}/output?cursor=0" 2>/dev/null)"; then
+              if node -e 'const x=JSON.parse(process.argv[1]);process.exit(String(x.data||"").includes(process.argv[2])?0:1)' "$output" "$marker"; then
+                recovered_shell=true
+                break
+              fi
+            fi
+            sleep 0.25
+          done
+          test "$recovered_shell" = true
           test "$(docker inspect -f '{{.State.Running}}' "$cid")" = "true"
           address="$(docker inspect -f "{{with index .NetworkSettings.Networks \"$INTERNAL_NETWORK\"}}{{.IPAddress}}{{end}}" "$cid")"
           test -n "$address"
@@ -132,6 +151,10 @@ jobs:
         run: |
           docker logs sulandra-terminal-executor-recovery-ci || true
           docker ps -a --filter label=com.sulandra.terminal=true
+          for cid in $(docker ps -aq --filter label=com.sulandra.terminal=true); do
+            docker inspect "$cid" --format 'session={{.Name}} running={{.State.Running}} exit={{.State.ExitCode}} restarts={{.RestartCount}} networks={{json .NetworkSettings.Networks}}' || true
+            docker logs "$cid" --tail 100 || true
+          done
 
       - name: Cleanup
         if: always()
