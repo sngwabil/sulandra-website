@@ -1,11 +1,14 @@
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 import { appendFile, mkdir, open, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import express from 'express';
 import pty from 'node-pty';
 import { WebSocket, WebSocketServer } from 'ws';
 
+const execFileAsync = promisify(execFile);
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '128kb' }));
@@ -47,9 +50,13 @@ let bridgeReady = false;
 let exitCode = null;
 let cursor = 0;
 let bufferedChars = 0;
+let currentCols = initialCols;
+let currentRows = initialRows;
 const chunks = [];
 const sockets = new Set();
 let historyWrite = Promise.resolve();
+let reconcileTimer = null;
+let reconcileRunning = false;
 
 const shellEnv = {
   ...process.env,
@@ -79,6 +86,59 @@ const broadcast = data => {
   for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(bytes, { binary: true });
 };
 
+const normalizePaneSnapshot = raw => {
+  const lines = String(raw || '').replace(/\r\n/g, '\n').split('\n');
+  while (lines.length && !lines[0].trim()) lines.shift();
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  return lines.join('\r\n');
+};
+
+const capturePaneSnapshot = async () => {
+  if (!alive || !proc) return '';
+  try {
+    const { stdout } = await execFileAsync('tmux', [
+      '-f', tmuxConfigPath,
+      'capture-pane', '-p', '-e', '-J', '-S', '-',
+      '-t', `${tmuxSession}:0.0`,
+    ], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: shellEnv });
+    return normalizePaneSnapshot(stdout);
+  } catch (error) {
+    console.error('[Sulandra Terminal] tmux capture-pane failed', error?.message || error);
+    return '';
+  }
+};
+
+const paneCommand = async () => {
+  try {
+    const { stdout } = await execFileAsync('tmux', ['-f', tmuxConfigPath, 'display-message', '-p', '-t', `${tmuxSession}:0.0`, '#{pane_current_command}'], { encoding: 'utf8', env: shellEnv });
+    return String(stdout || '').trim().toLowerCase();
+  } catch { return ''; }
+};
+
+const broadcastAuthoritativeSnapshot = async () => {
+  if (reconcileRunning || !sockets.size || !alive) return;
+  reconcileRunning = true;
+  try {
+    const command = await paneCommand();
+    if (command && !['bash', 'sh', 'zsh', 'dash'].includes(command)) return;
+    const snapshot = await capturePaneSnapshot();
+    if (!snapshot) return;
+    const payload = Buffer.from(`\x1bc\x1b[?25h${snapshot}`, 'utf8');
+    for (const socket of sockets) if (socket.readyState === WebSocket.OPEN) socket.send(payload, { binary: true });
+  } finally {
+    reconcileRunning = false;
+  }
+};
+
+const scheduleAuthoritativeSnapshot = () => {
+  if (reconcileTimer) clearTimeout(reconcileTimer);
+  reconcileTimer = setTimeout(() => {
+    reconcileTimer = null;
+    void broadcastAuthoritativeSnapshot();
+  }, 180);
+  reconcileTimer.unref?.();
+};
+
 const persistOutput = text => {
   historyWrite = historyWrite
     .then(() => appendFile(historyPath, text, { encoding: 'utf8', mode: 0o600 }))
@@ -98,27 +158,24 @@ const pushOutput = data => {
     bufferedChars -= removed.data.length;
   }
   broadcast(text);
+  scheduleAuthoritativeSnapshot();
 };
 
 const spawnBridge = (cols = initialCols, rows = initialRows) => {
-  // Explicitly pass Sulandra's tmux configuration instead of depending on tmux
-  // home-directory discovery. This makes initial sessions and recovered sessions
-  // use the same mouse/scrollback policy every time.
   const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--norc', '-i'];
   bridgeReady = false;
+  currentCols = Math.max(40, Math.min(240, Number(cols) || initialCols));
+  currentRows = Math.max(12, Math.min(80, Number(rows) || initialRows));
   proc = pty.spawn('tmux', args, {
     name: 'xterm-256color',
-    cols: Math.max(40, Math.min(240, Number(cols) || initialCols)),
-    rows: Math.max(12, Math.min(80, Number(rows) || initialRows)),
+    cols: currentCols,
+    rows: currentRows,
     cwd: '/workspace',
     env: shellEnv,
   });
   alive = true;
   exitCode = null;
   proc.onData(data => {
-    // The first byte from the actual tmux/bash PTY proves tmux has started and
-    // its configuration has been consumed. Health stays 503 until this point so
-    // executor recovery cannot race input against PTY startup.
     bridgeReady = true;
     pushOutput(data);
   });
@@ -132,6 +189,16 @@ const spawnBridge = (cols = initialCols, rows = initialRows) => {
 
 const ensureBridge = () => {
   if (!alive || !proc) spawnBridge();
+};
+
+const resizeBridge = (colsValue, rowsValue) => {
+  const cols = Math.max(40, Math.min(240, Number(colsValue) || initialCols));
+  const rows = Math.max(12, Math.min(80, Number(rowsValue) || initialRows));
+  if (cols === currentCols && rows === currentRows) return { cols, rows, changed: false };
+  currentCols = cols;
+  currentRows = rows;
+  proc.resize(cols, rows);
+  return { cols, rows, changed: true };
 };
 
 const outputFrom = cursorValue => {
@@ -179,6 +246,10 @@ app.get('/health', authorize, async (_req, res) => {
   res.json({ ok: true, pty: true, tmux: true, workspaceId, alive, ready: true, transcriptBytes: Number(info.size) || 0 });
 });
 app.get('/output', authorize, (req, res) => res.json(outputFrom(req.query.cursor)));
+app.get('/snapshot', authorize, async (_req, res, next) => {
+  try { res.json({ data: await capturePaneSnapshot(), alive, exitCode, cols: currentCols, rows: currentRows }); }
+  catch (error) { next(error); }
+});
 app.get('/history', authorize, async (req, res, next) => {
   try {
     res.json(await historyPage(req.query.before, req.query.limit));
@@ -195,10 +266,8 @@ app.post('/input', authorize, (req, res) => {
 app.post('/resize', authorize, (req, res) => {
   ensureBridge();
   if (!bridgeReady) return res.status(503).json({ error: 'Terminal PTY is still starting' });
-  const cols = Math.max(40, Math.min(240, Number(req.body?.cols) || initialCols));
-  const rows = Math.max(12, Math.min(80, Number(req.body?.rows) || initialRows));
-  proc.resize(cols, rows);
-  res.json({ ok: true, cols, rows });
+  const result = resizeBridge(req.body?.cols, req.body?.rows);
+  res.json({ ok: true, ...result });
 });
 
 const server = createServer(app);
@@ -225,12 +294,12 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws));
 });
 
-wss.on('connection', socket => {
+wss.on('connection', async socket => {
   const bucket = makeBucket();
   sockets.add(socket);
   ensureBridge();
-  const snapshot = outputFrom(0);
-  if (snapshot.data) socket.send(Buffer.from(snapshot.data, 'utf8'), { binary: true });
+  const snapshot = await capturePaneSnapshot();
+  if (socket.readyState === WebSocket.OPEN && snapshot) socket.send(Buffer.from(snapshot, 'utf8'), { binary: true });
   socket.on('message', (data, isBinary) => {
     const bytes = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
     if (!consume(bucket, bytes)) {
@@ -249,10 +318,8 @@ wss.on('connection', socket => {
     try {
       const message = JSON.parse(String(data));
       if (message.type === 'resize') {
-        const cols = Math.max(40, Math.min(240, Number(message.cols) || initialCols));
-        const rows = Math.max(12, Math.min(80, Number(message.rows) || initialRows));
-        proc.resize(cols, rows);
-        socket.send(JSON.stringify({ type: 'resized', cols, rows }));
+        const result = resizeBridge(message.cols, message.rows);
+        socket.send(JSON.stringify({ type: 'resized', ...result }));
       }
     } catch {}
   });
