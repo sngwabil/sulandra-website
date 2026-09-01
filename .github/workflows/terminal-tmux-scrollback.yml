@@ -63,8 +63,8 @@ jobs:
           test "$(docker exec "$CONTAINER" tmux show-options -gv mouse)" = "off"
           test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "100000"
 
-          fresh="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/snapshot)"
-          node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");if(/^\s*\n/.test(d)||/^\r?\n/.test(d))throw new Error("fresh canonical snapshot starts with artificial blank rows")' "$fresh"
+          curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/snapshot -o /tmp/fresh-snapshot.json
+          node -e 'const x=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));const d=String(x.data||"");if(/^\s*\n/.test(d)||/^\r?\n/.test(d))throw new Error("fresh canonical snapshot starts with artificial blank rows")' /tmp/fresh-snapshot.json
 
           command=$'for i in $(seq 1 1050); do printf "DENSE_%04d [INFO] [System Diagnostics] Execution thread initialized. Performing deep buffer trace across memory banks to simulate a high-volume output stream. Validating terminal multiplexer scrollback capabilities and historical timeline preservation under heavy load.\\n" "$i"; done\r'
           payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
@@ -76,14 +76,14 @@ jobs:
 
           ready=false
           for i in {1..80}; do
-            snapshot="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/snapshot)"
+            curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/snapshot -o /tmp/dense-snapshot.json
             if node -e '
-              const x=JSON.parse(process.argv[1]),d=String(x.data||"");
+              const x=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")),d=String(x.data||"");
               const values=[...d.matchAll(/DENSE_(\d{4})/g)].map(m=>Number(m[1])).filter(n=>n>=1&&n<=1050);
               const unique=new Set(values);
               if(unique.size!==1050||!unique.has(1)||!unique.has(1050))process.exit(1);
               for(let n=1;n<=1050;n++)if(!unique.has(n))process.exit(1);
-            ' "$snapshot"; then
+            ' /tmp/dense-snapshot.json; then
               ready=true
               break
             fi
@@ -91,13 +91,13 @@ jobs:
           done
           test "$ready" = true
 
-          before="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/snapshot)"
-          before_prompts="$(node -e 'const d=String(JSON.parse(process.argv[1]).data||"");process.stdout.write(String((d.match(/bash-5\.2\$/g)||[]).length))' "$before")"
+          cp /tmp/dense-snapshot.json /tmp/before-snapshot.json
+          before_prompts="$(node -e 'const d=String(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).data||"");process.stdout.write(String((d.match(/bash-5\.2\$/g)||[]).length))' /tmp/before-snapshot.json)"
           resize_result="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" -H 'Content-Type: application/json' -X POST http://127.0.0.1:19000/resize -d '{"cols":100,"rows":30}')"
           node -e 'const x=JSON.parse(process.argv[1]);if(x.changed!==false)throw new Error("identical refresh resize must be a no-op")' "$resize_result"
           sleep 0.3
-          after="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/snapshot)"
-          after_prompts="$(node -e 'const d=String(JSON.parse(process.argv[1]).data||"");process.stdout.write(String((d.match(/bash-5\.2\$/g)||[]).length))' "$after")"
+          curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19000/snapshot -o /tmp/after-snapshot.json
+          after_prompts="$(node -e 'const d=String(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).data||"");process.stdout.write(String((d.match(/bash-5\.2\$/g)||[]).length))' /tmp/after-snapshot.json)"
           test "$after_prompts" = "$before_prompts"
           test "$(docker exec "$CONTAINER" tmux display-message -p -t scrollback-ci '#{pane_in_mode}')" = "0"
 
