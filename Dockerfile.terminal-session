@@ -43,6 +43,9 @@ RUN node /tmp/install-session-agent-ide-bridge.mjs /agent/server.mjs \
     && node --check /agent/server.mjs \
     && rm -f /tmp/install-session-agent-ide-bridge.mjs /tmp/install-terminal-prompt-cursor.mjs
 COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
+COPY scripts/verify-terminal-ide-settings.mjs /tmp/verify-terminal-ide-settings.mjs
+RUN node /tmp/verify-terminal-ide-settings.mjs /agent/entrypoint.sh \
+    && rm -f /tmp/verify-terminal-ide-settings.mjs
 COPY terminal-session-agent/tmux.conf /home/terminal/.tmux.conf
 COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login
 COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
