@@ -18,14 +18,14 @@ const notifyResize=()=>{if(resizeRaf)return;resizeRaf=requestAnimationFrame(()=>
 const visible=()=>[...panels.values()].filter(p=>!p.hidden);
 const normalize=()=>{const list=visible(),total=list.reduce((n,p)=>n+(Number(p.dataset.size)||1),0)||1;for(const p of list)p.style.flexBasis=`${((Number(p.dataset.size)||1)/total)*100}%`};
 function bindSplitter(split){
- split.addEventListener('pointerdown',event=>{
+ split.addEventListener('mousedown',event=>{
   if(window.innerWidth<760||event.button!==0)return;
   const left=panels.get(split.dataset.left),right=panels.get(split.dataset.right);if(!left||!right)return;
   event.preventDefault();const start=event.clientX,lw=left.getBoundingClientRect().width,rw=right.getBoundingClientRect().width,totalPair=lw+rw;
   document.body.classList.add('itws-dock-resizing');
   const move=e=>{const nl=clamp(lw+(e.clientX-start),MIN,Math.max(MIN,totalPair-MIN)),nr=totalPair-nl;if(nr<MIN)return;const all=row.getBoundingClientRect().width||totalPair;left.dataset.size=String(nl/all*100);right.dataset.size=String(nr/all*100);left.style.flexBasis=`${nl}px`;right.style.flexBasis=`${nr}px`;notifyResize()};
-  const end=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);document.body.classList.remove('itws-dock-resizing');save();normalize();notifyResize()};
-  window.addEventListener('pointermove',move,true);window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);
+  const end=()=>{window.removeEventListener('mousemove',move,true);window.removeEventListener('mouseup',end,true);document.body.classList.remove('itws-dock-resizing');save();normalize();notifyResize()};
+  window.addEventListener('mousemove',move,true);window.addEventListener('mouseup',end,true);
  });
  split.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight'].includes(event.key))return;const l=panels.get(split.dataset.left),r=panels.get(split.dataset.right);if(!l||!r)return;event.preventDefault();const d=(event.key==='ArrowRight'?1:-1)*(event.shiftKey?5:2);l.dataset.size=String(clamp((Number(l.dataset.size)||25)+d,10,80));r.dataset.size=String(clamp((Number(r.dataset.size)||25)-d,10,80));normalize();save();notifyResize()});
 }
