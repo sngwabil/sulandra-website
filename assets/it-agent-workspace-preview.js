@@ -15,7 +15,7 @@
     ||document.querySelector('.itws-rt-tab.active')?.dataset?.terminalId||'';
   const validPort=value=>{const port=Number(value);return Number.isInteger(port)&&port>=1024&&port<=65535&&![9000,13337].includes(port)?port:null};
 
-  let panel=null,frame=null,loading=null,title=null,portInput=null;
+  let panel=null,frame=null,loading=null,title=null,portInput=null,boundsRaf=0;
   const closeStatusBoard=()=>{
     if(!document.body?.classList.contains('itws-status-board-open'))return;
     const close=document.querySelector('.itws-status-board-close');
@@ -23,11 +23,31 @@
     document.querySelector('.itws-status-board-drawer')?.classList.remove('itws-open');
     document.body?.classList.remove('itws-status-board-open');
   };
+  const syncPanelBounds=()=>{
+    boundsRaf=0;
+    if(!panel?.classList.contains('itws-open')||window.innerWidth<700)return;
+    const shell=document.querySelector('#agent .agent-shell');
+    const rect=shell?.getBoundingClientRect();
+    const rawTop=Number.isFinite(rect?.top)?rect.top:0;
+    const top=Math.max(0,Math.min(Math.max(0,window.innerHeight-320),rawTop));
+    const height=Math.max(320,window.innerHeight-top);
+    panel.style.setProperty('--itws-workspace-panel-top',`${Math.round(top)}px`);
+    panel.style.setProperty('--itws-workspace-panel-height',`${Math.round(height)}px`);
+  };
+  const queueBounds=()=>{if(boundsRaf)return;boundsRaf=requestAnimationFrame(syncPanelBounds)};
+  const focusActiveTerminal=()=>{
+    const pane=document.querySelector('#itwsRealTerminal .itws-xterm-pane.active');
+    const textarea=pane?.querySelector('.xterm-helper-textarea');
+    textarea?.focus?.({preventScroll:true});
+  };
   const closePanel=()=>{
-    panel?.classList.remove('itws-open');
+    panel?.classList.remove('itws-open','itws-ide-mode','itws-preview-mode');
+    panel?.style.removeProperty('--itws-workspace-panel-top');
+    panel?.style.removeProperty('--itws-workspace-panel-height');
     document.body?.classList.remove('itws-workspace-panel-open');
     frame?.removeAttribute('src');
     if(loading){loading.hidden=false;loading.textContent='Choose IDE or a preview port.'}
+    queueMicrotask(focusActiveTerminal);
   };
   const makePanel=()=>{
     if(panel)return panel;
@@ -37,7 +57,7 @@
     panel.id='itwsWorkspacePanel';
     panel.className='itws-workspace-panel';
     panel.setAttribute('aria-label','Workspace IDE and live preview');
-    panel.innerHTML=`<div class="itws-workspace-panel-head"><strong class="itws-workspace-panel-title">Workspace</strong><input class="itws-workspace-port" type="number" min="1024" max="65535" inputmode="numeric" aria-label="Preview port"><button type="button" class="itws-workspace-open-port">Preview</button><button type="button" class="itws-workspace-close" aria-label="Close workspace panel" title="Close">×</button></div><div class="itws-workspace-loading">Choose IDE or a preview port.</div><iframe class="itws-workspace-frame" title="Sulandra workspace IDE or live preview" allow="clipboard-read; clipboard-write; fullscreen"></iframe><div class="itws-workspace-panel-note">Authenticated session-only view. Preview traffic stays inside this isolated workspace; reserved terminal service ports are blocked.</div>`;
+    panel.innerHTML=`<div class="itws-workspace-panel-head"><strong class="itws-workspace-panel-title">Workspace</strong><input class="itws-workspace-port" type="number" min="1024" max="65535" inputmode="numeric" aria-label="Preview port"><button type="button" class="itws-workspace-open-port">Preview</button><button type="button" class="itws-workspace-close" aria-label="Close workspace panel" title="Close">×</button></div><div class="itws-workspace-loading" role="status" aria-live="polite">Choose IDE or a preview port.</div><iframe class="itws-workspace-frame" title="Sulandra workspace IDE or live preview" allow="clipboard-read; clipboard-write; fullscreen"></iframe><div class="itws-workspace-panel-note">Authenticated session-only view. IDE and Preview remain inside this workspace rail; reserved terminal service ports are blocked.</div>`;
     shell.appendChild(panel);
     frame=panel.querySelector('.itws-workspace-frame');
     loading=panel.querySelector('.itws-workspace-loading');
@@ -64,10 +84,16 @@
     if(port!==null&&port!==undefined&&!validPort(port)){window.alert('Use a preview port from 1024–65535. Ports 9000 and 13337 are reserved.');return}
     closeStatusBoard();
     if(!makePanel())return;
-    panel.classList.add('itws-open');document.body?.classList.add('itws-workspace-panel-open');
+    const ideMode=port===null||port===undefined;
+    panel.classList.add('itws-open');
+    panel.classList.toggle('itws-ide-mode',ideMode);
+    panel.classList.toggle('itws-preview-mode',!ideMode);
+    document.body?.classList.add('itws-workspace-panel-open');
+    queueBounds();
     if(port){portInput.value=String(port);try{sessionStorage.setItem(PORT_KEY,String(port))}catch{}}
     title.textContent=port?`Live Preview · :${port}`:'Sulandra IDE';
-    loading.hidden=false;loading.textContent=port?`Opening live preview on port ${port}…`:'Opening professional IDE…';
+    frame.title=port?`Sulandra live preview on port ${port}`:'Sulandra IDE';
+    loading.hidden=false;loading.textContent=port?`Opening live preview on port ${port}…`:'Opening Sulandra IDE…';
     try{
       const access=await ticket(sessionId,port??null);
       frame.src=GATEWAY+access.url;
@@ -80,7 +106,7 @@
     if(!host)return false;
     if(document.getElementById('itwsWorkspaceIdeButton'))return true;
     const tools=document.createElement('span');tools.className='itws-workspace-tools';
-    const ide=document.createElement('button');ide.type='button';ide.id='itwsWorkspaceIdeButton';ide.className='itws-workspace-tool';ide.textContent='IDE';ide.title='Open professional browser IDE';
+    const ide=document.createElement('button');ide.type='button';ide.id='itwsWorkspaceIdeButton';ide.className='itws-workspace-tool';ide.textContent='IDE';ide.title='Open the Sulandra browser IDE';
     const preview=document.createElement('button');preview.type='button';preview.id='itwsWorkspacePreviewButton';preview.className='itws-workspace-tool';preview.textContent='Preview';preview.title='Open a live app port in the right panel';
     ide.addEventListener('click',()=>void openWorkspace(null));
     preview.addEventListener('click',()=>void openWorkspace(validPort(sessionStorage.getItem(PORT_KEY))||3000));
@@ -90,6 +116,8 @@
     const target=event.target instanceof Element?event.target:null;
     if(target?.closest('#itwsActivity')&&document.body?.classList.contains('itws-workspace-panel-open'))closePanel();
   },true);
+  window.addEventListener('resize',queueBounds,{passive:true});
+  window.addEventListener('scroll',queueBounds,{passive:true});
   const boot=()=>{if(installTools())return;const observer=new MutationObserver(()=>{if(installTools())observer.disconnect()});observer.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),20000)};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   window.SulandraWorkspacePreview={openIde:()=>openWorkspace(null),openPreview:port=>openWorkspace(validPort(port)),close:closePanel};
