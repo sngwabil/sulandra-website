@@ -46,7 +46,16 @@ try{
   }));
   if(before.baseY<=0)throw new Error(`Fixture did not create scrollback: ${JSON.stringify(before)}`);
 
-  await page.locator('#terminal .xterm').hover();
+  /* Aim at xterm-screen/rows specifically. The production bug occurred because
+     .xterm-screen is a sibling of .xterm-viewport, so viewport-only capture
+     missed ordinary wheel events and xterm emitted Up/Down PTY input. */
+  const screen=page.locator('#terminal .xterm-screen');
+  const box=await screen.boundingBox();
+  if(!box)throw new Error('xterm-screen is not measurable');
+  await page.mouse.move(box.x+Math.max(5,box.width/2),box.y+Math.max(5,box.height/2));
+  const hitScreen=await page.evaluate(({x,y})=>Boolean(document.elementFromPoint(x,y)?.closest?.('.xterm-screen')),{x:box.x+box.width/2,y:box.y+box.height/2});
+  if(!hitScreen)throw new Error('Wheel regression did not target xterm-screen');
+
   await page.mouse.wheel(0,-720);
   await page.waitForTimeout(100);
 
@@ -54,9 +63,10 @@ try{
     viewportY:window.__wheelTerm.buffer.active.viewportY,
     baseY:window.__wheelTerm.buffer.active.baseY,
     sent:window.__wheelPtyData.length,
+    data:window.__wheelPtyData.join(''),
   }));
   if(!(afterUp.viewportY<before.viewportY))throw new Error(`Wheel-up did not move xterm scrollback: before=${JSON.stringify(before)} after=${JSON.stringify(afterUp)}`);
-  if(afterUp.sent!==before.sent)throw new Error(`Wheel-up leaked PTY bytes: before=${before.sent} after=${afterUp.sent}`);
+  if(afterUp.sent!==before.sent)throw new Error(`Wheel-up leaked PTY bytes: ${JSON.stringify(afterUp.data)}`);
 
   await page.mouse.wheel(0,720);
   await page.waitForTimeout(100);
@@ -64,9 +74,10 @@ try{
     viewportY:window.__wheelTerm.buffer.active.viewportY,
     baseY:window.__wheelTerm.buffer.active.baseY,
     sent:window.__wheelPtyData.length,
+    data:window.__wheelPtyData.join(''),
   }));
   if(!(afterDown.viewportY>afterUp.viewportY))throw new Error(`Wheel-down did not move toward latest output: up=${JSON.stringify(afterUp)} down=${JSON.stringify(afterDown)}`);
-  if(afterDown.sent!==before.sent)throw new Error(`Wheel-down leaked PTY bytes: before=${before.sent} after=${afterDown.sent}`);
+  if(afterDown.sent!==before.sent)throw new Error(`Wheel-down leaked PTY bytes: ${JSON.stringify(afterDown.data)}`);
 
   await page.evaluate(async()=>{
     const term=window.__wheelTerm;
@@ -91,7 +102,7 @@ try{
   const alternateLeak=await page.evaluate(()=>window.__wheelPtyData.join(''));
   if(alternateLeak)throw new Error(`Alternate-screen wheel synthesized PTY cursor input: ${JSON.stringify(alternateLeak)}`);
 
-  console.log('Wheel regression passed: shell wheel scrolling stays local, emits zero PTY bytes, and explicit mouse-reporting applications retain wheel input.');
+  console.log('Wheel regression passed: xterm-screen wheel scrolling stays local, emits zero PTY bytes, and explicit mouse-reporting applications retain wheel input.');
 }finally{
   await browser?.close().catch(()=>{});
   await new Promise(resolve=>server.close(resolve));

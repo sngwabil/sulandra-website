@@ -1,18 +1,18 @@
-/* SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V2
-   Keep ordinary mouse-wheel/trackpad navigation local to xterm scrollback.
-   Capture the browser wheel event before xterm/tmux can translate it into PTY
-   cursor-key input. Preserve native terminal mouse reporting only when an
-   application explicitly enables mouse tracking. Also provide keyboard
-   scrollback navigation for long engineering sessions. */
+/* SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V3
+   Keep ordinary mouse-wheel/trackpad navigation inside browser scrollback.
+   Intercept at the terminal pane in capture phase so events over xterm-screen
+   cannot reach xterm's alternate-scroll path and become Up/Down PTY input.
+   Preserve native mouse reporting only for applications that explicitly
+   enable terminal mouse tracking. */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V2__)return;
-  window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V2__=true;
+  if(window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V3__)return;
+  window.__SULANDRA_TERMINAL_WHEEL_SCROLLBACK_V3__=true;
 
   const Runtime=window.SulandraTerminalRuntime;
   const Terminal=Runtime?.Terminal;
   if(!Terminal?.prototype?.open)return;
-  if(Terminal.prototype.__sulandraWheelScrollbackV2Patched)return;
+  if(Terminal.prototype.__sulandraWheelScrollbackV3Patched)return;
 
   const originalOpen=Terminal.prototype.open;
   const wheelLines=event=>{
@@ -25,28 +25,42 @@
       :Math.max(1,Math.ceil(magnitude/18));
     return delta<0?-Math.min(lines,180):Math.min(lines,180);
   };
-
   const mouseTrackingActive=term=>String(term?.modes?.mouseTrackingMode||'none')!=='none';
 
   Terminal.prototype.open=function(parent){
     const result=originalOpen.call(this,parent);
-    if(this.__sulandraWheelScrollbackInstalledV2)return result;
-    this.__sulandraWheelScrollbackInstalledV2=true;
+    if(this.__sulandraWheelScrollbackInstalledV3)return result;
+    this.__sulandraWheelScrollbackInstalledV3=true;
 
-    const viewport=parent?.querySelector?.('.xterm-viewport');
-    if(viewport){
-      viewport.setAttribute('data-sulandra-scrollback','enabled');
-      viewport.addEventListener('wheel',event=>{
-        if(mouseTrackingActive(this))return;
+    const xtermRoot=parent?.querySelector?.('.xterm')||null;
+    const localWheel=event=>{
+      if(!xtermRoot?.contains?.(event.target))return;
+      if(mouseTrackingActive(this))return;
+      const lines=wheelLines(event);
+      if(!lines)return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.scrollLines(lines);
+    };
+
+    /* Capture on the pane, not .xterm-viewport. xterm-screen is a sibling of
+       the viewport, so viewport-only listeners miss the normal pointer path. */
+    parent?.addEventListener?.('wheel',localWheel,{capture:true,passive:false});
+
+    /* Second line of defense for any wheel event that reaches xterm itself. */
+    try{
+      this.attachCustomWheelEventHandler?.(event=>{
+        if(mouseTrackingActive(this))return true;
         const lines=wheelLines(event);
-        if(!lines)return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
+        if(!lines)return true;
+        event.preventDefault?.();
         this.scrollLines(lines);
-      },{capture:true,passive:false});
-    }
+        return false;
+      });
+    }catch{}
 
     parent?.addEventListener?.('keydown',event=>{
+      if(!xtermRoot?.contains?.(event.target))return;
       if(!event.shiftKey||event.altKey||event.ctrlKey||event.metaKey)return;
       if(mouseTrackingActive(this))return;
       if(event.key==='PageUp'){
@@ -66,7 +80,7 @@
     return result;
   };
 
-  Object.defineProperty(Terminal.prototype,'__sulandraWheelScrollbackV2Patched',{
+  Object.defineProperty(Terminal.prototype,'__sulandraWheelScrollbackV3Patched',{
     value:true,configurable:false,enumerable:false,writable:false
   });
 })();
