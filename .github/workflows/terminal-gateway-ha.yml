@@ -8,6 +8,10 @@ on:
       - coding-terminal-worker/**
       - Dockerfile.coding-terminal
       - scripts/install-terminal-gateway-ha.mjs
+      - scripts/install-workspace-ide-live-preview.mjs
+      - scripts/fix-workspace-proxy-abort.mjs
+      - scripts/fix-workspace-ticket-cors.mjs
+      - scripts/verify-workspace-ticket-cors.mjs
       - railway.terminal-worker.json
       - .github/workflows/terminal-gateway-ha.yml
   push:
@@ -17,6 +21,10 @@ on:
       - coding-terminal-worker/**
       - Dockerfile.coding-terminal
       - scripts/install-terminal-gateway-ha.mjs
+      - scripts/install-workspace-ide-live-preview.mjs
+      - scripts/fix-workspace-proxy-abort.mjs
+      - scripts/fix-workspace-ticket-cors.mjs
+      - scripts/verify-workspace-ticket-cors.mjs
       - railway.terminal-worker.json
       - .github/workflows/terminal-gateway-ha.yml
 
@@ -31,6 +39,22 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Verify terminal Railway config isolation
+        run: |
+          set -euo pipefail
+          grep -Fq '"dockerfilePath": "Dockerfile.coding-terminal"' railway.terminal-worker.json
+          grep -Fq '"startCommand": "node /gateway/server.mjs"' railway.terminal-worker.json
+          for path in \
+            'coding-terminal-worker/**' \
+            'Dockerfile.coding-terminal' \
+            'scripts/install-terminal-gateway-ha.mjs' \
+            'scripts/install-workspace-ide-live-preview.mjs' \
+            'scripts/fix-workspace-proxy-abort.mjs' \
+            'scripts/fix-workspace-ticket-cors.mjs' \
+            'scripts/verify-workspace-ticket-cors.mjs'; do
+            grep -Fq "\"$path\"" railway.terminal-worker.json
+          done
 
       - name: Build hardened gateway image
         run: docker build -f Dockerfile.coding-terminal -t sulandra-terminal-gateway:ci .
