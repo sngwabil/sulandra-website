@@ -12,6 +12,7 @@ on:
       - scripts/fix-workspace-proxy-abort.mjs
       - scripts/fix-workspace-ticket-cors.mjs
       - scripts/verify-workspace-ticket-cors.mjs
+      - railway.json
       - railway.terminal-worker.json
       - .github/workflows/terminal-gateway-ha.yml
   push:
@@ -25,6 +26,7 @@ on:
       - scripts/fix-workspace-proxy-abort.mjs
       - scripts/fix-workspace-ticket-cors.mjs
       - scripts/verify-workspace-ticket-cors.mjs
+      - railway.json
       - railway.terminal-worker.json
       - .github/workflows/terminal-gateway-ha.yml
 
@@ -43,6 +45,10 @@ jobs:
       - name: Verify terminal Railway config isolation
         run: |
           set -euo pipefail
+          if [[ -e railway.json ]]; then
+            echo 'Root railway.json is forbidden: it can override non-API services in this monorepo.' >&2
+            exit 1
+          fi
           grep -Fq '"dockerfilePath": "Dockerfile.coding-terminal"' railway.terminal-worker.json
           grep -Fq '"startCommand": "node /gateway/server.mjs"' railway.terminal-worker.json
           for path in \
