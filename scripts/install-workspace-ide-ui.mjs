@@ -12,7 +12,7 @@ await Promise.all([access(portalPath),access(cssPath),access(jsPath),access(resi
 let html=await readFile(portalPath,'utf8');
 const cssTag='<link rel="stylesheet" href="/assets/it-agent-workspace-preview.css?v=20260901-dockable-workspace-2">';
 const jsTag='<script src="/assets/it-agent-workspace-preview.js?v=20260901-dockable-workspace-2"></script>';
-const resizeTag='<script src="/assets/it-agent-dock-resize.js?v=20260901-dock-resize-3"></script>';
+const resizeTag='<script src="/assets/it-agent-dock-resize.js?v=20260901-dock-resize-4"></script>';
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-workspace-preview\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-workspace-preview\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-dock-resize\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
@@ -23,7 +23,7 @@ const js=await readFile(jsPath,'utf8');
 const resize=await readFile(resizePath,'utf8');
 for(const marker of ['SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2','itws-dock-workspace','itws-dock-panel','itws-dock-splitter','itws-panel-maximized'])if(!css.includes(marker))throw new Error(`Dockable workspace CSS missing ${marker}`);
 for(const marker of ['SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2','itwsWorkspaceIdeButton','itwsWorkspacePreviewButton','/workspace/ticket','SulandraDockableWorkspace','SulandraWorkspacePreview','itws-dock-splitter','maximizePanel','restorePanel','9000','13337'])if(!js.includes(marker))throw new Error(`Dockable workspace JavaScript missing ${marker}`);
-for(const marker of ['SULANDRA_DOCK_RESIZE_CAPTURE_V3','pointerdown','mousedown','itws-dock-splitter','pointermove','mousemove','itws-dock-resizing'])if(!resize.includes(marker))throw new Error(`Dock resize runtime missing ${marker}`);
+for(const marker of ['SULANDRA_DOCK_RESIZE_CAPTURE_V4','pointerdown','mousedown','itws-dock-splitter','pointermove','mousemove','itws-dock-resizing'])if(!resize.includes(marker))throw new Error(`Dock resize runtime missing ${marker}`);
 if(/localStorage\.setItem\([^\n]*(?:ticket|url|src)/i.test(js+resize))throw new Error('Dockable workspace must not persist access tickets or frame URLs');
 await writeFile(portalPath,html,'utf8');
 console.log(`Dockable Engineering Workspace controls published into ${requested}`);
