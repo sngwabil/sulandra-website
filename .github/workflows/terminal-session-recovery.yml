@@ -70,8 +70,8 @@ jobs:
             -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
             -e TERMINAL_STATE_ROOT=/state \
             -e TERMINAL_DOCKER_NETWORK="$INTERNAL_NETWORK" \
-            -e TERMINAL_MEMORY_BYTES=536870912 \
-            -e TERMINAL_NANO_CPUS=500000000 \
+            -e TERMINAL_MEMORY_BYTES=4294967296 \
+            -e TERMINAL_NANO_CPUS=2000000000 \
             -e TERMINAL_PIDS_LIMIT=256 \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$CI_ROOT/seed:/seed:ro" \
@@ -106,9 +106,17 @@ jobs:
           echo "Production restart policy=${production_policy}"
           [[ "$production_policy" == "on-failure" ]] || fail "expected production restart policy on-failure, got ${production_policy}"
 
+          memory_bytes="$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")" || fail "inspect session memory"
+          nano_cpus="$(docker inspect -f '{{.HostConfig.NanoCpus}}' "$cid")" || fail "inspect session CPUs"
+          echo "Session resources memory=${memory_bytes} nanoCpus=${nano_cpus}"
+          [[ "$memory_bytes" == "4294967296" ]] || fail "expected 4 GiB session memory, got ${memory_bytes}"
+          [[ "$nano_cpus" == "2000000000" ]] || fail "expected 2 vCPU session limit, got ${nano_cpus}"
+
+          tmux_mouse="$(docker exec "$cid" tmux show-options -gv mouse)" || fail "read tmux mouse policy"
           tmux_history="$(docker exec "$cid" tmux show-options -gv history-limit)" || fail "read tmux history-limit"
-          echo "tmux history-limit=${tmux_history}"
-          [[ "$tmux_history" == "50000" ]] || fail "expected tmux history-limit 50000, got ${tmux_history}"
+          echo "tmux mouse=${tmux_mouse} history-limit=${tmux_history}"
+          [[ "$tmux_mouse" == "off" ]] || fail "expected browser-owned mouse scrollback"
+          [[ "$tmux_history" == "100000" ]] || fail "expected tmux history-limit 100000, got ${tmux_history}"
 
           docker update --restart=no "$cid" >/dev/null || fail "docker update --restart=no"
           updated_policy="$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" || fail "inspect updated restart policy"
