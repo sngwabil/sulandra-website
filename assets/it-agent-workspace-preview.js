@@ -1,302 +1,50 @@
 /* SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2 */
 (()=>{
-  'use strict';
-  if(window.__SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2__)return;
-  window.__SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2__=true;
-
-  const GATEWAY='https://sulandra-coding-terminal-worker-production.up.railway.app';
-  const PORT_KEY='sulandra:workspace-preview-port';
-  const LAYOUT_KEY='sulandra:engineering-workspace-layout-v2';
-  const MIN_PANEL=280;
-  const DEFAULT_SIZES={terminal:52,ide:24,preview:24};
-  const panels=new Map();
-  let dock=null;
-  let row=null;
-  let terminalMount=null;
-  let maximized=null;
-  let resizeRaf=0;
-
-  const authToken=()=>sessionStorage.getItem('sulandra:admin:access-token')
-    ||localStorage.getItem('sulandra:admin:access-token')
-    ||sessionStorage.getItem('sulandra:employee:access-token')
-    ||localStorage.getItem('sulandra:employee:access-token')
-    ||localStorage.getItem('token')||'';
-  const activeSessionId=()=>document.querySelector('#itwsRtTabs .itws-rt-tab.active')?.dataset?.terminalId
-    ||document.querySelector('.itws-rt-tab.active')?.dataset?.terminalId||'';
-  const validPort=value=>{const port=Number(value);return Number.isInteger(port)&&port>=1024&&port<=65535&&![9000,13337].includes(port)?port:null};
-  const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-
-  const readLayout=()=>{
-    try{
-      const parsed=JSON.parse(localStorage.getItem(LAYOUT_KEY)||'{}');
-      const sizes={...DEFAULT_SIZES};
-      for(const key of Object.keys(sizes)){
-        const value=Number(parsed?.sizes?.[key]);
-        if(Number.isFinite(value)&&value>=10&&value<=80)sizes[key]=value;
-      }
-      return {sizes};
-    }catch{return {sizes:{...DEFAULT_SIZES}}}
-  };
-  const layout=readLayout();
-  const saveLayout=()=>{
-    const sizes={};
-    for(const [id,panel] of panels)sizes[id]=Number(panel.dataset.size)||DEFAULT_SIZES[id]||25;
-    try{localStorage.setItem(LAYOUT_KEY,JSON.stringify({version:2,sizes}))}catch{}
-  };
-
-  const notifyResize=()=>{
-    if(resizeRaf)return;
-    resizeRaf=requestAnimationFrame(()=>{
-      resizeRaf=0;
-      window.dispatchEvent(new Event('resize'));
-      window.dispatchEvent(new CustomEvent('sulandra:workspace-layout-resized'));
-    });
-  };
-
-  const visiblePanels=()=>[...panels.values()].filter(panel=>!panel.hidden);
-  const normalizeSizes=()=>{
-    const visible=visiblePanels();
-    if(!visible.length)return;
-    const total=visible.reduce((sum,panel)=>sum+(Number(panel.dataset.size)||1),0)||visible.length;
-    for(const panel of visible){
-      const percent=((Number(panel.dataset.size)||1)/total)*100;
-      panel.style.flexBasis=`${percent}%`;
-    }
-  };
-
-  const renderSplitters=()=>{
-    if(!row)return;
-    row.querySelectorAll('.itws-dock-splitter').forEach(node=>node.remove());
-    const visible=visiblePanels();
-    visible.forEach((panel,index)=>{
-      if(index===visible.length-1)return;
-      const splitter=document.createElement('div');
-      splitter.className='itws-dock-splitter';
-      splitter.setAttribute('role','separator');
-      splitter.setAttribute('aria-orientation','vertical');
-      splitter.tabIndex=0;
-      splitter.dataset.left=panel.dataset.panelId||'';
-      splitter.dataset.right=visible[index+1].dataset.panelId||'';
-      panel.after(splitter);
-      bindSplitter(splitter);
-    });
-  };
-
-  const reflow=()=>{
-    normalizeSizes();
-    renderSplitters();
-    document.body?.classList.toggle('itws-dock-has-side-panels',visiblePanels().length>1);
-    notifyResize();
-  };
-
-  const setVisible=(id,visible)=>{
-    const panel=panels.get(id);if(!panel)return;
-    panel.hidden=!visible;
-    panel.classList.toggle('itws-dock-visible',visible);
-    if(!visible&&maximized===id)restorePanel(id);
-    reflow();
-  };
-
-  const maximizePanel=id=>{
-    const panel=panels.get(id);if(!panel||panel.hidden)return;
-    if(maximized&&maximized!==id)restorePanel(maximized);
-    maximized=id;
-    dock?.classList.add('itws-dock-maximized');
-    panel.classList.add('itws-panel-maximized');
-    panel.querySelector('.itws-dock-maximize')?.setAttribute('aria-label','Restore panel');
-    panel.querySelector('.itws-dock-maximize')?.setAttribute('title','Restore');
-    const icon=panel.querySelector('.itws-dock-maximize');if(icon)icon.textContent='❐';
-    const close=panel.querySelector('.itws-dock-close');
-    if(close){close.hidden=false;close.dataset.maxRestore='1';close.title='Restore to workspace';close.setAttribute('aria-label','Restore to workspace')}
-    notifyResize();
-  };
-
-  const restorePanel=id=>{
-    const panel=panels.get(id||maximized);if(!panel)return;
-    panel.classList.remove('itws-panel-maximized');
-    if(maximized===panel.dataset.panelId)maximized=null;
-    if(!maximized)dock?.classList.remove('itws-dock-maximized');
-    const maximize=panel.querySelector('.itws-dock-maximize');
-    if(maximize){maximize.textContent='□';maximize.title='Maximize';maximize.setAttribute('aria-label','Maximize panel')}
-    const close=panel.querySelector('.itws-dock-close');
-    if(close){delete close.dataset.maxRestore;close.hidden=panel.dataset.closable!=='1';close.title='Close panel';close.setAttribute('aria-label','Close panel')}
-    reflow();
-  };
-
-  const closePanel=id=>{
-    const panel=panels.get(id);if(!panel)return;
-    if(panel.classList.contains('itws-panel-maximized')){restorePanel(id);return}
-    if(panel.dataset.closable==='1')setVisible(id,false);
-  };
-
-  const createPanel=(id,label,{closable=false}={})=>{
-    const panel=document.createElement('section');
-    panel.className='itws-dock-panel';
-    panel.dataset.panelId=id;
-    panel.dataset.closable=closable?'1':'0';
-    panel.dataset.size=String(layout.sizes[id]||DEFAULT_SIZES[id]||25);
-    panel.hidden=id!=='terminal';
-    panel.innerHTML=`<header class="itws-dock-panel-head"><strong>${label}</strong><span class="itws-dock-panel-meta"></span><div class="itws-dock-panel-actions"><button type="button" class="itws-dock-maximize" aria-label="Maximize panel" title="Maximize">□</button><button type="button" class="itws-dock-close" aria-label="Close panel" title="Close panel" ${closable?'':'hidden'}>×</button></div></header><div class="itws-dock-panel-body"></div>`;
-    panel.querySelector('.itws-dock-maximize')?.addEventListener('click',()=>panel.classList.contains('itws-panel-maximized')?restorePanel(id):maximizePanel(id));
-    panel.querySelector('.itws-dock-close')?.addEventListener('click',()=>closePanel(id));
-    panel.addEventListener('dblclick',event=>{if(event.target instanceof Element&&event.target.closest('.itws-dock-panel-head'))panel.classList.contains('itws-panel-maximized')?restorePanel(id):maximizePanel(id)});
-    panels.set(id,panel);
-    return panel;
-  };
-
-  function bindSplitter(splitter){
-    const begin=event=>{
-      if(window.innerWidth<760||event.button!==0)return;
-      const left=panels.get(splitter.dataset.left);const right=panels.get(splitter.dataset.right);
-      if(!left||!right)return;
-      event.preventDefault();
-      const startX=event.clientX;
-      const leftWidth=left.getBoundingClientRect().width;
-      const rightWidth=right.getBoundingClientRect().width;
-      const combined=leftWidth+rightWidth;
-      document.body.classList.add('itws-dock-resizing');
-      splitter.setPointerCapture?.(event.pointerId);
-      const move=moveEvent=>{
-        const delta=moveEvent.clientX-startX;
-        const nextLeft=clamp(leftWidth+delta,MIN_PANEL,Math.max(MIN_PANEL,combined-MIN_PANEL));
-        const nextRight=combined-nextLeft;
-        if(nextRight<MIN_PANEL)return;
-        const total=row?.getBoundingClientRect().width||combined;
-        left.dataset.size=String((nextLeft/total)*100);
-        right.dataset.size=String((nextRight/total)*100);
-        left.style.flexBasis=`${nextLeft}px`;
-        right.style.flexBasis=`${nextRight}px`;
-        notifyResize();
-      };
-      const end=()=>{
-        splitter.removeEventListener('pointermove',move);
-        splitter.removeEventListener('pointerup',end);
-        splitter.removeEventListener('pointercancel',end);
-        document.body.classList.remove('itws-dock-resizing');
-        saveLayout();normalizeSizes();notifyResize();
-      };
-      splitter.addEventListener('pointermove',move);
-      splitter.addEventListener('pointerup',end);
-      splitter.addEventListener('pointercancel',end);
-    };
-    splitter.addEventListener('pointerdown',begin);
-    splitter.addEventListener('keydown',event=>{
-      if(!['ArrowLeft','ArrowRight'].includes(event.key))return;
-      const left=panels.get(splitter.dataset.left);const right=panels.get(splitter.dataset.right);if(!left||!right)return;
-      event.preventDefault();
-      const step=event.shiftKey?5:2;
-      const direction=event.key==='ArrowRight'?1:-1;
-      left.dataset.size=String(clamp((Number(left.dataset.size)||25)+(direction*step),10,80));
-      right.dataset.size=String(clamp((Number(right.dataset.size)||25)-(direction*step),10,80));
-      normalizeSizes();saveLayout();notifyResize();
-    });
-  }
-
-  const createFramePanel=(id,label)=>{
-    const panel=createPanel(id,label,{closable:true});
-    const body=panel.querySelector('.itws-dock-panel-body');
-    body.innerHTML=`<div class="itws-workspace-frame-tools" ${id==='ide'?'hidden':''}><label>Port <input class="itws-workspace-port" type="number" min="1024" max="65535" inputmode="numeric" aria-label="Preview port"></label><button type="button" class="itws-workspace-open-port">Open</button></div><div class="itws-workspace-loading" role="status" aria-live="polite">${id==='ide'?'Open IDE to start the browser editor.':'Open Preview to view a running app.'}</div><iframe class="itws-workspace-frame" title="${label}" allow="clipboard-read; clipboard-write; fullscreen"></iframe>`;
-    const frame=body.querySelector('.itws-workspace-frame');
-    const loading=body.querySelector('.itws-workspace-loading');
-    const portInput=body.querySelector('.itws-workspace-port');
-    if(portInput)portInput.value=String(validPort(sessionStorage.getItem(PORT_KEY))||3000);
-    frame?.addEventListener('load',()=>{if(loading&&frame.getAttribute('src'))loading.hidden=true});
-    if(id==='preview'){
-      body.querySelector('.itws-workspace-open-port')?.addEventListener('click',()=>void openWorkspace('preview',validPort(portInput?.value)));
-      portInput?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();void openWorkspace('preview',validPort(portInput.value))}});
-    }
-    panel._workspace={frame,loading,portInput};
-    return panel;
-  };
-
-  const ticket=async(sessionId,port)=>{
-    const token=authToken();
-    if(!token)throw new Error('Administrator sign-in is required');
-    const response=await fetch(`${GATEWAY}/workspace/ticket`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({sessionId,port})});
-    const payload=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(payload.error||`Workspace access failed (${response.status})`);
-    return payload;
-  };
-
-  const openWorkspace=async(kind,requestedPort)=>{
-    const id=kind==='preview'?'preview':'ide';
-    const panel=panels.get(id);if(!panel)return;
-    const sessionId=activeSessionId();
-    if(!sessionId){window.alert('Open or create a terminal session first.');return}
-    const port=id==='preview'?validPort(requestedPort):null;
-    if(id==='preview'&&!port){window.alert('Use a preview port from 1024–65535. Ports 9000 and 13337 are reserved.');return}
-    const view=panel._workspace||{};
-    if(id==='preview'&&view.portInput){view.portInput.value=String(port);try{sessionStorage.setItem(PORT_KEY,String(port))}catch{}}
-    panel.querySelector('.itws-dock-panel-meta').textContent=id==='preview'?`:${port}`:'';
-    setVisible(id,true);
-    const sameSession=view.frame?.dataset.sessionId===sessionId;
-    const samePort=id==='ide'||view.frame?.dataset.port===String(port);
-    if(sameSession&&samePort&&view.frame?.getAttribute('src')){notifyResize();return}
-    if(view.loading){view.loading.hidden=false;view.loading.textContent=id==='preview'?`Opening live preview on port ${port}…`:'Opening Sulandra IDE…'}
-    try{
-      const access=await ticket(sessionId,id==='preview'?port:null);
-      if(!view.frame)return;
-      view.frame.dataset.sessionId=sessionId;
-      view.frame.dataset.port=id==='preview'?String(port):'';
-      view.frame.src=GATEWAY+access.url;
-    }catch(error){if(view.loading){view.loading.hidden=false;view.loading.textContent=error?.message||'Workspace view could not be opened.'}}
-  };
-
-  const installTools=()=>{
-    const root=document.getElementById('itwsRealTerminal')||document.querySelector('.itws-real-terminal');
-    if(!root)return false;
-    const host=root.querySelector('.itws-rt-input-switch')||root.querySelector('.itws-rt-foot')||root.querySelector('.itws-terminal-footer');
-    if(!host)return false;
-    if(document.getElementById('itwsWorkspaceIdeButton'))return true;
-    const tools=document.createElement('span');tools.className='itws-workspace-tools';
-    const ide=document.createElement('button');ide.type='button';ide.id='itwsWorkspaceIdeButton';ide.className='itws-workspace-tool';ide.textContent='IDE';ide.title='Open the Sulandra browser IDE';
-    const preview=document.createElement('button');preview.type='button';preview.id='itwsWorkspacePreviewButton';preview.className='itws-workspace-tool';preview.textContent='Preview';preview.title='Open a live app preview';
-    ide.addEventListener('click',()=>void openWorkspace('ide',null));
-    preview.addEventListener('click',()=>void openWorkspace('preview',validPort(sessionStorage.getItem(PORT_KEY))||3000));
-    tools.append(ide,preview);host.appendChild(tools);return true;
-  };
-
-  const installDock=()=>{
-    if(dock)return true;
-    terminalMount=document.getElementById('itwsEngineeringTerminal');
-    if(!terminalMount)return false;
-    const parent=terminalMount.parentElement;if(!parent)return false;
-    dock=document.createElement('div');dock.id='itwsDockableWorkspace';dock.className='itws-dock-workspace';dock.setAttribute('aria-label','Dockable Engineering Workspace');
-    row=document.createElement('div');row.className='itws-dock-row';dock.appendChild(row);
-    parent.insertBefore(dock,terminalMount);
-    const terminalPanel=createPanel('terminal','Terminal');terminalPanel.hidden=false;terminalPanel.classList.add('itws-dock-visible');
-    terminalPanel.querySelector('.itws-dock-panel-body').appendChild(terminalMount);
-    row.appendChild(terminalPanel);
-    row.appendChild(createFramePanel('ide','IDE'));
-    row.appendChild(createFramePanel('preview','Preview'));
-    normalizeSizes();renderSplitters();
-    const observer=new ResizeObserver(()=>notifyResize());observer.observe(dock);dock._resizeObserver=observer;
-    document.body?.classList.add('itws-dockable-workspace-ready');
-    return true;
-  };
-
-  const boot=()=>{
-    const ready=installDock();
-    const tools=installTools();
-    if(ready&&tools)return;
-    const observer=new MutationObserver(()=>{if(installDock()&&installTools())observer.disconnect()});
-    observer.observe(document.documentElement,{childList:true,subtree:true});
-    setTimeout(()=>observer.disconnect(),30000);
-  };
-
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&maximized){event.preventDefault();restorePanel(maximized)}},true);
-  window.addEventListener('resize',()=>{if(window.innerWidth<760&&maximized)notifyResize();else reflow()},{passive:true});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-
-  window.SulandraDockableWorkspace={
-    openIde:()=>openWorkspace('ide',null),
-    openPreview:port=>openWorkspace('preview',validPort(port)),
-    maximize:maximizePanel,
-    restore:restorePanel,
-    close:closePanel,
-    show:id=>setVisible(id,true),
-    notifyResize,
-    getPanel:id=>panels.get(id)||null
-  };
-  window.SulandraWorkspacePreview={openIde:()=>openWorkspace('ide',null),openPreview:port=>openWorkspace('preview',validPort(port)),close:()=>{closePanel('ide');closePanel('preview')}};
+'use strict';
+if(window.__SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2__)return;
+window.__SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V2__=true;
+const GATEWAY='https://sulandra-coding-terminal-worker-production.up.railway.app';
+const PORT_KEY='sulandra:workspace-preview-port',LAYOUT_KEY='sulandra:engineering-workspace-layout-v2';
+const DEFAULT={terminal:52,ide:24,preview:24},MIN=280,panels=new Map();
+let dock,row,maximized=null,resizeRaf=0;
+const authToken=()=>sessionStorage.getItem('sulandra:admin:access-token')||localStorage.getItem('sulandra:admin:access-token')||sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('token')||'';
+const activeSessionId=()=>document.querySelector('#itwsRtTabs .itws-rt-tab.active')?.dataset?.terminalId||document.querySelector('.itws-rt-tab.active')?.dataset?.terminalId||'';
+const validPort=value=>{const n=Number(value);return Number.isInteger(n)&&n>=1024&&n<=65535&&![9000,13337].includes(n)?n:null};
+const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+const readSizes=()=>{try{const raw=JSON.parse(localStorage.getItem(LAYOUT_KEY)||'{}')?.sizes||{};return Object.fromEntries(Object.keys(DEFAULT).map(k=>[k,Number(raw[k])>=10&&Number(raw[k])<=80?Number(raw[k]):DEFAULT[k]]))}catch{return {...DEFAULT}}};
+const sizes=readSizes();
+const save=()=>{try{localStorage.setItem(LAYOUT_KEY,JSON.stringify({version:2,sizes:Object.fromEntries([...panels].map(([id,p])=>[id,Number(p.dataset.size)||DEFAULT[id]]))}))}catch{}};
+const notifyResize=()=>{if(resizeRaf)return;resizeRaf=requestAnimationFrame(()=>{resizeRaf=0;window.dispatchEvent(new CustomEvent('sulandra:workspace-layout-resized'))})};
+const visible=()=>[...panels.values()].filter(p=>!p.hidden);
+const normalize=()=>{const list=visible(),total=list.reduce((n,p)=>n+(Number(p.dataset.size)||1),0)||1;for(const p of list)p.style.flexBasis=`${((Number(p.dataset.size)||1)/total)*100}%`};
+function bindSplitter(split){
+ split.addEventListener('pointerdown',event=>{
+  if(window.innerWidth<760||event.button!==0)return;
+  const left=panels.get(split.dataset.left),right=panels.get(split.dataset.right);if(!left||!right)return;
+  event.preventDefault();const start=event.clientX,lw=left.getBoundingClientRect().width,rw=right.getBoundingClientRect().width,totalPair=lw+rw;
+  document.body.classList.add('itws-dock-resizing');split.setPointerCapture?.(event.pointerId);
+  const move=e=>{const nl=clamp(lw+(e.clientX-start),MIN,Math.max(MIN,totalPair-MIN)),nr=totalPair-nl;if(nr<MIN)return;const all=row.getBoundingClientRect().width||totalPair;left.dataset.size=String(nl/all*100);right.dataset.size=String(nr/all*100);left.style.flexBasis=`${nl}px`;right.style.flexBasis=`${nr}px`;notifyResize()};
+  const end=()=>{split.removeEventListener('pointermove',move);split.removeEventListener('pointerup',end);split.removeEventListener('pointercancel',end);document.body.classList.remove('itws-dock-resizing');save();normalize();notifyResize()};
+  split.addEventListener('pointermove',move);split.addEventListener('pointerup',end);split.addEventListener('pointercancel',end);
+ });
+ split.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight'].includes(event.key))return;const l=panels.get(split.dataset.left),r=panels.get(split.dataset.right);if(!l||!r)return;event.preventDefault();const d=(event.key==='ArrowRight'?1:-1)*(event.shiftKey?5:2);l.dataset.size=String(clamp((Number(l.dataset.size)||25)+d,10,80));r.dataset.size=String(clamp((Number(r.dataset.size)||25)-d,10,80));normalize();save();notifyResize()});
+}
+const splitters=()=>{row?.querySelectorAll('.itws-dock-splitter').forEach(n=>n.remove());const list=visible();list.forEach((p,i)=>{if(i===list.length-1)return;const s=document.createElement('div');s.className='itws-dock-splitter';s.role='separator';s.tabIndex=0;s.dataset.left=p.dataset.panelId;s.dataset.right=list[i+1].dataset.panelId;p.after(s);bindSplitter(s)})};
+const reflow=()=>{normalize();splitters();document.body.classList.toggle('itws-dock-has-side-panels',visible().length>1);notifyResize()};
+const setVisible=(id,on)=>{const p=panels.get(id);if(!p)return;if(!on&&maximized===id)restorePanel(id);p.hidden=!on;p.classList.toggle('itws-dock-visible',on);reflow()};
+const maximizePanel=id=>{const p=panels.get(id);if(!p||p.hidden)return;if(maximized&&maximized!==id)restorePanel(maximized);maximized=id;dock.classList.add('itws-dock-maximized');p.classList.add('itws-panel-maximized');const m=p.querySelector('.itws-dock-maximize'),x=p.querySelector('.itws-dock-close');if(m){m.textContent='❐';m.title='Restore';m.setAttribute('aria-label','Restore panel')}if(x){x.hidden=false;x.dataset.maxRestore='1';x.title='Restore to workspace';x.setAttribute('aria-label','Restore to workspace')}notifyResize()};
+function restorePanel(id=maximized){const p=panels.get(id);if(!p)return;p.classList.remove('itws-panel-maximized');if(maximized===id)maximized=null;if(!maximized)dock.classList.remove('itws-dock-maximized');const m=p.querySelector('.itws-dock-maximize'),x=p.querySelector('.itws-dock-close');if(m){m.textContent='□';m.title='Maximize';m.setAttribute('aria-label','Maximize panel')}if(x){delete x.dataset.maxRestore;x.hidden=p.dataset.closable!=='1';x.title='Close panel';x.setAttribute('aria-label','Close panel')}reflow()}
+const closePanel=id=>{const p=panels.get(id);if(!p)return;if(p.classList.contains('itws-panel-maximized'))return restorePanel(id);if(p.dataset.closable==='1')setVisible(id,false)};
+const createPanel=(id,label,closable=false)=>{const p=document.createElement('section');p.className='itws-dock-panel';p.dataset.panelId=id;p.dataset.closable=closable?'1':'0';p.dataset.size=String(sizes[id]);p.hidden=id!=='terminal';p.innerHTML=`<header class="itws-dock-panel-head"><strong>${label}</strong><span class="itws-dock-panel-meta"></span><div class="itws-dock-panel-actions"><button type="button" class="itws-dock-maximize" aria-label="Maximize panel" title="Maximize">□</button><button type="button" class="itws-dock-close" aria-label="Close panel" title="Close panel" ${closable?'':'hidden'}>×</button></div></header><div class="itws-dock-panel-body"></div>`;p.querySelector('.itws-dock-maximize').onclick=()=>p.classList.contains('itws-panel-maximized')?restorePanel(id):maximizePanel(id);p.querySelector('.itws-dock-close').onclick=()=>closePanel(id);p.addEventListener('dblclick',e=>{if(e.target instanceof Element&&e.target.closest('.itws-dock-panel-head'))p.classList.contains('itws-panel-maximized')?restorePanel(id):maximizePanel(id)});panels.set(id,p);return p};
+const createFramePanel=(id,label)=>{const p=createPanel(id,label,true),body=p.querySelector('.itws-dock-panel-body');body.innerHTML=`<div class="itws-workspace-frame-tools" ${id==='ide'?'hidden':''}><label>Port <input class="itws-workspace-port" type="number" min="1024" max="65535" inputmode="numeric" aria-label="Preview port"></label><button type="button" class="itws-workspace-open-port">Open</button></div><div class="itws-workspace-loading" role="status" aria-live="polite">${id==='ide'?'Open IDE to start the browser editor.':'Open Preview to view a running app.'}</div><iframe class="itws-workspace-frame" title="${label}" allow="clipboard-read; clipboard-write; fullscreen"></iframe>`;const frame=body.querySelector('iframe'),loading=body.querySelector('.itws-workspace-loading'),portInput=body.querySelector('.itws-workspace-port');if(portInput)portInput.value=String(validPort(sessionStorage.getItem(PORT_KEY))||3000);frame.addEventListener('load',()=>{if(frame.getAttribute('src'))loading.hidden=true});if(id==='preview'){body.querySelector('.itws-workspace-open-port').onclick=()=>void openWorkspace('preview',validPort(portInput.value));portInput.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();void openWorkspace('preview',validPort(portInput.value))}}}p._workspace={frame,loading,portInput};return p};
+const ticket=async(sessionId,port)=>{const token=authToken();if(!token)throw new Error('Administrator sign-in is required');const response=await fetch(`${GATEWAY}/workspace/ticket`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({sessionId,port})});const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||`Workspace access failed (${response.status})`);return payload};
+const openWorkspace=async(kind,requestedPort)=>{const id=kind==='preview'?'preview':'ide',p=panels.get(id);if(!p)return;const sessionId=activeSessionId();if(!sessionId){alert('Open or create a terminal session first.');return}const port=id==='preview'?validPort(requestedPort):null;if(id==='preview'&&!port){alert('Use a preview port from 1024–65535. Ports 9000 and 13337 are reserved.');return}const v=p._workspace;if(id==='preview'){v.portInput.value=String(port);try{sessionStorage.setItem(PORT_KEY,String(port))}catch{}}p.querySelector('.itws-dock-panel-meta').textContent=id==='preview'?`:${port}`:'';setVisible(id,true);if(v.frame.dataset.sessionId===sessionId&&(id==='ide'||v.frame.dataset.port===String(port))&&v.frame.getAttribute('src'))return notifyResize();v.loading.hidden=false;v.loading.textContent=id==='preview'?`Opening live preview on port ${port}…`:'Opening Sulandra IDE…';try{const access=await ticket(sessionId,id==='preview'?port:null);v.frame.dataset.sessionId=sessionId;v.frame.dataset.port=id==='preview'?String(port):'';v.frame.src=GATEWAY+access.url}catch(error){v.loading.hidden=false;v.loading.textContent=error?.message||'Workspace view could not be opened.'}};
+const installTools=()=>{const root=document.getElementById('itwsRealTerminal')||document.querySelector('.itws-real-terminal');if(!root)return false;const host=root.querySelector('.itws-rt-input-switch')||root.querySelector('.itws-rt-foot')||root.querySelector('.itws-terminal-footer');if(!host)return false;if(document.getElementById('itwsWorkspaceIdeButton'))return true;const tools=document.createElement('span');tools.className='itws-workspace-tools';tools.innerHTML='<button type="button" id="itwsWorkspaceIdeButton" class="itws-workspace-tool">IDE</button><button type="button" id="itwsWorkspacePreviewButton" class="itws-workspace-tool">Preview</button>';tools.querySelector('#itwsWorkspaceIdeButton').onclick=()=>void openWorkspace('ide',null);tools.querySelector('#itwsWorkspacePreviewButton').onclick=()=>void openWorkspace('preview',validPort(sessionStorage.getItem(PORT_KEY))||3000);host.appendChild(tools);return true};
+const installDock=()=>{if(dock)return true;const mount=document.getElementById('itwsEngineeringTerminal');if(!mount?.parentElement)return false;dock=document.createElement('div');dock.id='itwsDockableWorkspace';dock.className='itws-dock-workspace';dock.setAttribute('aria-label','Dockable Engineering Workspace');row=document.createElement('div');row.className='itws-dock-row';dock.appendChild(row);mount.parentElement.insertBefore(dock,mount);const terminal=createPanel('terminal','Terminal');terminal.hidden=false;terminal.classList.add('itws-dock-visible');terminal.querySelector('.itws-dock-panel-body').appendChild(mount);row.append(terminal,createFramePanel('ide','IDE'),createFramePanel('preview','Preview'));normalize();splitters();new ResizeObserver(()=>notifyResize()).observe(dock);document.body.classList.add('itws-dockable-workspace-ready');return true};
+const boot=()=>{if(installDock()&&installTools())return;const observer=new MutationObserver(()=>{if(installDock()&&installTools())observer.disconnect()});observer.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),30000)};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&maximized){e.preventDefault();restorePanel(maximized)}},true);
+window.addEventListener('resize',()=>{normalize();splitters();notifyResize()},{passive:true});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+window.SulandraDockableWorkspace={openIde:()=>openWorkspace('ide',null),openPreview:port=>openWorkspace('preview',validPort(port)),maximize:maximizePanel,restore:restorePanel,close:closePanel,show:id=>setVisible(id,true),notifyResize,getPanel:id=>panels.get(id)||null};
+window.SulandraWorkspacePreview={openIde:()=>openWorkspace('ide',null),openPreview:port=>openWorkspace('preview',validPort(port)),close:()=>{closePanel('ide');closePanel('preview')}};
 })();
