@@ -6,7 +6,11 @@
 .itws-xterm-pane{position:absolute;inset:10px 8px 4px;display:block;visibility:hidden;pointer-events:none;overflow:hidden}
 .itws-xterm-pane.active{visibility:visible;pointer-events:auto}
 .itws-xterm-pane .xterm{height:100%;padding:0 2px}
-.itws-xterm-pane .xterm-viewport{background:#06131d!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.itws-xterm-pane .xterm-viewport{background:#06131d!important;overflow-y:scroll!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:#315c70 #071925}
+.itws-xterm-pane .xterm-viewport::-webkit-scrollbar{width:12px}
+.itws-xterm-pane .xterm-viewport::-webkit-scrollbar-track{background:#071925}
+.itws-xterm-pane .xterm-viewport::-webkit-scrollbar-thumb{background:#315c70;border:2px solid #071925;border-radius:8px}
+.itws-xterm-pane .xterm-viewport::-webkit-scrollbar-thumb:hover{background:#42758d}
 .itws-xterm-pane .xterm-screen{cursor:text}
 /* Keep the DOM cursor layer renderable, but never force its terminal visibility.
    ESC[?25l / ESC[?25h remains owned by xterm. The focus-aware caret clock only
