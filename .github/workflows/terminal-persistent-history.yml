@@ -1,0 +1,110 @@
+name: Terminal Persistent History Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - Dockerfile.terminal-session
+      - scripts/install-terminal-prompt-cursor.mjs
+      - .github/workflows/terminal-persistent-history.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - Dockerfile.terminal-session
+      - scripts/install-terminal-prompt-cursor.mjs
+      - .github/workflows/terminal-persistent-history.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-persistent-history:
+    name: Retain output beyond live PTY buffer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      IMAGE: sulandra-terminal-session:persistent-history-ci
+      TOKEN: ci-session-token-0123456789abcdef0123456789abcdef
+      CONTAINER: sulandra-terminal-persistent-history-ci
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build real terminal session image
+        run: docker build -f Dockerfile.terminal-session -t "$IMAGE" .
+
+      - name: Start real PTY session
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name "$CONTAINER" \
+            -e SESSION_TOKEN="$TOKEN" \
+            -e WORKSPACE_ID=persistent-history-ci \
+            -e TMUX_SESSION=persistent-history-ci \
+            -e TERMINAL_COLS=120 \
+            -e TERMINAL_ROWS=32 \
+            -p 127.0.0.1:19001:9000 \
+            "$IMAGE"
+          for i in {1..45}; do
+            if curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19001/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$CONTAINER"
+          exit 1
+
+      - name: Generate output larger than old two-million-character cap
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=$'printf "PERSIST_HISTORY_BEGIN\\n"; for i in $(seq 1 40000); do printf "PERSIST_LINE_%05d_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\\n" "$i"; done; printf "PERSIST_HISTORY_END\\n"\r'
+          payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+          curl -fsS \
+            -H "x-sulandra-session-token: $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -X POST http://127.0.0.1:19001/input \
+            -d "$payload" >/dev/null
+
+          ready=false
+          for i in {1..120}; do
+            health="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19001/health)"
+            bytes="$(node -e 'const x=JSON.parse(process.argv[1]); process.stdout.write(String(x.transcriptBytes||0))' "$health")"
+            if [[ "$bytes" -gt 2500000 ]]; then
+              tail="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/history?limit=1048576')"
+              if node -e 'const x=JSON.parse(process.argv[1]); process.exit(String(x.data||"").includes("PERSIST_HISTORY_END")?0:1)' "$tail"; then
+                ready=true
+                break
+              fi
+            fi
+            sleep 0.25
+          done
+          test "$ready" = true
+
+      - name: Prove the beginning and end remain retrievable from disk
+        shell: bash
+        run: |
+          set -euo pipefail
+          first="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/history?before=1048576&limit=1048576')"
+          node -e 'const x=JSON.parse(process.argv[1]); if(x.start!==0||!String(x.data||"").includes("PERSIST_HISTORY_BEGIN")) process.exit(1)' "$first"
+
+          tail="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/history?limit=1048576')"
+          node -e 'const x=JSON.parse(process.argv[1]); if(!x.hasMore||!String(x.data||"").includes("PERSIST_HISTORY_END")) process.exit(1)' "$tail"
+
+          live="$(curl -fsS -H "x-sulandra-session-token: $TOKEN" 'http://127.0.0.1:19001/output?cursor=0')"
+          node -e 'const x=JSON.parse(process.argv[1]); if(x.reset!==true) process.exit(1); if(String(x.data||"").includes("PERSIST_HISTORY_BEGIN")) process.exit(1)' "$live"
+
+          test "$(docker exec "$CONTAINER" tmux show-options -gv history-limit)" = "1000000"
+          docker exec "$CONTAINER" bash -lc 'test "$HISTSIZE" = "-1"; test "$HISTFILESIZE" = "-1"'
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs "$CONTAINER" || true
+
+      - name: Stop test session
+        if: always()
+        run: docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
