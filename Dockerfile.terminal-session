@@ -60,6 +60,11 @@ COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
 RUN chmod 0755 /agent/entrypoint.sh /usr/local/bin/sulandra-github-login /usr/local/bin/sulandra-pr \
     && chmod 0644 /agent/tmux.conf /agent/bashrc \
     && bash --noprofile --norc -n /agent/bashrc \
+    && profile_check="$(PROMPT_COMMAND='printf "\\033[?25h"' bash --noprofile --rcfile /agent/bashrc -ic 'printf "PS1=%s\n" "$PS1"; alias ls; type ok; printf "PROMPT_COMMAND=%s\n" "$PROMPT_COMMAND"' 2>/dev/null)" \
+    && printf '%s\n' "$profile_check" | grep -q 'PS1=.*sulandra' \
+    && printf '%s\n' "$profile_check" | grep -q "alias ls='ls --color=auto'" \
+    && printf '%s\n' "$profile_check" | grep -q 'ok is a function' \
+    && printf '%s\n' "$profile_check" | grep -q '__sulandra_update_git_prompt' \
     && mkdir -p /workspace /home/terminal \
     && chown -R 10001:10001 /workspace /home/terminal /agent
 
