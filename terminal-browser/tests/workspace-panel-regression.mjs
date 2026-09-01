@@ -10,76 +10,84 @@ const cssPath=path.join(repo,'assets/it-agent-workspace-preview.css');
 const terminalCssPath=path.join(repo,'assets/it-agent-real-terminal.css');
 const xtermCssPath=path.join(repo,'assets/it-agent-xterm-emulator.css');
 const jsPath=path.join(repo,'assets/it-agent-workspace-preview.js');
-for(const required of [cssPath,terminalCssPath,xtermCssPath,jsPath])if(!fs.existsSync(required))throw new Error(`Missing workspace panel regression dependency: ${required}`);
+for(const required of [cssPath,terminalCssPath,xtermCssPath,jsPath])if(!fs.existsSync(required))throw new Error(`Missing dockable workspace regression dependency: ${required}`);
 
-const html=`<!doctype html><html><head><meta charset="utf-8"><title>Workspace panel regression</title>
-<style>
-html,body{margin:0;width:100%;min-height:1200px}#agent{margin-top:120px;width:100%}.agent-shell{width:100%;min-height:680px}.agent-main{min-width:0}.engineering-controls{height:150px}.itws-rt-head{min-height:92px}.itws-rt-modebar{min-height:48px}.itws-rt-input-switch{display:flex;align-items:center;gap:8px;min-height:74px;padding:8px}.itws-rt-input-switch button{flex:0 0 auto}.itws-rt-foot{min-height:34px}
-</style>
-</head><body class="it-chatgpt-workspace itws-enterprise-shell"><div id="agent"><div class="agent-shell"><main class="agent-main"><div class="engineering-controls">Engineering Workspace controls</div><div id="itwsRealTerminal" class="itws-real-terminal"><div class="itws-rt-head"><div><h2>Engineering Workspace</h2></div></div><div class="itws-rt-modebar"><div class="itws-rt-tools"><button>Run typecheck</button><button>Build web</button><button>Ctrl+C</button><button>Clear</button></div></div><div class="itws-rt-shell"><div id="itwsRtTabs" class="itws-rt-tabs"><button class="itws-rt-tab active" data-terminal-id="term-panel-test">Terminal 1</button></div><div class="itws-xterm-host"><div class="itws-xterm-pane active"><textarea class="xterm-helper-textarea"></textarea></div></div><div class="itws-rt-input-switch"><button>In-Terminal</button><button>Command box</button><span>Following latest output</span><button>Latest</button><button>Copy</button><button>Search</button><button>Export</button><button>Export HTML</button></div><div class="itws-rt-foot"><span>Connected worker</span></div></div></div></main></div></div></body></html>`;
+const html=`<!doctype html><html><head><meta charset="utf-8"><title>Dockable workspace regression</title>
+<style>html,body{margin:0;width:100%;min-height:1000px}#agent{width:100%}.agent-shell,.agent-main{width:100%;min-width:0}.itws-rt-head{min-height:80px}.itws-rt-modebar{min-height:44px}.itws-rt-input-switch{display:flex;align-items:center;gap:8px;min-height:58px;padding:8px}.itws-rt-foot{min-height:34px}</style>
+</head><body class="it-chatgpt-workspace itws-enterprise-shell"><div id="agent"><div class="agent-shell"><main class="agent-main"><div id="itwsEngineeringTerminal"><div id="itwsRealTerminal" class="itws-real-terminal"><div class="itws-rt-head"><h2>Engineering Workspace</h2></div><div class="itws-rt-modebar"><button>Run typecheck</button></div><div class="itws-rt-shell"><div id="itwsRtTabs" class="itws-rt-tabs"><button class="itws-rt-tab active" data-terminal-id="term-dock-test">Terminal 1</button></div><div class="itws-xterm-host"><div class="itws-xterm-pane active" id="terminalIdentity"><textarea class="xterm-helper-textarea"></textarea></div></div><div class="itws-rt-input-switch"><button>In-Terminal</button><button>Command box</button></div><div class="itws-rt-foot"><span>Connected worker</span></div></div></div></div></main></div></div></body></html>`;
 const server=http.createServer((req,res)=>{res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(html)});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});
-const address=server.address();
-if(!address||typeof address==='string')throw new Error('Workspace panel fixture did not bind');
+const address=server.address();if(!address||typeof address==='string')throw new Error('Dockable workspace fixture did not bind');
 
 let browser;
 try{
   browser=await chromium.launch({channel:'chrome',headless:true});
   const page=await browser.newPage({viewport:{width:1440,height:900}});
+  let ticketCalls=0;
   await page.route('https://sulandra-coding-terminal-worker-production.up.railway.app/**',async route=>{
     const request=route.request();
     if(request.url().endsWith('/workspace/ticket')&&request.method()==='POST'){
-      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,url:'/workspace/term-panel-test/ide/?ticket=fixture'})});
-      return;
+      ticketCalls+=1;
+      const body=request.postDataJSON();
+      const suffix=body.port?`proxy/${body.port}/`:'ide/';
+      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,url:`/workspace/term-dock-test/${suffix}?ticket=fixture-${ticketCalls}`})});return;
     }
     await route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><body>Embedded workspace fixture</body></html>'});
   });
   await page.goto(`http://127.0.0.1:${address.port}/`,{waitUntil:'domcontentloaded'});
   await page.evaluate(()=>sessionStorage.setItem('sulandra:admin:access-token','fixture-admin-token'));
-  await page.addStyleTag({path:terminalCssPath});
-  await page.addStyleTag({path:xtermCssPath});
-  await page.addStyleTag({path:cssPath});
-  await page.addScriptTag({path:jsPath});
+  await page.addStyleTag({path:terminalCssPath});await page.addStyleTag({path:xtermCssPath});await page.addStyleTag({path:cssPath});await page.addScriptTag({path:jsPath});
+
+  const dock=page.locator('#itwsDockableWorkspace');await dock.waitFor({state:'visible'});
+  const terminal=page.locator('.itws-dock-panel[data-panel-id="terminal"]');
+  if(!(await terminal.isVisible()))throw new Error('Terminal panel was not docked');
+  const terminalIdentity=await page.evaluate(()=>document.getElementById('terminalIdentity'));
 
   await page.locator('#itwsWorkspaceIdeButton').click();
-  const panel=page.locator('#itwsWorkspacePanel');
-  await panel.waitFor({state:'visible'});
-  if(!(await panel.evaluate(node=>node.classList.contains('itws-ide-mode'))))throw new Error('IDE did not enter dedicated IDE rail mode');
-  const panelBox=await panel.boundingBox();
-  const closeBox=await panel.locator('.itws-workspace-close').boundingBox();
-  if(!panelBox||!closeBox)throw new Error('IDE rail or close control is not visible');
-  if(panelBox.width>601)throw new Error(`IDE rail exceeded intended max width: ${panelBox.width}`);
-  if(panelBox.x<0||panelBox.x+panelBox.width>1441)throw new Error(`IDE rail escaped viewport horizontally: ${JSON.stringify(panelBox)}`);
-  if(panelBox.y<0||panelBox.y+panelBox.height>901)throw new Error(`IDE rail escaped viewport vertically: ${JSON.stringify(panelBox)}`);
-  if(closeBox.x<panelBox.x||closeBox.x+closeBox.width>panelBox.x+panelBox.width)throw new Error('IDE close control escaped the rail header');
-  const portDisplay=await panel.locator('.itws-workspace-port').evaluate(node=>getComputedStyle(node).display);
-  if(portDisplay!=='none')throw new Error(`IDE mode should hide preview port controls, got display=${portDisplay}`);
-
-  const terminalBox=await page.locator('#itwsRealTerminal').boundingBox();
-  const inputSwitchBox=await page.locator('.itws-rt-input-switch').boundingBox();
-  const footerBox=await page.locator('.itws-rt-foot').boundingBox();
-  const ideToolBox=await page.locator('#itwsWorkspaceIdeButton').boundingBox();
-  const previewToolBox=await page.locator('#itwsWorkspacePreviewButton').boundingBox();
-  if(!terminalBox)throw new Error('terminal disappeared while IDE rail was open');
-  if(terminalBox.y+terminalBox.height>901)throw new Error(`terminal bottom escaped the visible viewport while IDE rail was open: ${JSON.stringify(terminalBox)}`);
-  for(const [name,box] of [['input toolbar',inputSwitchBox],['terminal footer',footerBox],['IDE tool',ideToolBox],['Preview tool',previewToolBox]]){
-    if(!box)throw new Error(`${name} disappeared while IDE rail was open`);
-    if(box.y<0||box.y+box.height>901)throw new Error(`${name} escaped the visible viewport while IDE rail was open: ${JSON.stringify(box)}`);
-  }
-
-  await panel.locator('.itws-workspace-close').click();
-  if(await panel.isVisible())throw new Error('IDE X did not close the workspace rail');
+  const ide=page.locator('.itws-dock-panel[data-panel-id="ide"]');await ide.waitFor({state:'visible'});
+  const ideFrame=ide.locator('iframe');await ideFrame.waitFor({state:'visible'});
+  const ideHandle=await ideFrame.elementHandle();
+  if(!ideHandle)throw new Error('IDE iframe missing');
 
   await page.locator('#itwsWorkspacePreviewButton').click();
-  await panel.waitFor({state:'visible'});
-  if(!(await panel.evaluate(node=>node.classList.contains('itws-preview-mode'))))throw new Error('Preview did not enter preview rail mode');
-  const previewPortDisplay=await panel.locator('.itws-workspace-port').evaluate(node=>getComputedStyle(node).display);
-  if(previewPortDisplay==='none')throw new Error('Preview mode unexpectedly hid the port control');
-  if(!(await panel.locator('.itws-workspace-close').isVisible()))throw new Error('Preview close control is not visible');
-  await panel.locator('.itws-workspace-close').click();
+  const preview=page.locator('.itws-dock-panel[data-panel-id="preview"]');await preview.waitFor({state:'visible'});
+  const previewFrame=preview.locator('iframe');const previewHandle=await previewFrame.elementHandle();if(!previewHandle)throw new Error('Preview iframe missing');
+  if((await page.locator('.itws-dock-splitter').count())!==2)throw new Error('Three visible panels should create two splitters');
 
-  console.log('Workspace panel Chrome regression passed: IDE remains viewport-bound, has a persistent X, terminal/footer tools remain visible, and Preview retains its port controls.');
-}finally{
-  await browser?.close();
-  await new Promise(resolve=>server.close(resolve));
-}
+  const terminalBefore=await terminal.boundingBox();const ideBefore=await ide.boundingBox();
+  if(!terminalBefore||!ideBefore)throw new Error('Docked panel geometry unavailable');
+  const splitter=page.locator('.itws-dock-splitter').first();const splitBox=await splitter.boundingBox();if(!splitBox)throw new Error('Splitter missing');
+  await page.mouse.move(splitBox.x+splitBox.width/2,splitBox.y+80);await page.mouse.down();await page.mouse.move(splitBox.x+90,splitBox.y+80,{steps:4});await page.mouse.up();
+  const terminalAfter=await terminal.boundingBox();const ideAfter=await ide.boundingBox();
+  if(!terminalAfter||!ideAfter||terminalAfter.width<=terminalBefore.width+40)throw new Error('Dragging splitter did not enlarge Terminal');
+  if(ideAfter.width>=ideBefore.width-20)throw new Error('Dragging splitter did not reflow adjacent IDE panel');
+
+  await terminal.locator('.itws-dock-maximize').click();
+  const maxBox=await terminal.boundingBox();if(!maxBox||maxBox.width<1430||maxBox.height<890)throw new Error(`Terminal maximize did not fill viewport: ${JSON.stringify(maxBox)}`);
+  await terminal.locator('.itws-dock-close').click();
+  if(await terminal.evaluate(node=>node.classList.contains('itws-panel-maximized')))throw new Error('Maximized terminal X did not restore it');
+  const sameTerminal=await page.evaluate(node=>node===document.getElementById('terminalIdentity'),terminalIdentity);
+  if(!sameTerminal)throw new Error('Terminal DOM instance was recreated during maximize/restore');
+
+  await ide.locator('.itws-dock-maximize').click();await page.keyboard.press('Escape');
+  if(await ide.evaluate(node=>node.classList.contains('itws-panel-maximized')))throw new Error('Escape did not restore maximized IDE');
+  const sameIde=await ideFrame.evaluate((node,original)=>node===original,ideHandle).catch(()=>false);
+  if(!sameIde)throw new Error('IDE iframe was recreated during maximize/restore');
+
+  await preview.locator('.itws-dock-maximize').click();await preview.locator('.itws-dock-close').click();
+  const samePreview=await previewFrame.evaluate((node,original)=>node===original,previewHandle).catch(()=>false);
+  if(!samePreview)throw new Error('Preview iframe was recreated during maximize/restore');
+  await preview.locator('.itws-dock-close').click();
+  if(await preview.isVisible())throw new Error('Docked Preview X did not hide the panel');
+  if((await page.locator('.itws-dock-splitter').count())!==1)throw new Error('Closing Preview did not reflow to one splitter');
+
+  const stored=await page.evaluate(()=>localStorage.getItem('sulandra:engineering-workspace-layout-v2')||'');
+  if(/ticket|fixture-admin-token|workspace\/term-dock-test/i.test(stored))throw new Error('Persisted layout leaked a ticket, token or authenticated frame URL');
+
+  const callsBefore=ticketCalls;
+  await page.locator('#itwsWorkspaceIdeButton').click();
+  await ide.locator('.itws-dock-maximize').click();await ide.locator('.itws-dock-close').click();
+  if(ticketCalls!==callsBefore)throw new Error('Maximize/restore unexpectedly requested a fresh workspace ticket');
+
+  console.log('Dockable workspace Chrome regression passed: independent Terminal/IDE/Preview panels resize together, maximize/restore preserves DOM state, close reflows space, Escape restores, and persisted layout contains no auth URLs.');
+}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
