@@ -5,6 +5,7 @@ on:
     branches:
       - release/sulandra-1.0
     paths:
+      - assets/it-agent-real-terminal.js
       - assets/it-agent-xterm-production-stack.js
       - assets/it-agent-terminal-wheel-scrollback.js
       - assets/it-agent-terminal-session-resilience.js
@@ -20,6 +21,7 @@ on:
     branches:
       - release/sulandra-1.0
     paths:
+      - assets/it-agent-real-terminal.js
       - assets/it-agent-xterm-production-stack.js
       - assets/it-agent-terminal-wheel-scrollback.js
       - assets/it-agent-terminal-session-resilience.js
@@ -53,6 +55,9 @@ jobs:
         run: |
           npm --prefix terminal-browser install --omit=dev --no-audit --no-fund
           npm --prefix terminal-browser run build
+
+      - name: Verify Restart shell only replaces active terminal
+        run: node terminal-browser/tests/restart-active-terminal-regression.mjs
 
       - name: Install Playwright library
         run: npm --prefix terminal-browser install --no-save --no-audit --no-fund playwright@1.55.0
