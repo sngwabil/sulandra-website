@@ -1,0 +1,141 @@
+name: Terminal Session Crash Recovery
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - terminal-execution-plane/**
+      - Dockerfile.terminal-session
+      - Dockerfile.terminal-executor
+      - scripts/install-terminal-session-recovery.mjs
+      - .github/workflows/terminal-session-recovery.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - terminal-session-agent/**
+      - terminal-execution-plane/**
+      - Dockerfile.terminal-session
+      - Dockerfile.terminal-executor
+      - scripts/install-terminal-session-recovery.mjs
+      - .github/workflows/terminal-session-recovery.yml
+
+permissions:
+  contents: read
+
+jobs:
+  recover-session-container:
+    name: Recover stopped Docker PTY session
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      EXECUTION_TOKEN: ci-execution-token-0123456789abcdef0123456789abcdef
+      OWNER: ci-org:ci-user
+      SESSION_IMAGE: sulandra-terminal-session:recovery-ci
+      EXECUTOR_IMAGE: sulandra-terminal-executor:recovery-ci
+      INTERNAL_NETWORK: sulandra-terminal-recovery-internal
+      PROXY_NETWORK: sulandra-terminal-recovery-proxy
+      CI_ROOT: /tmp/sulandra-terminal-recovery-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production terminal images
+        run: |
+          set -euo pipefail
+          node --check scripts/install-terminal-session-recovery.mjs
+          docker build -f Dockerfile.terminal-session -t "$SESSION_IMAGE" .
+          docker build -f Dockerfile.terminal-executor -t "$EXECUTOR_IMAGE" .
+
+      - name: Start execution plane
+        run: |
+          set -euo pipefail
+          rm -rf "$CI_ROOT"
+          mkdir -p "$CI_ROOT/seed" "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          printf 'recovery test\n' > "$CI_ROOT/seed/README.txt"
+          sudo chown -R 10001:10001 "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          docker network create "$PROXY_NETWORK"
+          docker network create --internal "$INTERNAL_NETWORK"
+          DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+          docker run -d --name sulandra-terminal-executor-recovery-ci \
+            --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+            --group-add "$DOCKER_GID" \
+            -e PORT=8081 \
+            -e TERMINAL_EXECUTION_TOKEN="$EXECUTION_TOKEN" \
+            -e DOCKER_SOCKET_PATH=/var/run/docker.sock \
+            -e TERMINAL_SESSION_IMAGE="$SESSION_IMAGE" \
+            -e TERMINAL_SEED_PATH=/seed \
+            -e TERMINAL_WORKSPACE_ROOT=/workspaces \
+            -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
+            -e TERMINAL_STATE_ROOT=/state \
+            -e TERMINAL_DOCKER_NETWORK="$INTERNAL_NETWORK" \
+            -e TERMINAL_MEMORY_BYTES=536870912 \
+            -e TERMINAL_NANO_CPUS=500000000 \
+            -e TERMINAL_PIDS_LIMIT=256 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$CI_ROOT/seed:/seed:ro" \
+            -v "$CI_ROOT/workspaces:/workspaces" \
+            -v "$CI_ROOT/state:/state" \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            --network "$PROXY_NETWORK" \
+            -p 127.0.0.1:18082:8081 \
+            "$EXECUTOR_IMAGE"
+          docker network connect "$INTERNAL_NETWORK" sulandra-terminal-executor-recovery-ci
+          for i in {1..45}; do
+            curl -fsS -H "Authorization: Bearer $EXECUTION_TOKEN" http://127.0.0.1:18082/healthz >/dev/null && exit 0
+            sleep 1
+          done
+          docker logs sulandra-terminal-executor-recovery-ci
+          exit 1
+
+      - name: Kill session container and prove automatic recovery
+        run: |
+          set -euo pipefail
+          headers=(-H "Authorization: Bearer $EXECUTION_TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json')
+          workspace_json="$(curl -fsS "${headers[@]}" -X POST http://127.0.0.1:18082/v1/workspaces -d '{}')"
+          workspace_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.workspaceId)' "$workspace_json")"
+          session_json="$(curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/workspaces/${workspace_id}/sessions" -d '{"cols":100,"rows":30}')"
+          session_id="$(node -e 'const x=JSON.parse(process.argv[1]);process.stdout.write(x.sessionId)' "$session_json")"
+          cid="$(docker ps -q --filter "label=com.sulandra.session-id=${session_id}" | head -n1)"
+          test -n "$cid"
+
+          test "$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' "$cid")" = "on-failure"
+          test "$(docker exec "$cid" tmux show-options -gv history-limit)" = "50000"
+
+          # Simulate the production failure mode: session process/container exits
+          # and consequently loses its Docker network address.
+          docker kill "$cid" >/dev/null
+
+          recovered=false
+          for i in {1..40}; do
+            marker="RECOVERED_SESSION_${RANDOM}_${i}"
+            command="printf '${marker}\\n'\r"
+            payload="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
+            if curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18082/v1/sessions/${session_id}/input" -d "$payload" >/dev/null 2>&1; then
+              sleep 0.25
+              output="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18082/v1/sessions/${session_id}/output?cursor=0")"
+              if node -e 'const x=JSON.parse(process.argv[1]);process.exit(String(x.data||"").includes(process.argv[2])?0:1)' "$output" "$marker"; then
+                recovered=true
+                break
+              fi
+            fi
+            sleep 0.25
+          done
+          test "$recovered" = true
+          test "$(docker inspect -f '{{.State.Running}}' "$cid")" = "true"
+          address="$(docker inspect -f "{{with index .NetworkSettings.Networks \"$INTERNAL_NETWORK\"}}{{.IPAddress}}{{end}}" "$cid")"
+          test -n "$address"
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          docker logs sulandra-terminal-executor-recovery-ci || true
+          docker ps -a --filter label=com.sulandra.terminal=true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f sulandra-terminal-executor-recovery-ci >/dev/null 2>&1 || true
+          docker ps -aq --filter label=com.sulandra.terminal=true | xargs -r docker rm -f >/dev/null 2>&1 || true
+          docker network rm "$INTERNAL_NETWORK" "$PROXY_NETWORK" >/dev/null 2>&1 || true
