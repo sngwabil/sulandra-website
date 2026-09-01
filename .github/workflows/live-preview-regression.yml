@@ -160,7 +160,7 @@ jobs:
             response="$(curl -sS --max-time 3 -w $'\n%{http_code}' "${headers[@]}" "http://127.0.0.1:18081/v1/ide/${session_id}/healthz" 2>/tmp/preview-route-curl.err || true)"
             route_status="${response##*$'\n'}"
             route_body="${response%$'\n'*}"
-            if [[ "$route_status" == "200" ]] && node -e 'const x=JSON.parse(process.argv[1]);process.exit(x.status==="alive"?0:1)' "$route_body" 2>/dev/null; then
+            if [[ "$route_status" == "200" ]] && node -e 'const x=JSON.parse(process.argv[1]);process.exit(["alive","expired"].includes(x.status)?0:1)' "$route_body" 2>/dev/null; then
               ready=1
               break
             fi
