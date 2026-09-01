@@ -14,6 +14,7 @@
       "scripts/verify-workspace-browser-session.mjs",
       "scripts/fix-workspace-ticket-cors.mjs",
       "scripts/verify-workspace-ticket-cors.mjs",
+      "scripts/install-terminal-history-proxy.mjs",
       "terminal-session-agent/**",
       "Dockerfile.terminal-session",
       "terminal-execution-plane/**",
