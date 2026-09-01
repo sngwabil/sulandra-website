@@ -12,6 +12,7 @@ on:
       - terminal-execution-plane/**
       - terminal-session-agent/**
       - scripts/install-terminal-industry-hardening.mjs
+      - scripts/install-terminal-prompt-cursor.mjs
       - infra/terminal-vps/**
       - .github/workflows/terminal-vps-deploy.yml
 
