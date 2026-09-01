@@ -12,14 +12,19 @@ if(!source.includes(marker)){
 
 const profileMarker='SULANDRA_PROFESSIONAL_BASH_PROFILE_V1';
 if(!source.includes(profileMarker)){
-  const launchAnchor="  const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--norc', '-i'];\n";
-  if(!source.includes(launchAnchor))throw new Error('Terminal Bash launch anchor missing');
-  source=source.replace(
-    launchAnchor,
+  const legacyLaunch="  const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--norc', '-i'];\n";
+  const professionalLaunch="  const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--noprofile', '--rcfile', '/agent/bashrc', '-i'];\n";
+  const markerBlock=
     "  // "+profileMarker+"\n"+
-    "  // Load the immutable Sulandra interactive profile instead of bypassing all Bash rc files.\n"+
-    "  const args = ['-f', tmuxConfigPath, 'new-session', '-A', '-s', tmuxSession, '/bin/bash', '--rcfile', '/agent/bashrc', '-i'];\n"
-  );
+    "  // Load the immutable Sulandra interactive profile while retaining an isolated Bash startup path.\n";
+
+  if(source.includes(professionalLaunch)){
+    source=source.replace(professionalLaunch,markerBlock+professionalLaunch);
+  }else if(source.includes(legacyLaunch)){
+    source=source.replace(legacyLaunch,markerBlock+professionalLaunch);
+  }else{
+    throw new Error('Terminal Bash launch anchor missing');
+  }
 }
 
 await writeFile(target,source,'utf8');
