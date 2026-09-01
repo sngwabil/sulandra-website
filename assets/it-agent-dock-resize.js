@@ -1,8 +1,8 @@
-/* SULANDRA_DOCK_RESIZE_CAPTURE_V5 */
+/* SULANDRA_DOCK_RESIZE_CAPTURE_V6 */
 (()=>{
   'use strict';
-  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V5__)return;
-  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V5__=true;
+  if(window.__SULANDRA_DOCK_RESIZE_CAPTURE_V6__)return;
+  window.__SULANDRA_DOCK_RESIZE_CAPTURE_V6__=true;
   const LAYOUT_KEY='sulandra:engineering-workspace-layout-v2';
   const MIN=280;
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
@@ -50,47 +50,43 @@
     persist(state.row);
     notify();
   };
-  const startPointer=event=>{
+  const makeShield=()=>{
+    const shield=document.createElement('div');
+    shield.className='itws-dock-drag-shield';
+    Object.assign(shield.style,{position:'fixed',inset:'0',zIndex:'2147483646',cursor:'col-resize',background:'transparent',touchAction:'none',userSelect:'none'});
+    document.body.appendChild(shield);
+    return shield;
+  };
+  const startDrag=event=>{
     const target=event.target instanceof Element?event.target:null;
     const splitter=target?.closest('.itws-dock-splitter');
     if(!splitter)return;
     const state=prepare(splitter,event);if(!state)return;
-    const pointerId=event.pointerId;
-    const move=moveEvent=>{if(moveEvent.pointerId===pointerId)resize(state,moveEvent.clientX)};
+    event.preventDefault();
+    const shield=makeShield();
+    document.body.classList.add('itws-dock-resizing');
+    const move=moveEvent=>{moveEvent.preventDefault();resize(state,moveEvent.clientX)};
     const end=endEvent=>{
-      if(endEvent.pointerId!==pointerId)return;
-      splitter.removeEventListener('pointermove',move,true);
-      splitter.removeEventListener('pointerup',end,true);
-      splitter.removeEventListener('pointercancel',end,true);
-      try{if(splitter.hasPointerCapture?.(pointerId))splitter.releasePointerCapture(pointerId)}catch{}
-      finish(state);
-    };
-    splitter.addEventListener('pointermove',move,true);
-    splitter.addEventListener('pointerup',end,true);
-    splitter.addEventListener('pointercancel',end,true);
-    try{splitter.setPointerCapture?.(pointerId)}catch{}
-    document.body.classList.add('itws-dock-resizing');
-    event.preventDefault();
-  };
-  const startMouse=event=>{
-    if('PointerEvent' in window)return;
-    const target=event.target instanceof Element?event.target:null;
-    const splitter=target?.closest('.itws-dock-splitter');
-    if(!splitter)return;
-    const state=prepare(splitter,event);if(!state)return;
-    const move=moveEvent=>resize(state,moveEvent.clientX);
-    const end=()=>{
-      document.removeEventListener('mousemove',move,true);
-      document.removeEventListener('mouseup',end,true);
+      endEvent?.preventDefault?.();
+      shield.removeEventListener('pointermove',move);
+      shield.removeEventListener('pointerup',end);
+      shield.removeEventListener('pointercancel',end);
+      shield.removeEventListener('mousemove',move);
+      shield.removeEventListener('mouseup',end);
       window.removeEventListener('blur',end,true);
+      shield.remove();
       finish(state);
     };
-    document.addEventListener('mousemove',move,true);
-    document.addEventListener('mouseup',end,true);
+    if('PointerEvent' in window){
+      shield.addEventListener('pointermove',move,{passive:false});
+      shield.addEventListener('pointerup',end,{passive:false});
+      shield.addEventListener('pointercancel',end,{passive:false});
+    }else{
+      shield.addEventListener('mousemove',move,{passive:false});
+      shield.addEventListener('mouseup',end,{passive:false});
+    }
     window.addEventListener('blur',end,true);
-    document.body.classList.add('itws-dock-resizing');
-    event.preventDefault();
   };
-  document.addEventListener('pointerdown',startPointer,true);
-  document.addEventListener('mousedown',startMouse,true);
+  document.addEventListener('pointerdown',startDrag,true);
+  if(!('PointerEvent' in window))document.addEventListener('mousedown',startDrag,true);
 })();
