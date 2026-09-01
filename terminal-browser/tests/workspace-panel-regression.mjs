@@ -7,12 +7,16 @@ import { fileURLToPath } from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const repo=path.resolve(here,'../..');
 const cssPath=path.join(repo,'assets/it-agent-workspace-preview.css');
+const terminalCssPath=path.join(repo,'assets/it-agent-real-terminal.css');
+const xtermCssPath=path.join(repo,'assets/it-agent-xterm-emulator.css');
 const jsPath=path.join(repo,'assets/it-agent-workspace-preview.js');
-for(const required of [cssPath,jsPath])if(!fs.existsSync(required))throw new Error(`Missing workspace panel regression dependency: ${required}`);
+for(const required of [cssPath,terminalCssPath,xtermCssPath,jsPath])if(!fs.existsSync(required))throw new Error(`Missing workspace panel regression dependency: ${required}`);
 
 const html=`<!doctype html><html><head><meta charset="utf-8"><title>Workspace panel regression</title>
-<style>html,body{margin:0;width:100%;min-height:1200px}#agent{margin-top:120px;width:100%}.agent-shell{width:100%;min-height:680px}.agent-main{min-width:0}.itws-real-terminal{height:500px}.itws-rt-input-switch{height:44px}.itws-xterm-pane{height:350px}</style>
-</head><body class="it-chatgpt-workspace"><div id="agent"><div class="agent-shell"><main class="agent-main"><div id="itwsRealTerminal" class="itws-real-terminal"><div id="itwsRtTabs"><button class="itws-rt-tab active" data-terminal-id="term-panel-test">Terminal 1</button></div><div class="itws-xterm-pane active"><textarea class="xterm-helper-textarea"></textarea></div><div class="itws-rt-input-switch"></div></div></main></div></div></body></html>`;
+<style>
+html,body{margin:0;width:100%;min-height:1200px}#agent{margin-top:120px;width:100%}.agent-shell{width:100%;min-height:680px}.agent-main{min-width:0}.engineering-controls{height:150px}.itws-rt-head{min-height:92px}.itws-rt-modebar{min-height:48px}.itws-rt-input-switch{display:flex;align-items:center;gap:8px;min-height:74px;padding:8px}.itws-rt-input-switch button{flex:0 0 auto}.itws-rt-foot{min-height:34px}
+</style>
+</head><body class="it-chatgpt-workspace itws-enterprise-shell"><div id="agent"><div class="agent-shell"><main class="agent-main"><div class="engineering-controls">Engineering Workspace controls</div><div id="itwsRealTerminal" class="itws-real-terminal"><div class="itws-rt-head"><div><h2>Engineering Workspace</h2></div></div><div class="itws-rt-modebar"><div class="itws-rt-tools"><button>Run typecheck</button><button>Build web</button><button>Ctrl+C</button><button>Clear</button></div></div><div class="itws-rt-shell"><div id="itwsRtTabs" class="itws-rt-tabs"><button class="itws-rt-tab active" data-terminal-id="term-panel-test">Terminal 1</button></div><div class="itws-xterm-host"><div class="itws-xterm-pane active"><textarea class="xterm-helper-textarea"></textarea></div></div><div class="itws-rt-input-switch"><button>In-Terminal</button><button>Command box</button><span>Following latest output</span><button>Latest</button><button>Copy</button><button>Search</button><button>Export</button><button>Export HTML</button></div><div class="itws-rt-foot"><span>Connected worker</span></div></div></div></main></div></div></body></html>`;
 const server=http.createServer((req,res)=>{res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store'});res.end(html)});
 await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});
 const address=server.address();
@@ -32,6 +36,8 @@ try{
   });
   await page.goto(`http://127.0.0.1:${address.port}/`,{waitUntil:'domcontentloaded'});
   await page.evaluate(()=>sessionStorage.setItem('sulandra:admin:access-token','fixture-admin-token'));
+  await page.addStyleTag({path:terminalCssPath});
+  await page.addStyleTag({path:xtermCssPath});
   await page.addStyleTag({path:cssPath});
   await page.addScriptTag({path:jsPath});
 
@@ -49,6 +55,16 @@ try{
   const portDisplay=await panel.locator('.itws-workspace-port').evaluate(node=>getComputedStyle(node).display);
   if(portDisplay!=='none')throw new Error(`IDE mode should hide preview port controls, got display=${portDisplay}`);
 
+  const terminalBox=await page.locator('#itwsRealTerminal').boundingBox();
+  const inputSwitchBox=await page.locator('.itws-rt-input-switch').boundingBox();
+  const footerBox=await page.locator('.itws-rt-foot').boundingBox();
+  const ideToolBox=await page.locator('#itwsWorkspaceIdeButton').boundingBox();
+  const previewToolBox=await page.locator('#itwsWorkspacePreviewButton').boundingBox();
+  for(const [name,box] of [['terminal',terminalBox],['input toolbar',inputSwitchBox],['terminal footer',footerBox],['IDE tool',ideToolBox],['Preview tool',previewToolBox]]){
+    if(!box)throw new Error(`${name} disappeared while IDE rail was open`);
+    if(box.y<0||box.y+box.height>901)throw new Error(`${name} escaped the visible viewport while IDE rail was open: ${JSON.stringify(box)}`);
+  }
+
   await panel.locator('.itws-workspace-close').click();
   if(await panel.isVisible())throw new Error('IDE X did not close the workspace rail');
 
@@ -60,7 +76,7 @@ try{
   if(!(await panel.locator('.itws-workspace-close').isVisible()))throw new Error('Preview close control is not visible');
   await panel.locator('.itws-workspace-close').click();
 
-  console.log('Workspace panel Chrome regression passed: IDE remains bounded, has a persistent X, and Preview retains its port controls.');
+  console.log('Workspace panel Chrome regression passed: IDE remains bounded, has a persistent X, terminal/footer tools remain visible, and Preview retains its port controls.');
 }finally{
   await browser?.close();
   await new Promise(resolve=>server.close(resolve));
