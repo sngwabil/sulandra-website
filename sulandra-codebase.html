@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>Sulandra Codebase</title>
+  <link rel="icon" href="/favicon-48x48.png">
+  <link rel="stylesheet" href="/assets/sulandra-codebase.css">
+</head>
+<body>
+  <div id="codebaseApp" class="codebase-shell" aria-label="Sulandra Codebase engineering workspace">
+    <header class="titlebar">
+      <div class="brand"><span class="brand-mark">S</span><strong>Sulandra Codebase</strong><span class="edition">Engineering</span></div>
+      <nav class="workspace-switch" aria-label="Engineering workspaces">
+        <a class="workspace-tab" href="/it-solutions.html">Engineering Terminal</a>
+        <button class="workspace-tab active" id="codebaseTab" type="button">Sulandra Codebase</button>
+      </nav>
+      <div class="title-actions">
+        <button id="refreshWorkspace" class="icon-button" type="button" title="Refresh workspace">↻</button>
+        <button id="fullscreenButton" class="icon-button" type="button" title="Enter full screen">⛶</button>
+        <a class="icon-button link-button" href="/it-solutions.html" title="Return to IT Solutions">×</a>
+      </div>
+    </header>
+
+    <div class="commandbar">
+      <button id="workspacePickerButton" class="command-pill" type="button"><span id="workspaceName">Loading workspace…</span><span>⌄</span></button>
+      <div class="command-search"><span>⌕</span><input id="quickOpen" autocomplete="off" placeholder="Search files in this workspace"></div>
+      <div class="connection-state" id="connectionState">CONNECTING</div>
+    </div>
+
+    <main class="ide-grid">
+      <aside class="activitybar" aria-label="Codebase activity">
+        <button class="activity active" data-panel="explorer" title="Explorer">▱</button>
+        <button class="activity" data-panel="search" title="Search">⌕</button>
+        <button class="activity" data-panel="source" title="Source control">⑂</button>
+        <button class="activity" data-panel="testing" title="Testing">▷</button>
+        <span class="activity-spacer"></span>
+        <button class="activity" data-panel="sia" title="SIA engineering context">✦</button>
+      </aside>
+
+      <aside class="sidebar" id="sidebar">
+        <section class="side-panel active" id="panel-explorer">
+          <div class="panel-title"><span>EXPLORER</span><button id="reloadFiles" type="button">↻</button></div>
+          <div class="workspace-caption" id="workspaceCaption">Repository</div>
+          <div id="fileTree" class="file-tree"><div class="empty-state">Loading repository files…</div></div>
+        </section>
+        <section class="side-panel" id="panel-search">
+          <div class="panel-title"><span>SEARCH</span></div>
+          <label class="field-label" for="fileSearch">Find files</label>
+          <input id="fileSearch" class="side-input" placeholder="Filename or path">
+          <div id="searchResults" class="search-results"></div>
+        </section>
+        <section class="side-panel" id="panel-source">
+          <div class="panel-title"><span>SOURCE CONTROL</span></div>
+          <div id="gitSummary" class="git-card">Loading Git status…</div>
+        </section>
+        <section class="side-panel" id="panel-testing">
+          <div class="panel-title"><span>RUN & TEST</span></div>
+          <button class="wide-button" data-test-operation="test" type="button">Run workspace tests</button>
+          <button class="wide-button secondary" data-test-operation="lint" type="button">Run lint</button>
+          <div id="testSideStatus" class="side-note">Uses the existing controlled engineering testing route.</div>
+        </section>
+        <section class="side-panel" id="panel-sia">
+          <div class="panel-title"><span>SIA ENGINEERING</span></div>
+          <p class="side-note">Workspace-aware engineering context from the same IT workbench. Consequential changes remain subject to the existing approval boundary.</p>
+          <div id="siaContext" class="git-card">Select a workspace to load context.</div>
+        </section>
+      </aside>
+
+      <section class="editor-area">
+        <div id="editorTabs" class="editor-tabs"><div class="editor-tab placeholder">No file open</div></div>
+        <div class="editor-toolbar">
+          <div id="breadcrumbs">Sulandra / Codebase</div>
+          <div class="toolbar-actions"><span id="dirtyState"></span><button id="saveFile" type="button" disabled>Save</button></div>
+        </div>
+        <div class="editor-stage">
+          <div id="editorEmpty" class="editor-empty"><div class="empty-logo">S</div><h1>Sulandra Codebase</h1><p>Open a real repository file from Explorer. This surface uses the existing Sulandra engineering workspace and controlled backend.</p><div class="shortcut-grid"><span>Quick open</span><kbd>Ctrl/⌘ P</kbd><span>Save file</span><kbd>Ctrl/⌘ S</kbd><span>Run tests</span><kbd>Ctrl/⌘ Enter</kbd></div></div>
+          <textarea id="codeEditor" class="code-editor hidden" spellcheck="false" aria-label="Source editor"></textarea>
+        </div>
+      </section>
+
+      <aside class="contextbar">
+        <div class="context-head"><strong>Workspace</strong><span id="branchBadge">—</span></div>
+        <div class="context-section"><span class="context-label">Active file</span><strong id="activeFileLabel">None</strong></div>
+        <div class="context-section"><span class="context-label">Repository</span><strong id="repoLabel">Loading…</strong></div>
+        <div class="context-section"><span class="context-label">Git</span><div id="gitContext">Waiting for workspace…</div></div>
+        <div class="context-section grow"><span class="context-label">Engineering output</span><pre id="sideOutput">Codebase initializing…</pre></div>
+      </aside>
+    </main>
+
+    <section class="bottom-panel" id="bottomPanel">
+      <div class="bottom-tabs">
+        <button class="bottom-tab active" data-bottom="terminal">TERMINAL</button>
+        <button class="bottom-tab" data-bottom="problems">PROBLEMS</button>
+        <button class="bottom-tab" data-bottom="output">OUTPUT</button>
+        <button class="bottom-tab" data-bottom="tests">TESTS</button>
+        <span class="bottom-spacer"></span>
+        <button id="toggleBottom" class="bottom-toggle" type="button">⌄</button>
+      </div>
+      <div class="bottom-body">
+        <div class="bottom-view active" id="bottom-terminal"><pre id="terminalContext">Loading real terminal context…</pre></div>
+        <div class="bottom-view" id="bottom-problems"><pre id="problemsOutput">No problems loaded.</pre></div>
+        <div class="bottom-view" id="bottom-output"><pre id="outputLog">Initializing Sulandra Codebase…</pre></div>
+        <div class="bottom-view" id="bottom-tests"><pre id="testOutput">Tests have not been run in this session.</pre></div>
+      </div>
+    </section>
+
+    <footer class="statusbar">
+      <span id="statusBranch">⑂ —</span><span id="statusWorkspace">Workspace: —</span><span id="statusFileCount">0 files</span><span class="status-spacer"></span><span id="statusFullscreen">Windowed</span><span id="statusApi">API: connecting</span>
+    </footer>
+
+    <div id="workspaceMenu" class="workspace-menu hidden" role="menu"></div>
+    <div id="toast" class="toast hidden" role="status"></div>
+  </div>
+  <script src="/assets/sulandra-codebase-core.js"></script>
+  <script src="/assets/sulandra-codebase.js"></script>
+</body>
+</html>
