@@ -18,6 +18,7 @@ RUN node scripts/install-it-agent-conversational-ui.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
  && node scripts/install-workspace-ide-ui.mjs
 
+RUN node --check assets/it-agent-conversational-ui.js
 RUN node scripts/verify-workspace-same-origin-proxy.mjs
 
 RUN npm run build:web \
