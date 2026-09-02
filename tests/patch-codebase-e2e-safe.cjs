@@ -65,4 +65,28 @@ source = source.replace(
     });
     await page.locator('#itwsSulandraCodebaseButton').waitFor({ state: 'visible', timeout: 20_000 });`,
 );
+source = source.replace(
+  "  await step('Verify colorful syntax, line numbers, and stable Explorer/tab DNA', async () => {",
+  `  await step('Keep Ask SIA visible above full-screen Codebase', async () => {
+    const launcher = page.locator('#siaxLauncher');
+    await launcher.waitFor({ state: 'visible', timeout: 15_000 });
+    const layers = await page.evaluate(() => {
+      const launcher = document.querySelector('#siaxLauncher');
+      const root = document.querySelector('#sia-copilot-root');
+      const codebase = document.querySelector('#sulandraCodebase');
+      const numeric = (node) => Number.parseInt(getComputedStyle(node).zIndex || '0', 10) || 0;
+      return {
+        label: String(launcher?.textContent || '').trim(),
+        rootZ: root ? numeric(root) : 0,
+        launcherZ: launcher ? numeric(launcher) : 0,
+        codebaseZ: codebase ? numeric(codebase) : 0,
+      };
+    });
+    assert(/Ask SIA/i.test(layers.label), \`Ask SIA launcher label missing: \${JSON.stringify(layers)}\`);
+    assert(layers.rootZ > layers.codebaseZ && layers.launcherZ > layers.codebaseZ, \`Ask SIA is still behind Codebase: \${JSON.stringify(layers)}\`);
+    return layers;
+  });
+
+  await step('Verify colorful syntax, line numbers, and stable Explorer/tab DNA', async () => {`,
+);
 fs.writeFileSync(file, source, 'utf8');
