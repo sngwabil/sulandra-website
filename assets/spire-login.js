@@ -258,7 +258,11 @@
     loginButton.disabled = true;
     loginButton.textContent = mfaChallengeId ? 'Verifying…' : 'Signing In…';
     try {
-      const body = { identifier, password, portal: 'SPIRE' };
+      // S.P.I.R.E. has its own login surface, but it intentionally reuses the
+      // canonical Sulandra credential endpoint without adding a third backend
+      // portal enum. Clinical entitlement is verified from the returned session
+      // and all chart APIs remain role/permission gated server-side.
+      const body = { identifier, password };
       if (mfaChallengeId) {
         body.mfaChallengeId = mfaChallengeId;
         body.mfaCode = mfaCode;
