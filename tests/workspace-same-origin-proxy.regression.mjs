@@ -40,6 +40,12 @@ const upstream = http.createServer(async (request, response) => {
     return;
   }
 
+  if (request.url === '/workspace/session-1/ide/redirect-test') {
+    response.writeHead(302, { Location: './' });
+    response.end();
+    return;
+  }
+
   if (request.url === '/workspace/session-1/ide/') {
     httpCookie = String(request.headers.cookie || '');
     response.writeHead(200, {
@@ -99,6 +105,12 @@ try {
   if (!ticketResponse.ok) throw new Error(`ticket proxy returned ${ticketResponse.status}`);
   if (ticketAuthorization !== 'Bearer admin-token') throw new Error('ticket endpoint did not receive the Admin bearer token');
 
+  const redirectResponse = await fetch(`${origin}/workspace/session-1/ide/redirect-test`, { redirect: 'manual' });
+  if (redirectResponse.status !== 302) throw new Error(`IDE redirect status changed: ${redirectResponse.status}`);
+  if (redirectResponse.headers.get('location') !== './') {
+    throw new Error(`relative IDE redirect escaped its workspace path: ${redirectResponse.headers.get('location')}`);
+  }
+
   const ideResponse = await fetch(`${origin}/workspace/session-1/ide/`, {
     headers: {
       Authorization: 'Bearer must-not-reach-ide',
@@ -142,7 +154,7 @@ try {
   if (proxy.matches('/api/anything')) throw new Error('workspace proxy accepted a non-workspace path');
   if (proxy.matches('/workspace/session-1/not-ide')) throw new Error('workspace proxy accepted an unapproved workspace path');
 
-  console.log('Same-origin workspace proxy regression passed: ticket POST, IDE HTTP, first-party session cookie, and reconnect WebSocket transport are preserved without leaking unrelated Sulandra cookies.');
+  console.log('Same-origin workspace proxy regression passed: ticket POST, workspace-relative IDE redirect, IDE HTTP, first-party session cookie, and reconnect WebSocket transport are preserved without leaking unrelated Sulandra cookies.');
 } finally {
   await close(frontend);
   await close(upstream);

@@ -15,7 +15,12 @@ if (workspaceUi.includes('sulandra-coding-terminal-worker-production.up.railway.
   throw new Error('Workspace same-origin verification failed: browser asset must not embed the Railway worker origin');
 }
 requireText(workspaceUi, 'fetch(`${GATEWAY}/workspace/ticket`', 'workspace ticket exchange must stay same-origin');
-requireText(workspaceUi, 'v.frame.src=GATEWAY+access.url', 'IDE/Preview iframe URL must stay same-origin');
+requireText(workspaceUi, "createFramePanel('ide','IDE')", 'IDE must remain a distinct IDE panel');
+requireText(workspaceUi, "createFramePanel('preview','Preview')", 'Preview must remain a distinct Preview panel');
+requireText(workspaceUi, 'v.frame.src=GATEWAY+access.url', 'IDE iframe URL must stay same-origin');
+requireText(workspaceUi, 'const PREVIEW_DISCOVERY_PORTS=', 'Preview must discover common development ports');
+requireText(workspaceUi, "method:'HEAD'", 'Preview must verify a live app before loading its iframe');
+requireText(workspaceUi, 'No live app is reachable', 'Preview must show a truthful not-running state instead of a raw proxy error');
 
 requireText(staticServer, "import { createWorkspaceSameOriginProxy } from './workspace-same-origin-proxy.mjs';", 'static server must install workspace proxy');
 requireText(staticServer, 'if (workspaceProxy.handleHttp(request, response)) return;', 'workspace HTTP proxy must run before static method filtering');
@@ -29,5 +34,6 @@ requireText(proxySource, "if (new URL(request.url || '/', 'http://localhost').pa
 requireText(proxySource, "headers.connection = 'Upgrade';", 'WebSocket upgrade headers must be forwarded');
 requireText(proxySource, "socket.pipe(upstreamSocket).pipe(socket);", 'WebSocket sockets must remain bridged after upgrade');
 requireText(proxySource, "replace(/;\\s*Domain=[^;]+/ig, '')", 'upstream cookie domains must not escape the Sulandra origin');
+requireText(proxySource, "if (!/^(?:[a-z][a-z0-9+.-]*:|\\/\\/)/i.test(raw)) return raw;", 'relative IDE redirects must remain relative to the workspace path');
 
-console.log('Workspace same-origin reconnect transport verified: ticket exchange, iframe HTTP, browser session cookies, and WebSocket reconnects stay on the Sulandra origin.');
+console.log('Workspace transport verified: IDE and Preview stay distinct, relative IDE redirects stay inside the workspace, Preview checks real listening ports, and authenticated HTTP/WebSocket traffic remains same-origin.');
