@@ -5,12 +5,11 @@
   const ADMIN_EMAIL_DOMAIN = "@sulandrahealth.com";
   const ADMIN_TOKEN_KEY = "sulandra:admin:access-token";
   const ADMIN_SESSION_KEY = "sulandra:admin:session";
-  // Legacy Admin modules still read the employee-key names. Keep a tab-scoped
-  // compatibility mirror until every Admin module has moved to the admin keys.
   const LEGACY_TOKEN_KEY = "sulandra:employee:access-token";
   const LEGACY_SESSION_KEY = "sulandra:employee:session";
   const ADMIN_ROLES = new Set(["ADMINISTRATOR", "PROGRAM_MANAGER", "HR_MANAGER", "CEO", "DOO"]);
   const OWNER_ROLES = new Set(["ADMINISTRATOR"]);
+  const PROTECTED_SESSION_ASSET = "/assets/sulandra-protected-session.js?v=20260902-protected-session-1";
   const message = document.getElementById("adminLoginMessage");
   const form = document.getElementById("adminLoginForm");
   const emailInput = document.getElementById("adminEmail");
@@ -22,6 +21,60 @@
   const resendButton = document.getElementById("adminResendMfa");
   const unauthorizedWarning = document.getElementById("adminUnauthorizedWarning");
   let mfaChallengeId = "";
+  let protectedSessionPromise = null;
+
+  function loadProtectedSessionRuntime() {
+    if (window.SulandraProtectedSession) return Promise.resolve(window.SulandraProtectedSession);
+    if (protectedSessionPromise) return protectedSessionPromise;
+    protectedSessionPromise = new Promise((resolve) => {
+      let script = document.querySelector('script[data-sulandra-protected-session-loader]');
+      const finish = () => resolve(window.SulandraProtectedSession || null);
+      if (!script) {
+        script = document.createElement("script");
+        script.src = PROTECTED_SESSION_ASSET;
+        script.async = true;
+        script.dataset.sulandraProtectedSessionLoader = "1";
+        document.head.appendChild(script);
+      }
+      if (window.SulandraProtectedSession) return finish();
+      script.addEventListener("load", finish, { once: true });
+      script.addEventListener("error", () => resolve(null), { once: true });
+    });
+    return protectedSessionPromise;
+  }
+
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
+  }
+
+  function armProtectedFullscreenFromGesture() {
+    loadProtectedSessionRuntime();
+    if (fullscreenElement()) return;
+    try { sessionStorage.setItem("sulandra:protected-session:fullscreen-intent", "1"); } catch {}
+    const element = document.documentElement;
+    const request = element.requestFullscreen || element.webkitRequestFullscreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullscreen;
+    if (!request) return;
+    try {
+      const result = request === element.requestFullscreen ? request.call(element, { navigationUI: "hide" }) : request.call(element);
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch {
+      try {
+        const result = request.call(element);
+        if (result && typeof result.catch === "function") result.catch(() => {});
+      } catch {}
+    }
+  }
+
+  async function enterProtectedSession(target) {
+    const runtime = window.SulandraProtectedSession || await loadProtectedSessionRuntime();
+    if (runtime?.enter) {
+      runtime.enter(target, { portal: "ADMIN" });
+      return;
+    }
+    window.location.assign(target);
+  }
+
+  loadProtectedSessionRuntime();
 
   function showMessage(text, type) {
     message.textContent = text;
@@ -47,9 +100,7 @@
   }
 
   function clearAdminSession() {
-    for (const key of [ADMIN_TOKEN_KEY, ADMIN_SESSION_KEY, LEGACY_TOKEN_KEY, LEGACY_SESSION_KEY]) {
-      window.sessionStorage.removeItem(key);
-    }
+    for (const key of [ADMIN_TOKEN_KEY, ADMIN_SESSION_KEY, LEGACY_TOKEN_KEY, LEGACY_SESSION_KEY]) window.sessionStorage.removeItem(key);
   }
 
   function saveAdminSession(token, session) {
@@ -76,9 +127,7 @@
     if (requested) {
       try {
         const resolved = new URL(requested, window.location.origin);
-        if (resolved.origin === window.location.origin && /(^|\/)admin(?:-|\.|\/|$)/i.test(resolved.pathname)) {
-          return resolved.pathname + resolved.search + resolved.hash;
-        }
+        if (resolved.origin === window.location.origin && /(^|\/)admin(?:-|\.|\/|$)/i.test(resolved.pathname)) return resolved.pathname + resolved.search + resolved.hash;
       } catch {}
     }
     return OWNER_ROLES.has(normalizeRole(session)) ? "/admin.html" : "/admin-operations.html";
@@ -154,7 +203,7 @@
       }
       hideUnauthorizedWarning();
       saveAdminSession(token, session);
-      window.location.assign(safeReturnTarget(session));
+      await enterProtectedSession(safeReturnTarget(session));
     } catch (error) {
       showMessage(error.message || "Unable to sign in.", "error");
     } finally {
@@ -162,6 +211,10 @@
       resendButton.disabled = false;
     }
   }
+
+  document.querySelector(".auth-card")?.addEventListener("click", (event) => {
+    if (event.isTrusted) armProtectedFullscreenFromGesture();
+  }, { capture: true });
 
   document.getElementById("adminClear").addEventListener("click", () => {
     emailInput.value = "";
@@ -197,14 +250,13 @@
     const identifier = emailInput.value.trim();
     if (identifier && !isManagementEmail(identifier)) showUnauthorizedWarning();
   });
-
   emailInput.addEventListener("input", () => {
     const identifier = emailInput.value.trim();
     clearMessage();
     if (!identifier || isManagementEmail(identifier)) hideUnauthorizedWarning();
   });
-
   resendButton.addEventListener("click", () => {
+    armProtectedFullscreenFromGesture();
     resetMfa();
     performLogin({ resend: true });
   });
@@ -213,6 +265,7 @@
   });
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    armProtectedFullscreenFromGesture();
     await performLogin();
   });
 })();
