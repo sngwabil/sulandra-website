@@ -3,7 +3,7 @@
 'use strict';
 if(window.__SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V3__)return;
 window.__SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V3__=true;
-const GATEWAY='https://sulandra-coding-terminal-worker-production.up.railway.app';
+const GATEWAY=window.location.origin;
 const PORT_KEY='sulandra:workspace-preview-port',LAYOUT_KEY='sulandra:engineering-workspace-layout-v2';
 const DEFAULT={terminal:52,ide:24,preview:24},MIN=280,panels=new Map();
 let dock,row,maximized=null,resizeRaf=0,maxAnchor=null;
