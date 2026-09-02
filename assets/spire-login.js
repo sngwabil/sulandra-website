@@ -16,14 +16,13 @@
   const passwordInput = document.getElementById('spirePassword');
   const loginButton = document.getElementById('spireLoginButton');
   const ssoState = document.getElementById('spireSsoState');
-  let mirrorTimer = null;
   let mfaChallengeId = '';
   let protectedSessionPromise = null;
+  let mirrorTimer = null;
 
   const clean = (value) => String(value ?? '').trim();
   const token = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || '';
-
-  function sessionObject() {
+  const sessionObject = () => {
     for (const storage of [sessionStorage, localStorage]) {
       try {
         const value = JSON.parse(storage.getItem(SESSION_KEY) || 'null');
@@ -31,7 +30,14 @@
       } catch {}
     }
     return {};
-  }
+  };
+  const roleOf = (session) => clean(session?.role || session?.user?.role || session?.profile?.role).toUpperCase();
+  const spireAllowed = (session) => {
+    const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
+    if (session?.access?.spire?.enabled === true || session?.user?.access?.spire?.enabled === true) return true;
+    if (permissions.includes('SPIRE_CHART_READ')) return true;
+    return new Set(['ADMINISTRATOR','PROGRAM_MANAGER','DSP','DELEGATING_NURSE','LPN','RN','HOUSE_MANAGER','AUDITOR','CEO','DOO','COO']).has(roleOf(session));
+  };
 
   function saveSession(accessToken, session) {
     const encoded = JSON.stringify({ ...session, portalContext: 'SPIRE' });
@@ -40,7 +46,6 @@
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_KEY);
   }
-
   function clearSession() {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SESSION_KEY);
@@ -48,28 +53,12 @@
     localStorage.removeItem(SESSION_KEY);
   }
 
-  function roleOf(session) {
-    return clean(session?.role || session?.user?.role || session?.profile?.role).toUpperCase();
-  }
-
-  function spireAllowed(session) {
-    const permissions = Array.isArray(session?.permissions) ? session.permissions : [];
-    if (session?.access?.spire?.enabled === true || session?.user?.access?.spire?.enabled === true) return true;
-    if (permissions.includes('SPIRE_CHART_READ')) return true;
-    return new Set(['ADMINISTRATOR','PROGRAM_MANAGER','DSP','DELEGATING_NURSE','LPN','RN','HOUSE_MANAGER','AUDITOR','CEO','DOO','COO']).has(roleOf(session));
-  }
-
   function userScope() {
     const session = sessionObject();
     const user = session.user || session.session || session;
     return clean(user.id || user.userId || user.sub || user.email || user.username).toLowerCase();
   }
-
-  function scopedHomeKey(base) {
-    const scope = userScope();
-    return scope ? `${base}:user:${scope}` : base;
-  }
-
+  function scopedHomeKey(base) { const scope = userScope(); return scope ? `${base}:user:${scope}` : base; }
   function restoreRememberedHome() {
     if (!userScope()) return;
     for (const base of HOME_KEYS) {
@@ -79,7 +68,6 @@
       sessionStorage.setItem(base, value);
     }
   }
-
   function mirrorRememberedHome() {
     if (!userScope()) return;
     for (const base of HOME_KEYS) {
@@ -87,7 +75,6 @@
       if (value) localStorage.setItem(scopedHomeKey(base), value);
     }
   }
-
   function startHomeMirror() {
     if (mirrorTimer) clearInterval(mirrorTimer);
     mirrorRememberedHome();
@@ -111,7 +98,6 @@
     const tab = readIncoming('tab');
     if (company) query.set('company', company);
     if (home) query.set('spireHome', home);
-
     if (patient) {
       query.set('spireShell', '1');
       query.set('patientId', patient);
@@ -120,7 +106,6 @@
       if (tab && !chartHash.get('tab')) chartHash.set('tab', tab);
       return `/spire/master.html?${query}${chartHash.toString() ? `#${chartHash}` : ''}`;
     }
-
     query.set('spireShell', '1');
     return `/spire/client-station.html?${query}`;
   }
@@ -132,7 +117,6 @@
     } catch {}
     return null;
   }
-
   function loadProtectedSessionRuntime() {
     const inherited = parentProtectedRuntime();
     if (inherited) return Promise.resolve(inherited);
@@ -154,30 +138,19 @@
     });
     return protectedSessionPromise;
   }
-
   function armProtectedFullscreenFromGesture() {
     const runtime = parentProtectedRuntime() || window.SulandraProtectedSession;
-    if (runtime?.requestFullscreenFromGesture) {
-      runtime.requestFullscreenFromGesture();
-      return;
-    }
+    if (runtime?.requestFullscreenFromGesture) return void runtime.requestFullscreenFromGesture();
     loadProtectedSessionRuntime().then((loaded) => loaded?.requestFullscreenFromGesture?.()).catch(() => {});
   }
-
   async function enterWorkspace() {
     restoreRememberedHome();
     startHomeMirror();
     const destination = stationUrl();
     let runtime = parentProtectedRuntime() || window.SulandraProtectedSession;
     runtime = runtime || await loadProtectedSessionRuntime();
-    if (runtime?.enter) {
-      runtime.enter(destination, { portal: 'SPIRE' });
-      return;
-    }
-    if (runtime?.navigate) {
-      runtime.navigate(destination, { portal: 'SPIRE' });
-      return;
-    }
+    if (runtime?.enter) return void runtime.enter(destination, { portal: 'SPIRE' });
+    if (runtime?.navigate) return void runtime.navigate(destination, { portal: 'SPIRE' });
     document.getElementById('spireLoginPage').hidden = true;
     document.getElementById('spireWorkspaceShell').hidden = false;
     frame.src = destination;
@@ -187,23 +160,10 @@
     document.getElementById('spireWorkspaceShell').hidden = true;
     document.getElementById('spireLoginPage').hidden = false;
     if (ssoState) ssoState.textContent = 'S.P.I.R.E. authentication required';
-    if (status) {
-      status.className = 'status';
-      status.textContent = message || 'Enter your Sulandra Health system credentials to open S.P.I.R.E.';
-    }
+    if (status) { status.className = 'status'; status.textContent = message || 'Enter your Sulandra Health system credentials to open S.P.I.R.E.'; }
   }
-
-  function showError(message) {
-    if (!status) return;
-    status.className = 'status error';
-    status.textContent = message;
-  }
-
-  function showSuccess(message) {
-    if (!status) return;
-    status.className = 'status success';
-    status.textContent = message;
-  }
+  function showError(message) { if (status) { status.className = 'status error'; status.textContent = message; } }
+  function showSuccess(message) { if (status) { status.className = 'status success'; status.textContent = message; } }
 
   function ensureMfaUi() {
     let panel = document.getElementById('spireMfaPanel');
@@ -217,7 +177,6 @@
     actions?.parentNode?.insertBefore(panel, actions);
     return panel;
   }
-
   function showMfa(payload) {
     mfaChallengeId = clean(payload.mfaChallengeId);
     const panel = ensureMfaUi();
@@ -232,8 +191,10 @@
   }
 
   async function verifyExistingSession() {
+    const existing = sessionObject();
+    if (clean(existing.portalContext).toUpperCase() !== 'SPIRE') return false;
     const accessToken = token();
-    if (!accessToken) return false;
+    if (!accessToken || !spireAllowed(existing)) return false;
     try {
       const response = await fetch(API + '/api/auth/me', {
         headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -241,11 +202,9 @@
       });
       if (!response.ok) return false;
       const payload = await response.json().catch(() => ({}));
-      const current = payload.session || payload.data || payload || sessionObject();
-      return spireAllowed(current) || spireAllowed(sessionObject());
-    } catch {
-      return false;
-    }
+      const current = payload.session || payload.data || payload || existing;
+      return spireAllowed(current);
+    } catch { return false; }
   }
 
   async function performLogin() {
@@ -254,41 +213,25 @@
     const mfaCode = clean(document.getElementById('spireMfaCode')?.value).replace(/\D/g, '').slice(0, 6);
     if (!identifier || !password) return showError('Enter your Sulandra username or email and password.');
     if (mfaChallengeId && mfaCode.length !== 6) return showError('Enter the 6-digit security code sent to your phone.');
-
     loginButton.disabled = true;
     loginButton.textContent = mfaChallengeId ? 'Verifying…' : 'Signing In…';
     try {
-      // S.P.I.R.E. owns a distinct sign-in surface while reusing the canonical
-      // Sulandra credential endpoint. The backend keeps its two explicit human
-      // portal modes (EMPLOYEE/ADMIN); SPIRE entitlement is verified from the
-      // returned session and again by role/permission-gated chart APIs.
+      // S.P.I.R.E. owns a separate sign-in door. It reuses the canonical
+      // credential endpoint without inventing a third backend portal enum; chart
+      // entitlement remains enforced by the returned access/role/permissions and
+      // by the server-side clinical route guards.
       const body = { identifier, password };
-      if (mfaChallengeId) {
-        body.mfaChallengeId = mfaChallengeId;
-        body.mfaCode = mfaCode;
-      }
+      if (mfaChallengeId) { body.mfaChallengeId = mfaChallengeId; body.mfaCode = mfaCode; }
       const response = await fetch(API + '/api/auth/login', {
-        method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(body)
       });
       const payload = await response.json().catch(() => ({}));
-      if (payload.mfaRequired && payload.mfaMethod === 'sms' && payload.mfaChallengeId) {
-        clearSession();
-        showMfa(payload);
-        return;
-      }
-      if (!response.ok) {
-        clearSession();
-        throw new Error(payload.error || 'Unable to sign in to S.P.I.R.E.');
-      }
+      if (payload.mfaRequired && payload.mfaMethod === 'sms' && payload.mfaChallengeId) { clearSession(); showMfa(payload); return; }
+      if (!response.ok) { clearSession(); throw new Error(payload.error || 'Unable to sign in to S.P.I.R.E.'); }
       const session = payload.session || payload.data || payload;
       const accessToken = session.accessToken || session.bearerToken || session.token;
       if (!accessToken) throw new Error('The server did not return an access token.');
-      if (!spireAllowed(session)) {
-        clearSession();
-        throw new Error('This account does not have S.P.I.R.E. chart access.');
-      }
+      if (!spireAllowed(session)) { clearSession(); throw new Error('This account does not have S.P.I.R.E. chart access.'); }
       saveSession(accessToken, session);
       mfaChallengeId = '';
       showSuccess('S.P.I.R.E. sign in verified. Opening Client Station…');
@@ -309,18 +252,12 @@
   }
 
   loadProtectedSessionRuntime();
-  form?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    armProtectedFullscreenFromGesture();
-    await performLogin();
-  });
-  form?.addEventListener('click', (event) => {
-    if (event.isTrusted) armProtectedFullscreenFromGesture();
-  }, { capture: true });
+  form?.addEventListener('submit', async (event) => { event.preventDefault(); armProtectedFullscreenFromGesture(); await performLogin(); });
+  form?.addEventListener('click', (event) => { if (event.isTrusted) armProtectedFullscreenFromGesture(); }, { capture: true });
   document.addEventListener('keydown', refreshWorkspaceInsteadOfShell, true);
   window.addEventListener('beforeunload', () => { if (mirrorTimer) clearInterval(mirrorTimer); });
 
-  showLogin('Checking existing Sulandra session…');
+  showLogin('Checking existing S.P.I.R.E. session…');
   verifyExistingSession().then(async (authenticated) => {
     if (authenticated) {
       if (ssoState) ssoState.textContent = 'Existing S.P.I.R.E. access verified';
@@ -328,6 +265,6 @@
       await enterWorkspace();
       return;
     }
-    showLogin('Enter your Sulandra Health system credentials to sign in to S.P.I.R.E.');
+    showLogin('S.P.I.R.E. requires its own sign in. Enter your Sulandra Health system credentials.');
   });
 })();
