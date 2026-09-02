@@ -29,6 +29,8 @@ forbidAll('Admin login protected session',adminLogin,['window.location.assign(sa
 requireAll('S.P.I.R.E. native login',spireLogin,[
   'SPIRE_NATIVE_LOGIN_V2','S.P.I.R.E. chart access','const body = { identifier, password };',
   "portalContext: 'SPIRE'","runtime.enter(destination, { portal: 'SPIRE' })",'spireAllowed(session)',
+  "clean(existing.portalContext).toUpperCase() !== 'SPIRE'",
+  'S.P.I.R.E. requires its own sign in.',
 ]);
 forbidAll('S.P.I.R.E. native login',spireLogin,["/employee-login.html?returnTo=","const body = { identifier, password, portal: 'SPIRE' }"]);
 requireAll('S.P.I.R.E. sign-in page',spireLoginHtml,['<h1>S.P.I.R.E. Sign In</h1>','SPIRE_NATIVE_LOGIN_V2','20260902-spire-native-login-2']);
@@ -45,4 +47,4 @@ requireAll('Static publication boundary',ssoInstaller,[
   'admin-login-railway.js?v=20260902-protected-session-2',
 ]);
 
-console.log('Protected auth navigation verified: Employee/Admin/S.P.I.R.E. share the fullscreen shell, S.P.I.R.E. owns its login surface, and Employee Portal publishes no Admin shortcut.');
+console.log('Protected auth navigation verified: Employee/Admin/S.P.I.R.E. share the fullscreen shell, S.P.I.R.E. requires its own sign-in session, and Employee Portal publishes no Admin shortcut.');
