@@ -26,20 +26,19 @@ const dividerAfter = `function installTerminalDividers(host,count){
    const divider=document.createElement('div');divider.className=\`scb-term-divider ${'${'}className}\`;divider.style.touchAction='none';
    divider.addEventListener('pointerdown',event=>{
      if(event.button!==0)return;event.preventDefault();event.stopPropagation();
-     const rect=host.getBoundingClientRect(),pointerId=event.pointerId;
-     const move=e=>{
-       if(e.pointerId!==pointerId)return;
-       if(axis==='x'){const pct=Math.max(28,Math.min(72,((e.clientX-rect.left)/rect.width)*100));host.style.setProperty('--scb-term-col',\`${'${'}pct}%\`)}
-       else{const pct=Math.max(28,Math.min(72,((e.clientY-rect.top)/rect.height)*100));host.style.setProperty('--scb-term-row',\`${'${'}pct}%\`)}
+     const rect=host.getBoundingClientRect();let finished=false;
+     const update=(clientX,clientY)=>{
+       if(axis==='x'){const pct=Math.max(28,Math.min(72,((clientX-rect.left)/Math.max(1,rect.width))*100));host.style.setProperty('--scb-term-col',\`${'${'}pct}%\`)}
+       else{const pct=Math.max(28,Math.min(72,((clientY-rect.top)/Math.max(1,rect.height))*100));host.style.setProperty('--scb-term-row',\`${'${'}pct}%\`)}
      };
-     const up=e=>{
-       if(e?.pointerId!=null&&e.pointerId!==pointerId)return;
-       window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',up,true);window.removeEventListener('pointercancel',up,true);
-       try{divider.releasePointerCapture?.(pointerId)}catch{}
+     const pointerMove=e=>update(e.clientX,e.clientY);
+     const mouseMove=e=>update(e.clientX,e.clientY);
+     const up=()=>{
+       if(finished)return;finished=true;
+       window.removeEventListener('pointermove',pointerMove,true);window.removeEventListener('mousemove',mouseMove,true);window.removeEventListener('pointerup',up,true);window.removeEventListener('mouseup',up,true);window.removeEventListener('pointercancel',up,true);
        void fitVisibleTerminals();
      };
-     try{divider.setPointerCapture?.(pointerId)}catch{}
-     window.addEventListener('pointermove',move,true);window.addEventListener('pointerup',up,true);window.addEventListener('pointercancel',up,true);
+     window.addEventListener('pointermove',pointerMove,true);window.addEventListener('mousemove',mouseMove,true);window.addEventListener('pointerup',up,true);window.addEventListener('mouseup',up,true);window.addEventListener('pointercancel',up,true);
    });
    host.appendChild(divider);
  };
