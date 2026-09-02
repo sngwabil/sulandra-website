@@ -14,7 +14,7 @@ function forbid(source, marker, label) {
 }
 
 for (const marker of [
-  'SULANDRA_PROTECTED_SESSION_V1',
+  'SULANDRA_PROTECTED_SESSION_V2',
   'requestFullscreen',
   'webkitRequestFullscreen',
   'mozRequestFullScreen',
@@ -25,10 +25,14 @@ for (const marker of [
   'Resume Full Screen',
   'sulandraProtectedFrame',
   'sandbox="allow-forms allow-scripts allow-same-origin allow-downloads allow-modals allow-pointer-lock allow-presentation"',
+  'allow="fullscreen; camera; microphone; geolocation; clipboard-read; clipboard-write"',
   'External browsing is unavailable inside the protected Sulandra session.',
   'window.history.replaceState',
   'frame.addEventListener("load", installChildNavigationBridge)',
   'childWindow.open = function',
+  'function inferPortal',
+  'return "SPIRE"',
+  'enter: (route, options) => navigate(route, options)',
 ]) requireMarker(runtime, marker, 'protected session runtime');
 
 forbid(runtime, 'allow-top-navigation', 'protected session iframe sandbox');
@@ -45,6 +49,7 @@ for (const [source, label, portal] of [[admin, 'Admin login', 'ADMIN'], [employe
     'webkitRequestFullscreen',
     'mozRequestFullScreen',
     'msRequestFullscreen',
+    '20260902-protected-session-2',
   ]) requireMarker(source, marker, label);
 }
 
@@ -53,8 +58,8 @@ forbid(employee, 'window.location.assign(safeReturnTarget() || "/employee-portal
 
 for (const marker of [
   'data-sulandra-session-shell',
-  '/assets/sulandra-protected-session.js?v=20260902-protected-session-1',
+  '/assets/sulandra-protected-session.js?v=20260902-protected-session-2',
   'Protected Session',
 ]) requireMarker(shell, marker, 'reloadable session shell');
 
-console.log('Sulandra protected fullscreen session verified: login gesture entry, persistent shell navigation, cross-browser Fullscreen API fallbacks, top-navigation containment, external-popup containment, and explicit resume behavior are present.');
+console.log('Sulandra protected fullscreen session v2 verified: Employee/Admin/S.P.I.R.E. route context, login gesture entry, persistent shell navigation, cross-browser Fullscreen API fallbacks, top-navigation containment, external-popup containment, and explicit resume behavior are present.');
