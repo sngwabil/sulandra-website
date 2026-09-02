@@ -2,7 +2,6 @@ import { spawnSync } from 'node:child_process';
 import { PrismaClient } from '@prisma/client';
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const node = process.execPath;
 const lockNamespace = 1936749168;
 const lockKey = 20260810;
 const lockRetryMs = 1500;
@@ -16,8 +15,12 @@ function constrainedDatabaseUrl(rawDatabaseUrl) {
     const databaseUrl = new URL(rawDatabaseUrl);
     if (databaseUrl.protocol === 'postgres:' || databaseUrl.protocol === 'postgresql:') {
       databaseUrl.searchParams.set('connection_limit', '1');
-      if (!databaseUrl.searchParams.has('pool_timeout')) databaseUrl.searchParams.set('pool_timeout', '30');
-      if (!databaseUrl.searchParams.has('connect_timeout')) databaseUrl.searchParams.set('connect_timeout', '10');
+      if (!databaseUrl.searchParams.has('pool_timeout')) {
+        databaseUrl.searchParams.set('pool_timeout', '30');
+      }
+      if (!databaseUrl.searchParams.has('connect_timeout')) {
+        databaseUrl.searchParams.set('connect_timeout', '10');
+      }
       return databaseUrl.toString();
     }
   } catch {
@@ -35,18 +38,19 @@ function childEnvironment() {
 
 function runScript(scriptName) {
   console.log(`[db:predeploy] running npm run ${scriptName}`);
-  const result = spawnSync(npm, ['run', scriptName], { stdio: 'inherit', env: childEnvironment() });
-  if (result.status !== 0) throw new Error(`npm run ${scriptName} failed with exit code ${result.status ?? 'unknown'}`);
-}
-
-function runNodeScript(relativePath) {
-  console.log(`[db:predeploy] running node ${relativePath}`);
-  const result = spawnSync(node, [relativePath], { stdio: 'inherit', env: childEnvironment() });
-  if (result.status !== 0) throw new Error(`node ${relativePath} failed with exit code ${result.status ?? 'unknown'}`);
+  const result = spawnSync(npm, ['run', scriptName], {
+    stdio: 'inherit',
+    env: childEnvironment(),
+  });
+  if (result.status !== 0) {
+    throw new Error(`npm run ${scriptName} failed with exit code ${result.status ?? 'unknown'}`);
+  }
 }
 
 const datasourceUrl = constrainedDatabaseUrl(process.env.DATABASE_URL);
-const prisma = datasourceUrl ? new PrismaClient({ datasourceUrl }) : new PrismaClient();
+const prisma = datasourceUrl
+  ? new PrismaClient({ datasourceUrl })
+  : new PrismaClient();
 
 try {
   console.log('[db:predeploy] waiting for Sulandra PostgreSQL advisory lock...');
@@ -58,23 +62,27 @@ try {
           lockNamespace,
           lockKey,
         );
-        if (rows[0]?.locked === true) break;
+
+        if (rows[0]?.locked === true) {
+          break;
+        }
+
         await wait(lockRetryMs);
       }
 
       console.log('[db:predeploy] acquired deployment advisory lock.');
+
       runScript('db:check-prerequisites');
       runScript('db:recover-failed-doo-migration');
       runScript('db:migrate:deploy');
       runScript('db:verify-careers-schema');
 
-      if (process.env.SULANDRA_RAILWAY_MIGRATION_BOOTSTRAP === '1') {
-        runNodeScript('scripts/bootstrap-railway-migration-identity.mjs');
-      }
-
       console.log('[db:predeploy] database predeploy completed successfully.');
     },
-    { maxWait: 600000, timeout: 900000 },
+    {
+      maxWait: 600000,
+      timeout: 900000,
+    },
   );
 } finally {
   await prisma.$disconnect();

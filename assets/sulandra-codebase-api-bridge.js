@@ -1,13 +1,9 @@
-/* SULANDRA_CODEBASE_API_BRIDGE_V3_ENV_AWARE */
+/* SULANDRA_CODEBASE_API_BRIDGE_V1 */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_API_BRIDGE_V3_ENV_AWARE__)return;
-window.__SULANDRA_CODEBASE_API_BRIDGE_V3_ENV_AWARE__=true;
+if(window.__SULANDRA_CODEBASE_API_BRIDGE_V1__)return;
+window.__SULANDRA_CODEBASE_API_BRIDGE_V1__=true;
 
-// Production defaults to the canonical Sulandra API. Railway canary builds
-// rewrite this constant from VITE_API_URL before static publication, allowing
-// Codebase to exercise Railway Postgres without redirecting the live site away
-// from its historical production dataset before the final migration cutover.
 const API_ORIGIN='https://sulandra-website-production-5fc4.up.railway.app';
 const CODEBASE_PATH=/^\/api\/it-solutions\/codebase\/(?:tree|file)(?:\?|$)/;
 const nativeFetch=window.fetch.bind(window);
