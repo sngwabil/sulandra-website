@@ -84,6 +84,15 @@ source = source.replace(
   "  await installApiProxy(context);",
   "  await installApiProxy(context, featureToken);",
 );
+source = source.replace(
+  "  const page = await context.newPage();",
+  `  const page = await context.newPage();
+  page.on('request', (request) => {
+    if (/\\/api\\/it-solutions\\/terminal\\//.test(request.url())) {
+      console.log('[TERMINAL REQUEST] ' + request.method() + ' ' + request.url().replace(/[?&](?:token|code|key|secret|password|session)=[^&]+/gi, '[REDACTED_QUERY]'));
+    }
+  });`,
+);
 
 source = source.replace(
   "    await page.locator('#itwsSulandraCodebaseButton').waitFor({ state: 'visible', timeout: 30_000 });",
@@ -133,6 +142,24 @@ source = source.replace(
   });
 
   await step('Verify colorful syntax, line numbers, and stable Explorer/tab DNA', async () => {`,
+);
+
+source = source.replace(
+  "    await page.locator('#scbSave').click();\n    await page.waitForFunction((path) => (document.querySelector('#scbStatus')?.textContent || '').includes(path) && (document.querySelector('#scbStatus')?.textContent || '').includes('save command accepted'), existingPath, { timeout: 30_000 });",
+  `    await page.locator('#scbSave').click();
+    await page.waitForTimeout(3500);
+    const saveDiag = await page.evaluate(() => ({
+      status: String(document.querySelector('#scbStatus')?.textContent || ''),
+      terminalRoot: Boolean(document.querySelector('#itwsRealTerminal')),
+      terminalTabs: [...document.querySelectorAll('#itwsRtTabs [data-terminal-id]')].map((n) => n.getAttribute('data-terminal-id')),
+      newTab: Boolean(document.querySelector('#itwsRtNewTab')),
+      workerState: String(document.querySelector('#itwsRtWorkerState')?.textContent || ''),
+      restBridge: Boolean(window.__SULANDRA_TERMINAL_REST_BRIDGE__),
+      xtermHost: Boolean(document.querySelector('#itwsXtermHost')),
+      apiBase: (() => { try { return typeof API === 'string' ? API : ''; } catch { return ''; } })(),
+    }));
+    console.log('[SAVE DIAG] ' + JSON.stringify(saveDiag));
+    await page.waitForFunction((path) => (document.querySelector('#scbStatus')?.textContent || '').includes(path) && (document.querySelector('#scbStatus')?.textContent || '').includes('save command accepted'), existingPath, { timeout: 30_000 });`,
 );
 
 fs.writeFileSync(file, source, 'utf8');
