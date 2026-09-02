@@ -4,6 +4,7 @@
   const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
+  const PROTECTED_SESSION_ASSET = "/assets/sulandra-protected-session.js?v=20260902-protected-session-2";
   const message = document.getElementById("msg");
   const usernamePanel = document.getElementById("usernameRecoveryPanel");
   const passwordPanel = document.getElementById("passwordRecoveryPanel");
@@ -13,8 +14,8 @@
   const resendMfaCode = document.getElementById("resendMfaCode");
   const signInButton = document.getElementById("signInButton");
   let mfaChallengeId = "";
+  let protectedSessionPromise = null;
 
-  // Remove any legacy credential query parameters left by an older broken form submission.
   try {
     const current = new URL(window.location.href);
     let changed = false;
@@ -27,6 +28,69 @@
     if (changed) window.history.replaceState({}, document.title, current.pathname + current.search + current.hash);
   } catch {}
 
+  function fullscreenElement() {
+    try {
+      return window.top?.document?.fullscreenElement || document.fullscreenElement || null;
+    } catch {
+      return document.fullscreenElement || null;
+    }
+  }
+
+  function loadProtectedSessionRuntime() {
+    try {
+      const inherited = window.parent && window.parent !== window ? window.parent.SulandraProtectedSession : null;
+      if (inherited) return Promise.resolve(inherited);
+    } catch {}
+    if (window.SulandraProtectedSession) return Promise.resolve(window.SulandraProtectedSession);
+    if (protectedSessionPromise) return protectedSessionPromise;
+    protectedSessionPromise = new Promise((resolve) => {
+      let script = document.querySelector('script[data-sulandra-protected-session-loader]');
+      const finish = () => resolve(window.SulandraProtectedSession || null);
+      if (!script) {
+        script = document.createElement("script");
+        script.src = PROTECTED_SESSION_ASSET;
+        script.async = true;
+        script.dataset.sulandraProtectedSessionLoader = "1";
+        document.head.appendChild(script);
+      }
+      if (window.SulandraProtectedSession) return finish();
+      script.addEventListener("load", finish, { once: true });
+      script.addEventListener("error", () => resolve(null), { once: true });
+    });
+    return protectedSessionPromise;
+  }
+
+  function armProtectedFullscreenFromGesture() {
+    loadProtectedSessionRuntime();
+    if (fullscreenElement()) return;
+    try { sessionStorage.setItem("sulandra:protected-session:fullscreen-intent", "1"); } catch {}
+    try {
+      const targetDocument = window.top && window.top !== window ? window.top.document : document;
+      const element = targetDocument.documentElement;
+      const request = element.requestFullscreen || element.webkitRequestFullscreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullscreen;
+      if (!request) return;
+      const result = request === element.requestFullscreen ? request.call(element, { navigationUI: "hide" }) : request.call(element);
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch {}
+  }
+
+  async function enterProtectedSession(target) {
+    let runtime = null;
+    try { runtime = window.parent && window.parent !== window ? window.parent.SulandraProtectedSession : null; } catch {}
+    runtime = runtime || window.SulandraProtectedSession || await loadProtectedSessionRuntime();
+    if (runtime?.enter) {
+      runtime.enter(target, { portal: "EMPLOYEE" });
+      return;
+    }
+    if (runtime?.navigate) {
+      runtime.navigate(target, { portal: "EMPLOYEE" });
+      return;
+    }
+    window.location.assign(target);
+  }
+
+  loadProtectedSessionRuntime();
+
   function showMessage(text, type) {
     message.textContent = text;
     message.className = type === "success" ? "msg success" : "msg show";
@@ -38,8 +102,6 @@
   }
 
   function saveAuthenticatedSession(token, session) {
-    // Employee sessions are deliberately tab-scoped. An employee who also has
-    // management rights can keep an independent Admin session in another tab.
     const encoded = JSON.stringify({ ...session, portalContext: "EMPLOYEE" });
     window.sessionStorage.setItem(TOKEN_KEY, token);
     window.sessionStorage.setItem(SESSION_KEY, encoded);
@@ -130,7 +192,7 @@
     const password = document.getElementById("password").value;
     const code = mfaCode.value.replace(/\D/g, "").slice(0, 6);
     if (!username || !password) return showMessage("Enter your employee username and password.", "error");
-    if (username.includes("@")) return showMessage("Employee Portal uses your assigned employee username, not your Sulandra email. Use Administrator Sign In for admin access.", "error");
+    if (username.includes("@")) return showMessage("Employee Portal uses your assigned employee username, not your Sulandra email. Use the separate Administrator Sign In page for admin access.", "error");
     if (mfaChallengeId && !resend && code.length !== 6) return showMessage("Enter the 6-digit security code sent to your phone.", "error");
 
     signInButton.disabled = true;
@@ -163,7 +225,7 @@
       const token = session.accessToken || session.bearerToken || session.token;
       if (!token) throw new Error("The server did not return an access token.");
       saveAuthenticatedSession(token, session);
-      window.location.assign(safeReturnTarget() || "/employee-portal.html");
+      await enterProtectedSession(safeReturnTarget() || "/employee-portal.html");
     } catch (error) {
       showMessage(error.message || "Unable to sign in.", "error");
     } finally {
@@ -171,6 +233,10 @@
       resendMfaCode.disabled = false;
     }
   }
+
+  document.querySelector(".auth-card")?.addEventListener("click", (event) => {
+    if (event.isTrusted) armProtectedFullscreenFromGesture();
+  }, { capture: true });
 
   document.getElementById("clear").addEventListener("click", () => {
     document.getElementById("username").value = "";
@@ -180,9 +246,7 @@
     resetMfaChallenge();
     closeRecoveryPanels(); clearMessage();
   });
-  document.getElementById("forgotUsername").addEventListener("click", () => {
-    openRecoveryPanel(usernamePanel);
-  });
+  document.getElementById("forgotUsername").addEventListener("click", () => openRecoveryPanel(usernamePanel));
   document.getElementById("forgotPassword").addEventListener("click", () => {
     const loginUsername = document.getElementById("username").value.trim();
     if (loginUsername) document.getElementById("recoveryUsername").value = loginUsername;
@@ -200,6 +264,7 @@
     recoveryRequest("/api/auth/forgot-password", { username }, document.getElementById("sendPasswordRecovery"));
   });
   resendMfaCode.addEventListener("click", () => {
+    armProtectedFullscreenFromGesture();
     resetMfaChallenge();
     performLogin({ resend: true });
   });
@@ -209,6 +274,7 @@
 
   document.getElementById("form").addEventListener("submit", async (event) => {
     event.preventDefault();
+    armProtectedFullscreenFromGesture();
     await performLogin();
   });
 })();
