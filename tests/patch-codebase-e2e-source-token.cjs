@@ -63,4 +63,11 @@ source = source.replace(
       upstream = await route.fetch({ url: API + parsed.pathname + parsed.search, headers: requestHeaders });`,
 );
 
+const deckResizeAssertion = "    assert(beforeDeck && afterDeck && Math.abs(afterDeck.height - beforeDeck.height) > 35, `Terminal deck did not resize enough: ${beforeDeck?.height} -> ${afterDeck?.height}`);";
+if (!source.includes(deckResizeAssertion)) throw new Error('Terminal deck resize assertion marker is missing from E2E runner');
+source = source.replace(
+  deckResizeAssertion,
+  "    const deckDelta = Math.abs(afterDeck.height - beforeDeck.height);\n    assert(beforeDeck && afterDeck && deckDelta > 20, `Terminal deck did not resize meaningfully: ${beforeDeck?.height} -> ${afterDeck?.height} (delta ${deckDelta})`);",
+);
+
 fs.writeFileSync(file, source, 'utf8');
