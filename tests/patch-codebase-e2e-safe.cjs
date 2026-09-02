@@ -76,6 +76,18 @@ source = source.replace(
 source = source.replace(
   "  await step('Verify colorful syntax, line numbers, and stable Explorer/tab DNA', async () => {",
   `  await step('Keep Ask SIA visible above full-screen Codebase', async () => {
+    const diagnostic = await page.evaluate(() => ({
+      readyState: document.readyState,
+      topIsSelf: window.top === window.self,
+      pathname: location.pathname,
+      guard: Boolean(window.__SIA_GLOBAL_COPILOT_V1__),
+      bridgeGuard: Boolean(window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1__),
+      root: Boolean(document.querySelector('#sia-copilot-root')),
+      launcher: Boolean(document.querySelector('#siaxLauncher')),
+      fullscreenId: (document.fullscreenElement || document.webkitFullscreenElement)?.id || '',
+      scripts: [...document.scripts].filter((node) => /sia-copilot|codebase-sia/i.test(node.src || '')).map((node) => ({ src: node.src, defer: node.defer })),
+    }));
+    console.log('[SIA DIAG] ' + JSON.stringify(diagnostic));
     const launcher = page.locator('#siaxLauncher');
     await launcher.waitFor({ state: 'visible', timeout: 15_000 });
     const layers = await page.evaluate(() => {
@@ -88,6 +100,7 @@ source = source.replace(
         rootZ: root ? numeric(root) : 0,
         launcherZ: launcher ? numeric(launcher) : 0,
         codebaseZ: codebase ? numeric(codebase) : 0,
+        rootInsideCodebase: Boolean(root && codebase && codebase.contains(root)),
       };
     });
     assert(/Ask SIA/i.test(layers.label), \`Ask SIA launcher label missing: \${JSON.stringify(layers)}\`);
