@@ -38,6 +38,7 @@ await import('./install-it-agent-ephemeral-attachments.mjs');
 // backend builds. Running it here prevents the canonical workbench installers
 // above from seeing a future-state source shape and failing their idempotency
 // guards, while still applying the change before TypeScript compilation.
+await import('./fix-it-agent-owner-autorelease-installer.mjs');
 await import('./install-it-agent-owner-autorelease.mjs');
 
 // Emergency compatibility rollback: keep the stable chat-first workspace active while the
