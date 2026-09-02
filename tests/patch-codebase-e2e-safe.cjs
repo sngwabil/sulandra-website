@@ -43,12 +43,14 @@ source = source.replace(
 );
 source = source.replace(
   "    const upstream = await route.fetch();",
-  `    const upstream = codebaseRequest
+  `    const requestHeaders = { ...request.headers() };
+    delete requestHeaders.origin;
+    const upstream = codebaseRequest
       ? await route.fetch({
           url: FEATURE_API + parsed.pathname + parsed.search,
           headers: { ...request.headers(), authorization: \`Bearer ${'${'}featureToken}\` },
         })
-      : await route.fetch();`,
+      : await route.fetch({ headers: requestHeaders });`,
 );
 
 source = source.replace(
