@@ -27,12 +27,36 @@ async function dragSplit(page, axis, dx, dy) {
   const host = page.locator('#itwsXtermHost');
   const box = await host.boundingBox();
   assert(box, 'Terminal split host is not visible');
-  const split = await host.evaluate((node) => {
-    const style = getComputedStyle(node);
-    const col = Number.parseFloat(style.getPropertyValue('--scb-term-col')) || 50;
-    const row = Number.parseFloat(style.getPropertyValue('--scb-term-row')) || 50;
-    return { col, row };
+  const geometry = await page.evaluate(() => {
+    const pack = (node) => {
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return {
+        rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left },
+        position: style.position,
+        top: style.top,
+        right: style.right,
+        bottom: style.bottom,
+        left: style.left,
+        width: style.width,
+        height: style.height,
+        zIndex: style.zIndex,
+        pointerEvents: style.pointerEvents,
+        inlineStyle: node.getAttribute('style') || '',
+      };
+    };
+    const node = document.querySelector('#itwsXtermHost');
+    const style = node ? getComputedStyle(node) : null;
+    return {
+      host: pack(node),
+      vertical: pack(document.querySelector('.scb-term-divider-v')),
+      horizontal: pack(document.querySelector('.scb-term-divider-h')),
+      split: { col: Number.parseFloat(style?.getPropertyValue('--scb-term-col')) || 50, row: Number.parseFloat(style?.getPropertyValue('--scb-term-row')) || 50 },
+    };
   });
+  console.log('[E2E SPLIT GEOMETRY] ' + JSON.stringify(geometry));
+  const split = geometry.split;
   const x = axis === 'v' ? box.x + box.width * (split.col / 100) : box.x + box.width * 0.75;
   const y = axis === 'v' ? box.y + box.height * 0.25 : box.y + box.height * (split.row / 100);
   const hit = await page.evaluate(({ x, y }) => {
@@ -77,4 +101,4 @@ source = source.replace(verticalBefore, verticalAfter).replace(verticalAnchored,
 source = source.replace(horizontalBefore, horizontalAfter).replace(horizontalAnchored, horizontalAfter);
 
 fs.writeFileSync(file, source, 'utf8');
-console.log('Codebase E2E split drag uses terminal-host geometry and verifies the visible handle hit target.');
+console.log('Codebase E2E split drag records live host/divider geometry and verifies the visible hit target.');
