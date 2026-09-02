@@ -30,6 +30,9 @@ const userId = process.env.MIGRATION_ADMIN_USER_ID.trim();
 const email = process.env.MIGRATION_ADMIN_EMAIL.trim().toLowerCase();
 const firstName = process.env.MIGRATION_ADMIN_FIRST_NAME.trim();
 const lastName = process.env.MIGRATION_ADMIN_LAST_NAME.trim();
+const legalEntities = process.env.MIGRATION_LEGAL_ENTITIES_JSON
+  ? JSON.parse(process.env.MIGRATION_LEGAL_ENTITIES_JSON)
+  : [];
 // Deliberately unrelated to the Supabase password. ADMIN_INITIAL_PASSWORD is the
 // only staging login path; this value merely satisfies legacy NOT NULL schemas.
 const syntheticPasswordHash = createHash('sha256').update(randomBytes(48)).digest('hex');
@@ -46,6 +49,45 @@ try {
       organizationId,
       organizationName,
     );
+
+    for (const entity of legalEntities) {
+      if (!entity || entity.organizationId !== organizationId || !entity.id || !entity.code || !entity.legalName || !entity.displayName) {
+        throw new Error('Invalid migration LegalEntity payload.');
+      }
+      await tx.$executeRawUnsafe(
+        `INSERT INTO "LegalEntity"
+          ("id","organizationId","code","legalName","displayName","entityType","status","parentLegalEntityId",
+           "isEmployer","isProvider","branding","contact","metadata","createdAt","updatedAt")
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12::jsonb,$13::jsonb,NOW(),NOW())
+         ON CONFLICT ("id") DO UPDATE SET
+           "organizationId"=EXCLUDED."organizationId",
+           "code"=EXCLUDED."code",
+           "legalName"=EXCLUDED."legalName",
+           "displayName"=EXCLUDED."displayName",
+           "entityType"=EXCLUDED."entityType",
+           "status"=EXCLUDED."status",
+           "parentLegalEntityId"=EXCLUDED."parentLegalEntityId",
+           "isEmployer"=EXCLUDED."isEmployer",
+           "isProvider"=EXCLUDED."isProvider",
+           "branding"=EXCLUDED."branding",
+           "contact"=EXCLUDED."contact",
+           "metadata"=EXCLUDED."metadata",
+           "updatedAt"=NOW()`,
+        entity.id,
+        organizationId,
+        entity.code,
+        entity.legalName,
+        entity.displayName,
+        entity.entityType || 'OPERATING',
+        entity.status || 'ACTIVE',
+        entity.parentLegalEntityId || null,
+        Boolean(entity.isEmployer),
+        Boolean(entity.isProvider),
+        JSON.stringify(entity.branding || {}),
+        JSON.stringify(entity.contact || {}),
+        JSON.stringify(entity.metadata || {}),
+      );
+    }
 
     const columns = await tx.$queryRawUnsafe(
       `SELECT column_name AS "name", is_nullable AS "nullable", column_default AS "defaultValue", udt_name AS "udtName"
@@ -125,7 +167,7 @@ try {
     );
   });
 
-  console.log('[railway-migration-bootstrap] Railway staging organization/Admin identity is ready with preserved IDs; no Supabase password hash was copied.');
+  console.log(`[railway-migration-bootstrap] Railway staging identity is ready with preserved IDs and ${legalEntities.length} legal entities; no Supabase password hash was copied.`);
 } finally {
   await prisma.$disconnect();
 }
