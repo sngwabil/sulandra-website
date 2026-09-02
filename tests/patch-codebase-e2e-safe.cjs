@@ -4,7 +4,7 @@ let source = fs.readFileSync(file, 'utf8');
 
 source = source.replace(
   "const API = String(process.env.E2E_API_URL || '').replace(/\\/$/, '');",
-  "const API = String(process.env.E2E_API_URL || '').replace(/\\/$/, '');\nconst FEATURE_API = String(process.env.E2E_FEATURE_API_URL || '').replace(/\\/$/, '');",
+  "const API = String(process.env.E2E_API_URL || '').replace(/\\/$/, '');\nconst FEATURE_API = String(process.env.E2E_FEATURE_API_URL || '').replace(/\\/$/, '');\nconst FEATURE_PASSWORD = process.env.E2E_FEATURE_ADMIN_PASSWORD || '';",
 );
 
 source = source.replace(
@@ -18,7 +18,7 @@ source = source.replace(
   const response = await fetch(\`${'${'}FEATURE_API}/api/auth/login\`, {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: EMAIL, password: PASSWORD, portal: 'ADMIN' }),
+    body: JSON.stringify({ email: EMAIL, password: FEATURE_PASSWORD, portal: 'ADMIN' }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(\`Feature API login failed (${'${'}response.status}): ${'${'}payload.error || payload.message || 'unknown error'}\`);
@@ -53,7 +53,7 @@ source = source.replace(
 
 source = source.replace(
   "requireEnv(API, 'E2E_API_URL');",
-  "requireEnv(API, 'E2E_API_URL');\nrequireEnv(FEATURE_API, 'E2E_FEATURE_API_URL');",
+  "requireEnv(API, 'E2E_API_URL');\nrequireEnv(FEATURE_API, 'E2E_FEATURE_API_URL');\nrequireEnv(FEATURE_PASSWORD, 'E2E_FEATURE_ADMIN_PASSWORD');",
 );
 
 source = source.replace(
