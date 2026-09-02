@@ -41,7 +41,7 @@ async function dragSplit(page, axis, dx, dy) {
   }, { x, y });
   console.log('[E2E SPLIT HIT] ' + JSON.stringify({ axis, x, y, split, ...hit }));
   const expected = axis === 'v' ? 'scb-term-divider-v' : 'scb-term-divider-h';
-  assert(hit.className.split(/\\s+/).includes(expected), `Expected ${expected} at visible split position; hit ${hit.className || hit.tag || 'nothing'}`);
+  assert(hit.className.split(/\\s+/).includes(expected), 'Expected ' + expected + ' at visible split position; hit ' + (hit.className || hit.tag || 'nothing'));
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + dx, y + dy, { steps: 8 });
