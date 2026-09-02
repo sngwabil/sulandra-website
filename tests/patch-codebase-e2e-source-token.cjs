@@ -39,9 +39,11 @@ source = source.replace(
   `    let upstream;
     try {
       if (codebaseRequest) {
-        const direct = await fetch(FEATURE_API + parsed.pathname + parsed.search, {
+        const sourceUrl = new URL(FEATURE_API + parsed.pathname + parsed.search);
+        sourceUrl.searchParams.set('__source_canary', '1');
+        const direct = await fetch(sourceUrl, {
           method: request.method(),
-          headers: { Accept: 'application/json', 'x-sulandra-e2e-source': featureToken },
+          headers: { Accept: 'application/json' },
         });
         const body = await direct.text();
         console.log('[E2E CODEBASE SOURCE] ' + request.method() + ' ' + parsed.pathname + ' -> ' + direct.status);
