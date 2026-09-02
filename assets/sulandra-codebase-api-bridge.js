@@ -1,10 +1,13 @@
-/* SULANDRA_CODEBASE_API_BRIDGE_V1 */
+/* SULANDRA_CODEBASE_API_BRIDGE_V2_RAILWAY_DB */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_API_BRIDGE_V1__)return;
-window.__SULANDRA_CODEBASE_API_BRIDGE_V1__=true;
+if(window.__SULANDRA_CODEBASE_API_BRIDGE_V2_RAILWAY_DB__)return;
+window.__SULANDRA_CODEBASE_API_BRIDGE_V2_RAILWAY_DB__=true;
 
-const API_ORIGIN='https://sulandra-website-production-5fc4.up.railway.app';
+// Codebase/IDE canary traffic is intentionally isolated on the Railway-backed
+// feature API while the historical production dataset remains on Supabase
+// until the controlled final migration and reconciliation are complete.
+const API_ORIGIN='https://codebase-e2e-api-railway-production.up.railway.app';
 const CODEBASE_PATH=/^\/api\/it-solutions\/codebase\/(?:tree|file)(?:\?|$)/;
 const nativeFetch=window.fetch.bind(window);
 const token=()=>sessionStorage.getItem('sulandra:admin:access-token')||localStorage.getItem('sulandra:admin:access-token')||sessionStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('sulandra:employee:access-token')||localStorage.getItem('token')||'';
