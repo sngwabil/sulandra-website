@@ -61,7 +61,24 @@ source = source.replace(
   `  const featureToken = await featureLoginToken();
   console.log('[E2E INFO] Feature Codebase API authenticated without exposing credentials');
 
-  browser = await chromium.launch({ headless: true });`,
+  browser = await chromium.launch({
+    headless: true,
+    args: [
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding',
+      '--disable-features=Translate,BackForwardCache,MediaRouter',
+      '--js-flags=--max-old-space-size=160',
+    ],
+  });`,
+);
+source = source.replace(
+  "  const context = await browser.newContext({ viewport: { width: 1680, height: 1050 }, ignoreHTTPSErrors: false });",
+  `  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, ignoreHTTPSErrors: false });
+  await context.route(/\\.(?:png|jpe?g|webp|gif|svg|woff2?|ttf|otf)(?:\\?.*)?$/i, (route) => route.abort());`,
 );
 source = source.replace(
   "  await installApiProxy(context);",
