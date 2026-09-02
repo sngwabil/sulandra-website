@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist-web');
+const productionApi = 'https://sulandra-website-production-5fc4.up.railway.app';
+const canonicalApi = String(process.env.VITE_API_URL || productionApi).trim().replace(/\/$/, '');
+const staleApi = 'https://sulandra-website-production.up.railway.app';
 const failures = [];
 async function mustRead(relative) {
   try { return await readFile(path.join(dist, relative), 'utf8'); }
@@ -25,9 +28,6 @@ for (const marker of ['admin-owner-context.js','admin-owner-console.js','admin-o
   if (!routerJs.includes(marker)) failures.push(`Admin context router is missing ${marker}`);
 }
 
-// admin.html is intentionally the established parent-company owner command
-// center. Preserve its live dashboard, local news, existing navigation and
-// controls while hiding the company selector and adding only Operations.
 for (const marker of [
   'NAVIGATION = Object.freeze({','primary: Object.freeze([',
   "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'",
@@ -41,9 +41,6 @@ for (const marker of ['ensureCanonicalSso()','ensureNavigationOverflow','ensureP
   if (!shellJs.includes(marker)) failures.push(`Preserved owner command-center shell is missing ${marker}`);
 }
 
-// The new company Operations desktop owns the eight-folder information
-// architecture. Its dedicated shell must not create the owner news/overflow
-// layers; it only provides SSO and module hosts required by company workspaces.
 for (const marker of [
   "'/assets/admin-shell.js?v=20260825-admin-ia-1'",
   "'/assets/admin-live-dashboard.js?v=20260808-admin-command-center-v5'",
@@ -88,8 +85,8 @@ for (const marker of ['html,body{width:100%!important','max-width:none!important
 
 if (!adminJs.includes('sulandra:admin:active-module')) failures.push('Admin module persistence key is missing');
 if (!adminJs.includes('history.replaceState')) failures.push('Admin module URL/hash persistence is missing');
-if (!adminJs.includes('https://sulandra-website-production-5fc4.up.railway.app')) failures.push('Admin runtime is not using canonical Railway API');
-if (adminJs.includes('https://sulandra-website-production.up.railway.app')) failures.push('Admin runtime still contains the retired Railway API hostname');
+if (!adminJs.includes(canonicalApi)) failures.push(`Admin runtime is not using configured Railway API ${canonicalApi}`);
+if (adminJs.includes(staleApi)) failures.push('Admin runtime still contains the retired Railway API hostname');
 
 for (const marker of [
   "'/api/admin/company-settings'", "method: 'PATCH'", "'X-Legal-Entity-Id'", 'localStorage.removeItem(LEGACY_SETTINGS_KEY)',
@@ -123,4 +120,4 @@ if (failures.length) {
   console.error('Admin command-center verification failed:\n- ' + failures.join('\n- '));
   process.exit(1);
 }
-console.log('Admin command center verified: the existing Sulandra Health owner dashboard and shell are preserved and owner-gated, while the separate Operations desktop owns the eight-folder company administration shell.');
+console.log(`Admin command center verified for ${canonicalApi}: the existing Sulandra Health owner dashboard and shell are preserved and owner-gated, while the separate Operations desktop owns the eight-folder company administration shell.`);
