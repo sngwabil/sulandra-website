@@ -8,6 +8,7 @@ source = source.replace(
 source = source.replace(
   "  const page = await context.newPage();",
   `  const page = await context.newPage();
+  const parseFailureDetails = [];
   const cdp = await context.newCDPSession(page);
   await Promise.all([cdp.send('Runtime.enable'), cdp.send('Debugger.enable')]);
   cdp.on('Runtime.exceptionThrown', ({ exceptionDetails: detail }) => {
@@ -18,6 +19,7 @@ source = source.replace(
       columnNumber: detail?.columnNumber ?? null,
       description: detail?.exception?.description || '',
     };
+    if (payload.url && /SyntaxError/.test(payload.description)) parseFailureDetails.push(payload);
     console.error('[CDP EXCEPTION] ' + JSON.stringify(payload));
   });
   cdp.on('Debugger.scriptFailedToParse', (detail) => {
@@ -30,6 +32,24 @@ source = source.replace(
       isModule: Boolean(detail?.isModule),
     }));
   });`,
+);
+source = source.replace(
+  "    assert(response && response.ok(), `IT Solutions returned ${response?.status()}`);",
+  `    assert(response && response.ok(), \`IT Solutions returned \${response?.status()}\`);
+    for (const failure of parseFailureDetails) {
+      try {
+        const assetResponse = await context.request.get(failure.url, { timeout: 15_000 });
+        const assetText = await assetResponse.text();
+        const lines = assetText.split('\\n');
+        const center = Math.max(0, Number(failure.lineNumber) || 0);
+        const start = Math.max(0, center - 4);
+        const end = Math.min(lines.length, center + 5);
+        const excerpt = lines.slice(start, end).map((line, index) => \`${'${'}start + index + 1}: ${'${'}line}\`).join('\\n');
+        console.error('[PARSE SOURCE] ' + failure.url + '\\n' + excerpt);
+      } catch (error) {
+        console.error('[PARSE SOURCE FAILED] ' + String(error?.message || error));
+      }
+    }`,
 );
 source = source.replace(
   "    await page.locator('#itwsSulandraCodebaseButton').waitFor({ state: 'visible', timeout: 30_000 });",
