@@ -1,0 +1,34 @@
+name: Protected Auth Navigation Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - 'employee-login-railway.js'
+      - 'admin-login-railway.js'
+      - 'assets/spire-login.js'
+      - 'spire/login.html'
+      - 'assets/sulandra-protected-session.js'
+      - 'assets/sulandra-sso-session.js'
+      - 'scripts/install-sulandra-sso-session.mjs'
+      - 'scripts/verify-protected-auth-navigation.mjs'
+      - '.github/workflows/protected-auth-navigation-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protected-auth-navigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Employee/Admin/S.P.I.R.E. protected navigation
+        run: node scripts/verify-protected-auth-navigation.mjs
