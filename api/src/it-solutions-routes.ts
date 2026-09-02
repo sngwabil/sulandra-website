@@ -2,9 +2,10 @@ import { randomUUID } from 'node:crypto';
 import type { Express, RequestHandler, Response } from 'express';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { z } from 'zod';
+import { readCodebaseFile, readCodebaseTree } from './it-codebase-source.js';
 
 type AuthContext={userId:string;organizationId:string;role:UserRole;email?:string;legalEntityId?:string|null;ipAddress?:string;userAgent?:string;sessionId?:string};
-type Dependencies={app:Express;prisma:PrismaClient;authOf:(response:Response)=>AuthContext;requireRoles:(...roles:UserRole[])=>RequestHandler};
+type Dependencies={app:Express;prisma:PrismaClient;authOf:(response:Response)=>AuthContext;requireRoles:(...roles:UserRole[])=>RequestHandler;audit?:unknown};
 
 const adminRoles=[UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.HR_MANAGER,UserRole.CEO,UserRole.DOO];
 const gateAll=(requireRoles:(...roles:UserRole[])=>RequestHandler)=>requireRoles(...(Object.values(UserRole) as UserRole[]));
@@ -43,6 +44,9 @@ export function registerITSolutionsRoutes({app,prisma,authOf,requireRoles}:Depen
   })().catch(error=>{readyPromise=null;throw error});
 
   const all=gateAll(requireRoles); const admin=gateAdmin(requireRoles);
+
+  app.get('/api/it-solutions/codebase/tree',admin,async(_req,res,next)=>{try{authOf(res);res.json({data:await readCodebaseTree()})}catch(error){next(error)}});
+  app.get('/api/it-solutions/codebase/file',admin,async(req,res,next)=>{try{authOf(res);res.json({data:await readCodebaseFile(req.query.path)})}catch(error){next(error)}});
 
   app.get('/api/it-solutions/overview',admin,async(_req,res,next)=>{try{await ready();const auth=authOf(res);const [tickets,sessions,approvals,handoffs]=await Promise.all([
     prisma.$queryRawUnsafe<any[]>(`SELECT "status","priority",COUNT(*)::int AS count FROM "EmployeeSupportRequest" WHERE "organizationId"=$1 GROUP BY "status","priority"`,auth.organizationId),
