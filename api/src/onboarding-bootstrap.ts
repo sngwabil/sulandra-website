@@ -7,6 +7,7 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { z, ZodError } from 'zod';
 import { registerCareersRoutes } from './careers-routes.js';
+import { registerITSolutionsRoutes } from './it-solutions-routes.js';
 import {
   createEntityAccessMiddleware,
   entityAccessOf,
@@ -916,6 +917,7 @@ app.post(
 
 registerMultiCompanyRoutes({ app, prisma, authOf, requireRoles, audit });
 registerCareersRoutes(app, prisma, { authOf, requireRoles, audit });
+registerITSolutionsRoutes({ app, prisma, authOf, requireRoles, audit });
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (error instanceof ZodError) {
