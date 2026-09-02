@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const canonicalApi = 'https://sulandra-website-production-5fc4.up.railway.app';
+const productionApi = 'https://sulandra-website-production-5fc4.up.railway.app';
+const canonicalApi = String(process.env.VITE_API_URL || productionApi).trim().replace(/\/$/, '');
 const staleApi = 'https://sulandra-website-production.up.railway.app';
 const files = ['employee-login-railway.js', 'employee-portal-railway.js', 'admin-railway.js'];
 const apiRequired = new Set(['employee-login-railway.js', 'admin-railway.js']);
@@ -15,7 +16,7 @@ for (const relative of files) {
   try { source = await readFile(target, 'utf8'); }
   catch (error) { if (error?.code === 'ENOENT') continue; throw error; }
 
-  let next = source.replaceAll(staleApi, canonicalApi);
+  let next = source.replaceAll(staleApi, canonicalApi).replaceAll(productionApi, canonicalApi);
 
   if (relative === 'admin-railway.js') {
     next = next
@@ -28,11 +29,8 @@ for (const relative of files) {
     changed += 1;
   }
 
-  // Login and Admin make Railway calls and must use the canonical host. The
-  // Employee Portal intentionally renders identity from the signed session cache,
-  // so it does not need an API base simply to open the page.
   if (apiRequired.has(relative) && !next.includes(canonicalApi)) {
-    throw new Error(`${relative} does not reference the canonical Railway API host`);
+    throw new Error(`${relative} does not reference the configured Railway API host`);
   }
   if (next.includes(staleApi)) throw new Error(`${relative} still references the retired Railway API host`);
   if (relative === 'admin-railway.js' && /response\.status\s*===\s*401\)\s*signOut\(/.test(next)) {
@@ -40,4 +38,4 @@ for (const relative of files) {
   }
 }
 
-console.log(`Portal authentication and sign-in-once SSO verified${changed ? `; repaired ${changed} file(s)` : ''}.`);
+console.log(`Portal authentication and sign-in-once SSO verified for ${canonicalApi}${changed ? `; repaired ${changed} file(s)` : ''}.`);
