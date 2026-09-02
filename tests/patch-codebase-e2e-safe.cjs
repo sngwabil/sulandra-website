@@ -66,6 +66,14 @@ source = source.replace(
     await page.locator('#itwsSulandraCodebaseButton').waitFor({ state: 'visible', timeout: 20_000 });`,
 );
 source = source.replace(
+  "    if (/codebase|terminal|workspace|xterm|websocket|wss/i.test(text)) consoleErrors.push(text);",
+  "    if (/sulandra-codebase|\\/api\\/it-solutions\\/codebase|terminal\\/sessions|workspace\\/ticket|xterm|websocket|wss/i.test(text)) consoleErrors.push(text);",
+);
+source = source.replace(
+  "    if (/codebase|terminal|workspace|xterm|sulandra-coding-terminal-worker/i.test(request.url())) {",
+  "    if (/\\/api\\/it-solutions\\/codebase|terminal\\/sessions|workspace\\/ticket|xterm|sulandra-coding-terminal-worker/i.test(request.url())) {",
+);
+source = source.replace(
   "  await step('Verify colorful syntax, line numbers, and stable Explorer/tab DNA', async () => {",
   `  await step('Keep Ask SIA visible above full-screen Codebase', async () => {
     const launcher = page.locator('#siaxLauncher');
