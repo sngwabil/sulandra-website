@@ -1,13 +1,11 @@
 /* SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1 */
-/* SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V3_QUIESCENT_REPAIR */
+/* SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V4_WORKSPACE_HOME */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V3_QUIESCENT_REPAIR__)return;
+if(window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V4_WORKSPACE_HOME__)return;
 window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1__=true;
-window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V3_QUIESCENT_REPAIR__=true;
+window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V4_WORKSPACE_HOME__=true;
 
-let homeParent=null;
-let homeNext=null;
 let rootObserver=null;
 let documentObserver=null;
 let repairPending=false;
@@ -19,33 +17,28 @@ const MAX_REPAIRS=10;
 const shell=()=>document.getElementById('sulandraCodebase');
 const sia=()=>document.getElementById('sia-copilot-root');
 const launcher=()=>document.getElementById('siaxLauncher');
-
-function rememberHome(root){
-  if(homeParent||!root?.parentNode)return;
-  homeParent=root.parentNode;
-  homeNext=root.nextSibling;
-}
-
-function restore(root){
-  if(!root||!homeParent||root.parentNode===homeParent)return;
-  if(homeNext&&homeNext.parentNode===homeParent)homeParent.insertBefore(root,homeNext);
-  else homeParent.appendChild(root);
-  root.removeAttribute('data-codebase-fullscreen-home');
-}
+const workspaceHost=()=>document.querySelector('.itws-layout')||document.querySelector('.itws-content')||document.getElementById('agent')||document.body;
 
 function sync(){
   const workbench=shell();
   const root=sia();
-  if(!workbench||!root||!launcher())return;
-  rememberHome(root);
+  if(!root||!launcher())return;
   const fullscreen=document.fullscreenElement||document.webkitFullscreenElement||null;
-  const codebaseFullscreen=Boolean(fullscreen&&(fullscreen===workbench||workbench.contains(fullscreen)));
+  const codebaseFullscreen=Boolean(workbench&&fullscreen&&(fullscreen===workbench||workbench.contains(fullscreen)));
   if(codebaseFullscreen){
     if(root.parentNode!==workbench)workbench.appendChild(root);
     root.setAttribute('data-codebase-fullscreen-home','true');
     return;
   }
-  restore(root);
+
+  // IT Solutions intentionally removes floating legacy SIA controls that live
+  // outside the engineering workspace. Keep the canonical global copilot inside
+  // the real workspace in normal mode so that guard preserves it. When Codebase
+  // enters native fullscreen, sync() moves the same root into the fullscreen
+  // element because browsers render only descendants of the fullscreen subtree.
+  const host=workspaceHost();
+  if(host&&root.parentNode!==host)host.appendChild(root);
+  root.removeAttribute('data-codebase-fullscreen-home');
 }
 
 function watchRoot(){
@@ -53,7 +46,6 @@ function watchRoot(){
   rootObserver=null;
   const root=sia();
   if(!root)return;
-  rememberHome(root);
   rootObserver=new MutationObserver(()=>{
     lastMutationAt=Date.now();
     if(!launcher())scheduleRepair(180);
@@ -75,8 +67,6 @@ function repairRuntime(){
   }
   if(repairPending||repairAttempts>=MAX_REPAIRS||window.top!==window.self||/\/sia\.html$/i.test(location.pathname))return;
 
-  // Do not race a legacy normalizer that is still rebuilding the IT Solutions
-  // shell. Wait until the DOM has been quiet long enough for one durable repair.
   const quietFor=Date.now()-lastMutationAt;
   if(quietFor<140){scheduleRepair(160-quietFor);return;}
 
@@ -96,15 +86,15 @@ function repairRuntime(){
     repairPending=false;
     if(launcher()){
       repairAttempts=0;
-      watchRoot();
       sync();
+      watchRoot();
     }else scheduleRepair(Math.min(1200,160*Math.max(1,repairAttempts)));
   };
   script.onerror=()=>{
     repairPending=false;
     scheduleRepair(Math.min(1600,240*Math.max(1,repairAttempts)));
   };
-  document.body.appendChild(script);
+  (workspaceHost()||document.body).appendChild(script);
 }
 
 function scheduleRepair(delay=180){
@@ -116,9 +106,6 @@ function scheduleRepair(delay=180){
 function observeDocument(){
   documentObserver?.disconnect();
   documentObserver=new MutationObserver((records)=>{
-    // Moving the SIA root into/out of the fullscreen workbench is expected and
-    // must not start a new repair cycle. Other page mutations update the quiet
-    // timer so repair happens only after legacy normalization settles.
     const meaningful=records.some((record)=>{
       const nodes=[...record.addedNodes,...record.removedNodes];
       return nodes.some((node)=>{
@@ -147,6 +134,11 @@ window.addEventListener('pageshow',()=>{
 });
 
 function boot(){
+  // Run before older non-capture DOMContentLoaded normalizers. This relocates
+  // the canonical SIA root into .itws-layout before their floating-SIA cleanup
+  // executes, so the current copilot is preserved rather than mistaken for a
+  // deprecated launcher.
+  if(launcher())sync();
   observeDocument();
   if(launcher()){
     repairAttempts=0;
@@ -154,6 +146,6 @@ function boot(){
     sync();
   }else scheduleRepair(180);
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true,capture:true});
 else queueMicrotask(boot);
 })();
