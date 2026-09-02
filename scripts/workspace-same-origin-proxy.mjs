@@ -57,6 +57,26 @@ const requestHeaders = (request, upstream, { websocket = false } = {}) => {
 
 const stripCookieDomain = (value) => String(value || '').replace(/;\s*Domain=[^;]+/ig, '');
 
+const rewriteLocation = (value, upstream) => {
+  const raw = String(value || '');
+  if (!raw) return raw;
+
+  // Relative redirects from code-server (for example "./") must remain
+  // relative to /workspace/<session>/ide/. Resolving them against the worker
+  // origin turns "./" into "/", which sends the iframe to the Sulandra
+  // homepage instead of back to the IDE.
+  if (!/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(raw)) return raw;
+
+  try {
+    const location = new URL(raw, upstream);
+    return location.origin === upstream.origin
+      ? `${location.pathname}${location.search}${location.hash}`
+      : raw;
+  } catch {
+    return raw;
+  }
+};
+
 const responseHeaders = (upstreamResponse, upstream) => {
   const headers = {};
   for (const [name, value] of Object.entries(upstreamResponse.headers || {})) {
@@ -67,12 +87,9 @@ const responseHeaders = (upstreamResponse, upstream) => {
       continue;
     }
     if (lower === 'location') {
-      try {
-        const location = new URL(String(value), upstream);
-        headers[name] = location.origin === upstream.origin ? `${location.pathname}${location.search}${location.hash}` : value;
-      } catch {
-        headers[name] = value;
-      }
+      headers[name] = Array.isArray(value)
+        ? value.map((item) => rewriteLocation(item, upstream))
+        : rewriteLocation(value, upstream);
       continue;
     }
     headers[name] = value;
