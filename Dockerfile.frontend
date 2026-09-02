@@ -21,7 +21,8 @@ RUN node scripts/install-it-agent-conversational-ui.mjs \
 RUN node --check assets/it-agent-conversational-ui.js
 RUN node scripts/verify-workspace-same-origin-proxy.mjs
 
-RUN npm run build:web \
+RUN node scripts/configure-it-solutions-api-origin.mjs \
+ && npm run build:web \
  && node --check dist-web/assets/it-agent-conversational-ui.js \
  && mkdir -p dist-web/assets/vendor \
  && cp terminal-browser/dist/sulandra-terminal-runtime.js dist-web/assets/vendor/sulandra-terminal-runtime.js \
