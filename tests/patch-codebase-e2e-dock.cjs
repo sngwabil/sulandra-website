@@ -10,7 +10,8 @@ source = source.replace(
       && request.frame() !== page.mainFrame()
       && request.url().startsWith(WEB + '/workspace/');
     if (isWorkspaceFrame) {
-      console.log('[E2E INFO] Workspace iframe URL issued: ' + request.url().replace(/[?&](?:token|code|key|secret|password|session)=[^&]+/gi, '[REDACTED_QUERY]'));
+      const safeWorkspaceUrl = request.url().replace(/([?&])[^#]*/g, '$1[REDACTED_QUERY]');
+      console.log('[E2E INFO] Workspace iframe URL issued: ' + safeWorkspaceUrl);
       await route.fulfill({
         status: 200,
         contentType: 'text/html',
