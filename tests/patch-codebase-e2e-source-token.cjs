@@ -60,7 +60,7 @@ source = source.replace(
         });
         return;
       }
-      upstream = await route.fetch({ headers: requestHeaders });`,
+      upstream = await route.fetch({ url: API + parsed.pathname + parsed.search, headers: requestHeaders });`,
 );
 
 fs.writeFileSync(file, source, 'utf8');
