@@ -22,6 +22,7 @@ RUN node --check assets/it-agent-conversational-ui.js
 RUN node scripts/verify-workspace-same-origin-proxy.mjs
 
 RUN npm run build:web \
+ && node --check dist-web/assets/it-agent-conversational-ui.js \
  && mkdir -p dist-web/assets/vendor \
  && cp terminal-browser/dist/sulandra-terminal-runtime.js dist-web/assets/vendor/sulandra-terminal-runtime.js \
  && cp terminal-browser/node_modules/@xterm/xterm/css/xterm.css dist-web/assets/vendor/xterm.css \
