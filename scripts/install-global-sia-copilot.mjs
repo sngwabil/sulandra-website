@@ -13,6 +13,17 @@ const jsPath=path.join(dist,'assets','sia-copilot.js');
 for(const required of [cssPath,jsPath]){
   try{await stat(required);}catch{throw new Error(`Global SIA copilot publication asset missing: ${path.relative(dist,required)}`);}
 }
+
+// Codebase is a true full-screen workbench and intentionally sits above the
+// legacy IT Solutions shell. Keep Ask SIA above that workbench as a persistent
+// global copilot instead of allowing the Codebase layer to visually hide it.
+const topLayerMarker='/* SIA_CODEBASE_TOP_LAYER_FIX_V1 */';
+let copilotCss=await readFile(cssPath,'utf8');
+if(!copilotCss.includes(topLayerMarker)){
+  copilotCss+=`\n\n${topLayerMarker}\n#sia-copilot-root{z-index:2147483600!important}\n#sia-copilot-root .siax-launcher{z-index:2147483601!important}\n#sia-copilot-root .siax-scrim{z-index:2147483602!important}\n#sia-copilot-root .siax-drawer{z-index:2147483603!important}\n`;
+  await writeFile(cssPath,copilotCss,'utf8');
+}
+
 const copilotRuntime=await readFile(jsPath,'utf8');
 try{new Function(copilotRuntime);}catch(error){throw new Error(`Global Ask SIA copilot JavaScript has a syntax error: ${error instanceof Error?error.message:String(error)}`);}
 for(const required of ['SIA_GLOBAL_COPILOT_V1','/api/sia/profile/context','/api/sia/chat','Ask SIA','window.top !== window.self','clientLocalDateTime','clientTimeZone','modeLabel','siax-mode-badge','supportWorkspacePage: location.pathname','isClinicalPage']){
