@@ -22,10 +22,14 @@ const resizeTag='<script src="/assets/it-agent-dock-resize.js?v=20260901-dock-re
 const codebaseCssTag='<link rel="stylesheet" href="/assets/sulandra-codebase.css?v=20260902-codebase-2">';
 const codebaseJsTag='<script src="/assets/sulandra-codebase.js?v=20260902-codebase-2"></script>';
 const codebaseApiBridgeTag='<script src="/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-3-env-aware"></script>';
-const codebaseSiaBridgeTag='<script src="/assets/sulandra-codebase-sia-bridge.js?v=20260902-codebase-sia-fullscreen-1"></script>';
+const codebaseSiaBridgeTag='<script src="/assets/sulandra-codebase-sia-bridge.js?v=20260902-codebase-sia-fullscreen-2"></script>';
 const siaMarker='data-sia-global-copilot="20260827-sia-intelligence-router-1"';
 const siaCssTag=`<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1" ${siaMarker} />`;
-const siaJsTag=`<script src="/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1" defer ${siaMarker}></script>`;
+// Keep the canonical runtime synchronous at the true end of body. IT Solutions
+// has a large legacy publication stack; deferring SIA allowed the fullscreen
+// bridge and late normalizers to race the copilot bootstrap. A single classic
+// script here executes deterministically before the bridge.
+const siaJsTag=`<script src="/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1" ${siaMarker}></script>`;
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-workspace-preview\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-workspace-preview\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-dock-resize\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
@@ -33,9 +37,8 @@ html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/sulandra-codebase\.
 html=html.replace(/\s*<script src="\/assets\/sulandra-codebase\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/sulandra-codebase-api-bridge\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/sulandra-codebase-sia-bridge\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
-// IT Solutions is rewritten after the global publication pass. Re-add the
-// same canonical Ask SIA tags here so the final Codebase page cannot lose its
-// global copilot while later workspace installers normalize the document.
+// IT Solutions is rewritten after the global publication pass. Remove every
+// earlier SIA publication before adding one canonical copy below.
 html=html.replace(/\s*<link[^>]+href=["']\/assets\/sia-copilot\.css(?:\?v=[^"']*)?["'][^>]*>\s*/gi,'\n');
 html=html.replace(/\s*<script[^>]+src=["']\/assets\/sia-copilot\.js(?:\?v=[^"']*)?["'][^>]*><\/script>\s*/gi,'\n');
 if(!html.includes('</head>')||!html.includes('</body>'))throw new Error('IT Solutions publication anchors changed');
@@ -62,5 +65,8 @@ if(/api\.github\.com|\/git\/trees\/|\/git\/blobs\//.test(codebaseJs+codebaseApiB
 if(!codebaseApiBridge.includes("parsed.origin!==window.location.origin")||!codebaseApiBridge.includes("CODEBASE_PATH"))throw new Error('Sulandra Codebase API bridge must remain narrowly scoped to same-origin Codebase tree/file requests');
 if(/localStorage\.setItem\([^\n]*(?:ticket|url|src)/i.test(js+resize+codebaseJs+codebaseApiBridge))throw new Error('Engineering workspace must not persist access tickets or frame URLs');
 for(const required of [codebaseCssTag,codebaseJsTag,codebaseApiBridgeTag,codebaseSiaBridgeTag,siaCssTag,siaJsTag])if(!html.includes(required))throw new Error(`IT Solutions final publication tag is missing: ${required}`);
+const siaScriptCount=(html.match(/<script[^>]+src=["']\/assets\/sia-copilot\.js(?:\?v=[^"']*)?["'][^>]*><\/script>/gi)||[]).length;
+if(siaScriptCount!==1)throw new Error(`IT Solutions must publish exactly one executable Ask SIA runtime; found ${siaScriptCount}`);
+if(/sia-copilot\.js[^>]*\bdefer\b/i.test(html))throw new Error('IT Solutions final Ask SIA runtime must not be deferred');
 await writeFile(portalPath,html,'utf8');
-console.log(`Dockable Engineering Workspace, Sulandra Codebase, global Ask SIA, and fullscreen SIA continuity published into ${requested}`);
+console.log(`Dockable Engineering Workspace, Sulandra Codebase, synchronous global Ask SIA, and fullscreen SIA continuity published into ${requested}`);
