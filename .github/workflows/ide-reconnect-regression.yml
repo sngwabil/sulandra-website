@@ -1,0 +1,44 @@
+name: IDE Reconnect Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/it-agent-workspace-preview.js
+      - scripts/serve-static-site.mjs
+      - scripts/workspace-same-origin-proxy.mjs
+      - scripts/verify-workspace-same-origin-proxy.mjs
+      - tests/workspace-same-origin-proxy.regression.mjs
+      - Dockerfile.frontend
+      - .github/workflows/ide-reconnect-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify IDE stays connected through same-origin proxy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate reconnect transport sources
+        run: |
+          set -euo pipefail
+          node --check assets/it-agent-workspace-preview.js
+          node --check scripts/workspace-same-origin-proxy.mjs
+          node --check scripts/serve-static-site.mjs
+          node --check scripts/verify-workspace-same-origin-proxy.mjs
+          node --check tests/workspace-same-origin-proxy.regression.mjs
+          node scripts/verify-workspace-same-origin-proxy.mjs
+
+      - name: Exercise HTTP cookie and WebSocket reconnect proxy
+        run: node tests/workspace-same-origin-proxy.regression.mjs
