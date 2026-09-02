@@ -2,7 +2,6 @@ import http from 'node:http';
 import { readCodebaseFile, readCodebaseTree } from '../api/src/it-codebase-source.ts';
 
 const port = Number(process.env.PORT || 4000);
-const E2E_MARKER = 'codebase-source-canary-v1';
 
 const json = (res, status, body) => {
   const payload = Buffer.from(JSON.stringify(body));
@@ -14,15 +13,13 @@ const json = (res, status, body) => {
   res.end(payload);
 };
 
-const authorized = (req) => String(req.headers['x-sulandra-e2e-source'] || '') === E2E_MARKER;
-
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://codebase-source-canary');
   if (req.method === 'GET' && url.pathname === '/health') {
     json(res, 200, { ok: true, source: 'feature-codebase-module' });
     return;
   }
-  if (!authorized(req)) {
+  if (url.searchParams.get('__source_canary') !== '1') {
     json(res, 401, { error: 'Unauthorized' });
     return;
   }
