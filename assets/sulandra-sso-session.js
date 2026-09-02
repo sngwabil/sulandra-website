@@ -33,12 +33,18 @@
     script.dataset.sulandraAdminSessionSecurity='true';
     (document.head||document.documentElement).appendChild(script);
   };
+  const enforceEmployeePortalBoundary=()=>{
+    if(!/\/employee-portal\.html$/i.test(location.pathname))return;
+    document.getElementById('employeeAdminReturn')?.remove();
+    document.querySelectorAll('[data-employee-admin-return="true"]').forEach(node=>node.remove());
+  };
 
   const token=readToken();
   const session=readSession();
   if(token&&session&&!expired(session))writeSession(token,session);
   else if(session&&expired(session))clear();
   loadPrivilegedGuard(readSession());
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enforceEmployeePortalBoundary,{once:true});else enforceEmployeePortalBoundary();
 
   window.SulandraSSO={
     token:readToken,
