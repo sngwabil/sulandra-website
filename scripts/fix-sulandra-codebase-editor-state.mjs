@@ -7,6 +7,10 @@ const candidates = [
   path.join(root, 'assets', 'sulandra-codebase.js'),
   path.join(root, 'dist-web', 'assets', 'sulandra-codebase.js'),
 ];
+const cssCandidates = [
+  path.join(root, 'assets', 'sulandra-codebase.css'),
+  path.join(root, 'dist-web', 'assets', 'sulandra-codebase.css'),
+];
 const editorBefore = "if(edit)edit.textContent=editMode?'View':'Edit';";
 const editorAfter = "if(edit){edit.textContent=editMode?'View':'Edit';edit.disabled=!activePath}";
 const dividerBefore = `function installTerminalDividers(host,count){
@@ -45,6 +49,8 @@ const dividerAfter = `function installTerminalDividers(host,count){
  if(count>=2)install('x','scb-term-divider-v');
  if(count>=3)install('y','scb-term-divider-h');
 }`;
+const dividerCssMarker = '/* SULANDRA_CODEBASE_DIVIDER_HITBOX_V3 */';
+const dividerCss = `\n${dividerCssMarker}\n.scb-terminal-integrated #itwsXtermHost .scb-term-divider{pointer-events:auto!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}\n.scb-terminal-integrated #itwsXtermHost .scb-term-divider-v{top:0!important;bottom:auto!important;left:calc(var(--scb-term-col) - 5px)!important;width:10px!important;height:100%!important;min-height:100%!important;cursor:col-resize!important}\n.scb-terminal-integrated #itwsXtermHost .scb-term-divider-h{left:var(--scb-term-col)!important;right:0!important;top:calc(var(--scb-term-row) - 5px)!important;width:auto!important;height:10px!important;cursor:row-resize!important}\n.scb-terminal-integrated #itwsXtermHost[data-scb-layout="4"] .scb-term-divider-h{left:0!important}\n`;
 let touched = 0;
 let verified = 0;
 
@@ -76,5 +82,18 @@ for (const file of candidates) {
   verified += 1;
 }
 
+let cssVerified = 0;
+for (const file of cssCandidates) {
+  try { await access(file); } catch { continue; }
+  let source = await readFile(file, 'utf8');
+  if (!source.includes(dividerCssMarker)) {
+    source += dividerCss;
+    await writeFile(file, source, 'utf8');
+    touched += 1;
+  }
+  cssVerified += 1;
+}
+
 if (!verified) throw new Error('Sulandra Codebase runtime was not found for editor/terminal repair');
-console.log(`Sulandra Codebase editor and terminal split state verified (${touched} repaired, ${verified} checked).`);
+if (!cssVerified) throw new Error('Sulandra Codebase stylesheet was not found for divider hitbox repair');
+console.log(`Sulandra Codebase editor, terminal split state, and divider hitboxes verified (${touched} repaired, ${verified + cssVerified} checked).`);
