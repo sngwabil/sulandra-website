@@ -18,7 +18,7 @@ const jsTag='<script src="/assets/it-agent-workspace-preview.js?v=20260901-docka
 const resizeTag='<script src="/assets/it-agent-dock-resize.js?v=20260901-dock-resize-6"></script>';
 const codebaseCssTag='<link rel="stylesheet" href="/assets/sulandra-codebase.css?v=20260902-codebase-2">';
 const codebaseJsTag='<script src="/assets/sulandra-codebase.js?v=20260902-codebase-2"></script>';
-const codebaseApiBridgeTag='<script src="/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-1"></script>';
+const codebaseApiBridgeTag='<script src="/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-2-railway-db"></script>';
 html=html.replace(/\s*<link rel="stylesheet" href="\/assets\/it-agent-workspace-preview\.css(?:\?v=[^"']+)?">\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-workspace-preview\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
 html=html.replace(/\s*<script src="\/assets\/it-agent-dock-resize\.js(?:\?v=[^"']+)?"><\/script>\s*/g,'\n');
@@ -38,7 +38,7 @@ for(const marker of ['SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V3','itwsWorkspace
 for(const marker of ['SULANDRA_DOCK_RESIZE_CAPTURE_V6','itws-dock-drag-shield','pointerdown','pointermove','pointerup','itws-dock-resizing'])if(!resize.includes(marker))throw new Error(`Dock resize runtime missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','scb-shell','scb-workspace','scb-terminal-deck','scb-dock-tabs','scb-term-divider','scb-editor-input'])if(!codebaseCss.includes(marker))throw new Error(`Sulandra Codebase CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','release/sulandra-1.0','itwsSulandraCodebaseButton','requestFullscreen','openCodebaseFromGesture','SulandraDockableWorkspace','MAX_FILE_BYTES','blockedPath','/api/it-solutions/codebase/tree','/api/it-solutions/codebase/file','terminalLayout','openIntegratedTerminal','saveCurrentToWorkspace','commitWorkspace','activateDock'])if(!codebaseJs.includes(marker))throw new Error(`Sulandra Codebase JavaScript missing ${marker}`);
-for(const marker of ['SULANDRA_CODEBASE_API_BRIDGE_V1','sulandra-website-production-5fc4.up.railway.app','CODEBASE_PATH','Authorization','Bearer ${bearer}','SulandraCompanyContext',"credentials:'omit'"])if(!codebaseApiBridge.includes(marker))throw new Error(`Sulandra Codebase API bridge missing ${marker}`);
+for(const marker of ['SULANDRA_CODEBASE_API_BRIDGE_V2_RAILWAY_DB','codebase-e2e-api-railway-production.up.railway.app','CODEBASE_PATH','Authorization','Bearer ${bearer}','SulandraCompanyContext',"credentials:'omit'"])if(!codebaseApiBridge.includes(marker))throw new Error(`Sulandra Codebase API bridge missing ${marker}`);
 if(/api\.github\.com|\/git\/trees\/|\/git\/blobs\//.test(codebaseJs+codebaseApiBridge))throw new Error('Sulandra Codebase browser runtime must use the authenticated Sulandra API instead of direct GitHub API calls');
 if(!codebaseApiBridge.includes("parsed.origin!==window.location.origin")||!codebaseApiBridge.includes("CODEBASE_PATH"))throw new Error('Sulandra Codebase API bridge must remain narrowly scoped to same-origin Codebase tree/file requests');
 if(/localStorage\.setItem\([^\n]*(?:ticket|url|src)/i.test(js+resize+codebaseJs+codebaseApiBridge))throw new Error('Engineering workspace must not persist access tickets or frame URLs');
