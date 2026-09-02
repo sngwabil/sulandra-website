@@ -9,7 +9,7 @@
   const LEGACY_SESSION_KEY = "sulandra:employee:session";
   const ADMIN_ROLES = new Set(["ADMINISTRATOR", "PROGRAM_MANAGER", "HR_MANAGER", "CEO", "DOO"]);
   const OWNER_ROLES = new Set(["ADMINISTRATOR"]);
-  const PROTECTED_SESSION_ASSET = "/assets/sulandra-protected-session.js?v=20260902-protected-session-1";
+  const PROTECTED_SESSION_ASSET = "/assets/sulandra-protected-session.js?v=20260902-protected-session-2";
   const message = document.getElementById("adminLoginMessage");
   const form = document.getElementById("adminLoginForm");
   const emailInput = document.getElementById("adminEmail");
@@ -23,7 +23,17 @@
   let mfaChallengeId = "";
   let protectedSessionPromise = null;
 
+  function parentProtectedRuntime() {
+    try {
+      if (window.parent && window.parent !== window && window.parent.SulandraProtectedSession) return window.parent.SulandraProtectedSession;
+      if (window.top && window.top !== window && window.top.SulandraProtectedSession) return window.top.SulandraProtectedSession;
+    } catch {}
+    return null;
+  }
+
   function loadProtectedSessionRuntime() {
+    const inherited = parentProtectedRuntime();
+    if (inherited) return Promise.resolve(inherited);
     if (window.SulandraProtectedSession) return Promise.resolve(window.SulandraProtectedSession);
     if (protectedSessionPromise) return protectedSessionPromise;
     protectedSessionPromise = new Promise((resolve) => {
@@ -44,31 +54,41 @@
   }
 
   function fullscreenElement() {
-    return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
-  }
-
-  function armProtectedFullscreenFromGesture() {
-    loadProtectedSessionRuntime();
-    if (fullscreenElement()) return;
-    try { sessionStorage.setItem("sulandra:protected-session:fullscreen-intent", "1"); } catch {}
-    const element = document.documentElement;
-    const request = element.requestFullscreen || element.webkitRequestFullscreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullscreen;
-    if (!request) return;
     try {
-      const result = request === element.requestFullscreen ? request.call(element, { navigationUI: "hide" }) : request.call(element);
-      if (result && typeof result.catch === "function") result.catch(() => {});
+      return window.top?.document?.fullscreenElement || document.fullscreenElement || null;
     } catch {
-      try {
-        const result = request.call(element);
-        if (result && typeof result.catch === "function") result.catch(() => {});
-      } catch {}
+      return document.fullscreenElement || null;
     }
   }
 
+  function armProtectedFullscreenFromGesture() {
+    const inherited = parentProtectedRuntime();
+    if (inherited?.requestFullscreenFromGesture) {
+      inherited.requestFullscreenFromGesture();
+      return;
+    }
+    loadProtectedSessionRuntime();
+    if (fullscreenElement()) return;
+    try { sessionStorage.setItem("sulandra:protected-session:fullscreen-intent", "1"); } catch {}
+    try {
+      const targetDocument = window.top && window.top !== window ? window.top.document : document;
+      const element = targetDocument.documentElement;
+      const request = element.requestFullscreen || element.webkitRequestFullscreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullscreen;
+      if (!request) return;
+      const result = request === element.requestFullscreen ? request.call(element, { navigationUI: "hide" }) : request.call(element);
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    } catch {}
+  }
+
   async function enterProtectedSession(target) {
-    const runtime = window.SulandraProtectedSession || await loadProtectedSessionRuntime();
+    let runtime = parentProtectedRuntime() || window.SulandraProtectedSession;
+    runtime = runtime || await loadProtectedSessionRuntime();
     if (runtime?.enter) {
       runtime.enter(target, { portal: "ADMIN" });
+      return;
+    }
+    if (runtime?.navigate) {
+      runtime.navigate(target, { portal: "ADMIN" });
       return;
     }
     window.location.assign(target);
