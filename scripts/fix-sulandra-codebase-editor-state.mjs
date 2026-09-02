@@ -23,9 +23,9 @@ const dividerBefore = `function installTerminalDividers(host,count){
 const dividerAfter = `function installTerminalDividers(host,count){
  qsa('.scb-term-divider',host).forEach(n=>n.remove());
  const install=(axis,className)=>{
-   const divider=document.createElement('div');divider.className=\`scb-term-divider ${'${'}className}\`;divider.style.touchAction='none';
-   divider.addEventListener('pointerdown',event=>{
-     if(event.button!==0)return;event.preventDefault();event.stopPropagation();
+   const divider=document.createElement('div');divider.className=\`scb-term-divider ${'${'}className}\`;divider.style.touchAction='none';let active=false;
+   const begin=event=>{
+     if(event.button!==0||active)return;active=true;event.preventDefault();event.stopPropagation();
      const rect=host.getBoundingClientRect();let finished=false;
      const update=(clientX,clientY)=>{
        if(axis==='x'){const pct=Math.max(28,Math.min(72,((clientX-rect.left)/Math.max(1,rect.width))*100));host.style.setProperty('--scb-term-col',\`${'${'}pct}%\`)}
@@ -34,13 +34,13 @@ const dividerAfter = `function installTerminalDividers(host,count){
      const pointerMove=e=>update(e.clientX,e.clientY);
      const mouseMove=e=>update(e.clientX,e.clientY);
      const up=()=>{
-       if(finished)return;finished=true;
+       if(finished)return;finished=true;active=false;
        window.removeEventListener('pointermove',pointerMove,true);window.removeEventListener('mousemove',mouseMove,true);window.removeEventListener('pointerup',up,true);window.removeEventListener('mouseup',up,true);window.removeEventListener('pointercancel',up,true);
        void fitVisibleTerminals();
      };
      window.addEventListener('pointermove',pointerMove,true);window.addEventListener('mousemove',mouseMove,true);window.addEventListener('pointerup',up,true);window.addEventListener('mouseup',up,true);window.addEventListener('pointercancel',up,true);
-   });
-   host.appendChild(divider);
+   };
+   divider.addEventListener('pointerdown',begin);divider.addEventListener('mousedown',begin);host.appendChild(divider);
  };
  if(count>=2)install('x','scb-term-divider-v');
  if(count>=3)install('y','scb-term-divider-h');
