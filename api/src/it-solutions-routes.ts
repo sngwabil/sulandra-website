@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { readCodebaseFile, readCodebaseTree } from './it-codebase-source.js';
 
 type AuthContext={userId:string;organizationId:string;role:UserRole;email?:string;legalEntityId?:string|null;ipAddress?:string;userAgent?:string;sessionId?:string};
-type Dependencies={app:Express;prisma:PrismaClient;authOf:(response:Response)=>AuthContext;requireRoles:(...roles:UserRole[])=>RequestHandler};
+type Dependencies={app:Express;prisma:PrismaClient;authOf:(response:Response)=>AuthContext;requireRoles:(...roles:UserRole[])=>RequestHandler;audit?:unknown};
 
 const adminRoles=[UserRole.ADMINISTRATOR,UserRole.PROGRAM_MANAGER,UserRole.HR_MANAGER,UserRole.CEO,UserRole.DOO];
 const gateAll=(requireRoles:(...roles:UserRole[])=>RequestHandler)=>requireRoles(...(Object.values(UserRole) as UserRole[]));
