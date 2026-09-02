@@ -7,8 +7,6 @@ import { fileURLToPath } from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const repo=path.resolve(here,'../..');
-// Exercise the same deterministic repair/publication contract used by the
-// frontend image before loading the Codebase source runtime in Chrome.
 execFileSync(process.execPath,[path.join(repo,'scripts','fix-sulandra-codebase-editor-state.mjs')],{cwd:repo,stdio:'inherit'});
 const cssPath=path.join(repo,'assets','sulandra-codebase.css');
 const jsPath=path.join(repo,'assets','sulandra-codebase.js');
@@ -103,7 +101,6 @@ try{
  await ideDockTab.click();
  if(!(await shell.evaluate(node=>node.classList.contains('scb-dock-closed'))))throw new Error('Clicking the active IDE dock tab did not close the right dock');
  if(await ideDockTab.evaluate(node=>node.classList.contains('active')))throw new Error('Closed IDE dock tab remained highlighted');
- await page.locator('.scb-dock-tab[data-dock="inspector"]').click();
  await page.locator('#scbOpenTerminal').click();
  await page.waitForFunction(()=>document.querySelector('#scbTerminalMount #itwsRealTerminal.scb-terminal-integrated'));
  if(!(await shell.isVisible()))throw new Error('Opening Terminal hid the Codebase surface');
