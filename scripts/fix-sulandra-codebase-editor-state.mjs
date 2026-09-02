@@ -28,6 +28,12 @@ const dividerAfter = `function installTerminalDividers(host,count){
  qsa('.scb-term-divider',host).forEach(n=>n.remove());
  const install=(axis,className)=>{
    const divider=document.createElement('div');divider.className=\`scb-term-divider ${'${'}className}\`;divider.style.touchAction='none';let active=false;
+   divider.style.setProperty('pointer-events','auto','important');divider.style.setProperty('touch-action','none','important');divider.style.setProperty('user-select','none','important');
+   if(axis==='x'){
+     divider.style.setProperty('top','0','important');divider.style.setProperty('bottom','auto','important');divider.style.setProperty('left','calc(var(--scb-term-col) - 5px)','important');divider.style.setProperty('width','10px','important');divider.style.setProperty('height','100%','important');divider.style.setProperty('min-height','100%','important');divider.style.setProperty('cursor','col-resize','important');
+   }else{
+     divider.style.setProperty('left',count===4?'0':'var(--scb-term-col)','important');divider.style.setProperty('right','0','important');divider.style.setProperty('top','calc(var(--scb-term-row) - 5px)','important');divider.style.setProperty('width','auto','important');divider.style.setProperty('height','10px','important');divider.style.setProperty('cursor','row-resize','important');
+   }
    const begin=event=>{
      if(event.button!==0||active)return;active=true;event.preventDefault();event.stopPropagation();
      const rect=host.getBoundingClientRect();let finished=false;
