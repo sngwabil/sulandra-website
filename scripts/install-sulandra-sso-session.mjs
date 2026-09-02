@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dist=path.join(root,'dist-web');
-const marker='/assets/sulandra-sso-session.js?v=20260815-privileged-session-1';
+const marker='/assets/sulandra-sso-session.js?v=20260902-protected-session-2';
 const internalNames=new Set([
   // Admin owns SSO from assets/admin-shell.js; the routes launched from Admin
   // receive the shared SSO runtime so privileged tab-only/idle security continues
@@ -17,6 +17,14 @@ const internalNames=new Set([
 ]);
 
 async function walk(dir){const out=[];for(const entry of await readdir(dir,{withFileTypes:true})){const p=path.join(dir,entry.name);if(entry.isDirectory())out.push(...await walk(p));else if(entry.isFile()&&entry.name.endsWith('.html'))out.push(p)}return out}
+async function patchPublished(relative,transform){
+  const target=path.join(dist,relative);
+  let html;
+  try{html=await readFile(target,'utf8')}catch(error){if(error?.code==='ENOENT')return;throw error}
+  const next=transform(html);
+  if(next!==html)await writeFile(target,next,'utf8');
+}
+
 let installed=0;
 for(const file of await walk(dist)){
   const rel=path.relative(dist,file).replaceAll('\\','/');
@@ -31,4 +39,20 @@ for(const file of await walk(dist)){
   else continue;
   await writeFile(file,html,'utf8');installed++;
 }
-console.log(`Sulandra single sign-on session cache installed across ${installed} internal page(s); Admin is owned by its canonical shell runtime.`);
+
+// Keep Employee Portal employee-facing for every role. The historical source
+// anchor remains only for legacy source verifiers; it is never published.
+await patchPublished('employee-portal.html',html=>html.replace(/\s*<a\s+id=["']employeeAdminReturn["'][\s\S]*?<\/a>\s*/i,'\n'));
+
+// Cache-bust each login/runtime boundary so clients cannot retain v1 navigation.
+await patchPublished('employee-login.html',html=>html.replace(/\/assets\/employee-login-railway\.js\?v=[^"']+/g,'/assets/employee-login-railway.js?v=20260902-protected-session-2'));
+await patchPublished('admin-login.html',html=>html.replace(/admin-login-railway\.js\?v=[^"']+/g,'admin-login-railway.js?v=20260902-protected-session-2'));
+await patchPublished(path.join('spire','login.html'),html=>html.replace(/spire-login\.js\?v=[^"']+/g,'spire-login.js?v=20260902-spire-native-login-2'));
+await patchPublished('sulandra-session.html',html=>html.replace(/sulandra-protected-session\.js\?v=[^"']+/g,'sulandra-protected-session.js?v=20260902-protected-session-2'));
+
+const publishedEmployeePortal=await readFile(path.join(dist,'employee-portal.html'),'utf8').catch(()=> '');
+if(publishedEmployeePortal.includes('id="employeeAdminReturn"')||publishedEmployeePortal.includes("id='employeeAdminReturn'"))throw new Error('Published Employee Portal still exposes the Admin shortcut');
+const publishedSpireLogin=await readFile(path.join(dist,'spire','login.html'),'utf8').catch(()=> '');
+if(!publishedSpireLogin.includes('S.P.I.R.E. Sign In')||!publishedSpireLogin.includes('20260902-spire-native-login-2'))throw new Error('Published S.P.I.R.E. native login is missing');
+
+console.log(`Sulandra single sign-on session cache installed across ${installed} internal page(s); Employee/Admin/S.P.I.R.E. use protected fullscreen session v2 and Employee Portal exposes no Admin shortcut.`);
