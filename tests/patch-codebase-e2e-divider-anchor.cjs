@@ -12,6 +12,35 @@ const dragBefore = `async function drag(page, locator, dx, dy) {
   await page.mouse.move(x + dx, y + dy, { steps: 8 });
   await page.mouse.up();
 }`;
+const dragAnchored = `async function drag(page, locator, dx, dy, anchorX = 0.5, anchorY = 0.5) {
+  const box = await locator.boundingBox();
+  assert(box, 'Resize handle is not visible');
+  const x = box.x + box.width * anchorX;
+  const y = box.y + box.height * anchorY;
+  const hit = await page.evaluate(({ x, y }) => {
+    const node = document.elementFromPoint(x, y);
+    const host = document.querySelector('#itwsXtermHost');
+    return {
+      id: node?.id || '',
+      className: typeof node?.className === 'string' ? node.className : '',
+      tag: node?.tagName || '',
+      col: host ? getComputedStyle(host).getPropertyValue('--scb-term-col').trim() : '',
+      row: host ? getComputedStyle(host).getPropertyValue('--scb-term-row').trim() : '',
+    };
+  }, { x, y });
+  console.log('[E2E DRAG HIT] ' + JSON.stringify({ anchorX, anchorY, dx, dy, ...hit }));
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y + dy, { steps: 8 });
+  const during = await page.locator('#itwsXtermHost').evaluate((host) => ({
+    col: getComputedStyle(host).getPropertyValue('--scb-term-col').trim(),
+    row: getComputedStyle(host).getPropertyValue('--scb-term-row').trim(),
+    inlineCol: host.style.getPropertyValue('--scb-term-col'),
+    inlineRow: host.style.getPropertyValue('--scb-term-row'),
+  }));
+  console.log('[E2E DRAG DURING] ' + JSON.stringify({ dx, dy, ...during }));
+  await page.mouse.up();
+}`;
 const dragAfter = `async function drag(page, locator, dx, dy, anchorX = 0.5, anchorY = 0.5) {
   const box = await locator.boundingBox();
   assert(box, 'Resize handle is not visible');
@@ -23,10 +52,10 @@ const dragAfter = `async function drag(page, locator, dx, dy, anchorX = 0.5, anc
   await page.mouse.up();
 }`;
 
-if (!source.includes(dragBefore) && !source.includes(dragAfter)) {
+if (!source.includes(dragBefore) && !source.includes(dragAfter) && !source.includes(dragAnchored)) {
   throw new Error('E2E drag helper contract changed');
 }
-source = source.replace(dragBefore, dragAfter);
+source = source.replace(dragBefore, dragAnchored).replace(dragAfter, dragAnchored);
 
 const verticalBefore = "await drag(page, page.locator('.scb-term-divider-v'), 70, 0);";
 const verticalAfter = "await drag(page, page.locator('.scb-term-divider-v'), 70, 0, 0.5, 0.25);";
@@ -43,4 +72,4 @@ source = source.replace(verticalBefore, verticalAfter);
 source = source.replace(horizontalBefore, horizontalAfter);
 
 fs.writeFileSync(file, source, 'utf8');
-console.log('Codebase E2E divider anchors moved away from the 4-way handle intersection.');
+console.log('Codebase E2E divider anchors moved away from the 4-way handle intersection with hit diagnostics.');
