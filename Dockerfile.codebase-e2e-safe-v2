@@ -8,8 +8,10 @@ RUN npm init -y >/dev/null 2>&1 \
 COPY tests/codebase-railway-e2e-safe.mjs ./codebase-railway-e2e-safe.mjs
 COPY tests/patch-codebase-e2e-safe.cjs ./patch-codebase-e2e-safe.cjs
 COPY tests/patch-codebase-e2e-dock.cjs ./patch-codebase-e2e-dock.cjs
+COPY tests/patch-codebase-e2e-cleanup.cjs ./patch-codebase-e2e-cleanup.cjs
 RUN node ./patch-codebase-e2e-safe.cjs \
- && node ./patch-codebase-e2e-dock.cjs
+ && node ./patch-codebase-e2e-dock.cjs \
+ && node ./patch-codebase-e2e-cleanup.cjs
 
 ENV NODE_ENV=production
 
