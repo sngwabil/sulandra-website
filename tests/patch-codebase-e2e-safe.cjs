@@ -3,8 +3,69 @@ const file = '/e2e/codebase-railway-e2e-safe.mjs';
 let source = fs.readFileSync(file, 'utf8');
 
 source = source.replace(
+  "const API = String(process.env.E2E_API_URL || '').replace(/\\/$/, '');",
+  "const API = String(process.env.E2E_API_URL || '').replace(/\\/$/, '');\nconst FEATURE_API = String(process.env.E2E_FEATURE_API_URL || '').replace(/\\/$/, '');",
+);
+
+source = source.replace(
   "pageErrors.push(String(error?.message || error))",
   "pageErrors.push(String(error?.stack || error?.message || error))",
+);
+
+source = source.replace(
+  "async function terminalOutput(token, sessionId) {",
+  `async function featureLoginToken() {
+  const response = await fetch(\`${'${'}FEATURE_API}/api/auth/login\`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD, portal: 'ADMIN' }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(\`Feature API login failed (${'${'}response.status}): ${'${'}payload.error || payload.message || 'unknown error'}\`);
+  const session = payload.session || payload.data || payload;
+  const token = session.accessToken || session.bearerToken || session.token;
+  assert(token, 'Feature API login did not return a bearer token');
+  return token;
+}
+async function terminalOutput(token, sessionId) {`,
+);
+
+source = source.replace(
+  "async function installApiProxy(context) {",
+  "async function installApiProxy(context, featureToken) {",
+);
+source = source.replace(
+  "    const request = route.request();\n    if (request.method() === 'OPTIONS') {",
+  `    const request = route.request();
+    const parsed = new URL(request.url());
+    const codebaseRequest = /^\\/api\\/it-solutions\\/codebase(?:\\/|$)/.test(parsed.pathname);
+    if (request.method() === 'OPTIONS') {`,
+);
+source = source.replace(
+  "    const upstream = await route.fetch();",
+  `    const upstream = codebaseRequest
+      ? await route.fetch({
+          url: FEATURE_API + parsed.pathname + parsed.search,
+          headers: { ...request.headers(), authorization: \`Bearer ${'${'}featureToken}\` },
+        })
+      : await route.fetch();`,
+);
+
+source = source.replace(
+  "requireEnv(API, 'E2E_API_URL');",
+  "requireEnv(API, 'E2E_API_URL');\nrequireEnv(FEATURE_API, 'E2E_FEATURE_API_URL');",
+);
+
+source = source.replace(
+  "  browser = await chromium.launch({ headless: true });",
+  `  const featureToken = await featureLoginToken();
+  console.log('[E2E INFO] Feature Codebase API authenticated without exposing credentials');
+
+  browser = await chromium.launch({ headless: true });`,
+);
+source = source.replace(
+  "  await installApiProxy(context);",
+  "  await installApiProxy(context, featureToken);",
 );
 
 source = source.replace(
@@ -49,8 +110,8 @@ source = source.replace(
         rootPresent: Boolean(root),
       };
     });
-    assert(/Ask SIA/i.test(layers.label), \`Ask SIA launcher label missing: \${JSON.stringify(layers)}\`);
-    assert(layers.rootPresent && layers.rootZ > layers.codebaseZ && layers.launcherZ > layers.codebaseZ, \`Ask SIA is behind Codebase: \${JSON.stringify(layers)}\`);
+    assert(/Ask SIA/i.test(layers.label), \`Ask SIA launcher label missing: ${'${'}JSON.stringify(layers)}\`);
+    assert(layers.rootPresent && layers.rootZ > layers.codebaseZ && layers.launcherZ > layers.codebaseZ, \`Ask SIA is behind Codebase: ${'${'}JSON.stringify(layers)}\`);
     return layers;
   });
 
