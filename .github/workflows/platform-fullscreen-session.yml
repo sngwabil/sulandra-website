@@ -1,0 +1,33 @@
+name: Platform Fullscreen Session
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-protected-session:
+    name: Verify persistent protected fullscreen session
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax-check protected session runtime
+        run: |
+          node --check assets/sulandra-protected-session.js
+          node --check admin-login-railway.js
+          node --check assets/employee-login-railway.js
+
+      - name: Verify fullscreen session contract
+        run: node scripts/verify-platform-fullscreen-session.mjs
