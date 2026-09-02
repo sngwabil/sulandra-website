@@ -45,12 +45,21 @@ source = source.replace(
   "    const upstream = await route.fetch();",
   `    const requestHeaders = { ...request.headers() };
     delete requestHeaders.origin;
-    const upstream = codebaseRequest
-      ? await route.fetch({
-          url: FEATURE_API + parsed.pathname + parsed.search,
-          headers: { ...request.headers(), authorization: \`Bearer ${'${'}featureToken}\` },
-        })
-      : await route.fetch({ headers: requestHeaders });`,
+    let upstream;
+    try {
+      upstream = codebaseRequest
+        ? await route.fetch({
+            url: FEATURE_API + parsed.pathname + parsed.search,
+            headers: { ...request.headers(), authorization: \`Bearer ${'${'}featureToken}\` },
+          })
+        : await route.fetch({ headers: requestHeaders });
+    } catch (error) {
+      const message = String(error?.message || error);
+      if (/Request context disposed|Target page, context or browser has been closed|browser has been closed|Page closed/i.test(message)) return;
+      console.error('[E2E PROXY ERROR] ' + message.split('\\n')[0]);
+      try { await route.abort('failed'); } catch {}
+      return;
+    }`,
 );
 
 source = source.replace(
