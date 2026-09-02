@@ -28,6 +28,7 @@ RUN npm run build:web \
  && cp assets/it-agent-workspace-preview.js dist-web/assets/it-agent-workspace-preview.js \
  && cp assets/sulandra-codebase.css dist-web/assets/sulandra-codebase.css \
  && cp assets/sulandra-codebase.js dist-web/assets/sulandra-codebase.js \
+ && cp assets/sulandra-codebase-api-bridge.js dist-web/assets/sulandra-codebase-api-bridge.js \
  && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
  && node scripts/install-workspace-ide-ui.mjs dist-web/it-solutions.html \
