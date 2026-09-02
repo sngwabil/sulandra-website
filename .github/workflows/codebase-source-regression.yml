@@ -1,0 +1,48 @@
+name: Codebase Source Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/sulandra-codebase.js
+      - assets/sulandra-codebase-api-bridge.js
+      - scripts/install-workspace-ide-ui.mjs
+      - tests/sulandra-codebase-api-bridge.regression.mjs
+      - Dockerfile.frontend
+      - .github/workflows/codebase-source-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify authenticated Codebase tree and file routing
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate Codebase bridge sources
+        run: |
+          set -euo pipefail
+          node --check assets/sulandra-codebase-api-bridge.js
+          node --check scripts/install-workspace-ide-ui.mjs
+          node --check tests/sulandra-codebase-api-bridge.regression.mjs
+
+      - name: Exercise authenticated API bridge
+        run: node tests/sulandra-codebase-api-bridge.regression.mjs
+
+      - name: Verify portal publication includes bridge
+        run: |
+          set -euo pipefail
+          node scripts/install-workspace-ide-ui.mjs
+          grep -Fq '/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-1' it-solutions.html
+          grep -Fq 'sulandra-website-production-5fc4.up.railway.app' assets/sulandra-codebase-api-bridge.js
+          grep -Fq 'Authorization' assets/sulandra-codebase-api-bridge.js
