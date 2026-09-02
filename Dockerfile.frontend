@@ -10,6 +10,7 @@ COPY . .
 RUN node --check assets/it-agent-conversational-ui.js
 RUN node scripts/optimize-admin-login-performance.mjs
 RUN node scripts/install-employee-support.mjs
+RUN node scripts/fix-sulandra-codebase-editor-state.mjs
 
 # Build a pinned same-origin browser terminal bundle containing xterm plus all
 # production addons. No CDN runtime dependency is used in production.
