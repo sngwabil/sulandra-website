@@ -25,18 +25,40 @@ source = source.replace(
   "  await context.route(/^https:\\/\\/[^/]+\\/api\\/.*/, async (route) => {",
 );
 
-const bearerHeader = "headers: { ...request.headers(), authorization: `Bearer ${featureToken}` },";
-if (!source.includes(bearerHeader)) throw new Error('Feature bearer forwarding marker is missing from E2E runner');
+const codebaseFetchBlock = `    let upstream;
+    try {
+      upstream = codebaseRequest
+        ? await route.fetch({
+            url: FEATURE_API + parsed.pathname + parsed.search,
+            headers: { ...request.headers(), authorization: \`Bearer \${featureToken}\` },
+          })
+        : await route.fetch({ headers: requestHeaders });`;
+if (!source.includes(codebaseFetchBlock)) throw new Error('Feature Codebase proxy fetch marker is missing from E2E runner');
 source = source.replace(
-  bearerHeader,
-  "headers: { ...request.headers(), 'x-sulandra-e2e-source': featureToken },",
-);
-
-const headersMarker = "    const headers = { ...upstream.headers() };";
-if (!source.includes(headersMarker)) throw new Error('Proxy response headers marker is missing from E2E runner');
-source = source.replace(
-  headersMarker,
-  "    if (codebaseRequest) console.log('[E2E CODEBASE SOURCE] ' + request.method() + ' ' + parsed.pathname + ' -> ' + upstream.status());\n" + headersMarker,
+  codebaseFetchBlock,
+  `    let upstream;
+    try {
+      if (codebaseRequest) {
+        const direct = await fetch(FEATURE_API + parsed.pathname + parsed.search, {
+          method: request.method(),
+          headers: { Accept: 'application/json', 'x-sulandra-e2e-source': featureToken },
+        });
+        const body = await direct.text();
+        console.log('[E2E CODEBASE SOURCE] ' + request.method() + ' ' + parsed.pathname + ' -> ' + direct.status);
+        await route.fulfill({
+          status: direct.status,
+          body,
+          headers: {
+            'content-type': direct.headers.get('content-type') || 'application/json; charset=utf-8',
+            'cache-control': 'no-store',
+            'access-control-allow-origin': WEB,
+            'access-control-allow-credentials': 'true',
+            vary: 'Origin',
+          },
+        });
+        return;
+      }
+      upstream = await route.fetch({ headers: requestHeaders });`,
 );
 
 fs.writeFileSync(file, source, 'utf8');
