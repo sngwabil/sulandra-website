@@ -1,0 +1,14 @@
+FROM mcr.microsoft.com/playwright:v1.55.0-noble
+
+WORKDIR /e2e
+
+RUN npm init -y >/dev/null 2>&1 \
+ && npm install --no-audit --no-fund playwright@1.55.0
+
+COPY tests/codebase-railway-e2e-safe.mjs ./codebase-railway-e2e-safe.mjs
+COPY tests/patch-codebase-e2e-safe.cjs ./patch-codebase-e2e-safe.cjs
+RUN node ./patch-codebase-e2e-safe.cjs
+
+ENV NODE_ENV=production
+
+CMD ["node", "/e2e/codebase-railway-e2e-safe.mjs"]
