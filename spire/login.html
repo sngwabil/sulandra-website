@@ -19,18 +19,18 @@
     @media(max-width:600px){.secure{display:none}.card-body,.card-head{padding-left:16px;padding-right:16px}}
   </style>
 </head>
-<body data-spire-login="SPIRE_AUTHENTICATED_FULLSCREEN_SHELL_V1">
+<body data-spire-login="SPIRE_NATIVE_LOGIN_V2">
   <section class="login-page" id="spireLoginPage">
     <header class="topbar"><span class="logo">Spire</span><span class="title">S.P.I.R.E. Enterprise</span><span class="spacer"></span><span class="secure">Secure Clinical Workspace</span></header>
     <main class="login-stage">
       <form class="card" id="spireLoginForm" autocomplete="on">
-        <div class="card-head"><h1>Sign in to S.P.I.R.E.</h1><p>Use your Sulandra Health system credentials. If you opened S.P.I.R.E. from the Employee or Admin Portal, your existing authenticated session will be verified automatically.</p></div>
+        <div class="card-head"><h1>S.P.I.R.E. Sign In</h1><p>Use your Sulandra Health system credentials. S.P.I.R.E. verifies clinical access separately from Employee Portal and Admin Portal navigation.</p></div>
         <div class="card-body">
-          <div class="sso"><span class="dot"></span><span id="spireSsoState">Checking existing Sulandra session…</span></div>
+          <div class="sso"><span class="dot"></span><span id="spireSsoState">Checking existing S.P.I.R.E. access…</span></div>
           <div class="field"><label for="spireIdentifier">Username or email</label><input id="spireIdentifier" name="identifier" autocomplete="username" required></div>
           <div class="field"><label for="spirePassword">Password</label><input id="spirePassword" name="password" type="password" autocomplete="current-password" required></div>
           <div class="actions"><button class="primary" id="spireLoginButton" type="submit">Sign In & Open Client Station</button><a class="secondary" href="/employee-login.html">Account recovery</a></div>
-          <div class="status" id="spireLoginStatus" role="status" aria-live="polite">Verifying session…</div>
+          <div class="status" id="spireLoginStatus" role="status" aria-live="polite">Verifying S.P.I.R.E. session…</div>
         </div>
       </form>
     </main>
@@ -41,6 +41,6 @@
   </section>
 
   <script>window.SULANDRA_API_BASE='https://sulandra-website-production-5fc4.up.railway.app';</script>
-  <script src="/assets/spire-login.js?v=20260813-exact-workflow-1"></script>
+  <script src="/assets/spire-login.js?v=20260902-spire-native-login-2"></script>
 </body>
 </html>
