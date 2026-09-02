@@ -2,8 +2,7 @@ import http from 'node:http';
 import { readCodebaseFile, readCodebaseTree } from '../api/src/it-codebase-source.ts';
 
 const port = Number(process.env.PORT || 4000);
-const expectedToken = String(process.env.E2E_SOURCE_TOKEN || '').trim();
-if (!expectedToken) throw new Error('E2E_SOURCE_TOKEN is required');
+const E2E_MARKER = 'codebase-source-canary-v1';
 
 const json = (res, status, body) => {
   const payload = Buffer.from(JSON.stringify(body));
@@ -15,10 +14,7 @@ const json = (res, status, body) => {
   res.end(payload);
 };
 
-const authorized = (req) => {
-  const value = String(req.headers.authorization || '');
-  return value === `Bearer ${expectedToken}`;
-};
+const authorized = (req) => String(req.headers['x-sulandra-e2e-source'] || '') === E2E_MARKER;
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', 'http://codebase-source-canary');
