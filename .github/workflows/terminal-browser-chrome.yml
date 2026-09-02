@@ -13,9 +13,12 @@ on:
       - assets/it-agent-xterm-emulator.css
       - assets/it-agent-workspace-preview.css
       - assets/it-agent-workspace-preview.js
+      - assets/sulandra-codebase.css
+      - assets/sulandra-codebase.js
       - scripts/install-workspace-ide-ui.mjs
       - scripts/install-it-agent-xterm-emulator.mjs
       - terminal-browser/**
+      - Dockerfile.frontend
       - .github/workflows/terminal-browser-chrome.yml
   push:
     branches:
@@ -29,9 +32,12 @@ on:
       - assets/it-agent-xterm-emulator.css
       - assets/it-agent-workspace-preview.css
       - assets/it-agent-workspace-preview.js
+      - assets/sulandra-codebase.css
+      - assets/sulandra-codebase.js
       - scripts/install-workspace-ide-ui.mjs
       - scripts/install-it-agent-xterm-emulator.mjs
       - terminal-browser/**
+      - Dockerfile.frontend
       - .github/workflows/terminal-browser-chrome.yml
 
 permissions:
@@ -76,3 +82,6 @@ jobs:
 
       - name: Verify IDE and Preview stay inside the workspace rail
         run: node terminal-browser/tests/workspace-panel-regression.mjs
+
+      - name: Verify Sulandra Codebase workspace
+        run: node terminal-browser/tests/codebase-regression.mjs
