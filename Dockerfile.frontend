@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY . .
 
+RUN node --check assets/it-agent-conversational-ui.js
 RUN node scripts/optimize-admin-login-performance.mjs
 RUN node scripts/install-employee-support.mjs
 
