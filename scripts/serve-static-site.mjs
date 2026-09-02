@@ -4,9 +4,11 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createGzip } from 'node:zlib';
+import { createWorkspaceSameOriginProxy } from './workspace-same-origin-proxy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist-web');
 const port = Number(process.env.PORT || 8080);
+const workspaceProxy = createWorkspaceSameOriginProxy();
 
 const contentTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
@@ -58,6 +60,11 @@ function isFresh(request, info, etag) {
 }
 
 const server = http.createServer(async (request, response) => {
+  // IDE and Preview stay on the public Sulandra origin. This makes the
+  // workspace browser-session cookie first-party and keeps code-server HTTP
+  // requests plus reconnecting WebSockets on the same authenticated path.
+  if (workspaceProxy.handleHttp(request, response)) return;
+
   if (!['GET', 'HEAD'].includes(request.method || 'GET')) {
     response.writeHead(405, { Allow: 'GET, HEAD' });
     response.end('Method Not Allowed');
@@ -115,6 +122,12 @@ const server = http.createServer(async (request, response) => {
     response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     response.end('404 Not Found');
   }
+});
+
+server.on('upgrade', (request, socket, head) => {
+  if (workspaceProxy.handleUpgrade(request, socket, head)) return;
+  socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
+  socket.destroy();
 });
 
 server.listen(port, '0.0.0.0', () => {
