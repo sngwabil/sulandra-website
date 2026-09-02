@@ -18,4 +18,18 @@ source = source.replace(
   "[E2E INFO] Feature Codebase source module canary authenticated without exposing credentials",
 );
 
+const productionOnlyRoute = "  await context.route(`${API}/**`, async (route) => {";
+if (!source.includes(productionOnlyRoute)) throw new Error('Production-only API proxy route marker is missing from E2E runner');
+source = source.replace(
+  productionOnlyRoute,
+  "  await context.route(/^https:\\/\\/[^/]+\\/api\\/.*/, async (route) => {",
+);
+
+const headersMarker = "    const headers = { ...upstream.headers() };";
+if (!source.includes(headersMarker)) throw new Error('Proxy response headers marker is missing from E2E runner');
+source = source.replace(
+  headersMarker,
+  "    if (codebaseRequest) console.log('[E2E CODEBASE SOURCE] ' + request.method() + ' ' + parsed.pathname + ' -> ' + upstream.status());\n" + headersMarker,
+);
+
 fs.writeFileSync(file, source, 'utf8');
