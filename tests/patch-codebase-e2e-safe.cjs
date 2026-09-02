@@ -8,6 +8,36 @@ source = source.replace(
 source = source.replace(
   "  const page = await context.newPage();",
   `  const page = await context.newPage();
+  await page.addInitScript(() => {
+    window.__siaRemovalTrace = [];
+    const remember = (kind, node, value = '') => {
+      try {
+        const relevant = node && (node.id === 'siaxLauncher' || node.id === 'sia-copilot-root' || node.querySelector?.('#siaxLauncher'));
+        if (!relevant) return;
+        window.__siaRemovalTrace.push({
+          kind,
+          node: node.id || node.tagName || node.nodeName || '',
+          value: String(value || '').slice(0, 180),
+          stack: String(new Error('SIA DOM mutation').stack || '').split('\\n').slice(1, 9),
+        });
+        window.__siaRemovalTrace = window.__siaRemovalTrace.slice(-20);
+      } catch {}
+    };
+    const nativeRemove = Element.prototype.remove;
+    Element.prototype.remove = function(...args){ remember('Element.remove', this); return nativeRemove.apply(this,args); };
+    const nativeRemoveChild = Node.prototype.removeChild;
+    Node.prototype.removeChild = function(child){ remember('removeChild', child); return nativeRemoveChild.call(this,child); };
+    const nativeReplaceChildren = Element.prototype.replaceChildren;
+    Element.prototype.replaceChildren = function(...nodes){ if(this.id==='sia-copilot-root'||this.querySelector?.('#siaxLauncher'))remember('replaceChildren',this); return nativeReplaceChildren.apply(this,nodes); };
+    const inner = Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+    if(inner?.set&&inner?.get){
+      Object.defineProperty(Element.prototype,'innerHTML',{configurable:inner.configurable,enumerable:inner.enumerable,get:inner.get,set(value){ if(this.id==='sia-copilot-root'||this.querySelector?.('#siaxLauncher'))remember('innerHTML',this,value); return inner.set.call(this,value); }});
+    }
+    const text = Object.getOwnPropertyDescriptor(Node.prototype,'textContent');
+    if(text?.set&&text?.get){
+      Object.defineProperty(Node.prototype,'textContent',{configurable:text.configurable,enumerable:text.enumerable,get:text.get,set(value){ if(this instanceof Element&&(this.id==='sia-copilot-root'||this.querySelector?.('#siaxLauncher')))remember('textContent',this,value); return text.set.call(this,value); }});
+    }
+  });
   const parseFailureDetails = [];
   const cdp = await context.newCDPSession(page);
   await Promise.all([cdp.send('Runtime.enable'), cdp.send('Debugger.enable')]);
@@ -76,17 +106,26 @@ source = source.replace(
 source = source.replace(
   "  await step('Verify colorful syntax, line numbers, and stable Explorer/tab DNA', async () => {",
   `  await step('Keep Ask SIA visible above full-screen Codebase', async () => {
-    const diagnostic = await page.evaluate(() => ({
-      readyState: document.readyState,
-      topIsSelf: window.top === window.self,
-      pathname: location.pathname,
-      guard: Boolean(window.__SIA_GLOBAL_COPILOT_V1__),
-      bridgeGuard: Boolean(window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1__),
-      root: Boolean(document.querySelector('#sia-copilot-root')),
-      launcher: Boolean(document.querySelector('#siaxLauncher')),
-      fullscreenId: (document.fullscreenElement || document.webkitFullscreenElement)?.id || '',
-      scripts: [...document.scripts].filter((node) => /sia-copilot|codebase-sia/i.test(node.src || '')).map((node) => ({ src: node.src, defer: node.defer })),
-    }));
+    await page.waitForTimeout(900);
+    const diagnostic = await page.evaluate(() => {
+      const root = document.querySelector('#sia-copilot-root');
+      return {
+        readyState: document.readyState,
+        topIsSelf: window.top === window.self,
+        pathname: location.pathname,
+        guard: Boolean(window.__SIA_GLOBAL_COPILOT_V1__),
+        bridgeGuard: Boolean(window.__SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1__),
+        root: Boolean(root),
+        launcher: Boolean(document.querySelector('#siaxLauncher')),
+        rootChildCount: root?.childElementCount ?? -1,
+        rootChildren: root ? [...root.children].map((node) => ({ id: node.id || '', tag: node.tagName, className: String(node.className || '').slice(0,100) })) : [],
+        rootHtml: root ? root.innerHTML.slice(0,700) : '',
+        rootParent: root?.parentElement?.id || root?.parentElement?.tagName || '',
+        removalTrace: window.__siaRemovalTrace || [],
+        fullscreenId: (document.fullscreenElement || document.webkitFullscreenElement)?.id || '',
+        scripts: [...document.scripts].filter((node) => /sia-copilot|codebase-sia/i.test(node.src || '')).map((node) => ({ src: node.src, defer: node.defer })),
+      };
+    });
     console.log('[SIA DIAG] ' + JSON.stringify(diagnostic));
     const launcher = page.locator('#siaxLauncher');
     await launcher.waitFor({ state: 'visible', timeout: 15_000 });
