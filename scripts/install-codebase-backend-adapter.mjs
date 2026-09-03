@@ -39,16 +39,35 @@ html = html.replace(
   "      listEl.innerHTML = '<div style=\"padding:16px;color:#e57373;line-height:1.5\">Unable to load the real repository. Check Codebase API authentication or service health.</div>';",
 );
 
-const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2"></script>';
+const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-backend-adapter\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
-if (!html.includes('</body>')) throw new Error('Codebase body anchor changed');
-html = html.replace('</body>', `${tag}\n</body>`);
+
+// IMPORTANT: Codebase contains sample HTML inside JavaScript template strings,
+// including literal </body> text. Never use String.replace('</body>', ...),
+// because that can inject a real </script> tag into the inline IDE runtime and
+// make the entire application render as a non-interactive shell. Always anchor
+// publication to the final document body close.
+const lower = html.toLowerCase();
+const bodyCloseIndex = lower.lastIndexOf('</body>');
+const htmlCloseIndex = lower.lastIndexOf('</html>');
+if (bodyCloseIndex < 0 || htmlCloseIndex < bodyCloseIndex) throw new Error('Codebase final body/html anchor changed');
+html = `${html.slice(0, bodyCloseIndex)}${tag}\n${html.slice(bodyCloseIndex)}`;
+
+const adapterIndex = html.indexOf(tag);
+const finalBodyIndex = html.toLowerCase().lastIndexOf('</body>');
+if (adapterIndex < 0 || adapterIndex >= finalBodyIndex) throw new Error('Codebase adapter must be published before the final document body close');
+if (html.indexOf(tag, adapterIndex + tag.length) !== -1) throw new Error('Codebase adapter must be published exactly once');
+if (html.slice(adapterIndex + tag.length, finalBodyIndex).trim()) throw new Error('Codebase adapter must be the final executable element before </body>');
+const beforeAdapter = html.slice(0, adapterIndex).toLowerCase();
+if (beforeAdapter.lastIndexOf('<script') > beforeAdapter.lastIndexOf('</script>')) {
+  throw new Error('Codebase adapter must never be injected inside an inline script/template string');
+}
 
 for (const marker of [
   'https://codebase-e2e-api-production.up.railway.app',
   'wss://sulandra-coding-terminal-worker-production.up.railway.app',
   'https://codebase-e2e-web-production.up.railway.app',
-  '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2',
+  '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3',
   "sessionStorage.getItem('sulandra:admin:access-token')",
   'createWorkspaceFolder()',
 ]) {
@@ -58,4 +77,4 @@ if (html.includes("|| 'test-token'")) throw new Error('Published Codebase must n
 if (/openFallbackFile\('spire-evv-test-console\.html'\)/.test(html)) throw new Error('Published Codebase must not preload demonstration source files');
 
 await writeFile(target, html, 'utf8');
-console.log(`Sulandra Codebase standalone backend/control adapter V2 published into ${target}`);
+console.log(`Sulandra Codebase standalone backend/control adapter V3 published at the final document body anchor in ${target}`);
