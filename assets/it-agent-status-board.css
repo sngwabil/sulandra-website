@@ -1,0 +1,30 @@
+/* SULANDRA_IT_STATUS_BOARD_V1 */
+#agent .examples{display:flex!important}
+#agent .agent-shell.it-status-layout{grid-template-columns:minmax(0,1fr) minmax(300px,min(25vw,420px));align-items:stretch}
+#agent .agent-shell.it-status-layout.it-status-board-closed{grid-template-columns:minmax(0,1fr)}
+.it-status-board{min-width:0;min-height:640px;display:flex;flex-direction:column;padding:0!important;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 18px rgba(5,45,82,.06)}
+.it-status-board[hidden]{display:none!important}
+.it-status-board-head{height:48px;display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--line);background:#f9fbfd;flex:0 0 auto}
+.it-status-board-head strong{color:var(--navy);font-size:14px}
+.it-status-board-badge{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#60758a;background:#edf3f7;border:1px solid #dce5ec;border-radius:999px;padding:4px 7px}
+.it-status-board-close,.it-status-board-toggle{border:1px solid #cbd9e5;background:#fff;color:#244d6d;border-radius:8px;font-weight:800;cursor:pointer}
+.it-status-board-close{width:30px;height:30px;font-size:17px;line-height:1}
+.it-status-board-toggle{padding:7px 10px;font-size:12px;white-space:nowrap}
+.it-status-board-body{min-height:0;flex:1;overflow:auto;padding:12px}
+.it-status-board-empty{border:1px dashed #cad8e3;border-radius:12px;padding:18px 12px;color:#718497;background:#fbfdff;font-size:12px;line-height:1.5}
+.it-status-trace{display:grid;gap:8px}
+.it-status-trace-title{font-size:12px;font-weight:800;color:#2d465d;padding:0 2px 6px;border-bottom:1px solid #edf2f6}
+.it-status-step{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:start;padding:7px 4px;border-radius:9px}
+.it-status-step-icon{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid #d8e1e8;background:#fff;color:#6b7b89;font-size:10px;font-weight:900;margin-top:1px}
+.it-status-step.running .it-status-step-icon{font-size:0}
+.it-status-step.running .it-status-step-icon::after{content:'';width:8px;height:8px;border-radius:50%;border:2px solid #d6e2ea;border-top-color:#1685d1;animation:itStatusSpin .75s linear infinite}
+.it-status-step.done .it-status-step-icon{background:#eef8f2;border-color:#cde7d7;color:#176b43}
+.it-status-step.waiting .it-status-step-icon{background:#fff9ec;border-color:#eedca9;color:#8a6410}
+.it-status-step.error .it-status-step-icon{background:#fff0f0;border-color:#eccaca;color:#a22b2b}
+.it-status-step-label{font-size:12px;font-weight:750;color:#3b4f61;line-height:1.35}
+.it-status-step-detail{font-size:10.5px;color:#81909d;line-height:1.35;margin-top:2px;overflow-wrap:anywhere}
+.it-status-board-foot{padding:9px 12px;border-top:1px solid #edf2f6;background:#fbfcfd;color:#8a98a5;font-size:9.5px;line-height:1.35}
+.it-status-action-center{margin-top:16px!important}
+#overview .it-status-action-center>h2{margin-top:0!important}
+@keyframes itStatusSpin{to{transform:rotate(360deg)}}
+@media(max-width:1000px){#agent .agent-shell.it-status-layout{grid-template-columns:1fr}.it-status-board{min-height:360px}.it-status-board[hidden]{display:none!important}}
