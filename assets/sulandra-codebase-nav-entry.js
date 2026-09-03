@@ -1,4 +1,5 @@
 /* SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2
+ * Compatibility publication marker: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V1
  * Codebase is a sibling IT Solutions product, never a child of Engineering Terminal.
  * The legacy Engineering-footer launcher may still be created by the older Codebase
  * bootstrap, but it is hidden in place instead of removed so MutationObservers cannot
