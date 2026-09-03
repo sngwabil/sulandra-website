@@ -56,7 +56,13 @@
   if (page !== 'time-attendance.html') {
     const wire = () => document.querySelectorAll('a,button,[role="button"]').forEach(element => {
       const label = labelOf(element);
-      if (!/(time\s*(and|&)\s*attendance|timecard|time card|timesheet|clock\s*in|clock\s*out|scheduler|scheduling)/i.test(label)) return;
+      if (element.id === 'employeeStaticScheduling') {
+        const target = `${STATIC_BASE}/scheduling.html`;
+        if (element.tagName === 'A') element.setAttribute('href', target);
+        element.dataset.sulandraTimeAttendanceTarget = target;
+        return;
+      }
+      if (!/(time\s*(and|&)\s*attendance|timecard|time card|timesheet|clock\s*in|clock\s*out)/i.test(label)) return;
       const target = targetFor(element);
       if (element.tagName === 'A') element.setAttribute('href', target);
       element.dataset.sulandraTimeAttendanceTarget = target;
