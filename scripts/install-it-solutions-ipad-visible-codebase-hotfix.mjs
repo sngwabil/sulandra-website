@@ -47,24 +47,28 @@ if(codebaseNav.includes("document.createElement('iframe')")||codebaseNav.include
 }
 if(codebaseNav.includes("dataset.scbNavSource='engineering'"))throw new Error('Codebase must not publish an Engineering-sourced navigation item');
 
+const cssHref='/assets/it-agent-ipad-load-guard.css?v=20260903-ipad-fail-open-3';
+const jsSrc='/assets/it-agent-ipad-load-guard.js?v=20260903-ipad-fail-open-3';
+const navSrc='/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7';
 const preboot=`<style id="itws-preboot-critical">html.itws-preboot::before{content:"Loading Sulandra IT…";position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#fff;color:#53616d;font:600 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;pointer-events:auto}html.itws-preboot.itws-boot-failed::before{display:none!important}</style><script id="itws-preboot-script">document.documentElement.classList.add("itws-preboot");clearTimeout(window.__sulandraItPrebootFailOpen);window.__sulandraItPrebootFailOpen=setTimeout(function(){document.documentElement.classList.remove("itws-preboot","itws-boot-failed")},3200)</script>`;
 
 html=html.replace(/\s*<style id="itws-preboot-critical">[\s\S]*?<\/style>\s*<script id="itws-preboot-script">[\s\S]*?<\/script>\s*/g,'\n');
 if(!html.includes('</head>'))throw new Error('Sulandra IT head anchor changed');
+if(!html.includes('</body>'))throw new Error('Sulandra IT body anchor changed');
 html=html.replace('</head>',`${preboot}</head>`);
 
 html=html
-  .replace(/\/assets\/it-agent-ipad-load-guard\.css(?:\?v=[^"']*)?/g,'/assets/it-agent-ipad-load-guard.css?v=20260903-ipad-fail-open-3')
-  .replace(/\/assets\/it-agent-ipad-load-guard\.js(?:\?v=[^"']*)?/g,'/assets/it-agent-ipad-load-guard.js?v=20260903-ipad-fail-open-3')
-  .replace(/\/assets\/sulandra-codebase-nav-entry\.js(?:\?v=[^"']*)?/g,'/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7');
+  .replace(/\/assets\/it-agent-ipad-load-guard\.css(?:\?v=[^"']*)?/g,cssHref)
+  .replace(/\/assets\/it-agent-ipad-load-guard\.js(?:\?v=[^"']*)?/g,jsSrc)
+  .replace(/\/assets\/sulandra-codebase-nav-entry\.js(?:\?v=[^"']*)?/g,navSrc);
 
-for(const required of [
-  '/assets/it-agent-ipad-load-guard.css?v=20260903-ipad-fail-open-3',
-  '/assets/it-agent-ipad-load-guard.js?v=20260903-ipad-fail-open-3',
-  '/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7',
-  'itws-preboot-critical',
-  '__sulandraItPrebootFailOpen',
-]){
+// The installer must also work independently in CI and repair a partially
+// published document, not only when an earlier installer already added tags.
+if(!html.includes(cssHref))html=html.replace('</head>',`<link rel="stylesheet" href="${cssHref}"></head>`);
+if(!html.includes(jsSrc))html=html.replace('</body>',`<script src="${jsSrc}"></script></body>`);
+if(!html.includes(navSrc))html=html.replace('</body>',`<script src="${navSrc}"></script></body>`);
+
+for(const required of [cssHref,jsSrc,navSrc,'itws-preboot-critical','__sulandraItPrebootFailOpen']){
   if(!html.includes(required))throw new Error(`Sulandra IT hotfix publication missing ${required}`);
 }
 if(/html\.itws-preboot body>header|html\.itws-preboot body>main\.shell/.test(html)){
