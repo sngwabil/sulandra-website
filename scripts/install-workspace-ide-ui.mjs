@@ -13,6 +13,7 @@ const assets={
  statusJs:path.join(root,'assets','it-agent-status-board.js'),
  codebaseCss:path.join(root,'assets','sulandra-codebase.css'),
  codebaseJs:path.join(root,'assets','sulandra-codebase.js'),
+ codebaseNavJs:path.join(root,'assets','sulandra-codebase-nav-entry.js'),
  nativeGridCss:path.join(root,'assets','sulandra-codebase-native-grid-v3.css'),
  nativeGridJs:path.join(root,'assets','sulandra-codebase-native-grid-v3.js'),
  apiBridge:path.join(root,'assets','sulandra-codebase-api-bridge.js'),
@@ -33,6 +34,7 @@ const tags={
  codebaseCss:'<link rel="stylesheet" href="/assets/sulandra-codebase.css?v=20260902-codebase-4-terminal-flex">',
  nativeGridCss:'<link rel="stylesheet" href="/assets/sulandra-codebase-native-grid-v3.css?v=20260903-prototype-v19-1">',
  codebaseJs:'<script src="/assets/sulandra-codebase.js?v=20260902-codebase-4-terminal-flex"></script>',
+ codebaseNavJs:'<script src="/assets/sulandra-codebase-nav-entry.js?v=20260903-top-level-nav-1"></script>',
  nativeGridJs:'<script src="/assets/sulandra-codebase-native-grid-v3.js?v=20260903-prototype-v19-1"></script>',
  apiBridge:'<script src="/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-1"></script>',
  siaBridge:'<script src="/assets/sulandra-codebase-sia-bridge.js?v=20260902-codebase-sia-fullscreen-2"></script>',
@@ -49,7 +51,7 @@ for(const re of [
  /\s*<link rel="stylesheet" href="\/assets\/it-agent-status-board\.css(?:\?v=[^"']+)?">\s*/g,
  /\s*<script src="\/assets\/it-agent-status-board\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
  /\s*<link rel="stylesheet" href="\/assets\/sulandra-codebase(?:-native-grid-v3)?\.css(?:\?v=[^"']+)?">\s*/g,
- /\s*<script src="\/assets\/sulandra-codebase(?:-native-grid-v3)?\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
+ /\s*<script src="\/assets\/sulandra-codebase(?:-native-grid-v3|-nav-entry)?\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
  /\s*<script src="\/assets\/sulandra-codebase-api-bridge\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
  /\s*<script src="\/assets\/sulandra-codebase-sia-bridge\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
  /\s*<style data-scb-dock-rail=["'][^"']+["']>[\s\S]*?<\/style>\s*/g,
@@ -60,7 +62,7 @@ for(const re of [
 
 html=html
  .replace('</head>',`${siaCssTag}${tags.workspaceCss}${tags.statusCss}${tags.codebaseCss}${tags.nativeGridCss}${dockRail}</head>`)
- .replace('</body>',`${tags.workspaceJs}${tags.statusJs}${tags.codebaseJs}${tags.nativeGridJs}${tags.apiBridge}${tags.resizeJs}${siaJsTag}${tags.siaBridge}</body>`);
+ .replace('</body>',`${tags.workspaceJs}${tags.statusJs}${tags.codebaseJs}${tags.codebaseNavJs}${tags.nativeGridJs}${tags.apiBridge}${tags.resizeJs}${siaJsTag}${tags.siaBridge}</body>`);
 
 const source=Object.fromEntries(await Promise.all(Object.entries(assets).map(async([k,p])=>[k,await readFile(p,'utf8')])));
 for(const marker of ['SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V3','itws-dock-workspace','itws-dock-panel','itws-dock-splitter'])if(!source.workspaceCss.includes(marker))throw new Error(`Dockable workspace CSS missing ${marker}`);
@@ -70,17 +72,18 @@ for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','it-status-board','it-status-
 for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','itAgentStatusBoard','itStatusBoardToggle','Action Center','Operations','private model reasoning is never displayed'])if(!source.statusJs.includes(marker))throw new Error(`IT Agent Status Board JavaScript missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','scb-shell','scb-workspace','scb-editor-input'])if(!source.codebaseCss.includes(marker))throw new Error(`Sulandra Codebase CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','release/sulandra-1.0','openIntegratedTerminal','/api/it-solutions/codebase/file'])if(!source.codebaseJs.includes(marker))throw new Error(`Sulandra Codebase JavaScript missing ${marker}`);
+for(const marker of ['SULANDRA_CODEBASE_TOP_LEVEL_NAV_V1','Engineering Terminal','itwsSulandraCodebaseNav','SulandraCodebase.open'])if(!source.codebaseNavJs.includes(marker))throw new Error(`Codebase top-level navigation runtime missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','PROTOTYPE_V19_PARITY','scb-native-grid','scb-native-tab','scb-grid-resizer','--scb-native-right'])if(!source.nativeGridCss.includes(marker))throw new Error(`Native Codebase grid CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','PROTOTYPE_V19_PARITY','sulandra:codebase:native-grid-v3','data-terminal-id','SulandraCodebaseNativeGrid','draggable=true','order.slice(0,count())','data-grid-mode','stack-2-1','stack-1-2'])if(!source.nativeGridJs.includes(marker))throw new Error(`Native Codebase grid JavaScript missing ${marker}`);
 if(source.nativeGridJs.includes('Engineering Workspace</')||source.nativeGridJs.includes('Engineering Workspace`'))throw new Error('Codebase native grid must not render the Engineering Workspace product UI');
 for(const marker of ['SULANDRA_CODEBASE_API_BRIDGE_V1','CODEBASE_PATH','Authorization'])if(!source.apiBridge.includes(marker))throw new Error(`Codebase API bridge missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1','fullscreenchange'])if(!source.siaBridge.includes(marker))throw new Error(`Codebase SIA bridge missing ${marker}`);
 for(const marker of ['SIA_GLOBAL_COPILOT_V1','Ask SIA'])if(!source.siaJs.includes(marker))throw new Error(`Ask SIA runtime missing ${marker}`);
-if(/api\.github\.com|\/git\/trees\/|\/git\/blobs\//.test(source.codebaseJs+source.apiBridge+source.nativeGridJs))throw new Error('Browser Codebase runtime must use authenticated Sulandra APIs, not direct GitHub APIs');
-if(/localStorage\.setItem\([^\n]*(?:ticket|url|src)/i.test(source.workspaceJs+source.resizeJs+source.statusJs+source.codebaseJs+source.apiBridge+source.nativeGridJs))throw new Error('Engineering tools must not persist access tickets or frame URLs');
-for(const required of [tags.workspaceCss,tags.statusCss,tags.codebaseCss,tags.nativeGridCss,dockRail,tags.workspaceJs,tags.statusJs,tags.codebaseJs,tags.nativeGridJs,tags.apiBridge,tags.resizeJs,siaCssTag,siaJsTag,tags.siaBridge])if(!html.includes(required))throw new Error(`IT Solutions final publication tag missing: ${required}`);
+if(/api\.github\.com|\/git\/trees\/|\/git\/blobs\//.test(source.codebaseJs+source.apiBridge+source.nativeGridJs+source.codebaseNavJs))throw new Error('Browser Codebase runtime must use authenticated Sulandra APIs, not direct GitHub APIs');
+if(/localStorage\.setItem\([^\n]*(?:ticket|url|src)/i.test(source.workspaceJs+source.resizeJs+source.statusJs+source.codebaseJs+source.apiBridge+source.nativeGridJs+source.codebaseNavJs))throw new Error('Engineering tools must not persist access tickets or frame URLs');
+for(const required of [tags.workspaceCss,tags.statusCss,tags.codebaseCss,tags.nativeGridCss,dockRail,tags.workspaceJs,tags.statusJs,tags.codebaseJs,tags.codebaseNavJs,tags.nativeGridJs,tags.apiBridge,tags.resizeJs,siaCssTag,siaJsTag,tags.siaBridge])if(!html.includes(required))throw new Error(`IT Solutions final publication tag missing: ${required}`);
 const siaScriptCount=(html.match(/<script[^>]+src=["']\/assets\/sia-copilot\.js(?:\?v=[^"']*)?["'][^>]*><\/script>/gi)||[]).length;
 if(siaScriptCount!==1)throw new Error(`IT Solutions must publish exactly one executable Ask SIA runtime; found ${siaScriptCount}`);
 if(/sia-copilot\.js[^>]*\bdefer\b/i.test(html))throw new Error('IT Solutions final Ask SIA runtime must not be deferred');
 await writeFile(portalPath,html,'utf8');
-console.log(`Dockable Engineering Workspace, persistent IT Agent Status Board, and separate Sulandra Codebase Prototype v19-parity workspace published into ${requested}`);
+console.log(`Dockable Engineering Workspace, persistent IT Agent Status Board, permanent top-level Codebase navigation, and separate Sulandra Codebase Prototype v19-parity workspace published into ${requested}`);
