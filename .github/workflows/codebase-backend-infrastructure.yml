@@ -39,6 +39,12 @@ jobs:
           npm install --prefix codebase-e2e-web --ignore-scripts --no-audit --no-fund
           npm run check --prefix codebase-e2e-api
           npm run check --prefix codebase-e2e-web
+      - name: Verify live Codebase API routes
+        run: |
+          set -euo pipefail
+          grep -Fq "app.get('/api/files'" codebase-e2e-api/server.mjs
+          grep -Fq "app.get('/api/db/schema'" codebase-e2e-api/server.mjs
+          grep -Fq "app.post('/api/commit'" codebase-e2e-api/server.mjs
       - name: Verify standalone Codebase HTML contract publication
         run: |
           set -euo pipefail
@@ -76,6 +82,8 @@ jobs:
           node scripts/install-codebase-pty-compat.mjs /tmp/codebase-terminal-gateway.mjs
           node --check /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_PTY_COMPAT_V1' /tmp/codebase-terminal-gateway.mjs
+          grep -Fq 'CODEBASE_OWNER_NAMESPACE_V2' /tmp/codebase-terminal-gateway.mjs
+          grep -Fq "const owner = 'codebase:' + verification.auth.organizationId + ':' + verification.auth.userId" /tmp/codebase-terminal-gateway.mjs
           grep -Fq "url.pathname === '/pty'" /tmp/codebase-terminal-gateway.mjs
       - name: Build dedicated Codebase service images
         run: |
