@@ -1,6 +1,7 @@
 /* SULANDRA_CODEBASE_IT_VISIBLE_NAV_V5
  * Compatibility publication markers: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4,
  * SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3, SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2.
+ * Compatibility contract: Sulandra IT owns the page.
  *
  * Sulandra IT owns the application shell. Codebase is a first-class Sulandra IT
  * view exposed directly in the visible Sulandra IT navigation immediately after
