@@ -83,7 +83,9 @@ const upgradeReplacement = String.raw`  if (url.pathname === '/pty') {
       return;
     }
     try {
-      const owner = verification.auth.organizationId + ':' + verification.auth.userId;
+      // Codebase is a separate product from Engineering Workspace. It reuses the
+      // same execution engine but must not consume Engineering's workspace quota.
+      const owner = 'codebase:' + verification.auth.organizationId + ':' + verification.auth.userId; // CODEBASE_OWNER_NAMESPACE_V2
       const created = await createCodebaseCompatSession(owner, url.searchParams.get('cols'), url.searchParams.get('rows'));
       if (!created.sessionId) throw new Error('Terminal execution plane did not return a sessionId');
       req.sulandraCodebasePty = { owner, workspaceId: created.workspaceId, sessionId: created.sessionId };
@@ -146,7 +148,7 @@ codebasePtyWss.on('connection', (browser, req) => {
 `;
 replaceOnce("wss.on('connection', (browser, req) => {", `${connectionHandler}wss.on('connection', (browser, req) => {`, 'PTY connection handler');
 
-if (!source.includes('CODEBASE_PTY_COMPAT_V1') || !source.includes("url.pathname === '/pty'") || !source.includes("type: 'session'")) {
+if (!source.includes('CODEBASE_PTY_COMPAT_V1') || !source.includes('CODEBASE_OWNER_NAMESPACE_V2') || !source.includes("url.pathname === '/pty'") || !source.includes("type: 'session'")) {
   throw new Error('Codebase PTY compatibility markers are missing after installation');
 }
 
