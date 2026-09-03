@@ -44,7 +44,7 @@ jobs:
           set -euo pipefail
           cp Codebase.html /tmp/Codebase.html
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3' /tmp/Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'sameOriginOpener' assets/codebase-backend-adapter.js
           grep -Fq "window.location.assign('/it-solutions.html')" assets/codebase-backend-adapter.js
@@ -52,6 +52,23 @@ jobs:
           grep -Fq 'sulandra-coding-terminal-worker-production.up.railway.app' /tmp/Codebase.html
           grep -Fq 'codebase-e2e-web-production.up.railway.app' /tmp/Codebase.html
           ! grep -Fq "|| 'test-token'" /tmp/Codebase.html
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('/tmp/Codebase.html', 'utf8');
+          const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3"></script>';
+          const adapterIndex = html.indexOf(tag);
+          const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
+          if (adapterIndex < 0 || adapterIndex >= bodyIndex) throw new Error('Standalone adapter is not before the final document body close');
+          if (html.indexOf(tag, adapterIndex + tag.length) !== -1) throw new Error('Standalone adapter published more than once');
+          if (html.slice(adapterIndex + tag.length, bodyIndex).trim()) throw new Error('Standalone adapter must be the final executable element');
+          const before = html.slice(0, adapterIndex).toLowerCase();
+          if (before.lastIndexOf('<script') > before.lastIndexOf('</script>')) throw new Error('Standalone adapter was injected inside inline JavaScript');
+          const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
+          for (const [index, match] of inlineScripts.entries()) {
+            try { new Function(match[1]); }
+            catch (error) { throw new Error(`Published inline script ${index + 1} is not executable: ${error.message}`); }
+          }
+          NODE
       - name: Verify PTY compatibility can be installed
         run: |
           set -euo pipefail
