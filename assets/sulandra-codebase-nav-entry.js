@@ -1,20 +1,40 @@
-/* SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2
- * Compatibility publication marker: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V1
+/* SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3
+ * Compatibility publication markers: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2 / V1
  * Codebase is a sibling IT Solutions product, never a child of Engineering Terminal.
  * The legacy Engineering-footer launcher may still be created by the older Codebase
  * bootstrap, but it is hidden in place instead of removed so MutationObservers cannot
  * create/remove it forever and freeze the protected-session page.
+ *
+ * Editor fill guard: the native tab runtime hides the legacy tab row and the commit
+ * bar is normally hidden. Without explicit CSS grid placement, auto-placement puts
+ * .scb-editor-stack into the third `auto` row and leaves the fourth `1fr` row empty,
+ * which appears as a dark pane rising from the bottom and crushes Edit mode upward.
  */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2__)return;
+if(window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3__)return;
+window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2__=true;
 
 const ENTRY_ID='itwsSulandraCodebaseNav';
 const LEGACY_ID='itwsSulandraCodebaseButton';
+const EDITOR_FILL_STYLE_ID='scbEditorFillGuard';
 const labelOf=node=>String(node?.textContent||'').trim().replace(/\s+/g,' ');
 const clickableSelector='button,a,[role="button"],[data-view],[data-route],[data-target]';
 let observer=null;
+
+function installEditorFillGuard(){
+ if(document.getElementById(EDITOR_FILL_STYLE_ID))return;
+ const style=document.createElement('style');
+ style.id=EDITOR_FILL_STYLE_ID;
+ style.textContent=`
+.scb-shell[data-prototype="v19"] .scb-native-tabs{grid-row:1!important}
+.scb-shell[data-prototype="v19"] .scb-editor-toolbar{grid-row:2!important}
+.scb-shell[data-prototype="v19"] .scb-commit-bar{grid-row:3!important}
+.scb-shell[data-prototype="v19"] .scb-editor-stack{grid-row:4!important;height:auto!important;align-self:stretch!important;min-height:0!important}
+`;
+ document.head.appendChild(style);
+}
 
 function suppressLegacy(){
  const legacy=document.getElementById(LEGACY_ID);
@@ -75,6 +95,7 @@ function makeEntry(engineering){
 }
 
 function install(){
+ installEditorFillGuard();
  suppressLegacy();
  if(document.getElementById(ENTRY_ID))return true;
  const engineering=engineeringEntry();
@@ -89,12 +110,13 @@ function finishWhenReady(){
  return installed;
 }
 
+installEditorFillGuard();
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',finishWhenReady,{once:true});else finishWhenReady();
 if(!document.getElementById(ENTRY_ID)){
  observer=new MutationObserver(()=>finishWhenReady());
  observer.observe(document.documentElement,{childList:true,subtree:true});
  setTimeout(()=>{observer?.disconnect();observer=null;suppressLegacy();},30000);
 }
-window.addEventListener('pageshow',()=>{finishWhenReady();suppressLegacy();});
+window.addEventListener('pageshow',()=>{installEditorFillGuard();finishWhenReady();suppressLegacy();});
 window.SulandraCodebaseNav={install:finishWhenReady};
 })();
