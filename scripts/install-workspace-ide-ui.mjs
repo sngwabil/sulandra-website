@@ -31,19 +31,17 @@ const tags={
  statusCss:'<link rel="stylesheet" href="/assets/it-agent-status-board.css?v=20260903-status-board-1">',
  statusJs:'<script src="/assets/it-agent-status-board.js?v=20260903-status-board-1"></script>',
  codebaseCss:'<link rel="stylesheet" href="/assets/sulandra-codebase.css?v=20260902-codebase-4-terminal-flex">',
- nativeGridCss:'<link rel="stylesheet" href="/assets/sulandra-codebase-native-grid-v3.css?v=20260903-native-tabs-grid-3">',
+ nativeGridCss:'<link rel="stylesheet" href="/assets/sulandra-codebase-native-grid-v3.css?v=20260903-prototype-v19-1">',
  codebaseJs:'<script src="/assets/sulandra-codebase.js?v=20260902-codebase-4-terminal-flex"></script>',
- nativeGridJs:'<script src="/assets/sulandra-codebase-native-grid-v3.js?v=20260903-native-tabs-grid-3"></script>',
+ nativeGridJs:'<script src="/assets/sulandra-codebase-native-grid-v3.js?v=20260903-prototype-v19-1"></script>',
  apiBridge:'<script src="/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-1"></script>',
  siaBridge:'<script src="/assets/sulandra-codebase-sia-bridge.js?v=20260902-codebase-sia-fullscreen-2"></script>',
 };
 const siaMarker='data-sia-global-copilot="20260827-sia-intelligence-router-1"';
 const siaCssTag=`<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1" ${siaMarker} />`;
 const siaJsTag=`<script src="/assets/sia-copilot.js?v=20260827-sia-intelligence-router-1" ${siaMarker}></script>`;
-const dockRail='<style data-scb-dock-rail="20260903-native-grid-3">.scb-shell.scb-dock-closed .scb-workspace{grid-template-columns:var(--scb-left) 5px minmax(0,1fr) 0 var(--scb-native-right,clamp(320px,25vw,520px))!important}.scb-shell.scb-dock-closed .scb-right-dock{visibility:visible!important;pointer-events:auto!important;grid-template-rows:36px 0 minmax(0,0)!important}.scb-shell.scb-dock-closed .scb-right-splitter{visibility:hidden!important;pointer-events:none!important}.scb-shell.scb-dock-closed .scb-dock-subhead,.scb-shell.scb-dock-closed .scb-dock-mount{display:none!important}</style>';
+const dockRail='<style data-scb-dock-rail="20260903-prototype-v19-1">.scb-shell.scb-dock-closed .scb-workspace{grid-template-columns:var(--scb-left) 5px minmax(0,1fr) 0 var(--scb-native-right,clamp(300px,25vw,380px))!important}.scb-shell.scb-dock-closed .scb-right-dock{visibility:visible!important;pointer-events:auto!important;grid-template-rows:36px 0 minmax(0,0)!important}.scb-shell.scb-dock-closed .scb-right-splitter{visibility:hidden!important;pointer-events:none!important}.scb-shell.scb-dock-closed .scb-dock-subhead,.scb-shell.scb-dock-closed .scb-dock-mount{display:none!important}</style>';
 
-// Remove every older publication of these exact runtime assets. The installer is
-// intentionally idempotent because Railway production builds may invoke it more than once.
 for(const re of [
  /\s*<link rel="stylesheet" href="\/assets\/it-agent-workspace-preview\.css(?:\?v=[^"']+)?">\s*/g,
  /\s*<script src="\/assets\/it-agent-workspace-preview\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
@@ -72,8 +70,8 @@ for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','it-status-board','it-status-
 for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','itAgentStatusBoard','itStatusBoardToggle','Action Center','Operations','private model reasoning is never displayed'])if(!source.statusJs.includes(marker))throw new Error(`IT Agent Status Board JavaScript missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','scb-shell','scb-workspace','scb-editor-input'])if(!source.codebaseCss.includes(marker))throw new Error(`Sulandra Codebase CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','release/sulandra-1.0','openIntegratedTerminal','/api/it-solutions/codebase/file'])if(!source.codebaseJs.includes(marker))throw new Error(`Sulandra Codebase JavaScript missing ${marker}`);
-for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','scb-native-grid','scb-native-tab','--scb-native-right'])if(!source.nativeGridCss.includes(marker))throw new Error(`Native Codebase grid CSS missing ${marker}`);
-for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','sulandra:codebase:native-grid-v3','data-terminal-id','SulandraCodebaseNativeGrid','draggable=true','order.slice(0,gridCount)'])if(!source.nativeGridJs.includes(marker))throw new Error(`Native Codebase grid JavaScript missing ${marker}`);
+for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','PROTOTYPE_V19_PARITY','scb-native-grid','scb-native-tab','scb-grid-resizer','--scb-native-right'])if(!source.nativeGridCss.includes(marker))throw new Error(`Native Codebase grid CSS missing ${marker}`);
+for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','PROTOTYPE_V19_PARITY','sulandra:codebase:native-grid-v3','data-terminal-id','SulandraCodebaseNativeGrid','draggable=true','order.slice(0,count())','data-grid-mode','stack-2-1','stack-1-2'])if(!source.nativeGridJs.includes(marker))throw new Error(`Native Codebase grid JavaScript missing ${marker}`);
 if(source.nativeGridJs.includes('Engineering Workspace</')||source.nativeGridJs.includes('Engineering Workspace`'))throw new Error('Codebase native grid must not render the Engineering Workspace product UI');
 for(const marker of ['SULANDRA_CODEBASE_API_BRIDGE_V1','CODEBASE_PATH','Authorization'])if(!source.apiBridge.includes(marker))throw new Error(`Codebase API bridge missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1','fullscreenchange'])if(!source.siaBridge.includes(marker))throw new Error(`Codebase SIA bridge missing ${marker}`);
@@ -85,4 +83,4 @@ const siaScriptCount=(html.match(/<script[^>]+src=["']\/assets\/sia-copilot\.js(
 if(siaScriptCount!==1)throw new Error(`IT Solutions must publish exactly one executable Ask SIA runtime; found ${siaScriptCount}`);
 if(/sia-copilot\.js[^>]*\bdefer\b/i.test(html))throw new Error('IT Solutions final Ask SIA runtime must not be deferred');
 await writeFile(portalPath,html,'utf8');
-console.log(`Dockable Engineering Workspace, persistent IT Agent Status Board, and separate Sulandra Codebase native tab/grid workspace published into ${requested}`);
+console.log(`Dockable Engineering Workspace, persistent IT Agent Status Board, and separate Sulandra Codebase Prototype v19-parity workspace published into ${requested}`);
