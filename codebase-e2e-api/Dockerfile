@@ -11,10 +11,11 @@ RUN apt-get update \
 WORKDIR /app
 COPY codebase-e2e-api/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
+COPY codebase-e2e-api/bootstrap.mjs ./bootstrap.mjs
 COPY codebase-e2e-api/server.mjs ./server.mjs
 
 RUN mkdir -p /workspace && chown -R node:node /workspace /app
 
 EXPOSE 4000
 USER node
-CMD ["node", "server.mjs"]
+CMD ["node", "bootstrap.mjs"]
