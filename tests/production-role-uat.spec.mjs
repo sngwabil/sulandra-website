@@ -74,6 +74,31 @@ async function fixtures(page,p){
   return mutations;
 }
 
+const SESSION_SHELL_PATH='/sulandra-session.html';
+
+async function portalWorkspace(page,expectedPath,portal){
+  await expect.poll(()=>{
+    const current=new URL(page.url());
+    if(current.pathname===expectedPath)return 'ready';
+    if(current.pathname===SESSION_SHELL_PATH&&current.searchParams.get('route')===expectedPath&&current.searchParams.get('portal')===portal)return 'ready';
+    return current.pathname+current.search;
+  },{timeout:12000}).toBe('ready');
+
+  if(new URL(page.url()).pathname===expectedPath)return page;
+
+  const iframe=page.locator('#sulandraProtectedFrame');
+  await expect(iframe).toBeVisible();
+  let workspace=null;
+  await expect.poll(async()=>{
+    const handle=await iframe.elementHandle();
+    workspace=await handle?.contentFrame()||null;
+    if(!workspace)return '';
+    try{return new URL(workspace.url()).pathname}catch{return ''}
+  },{timeout:12000}).toBe(expectedPath);
+  expect(workspace,`Protected ${portal} session iframe must be attached`).toBeTruthy();
+  return workspace;
+}
+
 async function loginEmployee(page,p){
   const mutations=await fixtures(page,p);
   await page.goto('/employee-login.html');
@@ -81,10 +106,10 @@ async function loginEmployee(page,p){
   await page.locator('#username').fill(sessionFor(p).username);
   await page.getByLabel('Password').fill('Synthetic-UAT-Password-Only');
   await page.getByRole('button',{name:/Sign In to Employee Portal/i}).click();
-  await expect(page).toHaveURL(/\/employee-portal\.html$/);
-  await expect(page.locator('body')).toHaveAttribute('data-role-uat-ready','true');
-  await expect(page.locator('body')).toHaveAttribute('data-authenticated-role',p.role);
-  return mutations;
+  const workspace=await portalWorkspace(page,'/employee-portal.html','EMPLOYEE');
+  await expect(workspace.locator('body')).toHaveAttribute('data-role-uat-ready','true');
+  await expect(workspace.locator('body')).toHaveAttribute('data-authenticated-role',p.role);
+  return {mutations,workspace};
 }
 
 async function adminEmailInput(page){
@@ -100,42 +125,42 @@ async function loginAdmin(page,p){
   await (await adminEmailInput(page)).fill(sessionFor(p).email);
   await page.getByLabel('Password').fill('Synthetic-UAT-Password-Only');
   await page.getByRole('button',{name:/Sign In to Admin/i}).click();
-  const expected=p.role==='ADMINISTRATOR'?/\/admin\.html(?:#.*)?$/:/\/admin-operations\.html(?:#.*)?$/;
-  await expect(page).toHaveURL(expected);
-  return mutations;
+  const expectedPath=p.role==='ADMINISTRATOR'?'/admin.html':'/admin-operations.html';
+  const workspace=await portalWorkspace(page,expectedPath,'ADMIN');
+  return {mutations,workspace};
 }
 
 const pathPattern=path=>new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
-async function open(page,selector,path){const control=page.locator(selector).first();await expect(control).toBeVisible();await expect(control).toHaveAttribute('href',pathPattern(path));await control.click();await expect(page).toHaveURL(pathPattern(path));await expect(page.locator('body')).toBeVisible();}
+async function open(scope,selector,path){const control=scope.locator(selector).first();await expect(control).toBeVisible();await expect(control).toHaveAttribute('href',pathPattern(path));await control.click();await expect.poll(()=>{try{return new URL(scope.url()).pathname}catch{return ''}}).toBe(path);await expect(scope.locator('body')).toBeVisible();}
 async function expectExternal(page,selector,path){const control=page.locator(selector).first();await expect(control).toBeVisible();await expect(control).toHaveAttribute('href',pathPattern(path));await expect(control).toHaveAttribute('target','_blank');}
 const absent=async(page,...selectors)=>{for(const s of selectors)await expect(page.locator(s).first()).toBeHidden();};
 const expectAdminDoor=async page=>{const link=page.locator('#employeeAdminReturn');await expect(link).toBeVisible();await expect(link).toHaveAttribute('href',/\/admin-login\.html/);await expect(link).toHaveAttribute('target','_blank');};
 
 for(const [key,p] of Object.entries(PERSONAS))test(`${p.label}: username stays in Employee Portal`,async({page})=>{
-  const mutations=await loginEmployee(page,p);
-  if(key==='dsp'){await absent(page,'#employeeStaticCompanyDocuments');await open(page,'#employeeStaticMyShift','/spire-shift.html');await expect(page.locator('#medAuth')).toContainText('view-only');}
-  else if(key==='medDsp'){await open(page,'#employeeStaticMyShift','/spire-shift.html');await expect(page.locator('#medAuth')).toContainText('Medication administration authorized');await expect(page.getByRole('link',{name:'Open eMAR'})).toBeVisible();}
-  else if(key==='lpn'){await open(page,'#employeeStaticMyShift','/spire-shift.html');await expect(page.locator('#medAuth')).toContainText(/LICENSED ROLE/i);}
-  else if(key==='rn')await expectExternal(page,'#employeeStaticSpire','/spire.html');
-  else if(key==='delegatingNurse')await open(page,'#employeeStaticSclsOperations','/scls-residential.html');
+  const {mutations,workspace}=await loginEmployee(page,p);
+  if(key==='dsp'){await absent(workspace,'#employeeStaticCompanyDocuments');await open(workspace,'#employeeStaticMyShift','/spire-shift.html');await expect(workspace.locator('#medAuth')).toContainText('view-only');}
+  else if(key==='medDsp'){await open(workspace,'#employeeStaticMyShift','/spire-shift.html');await expect(workspace.locator('#medAuth')).toContainText('Medication administration authorized');await expect(workspace.getByRole('link',{name:'Open eMAR'})).toBeVisible();}
+  else if(key==='lpn'){await open(workspace,'#employeeStaticMyShift','/spire-shift.html');await expect(workspace.locator('#medAuth')).toContainText(/LICENSED ROLE/i);}
+  else if(key==='rn')await expectExternal(workspace,'#employeeStaticSpire','/spire.html');
+  else if(key==='delegatingNurse')await open(workspace,'#employeeStaticSclsOperations','/scls-residential.html');
   else if(key==='houseManager'){
-    const roleWorkspace=page.locator('#employeeRoleWorkspaceLauncher');
+    const roleWorkspace=workspace.locator('#employeeRoleWorkspaceLauncher');
     if(await roleWorkspace.count())await expect(roleWorkspace).toContainText(/Manage My Home Team/i);
-    await open(page,'#employeeStaticSclsOperations','/scls-residential.html');
+    await open(workspace,'#employeeStaticSclsOperations','/scls-residential.html');
   }
-  else if(key==='programManager'){await expectAdminDoor(page);await expect(page.locator('#employeeStaticSclsOperations')).toBeVisible();await open(page,'#employeeStaticScheduling','/scheduling.html');}
-  else if(key==='homeHealthClinician'){await expect(page.locator('#employeeStaticHomeHealthOperations')).toBeVisible();await open(page,'#employeeStaticHomeHealthVisits','/home-health-visits.html');}
-  else if(key==='scheduler'){await absent(page,'#employeeStaticMyShift','#employeeStaticSpire','#employeeStaticCompanyDocuments');await open(page,'#employeeStaticScheduling','/scheduling.html');}
-  else if(key==='dispatcher'){await absent(page,'#employeeStaticMyShift','#employeeStaticSpire');await open(page,'#employeeStaticNmtDispatch','/nmt-dispatch.html');}
-  else if(key==='driver'){await absent(page,'#employeeStaticMyShift','#employeeStaticSpire','#employeeStaticCompanyDocuments');await open(page,'#employeeStaticNmtDriver','/nmt-driver.html');}
-  else if(key==='hr'){await expectAdminDoor(page);await absent(page,'#employeeStaticMyShift','#employeeStaticSpire');await expect(page.locator('#employeeStaticCompanyDocuments')).toBeVisible();await open(page,'#employeeStaticEmployee360','/employee360.html');}
-  else if(key==='auditor'){await absent(page,'#employeeStaticMyShift');await expectExternal(page,'#employeeStaticSpire','/spire.html');await expect(page.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
-  else if(['administrator','ceo','doo'].includes(key)){await expectAdminDoor(page);await expect(page.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
+  else if(key==='programManager'){await expectAdminDoor(workspace);await expect(workspace.locator('#employeeStaticSclsOperations')).toBeVisible();await open(workspace,'#employeeStaticScheduling','/scheduling.html');}
+  else if(key==='homeHealthClinician'){await expect(workspace.locator('#employeeStaticHomeHealthOperations')).toBeVisible();await open(workspace,'#employeeStaticHomeHealthVisits','/home-health-visits.html');}
+  else if(key==='scheduler'){await absent(workspace,'#employeeStaticMyShift','#employeeStaticSpire','#employeeStaticCompanyDocuments');await open(workspace,'#employeeStaticScheduling','/scheduling.html');}
+  else if(key==='dispatcher'){await absent(workspace,'#employeeStaticMyShift','#employeeStaticSpire');await open(workspace,'#employeeStaticNmtDispatch','/nmt-dispatch.html');}
+  else if(key==='driver'){await absent(workspace,'#employeeStaticMyShift','#employeeStaticSpire','#employeeStaticCompanyDocuments');await open(workspace,'#employeeStaticNmtDriver','/nmt-driver.html');}
+  else if(key==='hr'){await expectAdminDoor(workspace);await absent(workspace,'#employeeStaticMyShift','#employeeStaticSpire');await expect(workspace.locator('#employeeStaticCompanyDocuments')).toBeVisible();await open(workspace,'#employeeStaticEmployee360','/employee360.html');}
+  else if(key==='auditor'){await absent(workspace,'#employeeStaticMyShift');await expectExternal(workspace,'#employeeStaticSpire','/spire.html');await expect(workspace.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
+  else if(['administrator','ceo','doo'].includes(key)){await expectAdminDoor(workspace);await expect(workspace.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
   expect(mutations,`Unexpected live-data mutation for ${p.label}`).toEqual([]);
 });
 
 for(const p of [PERSONAS.administrator,PERSONAS.programManager,PERSONAS.hr,PERSONAS.ceo,PERSONAS.doo])test(`${p.label}: Sulandra email opens entitled Admin workspace`,async({page})=>{
-  const mutations=await loginAdmin(page,p);
+  const {mutations}=await loginAdmin(page,p);
   expect(mutations,`Unexpected live-data mutation for Admin ${p.label}`).toEqual([]);
 });
 
@@ -165,5 +190,5 @@ test.describe('representative mobile production UAT',()=>{
     ['NMT Dispatcher',PERSONAS.dispatcher,'#employeeStaticNmtDispatch','/nmt-dispatch.html'],
     ['HR Manager',PERSONAS.hr,'#employeeStaticEmployee360','/employee360.html'],
     ['Administrator',PERSONAS.administrator,'#employeeStaticEmployee360','/employee360.html'],
-  ])test(`${label}: mobile username login-first navigation`,async({page})=>{await page.setViewportSize({width:390,height:844});const mutations=await loginEmployee(page,p);await open(page,selector,target);expect(mutations).toEqual([]);});
+  ])test(`${label}: mobile username login-first navigation`,async({page})=>{await page.setViewportSize({width:390,height:844});const {mutations,workspace}=await loginEmployee(page,p);await open(workspace,selector,target);expect(mutations).toEqual([]);});
 });
