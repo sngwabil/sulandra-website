@@ -192,8 +192,24 @@ const wireSia=()=>{
   textarea.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();void send()}});
 };
 
+const wireExit=()=>{
+  const exit=[...document.querySelectorAll('.header-actions span')].find(node=>String(node.textContent||'').includes('Exit Codebase'));
+  if(!exit||exit.dataset.codebaseExitBound==='1')return;
+  exit.dataset.codebaseExitBound='1';
+  exit.style.cursor='pointer';
+  exit.addEventListener('click',event=>{
+    event.preventDefault();
+    if(window.parent!==window){
+      window.parent.postMessage({type:'sulandra-codebase-exit'},window.location.origin);
+      return;
+    }
+    if(document.referrer&&new URL(document.referrer,window.location.href).origin===window.location.origin)history.back();
+  });
+};
+
 const wire=()=>{
   wireSia();
+  wireExit();
   const iframe=document.getElementById('railway-preview-iframe');if(iframe&&!iframe.src)iframe.src=RAILWAY_CONFIG.PREVIEW_URL;
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
