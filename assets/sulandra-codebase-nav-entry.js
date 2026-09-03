@@ -1,56 +1,40 @@
-/* SULANDRA_CODEBASE_IT_VISIBLE_NAV_V6
- * Compatibility publication markers: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4,
+/* SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7
+ * SULANDRA_CODEBASE_STANDALONE_LAUNCHER_V1
+ * Compatibility markers: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4,
  * SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3, SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2.
  * Compatibility contract: Sulandra IT owns the page.
  *
- * Sulandra IT owns the application shell. Codebase is a first-class Sulandra IT
- * view exposed directly in the visible Sulandra IT navigation immediately after
- * IT Agent. The finalized Codebase.html is the only visible Codebase surface.
- * The legacy #sulandraCodebase / Engineering workspace runtime remains hidden.
+ * Codebase is a separate Sulandra software product linked from Sulandra IT.
+ * Sulandra IT never renders Codebase inside its own workspace. The visible
+ * Codebase launcher opens finalized /Codebase.html in its own browser tab.
  */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V6__)return;
-window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V6__=true;
-window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V5__=true;
+if(window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7__)return;
+window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2__=true;
 
 const COMPAT_ENTRY_ID='itwsSulandraCodebaseNav';
 const VISIBLE_ENTRY_ID='itwsSulandraCodebaseVisibleNav';
-const VIEW_ID='itwsSulandraCodebaseView';
-const FRAME_ID='itwsSulandraCodebaseFrame';
 const LEGACY_ID='itwsSulandraCodebaseButton';
-const HOST_STYLE_ID='scbItSolutionsTabHostStyle';
-const FRAME_SRC='/Codebase.html?v=20260903-backend-1';
+const LEGACY_VIEW_ID='itwsSulandraCodebaseView';
+const LEGACY_FRAME_ID='itwsSulandraCodebaseFrame';
+const CODEBASE_URL='/Codebase.html?v=20260903-standalone-2';
+const WINDOW_NAME='sulandra-codebase';
 let installQueued=false;
 let apiOverridden=false;
 
 const hiddenTabsHost=()=>document.querySelector('.itws-content > .tabs')||document.querySelector('main.shell > .tabs')||document.querySelector('main .tabs')||document.querySelector('.tabs');
-const mainHost=()=>document.querySelector('main.shell')||document.querySelector('main');
-const contentHost=()=>document.querySelector('.itws-content')||mainHost();
 const visibleNav=()=>document.querySelector('.itws-sidebar .itws-nav');
-const codebaseView=()=>document.getElementById(VIEW_ID);
 const visibleCodebaseButton=()=>document.getElementById(VISIBLE_ENTRY_ID);
 
-function installHostStyle(){
- if(document.getElementById(HOST_STYLE_ID))return;
- const style=document.createElement('style');
- style.id=HOST_STYLE_ID;
- style.textContent=`
-#${VIEW_ID}.scb-codebase-view{margin:0!important;padding:0!important;min-width:0!important;min-height:0!important;width:100%!important;height:100%!important;overflow:hidden!important;background:#03060a!important}
-body.it-chatgpt-workspace .itws-content>#${VIEW_ID}.scb-codebase-view{height:100%!important;max-height:100%!important}
-#${FRAME_ID}{display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;border:0!important;background:#03060a!important}
-#${FRAME_ID}[hidden]{display:none!important}
-#sulandraCodebase{display:none!important}
-#${LEGACY_ID}{display:none!important}
-#${COMPAT_ENTRY_ID}{display:none!important}
-`;
- document.head.appendChild(style);
-}
-
-function suppressLegacy(){
+function suppressEmbeddedCodebase(){
+ const embeddedView=document.getElementById(LEGACY_VIEW_ID);
+ if(embeddedView)embeddedView.remove();
+ const embeddedFrame=document.getElementById(LEGACY_FRAME_ID);
+ if(embeddedFrame)embeddedFrame.remove();
  const workbench=document.getElementById('sulandraCodebase');
  if(workbench){
   workbench.hidden=true;
@@ -69,34 +53,7 @@ function suppressLegacy(){
   node.setAttribute('aria-hidden','true');
   if(node instanceof HTMLElement)node.style.setProperty('display','none','important');
  });
-}
-
-function ensureView(){
- let view=codebaseView();
- const host=contentHost();
- if(!host)return null;
- if(!view){
-  view=document.createElement('section');
-  view.id=VIEW_ID;
-  view.className='view hidden scb-codebase-view';
-  view.setAttribute('aria-label','Sulandra Codebase');
-  host.appendChild(view);
- }else if(view.parentElement!==host){
-  host.appendChild(view);
- }
- let frame=document.getElementById(FRAME_ID);
- if(!frame){
-  frame=document.createElement('iframe');
-  frame.id=FRAME_ID;
-  frame.title='Sulandra Codebase';
-  frame.src=FRAME_SRC;
-  frame.loading='eager';
-  frame.setAttribute('allow','fullscreen; clipboard-read; clipboard-write');
-  frame.setAttribute('allowfullscreen','');
-  frame.setAttribute('referrerpolicy','same-origin');
-  view.appendChild(frame);
- }
- return view;
+ document.body?.classList.remove('scb-open');
 }
 
 function ensureCompatibilityTab(){
@@ -108,7 +65,6 @@ function ensureCompatibilityTab(){
   tab.id=COMPAT_ENTRY_ID;
   tab.type='button';
   tab.className='tab';
-  tab.dataset.view=VIEW_ID;
   tab.textContent='Codebase';
   tab.setAttribute('aria-hidden','true');
   tab.tabIndex=-1;
@@ -116,17 +72,27 @@ function ensureCompatibilityTab(){
   if(agent)agent.after(tab);else tabs.appendChild(tab);
  }
  tab.hidden=true;
+ if(tab.dataset.scbStandaloneBound!=='1'){
+  tab.dataset.scbStandaloneBound='1';
+  tab.addEventListener('click',event=>{
+   event.preventDefault();
+   event.stopImmediatePropagation();
+   openStandalone();
+  },true);
+ }
  return tab;
 }
 
-function setVisibleNav(view){
- const nav=visibleNav();
- if(!nav)return;
- nav.querySelectorAll('[data-itws-view]').forEach(btn=>{
-  const selected=view==='codebase'?btn.id===VISIBLE_ENTRY_ID:btn.dataset.itwsView===view;
-  btn.classList.toggle('active',selected);
-  if(selected)btn.setAttribute('aria-current','page');else btn.removeAttribute('aria-current');
- });
+function openStandalone(){
+ suppressEmbeddedCodebase();
+ const opened=window.open(CODEBASE_URL,WINDOW_NAME);
+ if(opened){
+  try{opened.focus()}catch{}
+  return true;
+ }
+ // Popup blocking fallback: navigate this tab. Exit Codebase then returns to IT.
+ window.location.assign(CODEBASE_URL);
+ return true;
 }
 
 function ensureVisibleNav(){
@@ -137,129 +103,62 @@ function ensureVisibleNav(){
   button=document.createElement('button');
   button.id=VISIBLE_ENTRY_ID;
   button.type='button';
-  button.dataset.itwsView='codebase';
+  button.dataset.scbLauncher='codebase';
   button.textContent='Codebase';
-  button.title='Open Sulandra Codebase';
-  button.setAttribute('aria-label','Codebase');
+  button.title='Open Sulandra Codebase in its own browser tab';
+  button.setAttribute('aria-label','Open Sulandra Codebase in a new browser tab');
   const agent=nav.querySelector('[data-itws-view="agent"]');
   if(agent)agent.after(button);else nav.prepend(button);
  }
- if(button.dataset.scbBound!=='1'){
-  button.dataset.scbBound='1';
+ if(button.dataset.scbStandaloneBound!=='1'){
+  button.dataset.scbStandaloneBound='1';
   button.addEventListener('click',event=>{
    event.preventDefault();
    event.stopImmediatePropagation();
-   openInsideIt();
+   openStandalone();
    document.querySelector('.itws-sidebar')?.classList.remove('open');
-  },true);
- }
- if(nav.dataset.scbVisibleNavBound!=='1'){
-  nav.dataset.scbVisibleNavBound='1';
-  nav.addEventListener('click',event=>{
-   const target=event.target instanceof Element?event.target.closest('[data-itws-view]'):null;
-   if(!target||!nav.contains(target)||target.id===VISIBLE_ENTRY_ID)return;
-   hideCodebase();
   },true);
  }
  return button;
 }
 
-function hideCodebase(){
- const view=codebaseView();
- if(view)view.classList.add('hidden');
- document.body?.classList.remove('scb-open');
- suppressLegacy();
-}
-
-function activateOnlyView(view){
- const host=contentHost();
- if(!host)return;
- [...host.children].forEach(node=>{
-  if(node instanceof HTMLElement&&node.classList.contains('view'))node.classList.toggle('hidden',node!==view);
- });
-}
-
-function selectCodebaseView(){
- const view=ensureView();
- const button=ensureVisibleNav();
- if(!view||!button)return false;
+function bindHiddenTabs(){
  const tabs=hiddenTabsHost();
- if(tabs)tabs.querySelectorAll('.tab').forEach(node=>node.classList.toggle('active',node.id===COMPAT_ENTRY_ID));
- activateOnlyView(view);
- view.classList.remove('hidden');
- setVisibleNav('codebase');
- return true;
-}
-
-function openInsideIt(){
- installHostStyle();
- suppressLegacy();
- ensureCompatibilityTab();
- ensureVisibleNav();
- if(!selectCodebaseView())return false;
- document.body?.classList.remove('scb-open');
- window.dispatchEvent(new CustomEvent('sulandra:workspace-layout-resized'));
+ if(!tabs||tabs.dataset.scbStandaloneHost==='1')return false;
+ tabs.dataset.scbStandaloneHost='1';
+ tabs.addEventListener('click',event=>{
+  const tab=event.target instanceof Element?event.target.closest('.tab'):null;
+  if(!tab||!tabs.contains(tab)||tab.id!==COMPAT_ENTRY_ID)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  openStandalone();
+ },true);
  return true;
 }
 
 function returnToAgent(){
- hideCodebase();
- const visibleAgent=visibleNav()?.querySelector('[data-itws-view="agent"]');
- if(visibleAgent){
-  visibleAgent.click();
-  setVisibleNav('agent');
-  return;
- }
- const hiddenAgent=hiddenTabsHost()?.querySelector('.tab[data-view="agent"]');
- hiddenAgent?.click();
- const agent=document.getElementById('agent');
- if(agent){activateOnlyView(agent);agent.classList.remove('hidden')}
-}
-
-function bindHiddenTabs(){
- const tabs=hiddenTabsHost();
- if(!tabs||tabs.dataset.scbCodebaseHost==='1')return false;
- tabs.dataset.scbCodebaseHost='1';
- tabs.addEventListener('click',event=>{
-  const tab=event.target instanceof Element?event.target.closest('.tab'):null;
-  if(!tab||!tabs.contains(tab))return;
-  if(tab.id===COMPAT_ENTRY_ID||tab.dataset.view===VIEW_ID){
-   event.preventDefault();
-   event.stopImmediatePropagation();
-   openInsideIt();
-   return;
-  }
-  hideCodebase();
- },true);
- return true;
+ suppressEmbeddedCodebase();
+ const agent=visibleNav()?.querySelector('[data-itws-view="agent"]');
+ if(agent)agent.click();
 }
 
 function overridePublicOpen(){
  const api=window.SulandraCodebase;
  if(!api)return;
- if(!apiOverridden||api.open!==openInsideIt){
+ if(!apiOverridden||api.open!==openStandalone){
   apiOverridden=true;
-  api.open=openInsideIt;
-  api.openInsideIt=openInsideIt;
+  api.open=openStandalone;
+  api.openStandalone=openStandalone;
  }
 }
 
-function enforceDefaultHost(){
- suppressLegacy();
- const selected=Boolean(visibleCodebaseButton()?.classList.contains('active')&&!codebaseView()?.classList.contains('hidden'));
- if(!selected)hideCodebase();
-}
-
 function install(){
- installHostStyle();
- suppressLegacy();
- ensureView();
+ suppressEmbeddedCodebase();
  ensureCompatibilityTab();
  ensureVisibleNav();
  bindHiddenTabs();
  overridePublicOpen();
- enforceDefaultHost();
- return Boolean(visibleCodebaseButton()&&codebaseView());
+ return Boolean(visibleCodebaseButton());
 }
 
 function queueInstall(){
@@ -268,13 +167,8 @@ function queueInstall(){
  requestAnimationFrame(()=>{installQueued=false;install()});
 }
 
-window.addEventListener('message',event=>{
- if(event.origin!==window.location.origin)return;
- if(event.data?.type==='sulandra-codebase-exit')returnToAgent();
-});
-
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 new MutationObserver(queueInstall).observe(document.documentElement,{childList:true,subtree:true});
-window.addEventListener('pageshow',()=>{install();enforceDefaultHost()});
-window.SulandraCodebaseNav={install,open:openInsideIt,backToAgent:returnToAgent};
+window.addEventListener('pageshow',install);
+window.SulandraCodebaseNav={install,open:openStandalone,openStandalone,backToAgent:returnToAgent,CODEBASE_URL};
 })();
