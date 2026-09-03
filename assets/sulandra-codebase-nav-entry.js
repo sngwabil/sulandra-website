@@ -1,15 +1,17 @@
-/* SULANDRA_CODEBASE_IT_VISIBLE_NAV_V5
+/* SULANDRA_CODEBASE_IT_VISIBLE_NAV_V6
  * Compatibility publication markers: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4,
  * SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3, SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2.
  * Compatibility contract: Sulandra IT owns the page.
  *
  * Sulandra IT owns the application shell. Codebase is a first-class Sulandra IT
  * view exposed directly in the visible Sulandra IT navigation immediately after
- * IT Agent. It is not cloned from any Engineering navigation surface.
+ * IT Agent. The finalized Codebase.html is the only visible Codebase surface.
+ * The legacy #sulandraCodebase / Engineering workspace runtime remains hidden.
  */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V5__)return;
+if(window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V6__)return;
+window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V6__=true;
 window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V5__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3__=true;
@@ -18,43 +20,30 @@ window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2__=true;
 const COMPAT_ENTRY_ID='itwsSulandraCodebaseNav';
 const VISIBLE_ENTRY_ID='itwsSulandraCodebaseVisibleNav';
 const VIEW_ID='itwsSulandraCodebaseView';
+const FRAME_ID='itwsSulandraCodebaseFrame';
 const LEGACY_ID='itwsSulandraCodebaseButton';
-const EDITOR_FILL_STYLE_ID='scbEditorFillGuard';
 const HOST_STYLE_ID='scbItSolutionsTabHostStyle';
-let apiOverridden=false;
+const FRAME_SRC='/Codebase.html?v=20260903-backend-1';
 let installQueued=false;
+let apiOverridden=false;
 
 const hiddenTabsHost=()=>document.querySelector('.itws-content > .tabs')||document.querySelector('main.shell > .tabs')||document.querySelector('main .tabs')||document.querySelector('.tabs');
 const mainHost=()=>document.querySelector('main.shell')||document.querySelector('main');
 const contentHost=()=>document.querySelector('.itws-content')||mainHost();
 const visibleNav=()=>document.querySelector('.itws-sidebar .itws-nav');
-const codebaseShell=()=>document.getElementById('sulandraCodebase');
 const codebaseView=()=>document.getElementById(VIEW_ID);
 const visibleCodebaseButton=()=>document.getElementById(VISIBLE_ENTRY_ID);
-
-function installEditorFillGuard(){
- if(document.getElementById(EDITOR_FILL_STYLE_ID))return;
- const style=document.createElement('style');
- style.id=EDITOR_FILL_STYLE_ID;
- style.textContent=`
-.scb-shell[data-prototype="v19"] .scb-native-tabs{grid-row:1!important}
-.scb-shell[data-prototype="v19"] .scb-editor-toolbar{grid-row:2!important}
-.scb-shell[data-prototype="v19"] .scb-commit-bar{grid-row:3!important}
-.scb-shell[data-prototype="v19"] .scb-editor-stack{grid-row:4!important;height:auto!important;align-self:stretch!important;min-height:0!important}
-`;
- document.head.appendChild(style);
-}
 
 function installHostStyle(){
  if(document.getElementById(HOST_STYLE_ID))return;
  const style=document.createElement('style');
  style.id=HOST_STYLE_ID;
  style.textContent=`
-#${VIEW_ID}.scb-codebase-view{margin:0!important;padding:0!important;min-width:0!important;min-height:0!important;width:100%!important;height:100%!important;overflow:hidden!important}
+#${VIEW_ID}.scb-codebase-view{margin:0!important;padding:0!important;min-width:0!important;min-height:0!important;width:100%!important;height:100%!important;overflow:hidden!important;background:#03060a!important}
 body.it-chatgpt-workspace .itws-content>#${VIEW_ID}.scb-codebase-view{height:100%!important;max-height:100%!important}
-.scb-shell.scb-sulandra-it-embedded{position:relative!important;inset:auto!important;z-index:1!important;width:100%!important;height:100%!important;min-height:0!important;border:0!important;border-radius:0!important;overflow:hidden!important;box-shadow:none!important}
-.scb-shell.scb-sulandra-it-embedded[hidden]{display:none!important}
-.scb-shell.scb-sulandra-it-embedded:fullscreen,.scb-shell.scb-sulandra-it-embedded:-webkit-full-screen{width:100vw!important;height:100vh!important;min-height:100vh!important;border-radius:0!important;border:0!important}
+#${FRAME_ID}{display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;border:0!important;background:#03060a!important}
+#${FRAME_ID}[hidden]{display:none!important}
+#sulandraCodebase{display:none!important}
 #${LEGACY_ID}{display:none!important}
 #${COMPAT_ENTRY_ID}{display:none!important}
 `;
@@ -62,14 +51,24 @@ body.it-chatgpt-workspace .itws-content>#${VIEW_ID}.scb-codebase-view{height:100
 }
 
 function suppressLegacy(){
+ const workbench=document.getElementById('sulandraCodebase');
+ if(workbench){
+  workbench.hidden=true;
+  workbench.setAttribute('aria-hidden','true');
+  workbench.style.setProperty('display','none','important');
+ }
  const legacy=document.getElementById(LEGACY_ID);
  if(legacy){
   legacy.hidden=true;
   legacy.setAttribute('aria-hidden','true');
-  legacy.setAttribute('tabindex','-1');
+  legacy.tabIndex=-1;
   legacy.style.setProperty('display','none','important');
  }
- document.querySelectorAll('[data-scb-nav-source="engineering"],[data-scb-codebase-clone="engineering"]').forEach(node=>node.remove());
+ document.querySelectorAll('[data-scb-nav-source="engineering"],[data-scb-codebase-clone="engineering"]').forEach(node=>{
+  node.hidden=true;
+  node.setAttribute('aria-hidden','true');
+  if(node instanceof HTMLElement)node.style.setProperty('display','none','important');
+ });
 }
 
 function ensureView(){
@@ -84,6 +83,18 @@ function ensureView(){
   host.appendChild(view);
  }else if(view.parentElement!==host){
   host.appendChild(view);
+ }
+ let frame=document.getElementById(FRAME_ID);
+ if(!frame){
+  frame=document.createElement('iframe');
+  frame.id=FRAME_ID;
+  frame.title='Sulandra Codebase';
+  frame.src=FRAME_SRC;
+  frame.loading='eager';
+  frame.setAttribute('allow','fullscreen; clipboard-read; clipboard-write');
+  frame.setAttribute('allowfullscreen','');
+  frame.setAttribute('referrerpolicy','same-origin');
+  view.appendChild(frame);
  }
  return view;
 }
@@ -153,46 +164,11 @@ function ensureVisibleNav(){
  return button;
 }
 
-function wireShell(workbench){
- if(!workbench)return;
- workbench.classList.add('scb-sulandra-it-embedded');
- if(workbench.dataset.itSolutionsHost==='1')return;
- workbench.dataset.itSolutionsHost='1';
- const full=workbench.querySelector('#scbFullscreen');
- if(full)full.addEventListener('click',event=>{
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  if(document.fullscreenElement||document.webkitFullscreenElement)return;
-  const request=workbench.requestFullscreen||workbench.webkitRequestFullscreen;
-  const promise=request?.call(workbench);
-  if(promise?.catch)promise.catch(()=>{});
- },true);
- const exit=workbench.querySelector('#scbExit');
- if(exit){
-  exit.textContent='Back to IT';
-  exit.addEventListener('click',event=>{
-   event.preventDefault();
-   event.stopImmediatePropagation();
-   returnToAgent();
-  },true);
- }
-}
-
-function moveShellIntoView(){
- const workbench=codebaseShell(),view=ensureView();
- if(!workbench||!view)return false;
- wireShell(workbench);
- if(workbench.parentElement!==view)view.appendChild(workbench);
- suppressLegacy();
- return true;
-}
-
 function hideCodebase(){
- const workbench=codebaseShell();
  const view=codebaseView();
- if(workbench)workbench.hidden=true;
  if(view)view.classList.add('hidden');
  document.body?.classList.remove('scb-open');
+ suppressLegacy();
 }
 
 function activateOnlyView(view){
@@ -210,23 +186,18 @@ function selectCodebaseView(){
  const tabs=hiddenTabsHost();
  if(tabs)tabs.querySelectorAll('.tab').forEach(node=>node.classList.toggle('active',node.id===COMPAT_ENTRY_ID));
  activateOnlyView(view);
+ view.classList.remove('hidden');
  setVisibleNav('codebase');
  return true;
 }
 
 function openInsideIt(){
- installEditorFillGuard();
  installHostStyle();
+ suppressLegacy();
  ensureCompatibilityTab();
  ensureVisibleNav();
- if(!moveShellIntoView())return false;
  if(!selectCodebaseView())return false;
- const workbench=codebaseShell();
- if(!workbench)return false;
- workbench.hidden=false;
  document.body?.classList.remove('scb-open');
- window.SulandraCodebase?.refresh?.();
- window.SulandraCodebaseNativeGrid?.render?.();
  window.dispatchEvent(new CustomEvent('sulandra:workspace-layout-resized'));
  return true;
 }
@@ -274,22 +245,18 @@ function overridePublicOpen(){
 }
 
 function enforceDefaultHost(){
- const workbench=codebaseShell();
- if(!workbench)return;
- moveShellIntoView();
+ suppressLegacy();
  const selected=Boolean(visibleCodebaseButton()?.classList.contains('active')&&!codebaseView()?.classList.contains('hidden'));
  if(!selected)hideCodebase();
 }
 
 function install(){
- installEditorFillGuard();
  installHostStyle();
  suppressLegacy();
  ensureView();
  ensureCompatibilityTab();
  ensureVisibleNav();
  bindHiddenTabs();
- moveShellIntoView();
  overridePublicOpen();
  enforceDefaultHost();
  return Boolean(visibleCodebaseButton()&&codebaseView());
@@ -301,10 +268,13 @@ function queueInstall(){
  requestAnimationFrame(()=>{installQueued=false;install()});
 }
 
+window.addEventListener('message',event=>{
+ if(event.origin!==window.location.origin)return;
+ if(event.data?.type==='sulandra-codebase-exit')returnToAgent();
+});
+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 new MutationObserver(queueInstall).observe(document.documentElement,{childList:true,subtree:true});
 window.addEventListener('pageshow',()=>{install();enforceDefaultHost()});
-window.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)enforceDefaultHost()});
-window.addEventListener('webkitfullscreenchange',()=>{if(!document.webkitFullscreenElement)enforceDefaultHost()});
 window.SulandraCodebaseNav={install,open:openInsideIt,backToAgent:returnToAgent};
 })();
