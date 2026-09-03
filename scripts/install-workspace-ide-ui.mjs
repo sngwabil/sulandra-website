@@ -37,7 +37,7 @@ const tags={
  nativeGridCss:'<link rel="stylesheet" href="/assets/sulandra-codebase-native-grid-v3.css?v=20260903-prototype-v19-nav-2">',
  rightDockCss:'<link rel="stylesheet" href="/assets/sulandra-codebase-right-dock-full-height.css?v=20260903-right-dock-fullheight-1">',
  codebaseJs:'<script src="/assets/sulandra-codebase.js?v=20260902-codebase-4-terminal-flex"></script>',
- codebaseNavJs:'<script src="/assets/sulandra-codebase-nav-entry.js?v=20260903-top-level-nav-3"></script>',
+ codebaseNavJs:'<script src="/assets/sulandra-codebase-nav-entry.js?v=20260903-it-tab-host-4"></script>',
  nativeGridJs:'<script src="/assets/sulandra-codebase-native-grid-v3.js?v=20260903-prototype-v19-nav-2"></script>',
  sessionUxJs:'<script src="/assets/sulandra-codebase-empty-workspace-ux.js?v=20260903-empty-workspace-1"></script>',
  apiBridge:'<script src="/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-1"></script>',
@@ -77,7 +77,7 @@ for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','it-status-board','it-status-
 for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','itAgentStatusBoard','itStatusBoardToggle','Action Center','Operations','private model reasoning is never displayed'])if(!source.statusJs.includes(marker))throw new Error(`IT Agent Status Board JavaScript missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','scb-shell','scb-workspace','scb-editor-input'])if(!source.codebaseCss.includes(marker))throw new Error(`Sulandra Codebase CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','release/sulandra-1.0','openIntegratedTerminal','/api/it-solutions/codebase/file'])if(!source.codebaseJs.includes(marker))throw new Error(`Sulandra Codebase JavaScript missing ${marker}`);
-for(const marker of ['SULANDRA_CODEBASE_TOP_LEVEL_NAV_V1','Engineering Terminal','itwsSulandraCodebaseNav','SulandraCodebase?.open'])if(!source.codebaseNavJs.includes(marker))throw new Error(`Codebase top-level navigation runtime missing ${marker}`);
+for(const marker of ['SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4','Sulandra IT owns the page','itwsSulandraCodebaseNav','openInsideIt'])if(!source.codebaseNavJs.includes(marker))throw new Error(`Codebase Sulandra IT tab host runtime missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','PROTOTYPE_V19_PARITY','PROTOTYPE_V19_NAVIGATION','scb-native-grid','scb-native-tab','scb-grid-resizer','scb-status-resizer','--scb-native-right'])if(!source.nativeGridCss.includes(marker))throw new Error(`Native Codebase grid CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_RIGHT_DOCK_FULL_HEIGHT_V1','scb-right-dock','scb-dock-mount','scb-embedded-workspace-panel','itws-dock-panel-body','itws-workspace-frame'])if(!source.rightDockCss.includes(marker))throw new Error(`Codebase right-dock full-height CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','PROTOTYPE_V19_PARITY','PROTOTYPE_V19_NAVIGATION','sulandra:codebase:native-grid-v3','data-terminal-id','SulandraCodebaseNativeGrid','draggable=true','order.slice(0,count())','data-grid-mode','stack-2-1','stack-1-2','scb-status-resizer','scb-sidebar-nav'])if(!source.nativeGridJs.includes(marker))throw new Error(`Native Codebase grid JavaScript missing ${marker}`);
@@ -94,4 +94,4 @@ const siaScriptCount=(html.match(/<script[^>]+src=["']\/assets\/sia-copilot\.js(
 if(siaScriptCount!==1)throw new Error(`IT Solutions must publish exactly one executable Ask SIA runtime; found ${siaScriptCount}`);
 if(/sia-copilot\.js[^>]*\bdefer\b/i.test(html))throw new Error('IT Solutions final Ask SIA runtime must not be deferred');
 await writeFile(portalPath,html,'utf8');
-console.log(`Dockable Engineering Workspace, persistent IT Agent Status Board, permanent top-level Codebase navigation, separate Sulandra Codebase Prototype v19 navigation, full-height right dock, and non-blocking empty Preview/IDE + direct terminal startup published into ${requested}`);
+console.log(`Dockable Engineering Workspace, persistent IT Agent Status Board, Sulandra IT-hosted Codebase tab, separate Sulandra Codebase Prototype v19 navigation, full-height right dock, and non-blocking empty Preview/IDE + direct terminal startup published into ${requested}`);
