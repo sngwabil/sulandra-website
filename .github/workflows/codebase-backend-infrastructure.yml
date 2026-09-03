@@ -1,0 +1,61 @@
+name: Codebase Backend Infrastructure
+
+on:
+  pull_request:
+    paths:
+      - 'Codebase.html'
+      - 'assets/codebase-backend-adapter.js'
+      - 'codebase-e2e-api/**'
+      - 'codebase-e2e-web/**'
+      - 'coding-terminal-worker/**'
+      - 'Dockerfile.coding-terminal'
+      - 'Dockerfile.frontend'
+      - 'scripts/install-codebase-pty-compat.mjs'
+      - 'scripts/install-codebase-backend-adapter.mjs'
+      - '.github/workflows/codebase-backend-infrastructure.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript sources
+        run: |
+          set -euo pipefail
+          node --check codebase-e2e-api/server.mjs
+          node --check codebase-e2e-web/server.mjs
+          node --check assets/codebase-backend-adapter.js
+          node --check scripts/install-codebase-pty-compat.mjs
+          node --check scripts/install-codebase-backend-adapter.mjs
+      - name: Install service dependencies
+        run: |
+          set -euo pipefail
+          npm install --prefix codebase-e2e-api --ignore-scripts --no-audit --no-fund
+          npm install --prefix codebase-e2e-web --ignore-scripts --no-audit --no-fund
+      - name: Verify Codebase HTML contract publication
+        run: |
+          set -euo pipefail
+          cp Codebase.html /tmp/Codebase.html
+          node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-backend-1' /tmp/Codebase.html
+          grep -Fq 'codebase-e2e-api-production.up.railway.app' /tmp/Codebase.html
+          grep -Fq 'sulandra-coding-terminal-worker-production.up.railway.app' /tmp/Codebase.html
+          grep -Fq 'codebase-e2e-web-production.up.railway.app' /tmp/Codebase.html
+          ! grep -Fq "|| 'test-token'" /tmp/Codebase.html
+      - name: Verify PTY compatibility can be installed
+        run: |
+          set -euo pipefail
+          cp coding-terminal-worker/server.mjs /tmp/codebase-terminal-gateway.mjs
+          node scripts/install-codebase-pty-compat.mjs /tmp/codebase-terminal-gateway.mjs
+          node --check /tmp/codebase-terminal-gateway.mjs
+          grep -Fq 'CODEBASE_PTY_COMPAT_V1' /tmp/codebase-terminal-gateway.mjs
+          grep -Fq "url.pathname === '/pty'" /tmp/codebase-terminal-gateway.mjs
+      - name: Build dedicated Codebase service images
+        run: |
+          set -euo pipefail
+          docker build -f codebase-e2e-api/Dockerfile -t sulandra-codebase-api:test .
+          docker build -f codebase-e2e-web/Dockerfile -t sulandra-codebase-web:test .
