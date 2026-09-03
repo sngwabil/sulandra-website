@@ -8,6 +8,7 @@ RUN node --check assets/it-agent-conversational-ui.js
 RUN node scripts/optimize-admin-login-performance.mjs
 RUN node scripts/install-employee-support.mjs
 RUN node scripts/fix-sulandra-codebase-editor-state.mjs
+RUN node scripts/install-codebase-backend-adapter.mjs Codebase.html
 
 # Build a pinned same-origin browser terminal bundle containing xterm plus all
 # production addons. No CDN runtime dependency is used in production.
@@ -20,7 +21,8 @@ RUN node scripts/install-it-agent-conversational-ui.mjs \
  && node scripts/install-workspace-ide-ui.mjs \
  && node scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
 
-RUN node --check assets/it-agent-conversational-ui.js
+RUN node --check assets/it-agent-conversational-ui.js \
+ && node --check assets/codebase-backend-adapter.js
 RUN node scripts/verify-workspace-same-origin-proxy.mjs
 
 RUN npm run build:web \
@@ -36,6 +38,9 @@ RUN npm run build:web \
  && cp assets/sulandra-codebase-nav-entry.js dist-web/assets/sulandra-codebase-nav-entry.js \
  && cp assets/sulandra-codebase-api-bridge.js dist-web/assets/sulandra-codebase-api-bridge.js \
  && cp assets/sulandra-codebase-sia-bridge.js dist-web/assets/sulandra-codebase-sia-bridge.js \
+ && cp assets/codebase-backend-adapter.js dist-web/assets/codebase-backend-adapter.js \
+ && cp Codebase.html dist-web/Codebase.html \
+ && node scripts/install-codebase-backend-adapter.mjs dist-web/Codebase.html \
  && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
  && node scripts/install-workspace-ide-ui.mjs dist-web/it-solutions.html \
