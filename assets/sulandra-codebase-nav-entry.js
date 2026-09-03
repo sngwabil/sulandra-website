@@ -1,19 +1,28 @@
-/* SULANDRA_CODEBASE_TOP_LEVEL_NAV_V1
+/* SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2
  * Codebase is a sibling IT Solutions product, never a child of Engineering Terminal.
+ * The legacy Engineering-footer launcher may still be created by the older Codebase
+ * bootstrap, but it is hidden in place instead of removed so MutationObservers cannot
+ * create/remove it forever and freeze the protected-session page.
  */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V1__)return;
-window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V1__=true;
+if(window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2__)return;
+window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2__=true;
 
 const ENTRY_ID='itwsSulandraCodebaseNav';
 const LEGACY_ID='itwsSulandraCodebaseButton';
 const labelOf=node=>String(node?.textContent||'').trim().replace(/\s+/g,' ');
 const clickableSelector='button,a,[role="button"],[data-view],[data-route],[data-target]';
+let observer=null;
 
 function suppressLegacy(){
  const legacy=document.getElementById(LEGACY_ID);
- if(legacy)legacy.remove();
+ if(!legacy)return false;
+ legacy.hidden=true;
+ legacy.setAttribute('aria-hidden','true');
+ legacy.setAttribute('tabindex','-1');
+ legacy.style.setProperty('display','none','important');
+ return true;
 }
 
 function engineeringEntry(){
@@ -72,14 +81,19 @@ function install(){
  return Boolean(makeEntry(engineering));
 }
 
-function maintain(){
- install();
+function finishWhenReady(){
+ const installed=install();
  suppressLegacy();
+ if(installed&&observer){observer.disconnect();observer=null;}
+ return installed;
 }
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',maintain,{once:true});else maintain();
-const observer=new MutationObserver(maintain);
-observer.observe(document.documentElement,{childList:true,subtree:true});
-window.addEventListener('pageshow',maintain);
-window.SulandraCodebaseNav={install:maintain};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',finishWhenReady,{once:true});else finishWhenReady();
+if(!document.getElementById(ENTRY_ID)){
+ observer=new MutationObserver(()=>finishWhenReady());
+ observer.observe(document.documentElement,{childList:true,subtree:true});
+ setTimeout(()=>{observer?.disconnect();observer=null;suppressLegacy();},30000);
+}
+window.addEventListener('pageshow',()=>{finishWhenReady();suppressLegacy();});
+window.SulandraCodebaseNav={install:finishWhenReady};
 })();
