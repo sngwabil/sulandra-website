@@ -7,8 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server.mjs",
-    "check": "node --check server.mjs"
+    "start": "node bootstrap.mjs",
+    "check": "node --check bootstrap.mjs && node --check server.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
