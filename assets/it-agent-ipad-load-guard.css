@@ -1,13 +1,7 @@
-/* IT_AGENT_IPAD_STABLE_LOAD_V1
-   Prevents the legacy workbench from painting before the canonical chat-first UI
-   finishes booting, and stabilizes iPad split-screen/composer geometry. */
+/* SULANDRA_IT_IPAD_FAIL_OPEN_V3
+   iPad/Safari boot presentation. The loader is an overlay only: the Sulandra IT
+   document continues laying out underneath it and is never hidden or replaced. */
 
-html.itws-preboot body>header,
-html.itws-preboot body>main.shell{
-  opacity:0!important;
-  visibility:hidden!important;
-  pointer-events:none!important;
-}
 html.itws-preboot::before{
   content:'Loading Sulandra IT…';
   position:fixed;
@@ -19,6 +13,7 @@ html.itws-preboot::before{
   color:#53616d;
   font:600 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
   letter-spacing:-.01em;
+  pointer-events:auto;
 }
 html.itws-preboot.itws-boot-failed::before{display:none!important}
 
@@ -101,24 +96,6 @@ body.it-chatgpt-workspace #agentForm{
   }
 }
 
-.itws-boot-error{
-  position:fixed;
-  inset:0;
-  z-index:2147483647;
-  display:grid;
-  place-items:center;
-  padding:24px;
-  background:#fff;
-  color:#283744;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
-}
-.itws-boot-error>div{
-  width:min(430px,100%);
-  border:1px solid #e1e5e8;
-  border-radius:16px;
-  padding:20px;
-  box-shadow:0 10px 34px rgba(0,0,0,.08);
-}
-.itws-boot-error strong{display:block;font-size:18px;margin-bottom:7px}
-.itws-boot-error p{margin:0 0 14px;color:#66727c;font-size:13px;line-height:1.5}
-.itws-boot-error button{border:0;border-radius:10px;background:#0b5f9e;color:white;padding:10px 14px;font-weight:700;cursor:pointer}
+/* Legacy blocking boot-error cards are suppressed. V3 fails open to the usable
+   Sulandra IT surface instead of replacing the application with an error page. */
+.itws-boot-error{display:none!important}
