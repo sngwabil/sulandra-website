@@ -8,7 +8,17 @@ await access(adapter);
 let html = await readFile(target, 'utf8');
 const source = await readFile(adapter, 'utf8');
 
-for (const marker of ['SULANDRA_CODEBASE_BACKEND_ADAPTER_V1','/api/db/schema','/api/sia/chat','/api/preview-ticket','/pty?token=']) {
+for (const marker of [
+  'SULANDRA_CODEBASE_BACKEND_ADAPTER_V2',
+  'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1',
+  '/api/db/schema',
+  '/api/sia/chat',
+  '/api/preview-ticket',
+  '/pty?token=',
+  'sameOriginOpener',
+  'wireCoreControls',
+  "window.location.assign('/it-solutions.html')",
+]) {
   if (!source.includes(marker)) throw new Error(`Codebase backend adapter missing ${marker}`);
 }
 
@@ -29,7 +39,7 @@ html = html.replace(
   "      listEl.innerHTML = '<div style=\"padding:16px;color:#e57373;line-height:1.5\">Unable to load the real repository. Check Codebase API authentication or service health.</div>';",
 );
 
-const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-backend-1"></script>';
+const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-backend-adapter\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 if (!html.includes('</body>')) throw new Error('Codebase body anchor changed');
 html = html.replace('</body>', `${tag}\n</body>`);
@@ -38,7 +48,7 @@ for (const marker of [
   'https://codebase-e2e-api-production.up.railway.app',
   'wss://sulandra-coding-terminal-worker-production.up.railway.app',
   'https://codebase-e2e-web-production.up.railway.app',
-  '/assets/codebase-backend-adapter.js?v=20260903-backend-1',
+  '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2',
   "sessionStorage.getItem('sulandra:admin:access-token')",
   'createWorkspaceFolder()',
 ]) {
@@ -48,4 +58,4 @@ if (html.includes("|| 'test-token'")) throw new Error('Published Codebase must n
 if (/openFallbackFile\('spire-evv-test-console\.html'\)/.test(html)) throw new Error('Published Codebase must not preload demonstration source files');
 
 await writeFile(target, html, 'utf8');
-console.log(`Sulandra Codebase backend adapter published into ${target}`);
+console.log(`Sulandra Codebase standalone backend/control adapter V2 published into ${target}`);

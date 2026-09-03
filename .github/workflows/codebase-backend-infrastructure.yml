@@ -39,12 +39,15 @@ jobs:
           npm install --prefix codebase-e2e-web --ignore-scripts --no-audit --no-fund
           npm run check --prefix codebase-e2e-api
           npm run check --prefix codebase-e2e-web
-      - name: Verify Codebase HTML contract publication
+      - name: Verify standalone Codebase HTML contract publication
         run: |
           set -euo pipefail
           cp Codebase.html /tmp/Codebase.html
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-backend-1' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2' /tmp/Codebase.html
+          grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
+          grep -Fq 'sameOriginOpener' assets/codebase-backend-adapter.js
+          grep -Fq "window.location.assign('/it-solutions.html')" assets/codebase-backend-adapter.js
           grep -Fq 'codebase-e2e-api-production.up.railway.app' /tmp/Codebase.html
           grep -Fq 'sulandra-coding-terminal-worker-production.up.railway.app' /tmp/Codebase.html
           grep -Fq 'codebase-e2e-web-production.up.railway.app' /tmp/Codebase.html

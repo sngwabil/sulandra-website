@@ -1,16 +1,30 @@
-/* SULANDRA_CODEBASE_BACKEND_ADAPTER_V1 */
+/* SULANDRA_CODEBASE_BACKEND_ADAPTER_V2
+ * SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1
+ */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_BACKEND_ADAPTER_V1__)return;
-window.__SULANDRA_CODEBASE_BACKEND_ADAPTER_V1__=true;
+if(window.__SULANDRA_CODEBASE_BACKEND_ADAPTER_V2__)return;
+window.__SULANDRA_CODEBASE_BACKEND_ADAPTER_V2__=true;
 
+const sameOriginOpener=()=>{
+  try{
+    if(window.opener&&!window.opener.closed&&window.opener.location.origin===window.location.origin)return window.opener;
+  }catch{}
+  return null;
+};
+const storageToken=storage=>{
+  try{
+    return storage?.getItem('sulandra:admin:access-token')||
+      storage?.getItem('sulandra:employee:access-token')||
+      storage?.getItem('token')||'';
+  }catch{return ''}
+};
 const sessionToken=()=>
   document.getElementById('cfg-token')?.value?.trim()||
-  sessionStorage.getItem('sulandra:admin:access-token')||
-  localStorage.getItem('sulandra:admin:access-token')||
-  sessionStorage.getItem('sulandra:employee:access-token')||
-  localStorage.getItem('sulandra:employee:access-token')||
-  localStorage.getItem('token')||'';
+  storageToken(sessionStorage)||
+  storageToken(localStorage)||
+  storageToken(sameOriginOpener()?.sessionStorage)||
+  storageToken(sameOriginOpener()?.localStorage)||'';
 
 const status=text=>{const node=document.getElementById('status-line-col');if(node)node.textContent=String(text||'')};
 const authHeaders=(json=false)=>{
@@ -101,6 +115,11 @@ window.initXterm=(containerId,tabId)=>{
   if(activeTerminals[tabId])return;
   const container=document.getElementById(containerId);
   if(!container)return;
+  if(typeof Terminal!=='function'||!window.FitAddon?.FitAddon){
+    status('TERMINAL runtime unavailable. Refresh Codebase and try again.');
+    container.textContent='Terminal runtime unavailable.';
+    return;
+  }
   const term=new Terminal({theme:{background:'#000000',foreground:'#ffffff'},fontFamily:'"Menlo", monospace',fontSize:13,cursorBlink:true,scrollback:10000});
   const fitAddon=new FitAddon.FitAddon();
   term.loadAddon(fitAddon);term.open(container);fitAddon.fit();
@@ -173,6 +192,8 @@ const wireSia=()=>{
   const transcript=root?.querySelector('.mock-panel-content > div');
   if(!textarea||!button||!transcript)return;
   textarea.id='codebase-sia-prompt';button.id='codebase-sia-send';
+  if(button.dataset.codebaseSiaBound==='1')return;
+  button.dataset.codebaseSiaBound='1';
   const send=async()=>{
     const prompt=textarea.value.trim();if(!prompt)return;
     const active=openTabs[0];
@@ -192,25 +213,104 @@ const wireSia=()=>{
   textarea.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();void send()}});
 };
 
-const wireExit=()=>{
-  const exit=[...document.querySelectorAll('.header-actions span')].find(node=>String(node.textContent||'').includes('Exit Codebase'));
-  if(!exit||exit.dataset.codebaseExitBound==='1')return;
-  exit.dataset.codebaseExitBound='1';
-  exit.style.cursor='pointer';
-  exit.addEventListener('click',event=>{
+const exitStandalone=()=>{
+  const opener=sameOriginOpener();
+  if(opener){
+    try{opener.focus()}catch{}
+    try{window.close()}catch{}
+    setTimeout(()=>{if(!window.closed)window.location.replace('/it-solutions.html')},80);
+    return;
+  }
+  window.location.assign('/it-solutions.html');
+};
+
+const callSafely=(label,fn)=>{
+  try{return fn()}catch(error){status(`${label} failed: ${error?.message||error}`)}
+};
+const wireCoreControls=()=>{
+  if(window.__SULANDRA_CODEBASE_CORE_CONTROLS_WIRED__)return;
+  window.__SULANDRA_CODEBASE_CORE_CONTROLS_WIRED__=true;
+  document.querySelectorAll('.header-actions span,.workspace-controls span,.grid-btn,.rp-tab,.act-icon').forEach(node=>{if(node instanceof HTMLElement||node instanceof SVGElement)node.style.cursor='pointer'});
+  document.addEventListener('click',event=>{
+    const target=event.target instanceof Element?event.target:null;
+    if(!target)return;
+    const control=target.closest('.header-actions span,.sidebar-toolbox .act-icon,.right-panel-tabs .rp-tab,.grid-controls .grid-btn,.file-actions span,#tab-bar .tab');
+    if(!control)return;
+
+    const header=control.closest('.header-actions');
+    const sidebar=control.matches('.act-icon')?control:null;
+    const rightTab=control.matches('.rp-tab')?control:null;
+    const gridButton=control.matches('.grid-btn')?control:null;
+    const fileAction=control.closest('.file-actions')?control:null;
+    const workspaceTab=control.closest('#tab-bar .tab');
+
     event.preventDefault();
-    if(window.parent!==window){
-      window.parent.postMessage({type:'sulandra-codebase-exit'},window.location.origin);
-      return;
+    event.stopImmediatePropagation();
+
+    if(header){
+      const text=String(control.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      if(text.includes('refresh'))return callSafely('Refresh',()=>fetchFileSystem());
+      if(text.includes('ide'))return callSafely('IDE',()=>{
+        document.getElementById('resizer-right').style.display='block';
+        document.getElementById('sidebar-right').style.flex='0 0 380px';
+        switchRightPanel('ide');
+      });
+      if(text.includes('terminal'))return callSafely('Terminal',()=>openTerminal());
+      if(text.includes('full screen'))return callSafely('Full screen',()=>toggleFullScreen());
+      if(text.includes('exit codebase'))return exitStandalone();
     }
-    if(document.referrer&&new URL(document.referrer,window.location.href).origin===window.location.origin)history.back();
-  });
+
+    if(sidebar){
+      const key=String(sidebar.getAttribute('title')||'').toLowerCase();
+      const map={
+        'explorer':'explorer','search':'search','source control':'git','run and debug':'debug',
+        'extensions':'ext','database':'db','sia ai':'sia','settings':'settings'
+      };
+      const view=map[key];
+      if(view)return callSafely('Sidebar',()=>switchSidebar(view));
+    }
+
+    if(rightTab){
+      const view=String(rightTab.id||'').replace(/^tab-/,'');
+      if(view)return callSafely('Right panel',()=>switchRightPanel(view));
+    }
+
+    if(gridButton){
+      const buttons=[...document.querySelectorAll('.grid-controls .grid-btn')];
+      const index=buttons.indexOf(gridButton);
+      const modes=[1,2,'vertical','stack-2-1','stack-1-2',4];
+      if(index>=0)return callSafely('Grid',()=>setGridMode(modes[index],event));
+    }
+
+    if(fileAction){
+      const text=String(fileAction.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      if(text.startsWith('edit'))return callSafely('Edit',()=>focusEditor());
+      if(text.startsWith('save'))return callSafely('Save',()=>saveActiveFile());
+      if(text.startsWith('commit'))return callSafely('Commit',()=>commitToGitHub());
+      if(text.includes('revert'))return callSafely('Revert',()=>revertVersion());
+    }
+
+    if(workspaceTab){
+      const tabs=[...document.querySelectorAll('#tab-bar .tab')];
+      const index=tabs.indexOf(workspaceTab);
+      if(index<0)return;
+      if(target.closest('.tab-close'))return callSafely('Close tab',()=>closeTab(index,event));
+      if(index>=gridMode)return callSafely('Activate tab',()=>{
+        openTabs.unshift(openTabs.splice(index,1)[0]);
+        renderWorkspace();
+      });
+    }
+  },true);
 };
 
 const wire=()=>{
+  wireCoreControls();
   wireSia();
-  wireExit();
+  const exit=[...document.querySelectorAll('.header-actions span')].find(node=>String(node.textContent||'').includes('Exit Codebase'));
+  if(exit){exit.style.cursor='pointer';exit.title='Close Codebase and return to Sulandra IT Solutions'}
   const iframe=document.getElementById('railway-preview-iframe');if(iframe&&!iframe.src)iframe.src=RAILWAY_CONFIG.PREVIEW_URL;
+  status('CODEBASE ready • standalone workspace');
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
+window.addEventListener('pageshow',wire);
 })();
