@@ -18,7 +18,7 @@ const assets={
  siaCss:path.join(root,'assets','sia-copilot.css'),
  siaJs:path.join(root,'assets','sia-copilot.js'),
 };
-await Promise.all([access(portalPath),...Object.values(assets).map(access)]);
+await Promise.all([access(portalPath),...Object.values(assets).map(file=>access(file))]);
 let html=await readFile(portalPath,'utf8');
 if(!html.includes('</head>')||!html.includes('</body>'))throw new Error('IT Solutions publication anchors changed');
 
