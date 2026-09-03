@@ -82,7 +82,15 @@ const gitEnvironment = () => {
   };
 };
 
-const gitFor = baseDir => simpleGit({ baseDir, maxConcurrentProcesses: 1 }).env(gitEnvironment());
+// The GIT_CONFIG_* values above are generated only from trusted server-side
+// configuration. Newer simple-git versions require an explicit opt-in before
+// they allow that mechanism, otherwise the API crashes before the workspace
+// clone can start. Keep the opt-in scoped to this single hard-coded auth use.
+const gitFor = baseDir => simpleGit({
+  baseDir,
+  maxConcurrentProcesses: 1,
+  unsafe: { allowUnsafeConfigEnvCount: true }, // CODEBASE_SAFE_GIT_AUTH_V2
+}).env(gitEnvironment());
 
 const ensureWorkspace = async () => {
   await mkdir(path.dirname(workspaceDir), { recursive: true });

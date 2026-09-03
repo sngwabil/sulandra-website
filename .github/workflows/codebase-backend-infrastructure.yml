@@ -39,12 +39,14 @@ jobs:
           npm install --prefix codebase-e2e-web --ignore-scripts --no-audit --no-fund
           npm run check --prefix codebase-e2e-api
           npm run check --prefix codebase-e2e-web
-      - name: Verify live Codebase API routes
+      - name: Verify live Codebase API routes and Git auth contract
         run: |
           set -euo pipefail
           grep -Fq "app.get('/api/files'" codebase-e2e-api/server.mjs
           grep -Fq "app.get('/api/db/schema'" codebase-e2e-api/server.mjs
           grep -Fq "app.post('/api/commit'" codebase-e2e-api/server.mjs
+          grep -Fq 'CODEBASE_SAFE_GIT_AUTH_V2' codebase-e2e-api/server.mjs
+          grep -Fq 'allowUnsafeConfigEnvCount: true' codebase-e2e-api/server.mjs
       - name: Verify standalone Codebase HTML contract publication
         run: |
           set -euo pipefail
