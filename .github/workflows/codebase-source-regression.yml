@@ -5,9 +5,14 @@ on:
     branches:
       - release/sulandra-1.0
     paths:
+      - Codebase.html
+      - assets/codebase-backend-adapter.js
       - assets/sulandra-codebase.js
       - assets/sulandra-codebase-api-bridge.js
+      - assets/sulandra-codebase-nav-entry.js
+      - scripts/install-codebase-backend-adapter.mjs
       - scripts/install-workspace-ide-ui.mjs
+      - scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
       - tests/sulandra-codebase-api-bridge.regression.mjs
       - Dockerfile.frontend
       - .github/workflows/codebase-source-regression.yml
@@ -17,7 +22,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify authenticated Codebase tree and file routing
+    name: Verify standalone Codebase and authenticated source routing
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -29,20 +34,41 @@ jobs:
         with:
           node-version: 22
 
-      - name: Validate Codebase bridge sources
+      - name: Validate Codebase sources
         run: |
           set -euo pipefail
           node --check assets/sulandra-codebase-api-bridge.js
+          node --check assets/codebase-backend-adapter.js
+          node --check assets/sulandra-codebase-nav-entry.js
+          node --check scripts/install-codebase-backend-adapter.mjs
           node --check scripts/install-workspace-ide-ui.mjs
+          node --check scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
           node --check tests/sulandra-codebase-api-bridge.regression.mjs
 
       - name: Exercise authenticated API bridge
         run: node tests/sulandra-codebase-api-bridge.regression.mjs
 
-      - name: Verify portal publication includes bridge
+      - name: Verify standalone publication boundary
         run: |
           set -euo pipefail
+          node scripts/install-codebase-backend-adapter.mjs Codebase.html
           node scripts/install-workspace-ide-ui.mjs
-          grep -Fq '/assets/sulandra-codebase-api-bridge.js?v=20260902-codebase-api-1' it-solutions.html
+          node scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
+
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2' Codebase.html
+          grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'sulandra-website-production-5fc4.up.railway.app' assets/sulandra-codebase-api-bridge.js
           grep -Fq 'Authorization' assets/sulandra-codebase-api-bridge.js
+
+          grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7' it-solutions.html
+          grep -Fq "CODEBASE_URL='/Codebase.html?v=20260903-standalone-2'" assets/sulandra-codebase-nav-entry.js
+          grep -Fq 'window.open' assets/sulandra-codebase-nav-entry.js
+
+          if grep -Fq '/assets/sulandra-codebase-api-bridge.js' it-solutions.html; then
+            echo 'IT Solutions must not publish the Codebase API bridge runtime' >&2
+            exit 1
+          fi
+          if grep -Fq 'itwsSulandraCodebaseFrame' it-solutions.html; then
+            echo 'IT Solutions must not publish an embedded Codebase iframe' >&2
+            exit 1
+          fi
