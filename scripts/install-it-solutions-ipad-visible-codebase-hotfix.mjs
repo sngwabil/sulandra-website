@@ -20,14 +20,25 @@ const [ipadCss,ipadJs,codebaseNav]=await Promise.all([
 for(const [label,source,marker] of [
   ['iPad CSS',ipadCss,'SULANDRA_IT_IPAD_FAIL_OPEN_V3'],
   ['iPad JavaScript',ipadJs,'SULANDRA_IT_IPAD_FAIL_OPEN_V3'],
-  ['Codebase visible navigation',codebaseNav,'SULANDRA_CODEBASE_IT_VISIBLE_NAV_V5'],
+  ['Codebase visible navigation',codebaseNav,'SULANDRA_CODEBASE_IT_VISIBLE_NAV_V6'],
 ]){
   if(!source.includes(marker))throw new Error(`${label} missing ${marker}`);
 }
 for(const marker of ['timeout-fail-open','pageshow','visibility-fail-open','itwsIpadReady']){
   if(!ipadJs.includes(marker))throw new Error(`iPad fail-open runtime missing ${marker}`);
 }
-for(const marker of ['itwsSulandraCodebaseVisibleNav','.itws-sidebar .itws-nav','contentHost','Back to IT']){
+
+// V6 hosts finalized Codebase.html directly inside Sulandra IT. Validate the
+// current iframe-host contract instead of legacy header copy such as "Back to IT".
+for(const marker of [
+  'itwsSulandraCodebaseVisibleNav',
+  '.itws-sidebar .itws-nav',
+  'contentHost',
+  'itwsSulandraCodebaseFrame',
+  "FRAME_SRC='/Codebase.html?v=20260903-backend-1'",
+  '#sulandraCodebase{display:none!important}',
+  'returnToAgent',
+]){
   if(!codebaseNav.includes(marker))throw new Error(`Codebase visible Sulandra IT navigation missing ${marker}`);
 }
 if(codebaseNav.includes("data-scb-nav-source='engineering'")||codebaseNav.includes('Engineering Terminal navigation item')){
@@ -45,12 +56,12 @@ html=html.replace('</head>',`${preboot}</head>`);
 html=html
   .replace(/\/assets\/it-agent-ipad-load-guard\.css(?:\?v=[^"']*)?/g,'/assets/it-agent-ipad-load-guard.css?v=20260903-ipad-fail-open-3')
   .replace(/\/assets\/it-agent-ipad-load-guard\.js(?:\?v=[^"']*)?/g,'/assets/it-agent-ipad-load-guard.js?v=20260903-ipad-fail-open-3')
-  .replace(/\/assets\/sulandra-codebase-nav-entry\.js(?:\?v=[^"']*)?/g,'/assets/sulandra-codebase-nav-entry.js?v=20260903-visible-it-nav-5');
+  .replace(/\/assets\/sulandra-codebase-nav-entry\.js(?:\?v=[^"']*)?/g,'/assets/sulandra-codebase-nav-entry.js?v=20260903-visible-it-nav-6');
 
 for(const required of [
   '/assets/it-agent-ipad-load-guard.css?v=20260903-ipad-fail-open-3',
   '/assets/it-agent-ipad-load-guard.js?v=20260903-ipad-fail-open-3',
-  '/assets/sulandra-codebase-nav-entry.js?v=20260903-visible-it-nav-5',
+  '/assets/sulandra-codebase-nav-entry.js?v=20260903-visible-it-nav-6',
   'itws-preboot-critical',
   '__sulandraItPrebootFailOpen',
 ]){
@@ -61,4 +72,4 @@ if(/html\.itws-preboot body>header|html\.itws-preboot body>main\.shell/.test(htm
 }
 
 await writeFile(portalPath,html,'utf8');
-console.log(`Sulandra IT iPad fail-open boot guard and visible Codebase navigation V5 published into ${requested}`);
+console.log(`Sulandra IT iPad fail-open boot guard and visible Codebase navigation V6 published into ${requested}`);
