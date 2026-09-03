@@ -1,4 +1,7 @@
 /* SULANDRA_IT_IPAD_FAIL_OPEN_V3
+   Compatibility marker: IT_AGENT_IPAD_STABLE_LOAD_V1
+   Legacy verifier context: it-chatgpt-workspace.
+   The old Action Center page is intentionally not shown as a fallback.
    iPad/Safari boot guard for Sulandra IT.
    The core IT workspace is always allowed to paint. Optional enhancements may finish
    after first paint, but they can never strand the user behind a loader or blank page. */
