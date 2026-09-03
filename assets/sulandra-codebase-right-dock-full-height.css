@@ -1,0 +1,73 @@
+/* SULANDRA_CODEBASE_RIGHT_DOCK_FULL_HEIGHT_V1
+ * Keeps Inspector, Preview, and IDE stretched through the entire Codebase right rail.
+ * Visual/layout-only: production workspace backends and iframe/session wiring are unchanged.
+ */
+.scb-shell[data-prototype="v19"] .scb-right-dock{
+  height:100%!important;
+  min-height:0!important;
+  align-self:stretch!important;
+}
+.scb-shell[data-prototype="v19"] .scb-dock-mount{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+.scb-shell[data-prototype="v19"] .scb-inspector-body{
+  box-sizing:border-box!important;
+  display:block!important;
+  flex:1 1 auto!important;
+  align-self:stretch!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  overflow:auto!important;
+}
+.scb-shell[data-prototype="v19"] .scb-embedded-workspace-panel{
+  display:flex!important;
+  flex-direction:column!important;
+  flex:1 1 auto!important;
+  align-self:stretch!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:none!important;
+  max-height:none!important;
+  overflow:hidden!important;
+}
+.scb-shell[data-prototype="v19"] .scb-embedded-workspace-panel .itws-dock-panel-head{
+  flex:0 0 var(--itws-dock-head,38px)!important;
+}
+.scb-shell[data-prototype="v19"] .scb-embedded-workspace-panel .itws-dock-panel-body{
+  display:flex!important;
+  flex-direction:column!important;
+  flex:1 1 auto!important;
+  align-self:stretch!important;
+  width:100%!important;
+  height:auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+.scb-shell[data-prototype="v19"] .scb-embedded-workspace-panel .itws-workspace-frame-tools{
+  flex:0 0 auto!important;
+}
+.scb-shell[data-prototype="v19"] .scb-embedded-workspace-panel .itws-workspace-frame,
+.scb-shell[data-prototype="v19"] .scb-embedded-workspace-panel iframe{
+  display:block!important;
+  flex:1 1 auto!important;
+  align-self:stretch!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:none!important;
+  max-height:none!important;
+  border:0!important;
+}
