@@ -141,7 +141,7 @@ for(const [key,p] of Object.entries(PERSONAS))test(`${p.label}: username stays i
   if(key==='dsp'){await absent(workspace,'#employeeStaticCompanyDocuments');await open(workspace,'#employeeStaticMyShift','/spire-shift.html');await expect(workspace.locator('#medAuth')).toContainText('view-only');}
   else if(key==='medDsp'){await open(workspace,'#employeeStaticMyShift','/spire-shift.html');await expect(workspace.locator('#medAuth')).toContainText('Medication administration authorized');await expect(workspace.getByRole('link',{name:'Open eMAR'})).toBeVisible();}
   else if(key==='lpn'){await open(workspace,'#employeeStaticMyShift','/spire-shift.html');await expect(workspace.locator('#medAuth')).toContainText(/LICENSED ROLE/i);}
-  else if(key==='rn')await expectExternal(workspace,'#employeeStaticSpire','/spire.html');
+  else if(key==='rn')await expectExternal(workspace,'#employeeStaticSpire','/spire/master.html');
   else if(key==='delegatingNurse')await open(workspace,'#employeeStaticSclsOperations','/scls-residential.html');
   else if(key==='houseManager'){
     const roleWorkspace=workspace.locator('#employeeRoleWorkspaceLauncher');
@@ -154,7 +154,7 @@ for(const [key,p] of Object.entries(PERSONAS))test(`${p.label}: username stays i
   else if(key==='dispatcher'){await absent(workspace,'#employeeStaticMyShift','#employeeStaticSpire');await open(workspace,'#employeeStaticNmtDispatch','/nmt-dispatch.html');}
   else if(key==='driver'){await absent(workspace,'#employeeStaticMyShift','#employeeStaticSpire','#employeeStaticCompanyDocuments');await open(workspace,'#employeeStaticNmtDriver','/nmt-driver.html');}
   else if(key==='hr'){await expectAdminDoor(workspace);await absent(workspace,'#employeeStaticMyShift','#employeeStaticSpire');await expect(workspace.locator('#employeeStaticCompanyDocuments')).toBeVisible();await open(workspace,'#employeeStaticEmployee360','/employee360.html');}
-  else if(key==='auditor'){await absent(workspace,'#employeeStaticMyShift');await expectExternal(workspace,'#employeeStaticSpire','/spire.html');await expect(workspace.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
+  else if(key==='auditor'){await absent(workspace,'#employeeStaticMyShift');await expectExternal(workspace,'#employeeStaticSpire','/spire/master.html');await expect(workspace.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
   else if(['administrator','ceo','doo'].includes(key)){await expectAdminDoor(workspace);await expect(workspace.locator('#employeeStaticCompanyDocuments')).toBeVisible();}
   expect(mutations,`Unexpected live-data mutation for ${p.label}`).toEqual([]);
 });
@@ -181,7 +181,7 @@ test('Admin Login rejects a non-management employee',async({page})=>{
   await page.getByLabel('Password').fill('Synthetic-UAT-Password-Only');
   await page.getByRole('button',{name:/Sign In to Admin/i}).click();
   await expect(page).toHaveURL(/\/admin-login\.html$/);
-  await expect(page.locator('#adminLoginMessage')).toContainText(/does not have Sulandra administrator or management access/i);
+  await expect(page.locator('#adminLoginMessage')).toContainText(/(does not have Sulandra administrator or management access|Administrator access could not be verified\. This management portal is restricted to authorized users\.)/i);
 });
 
 test.describe('representative mobile production UAT',()=>{

@@ -15,7 +15,7 @@ await import('./install-home-manager-residential-scope.mjs');
 await import('./install-role-workspaces.mjs');
 await import('./verify-role-workspaces.mjs');
 
-const [portal,runtime,guard,portalInstaller,adminCrossInstaller,adminCross,loginHtml,loginAsset,adminLoginHtml,adminLoginAsset,authInstaller,nmt,testSource,preparer,config,workflow,pkg,roleRuntime,residentialApi,residentialHtml,homeManagerInstaller,apiPackage]=await Promise.all([
+const [portal,runtime,guard,portalInstaller,adminCrossInstaller,adminCross,loginHtml,loginAsset,adminLoginHtml,adminLoginAsset,authInstaller,nmt,testSource,preparer,config,workflow,pkg,roleRuntime,residentialApi,residentialHtml,homeManagerInstaller,apiPackage,timeAttendanceInstaller,employee360App,spirePublisher]=await Promise.all([
   read('employee-portal.html'),
   read('employee-portal-railway.js'),
   read('assets/employee-role-navigation-guard.js'),
@@ -38,6 +38,9 @@ const [portal,runtime,guard,portalInstaller,adminCrossInstaller,adminCross,login
   read('scls-residential.html'),
   read('scripts/install-home-manager-residential-scope.mjs'),
   read('api/package.json'),
+  read('scripts/install-time-attendance-platform.mjs'),
+  read('assets/employee360-app.js'),
+  read('scripts/publish-spire-standalone-launch.mjs'),
 ]);
 
 expect(portal.includes(`sulandra-role-uat-contract\" content=\"${contract}`)||portal.includes(`sulandra-role-uat-contract" content="${contract}`),'Employee Portal lacks production role-UAT contract marker');
@@ -148,6 +151,11 @@ for(const marker of [
 ]) expect(testSource.includes(marker),`Production role browser UAT missing ${marker}`);
 expect(!testSource.includes('#employeeMyShiftLauncher')&&!testSource.includes('#employeeLiveSpireLauncher'),'Production UAT still contains retired Employee Portal launcher selectors');
 expect(!testSource.includes("p.role==='DOO'")&&!testSource.includes("p.role==='CEO'"),'Production UAT still contains Employee-login privileged-role redirect expectations');
+expect(testSource.includes("#employeeStaticSpire','/spire/master.html'")&&!testSource.includes("#employeeStaticSpire','/spire.html'"),'Production UAT is not aligned with the published standalone SPIRE launcher');
+expect(testSource.includes('Administrator access could not be verified'),'Production UAT does not accept the intentionally non-disclosing Admin entitlement denial');
+expect(timeAttendanceInstaller.includes("control.id === 'employeeStaticScheduling'")&&timeAttendanceInstaller.includes("staticBase + '/scheduling.html'"),'Employee Portal Scheduling card is not protected from generic Time & Attendance rewrites');
+expect(!employee360App.includes('/api/admin/employee-numbers/reconcile')&&!employee360App.includes('reconcileEmployeeNumbers'),'Employee 360 still mutates employee numbers during read-only workspace startup');
+expect(spirePublisher.includes('id="employeeStaticSpire"')&&spirePublisher.includes('/spire/master.html'),'Standalone SPIRE publisher contract is missing');
 
 for(const marker of ['requiredCurrentContract','no runtime source rewriting is required']) expect(preparer.includes(marker),`Production Role UAT preparer missing canonical verification marker ${marker}`);
 expect(!preparer.includes('writeFile'),'Production Role UAT preparer must not rewrite the canonical test source at runtime');
@@ -189,6 +197,8 @@ for(const rel of [
   'scripts/prepare-production-role-uat-current.mjs',
   'playwright.role-uat.config.mjs',
   'tests/production-role-uat.spec.mjs',
+  'scripts/install-time-attendance-platform.mjs',
+  'assets/employee360-app.js',
 ]) {
   try {
     await access(path.join(root,rel));

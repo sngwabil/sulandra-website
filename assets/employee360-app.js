@@ -97,15 +97,6 @@
     document.querySelectorAll('.section[id^="tab-"]').forEach(node=>node.classList.toggle('active',node.id===`tab-${tab}`));
   }
 
-  async function reconcileEmployeeNumbers(){
-    try{
-      const response=await api('/api/admin/employee-numbers/reconcile',{method:'POST',body:'{}',entityId:''});
-      return Number(response?.data?.changed||0);
-    }catch(error){
-      console.warn('Employee number reconciliation is not available yet:',error.message);
-      return 0;
-    }
-  }
   async function fetchEmployees(){
     const response=await api('/api/admin/employees',{entityId:''});
     return response.data?.employees||response.data||[];
@@ -124,13 +115,6 @@
       $('mFiles').textContent='—';
       populateSearchFilters();
       renderDirectory();
-      const changed=await reconcileEmployeeNumbers();
-      if(changed>0){
-        state.employees=await fetchEmployees();
-        $('mEmployees').textContent=state.employees.length;
-        populateSearchFilters();
-        renderDirectory();
-      }
       // Employee 360 intentionally opens with no employee record selected.
     }catch(error){notice(error.message,true)}
   }
