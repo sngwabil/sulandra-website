@@ -9,6 +9,8 @@ const assets={
  workspaceCss:path.join(root,'assets','it-agent-workspace-preview.css'),
  workspaceJs:path.join(root,'assets','it-agent-workspace-preview.js'),
  resizeJs:path.join(root,'assets','it-agent-dock-resize.js'),
+ statusCss:path.join(root,'assets','it-agent-status-board.css'),
+ statusJs:path.join(root,'assets','it-agent-status-board.js'),
  codebaseCss:path.join(root,'assets','sulandra-codebase.css'),
  codebaseJs:path.join(root,'assets','sulandra-codebase.js'),
  nativeGridCss:path.join(root,'assets','sulandra-codebase-native-grid-v3.css'),
@@ -26,6 +28,8 @@ const tags={
  workspaceCss:'<link rel="stylesheet" href="/assets/it-agent-workspace-preview.css?v=20260901-dockable-workspace-3">',
  workspaceJs:'<script src="/assets/it-agent-workspace-preview.js?v=20260901-dockable-workspace-4"></script>',
  resizeJs:'<script src="/assets/it-agent-dock-resize.js?v=20260901-dock-resize-6"></script>',
+ statusCss:'<link rel="stylesheet" href="/assets/it-agent-status-board.css?v=20260903-status-board-1">',
+ statusJs:'<script src="/assets/it-agent-status-board.js?v=20260903-status-board-1"></script>',
  codebaseCss:'<link rel="stylesheet" href="/assets/sulandra-codebase.css?v=20260902-codebase-4-terminal-flex">',
  nativeGridCss:'<link rel="stylesheet" href="/assets/sulandra-codebase-native-grid-v3.css?v=20260903-native-tabs-grid-3">',
  codebaseJs:'<script src="/assets/sulandra-codebase.js?v=20260902-codebase-4-terminal-flex"></script>',
@@ -44,6 +48,8 @@ for(const re of [
  /\s*<link rel="stylesheet" href="\/assets\/it-agent-workspace-preview\.css(?:\?v=[^"']+)?">\s*/g,
  /\s*<script src="\/assets\/it-agent-workspace-preview\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
  /\s*<script src="\/assets\/it-agent-dock-resize\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
+ /\s*<link rel="stylesheet" href="\/assets\/it-agent-status-board\.css(?:\?v=[^"']+)?">\s*/g,
+ /\s*<script src="\/assets\/it-agent-status-board\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
  /\s*<link rel="stylesheet" href="\/assets\/sulandra-codebase(?:-native-grid-v3)?\.css(?:\?v=[^"']+)?">\s*/g,
  /\s*<script src="\/assets\/sulandra-codebase(?:-native-grid-v3)?\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
  /\s*<script src="\/assets\/sulandra-codebase-api-bridge\.js(?:\?v=[^"']+)?"><\/script>\s*/g,
@@ -55,13 +61,15 @@ for(const re of [
 ]) html=html.replace(re,'\n');
 
 html=html
- .replace('</head>',`${siaCssTag}${tags.workspaceCss}${tags.codebaseCss}${tags.nativeGridCss}${dockRail}</head>`)
- .replace('</body>',`${tags.workspaceJs}${tags.codebaseJs}${tags.nativeGridJs}${tags.apiBridge}${tags.resizeJs}${siaJsTag}${tags.siaBridge}</body>`);
+ .replace('</head>',`${siaCssTag}${tags.workspaceCss}${tags.statusCss}${tags.codebaseCss}${tags.nativeGridCss}${dockRail}</head>`)
+ .replace('</body>',`${tags.workspaceJs}${tags.statusJs}${tags.codebaseJs}${tags.nativeGridJs}${tags.apiBridge}${tags.resizeJs}${siaJsTag}${tags.siaBridge}</body>`);
 
 const source=Object.fromEntries(await Promise.all(Object.entries(assets).map(async([k,p])=>[k,await readFile(p,'utf8')])));
 for(const marker of ['SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V3','itws-dock-workspace','itws-dock-panel','itws-dock-splitter'])if(!source.workspaceCss.includes(marker))throw new Error(`Dockable workspace CSS missing ${marker}`);
 for(const marker of ['SULANDRA_DOCKABLE_ENGINEERING_WORKSPACE_V3','itwsWorkspaceIdeButton','itwsWorkspacePreviewButton','SulandraDockableWorkspace','/workspace/ticket'])if(!source.workspaceJs.includes(marker))throw new Error(`Dockable workspace JavaScript missing ${marker}`);
 for(const marker of ['SULANDRA_DOCK_RESIZE_CAPTURE_V6','pointerdown','pointermove','pointerup'])if(!source.resizeJs.includes(marker))throw new Error(`Dock resize runtime missing ${marker}`);
+for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','it-status-board','it-status-layout','#agent .examples'])if(!source.statusCss.includes(marker))throw new Error(`IT Agent Status Board CSS missing ${marker}`);
+for(const marker of ['SULANDRA_IT_STATUS_BOARD_V1','itAgentStatusBoard','itStatusBoardToggle','Action Center','Operations','private model reasoning is never displayed'])if(!source.statusJs.includes(marker))throw new Error(`IT Agent Status Board JavaScript missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','scb-shell','scb-workspace','scb-editor-input'])if(!source.codebaseCss.includes(marker))throw new Error(`Sulandra Codebase CSS missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_V2','release/sulandra-1.0','openIntegratedTerminal','/api/it-solutions/codebase/file'])if(!source.codebaseJs.includes(marker))throw new Error(`Sulandra Codebase JavaScript missing ${marker}`);
 for(const marker of ['SULANDRA_CODEBASE_NATIVE_GRID_V3','scb-native-grid','scb-native-tab','--scb-native-right'])if(!source.nativeGridCss.includes(marker))throw new Error(`Native Codebase grid CSS missing ${marker}`);
@@ -71,10 +79,10 @@ for(const marker of ['SULANDRA_CODEBASE_API_BRIDGE_V1','CODEBASE_PATH','Authoriz
 for(const marker of ['SULANDRA_CODEBASE_SIA_FULLSCREEN_BRIDGE_V1','fullscreenchange'])if(!source.siaBridge.includes(marker))throw new Error(`Codebase SIA bridge missing ${marker}`);
 for(const marker of ['SIA_GLOBAL_COPILOT_V1','Ask SIA'])if(!source.siaJs.includes(marker))throw new Error(`Ask SIA runtime missing ${marker}`);
 if(/api\.github\.com|\/git\/trees\/|\/git\/blobs\//.test(source.codebaseJs+source.apiBridge+source.nativeGridJs))throw new Error('Browser Codebase runtime must use authenticated Sulandra APIs, not direct GitHub APIs');
-if(/localStorage\.setItem\([^\n]*(?:ticket|url|src)/i.test(source.workspaceJs+source.resizeJs+source.codebaseJs+source.apiBridge+source.nativeGridJs))throw new Error('Engineering tools must not persist access tickets or frame URLs');
-for(const required of [tags.workspaceCss,tags.codebaseCss,tags.nativeGridCss,dockRail,tags.workspaceJs,tags.codebaseJs,tags.nativeGridJs,tags.apiBridge,tags.resizeJs,siaCssTag,siaJsTag,tags.siaBridge])if(!html.includes(required))throw new Error(`IT Solutions final publication tag missing: ${required}`);
+if(/localStorage\.setItem\([^\n]*(?:ticket|url|src)/i.test(source.workspaceJs+source.resizeJs+source.statusJs+source.codebaseJs+source.apiBridge+source.nativeGridJs))throw new Error('Engineering tools must not persist access tickets or frame URLs');
+for(const required of [tags.workspaceCss,tags.statusCss,tags.codebaseCss,tags.nativeGridCss,dockRail,tags.workspaceJs,tags.statusJs,tags.codebaseJs,tags.nativeGridJs,tags.apiBridge,tags.resizeJs,siaCssTag,siaJsTag,tags.siaBridge])if(!html.includes(required))throw new Error(`IT Solutions final publication tag missing: ${required}`);
 const siaScriptCount=(html.match(/<script[^>]+src=["']\/assets\/sia-copilot\.js(?:\?v=[^"']*)?["'][^>]*><\/script>/gi)||[]).length;
 if(siaScriptCount!==1)throw new Error(`IT Solutions must publish exactly one executable Ask SIA runtime; found ${siaScriptCount}`);
 if(/sia-copilot\.js[^>]*\bdefer\b/i.test(html))throw new Error('IT Solutions final Ask SIA runtime must not be deferred');
 await writeFile(portalPath,html,'utf8');
-console.log(`Dockable Engineering Workspace and separate Sulandra Codebase native tab/grid workspace published into ${requested}`);
+console.log(`Dockable Engineering Workspace, persistent IT Agent Status Board, and separate Sulandra Codebase native tab/grid workspace published into ${requested}`);
