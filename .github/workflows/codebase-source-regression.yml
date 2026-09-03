@@ -39,8 +39,8 @@ jobs:
           set -euo pipefail
           node --check assets/sulandra-codebase-api-bridge.js
           node --check assets/codebase-backend-adapter.js
-          node --check assets/sulandra-codebase-nav-entry.js
           node --check scripts/install-codebase-backend-adapter.mjs
+          node --check assets/sulandra-codebase-nav-entry.js
           node --check scripts/install-workspace-ide-ui.mjs
           node --check scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
           node --check tests/sulandra-codebase-api-bridge.regression.mjs
@@ -48,17 +48,36 @@ jobs:
       - name: Exercise authenticated API bridge
         run: node tests/sulandra-codebase-api-bridge.regression.mjs
 
-      - name: Verify standalone publication boundary
+      - name: Verify standalone publication boundary and executable bootstrap
         run: |
           set -euo pipefail
           node scripts/install-codebase-backend-adapter.mjs Codebase.html
           node scripts/install-workspace-ide-ui.mjs
           node scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
 
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-2' Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3' Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'sulandra-website-production-5fc4.up.railway.app' assets/sulandra-codebase-api-bridge.js
           grep -Fq 'Authorization' assets/sulandra-codebase-api-bridge.js
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('Codebase.html', 'utf8');
+          const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3"></script>';
+          const adapterIndex = html.indexOf(tag);
+          const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
+          if (adapterIndex < 0 || adapterIndex >= bodyIndex) throw new Error('Standalone adapter is not anchored to the final document body');
+          if (html.indexOf(tag, adapterIndex + tag.length) !== -1) throw new Error('Standalone adapter published more than once');
+          if (html.slice(adapterIndex + tag.length, bodyIndex).trim()) throw new Error('Executable content appears after standalone adapter');
+          const before = html.slice(0, adapterIndex).toLowerCase();
+          if (before.lastIndexOf('<script') > before.lastIndexOf('</script>')) throw new Error('Standalone adapter was injected inside inline JavaScript');
+          const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
+          for (const [index, match] of inlineScripts.entries()) {
+            try { new Function(match[1]); }
+            catch (error) { throw new Error(`Published inline script ${index + 1} is not executable: ${error.message}`); }
+          }
+          console.log(`Standalone Codebase bootstrap placement and ${inlineScripts.length} inline script(s) are executable.`);
+          NODE
 
           grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7' it-solutions.html
           grep -Fq "CODEBASE_URL='/Codebase.html?v=20260903-standalone-2'" assets/sulandra-codebase-nav-entry.js
