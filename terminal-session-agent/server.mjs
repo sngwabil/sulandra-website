@@ -207,7 +207,9 @@ const resizeBridge = (colsValue, rowsValue) => {
   currentCols = cols;
   currentRows = rows;
   proc.resize(cols, rows);
-  scheduleAuthoritativeSnapshot(true);
+  // Resizing the PTY must not replay an authoritative pane snapshot. xterm
+  // already reflows the live buffer locally; a forced snapshot on every
+  // fullscreen enter/exit redraws the current shell prompt as duplicate lines.
   return { cols, rows, changed: true };
 };
 
@@ -319,17 +321,23 @@ wss.on('connection', socket => {
       socket.close(1013, 'Terminal PTY is still starting');
       return;
     }
+    const text = Buffer.isBuffer(data) ? data.toString('utf8') : String(data);
     if (isBinary) {
-      proc.write(Buffer.isBuffer(data) ? data.toString('utf8') : String(data));
+      proc.write(text);
       return;
     }
     try {
-      const message = JSON.parse(String(data));
+      const message = JSON.parse(text);
       if (message.type === 'resize') {
         const result = resizeBridge(message.cols, message.rows);
         socket.send(JSON.stringify({ type: 'resized', ...result }));
+        return;
       }
     } catch {}
+    // Browser WebSocket.send(string) creates a text frame. xterm, the Codebase
+    // keyboard bridge, paste, composition and desktop hardware keys all use that
+    // normal browser path, so non-control text frames are terminal input too.
+    proc.write(text);
   });
   socket.on('close', () => sockets.delete(socket));
   socket.on('error', () => sockets.delete(socket));
