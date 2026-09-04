@@ -1,17 +1,17 @@
-/* SULANDRA_PROTECTED_SESSION_V1
+/* SULANDRA_PROTECTED_SESSION_V2
  * Keeps authenticated Sulandra navigation inside one top-level browser document
  * so a user-initiated Fullscreen API session is not destroyed by page changes.
  */
 (function () {
   "use strict";
 
-  const VERSION = "20260902-protected-session-1";
+  const VERSION = "20260902-protected-session-2";
   const ACTIVE_KEY = "sulandra:protected-session:active";
   const INTENT_KEY = "sulandra:protected-session:fullscreen-intent";
   const ROUTE_KEY = "sulandra:protected-session:route";
   const PORTAL_KEY = "sulandra:protected-session:portal";
   const SHELL_PATH = "/sulandra-session.html";
-  const LOGIN_PATHS = new Set(["/employee-login.html", "/admin-login.html"]);
+  const LOGIN_PATHS = new Set(["/employee-login.html", "/admin-login.html", "/spire/login.html", "/spire.html"]);
   let frame = null;
   let resumeButton = null;
   let notice = null;
@@ -66,6 +66,14 @@
     }
   }
 
+  function inferPortal(route, fallback) {
+    const path = String(route || "").toLowerCase();
+    if (path === "/spire.html" || path.startsWith("/spire/")) return "SPIRE";
+    if (path === "/admin.html" || path.startsWith("/admin-") || path.startsWith("/admin/")) return "ADMIN";
+    if (path === "/employee-portal.html" || path.startsWith("/employee-") || path.startsWith("/my-") || path.startsWith("/education")) return "EMPLOYEE";
+    return String(fallback || "").toUpperCase();
+  }
+
   function routeUrl(route, portal) {
     const params = new URLSearchParams();
     params.set("route", route);
@@ -79,11 +87,6 @@
       sessionStorage.setItem(ROUTE_KEY, route);
       if (portal) sessionStorage.setItem(PORTAL_KEY, portal);
     } catch {}
-  }
-
-  function isInternalUrl(value) {
-    try { return new URL(value, window.location.origin).origin === window.location.origin; }
-    catch { return false; }
   }
 
   function showNotice(text) {
@@ -111,16 +114,6 @@
     } catch {}
   }
 
-  function navigate(route, options) {
-    if (!frame) return false;
-    const portal = String(options?.portal || getPortal() || "").toUpperCase();
-    const safe = safeInternalRoute(route, getRoute());
-    setStoredRoute(safe, portal);
-    updateShellHistory(safe, portal);
-    frame.src = safe;
-    return true;
-  }
-
   function getPortal() {
     try { return sessionStorage.getItem(PORTAL_KEY) || new URLSearchParams(window.location.search).get("portal") || ""; }
     catch { return ""; }
@@ -133,6 +126,22 @@
     } catch {
       return "/employee-portal.html";
     }
+  }
+
+  function navigate(route, options) {
+    if (!frame) return false;
+    const safe = safeInternalRoute(route, getRoute());
+    const portal = String(options?.portal || inferPortal(safe, getPortal()) || "").toUpperCase();
+    setStoredRoute(safe, portal);
+    updateShellHistory(safe, portal);
+    frame.src = safe;
+    return true;
+  }
+
+  function cleanEmployeePortalBoundary(childDocument, childRoute) {
+    if (!String(childRoute || "").toLowerCase().startsWith("/employee-portal.html")) return;
+    childDocument.getElementById("employeeAdminReturn")?.remove();
+    childDocument.querySelectorAll('[data-employee-admin-return="true"]').forEach((node) => node.remove());
   }
 
   function installChildNavigationBridge() {
@@ -150,9 +159,12 @@
     let childRoute = getRoute();
     try {
       childRoute = safeInternalRoute(childWindow.location.href, childRoute);
-      setStoredRoute(childRoute, getPortal());
-      updateShellHistory(childRoute, getPortal());
+      const portal = inferPortal(childRoute, getPortal());
+      setStoredRoute(childRoute, portal);
+      updateShellHistory(childRoute, portal);
     } catch {}
+
+    cleanEmployeePortalBoundary(childDocument, childRoute);
 
     if (childDocument.documentElement?.dataset.sulandraProtectedSessionBridged === VERSION) return;
     if (childDocument.documentElement) childDocument.documentElement.dataset.sulandraProtectedSessionBridged = VERSION;
@@ -173,7 +185,7 @@
       }
       event.preventDefault();
       event.stopPropagation();
-      navigate(resolved.pathname + resolved.search + resolved.hash);
+      navigate(resolved.pathname + resolved.search + resolved.hash, { portal: inferPortal(resolved.pathname, getPortal()) });
     }, true);
 
     try {
@@ -186,14 +198,17 @@
           showNotice("External browsing is unavailable inside the protected Sulandra session.");
           return null;
         }
-        navigate(resolved.pathname + resolved.search + resolved.hash);
+        navigate(resolved.pathname + resolved.search + resolved.hash, { portal: inferPortal(resolved.pathname, getPortal()) });
         return childWindow;
       };
       childWindow.SulandraProtectedSession = Object.freeze({
         active: true,
         version: VERSION,
-        navigate: (route) => navigate(route),
-        requestFullscreenFromGesture
+        navigate: (route, options) => navigate(route, options),
+        enter: (route, options) => navigate(route, options),
+        endSession,
+        requestFullscreenFromGesture,
+        isFullscreen: () => Boolean(fullscreenElement())
       });
     } catch {}
   }
@@ -201,15 +216,15 @@
   function shellMarkup() {
     return `
       <div id="sulandraProtectedSession" data-version="${VERSION}" style="position:fixed;inset:0;z-index:2147483000;background:#061826;overflow:hidden;">
-        <iframe id="sulandraProtectedFrame" title="Sulandra protected workspace" style="display:block;width:100%;height:100%;border:0;background:#fff" sandbox="allow-forms allow-scripts allow-same-origin allow-downloads allow-modals allow-pointer-lock allow-presentation" allow="camera; microphone; geolocation; clipboard-read; clipboard-write"></iframe>
+        <iframe id="sulandraProtectedFrame" title="Sulandra protected workspace" style="display:block;width:100%;height:100%;border:0;background:#fff" sandbox="allow-forms allow-scripts allow-same-origin allow-downloads allow-modals allow-pointer-lock allow-presentation" allow="fullscreen; camera; microphone; geolocation; clipboard-read; clipboard-write"></iframe>
         <button id="sulandraResumeFullscreen" type="button" style="position:fixed;right:16px;top:16px;z-index:2147483646;border:1px solid #87b8d5;border-radius:10px;padding:10px 14px;background:#083a67;color:#fff;font:700 13px Inter,Segoe UI,Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.24);cursor:pointer" hidden>Resume Full Screen</button>
         <div id="sulandraProtectedNotice" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:2147483646;max-width:min(620px,calc(100vw - 32px));padding:10px 14px;border-radius:10px;background:#102f43;color:#fff;border:1px solid #35657e;font:700 12px/1.45 Inter,Segoe UI,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3)" hidden></div>
       </div>`;
   }
 
   function mountShell(route, options) {
-    const portal = String(options?.portal || getPortal() || "").toUpperCase();
-    const safe = safeInternalRoute(route, portal === "ADMIN" ? "/admin.html" : "/employee-portal.html");
+    const safe = safeInternalRoute(route, inferPortal(route, options?.portal) === "ADMIN" ? "/admin.html" : "/employee-portal.html");
+    const portal = String(options?.portal || inferPortal(safe, getPortal()) || "").toUpperCase();
     document.documentElement.style.width = "100%";
     document.documentElement.style.height = "100%";
     document.body.style.margin = "0";
@@ -231,14 +246,16 @@
   }
 
   function enter(route, options) {
+    if (shellMounted && frame) return navigate(route, options || {});
     return mountShell(route, options || {});
   }
 
   function restoreFromLocation() {
     const params = new URLSearchParams(window.location.search);
-    const portal = String(params.get("portal") || getPortal() || "").toUpperCase();
-    const fallback = portal === "ADMIN" ? "/admin.html" : "/employee-portal.html";
-    const route = safeInternalRoute(params.get("route") || getRoute(), fallback);
+    const requested = params.get("route") || getRoute();
+    const portal = String(params.get("portal") || inferPortal(requested, getPortal()) || "").toUpperCase();
+    const fallback = portal === "ADMIN" ? "/admin.html" : portal === "SPIRE" ? "/spire/login.html" : "/employee-portal.html";
+    const route = safeInternalRoute(requested, fallback);
     return mountShell(route, { portal });
   }
 
