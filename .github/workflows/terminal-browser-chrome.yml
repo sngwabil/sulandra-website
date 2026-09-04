@@ -16,6 +16,7 @@ on:
       - assets/sulandra-codebase.css
       - assets/sulandra-codebase.js
       - assets/codebase-preview-terminal-input-fix.js
+      - assets/codebase-ipad-terminal-keyboard-bridge.js
       - scripts/install-workspace-ide-ui.mjs
       - scripts/install-it-agent-xterm-emulator.mjs
       - terminal-browser/**
@@ -36,6 +37,7 @@ on:
       - assets/sulandra-codebase.css
       - assets/sulandra-codebase.js
       - assets/codebase-preview-terminal-input-fix.js
+      - assets/codebase-ipad-terminal-keyboard-bridge.js
       - scripts/install-workspace-ide-ui.mjs
       - scripts/install-it-agent-xterm-emulator.mjs
       - terminal-browser/**
@@ -90,3 +92,6 @@ jobs:
 
       - name: Reproduce standalone Codebase keyboard and Preview behavior
         run: node terminal-browser/tests/codebase-standalone-input-regression.mjs
+
+      - name: Reproduce iPad virtual keyboard input path
+        run: node terminal-browser/tests/codebase-ipad-keyboard-bridge-regression.mjs
