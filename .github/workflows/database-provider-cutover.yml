@@ -117,6 +117,8 @@ jobs:
           test ! -s /tmp/database-cutover-evidence/inventory.diff
 
       - name: Verify restored binary content
+        env:
+          PGPASSWORD: postgres
         run: |
           restored="$(docker run --rm --network host -e PGPASSWORD postgres:18 \
             psql -h 127.0.0.1 -U postgres -d target -Atc \
