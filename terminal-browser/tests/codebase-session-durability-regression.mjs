@@ -45,7 +45,7 @@ for (const marker of [
 requireText(terminalDockerfile, 'install-codebase-pty-session-resume.mjs', 'terminal Dockerfile');
 requireText(terminalDockerfile, "grep -Fq 'CODEBASE_PTY_SESSION_RESUME_V1'", 'terminal Dockerfile verification');
 requireText(frontendDockerfile, 'assets/codebase-terminal-session-durability.js', 'frontend Dockerfile');
-requireText(publisher, '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-2', 'Codebase publisher');
+requireText(publisher, '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1', 'Codebase publisher');
 
 // The installer intentionally contains the old one-second cleanup text as its
 // exact replacement anchor. What matters is that it replaces that block with
