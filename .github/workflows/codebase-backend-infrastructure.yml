@@ -7,13 +7,16 @@ on:
       - 'assets/codebase-backend-adapter.js'
       - 'assets/codebase-preview-terminal-input-fix.js'
       - 'assets/codebase-ipad-terminal-keyboard-bridge.js'
+      - 'assets/codebase-terminal-session-durability.js'
       - 'codebase-e2e-api/**'
       - 'codebase-e2e-web/**'
       - 'coding-terminal-worker/**'
       - 'terminal-session-agent/**'
+      - 'terminal-browser/tests/codebase-session-durability-regression.mjs'
       - 'Dockerfile.coding-terminal'
       - 'Dockerfile.frontend'
       - 'scripts/install-codebase-pty-compat.mjs'
+      - 'scripts/install-codebase-pty-session-resume.mjs'
       - 'scripts/fix-codebase-preview-owner-namespace.mjs'
       - 'scripts/install-workspace-ide-live-preview.mjs'
       - 'scripts/install-codebase-backend-adapter.mjs'
@@ -36,10 +39,13 @@ jobs:
           node --check assets/codebase-backend-adapter.js
           node --check assets/codebase-preview-terminal-input-fix.js
           node --check assets/codebase-ipad-terminal-keyboard-bridge.js
+          node --check assets/codebase-terminal-session-durability.js
           node --check scripts/install-codebase-pty-compat.mjs
+          node --check scripts/install-codebase-pty-session-resume.mjs
           node --check scripts/fix-codebase-preview-owner-namespace.mjs
           node --check scripts/install-workspace-ide-live-preview.mjs
           node --check scripts/install-codebase-backend-adapter.mjs
+          node --check terminal-browser/tests/codebase-session-durability-regression.mjs
       - name: Install service dependencies
         run: |
           set -euo pipefail
@@ -86,9 +92,15 @@ jobs:
           grep -Fq "addEventListener('input'" assets/codebase-ipad-terminal-keyboard-bridge.js
           grep -Fq "addEventListener('touchend'" assets/codebase-ipad-terminal-keyboard-bridge.js
           grep -Fq 'term.__sulandraWs' assets/codebase-ipad-terminal-keyboard-bridge.js
+          grep -Fq 'CODEBASE_TERMINAL_SESSION_DURABILITY_V1' assets/codebase-terminal-session-durability.js
+          grep -Fq 'sulandra:codebase:terminal-session-state:v1' assets/codebase-terminal-session-durability.js
+          grep -Fq 'freshestToken' assets/codebase-terminal-session-durability.js
+          grep -Fq 'ResumeWebSocket' assets/codebase-terminal-session-durability.js
+          grep -Fq 'data-codebase-active-terminal' assets/codebase-terminal-session-durability.js
           grep -Fq 'set -g status off' terminal-session-agent/tmux.conf
           grep -Fq 'codebasePreviewNamespace: true' codebase-e2e-web/server.mjs
           grep -Fq 'body: JSON.stringify({ sessionId, port: requestedPort, surface })' codebase-e2e-web/server.mjs
+          node terminal-browser/tests/codebase-session-durability-regression.mjs
       - name: Verify standalone Codebase HTML contract publication
         run: |
           set -euo pipefail
@@ -97,6 +109,7 @@ jobs:
           grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' /tmp/Codebase.html
           grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3' /tmp/Codebase.html
           grep -Fq '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1' /tmp/Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'sameOriginOpener' assets/codebase-backend-adapter.js
           grep -Fq "window.location.assign('/it-solutions.html')" assets/codebase-backend-adapter.js
@@ -110,15 +123,18 @@ jobs:
           const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
           const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
           const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
+          const durabilityTag = '<script src="/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1"></script>';
           const adapterIndex = html.indexOf(adapterTag);
           const previewIndex = html.indexOf(previewTag);
           const ipadKeyboardIndex = html.indexOf(ipadKeyboardTag);
+          const durabilityIndex = html.indexOf(durabilityTag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
-          if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || ipadKeyboardIndex >= bodyIndex) throw new Error('Standalone Codebase runtime order is invalid');
+          if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || durabilityIndex <= ipadKeyboardIndex || durabilityIndex >= bodyIndex) throw new Error('Standalone Codebase runtime order is invalid');
           if (html.indexOf(adapterTag, adapterIndex + adapterTag.length) !== -1) throw new Error('Standalone adapter published more than once');
           if (html.indexOf(previewTag, previewIndex + previewTag.length) !== -1) throw new Error('Preview/input repair published more than once');
           if (html.indexOf(ipadKeyboardTag, ipadKeyboardIndex + ipadKeyboardTag.length) !== -1) throw new Error('iPad keyboard bridge published more than once');
-          if (html.slice(ipadKeyboardIndex + ipadKeyboardTag.length, bodyIndex).trim()) throw new Error('iPad keyboard bridge must be the final executable element');
+          if (html.indexOf(durabilityTag, durabilityIndex + durabilityTag.length) !== -1) throw new Error('Terminal durability runtime published more than once');
+          if (html.slice(durabilityIndex + durabilityTag.length, bodyIndex).trim()) throw new Error('Terminal durability runtime must be the final executable element');
           const before = html.slice(0, adapterIndex).toLowerCase();
           if (before.lastIndexOf('<script') > before.lastIndexOf('</script>')) throw new Error('Standalone adapter was injected inside inline JavaScript');
           const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
@@ -128,23 +144,29 @@ jobs:
           }
           const repair = fs.readFileSync('assets/codebase-preview-terminal-input-fix.js','utf8');
           const ipadKeyboard = fs.readFileSync('assets/codebase-ipad-terminal-keyboard-bridge.js','utf8');
+          const durability = fs.readFileSync('assets/codebase-terminal-session-durability.js','utf8');
           if (!repair.includes("if(!requested){setPreviewDark")) throw new Error('Terminal startup must not navigate Preview');
           if (!repair.includes("event.target!==container&&!container.contains(event.target)")) throw new Error('Terminal keyboard/paste fallback is not scoped to the selected terminal and its xterm descendants');
           if (!repair.includes("if(event.target!==wrapper)return")) throw new Error('Editor keyboard fallback is not scoped');
           if (!ipadKeyboard.includes("addEventListener('input'")) throw new Error('iPad software keyboard input fallback is missing');
+          if (!durability.includes("searchParams.set('sessionId'")) throw new Error('Codebase refresh session resume is missing');
           NODE
-      - name: Verify PTY compatibility and Codebase preview namespace
+      - name: Verify PTY compatibility, session resume, and Codebase preview namespace
         run: |
           set -euo pipefail
           cp coding-terminal-worker/server.mjs /tmp/codebase-terminal-gateway.mjs
           node scripts/install-workspace-ide-live-preview.mjs /tmp/codebase-terminal-gateway.mjs
           node scripts/install-codebase-pty-compat.mjs /tmp/codebase-terminal-gateway.mjs
+          node scripts/install-codebase-pty-session-resume.mjs /tmp/codebase-terminal-gateway.mjs
           node scripts/fix-codebase-preview-owner-namespace.mjs /tmp/codebase-terminal-gateway.mjs
           node --check /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_PTY_COMPAT_V1' /tmp/codebase-terminal-gateway.mjs
+          grep -Fq 'CODEBASE_PTY_SESSION_RESUME_V1' /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_OWNER_NAMESPACE_V2' /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_PREVIEW_OWNER_NAMESPACE_V1' /tmp/codebase-terminal-gateway.mjs
           grep -Fq "const owner = 'codebase:' + verification.auth.organizationId + ':' + verification.auth.userId" /tmp/codebase-terminal-gateway.mjs
+          grep -Fq "url.searchParams.get('sessionId')" /tmp/codebase-terminal-gateway.mjs
+          grep -Fq 'scheduleCodebaseCompatSessionCleanup(owner, sessionId)' /tmp/codebase-terminal-gateway.mjs
           grep -Fq "surface === 'codebase' ? 'codebase:' : ''" /tmp/codebase-terminal-gateway.mjs
           grep -Fq "url.pathname === '/pty'" /tmp/codebase-terminal-gateway.mjs
       - name: Build dedicated Codebase service images
