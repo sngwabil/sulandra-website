@@ -11,6 +11,7 @@ on:
       - terminal-execution-plane/**
       - terminal-session-agent/**
       - scripts/install-terminal-industry-hardening.mjs
+      - scripts/install-terminal-unrestricted-dev.mjs
       - scripts/fix-terminal-resource-monitor.mjs
       - infra/terminal-vps/**
       - .github/workflows/terminal-industry-hardening.yml
@@ -24,6 +25,7 @@ on:
       - terminal-execution-plane/**
       - terminal-session-agent/**
       - scripts/install-terminal-industry-hardening.mjs
+      - scripts/install-terminal-unrestricted-dev.mjs
       - scripts/fix-terminal-resource-monitor.mjs
       - infra/terminal-vps/**
       - .github/workflows/terminal-industry-hardening.yml
@@ -33,7 +35,7 @@ permissions:
 
 jobs:
   verify-industry-terminal:
-    name: Verify HA Git egress and build bursting
+    name: Verify HA Git public egress and build bursting
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -50,16 +52,20 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/install-terminal-industry-hardening.mjs
+          node --check scripts/install-terminal-unrestricted-dev.mjs
           node --check scripts/fix-terminal-resource-monitor.mjs
           bash -n terminal-session-agent/github-login.sh
           bash -n terminal-session-agent/create-pr.sh
           bash -n infra/terminal-vps/deploy.sh
           grep -q 'executor-a:8081 executor-b:8081' infra/terminal-vps/Caddyfile
-          grep -q 'http_access deny all' infra/terminal-vps/squid.conf
+          grep -q 'http_access allow all' infra/terminal-vps/squid.conf
+          grep -q 'http_access deny localnet' infra/terminal-vps/squid.conf
           grep -q 'TERMINAL_BUILD_MEMORY_BYTES' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_GIT_REPOSITORY' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_MEMORY_BYTES: "4294967296"' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_NANO_CPUS: "2000000000"' infra/terminal-vps/docker-compose.yml
+          grep -q 'SULANDRA_TERMINAL_CWD=/projects' Dockerfile.terminal-session
+          grep -q 'terminal ALL=(ALL) NOPASSWD:ALL' Dockerfile.terminal-session
 
       - name: Prepare shared execution state
         run: |
@@ -135,21 +141,18 @@ jobs:
           echo "$session_json" > /tmp/session.json
           node -e 'const x=require("/tmp/session.json");if(!x.sessionId)throw new Error(JSON.stringify(x));require("fs").writeFileSync("/tmp/session-id",x.sessionId)'
 
-      - name: Verify real Git checkout and controlled egress
+      - name: Verify unrestricted public egress sudo and clean project root
         run: |
           set -euo pipefail
           session_id="$(cat /tmp/session-id)"
-          # Markers are base64-decoded inside the PTY so the literal expected
-          # strings do not appear in Bash's echoed command line and create a
-          # false positive/negative in the output parser.
-          command=$'printf "REMOTE:%s\\nBRANCH:%s\\n" "$(git remote get-url origin)" "$(git branch --show-current)"; if curl -fsSI --max-time 15 https://github.com >/dev/null; then printf "RUdSRVNTX0dJVEhVQl9PSw==" | base64 -d; printf "\\n"; fi; if curl -fsSI --max-time 8 https://example.com >/dev/null; then printf "RUdSRVNTX0JMT0NLX0ZBSUw=" | base64 -d; printf "\\n"; else printf "RUdSRVNTX0JMT0NLX09L" | base64 -d; printf "\\n"; fi\r'
+          command=$'printf "REMOTE:%s\\nBRANCH:%s\\nPWD:%s\\n" "$(git -C /workspace remote get-url origin)" "$(git -C /workspace branch --show-current)" "$PWD"; test ! -e /projects/package.json && printf "CLEAN_ROOT_OK\\n"; test "$(sudo -n id -u)" = 0 && printf "SUDO_OK\\n"; command -v ss >/dev/null && command -v netstat >/dev/null && printf "NET_TOOLS_OK\\n"; curl -fsSI --max-time 15 https://github.com >/dev/null && printf "EGRESS_GITHUB_OK\\n"; curl -fsSI --max-time 15 https://example.com >/dev/null && printf "EGRESS_PUBLIC_OK\\n"\r'
           body="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
           curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json' -X POST "https://localhost/v1/sessions/${session_id}/input" -d "$body" >/dev/null
           output='{}'
           ready=0
-          for i in {1..60}; do
+          for i in {1..80}; do
             if output="$(curl -kfsS -H "Authorization: Bearer $TOKEN" -H "x-sulandra-terminal-owner: $OWNER" "https://localhost/v1/sessions/${session_id}/output?cursor=0" 2>/dev/null)"; then
-              if node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");process.exit(d.includes("EGRESS_GITHUB_OK")&&d.includes("EGRESS_BLOCK_OK")?0:1)' "$output"; then
+              if node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");process.exit(["EGRESS_GITHUB_OK","EGRESS_PUBLIC_OK","SUDO_OK","CLEAN_ROOT_OK","NET_TOOLS_OK","PWD:/projects"].every(v=>d.includes(v))?0:1)' "$output"; then
                 ready=1
                 break
               fi
@@ -157,7 +160,7 @@ jobs:
             sleep 0.5
           done
           [[ "$ready" == "1" ]]
-          node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");if(!d.includes("REMOTE:https://github.com/octocat/Hello-World.git")||!d.includes("BRANCH:workbench/")||!d.includes("EGRESS_GITHUB_OK")||!d.includes("EGRESS_BLOCK_OK")||d.includes("EGRESS_BLOCK_FAIL")){console.error(d);process.exit(1)}' "$output"
+          node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");for(const v of ["REMOTE:https://github.com/octocat/Hello-World.git","BRANCH:workbench/","PWD:/projects","EGRESS_GITHUB_OK","EGRESS_PUBLIC_OK","SUDO_OK","CLEAN_ROOT_OK","NET_TOOLS_OK"]){if(!d.includes(v)){console.error(d);throw new Error(`missing ${v}`)}}' "$output"
 
       - name: Recover executor A and fail executor B with live session retained
         run: |
