@@ -118,6 +118,12 @@ jobs:
             'SELECT count(*) FROM pg_trigger WHERE tgname='"'"'cutover_touch_trigger'"'"' AND NOT tgisinternal;')"
           test "$trigger_count" = "1"
 
+      - name: Return drill evidence to the runner
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" /tmp/database-cutover-evidence
+          chmod -R go-rwx /tmp/database-cutover-evidence
+
       - name: Upload non-sensitive drill evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -127,6 +133,7 @@ jobs:
             /tmp/database-cutover-evidence/result.json
             /tmp/database-cutover-evidence/*.sha256
             /tmp/database-cutover-evidence/*.manifest
+            /tmp/database-cutover-evidence/restore.list
             /tmp/database-cutover-evidence/schema.diff
             /tmp/database-cutover-evidence/inventory.diff
           retention-days: 30

@@ -41,6 +41,8 @@ requireMarkers(files.cutover, [
   '--no-owner',
   '--no-privileges',
   '--exit-on-error',
+  '--use-list="$restore_list"',
+  'default public schema entry',
   'sha256sum',
   'capture_inventory source',
   'capture_inventory target',

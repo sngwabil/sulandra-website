@@ -56,6 +56,9 @@ require_command sha256sum
 require_command diff
 require_command sed
 require_command sort
+require_command awk
+require_command wc
+require_command cut
 
 source_host="$(extract_host "$SOURCE_DATABASE_URL")"
 target_host="$(extract_host "$TARGET_DATABASE_URL")"
@@ -196,6 +199,7 @@ source_schema="$CUTOVER_EVIDENCE_DIR/source-schema.sql"
 target_schema="$CUTOVER_EVIDENCE_DIR/target-schema.sql"
 source_inventory="$CUTOVER_EVIDENCE_DIR/source-inventory.tsv"
 target_inventory="$CUTOVER_EVIDENCE_DIR/target-inventory.tsv"
+restore_list="$CUTOVER_EVIDENCE_DIR/restore.list"
 
 echo "[database-cutover] Running non-mutating source and target preflight checks."
 source_public_tables="$(source_scalar "SELECT count(*)::bigint FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")"
@@ -264,6 +268,13 @@ pg_dump "${SOURCE_DUMP_ARGS[@]}" \
   --no-privileges \
   --file="$backup_file"
 pg_restore --list "$backup_file" > "$CUTOVER_EVIDENCE_DIR/restore.manifest"
+if ! awk '
+  $4 == "SCHEMA" && $5 == "-" && $6 == "public" { skipped += 1; next }
+  { print }
+  END { if (skipped != 1) exit 1 }
+' "$CUTOVER_EVIDENCE_DIR/restore.manifest" > "$restore_list"; then
+  fail "backup manifest did not contain exactly one default public schema entry"
+fi
 sha256sum "$backup_file" > "$CUTOVER_EVIDENCE_DIR/sulandra-public.dump.sha256"
 
 echo "[database-cutover] Restoring the immutable source snapshot into the empty Railway target."
@@ -271,6 +282,7 @@ pg_restore \
   --exit-on-error \
   --no-owner \
   --no-privileges \
+  --use-list="$restore_list" \
   "--dbname=$TARGET_DATABASE_URL" \
   "$backup_file"
 
