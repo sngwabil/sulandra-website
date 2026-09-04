@@ -91,6 +91,12 @@ jobs:
           unexpected_json="$(find dist-web -maxdepth 1 -type f -name '*.json' ! -name 'education-catalog.json' ! -name 'vercel.json' ! -name 'deployment-meta.json' -print -quit)"
           test -z "$unexpected_json"
 
+      # npm 10 falls back to the retired /audits/quick endpoint when the bulk
+      # advisory request cannot be used. npm 11 removed that retired fallback
+      # and remains fail-closed on advisory transport or high vulnerabilities.
+      - name: Set up current npm audit client
+        run: npm install --global npm@11
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 

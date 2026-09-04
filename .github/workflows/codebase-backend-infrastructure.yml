@@ -47,12 +47,25 @@ jobs:
           grep -Fq "app.post('/api/commit'" codebase-e2e-api/server.mjs
           grep -Fq 'CODEBASE_SAFE_GIT_AUTH_V2' codebase-e2e-api/server.mjs
           grep -Fq 'allowUnsafeConfigEnvCount: true' codebase-e2e-api/server.mjs
+      - name: Verify visible Codebase workspace regression contracts
+        run: |
+          set -euo pipefail
+          grep -Fq 'CODEBASE_VISIBLE_REGRESSIONS_V1' assets/codebase-backend-adapter.js
+          grep -Fq 'installSafeWorkspaceRenderer' assets/codebase-backend-adapter.js
+          grep -Fq 'encodeTextareaSource' assets/codebase-backend-adapter.js
+          grep -Fq 'reattachTerminal' assets/codebase-backend-adapter.js
+          grep -Fq 'term.__sulandraFitAddon=fitAddon' assets/codebase-backend-adapter.js
+          grep -Fq 'setGridMode(modes[index],{currentTarget:gridButton})' assets/codebase-backend-adapter.js
+          grep -Fq 'setTimeout(()=>{void window.updatePreviewPort?.()},0)' assets/codebase-backend-adapter.js
+          grep -Fq 'No separate GitHub login is required.' assets/codebase-backend-adapter.js
+          grep -Fq 'No JWT paste is required.' assets/codebase-backend-adapter.js
+          grep -Fq '▶ Open Debug Terminal' assets/codebase-backend-adapter.js
       - name: Verify standalone Codebase HTML contract publication
         run: |
           set -euo pipefail
           cp Codebase.html /tmp/Codebase.html
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4' /tmp/Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'sameOriginOpener' assets/codebase-backend-adapter.js
           grep -Fq "window.location.assign('/it-solutions.html')" assets/codebase-backend-adapter.js
@@ -63,7 +76,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('/tmp/Codebase.html', 'utf8');
-          const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3"></script>';
+          const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4"></script>';
           const adapterIndex = html.indexOf(tag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
           if (adapterIndex < 0 || adapterIndex >= bodyIndex) throw new Error('Standalone adapter is not before the final document body close');

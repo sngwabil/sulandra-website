@@ -55,15 +55,20 @@ jobs:
           node scripts/install-workspace-ide-ui.mjs
           node scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
 
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3' Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4' Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
+          grep -Fq 'CODEBASE_VISIBLE_REGRESSIONS_V1' assets/codebase-backend-adapter.js
+          grep -Fq 'installSafeWorkspaceRenderer' assets/codebase-backend-adapter.js
+          grep -Fq 'reattachTerminal' assets/codebase-backend-adapter.js
+          grep -Fq 'setGridMode(modes[index],{currentTarget:gridButton})' assets/codebase-backend-adapter.js
+          grep -Fq 'setTimeout(()=>{void window.updatePreviewPort?.()},0)' assets/codebase-backend-adapter.js
           grep -Fq 'sulandra-website-production-5fc4.up.railway.app' assets/sulandra-codebase-api-bridge.js
           grep -Fq 'Authorization' assets/sulandra-codebase-api-bridge.js
 
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('Codebase.html', 'utf8');
-          const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-standalone-controls-3"></script>';
+          const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4"></script>';
           const adapterIndex = html.indexOf(tag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
           if (adapterIndex < 0 || adapterIndex >= bodyIndex) throw new Error('Standalone adapter is not anchored to the final document body');
