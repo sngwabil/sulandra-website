@@ -22,7 +22,8 @@ RUN node scripts/install-it-agent-conversational-ui.mjs \
  && node scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
 
 RUN node --check assets/it-agent-conversational-ui.js \
- && node --check assets/codebase-backend-adapter.js
+ && node --check assets/codebase-backend-adapter.js \
+ && node --check assets/codebase-preview-terminal-input-fix.js
 RUN node scripts/verify-workspace-same-origin-proxy.mjs
 
 RUN npm run build:web \
@@ -39,8 +40,10 @@ RUN npm run build:web \
  && cp assets/sulandra-codebase-api-bridge.js dist-web/assets/sulandra-codebase-api-bridge.js \
  && cp assets/sulandra-codebase-sia-bridge.js dist-web/assets/sulandra-codebase-sia-bridge.js \
  && cp assets/codebase-backend-adapter.js dist-web/assets/codebase-backend-adapter.js \
+ && cp assets/codebase-preview-terminal-input-fix.js dist-web/assets/codebase-preview-terminal-input-fix.js \
  && cp Codebase.html dist-web/Codebase.html \
  && node scripts/install-codebase-backend-adapter.mjs dist-web/Codebase.html \
+ && node --check dist-web/assets/codebase-preview-terminal-input-fix.js \
  && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
  && node scripts/install-workspace-ide-ui.mjs dist-web/it-solutions.html \
