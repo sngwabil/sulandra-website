@@ -21,7 +21,7 @@ const VISIBLE_ENTRY_ID='itwsSulandraCodebaseVisibleNav';
 const LEGACY_ID='itwsSulandraCodebaseButton';
 const LEGACY_VIEW_ID='itwsSulandraCodebaseView';
 const LEGACY_FRAME_ID='itwsSulandraCodebaseFrame';
-const CODEBASE_URL='/Codebase.html?v=20260904-keyboard-preview-dark-2';
+const CODEBASE_URL='/Codebase.html?v=20260904-terminal-live-input-3';
 const WINDOW_NAME='sulandra-codebase';
 let installQueued=false;
 let apiOverridden=false;
@@ -90,7 +90,6 @@ function openStandalone(){
   try{opened.focus()}catch{}
   return true;
  }
- // Popup blocking fallback: navigate this tab. Exit Codebase then returns to IT.
  window.location.assign(CODEBASE_URL);
  return true;
 }
