@@ -3,10 +3,13 @@ import path from 'node:path';
 
 const target = path.resolve(process.argv[2] || 'Codebase.html');
 const adapter = path.resolve('assets/codebase-backend-adapter.js');
+const previewFix = path.resolve('assets/codebase-preview-terminal-input-fix.js');
 await access(target);
 await access(adapter);
+await access(previewFix);
 let html = await readFile(target, 'utf8');
 const source = await readFile(adapter, 'utf8');
+const previewSource = await readFile(previewFix, 'utf8');
 
 for (const marker of [
   'SULANDRA_CODEBASE_BACKEND_ADAPTER_V2',
@@ -23,6 +26,17 @@ for (const marker of [
   "window.location.assign('/it-solutions.html')",
 ]) {
   if (!source.includes(marker)) throw new Error(`Codebase backend adapter missing ${marker}`);
+}
+
+for (const marker of [
+  'CODEBASE_PREVIEW_TERMINAL_INPUT_V1',
+  'codebase-preview-toolbar',
+  "surface:'codebase'",
+  'codebaseTerminalFocusBound',
+  'term.focus',
+  '#railway-preview-iframe',
+]) {
+  if (!previewSource.includes(marker)) throw new Error(`Codebase preview/input repair missing ${marker}`);
 }
 
 html = html.replace(
@@ -42,8 +56,10 @@ html = html.replace(
   "      listEl.innerHTML = '<div style=\"padding:16px;color:#e57373;line-height:1.5\">Unable to load the real repository. Check Codebase API authentication or service health.</div>';",
 );
 
-const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4"></script>';
+const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
+const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-backend-adapter\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
+html = html.replace(/\s*<script src="\/assets\/codebase-preview-terminal-input-fix\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 
 // IMPORTANT: Codebase contains sample HTML inside JavaScript template strings,
 // including literal </body> text. Never use String.replace('</body>', ...),
@@ -54,13 +70,15 @@ const lower = html.toLowerCase();
 const bodyCloseIndex = lower.lastIndexOf('</body>');
 const htmlCloseIndex = lower.lastIndexOf('</html>');
 if (bodyCloseIndex < 0 || htmlCloseIndex < bodyCloseIndex) throw new Error('Codebase final body/html anchor changed');
-html = `${html.slice(0, bodyCloseIndex)}${tag}\n${html.slice(bodyCloseIndex)}`;
+html = `${html.slice(0, bodyCloseIndex)}${adapterTag}\n${previewTag}\n${html.slice(bodyCloseIndex)}`;
 
-const adapterIndex = html.indexOf(tag);
+const adapterIndex = html.indexOf(adapterTag);
+const previewIndex = html.indexOf(previewTag);
 const finalBodyIndex = html.toLowerCase().lastIndexOf('</body>');
-if (adapterIndex < 0 || adapterIndex >= finalBodyIndex) throw new Error('Codebase adapter must be published before the final document body close');
-if (html.indexOf(tag, adapterIndex + tag.length) !== -1) throw new Error('Codebase adapter must be published exactly once');
-if (html.slice(adapterIndex + tag.length, finalBodyIndex).trim()) throw new Error('Codebase adapter must be the final executable element before </body>');
+if (adapterIndex < 0 || previewIndex <= adapterIndex || previewIndex >= finalBodyIndex) throw new Error('Codebase runtime publication order is invalid');
+if (html.indexOf(adapterTag, adapterIndex + adapterTag.length) !== -1) throw new Error('Codebase adapter must be published exactly once');
+if (html.indexOf(previewTag, previewIndex + previewTag.length) !== -1) throw new Error('Codebase preview/input repair must be published exactly once');
+if (html.slice(previewIndex + previewTag.length, finalBodyIndex).trim()) throw new Error('Codebase preview/input repair must be the final executable element before </body>');
 const beforeAdapter = html.slice(0, adapterIndex).toLowerCase();
 if (beforeAdapter.lastIndexOf('<script') > beforeAdapter.lastIndexOf('</script>')) {
   throw new Error('Codebase adapter must never be injected inside an inline script/template string');
@@ -70,7 +88,8 @@ for (const marker of [
   'https://codebase-e2e-api-production.up.railway.app',
   'wss://sulandra-coding-terminal-worker-production.up.railway.app',
   'https://codebase-e2e-web-production.up.railway.app',
-  '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4',
+  '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5',
+  '/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1',
   "sessionStorage.getItem('sulandra:admin:access-token')",
   'createWorkspaceFolder()',
 ]) {
@@ -80,4 +99,4 @@ if (html.includes("|| 'test-token'")) throw new Error('Published Codebase must n
 if (/openFallbackFile\('spire-evv-test-console\.html'\)/.test(html)) throw new Error('Published Codebase must not preload demonstration source files');
 
 await writeFile(target, html, 'utf8');
-console.log(`Sulandra Codebase standalone backend/control adapter visible-regression revision published at the final document body anchor in ${target}`);
+console.log(`Sulandra Codebase backend adapter + preview/terminal input repair published at the final document body anchor in ${target}`);
