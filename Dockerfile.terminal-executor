@@ -35,6 +35,7 @@ COPY scripts/fix-workspace-proxy-streaming.mjs /tmp/fix-workspace-proxy-streamin
 COPY scripts/install-terminal-security-audit.mjs /tmp/install-terminal-security-audit.mjs
 COPY scripts/install-terminal-history-proxy.mjs /tmp/install-terminal-history-proxy.mjs
 COPY scripts/install-terminal-session-recovery.mjs /tmp/install-terminal-session-recovery.mjs
+COPY scripts/install-terminal-executor-ha-reconcile.mjs /tmp/install-terminal-executor-ha-reconcile.mjs
 RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/fix-terminal-resource-monitor.mjs /app/server.mjs \
     && node /tmp/install-workspace-ide-live-preview.mjs /app/server.mjs \
@@ -44,8 +45,9 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/install-terminal-security-audit.mjs /app/server.mjs \
     && node /tmp/install-terminal-history-proxy.mjs /app/server.mjs \
     && node /tmp/install-terminal-session-recovery.mjs /app/server.mjs \
+    && node /tmp/install-terminal-executor-ha-reconcile.mjs /app/server.mjs \
     && node --check /app/server.mjs \
-    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs
+    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs /tmp/install-terminal-executor-ha-reconcile.mjs
 
 RUN mkdir -p /workspaces /state /state/audit /seed \
     && chown -R 10001:10001 /workspaces /state /app
