@@ -66,10 +66,14 @@ jobs:
           grep -Fq 'No separate GitHub login is required.' assets/codebase-backend-adapter.js
           grep -Fq 'No JWT paste is required.' assets/codebase-backend-adapter.js
           grep -Fq '▶ Open Debug Terminal' assets/codebase-backend-adapter.js
-          grep -Fq 'CODEBASE_PREVIEW_TERMINAL_INPUT_V1' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'CODEBASE_PREVIEW_TERMINAL_INPUT_V2' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'codebase-preview-toolbar' assets/codebase-preview-terminal-input-fix.js
           grep -Fq "surface:'codebase'" assets/codebase-preview-terminal-input-fix.js
-          grep -Fq 'codebaseTerminalFocusBound' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'setPreviewDark' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'previewIntent' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'terminalDataFromKey' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'editorFallbackKey' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'codebaseKeyboardBound' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'term.focus' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'codebasePreviewNamespace: true' codebase-e2e-web/server.mjs
           grep -Fq 'body: JSON.stringify({ sessionId, port: requestedPort, surface })' codebase-e2e-web/server.mjs
@@ -79,7 +83,7 @@ jobs:
           cp Codebase.html /tmp/Codebase.html
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
           grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' /tmp/Codebase.html
-          grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260904-keyboard-preview-dark-2' /tmp/Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'sameOriginOpener' assets/codebase-backend-adapter.js
           grep -Fq "window.location.assign('/it-solutions.html')" assets/codebase-backend-adapter.js
@@ -91,7 +95,7 @@ jobs:
           const fs = require('fs');
           const html = fs.readFileSync('/tmp/Codebase.html', 'utf8');
           const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
-          const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1"></script>';
+          const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-keyboard-preview-dark-2"></script>';
           const adapterIndex = html.indexOf(adapterTag);
           const previewIndex = html.indexOf(previewTag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
@@ -106,6 +110,10 @@ jobs:
             try { new Function(match[1]); }
             catch (error) { throw new Error(`Published inline script ${index + 1} is not executable: ${error.message}`); }
           }
+          const repair = fs.readFileSync('assets/codebase-preview-terminal-input-fix.js','utf8');
+          if (!repair.includes("if(!requested){setPreviewDark")) throw new Error('Terminal startup must not navigate Preview');
+          if (!repair.includes("if(event.target!==container)return")) throw new Error('Terminal keyboard fallback is not scoped');
+          if (!repair.includes("if(event.target!==wrapper)return")) throw new Error('Editor keyboard fallback is not scoped');
           NODE
       - name: Verify PTY compatibility and Codebase preview namespace
         run: |
