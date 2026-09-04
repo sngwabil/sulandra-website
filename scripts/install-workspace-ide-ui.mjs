@@ -25,7 +25,7 @@ const tags={
  resizeJs:'<script src="/assets/it-agent-dock-resize.js?v=20260901-dock-resize-6"></script>',
  statusCss:'<link rel="stylesheet" href="/assets/it-agent-status-board.css?v=20260903-status-board-1">',
  statusJs:'<script src="/assets/it-agent-status-board.js?v=20260903-status-board-1"></script>',
- codebaseNavJs:'<script src="/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7"></script>',
+ codebaseNavJs:'<script src="/assets/sulandra-codebase-nav-entry.js?v=20260904-standalone-launcher-8"></script>',
 };
 const siaMarker='data-sia-global-copilot="20260827-sia-intelligence-router-1"';
 const siaCssTag=`<link rel="stylesheet" href="/assets/sia-copilot.css?v=20260827-sia-intelligence-router-1" ${siaMarker} />`;
