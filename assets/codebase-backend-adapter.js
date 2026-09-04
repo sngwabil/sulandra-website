@@ -1,5 +1,6 @@
 /* SULANDRA_CODEBASE_BACKEND_ADAPTER_V2
  * SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1
+ * CODEBASE_VISIBLE_REGRESSIONS_V1
  */
 (()=>{
 'use strict';
@@ -111,10 +112,33 @@ window.updatePreviewPort=async()=>{
   }catch(error){iframe.src=RAILWAY_CONFIG.PREVIEW_URL;status('PREVIEW FAILED: '+error.message)}
 };
 
+const resizeTerminal=(term,container)=>{
+  if(!term||!container)return;
+  try{term.__sulandraFitAddon?.fit()}catch{}
+  const ws=term.__sulandraWs;
+  const size=term.cols+'x'+term.rows;
+  if(size!==term.__sulandraLastSize&&ws?.readyState===WebSocket.OPEN){
+    term.__sulandraLastSize=size;
+    try{ws.send(JSON.stringify({type:'resize',cols:term.cols,rows:term.rows}))}catch{}
+  }
+};
+const reattachTerminal=(term,container)=>{
+  if(!term||!container)return;
+  try{
+    if(term.element&&term.element.parentElement!==container)container.replaceChildren(term.element);
+    term.__sulandraResizeObserver?.disconnect?.();
+    const observer=new ResizeObserver(()=>resizeTerminal(term,container));
+    observer.observe(container);
+    term.__sulandraResizeObserver=observer;
+    requestAnimationFrame(()=>resizeTerminal(term,container));
+  }catch{}
+};
+
 window.initXterm=(containerId,tabId)=>{
-  if(activeTerminals[tabId])return;
   const container=document.getElementById(containerId);
   if(!container)return;
+  const existing=activeTerminals[tabId];
+  if(existing){reattachTerminal(existing,container);return}
   if(typeof Terminal!=='function'||!window.FitAddon?.FitAddon){
     status('TERMINAL runtime unavailable. Refresh Codebase and try again.');
     container.textContent='Terminal runtime unavailable.';
@@ -123,6 +147,7 @@ window.initXterm=(containerId,tabId)=>{
   const term=new Terminal({theme:{background:'#000000',foreground:'#ffffff'},fontFamily:'"Menlo", monospace',fontSize:13,cursorBlink:true,scrollback:10000});
   const fitAddon=new FitAddon.FitAddon();
   term.loadAddon(fitAddon);term.open(container);fitAddon.fit();
+  term.__sulandraFitAddon=fitAddon;
   activeTerminals[tabId]=term;
   const token=sessionToken();
   if(!token){term.writeln('\x1b[31mSulandra authentication is required before a terminal can start.\x1b[0m');return}
@@ -140,6 +165,7 @@ window.initXterm=(containerId,tabId)=>{
           lastPreviewSessionId=control.sessionId;
           window.__SULANDRA_CODEBASE_PREVIEW_SESSION__=control.sessionId;
           status('TERMINAL READY: '+control.sessionId.slice(0,12)+'…');
+          setTimeout(()=>{void window.updatePreviewPort?.()},0);
           return;
         }
       }catch{}
@@ -150,13 +176,26 @@ window.initXterm=(containerId,tabId)=>{
   ws.onerror=()=>{term.writeln('\r\n\x1b[31mTerminal connection failed. Check terminal-worker health/authentication.\x1b[0m');status('TERMINAL connection failed.')};
   ws.onclose=event=>{if(event.code!==1000)term.writeln(`\r\n\x1b[33mTerminal disconnected (${event.code}).\x1b[0m`)};
   term.onData(data=>{if(ws.readyState===WebSocket.OPEN)ws.send(data)});
-  let lastSize='';
-  const fit=()=>{
-    try{fitAddon.fit()}catch{}
-    const size=term.cols+'x'+term.rows;
-    if(size!==lastSize&&ws.readyState===WebSocket.OPEN){lastSize=size;ws.send(JSON.stringify({type:'resize',cols:term.cols,rows:term.rows}))}
+  const observer=new ResizeObserver(()=>resizeTerminal(term,container));observer.observe(container);term.__sulandraResizeObserver=observer;
+};
+
+const encodeTextareaSource=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const installSafeWorkspaceRenderer=()=>{
+  if(window.__SULANDRA_CODEBASE_SAFE_RENDER_V1__||typeof window.renderWorkspace!=='function')return false;
+  window.__SULANDRA_CODEBASE_SAFE_RENDER_V1__=true;
+  const originalRenderWorkspace=window.renderWorkspace;
+  window.renderWorkspace=()=>{
+    const originals=[];
+    for(const tab of openTabs){
+      if(tab?.type==='code'){
+        originals.push([tab,tab.content]);
+        tab.content=encodeTextareaSource(tab.content);
+      }
+    }
+    try{return originalRenderWorkspace()}
+    finally{for(const [tab,content] of originals)tab.content=content}
   };
-  const observer=new ResizeObserver(fit);observer.observe(container);term.__sulandraResizeObserver=observer;
+  return true;
 };
 
 const originalCloseTab=window.closeTab;
@@ -211,6 +250,42 @@ const wireSia=()=>{
   };
   button.addEventListener('click',send);
   textarea.addEventListener('keydown',event=>{if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){event.preventDefault();void send()}});
+};
+
+const wireVisiblePanels=()=>{
+  const gitNotice=document.querySelector('#sidebar-git .mock-panel-content > div');
+  if(gitNotice){
+    gitNotice.textContent='GitHub sync is authenticated by the Sulandra Codebase service. No separate GitHub login is required.';
+    gitNotice.style.color='#81c784';
+  }
+  const debugButton=document.querySelector('#sidebar-debug button');
+  if(debugButton&&debugButton.dataset.codebaseDebugBound!=='1'){
+    debugButton.dataset.codebaseDebugBound='1';
+    debugButton.textContent='▶ Open Debug Terminal';
+    debugButton.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      openTerminal();
+      status('DEBUG TERMINAL opened in Codebase.');
+    });
+  }
+  const tokenInput=document.getElementById('cfg-token');
+  const ideView=document.getElementById('view-ide');
+  if(tokenInput&&ideView&&sessionToken()){
+    const label=tokenInput.previousElementSibling;
+    const saveButton=ideView.querySelector('button.btn-primary');
+    if(label)label.textContent='Authentication';
+    tokenInput.hidden=true;
+    if(saveButton)saveButton.hidden=true;
+    let secure=ideView.querySelector('#codebase-auth-status');
+    if(!secure){
+      secure=document.createElement('div');
+      secure.id='codebase-auth-status';
+      secure.style.cssText='padding:10px 12px;border:1px solid rgba(129,199,132,.35);border-radius:6px;background:rgba(129,199,132,.08);color:#a5d6a7;line-height:1.4';
+      secure.textContent='Authenticated through your Sulandra session. No JWT paste is required.';
+      tokenInput.after(secure);
+    }
+  }
 };
 
 const exitStandalone=()=>{
@@ -279,7 +354,7 @@ const wireCoreControls=()=>{
       const buttons=[...document.querySelectorAll('.grid-controls .grid-btn')];
       const index=buttons.indexOf(gridButton);
       const modes=[1,2,'vertical','stack-2-1','stack-1-2',4];
-      if(index>=0)return callSafely('Grid',()=>setGridMode(modes[index],event));
+      if(index>=0)return callSafely('Grid',()=>setGridMode(modes[index],{currentTarget:gridButton}));
     }
 
     if(fileAction){
@@ -304,11 +379,14 @@ const wireCoreControls=()=>{
 };
 
 const wire=()=>{
+  const installedSafeRenderer=installSafeWorkspaceRenderer();
   wireCoreControls();
   wireSia();
+  wireVisiblePanels();
   const exit=[...document.querySelectorAll('.header-actions span')].find(node=>String(node.textContent||'').includes('Exit Codebase'));
   if(exit){exit.style.cursor='pointer';exit.title='Close Codebase and return to Sulandra IT Solutions'}
   const iframe=document.getElementById('railway-preview-iframe');if(iframe&&!iframe.src)iframe.src=RAILWAY_CONFIG.PREVIEW_URL;
+  if(installedSafeRenderer&&Array.isArray(openTabs)&&openTabs.length)renderWorkspace();
   status('CODEBASE ready • standalone workspace');
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire,{once:true});else wire();
