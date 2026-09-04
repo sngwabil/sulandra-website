@@ -12,6 +12,7 @@ const requireText = (source, needle, label) => {
 
 for (const marker of [
   'CODEBASE_TERMINAL_SESSION_DURABILITY_V1',
+  'CODEBASE_TERMINAL_TRANSIENT_RECONNECT_V1',
   'sulandra:codebase:terminal-session-state:v1',
   'expiry>Date.now()+30_000',
   'freshestToken',
@@ -22,6 +23,12 @@ for (const marker of [
   "searchParams.set('resume','1')",
   'data-codebase-active-terminal',
   'term.options.cursorBlink=selected',
+  'scheduleTerminalReconnect',
+  'reconnectAttempts',
+  "if(attempt>=4){current.sessionId='';current.workspaceId=''}",
+  "ws.addEventListener('close',event=>{schedulePersist();scheduleTerminalReconnect(tabId,event)})",
+  "window.addEventListener('online'",
+  'Sulandra session expired. Sign in again, then return to Codebase.',
 ]) requireText(durability, marker, 'frontend durability runtime');
 
 for (const marker of [
@@ -49,4 +56,4 @@ if (!durability.includes("if(usableToken(configured))return configured")) {
   throw new Error('Explicit Codebase token must still be accepted when it is not expired');
 }
 
-console.log('Codebase terminal session durability regression: PASS');
+console.log('Codebase terminal session durability + transient reconnect regression: PASS');

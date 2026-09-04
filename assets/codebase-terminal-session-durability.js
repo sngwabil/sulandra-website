@@ -1,9 +1,12 @@
 /* CODEBASE_TERMINAL_SESSION_DURABILITY_V1
+ * CODEBASE_TERMINAL_TRANSIENT_RECONNECT_V1
  * Durable standalone Codebase terminal sessions.
  * - Selects a non-expired Sulandra JWT before terminal/API reconnects.
  * - Persists live Codebase terminal tab/session metadata in sessionStorage.
  * - Reconnects a refreshed tab to the existing /pty session instead of creating
  *   a new terminal session.
+ * - Automatically reconnects transiently dropped terminal sockets and falls
+ *   back to a fresh PTY if the persisted session no longer exists.
  * - Makes one terminal pane the explicit input target with a visible active
  *   border and blinking cursor.
  */
@@ -19,6 +22,9 @@
   let restoring=false;
   let persistTimer=0;
   let bindTimer=0;
+  const reconnectTimers=new Map();
+  const reconnectAttempts=new Map();
+  const stableTimers=new Map();
 
   const tabs=()=>{try{return Array.isArray(openTabs)?openTabs:[]}catch{return []}};
   const terminals=()=>{try{return activeTerminals&&typeof activeTerminals==='object'?activeTerminals:{}}catch{return {}}};
@@ -151,6 +157,68 @@
   };
   const scheduleBindings=()=>{clearTimeout(bindTimer);bindTimer=setTimeout(bindTerminalTargets,30);setTimeout(bindTerminalTargets,120)};
 
+  const clearReconnectTimer=tabId=>{
+    const timer=reconnectTimers.get(tabId);
+    if(timer)clearTimeout(timer);
+    reconnectTimers.delete(tabId);
+  };
+  const clearStableTimer=tabId=>{
+    const timer=stableTimers.get(tabId);
+    if(timer)clearTimeout(timer);
+    stableTimers.delete(tabId);
+  };
+  const markReconnectStable=tabId=>{
+    clearStableTimer(tabId);
+    const timer=setTimeout(()=>{
+      stableTimers.delete(tabId);
+      reconnectAttempts.delete(tabId);
+    },10_000);
+    stableTimers.set(tabId,timer);
+  };
+  const disposeDeadTerminal=tabId=>{
+    const term=terminals()[tabId];
+    if(!term)return;
+    try{term.__sulandraResizeObserver?.disconnect?.()}catch{}
+    try{term.dispose?.()}catch{}
+    try{delete terminals()[tabId]}catch{}
+  };
+  const scheduleTerminalReconnect=(tabId,event)=>{
+    const tab=tabs().find(item=>item?.id===tabId&&item?.type==='terminal');
+    if(!tab)return;
+    const reason=String(event?.reason||'');
+    if(Number(event?.code)===1000&&reason==='Terminal tab closed')return;
+    if(reconnectTimers.has(tabId))return;
+    clearStableTimer(tabId);
+    const token=syncFreshToken();
+    if(!token||!usableToken(token)){
+      const term=terminals()[tabId];
+      try{term?.writeln?.('\r\n\x1b[31mSulandra session expired. Sign in again, then return to Codebase.\x1b[0m')}catch{}
+      return;
+    }
+    const attempt=(reconnectAttempts.get(tabId)||0)+1;
+    reconnectAttempts.set(tabId,attempt);
+    const delay=Math.min(15_000,Math.max(750,750*2**Math.min(4,attempt-1)));
+    const timer=setTimeout(()=>{
+      reconnectTimers.delete(tabId);
+      const current=tabs().find(item=>item?.id===tabId&&item?.type==='terminal');
+      if(!current)return;
+      const live=terminals()[tabId]?.__sulandraWs;
+      if(live&&(live.readyState===WebSocket.OPEN||live.readyState===WebSocket.CONNECTING))return;
+      // A persisted PTY can disappear after an executor restart. Try the existing
+      // PTY first, but after three failed reconnects deliberately create a fresh
+      // PTY in the same isolated Codebase workspace instead of looping forever.
+      if(attempt>=4){current.sessionId='';current.workspaceId=''}
+      disposeDeadTerminal(tabId);
+      const containerId=`xterm-container-${tabId}`;
+      const container=document.getElementById(containerId);
+      if(!container)return;
+      try{container.replaceChildren()}catch{}
+      window.initXterm?.(containerId,tabId);
+      schedulePersist();
+    },delay);
+    reconnectTimers.set(tabId,timer);
+  };
+
   const previousInitXterm=window.initXterm;
   if(typeof previousInitXterm==='function'){
     window.initXterm=function(containerId,tabId,...rest){
@@ -185,18 +253,18 @@
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         const term=terminals()[tabId];
         const ws=term?.__sulandraWs;
-        if(ws&&ws.dataset?.codebaseDurabilityBound!=='1'){
-          try{ws.dataset.codebaseDurabilityBound='1'}catch{}
-        }
         if(ws&&!ws.__codebaseDurabilityBound){
           ws.__codebaseDurabilityBound=true;
           ws.addEventListener('message',event=>{
             if(typeof event.data==='string'&&event.data.startsWith('{')){
               try{const control=JSON.parse(event.data);if(control?.type==='session')schedulePersist()}catch{}
+            }else{
+              reconnectAttempts.delete(tabId);
+              clearStableTimer(tabId);
             }
           });
-          ws.addEventListener('open',schedulePersist);
-          ws.addEventListener('close',schedulePersist);
+          ws.addEventListener('open',()=>{clearReconnectTimer(tabId);markReconnectStable(tabId);schedulePersist()});
+          ws.addEventListener('close',event=>{schedulePersist();scheduleTerminalReconnect(tabId,event)});
         }
         if(!restoring&&!wasExisting)activeTerminalId=tabId;
         if(activeTerminalId===tabId)focusTerminal(tabId,{force:true});else scheduleBindings();
@@ -219,6 +287,7 @@
   const previousCloseTab=window.closeTab;
   if(typeof previousCloseTab==='function')window.closeTab=function(index,event){
     const closing=tabs()[index];
+    if(closing?.id){clearReconnectTimer(closing.id);clearStableTimer(closing.id);reconnectAttempts.delete(closing.id)}
     const result=previousCloseTab.call(this,index,event);
     if(closing?.id===activeTerminalId){const remaining=terminalDescriptors();activeTerminalId=remaining.at(-1)?.id||remaining[0]?.id||''}
     scheduleBindings();schedulePersist();
@@ -267,6 +336,13 @@
   if(!restoreState())scheduleBindings();
   window.addEventListener('pageshow',()=>{syncFreshToken();scheduleBindings()});
   window.addEventListener('focus',syncFreshToken);
+  window.addEventListener('online',()=>{
+    syncFreshToken();
+    for(const tab of tabs().filter(item=>item?.type==='terminal')){
+      const ws=terminals()[tab.id]?.__sulandraWs;
+      if(!ws||ws.readyState===WebSocket.CLOSED) scheduleTerminalReconnect(tab.id,{code:1006,reason:'network-online'});
+    }
+  });
   window.addEventListener('storage',syncFreshToken);
   window.addEventListener('pagehide',persistNow);
   window.addEventListener('beforeunload',persistNow);
