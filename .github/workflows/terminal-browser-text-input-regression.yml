@@ -1,0 +1,39 @@
+name: Terminal Browser Text Input Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - 'terminal-session-agent/server.mjs'
+      - 'terminal-session-agent/text-frame-regression.mjs'
+      - '.github/workflows/terminal-browser-text-input-regression.yml'
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - 'terminal-session-agent/server.mjs'
+      - 'terminal-session-agent/text-frame-regression.mjs'
+      - '.github/workflows/terminal-browser-text-input-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-browser-text-input:
+    name: Verify browser text frames and fullscreen resize behavior
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate terminal session source
+        run: node --check terminal-session-agent/server.mjs
+
+      - name: Verify browser text-frame PTY contract
+        run: node terminal-session-agent/text-frame-regression.mjs
