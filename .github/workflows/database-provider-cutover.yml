@@ -92,8 +92,7 @@ jobs:
 
       - name: Run isolated migration and parity verification
         run: |
-          mkdir -p /tmp/database-cutover-evidence
-          chmod 777 /tmp/database-cutover-evidence
+          sudo install -d -o 999 -g 999 -m 0700 /tmp/database-cutover-evidence
           docker run --rm --network host \
             -e SOURCE_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/source \
             -e TARGET_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/target \
