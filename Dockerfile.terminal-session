@@ -3,6 +3,7 @@ FROM node:22-bookworm-slim
 ARG CODE_SERVER_VERSION=4.135.0
 ARG CODE_SERVER_SHA256=300ef4e37e469e6368a4673c6a623e1c9ba8a34f42b394fb49c431a8900bc7d1
 ARG NPM_VERSION=10.9.9
+ARG BUN_VERSION=1.4.1
 
 ENV NODE_ENV=production \
     NODE_USE_ENV_PROXY=1 \
@@ -17,9 +18,16 @@ ENV NODE_ENV=production \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
+# The session image carries the normal application-development toolchain because
+# production sessions are immutable, non-root containers. Users should not need
+# (and cannot safely use) sudo to mutate the base image at runtime.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      bash git gh curl ca-certificates build-essential python3 python3-pip python3-venv \
+      bash git gh curl ca-certificates \
+      build-essential cmake clang pkg-config ninja-build \
+      python3 python3-pip python3-venv \
+      golang-go rustc cargo default-jdk-headless \
+      postgresql-client default-mysql-client redis-tools \
       jq ripgrep less nano vim-tiny procps tmux sqlite3 tree zip unzip rsync openssh-client file \
     && groupadd --gid 10001 terminal \
     && useradd --uid 10001 --gid 10001 --create-home --shell /bin/bash terminal \
@@ -37,6 +45,25 @@ RUN apt-get update \
 RUN npm install --global "npm@${NPM_VERSION}" --no-audit --no-fund \
     && test "$(npm --version)" = "${NPM_VERSION}"
 
+# Bun is installed from its official npm distribution and pinned so the terminal
+# image stays reproducible instead of executing an unpinned remote install script.
+RUN npm install --global "bun@${BUN_VERSION}" --no-audit --no-fund \
+    && test "$(bun --version)" = "${BUN_VERSION}"
+
+# Fail the image build if a supported compiler/runtime/database CLI disappears.
+RUN set -eux; \
+    for cmd in node npm yarn bun python3 pip3 gcc g++ make cmake clang go rustc cargo java javac git gh psql mysql redis-cli sqlite3; do \
+      command -v "$cmd" >/dev/null; \
+    done; \
+    node --version; npm --version; yarn --version; bun --version; \
+    python3 --version; gcc --version | head -n1; g++ --version | head -n1; \
+    make --version | head -n1; cmake --version | head -n1; clang --version | head -n1; \
+    go version; rustc --version; cargo --version; java -version; javac -version; \
+    git --version; gh --version | head -n1; psql --version; mysql --version; redis-cli --version; sqlite3 --version
+
+# Security boundary: user sessions stay non-root, read-only, capability-free, and
+# do not receive the host Docker socket. apk/yum are also intentionally absent
+# because this image is Debian-based; apt is the only distro package manager.
 WORKDIR /agent
 COPY terminal-session-agent/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
