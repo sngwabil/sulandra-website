@@ -83,15 +83,20 @@ RUN npm install --omit=dev --no-audit --no-fund
 COPY terminal-session-agent/server.mjs ./server.mjs
 COPY scripts/install-session-agent-ide-bridge.mjs /tmp/install-session-agent-ide-bridge.mjs
 COPY scripts/install-terminal-prompt-cursor.mjs /tmp/install-terminal-prompt-cursor.mjs
+COPY scripts/install-terminal-unrestricted-dev.mjs /tmp/install-terminal-unrestricted-dev.mjs
 RUN node /tmp/install-session-agent-ide-bridge.mjs /agent/server.mjs \
     && node /tmp/install-terminal-prompt-cursor.mjs /agent/server.mjs \
+    && node /tmp/install-terminal-unrestricted-dev.mjs /agent/server.mjs session \
     && node --check /agent/server.mjs \
+    && grep -Fq "terminalCwd" /agent/server.mjs \
     && rm -f /tmp/install-session-agent-ide-bridge.mjs /tmp/install-terminal-prompt-cursor.mjs
 COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
 COPY terminal-session-agent/bashrc ./bashrc
 COPY scripts/verify-terminal-ide-settings.mjs /tmp/verify-terminal-ide-settings.mjs
-RUN node /tmp/verify-terminal-ide-settings.mjs /agent/entrypoint.sh \
-    && rm -f /tmp/verify-terminal-ide-settings.mjs
+RUN node /tmp/install-terminal-unrestricted-dev.mjs /agent/entrypoint.sh entrypoint \
+    && node /tmp/verify-terminal-ide-settings.mjs /agent/entrypoint.sh \
+    && grep -Fq 'SULANDRA_TERMINAL_CWD:-/projects' /agent/entrypoint.sh \
+    && rm -f /tmp/verify-terminal-ide-settings.mjs /tmp/install-terminal-unrestricted-dev.mjs
 # /home/terminal is mounted as a tmpfs by the executor for each isolated session,
 # so files baked into that path are hidden at runtime. Keep canonical shell/tmux
 # configuration on the image and load/copy it when a session starts.
