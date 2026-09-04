@@ -29,10 +29,14 @@ for (const marker of [
 }
 
 for (const marker of [
-  'CODEBASE_PREVIEW_TERMINAL_INPUT_V1',
+  'CODEBASE_PREVIEW_TERMINAL_INPUT_V2',
   'codebase-preview-toolbar',
   "surface:'codebase'",
-  'codebaseTerminalFocusBound',
+  'setPreviewDark',
+  'previewIntent',
+  'terminalDataFromKey',
+  'editorFallbackKey',
+  'codebaseKeyboardBound',
   'term.focus',
   '#railway-preview-iframe',
 ]) {
@@ -57,7 +61,7 @@ html = html.replace(
 );
 
 const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
-const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1"></script>';
+const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-keyboard-preview-dark-2"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-backend-adapter\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script src="\/assets\/codebase-preview-terminal-input-fix\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 
@@ -89,7 +93,7 @@ for (const marker of [
   'wss://sulandra-coding-terminal-worker-production.up.railway.app',
   'https://codebase-e2e-web-production.up.railway.app',
   '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5',
-  '/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1',
+  '/assets/codebase-preview-terminal-input-fix.js?v=20260904-keyboard-preview-dark-2',
   "sessionStorage.getItem('sulandra:admin:access-token')",
   'createWorkspaceFolder()',
 ]) {
@@ -99,4 +103,4 @@ if (html.includes("|| 'test-token'")) throw new Error('Published Codebase must n
 if (/openFallbackFile\('spire-evv-test-console\.html'\)/.test(html)) throw new Error('Published Codebase must not preload demonstration source files');
 
 await writeFile(target, html, 'utf8');
-console.log(`Sulandra Codebase backend adapter + preview/terminal input repair published at the final document body anchor in ${target}`);
+console.log(`Sulandra Codebase backend adapter + keyboard/preview repair published at the final document body anchor in ${target}`);

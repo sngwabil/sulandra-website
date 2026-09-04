@@ -58,17 +58,20 @@ jobs:
           node scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
 
           grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' Codebase.html
-          grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1' Codebase.html
+          grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260904-keyboard-preview-dark-2' Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'CODEBASE_VISIBLE_REGRESSIONS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'installSafeWorkspaceRenderer' assets/codebase-backend-adapter.js
           grep -Fq 'reattachTerminal' assets/codebase-backend-adapter.js
           grep -Fq 'setGridMode(modes[index],{currentTarget:gridButton})' assets/codebase-backend-adapter.js
-          grep -Fq 'setTimeout(()=>{void window.updatePreviewPort?.()},0)' assets/codebase-backend-adapter.js
-          grep -Fq 'CODEBASE_PREVIEW_TERMINAL_INPUT_V1' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'CODEBASE_PREVIEW_TERMINAL_INPUT_V2' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'codebase-preview-toolbar' assets/codebase-preview-terminal-input-fix.js
           grep -Fq "surface:'codebase'" assets/codebase-preview-terminal-input-fix.js
-          grep -Fq 'codebaseTerminalFocusBound' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'setPreviewDark' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'previewIntent' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'terminalDataFromKey' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'editorFallbackKey' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'codebaseKeyboardBound' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'term.focus' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'sulandra-website-production-5fc4.up.railway.app' assets/sulandra-codebase-api-bridge.js
           grep -Fq 'Authorization' assets/sulandra-codebase-api-bridge.js
@@ -77,7 +80,7 @@ jobs:
           const fs = require('fs');
           const html = fs.readFileSync('Codebase.html', 'utf8');
           const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
-          const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1"></script>';
+          const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-keyboard-preview-dark-2"></script>';
           const adapterIndex = html.indexOf(adapterTag);
           const previewIndex = html.indexOf(previewTag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
@@ -92,11 +95,15 @@ jobs:
             try { new Function(match[1]); }
             catch (error) { throw new Error(`Published inline script ${index + 1} is not executable: ${error.message}`); }
           }
+          const repair = fs.readFileSync('assets/codebase-preview-terminal-input-fix.js','utf8');
+          if (!repair.includes("if(!requested){setPreviewDark")) throw new Error('Preview must remain dark for non-user terminal-triggered preview calls');
+          if (!repair.includes("if(event.target!==container)return")) throw new Error('Terminal keyboard fallback must remain scoped to the focused terminal container');
+          if (!repair.includes("if(event.target!==wrapper)return")) throw new Error('Editor keyboard fallback must remain scoped to the focused editor wrapper');
           console.log(`Standalone Codebase bootstrap placement and ${inlineScripts.length} inline script(s) are executable.`);
           NODE
 
-          grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7' it-solutions.html
-          grep -Fq "CODEBASE_URL='/Codebase.html?v=20260903-standalone-2'" assets/sulandra-codebase-nav-entry.js
+          grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260904-standalone-launcher-8' it-solutions.html
+          grep -Fq "CODEBASE_URL='/Codebase.html?v=20260904-keyboard-preview-dark-2'" assets/sulandra-codebase-nav-entry.js
           grep -Fq 'window.open' assets/sulandra-codebase-nav-entry.js
 
           if grep -Fq '/assets/sulandra-codebase-api-bridge.js' it-solutions.html; then
