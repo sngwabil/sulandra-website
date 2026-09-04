@@ -10,7 +10,8 @@ RUN apt-get update -y \
 WORKDIR /cutover
 
 COPY scripts/database-provider-cutover.sh /cutover/scripts/database-provider-cutover.sh
-RUN chmod 0500 /cutover/scripts/database-provider-cutover.sh \
+RUN chown postgres:postgres /cutover/scripts/database-provider-cutover.sh \
+    && chmod 0500 /cutover/scripts/database-provider-cutover.sh \
     && mkdir -p /tmp/sulandra-database-cutover \
     && chown -R postgres:postgres /tmp/sulandra-database-cutover
 
