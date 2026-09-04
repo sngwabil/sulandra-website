@@ -20,6 +20,7 @@ on:
       - Dockerfile.frontend
       - scripts/install-it-agent-xterm-emulator.mjs
       - scripts/install-it-agent-conversational-ui.mjs
+      - scripts/install-terminal-unrestricted-dev.mjs
       - .github/workflows/real-terminal-verification.yml
   push:
     branches:
@@ -40,6 +41,7 @@ on:
       - Dockerfile.frontend
       - scripts/install-it-agent-xterm-emulator.mjs
       - scripts/install-it-agent-conversational-ui.mjs
+      - scripts/install-terminal-unrestricted-dev.mjs
       - .github/workflows/real-terminal-verification.yml
 
 permissions:
@@ -89,12 +91,14 @@ jobs:
           node --check terminal-execution-plane/server.mjs
           node --check terminal-session-agent/server.mjs
           node --check scripts/install-it-agent-xterm-emulator.mjs
+          node --check scripts/install-terminal-unrestricted-dev.mjs
           bash -n infra/terminal-vps/deploy.sh
           grep -q 'reverse_proxy executor:8081' infra/terminal-vps/Caddyfile
           grep -q 'TERMINAL_MEMORY_BYTES: "4294967296"' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_NANO_CPUS: "2000000000"' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_PIDS_LIMIT: "256"' infra/terminal-vps/docker-compose.yml
           grep -q 'TERMINAL_IDLE_MINUTES: "480"' infra/terminal-vps/docker-compose.yml
+          grep -q 'SULANDRA_TERMINAL_CWD=/projects' Dockerfile.terminal-session
 
       - name: Install and build complete xterm runtime
         run: |
@@ -112,7 +116,7 @@ jobs:
           npm --prefix coding-terminal-worker install --omit=dev --no-audit --no-fund
           npm --prefix terminal-execution-plane install --omit=dev --no-audit --no-fund
 
-      - name: Build hardened executor and session images
+      - name: Build executor and full developer session images
         run: |
           set -euo pipefail
           docker build -f Dockerfile.terminal-session -t "$SESSION_IMAGE" .
@@ -167,7 +171,7 @@ jobs:
           docker logs sulandra-terminal-executor-ci
           exit 1
 
-      - name: Verify per-session Docker limits and real PTY
+      - name: Verify per-session Docker limits developer privileges and real PTY
         run: |
           set -euo pipefail
           headers=(-H "Authorization: Bearer $EXECUTION_TOKEN" -H "x-sulandra-terminal-owner: $OWNER" -H 'Content-Type: application/json')
@@ -189,22 +193,25 @@ jobs:
           if(h.MemorySwap!==4294967296) throw new Error(`MemorySwap=${h.MemorySwap}`);
           if(h.NanoCpus!==2000000000) throw new Error(`NanoCpus=${h.NanoCpus}`);
           if(h.PidsLimit!==256) throw new Error(`PidsLimit=${h.PidsLimit}`);
-          if(h.ReadonlyRootfs!==true) throw new Error('ReadonlyRootfs not enabled');
-          if(!Array.isArray(h.CapDrop)||!h.CapDrop.includes('ALL')) throw new Error('CapDrop ALL missing');
-          if(!Array.isArray(h.SecurityOpt)||!h.SecurityOpt.some(v=>v.includes('no-new-privileges'))) throw new Error('no-new-privileges missing');
+          if(h.ReadonlyRootfs!==false) throw new Error('Session rootfs must be writable for apt/dpkg');
+          if(h.Privileged!==false) throw new Error('Session must not be host-privileged');
           if(h.NetworkMode!==process.env.INTERNAL_NETWORK) throw new Error(`NetworkMode=${h.NetworkMode}`);
           if(x.Config.User!=='10001:10001') throw new Error(`Session user=${x.Config.User}`);
+          const binds=h.Binds||[];
+          if(!binds.some(v=>v.endsWith(':/workspace:rw'))) throw new Error(`workspace bind missing: ${binds}`);
+          if(!binds.some(v=>v.endsWith('/.sulandra-projects:/projects:rw'))) throw new Error(`projects bind missing: ${binds}`);
+          if(binds.some(v=>v.includes('/var/run/docker.sock'))) throw new Error('Host Docker socket must never enter a session');
           NODE
 
-          command=$'printf "DOCKER_PTY_OK:%s\\n" "$SHELL"\r'
+          command=$'printf "DOCKER_PTY_OK:%s\\nPWD:%s\\n" "$SHELL" "$PWD"; test ! -e /projects/package.json && printf "CLEAN_ROOT_OK\\n"; test "$(sudo -n id -u)" = 0 && printf "SUDO_OK\\n"; command -v ss >/dev/null && command -v netstat >/dev/null && printf "NET_TOOLS_OK\\n"\r'
           input_json="$(node -e 'process.stdout.write(JSON.stringify({data:process.argv[1]}))' "$command")"
           curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/sessions/${session_id}/input" -d "$input_json" >/dev/null
-          for i in {1..30}; do
+          for i in {1..45}; do
             output_json="$(curl -fsS "${headers[@]}" "http://127.0.0.1:18081/v1/sessions/${session_id}/output?cursor=0")"
-            if node -e 'const x=JSON.parse(process.argv[1]);process.exit(String(x.data||"").includes("DOCKER_PTY_OK:/bin/bash")?0:1)' "$output_json"; then break; fi
+            if node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");process.exit(["DOCKER_PTY_OK:/bin/bash","PWD:/projects","CLEAN_ROOT_OK","SUDO_OK","NET_TOOLS_OK"].every(v=>d.includes(v))?0:1)' "$output_json"; then break; fi
             sleep 0.2
           done
-          node -e 'const x=JSON.parse(process.argv[1]);if(!String(x.data||"").includes("DOCKER_PTY_OK:/bin/bash")){console.error(x.data);process.exit(1)}' "$output_json"
+          node -e 'const x=JSON.parse(process.argv[1]);const d=String(x.data||"");for(const v of ["DOCKER_PTY_OK:/bin/bash","PWD:/projects","CLEAN_ROOT_OK","SUDO_OK","NET_TOOLS_OK"]){if(!d.includes(v)){console.error(d);throw new Error(`missing ${v}`)}}' "$output_json"
           curl -fsS "${headers[@]}" -X POST "http://127.0.0.1:18081/v1/sessions/${session_id}/resize" -d '{"cols":132,"rows":40}' | grep -q '"cols":132'
 
       - name: Verify executor native WSS reconnect

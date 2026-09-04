@@ -1,6 +1,6 @@
 # Sulandra Engineering Terminal Enterprise Assurance
 
-This document defines the automated production assurance controls layered on top of the Sulandra Engineering Terminal. These controls supplement, rather than replace, the existing isolated-session, HA, controlled-egress, authenticated IDE/live-preview, and disaster-recovery controls.
+This document defines the automated production assurance controls layered on top of the Sulandra Engineering Terminal. These controls supplement, rather than replace, the existing isolated-session, HA, authenticated IDE/live-preview, disaster-recovery, and developer-egress controls.
 
 ## 1. Automated technical security testing
 
@@ -13,8 +13,9 @@ Automated coverage includes:
 - Authentication and authorization regression checks.
 - Session-owner isolation and proxy-boundary tests.
 - WebSocket and HTTP gateway verification.
-- Controlled-egress validation.
+- Public developer-egress validation with local/private/link-local destination blocking.
 - Container isolation and resource-governance regression coverage.
+- In-container sudo/developer-toolchain and clean-project-root regression coverage.
 - Sustained k6 concurrency/load testing.
 - HA, failover, disaster-recovery, and production SLO checks.
 
@@ -37,7 +38,15 @@ Unfixed upstream vulnerabilities are tracked but are not represented as locally 
 
 Base images and pinned tooling must be refreshed through pull requests and must pass the same terminal regression, HA, CVE, and load gates before release.
 
-## 3. Centralized security and audit retention
+## 3. Developer privilege and network boundary
+
+Interactive Codebase sessions intentionally provide passwordless `sudo` inside the disposable developer container so normal `apt-get`, compiler, debugger, networking, package-manager, and game-development workflows are available. The session root filesystem is writable for that purpose.
+
+This is **not** host-level privilege. Session containers remain non-privileged Docker containers, receive no host Docker socket, stay inside the executor-managed CPU/RAM/PID limits, and expose only their assigned workspace/project mounts. `/projects` is the default clean development root and is mounted separately from the Sulandra source checkout at `/workspace`, so a repository-level `package.json` or language setting does not impose module semantics on unrelated user projects.
+
+Outbound HTTP/HTTPS and proxy-aware developer traffic may reach arbitrary public Internet destinations through the terminal egress proxy. The proxy blocks loopback, RFC1918/private, carrier-grade NAT, link-local, and IPv6 unique-local/link-local ranges so public package access does not become a tunnel into the VPS control plane or cloud metadata endpoints.
+
+## 4. Centralized security and audit retention
 
 The terminal execution plane writes structured internal security audit records to the shared durable state root under `/state/audit`.
 
@@ -49,9 +58,9 @@ These logs are for Sulandra's own automated operational and security evidence on
 
 Railway gateway deployment/runtime logs remain complementary platform evidence; the durable executor audit is the authoritative terminal-operation trail.
 
-## 4. Sustained multi-user load testing
+## 5. Sustained multi-user load testing
 
-The terminal load gate uses k6 and runs sustained concurrent virtual users against the terminal gateway. The CI gate validates that the gateway remains responsive under concurrency and enforces response latency/error thresholds. Terminal Industry Hardening continues to validate real Docker session behavior, executor failover, Git egress, WebSocket survival, and resource profiles.
+The terminal load gate uses k6 and runs sustained concurrent virtual users against the terminal gateway. The CI gate validates that the gateway remains responsive under concurrency and enforces response latency/error thresholds. Terminal Industry Hardening continues to validate real Docker session behavior, executor failover, Git/public egress, WebSocket survival, developer privileges, clean project roots, and resource profiles.
 
 Release threshold for the gateway synthetic load gate:
 
@@ -61,7 +70,7 @@ Release threshold for the gateway synthetic load gate:
 
 Production capacity tests should be increased as actual employee concurrency grows. Changes to max workspace/session limits or baseline CPU/RAM require rerunning the sustained load gate.
 
-## 5. Service-level objectives and alerting
+## 6. Service-level objectives and alerting
 
 Production SLOs:
 
@@ -75,7 +84,7 @@ Production SLOs:
 
 The production SLO workflow performs hourly external synthetic probes. A material availability or latency breach opens or updates a GitHub incident issue; recovery closes the active synthetic incident issue with evidence. Railway healthchecks and restart policy remain the immediate service-level protection.
 
-## 6. Disaster-recovery exercise
+## 7. Disaster-recovery exercise
 
 The existing PostgreSQL backup/restore drill is retained and extended into a documented exercise. It validates backup creation, checksum/manifest/metadata evidence, isolated restore, sentinel integrity, required production tables, and an RTO threshold.
 

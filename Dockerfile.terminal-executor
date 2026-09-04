@@ -37,6 +37,7 @@ COPY scripts/install-terminal-history-proxy.mjs /tmp/install-terminal-history-pr
 COPY scripts/install-terminal-session-recovery.mjs /tmp/install-terminal-session-recovery.mjs
 COPY scripts/install-terminal-executor-ha-reconcile.mjs /tmp/install-terminal-executor-ha-reconcile.mjs
 COPY scripts/install-codebase-workspace-reuse.mjs /tmp/install-codebase-workspace-reuse.mjs
+COPY scripts/install-terminal-unrestricted-dev.mjs /tmp/install-terminal-unrestricted-dev.mjs
 RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/fix-terminal-resource-monitor.mjs /app/server.mjs \
     && node /tmp/install-workspace-ide-live-preview.mjs /app/server.mjs \
@@ -48,9 +49,12 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/install-terminal-session-recovery.mjs /app/server.mjs \
     && node /tmp/install-terminal-executor-ha-reconcile.mjs /app/server.mjs \
     && node /tmp/install-codebase-workspace-reuse.mjs /app/server.mjs \
+    && node /tmp/install-terminal-unrestricted-dev.mjs /app/server.mjs executor \
     && node --check /app/server.mjs \
     && grep -Fq 'CODEBASE_WORKSPACE_REUSE_V1' /app/server.mjs \
-    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs /tmp/install-terminal-executor-ha-reconcile.mjs /tmp/install-codebase-workspace-reuse.mjs
+    && grep -Fq '.sulandra-projects:/projects:rw' /app/server.mjs \
+    && grep -Fq 'ReadonlyRootfs: false' /app/server.mjs \
+    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs /tmp/install-terminal-executor-ha-reconcile.mjs /tmp/install-codebase-workspace-reuse.mjs /tmp/install-terminal-unrestricted-dev.mjs
 
 RUN mkdir -p /workspaces /state /state/audit /seed \
     && chown -R 10001:10001 /workspaces /state /app
