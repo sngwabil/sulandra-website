@@ -1,4 +1,5 @@
 await import('./scripts/prepare-production-role-uat-current.mjs');
+await import('./scripts/prepare-production-role-uat-live-publication.mjs');
 
 const baseURL = process.env.UAT_BASE_URL || 'https://www.sulandrahealth.com';
 
