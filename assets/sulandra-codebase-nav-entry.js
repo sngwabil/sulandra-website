@@ -1,4 +1,5 @@
-/* SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7
+/* SULANDRA_CODEBASE_IT_VISIBLE_NAV_V8
+ * Compatibility marker: SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7
  * SULANDRA_CODEBASE_STANDALONE_LAUNCHER_V1
  * Compatibility markers: SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4,
  * SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3, SULANDRA_CODEBASE_TOP_LEVEL_NAV_V2.
@@ -10,7 +11,8 @@
  */
 (()=>{
 'use strict';
-if(window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7__)return;
+if(window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V8__)return;
+window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V8__=true;
 window.__SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V4__=true;
 window.__SULANDRA_CODEBASE_TOP_LEVEL_NAV_V3__=true;
@@ -21,7 +23,7 @@ const VISIBLE_ENTRY_ID='itwsSulandraCodebaseVisibleNav';
 const LEGACY_ID='itwsSulandraCodebaseButton';
 const LEGACY_VIEW_ID='itwsSulandraCodebaseView';
 const LEGACY_FRAME_ID='itwsSulandraCodebaseFrame';
-const CODEBASE_URL='/Codebase.html?v=20260904-terminal-live-input-3';
+const CODEBASE_URL='/Codebase.html?v=20260904-ipad-keyboard-4';
 const WINDOW_NAME='sulandra-codebase';
 let installQueued=false;
 let apiOverridden=false;
