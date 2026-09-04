@@ -9,6 +9,7 @@ ENV NODE_ENV=production \
     NODE_USE_ENV_PROXY=1 \
     PORT=9000 \
     SULANDRA_IDE_PORT=13337 \
+    SULANDRA_TERMINAL_CWD=/projects \
     TERMINAL_ROWS=12 \
     VSCODE_PROXY_URI=./proxy/{{port}} \
     HOME=/home/terminal \
@@ -18,19 +19,30 @@ ENV NODE_ENV=production \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
-# The session image carries the normal application-development toolchain because
-# production sessions are immutable, non-root containers. Users should not need
-# (and cannot safely use) sudo to mutate the base image at runtime.
+# Full developer image for heavy software/app/game work. The terminal user may
+# elevate to root *inside its own isolated session container* so apt/dpkg and
+# build-system dependencies work normally. The session never receives the host
+# Docker socket and the executor still enforces CPU/memory/PID boundaries.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      bash git gh curl ca-certificates \
-      build-essential cmake clang pkg-config ninja-build \
+      bash sudo git gh curl wget ca-certificates openssh-client rsync file \
+      build-essential cmake clang lldb gdb valgrind strace pkg-config ninja-build \
       python3 python3-pip python3-venv \
       golang-go rustc cargo default-jdk-headless \
-      postgresql-client default-mysql-client redis-tools \
-      jq ripgrep less nano vim-tiny procps tmux sqlite3 tree zip unzip rsync openssh-client file \
+      postgresql-client default-mysql-client redis-tools sqlite3 \
+      iproute2 net-tools dnsutils iputils-ping lsof procps \
+      jq ripgrep less nano vim-tiny tmux tree zip unzip \
+      libgl1-mesa-dev libglu1-mesa-dev libsdl2-dev libvulkan-dev \
+      libx11-dev libxrandr-dev libxi-dev libxinerama-dev libxcursor-dev \
+      libasound2-dev libpulse-dev xvfb ffmpeg \
     && groupadd --gid 10001 terminal \
     && useradd --uid 10001 --gid 10001 --create-home --shell /bin/bash terminal \
+    && printf '%s\n' \
+      'terminal ALL=(ALL) NOPASSWD:ALL' \
+      'Defaults:terminal env_keep += "HTTP_PROXY HTTPS_PROXY http_proxy https_proxy NO_PROXY no_proxy"' \
+      > /etc/sudoers.d/terminal \
+    && chmod 0440 /etc/sudoers.d/terminal \
+    && visudo -cf /etc/sudoers.d/terminal \
     && curl -fsSL "https://github.com/coder/code-server/releases/download/v${CODE_SERVER_VERSION}/code-server-${CODE_SERVER_VERSION}-linux-amd64.tar.gz" -o /tmp/code-server.tar.gz \
     && echo "${CODE_SERVER_SHA256}  /tmp/code-server.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/code-server.tar.gz -C /opt \
@@ -50,20 +62,21 @@ RUN npm install --global "npm@${NPM_VERSION}" --no-audit --no-fund \
 RUN npm install --global "bun@${BUN_VERSION}" --no-audit --no-fund \
     && test "$(bun --version)" = "${BUN_VERSION}"
 
-# Fail the image build if a supported compiler/runtime/database CLI disappears.
+# Fail the image build if a supported compiler/runtime/database/network CLI disappears.
 RUN set -eux; \
-    for cmd in node npm yarn bun python3 pip3 gcc g++ make cmake clang go rustc cargo java javac git gh psql mysql redis-cli sqlite3; do \
+    for cmd in node npm yarn bun python3 pip3 gcc g++ make cmake clang go rustc cargo java javac git gh psql mysql redis-cli sqlite3 sudo ss netstat wget; do \
       command -v "$cmd" >/dev/null; \
     done; \
     node --version; npm --version; yarn --version; bun --version; \
     python3 --version; gcc --version | head -n1; g++ --version | head -n1; \
     make --version | head -n1; cmake --version | head -n1; clang --version | head -n1; \
     go version; rustc --version; cargo --version; java -version; javac -version; \
-    git --version; gh --version | head -n1; psql --version; mysql --version; redis-cli --version; sqlite3 --version
+    git --version; gh --version | head -n1; psql --version; mysql --version; redis-cli --version; sqlite3 --version; \
+    sudo -u terminal sudo -n id -u | grep -qx '0'
 
-# Security boundary: user sessions stay non-root, read-only, capability-free, and
-# do not receive the host Docker socket. apk/yum are also intentionally absent
-# because this image is Debian-based; apt is the only distro package manager.
+# Host isolation remains enforced by the executor: session containers are not
+# privileged and never receive /var/run/docker.sock. Root access is intentionally
+# limited to the disposable session container itself.
 WORKDIR /agent
 COPY terminal-session-agent/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
@@ -81,7 +94,7 @@ RUN node /tmp/verify-terminal-ide-settings.mjs /agent/entrypoint.sh \
     && rm -f /tmp/verify-terminal-ide-settings.mjs
 # /home/terminal is mounted as a tmpfs by the executor for each isolated session,
 # so files baked into that path are hidden at runtime. Keep canonical shell/tmux
-# configuration on the immutable image and load/copy it when a session starts.
+# configuration on the image and load/copy it when a session starts.
 COPY terminal-session-agent/tmux.conf /agent/tmux.conf
 COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login
 COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
@@ -93,10 +106,10 @@ RUN chmod 0755 /agent/entrypoint.sh /usr/local/bin/sulandra-github-login /usr/lo
     && printf '%s\n' "$profile_check" | grep -q "alias ls='ls --color=auto'" \
     && printf '%s\n' "$profile_check" | grep -q 'ok is a function' \
     && printf '%s\n' "$profile_check" | grep -q '__sulandra_update_git_prompt' \
-    && mkdir -p /workspace /home/terminal \
-    && chown -R 10001:10001 /workspace /home/terminal /agent
+    && mkdir -p /workspace /projects /home/terminal \
+    && chown -R 10001:10001 /workspace /projects /home/terminal /agent
 
 USER 10001:10001
-WORKDIR /workspace
+WORKDIR /projects
 EXPOSE 9000 13337
 CMD ["bash", "-c", "install -m 0600 /agent/tmux.conf /home/terminal/.tmux.conf && exec /agent/entrypoint.sh"]
