@@ -20,7 +20,7 @@ const [ipadCss,ipadJs,codebaseNav]=await Promise.all([
 for(const [label,source,marker] of [
   ['iPad CSS',ipadCss,'SULANDRA_IT_IPAD_FAIL_OPEN_V3'],
   ['iPad JavaScript',ipadJs,'SULANDRA_IT_IPAD_FAIL_OPEN_V3'],
-  ['Codebase visible navigation',codebaseNav,'SULANDRA_CODEBASE_IT_VISIBLE_NAV_V7'],
+  ['Codebase visible navigation',codebaseNav,'SULANDRA_CODEBASE_IT_VISIBLE_NAV_V8'],
 ]){
   if(!source.includes(marker))throw new Error(`${label} missing ${marker}`);
 }
@@ -34,7 +34,7 @@ for(const marker of [
   'SULANDRA_CODEBASE_STANDALONE_LAUNCHER_V1',
   'itwsSulandraCodebaseVisibleNav',
   '.itws-sidebar .itws-nav',
-  "CODEBASE_URL='/Codebase.html?v=20260904-terminal-live-input-3'",
+  "CODEBASE_URL='/Codebase.html?v=20260904-ipad-keyboard-4'",
   "WINDOW_NAME='sulandra-codebase'",
   'openStandalone',
   'window.open',
@@ -49,7 +49,7 @@ if(codebaseNav.includes("dataset.scbNavSource='engineering'"))throw new Error('C
 
 const cssHref='/assets/it-agent-ipad-load-guard.css?v=20260903-ipad-fail-open-3';
 const jsSrc='/assets/it-agent-ipad-load-guard.js?v=20260903-ipad-fail-open-3';
-const navSrc='/assets/sulandra-codebase-nav-entry.js?v=20260904-standalone-launcher-9';
+const navSrc='/assets/sulandra-codebase-nav-entry.js?v=20260904-standalone-launcher-10';
 const preboot=`<style id="itws-preboot-critical">html.itws-preboot::before{content:"Loading Sulandra IT…";position:fixed;inset:0;z-index:2147483646;display:grid;place-items:center;background:#fff;color:#53616d;font:600 15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;pointer-events:auto}html.itws-preboot.itws-boot-failed::before{display:none!important}</style><script id="itws-preboot-script">document.documentElement.classList.add("itws-preboot");clearTimeout(window.__sulandraItPrebootFailOpen);window.__sulandraItPrebootFailOpen=setTimeout(function(){document.documentElement.classList.remove("itws-preboot","itws-boot-failed")},3200)</script>`;
 
 html=html.replace(/\s*<style id="itws-preboot-critical">[\s\S]*?<\/style>\s*<script id="itws-preboot-script">[\s\S]*?<\/script>\s*/g,'\n');
@@ -75,4 +75,4 @@ if(/html\.itws-preboot body>header|html\.itws-preboot body>main\.shell/.test(htm
 if(/id=["']itwsSulandraCodebaseFrame["']/.test(html))throw new Error('Sulandra IT publication must not contain an embedded Codebase iframe');
 
 await writeFile(portalPath,html,'utf8');
-console.log(`Sulandra IT iPad fail-open boot guard and standalone Codebase launcher V9 published into ${requested}`);
+console.log(`Sulandra IT iPad fail-open boot guard and standalone Codebase launcher V10 published into ${requested}`);
