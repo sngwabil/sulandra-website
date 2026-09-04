@@ -102,7 +102,7 @@ jobs:
           console.log(`Standalone Codebase bootstrap placement and ${inlineScripts.length} inline script(s) are executable.`);
           NODE
 
-          grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260903-standalone-launcher-7' it-solutions.html
+          grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260904-standalone-launcher-8' it-solutions.html
           grep -Fq "CODEBASE_URL='/Codebase.html?v=20260904-keyboard-preview-dark-2'" assets/sulandra-codebase-nav-entry.js
           grep -Fq 'window.open' assets/sulandra-codebase-nav-entry.js
 
