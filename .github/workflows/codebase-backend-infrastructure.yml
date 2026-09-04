@@ -5,12 +5,15 @@ on:
     paths:
       - 'Codebase.html'
       - 'assets/codebase-backend-adapter.js'
+      - 'assets/codebase-preview-terminal-input-fix.js'
       - 'codebase-e2e-api/**'
       - 'codebase-e2e-web/**'
       - 'coding-terminal-worker/**'
       - 'Dockerfile.coding-terminal'
       - 'Dockerfile.frontend'
       - 'scripts/install-codebase-pty-compat.mjs'
+      - 'scripts/fix-codebase-preview-owner-namespace.mjs'
+      - 'scripts/install-workspace-ide-live-preview.mjs'
       - 'scripts/install-codebase-backend-adapter.mjs'
       - '.github/workflows/codebase-backend-infrastructure.yml'
   workflow_dispatch:
@@ -30,7 +33,10 @@ jobs:
           node --check codebase-e2e-api/server.mjs
           node --check codebase-e2e-web/server.mjs
           node --check assets/codebase-backend-adapter.js
+          node --check assets/codebase-preview-terminal-input-fix.js
           node --check scripts/install-codebase-pty-compat.mjs
+          node --check scripts/fix-codebase-preview-owner-namespace.mjs
+          node --check scripts/install-workspace-ide-live-preview.mjs
           node --check scripts/install-codebase-backend-adapter.mjs
       - name: Install service dependencies
         run: |
@@ -60,12 +66,20 @@ jobs:
           grep -Fq 'No separate GitHub login is required.' assets/codebase-backend-adapter.js
           grep -Fq 'No JWT paste is required.' assets/codebase-backend-adapter.js
           grep -Fq '▶ Open Debug Terminal' assets/codebase-backend-adapter.js
+          grep -Fq 'CODEBASE_PREVIEW_TERMINAL_INPUT_V1' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'codebase-preview-toolbar' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq "surface:'codebase'" assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'codebaseTerminalFocusBound' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'term.focus' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'codebasePreviewNamespace: true' codebase-e2e-web/server.mjs
+          grep -Fq 'body: JSON.stringify({ sessionId, port: requestedPort, surface })' codebase-e2e-web/server.mjs
       - name: Verify standalone Codebase HTML contract publication
         run: |
           set -euo pipefail
           cp Codebase.html /tmp/Codebase.html
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1' /tmp/Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'sameOriginOpener' assets/codebase-backend-adapter.js
           grep -Fq "window.location.assign('/it-solutions.html')" assets/codebase-backend-adapter.js
@@ -76,12 +90,15 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('/tmp/Codebase.html', 'utf8');
-          const tag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-4"></script>';
-          const adapterIndex = html.indexOf(tag);
+          const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
+          const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260903-preview-terminal-input-1"></script>';
+          const adapterIndex = html.indexOf(adapterTag);
+          const previewIndex = html.indexOf(previewTag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
-          if (adapterIndex < 0 || adapterIndex >= bodyIndex) throw new Error('Standalone adapter is not before the final document body close');
-          if (html.indexOf(tag, adapterIndex + tag.length) !== -1) throw new Error('Standalone adapter published more than once');
-          if (html.slice(adapterIndex + tag.length, bodyIndex).trim()) throw new Error('Standalone adapter must be the final executable element');
+          if (adapterIndex < 0 || previewIndex <= adapterIndex || previewIndex >= bodyIndex) throw new Error('Standalone Codebase runtime order is invalid');
+          if (html.indexOf(adapterTag, adapterIndex + adapterTag.length) !== -1) throw new Error('Standalone adapter published more than once');
+          if (html.indexOf(previewTag, previewIndex + previewTag.length) !== -1) throw new Error('Preview/input repair published more than once');
+          if (html.slice(previewIndex + previewTag.length, bodyIndex).trim()) throw new Error('Preview/input repair must be the final executable element');
           const before = html.slice(0, adapterIndex).toLowerCase();
           if (before.lastIndexOf('<script') > before.lastIndexOf('</script>')) throw new Error('Standalone adapter was injected inside inline JavaScript');
           const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
@@ -90,15 +107,19 @@ jobs:
             catch (error) { throw new Error(`Published inline script ${index + 1} is not executable: ${error.message}`); }
           }
           NODE
-      - name: Verify PTY compatibility can be installed
+      - name: Verify PTY compatibility and Codebase preview namespace
         run: |
           set -euo pipefail
           cp coding-terminal-worker/server.mjs /tmp/codebase-terminal-gateway.mjs
+          node scripts/install-workspace-ide-live-preview.mjs /tmp/codebase-terminal-gateway.mjs
           node scripts/install-codebase-pty-compat.mjs /tmp/codebase-terminal-gateway.mjs
+          node scripts/fix-codebase-preview-owner-namespace.mjs /tmp/codebase-terminal-gateway.mjs
           node --check /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_PTY_COMPAT_V1' /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_OWNER_NAMESPACE_V2' /tmp/codebase-terminal-gateway.mjs
+          grep -Fq 'CODEBASE_PREVIEW_OWNER_NAMESPACE_V1' /tmp/codebase-terminal-gateway.mjs
           grep -Fq "const owner = 'codebase:' + verification.auth.organizationId + ':' + verification.auth.userId" /tmp/codebase-terminal-gateway.mjs
+          grep -Fq "surface === 'codebase' ? 'codebase:' : ''" /tmp/codebase-terminal-gateway.mjs
           grep -Fq "url.pathname === '/pty'" /tmp/codebase-terminal-gateway.mjs
       - name: Build dedicated Codebase service images
         run: |
