@@ -8,6 +8,7 @@ on:
       - Codebase.html
       - assets/codebase-backend-adapter.js
       - assets/codebase-preview-terminal-input-fix.js
+      - assets/codebase-ipad-terminal-keyboard-bridge.js
       - assets/sulandra-codebase.js
       - assets/sulandra-codebase-api-bridge.js
       - assets/sulandra-codebase-nav-entry.js
@@ -42,6 +43,7 @@ jobs:
           node --check assets/sulandra-codebase-api-bridge.js
           node --check assets/codebase-backend-adapter.js
           node --check assets/codebase-preview-terminal-input-fix.js
+          node --check assets/codebase-ipad-terminal-keyboard-bridge.js
           node --check scripts/install-codebase-backend-adapter.mjs
           node --check assets/sulandra-codebase-nav-entry.js
           node --check scripts/install-workspace-ide-ui.mjs
@@ -60,6 +62,7 @@ jobs:
 
           grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' Codebase.html
           grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3' Codebase.html
+          grep -Fq '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4' Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'CODEBASE_VISIBLE_REGRESSIONS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'installSafeWorkspaceRenderer' assets/codebase-backend-adapter.js
@@ -78,6 +81,10 @@ jobs:
           grep -Fq 'canonicalResetPacket' assets/codebase-preview-terminal-input-fix.js
           grep -Fq "addEventListener('paste'" assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'term.focus' assets/codebase-preview-terminal-input-fix.js
+          grep -Fq 'CODEBASE_IPAD_TERMINAL_KEYBOARD_V4' assets/codebase-ipad-terminal-keyboard-bridge.js
+          grep -Fq "addEventListener('beforeinput'" assets/codebase-ipad-terminal-keyboard-bridge.js
+          grep -Fq "addEventListener('input'" assets/codebase-ipad-terminal-keyboard-bridge.js
+          grep -Fq "addEventListener('touchend'" assets/codebase-ipad-terminal-keyboard-bridge.js
           grep -Fq 'set -g status off' terminal-session-agent/tmux.conf
           grep -Fq 'sulandra-website-production-5fc4.up.railway.app' assets/sulandra-codebase-api-bridge.js
           grep -Fq 'Authorization' assets/sulandra-codebase-api-bridge.js
@@ -87,13 +94,16 @@ jobs:
           const html = fs.readFileSync('Codebase.html', 'utf8');
           const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
           const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
+          const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
           const adapterIndex = html.indexOf(adapterTag);
           const previewIndex = html.indexOf(previewTag);
+          const ipadKeyboardIndex = html.indexOf(ipadKeyboardTag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
-          if (adapterIndex < 0 || previewIndex <= adapterIndex || previewIndex >= bodyIndex) throw new Error('Standalone Codebase runtime order is invalid');
+          if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || ipadKeyboardIndex >= bodyIndex) throw new Error('Standalone Codebase runtime order is invalid');
           if (html.indexOf(adapterTag, adapterIndex + adapterTag.length) !== -1) throw new Error('Standalone adapter published more than once');
           if (html.indexOf(previewTag, previewIndex + previewTag.length) !== -1) throw new Error('Preview/input repair published more than once');
-          if (html.slice(previewIndex + previewTag.length, bodyIndex).trim()) throw new Error('Executable content appears after preview/input repair');
+          if (html.indexOf(ipadKeyboardTag, ipadKeyboardIndex + ipadKeyboardTag.length) !== -1) throw new Error('iPad keyboard bridge published more than once');
+          if (html.slice(ipadKeyboardIndex + ipadKeyboardTag.length, bodyIndex).trim()) throw new Error('Executable content appears after iPad keyboard bridge');
           const before = html.slice(0, adapterIndex).toLowerCase();
           if (before.lastIndexOf('<script') > before.lastIndexOf('</script>')) throw new Error('Standalone adapter was injected inside inline JavaScript');
           const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
@@ -102,14 +112,18 @@ jobs:
             catch (error) { throw new Error(`Published inline script ${index + 1} is not executable: ${error.message}`); }
           }
           const repair = fs.readFileSync('assets/codebase-preview-terminal-input-fix.js','utf8');
+          const ipadKeyboard = fs.readFileSync('assets/codebase-ipad-terminal-keyboard-bridge.js','utf8');
           if (!repair.includes("if(!requested){setPreviewDark")) throw new Error('Preview must remain dark for non-user terminal-triggered preview calls');
           if (!repair.includes("event.target!==container&&!container.contains(event.target)")) throw new Error('Terminal keyboard/paste fallback must remain scoped to the selected terminal and its xterm descendants');
           if (!repair.includes("if(event.target!==wrapper)return")) throw new Error('Editor keyboard fallback must remain scoped to the focused editor wrapper');
+          if (!ipadKeyboard.includes("addEventListener('input'")) throw new Error('iPad software keyboard input fallback is missing');
+          if (!ipadKeyboard.includes("container.addEventListener('click',activate,false)")) throw new Error('iPad terminal tap must focus the rendered keyboard bridge after xterm pointer handling');
           console.log(`Standalone Codebase bootstrap placement and ${inlineScripts.length} inline script(s) are executable.`);
           NODE
 
-          grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260904-standalone-launcher-9' it-solutions.html
-          grep -Fq "CODEBASE_URL='/Codebase.html?v=20260904-terminal-live-input-3'" assets/sulandra-codebase-nav-entry.js
+          grep -Fq '/assets/sulandra-codebase-nav-entry.js?v=20260904-standalone-launcher-10' it-solutions.html
+          grep -Fq "CODEBASE_URL='/Codebase.html?v=20260904-ipad-keyboard-4'" assets/sulandra-codebase-nav-entry.js
+          grep -Fq 'SULANDRA_CODEBASE_IT_VISIBLE_NAV_V8' assets/sulandra-codebase-nav-entry.js
           grep -Fq 'window.open' assets/sulandra-codebase-nav-entry.js
 
           if grep -Fq '/assets/sulandra-codebase-api-bridge.js' it-solutions.html; then
