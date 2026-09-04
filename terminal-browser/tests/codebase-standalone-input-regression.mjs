@@ -85,7 +85,8 @@ try{
  await page.keyboard.type('abc123');
  if((await normal.inputValue())!=='abc123')throw new Error('Input repair swallowed keyboard events outside terminal/editor surfaces');
 
- await page.locator('#fixtureOpen').click();
+ // The production repair deliberately normalizes the legacy Preview button ID.
+ await page.locator('#codebase-preview-open').click();
  await page.waitForFunction(()=>window.__fetchCount===1);
  const afterOpen=await page.evaluate(()=>({state:document.getElementById('railway-preview-iframe')?.dataset?.codebasePreviewState,fetchCount:window.__fetchCount,src:document.getElementById('railway-preview-iframe')?.getAttribute('src')||''}));
  if(afterOpen.state!=='live'||afterOpen.fetchCount!==1||!afterOpen.src.startsWith('data:text/html'))throw new Error(`Explicit Preview Open did not activate live preview: ${JSON.stringify(afterOpen)}`);
