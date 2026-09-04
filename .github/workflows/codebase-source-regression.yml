@@ -9,15 +9,19 @@ on:
       - assets/codebase-backend-adapter.js
       - assets/codebase-preview-terminal-input-fix.js
       - assets/codebase-ipad-terminal-keyboard-bridge.js
+      - assets/codebase-terminal-session-durability.js
       - assets/sulandra-codebase.js
       - assets/sulandra-codebase-api-bridge.js
       - assets/sulandra-codebase-nav-entry.js
       - scripts/install-codebase-backend-adapter.mjs
+      - scripts/install-codebase-pty-session-resume.mjs
       - scripts/install-workspace-ide-ui.mjs
       - scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
+      - terminal-browser/tests/codebase-session-durability-regression.mjs
       - terminal-session-agent/tmux.conf
       - tests/sulandra-codebase-api-bridge.regression.mjs
       - Dockerfile.frontend
+      - Dockerfile.coding-terminal
       - .github/workflows/codebase-source-regression.yml
 
 permissions:
@@ -44,14 +48,20 @@ jobs:
           node --check assets/codebase-backend-adapter.js
           node --check assets/codebase-preview-terminal-input-fix.js
           node --check assets/codebase-ipad-terminal-keyboard-bridge.js
+          node --check assets/codebase-terminal-session-durability.js
           node --check scripts/install-codebase-backend-adapter.mjs
+          node --check scripts/install-codebase-pty-session-resume.mjs
           node --check assets/sulandra-codebase-nav-entry.js
           node --check scripts/install-workspace-ide-ui.mjs
           node --check scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
           node --check tests/sulandra-codebase-api-bridge.regression.mjs
+          node --check terminal-browser/tests/codebase-session-durability-regression.mjs
 
       - name: Exercise authenticated API bridge
         run: node tests/sulandra-codebase-api-bridge.regression.mjs
+
+      - name: Exercise terminal session durability contract
+        run: node terminal-browser/tests/codebase-session-durability-regression.mjs
 
       - name: Verify standalone publication boundary and executable bootstrap
         run: |
@@ -63,6 +73,7 @@ jobs:
           grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' Codebase.html
           grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3' Codebase.html
           grep -Fq '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4' Codebase.html
+          grep -Fq '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1' Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'CODEBASE_VISIBLE_REGRESSIONS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'installSafeWorkspaceRenderer' assets/codebase-backend-adapter.js
@@ -85,6 +96,11 @@ jobs:
           grep -Fq "addEventListener('beforeinput'" assets/codebase-ipad-terminal-keyboard-bridge.js
           grep -Fq "addEventListener('input'" assets/codebase-ipad-terminal-keyboard-bridge.js
           grep -Fq "addEventListener('touchend'" assets/codebase-ipad-terminal-keyboard-bridge.js
+          grep -Fq 'CODEBASE_TERMINAL_SESSION_DURABILITY_V1' assets/codebase-terminal-session-durability.js
+          grep -Fq 'sulandra:codebase:terminal-session-state:v1' assets/codebase-terminal-session-durability.js
+          grep -Fq 'freshestToken' assets/codebase-terminal-session-durability.js
+          grep -Fq 'ResumeWebSocket' assets/codebase-terminal-session-durability.js
+          grep -Fq 'data-codebase-active-terminal' assets/codebase-terminal-session-durability.js
           grep -Fq 'set -g status off' terminal-session-agent/tmux.conf
           grep -Fq 'sulandra-website-production-5fc4.up.railway.app' assets/sulandra-codebase-api-bridge.js
           grep -Fq 'Authorization' assets/sulandra-codebase-api-bridge.js
@@ -95,15 +111,18 @@ jobs:
           const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
           const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
           const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
+          const durabilityTag = '<script src="/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1"></script>';
           const adapterIndex = html.indexOf(adapterTag);
           const previewIndex = html.indexOf(previewTag);
           const ipadKeyboardIndex = html.indexOf(ipadKeyboardTag);
+          const durabilityIndex = html.indexOf(durabilityTag);
           const bodyIndex = html.toLowerCase().lastIndexOf('</body>');
-          if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || ipadKeyboardIndex >= bodyIndex) throw new Error('Standalone Codebase runtime order is invalid');
+          if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || durabilityIndex <= ipadKeyboardIndex || durabilityIndex >= bodyIndex) throw new Error('Standalone Codebase runtime order is invalid');
           if (html.indexOf(adapterTag, adapterIndex + adapterTag.length) !== -1) throw new Error('Standalone adapter published more than once');
           if (html.indexOf(previewTag, previewIndex + previewTag.length) !== -1) throw new Error('Preview/input repair published more than once');
           if (html.indexOf(ipadKeyboardTag, ipadKeyboardIndex + ipadKeyboardTag.length) !== -1) throw new Error('iPad keyboard bridge published more than once');
-          if (html.slice(ipadKeyboardIndex + ipadKeyboardTag.length, bodyIndex).trim()) throw new Error('Executable content appears after iPad keyboard bridge');
+          if (html.indexOf(durabilityTag, durabilityIndex + durabilityTag.length) !== -1) throw new Error('Terminal durability runtime published more than once');
+          if (html.slice(durabilityIndex + durabilityTag.length, bodyIndex).trim()) throw new Error('Executable content appears after terminal durability runtime');
           const before = html.slice(0, adapterIndex).toLowerCase();
           if (before.lastIndexOf('<script') > before.lastIndexOf('</script>')) throw new Error('Standalone adapter was injected inside inline JavaScript');
           const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
@@ -113,11 +132,14 @@ jobs:
           }
           const repair = fs.readFileSync('assets/codebase-preview-terminal-input-fix.js','utf8');
           const ipadKeyboard = fs.readFileSync('assets/codebase-ipad-terminal-keyboard-bridge.js','utf8');
+          const durability = fs.readFileSync('assets/codebase-terminal-session-durability.js','utf8');
           if (!repair.includes("if(!requested){setPreviewDark")) throw new Error('Preview must remain dark for non-user terminal-triggered preview calls');
           if (!repair.includes("event.target!==container&&!container.contains(event.target)")) throw new Error('Terminal keyboard/paste fallback must remain scoped to the selected terminal and its xterm descendants');
           if (!repair.includes("if(event.target!==wrapper)return")) throw new Error('Editor keyboard fallback must remain scoped to the focused editor wrapper');
           if (!ipadKeyboard.includes("addEventListener('input'")) throw new Error('iPad software keyboard input fallback is missing');
           if (!ipadKeyboard.includes("container.addEventListener('click',activate,false)")) throw new Error('iPad terminal tap must focus the rendered keyboard bridge after xterm pointer handling');
+          if (!durability.includes("searchParams.set('sessionId'")) throw new Error('Refreshed terminal must reconnect using the existing sessionId');
+          if (!durability.includes('term.options.cursorBlink=selected')) throw new Error('Only the selected terminal may own the blinking cursor');
           console.log(`Standalone Codebase bootstrap placement and ${inlineScripts.length} inline script(s) are executable.`);
           NODE
 
