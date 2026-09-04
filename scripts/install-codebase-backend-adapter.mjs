@@ -4,12 +4,15 @@ import path from 'node:path';
 const target = path.resolve(process.argv[2] || 'Codebase.html');
 const adapter = path.resolve('assets/codebase-backend-adapter.js');
 const previewFix = path.resolve('assets/codebase-preview-terminal-input-fix.js');
+const ipadKeyboardBridge = path.resolve('assets/codebase-ipad-terminal-keyboard-bridge.js');
 await access(target);
 await access(adapter);
 await access(previewFix);
+await access(ipadKeyboardBridge);
 let html = await readFile(target, 'utf8');
 const source = await readFile(adapter, 'utf8');
 const previewSource = await readFile(previewFix, 'utf8');
+const ipadKeyboardSource = await readFile(ipadKeyboardBridge, 'utf8');
 
 for (const marker of [
   'SULANDRA_CODEBASE_BACKEND_ADAPTER_V2',
@@ -47,6 +50,18 @@ for (const marker of [
   if (!previewSource.includes(marker)) throw new Error(`Codebase preview/input repair missing ${marker}`);
 }
 
+for (const marker of [
+  'CODEBASE_IPAD_TERMINAL_KEYBOARD_V4',
+  'codebase-ipad-terminal-keyboard-bridge',
+  "addEventListener('beforeinput'",
+  "addEventListener('input'",
+  "addEventListener('compositionend'",
+  "addEventListener('touchend'",
+  'term.__sulandraWs',
+]) {
+  if (!ipadKeyboardSource.includes(marker)) throw new Error(`Codebase iPad keyboard bridge missing ${marker}`);
+}
+
 html = html.replace(
   "getToken: () => document.getElementById('cfg-token').value || 'test-token'",
   "getToken: () => document.getElementById('cfg-token').value || sessionStorage.getItem('sulandra:admin:access-token') || localStorage.getItem('sulandra:admin:access-token') || sessionStorage.getItem('sulandra:employee:access-token') || localStorage.getItem('sulandra:employee:access-token') || localStorage.getItem('token') || ''",
@@ -66,8 +81,10 @@ html = html.replace(
 
 const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
 const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
+const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-backend-adapter\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script src="\/assets\/codebase-preview-terminal-input-fix\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
+html = html.replace(/\s*<script src="\/assets\/codebase-ipad-terminal-keyboard-bridge\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 
 // IMPORTANT: Codebase contains sample HTML inside JavaScript template strings,
 // including literal </body> text. Never use String.replace('</body>', ...),
@@ -78,15 +95,17 @@ const lower = html.toLowerCase();
 const bodyCloseIndex = lower.lastIndexOf('</body>');
 const htmlCloseIndex = lower.lastIndexOf('</html>');
 if (bodyCloseIndex < 0 || htmlCloseIndex < bodyCloseIndex) throw new Error('Codebase final body/html anchor changed');
-html = `${html.slice(0, bodyCloseIndex)}${adapterTag}\n${previewTag}\n${html.slice(bodyCloseIndex)}`;
+html = `${html.slice(0, bodyCloseIndex)}${adapterTag}\n${previewTag}\n${ipadKeyboardTag}\n${html.slice(bodyCloseIndex)}`;
 
 const adapterIndex = html.indexOf(adapterTag);
 const previewIndex = html.indexOf(previewTag);
+const ipadKeyboardIndex = html.indexOf(ipadKeyboardTag);
 const finalBodyIndex = html.toLowerCase().lastIndexOf('</body>');
-if (adapterIndex < 0 || previewIndex <= adapterIndex || previewIndex >= finalBodyIndex) throw new Error('Codebase runtime publication order is invalid');
+if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || ipadKeyboardIndex >= finalBodyIndex) throw new Error('Codebase runtime publication order is invalid');
 if (html.indexOf(adapterTag, adapterIndex + adapterTag.length) !== -1) throw new Error('Codebase adapter must be published exactly once');
 if (html.indexOf(previewTag, previewIndex + previewTag.length) !== -1) throw new Error('Codebase preview/input repair must be published exactly once');
-if (html.slice(previewIndex + previewTag.length, finalBodyIndex).trim()) throw new Error('Codebase preview/input repair must be the final executable element before </body>');
+if (html.indexOf(ipadKeyboardTag, ipadKeyboardIndex + ipadKeyboardTag.length) !== -1) throw new Error('Codebase iPad keyboard bridge must be published exactly once');
+if (html.slice(ipadKeyboardIndex + ipadKeyboardTag.length, finalBodyIndex).trim()) throw new Error('Codebase iPad keyboard bridge must be the final executable element before </body>');
 const beforeAdapter = html.slice(0, adapterIndex).toLowerCase();
 if (beforeAdapter.lastIndexOf('<script') > beforeAdapter.lastIndexOf('</script>')) {
   throw new Error('Codebase adapter must never be injected inside an inline script/template string');
@@ -98,6 +117,7 @@ for (const marker of [
   'https://codebase-e2e-web-production.up.railway.app',
   '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5',
   '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3',
+  '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4',
   "sessionStorage.getItem('sulandra:admin:access-token')",
   'createWorkspaceFolder()',
 ]) {
@@ -107,4 +127,4 @@ if (html.includes("|| 'test-token'")) throw new Error('Published Codebase must n
 if (/openFallbackFile\('spire-evv-test-console\.html'\)/.test(html)) throw new Error('Published Codebase must not preload demonstration source files');
 
 await writeFile(target, html, 'utf8');
-console.log(`Sulandra Codebase backend adapter + terminal live-input repair published at the final document body anchor in ${target}`);
+console.log(`Sulandra Codebase backend adapter + terminal live-input repair + iPad keyboard bridge published at the final document body anchor in ${target}`);
