@@ -1,0 +1,19 @@
+FROM postgres:18-bookworm
+
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      coreutils \
+      diffutils \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /cutover
+
+COPY scripts/database-provider-cutover.sh /cutover/scripts/database-provider-cutover.sh
+RUN chmod 0500 /cutover/scripts/database-provider-cutover.sh \
+    && mkdir -p /tmp/sulandra-database-cutover \
+    && chown -R postgres:postgres /tmp/sulandra-database-cutover
+
+USER postgres
+
+ENTRYPOINT ["/cutover/scripts/database-provider-cutover.sh"]

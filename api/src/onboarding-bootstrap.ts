@@ -7,6 +7,7 @@ import jwt, { type JwtPayload } from 'jsonwebtoken';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { z, ZodError } from 'zod';
 import { registerCareersRoutes } from './careers-routes.js';
+import { assertRequiredDatabaseProvider } from './database-provider-guard.js';
 import { registerITSolutionsRoutes } from './it-solutions-routes.js';
 import {
   createEntityAccessMiddleware,
@@ -50,6 +51,8 @@ type LoginAccount = AuthContext & {
   displayName: string;
   mustChangePassword: boolean;
 };
+
+assertRequiredDatabaseProvider(process.env.DATABASE_URL);
 
 const app = express();
 const prisma = new PrismaClient();

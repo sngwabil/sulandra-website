@@ -40,7 +40,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:check-prerequisites": "node scripts/check-database-prerequisites.mjs",
     "db:verify-careers-schema": "node scripts/verify-careers-schema.mjs",
-    "db:predeploy": "node scripts/run-db-predeploy.mjs"
+    "db:predeploy": "node scripts/run-db-predeploy.mjs",
+    "verify:database-cutover": "node scripts/verify-database-provider-cutover.mjs"
   },
   "devDependencies": {
     "prisma": "^6.12.0"

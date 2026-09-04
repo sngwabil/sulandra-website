@@ -1,0 +1,133 @@
+name: Database Provider Cutover Verification
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-provider-cutover-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fail-closed-and-restore:
+    name: Guarded PostgreSQL provider migration drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: source
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d source"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify static cutover controls
+        run: |
+          bash -n scripts/database-provider-cutover.sh
+          node --check scripts/database-cutover-maintenance-server.mjs
+          node scripts/verify-database-provider-cutover.mjs
+
+      - name: Build isolated cutover image
+        run: docker build -f Dockerfile.database-cutover -t sulandra-database-cutover:test .
+
+      - name: Verify migration fails closed without authorization
+        run: |
+          if docker run --rm sulandra-database-cutover:test; then
+            echo "Cutover image unexpectedly ran without guarded variables" >&2
+            exit 1
+          fi
+
+      - name: Seed source and create empty target
+        env:
+          PGPASSWORD: postgres
+        run: |
+          docker run --rm -i --network host -e PGPASSWORD postgres:18 \
+            psql -h 127.0.0.1 -U postgres -d source -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE "Organization" ("id" text PRIMARY KEY);
+          CREATE TABLE "User" ("id" text PRIMARY KEY);
+          CREATE TABLE "EmployeeApplication" ("id" text PRIMARY KEY);
+          CREATE TABLE "AuditEvent" ("id" text PRIMARY KEY);
+          CREATE TABLE "LegalEntity" ("id" text PRIMARY KEY);
+          CREATE TABLE "SpirePatient" ("id" text PRIMARY KEY);
+          CREATE TABLE "CutoverBinaryFixture" (
+            "id" text PRIMARY KEY,
+            "payload" bytea NOT NULL,
+            "updatedAt" timestamptz NOT NULL DEFAULT now()
+          );
+          INSERT INTO "CutoverBinaryFixture" ("id", "payload")
+          VALUES ('fixture', decode('000102fffefd', 'hex'));
+          CREATE FUNCTION cutover_touch() RETURNS trigger LANGUAGE plpgsql AS $function$
+          BEGIN
+            NEW."updatedAt" = now();
+            RETURN NEW;
+          END
+          $function$;
+          CREATE TRIGGER cutover_touch_trigger
+          BEFORE UPDATE ON "CutoverBinaryFixture"
+          FOR EACH ROW EXECUTE FUNCTION cutover_touch();
+          SQL
+          docker run --rm --network host -e PGPASSWORD postgres:18 \
+            createdb -h 127.0.0.1 -U postgres target
+
+      - name: Run isolated migration and parity verification
+        run: |
+          mkdir -p /tmp/database-cutover-evidence
+          chmod 777 /tmp/database-cutover-evidence
+          docker run --rm --network host \
+            -e SOURCE_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/source \
+            -e TARGET_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/target \
+            -e CUTOVER_TEST_MODE=true \
+            -e CUTOVER_CONFIRMATION=MIGRATE_SUPABASE_TO_RAILWAY \
+            -e CUTOVER_SOURCE_QUIESCED=true \
+            -e CUTOVER_EXPECTED_SOURCE_PUBLIC_TABLES=7 \
+            -e CUTOVER_EVIDENCE_DIR=/evidence \
+            -v /tmp/database-cutover-evidence:/evidence \
+            sulandra-database-cutover:test
+          grep -F '"status": "IMPORT_VERIFIED"' /tmp/database-cutover-evidence/result.json
+          test ! -s /tmp/database-cutover-evidence/schema.diff
+          test ! -s /tmp/database-cutover-evidence/inventory.diff
+
+      - name: Verify restored binary content
+        run: |
+          restored="$(docker run --rm --network host -e PGPASSWORD postgres:18 \
+            psql -h 127.0.0.1 -U postgres -d target -Atc \
+            'SELECT encode("payload",'"'"'hex'"'"') FROM "CutoverBinaryFixture" WHERE "id"='"'"'fixture'"'"';')"
+          test "$restored" = "000102fffefd"
+          trigger_count="$(docker run --rm --network host -e PGPASSWORD postgres:18 \
+            psql -h 127.0.0.1 -U postgres -d target -Atc \
+            'SELECT count(*) FROM pg_trigger WHERE tgname='"'"'cutover_touch_trigger'"'"' AND NOT tgisinternal;')"
+          test "$trigger_count" = "1"
+
+      - name: Upload non-sensitive drill evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-provider-cutover-${{ github.run_id }}
+          path: |
+            /tmp/database-cutover-evidence/result.json
+            /tmp/database-cutover-evidence/*.sha256
+            /tmp/database-cutover-evidence/*.manifest
+            /tmp/database-cutover-evidence/schema.diff
+            /tmp/database-cutover-evidence/inventory.diff
+          retention-days: 30
