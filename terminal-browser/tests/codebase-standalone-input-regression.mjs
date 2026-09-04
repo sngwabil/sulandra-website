@@ -34,7 +34,7 @@ activeEditors.code1={
  execCommand(command){window.__editorValue+='['+command+']'}
 };
 const RAILWAY_CONFIG={PREVIEW_URL:'https://preview.invalid',getToken:()=> 'fixture-token'};
-window.fetch=async()=>{window.__fetchCount+=1;return new Response(JSON.stringify({url:'data:text/html,<body style="margin:0;background:%23000;color:white">LIVE</body>'}),{status:200,headers:{'content-type':'application/json'}})};
+window.fetch=async()=>{window.__fetchCount+=1;return new Response(JSON.stringify({url:'/preview-live'}),{status:200,headers:{'content-type':'application/json'}})};
 function initXterm(){return activeTerminals.term1}
 function renderWorkspace(){}
 function focusEditor(){}
@@ -88,8 +88,9 @@ try{
  // The production repair deliberately normalizes the legacy Preview button ID.
  await page.locator('#codebase-preview-open').click();
  await page.waitForFunction(()=>window.__fetchCount===1);
- const afterOpen=await page.evaluate(()=>({state:document.getElementById('railway-preview-iframe')?.dataset?.codebasePreviewState,fetchCount:window.__fetchCount,src:document.getElementById('railway-preview-iframe')?.getAttribute('src')||''}));
- if(afterOpen.state!=='live'||afterOpen.fetchCount!==1||!afterOpen.src.startsWith('data:text/html'))throw new Error(`Explicit Preview Open did not activate live preview: ${JSON.stringify(afterOpen)}`);
+ await page.waitForTimeout(60);
+ const afterOpen=await page.evaluate(()=>({state:document.getElementById('railway-preview-iframe')?.dataset?.codebasePreviewState,fetchCount:window.__fetchCount,src:document.getElementById('railway-preview-iframe')?.getAttribute('src')||'',status:document.getElementById('status-line-col')?.textContent||''}));
+ if(afterOpen.state!=='live'||afterOpen.fetchCount!==1||afterOpen.src!=='/preview-live')throw new Error(`Explicit Preview Open did not activate live preview: ${JSON.stringify(afterOpen)}`);
 
  console.log('Standalone Codebase Chrome input regression passed: terminal keys, editor keys, normal inputs, dark idle Preview, terminal-start Preview isolation, and explicit Preview Open verified.');
 }finally{
