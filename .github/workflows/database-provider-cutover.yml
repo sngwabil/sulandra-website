@@ -103,6 +103,15 @@ jobs:
             -e CUTOVER_EVIDENCE_DIR=/evidence \
             -v /tmp/database-cutover-evidence:/evidence \
             sulandra-database-cutover:test
+
+      - name: Return drill evidence to the runner
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" /tmp/database-cutover-evidence
+          chmod -R go-rwx /tmp/database-cutover-evidence
+
+      - name: Verify migration evidence
+        run: |
           grep -F '"status": "IMPORT_VERIFIED"' /tmp/database-cutover-evidence/result.json
           test ! -s /tmp/database-cutover-evidence/schema.diff
           test ! -s /tmp/database-cutover-evidence/inventory.diff
@@ -117,12 +126,6 @@ jobs:
             psql -h 127.0.0.1 -U postgres -d target -Atc \
             'SELECT count(*) FROM pg_trigger WHERE tgname='"'"'cutover_touch_trigger'"'"' AND NOT tgisinternal;')"
           test "$trigger_count" = "1"
-
-      - name: Return drill evidence to the runner
-        if: always()
-        run: |
-          sudo chown -R "$(id -u):$(id -g)" /tmp/database-cutover-evidence
-          chmod -R go-rwx /tmp/database-cutover-evidence
 
       - name: Upload non-sensitive drill evidence
         if: always()
