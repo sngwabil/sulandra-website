@@ -32,6 +32,7 @@ for (const marker of [
   'scheduleCodebaseCompatSessionCleanup(owner, sessionId)',
   "reasonText === 'Terminal tab closed'",
   'resumed: Boolean(resumed)',
+  'replaceOnce(oldClose, newClose',
 ]) requireText(resumeInstaller, marker, 'gateway resume installer');
 
 requireText(terminalDockerfile, 'install-codebase-pty-session-resume.mjs', 'terminal Dockerfile');
@@ -39,9 +40,11 @@ requireText(terminalDockerfile, "grep -Fq 'CODEBASE_PTY_SESSION_RESUME_V1'", 'te
 requireText(frontendDockerfile, 'assets/codebase-terminal-session-durability.js', 'frontend Dockerfile');
 requireText(publisher, '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1', 'Codebase publisher');
 
-if (resumeInstaller.includes("setTimeout(() => void destroyCodebaseCompatSession(owner, sessionId), 1_000)")) {
-  throw new Error('Legacy one-second browser-disconnect session destruction returned');
-}
+// The installer intentionally contains the old one-second cleanup text as its
+// exact replacement anchor. What matters is that it replaces that block with
+// the reconnect-grace implementation before the gateway image is built.
+requireText(resumeInstaller, "const oldClose = `  browser.on('close'", 'legacy cleanup replacement anchor');
+requireText(resumeInstaller, 'const newClose = `  browser.on(\'close\', (code, reason) => {', 'durable cleanup replacement');
 if (!durability.includes("if(usableToken(configured))return configured")) {
   throw new Error('Explicit Codebase token must still be accepted when it is not expired');
 }
