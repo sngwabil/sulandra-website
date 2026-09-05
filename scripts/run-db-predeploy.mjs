@@ -30,6 +30,31 @@ function constrainedDatabaseUrl(rawDatabaseUrl) {
   return rawDatabaseUrl;
 }
 
+function assertRequiredDatabaseProvider(rawDatabaseUrl) {
+  const requiredProvider = String(process.env.SULANDRA_DATABASE_PROVIDER || '').trim().toLowerCase();
+  if (!requiredProvider) return;
+  if (requiredProvider !== 'railway') {
+    throw new Error(`Unsupported SULANDRA_DATABASE_PROVIDER value: ${requiredProvider}`);
+  }
+  if (!rawDatabaseUrl) {
+    throw new Error('DATABASE_URL is required when SULANDRA_DATABASE_PROVIDER=railway');
+  }
+
+  let databaseUrl;
+  try {
+    databaseUrl = new URL(rawDatabaseUrl);
+  } catch {
+    throw new Error('DATABASE_URL is not a valid PostgreSQL URL');
+  }
+  if (!['postgres:', 'postgresql:'].includes(databaseUrl.protocol)) {
+    throw new Error('DATABASE_URL must use the PostgreSQL protocol');
+  }
+  if (!databaseUrl.hostname.toLowerCase().endsWith('.railway.internal')) {
+    throw new Error('SULANDRA_DATABASE_PROVIDER=railway requires a Railway private-network DATABASE_URL');
+  }
+  console.log('[db:predeploy] Railway PostgreSQL provider guard passed.');
+}
+
 function childEnvironment() {
   const env = { ...process.env };
   env.DATABASE_URL = constrainedDatabaseUrl(env.DATABASE_URL);
@@ -47,6 +72,7 @@ function runScript(scriptName) {
   }
 }
 
+assertRequiredDatabaseProvider(process.env.DATABASE_URL);
 const datasourceUrl = constrainedDatabaseUrl(process.env.DATABASE_URL);
 const prisma = datasourceUrl
   ? new PrismaClient({ datasourceUrl })
