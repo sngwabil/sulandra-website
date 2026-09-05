@@ -129,9 +129,9 @@ RUN node /tmp/install-terminal-unrestricted-dev.mjs /agent/entrypoint.sh entrypo
     && node /tmp/verify-terminal-ide-settings.mjs /agent/entrypoint.sh \
     && grep -Fq 'SULANDRA_TERMINAL_CWD:-/projects' /agent/entrypoint.sh \
     && rm -f /tmp/verify-terminal-ide-settings.mjs /tmp/install-terminal-unrestricted-dev.mjs
-# /home/terminal is mounted as a tmpfs by the executor for each isolated session,
-# so files baked into that path are hidden at runtime. Keep canonical shell/tmux
-# configuration on the image and load/copy it when a session starts.
+# /home/terminal is a private persistent bind mount owned by the Codebase
+# workspace. Keep canonical shell/tmux configuration on the image and install it
+# only after the runtime bootstrap has repaired stale persistent-home state.
 COPY terminal-session-agent/tmux.conf /agent/tmux.conf
 COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login
 COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
@@ -163,7 +163,23 @@ RUN chmod 0755 \
     && mkdir -p /workspace /projects /home/terminal \
     && chown -R 10001:10001 /workspace /projects /home/terminal /agent
 
+# Regression gate for the exact production failure class: an old persistent home
+# may contain root-owned files or directories where managed files should be. A new
+# session image must repair that state without losing the home or hanging startup.
+RUN set -eux; \
+    smoke_home=/tmp/sulandra-persistent-home-smoke; \
+    rm -rf "${smoke_home}"; \
+    mkdir -p "${smoke_home}/.npmrc" "${smoke_home}/.ssh/config" "${smoke_home}/.gitconfig" "${smoke_home}/.local"; \
+    printf '%s\n' 'cd /projects/removed-project' > "${smoke_home}/.bashrc"; \
+    chown -R root:root "${smoke_home}"; \
+    sudo -u terminal env \
+      HOME="${smoke_home}" \
+      SULANDRA_TERMINAL_CWD=/projects/removed-project \
+      TERMINAL_EGRESS_PROXY_URL=http://egress-proxy:3128 \
+      bash --noprofile --norc -c 'source /usr/local/bin/sulandra-codebase-setup; test "$SULANDRA_TERMINAL_CWD" = /projects; test -f "$HOME/.tmux.conf"; test -f "$HOME/.npmrc"; test -f "$HOME/.ssh/config"; test -f "$HOME/.gitconfig"; grep -Fqx "# SULANDRA_MANAGED_BASHRC_V2" "$HOME/.bashrc"; git config --global --list >/dev/null'; \
+    rm -rf "${smoke_home}"
+
 USER 10001:10001
 WORKDIR /projects
 EXPOSE 9000 13337
-CMD ["bash", "-c", "install -m 0600 /agent/tmux.conf /home/terminal/.tmux.conf && exec /agent/entrypoint.sh"]
+CMD ["/agent/entrypoint.sh"]
