@@ -13,6 +13,7 @@ on:
       - terminal-session-agent/**
       - scripts/install-terminal-industry-hardening.mjs
       - scripts/install-terminal-prompt-cursor.mjs
+      - scripts/install-terminal-unrestricted-dev.mjs
       - infra/terminal-vps/**
       - .github/workflows/terminal-vps-deploy.yml
 
