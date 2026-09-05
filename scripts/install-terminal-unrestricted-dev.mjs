@@ -61,7 +61,7 @@ const createSession = async (workspace, owner, cols, rows) => {
   );
 
   replace(
-    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}` ,".replace(' ` ,', '`,'),
+    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}` ,".replace('` ,', '`,'),
     "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,\n      'SULANDRA_TERMINAL_CWD=/projects',",
     'terminal cwd environment',
   );
