@@ -58,7 +58,8 @@ x-executor-common: &executor-common
   tmpfs:
     - /tmp:rw,noexec,nosuid,nodev,size=64m
   depends_on:
-    - egress-proxy
+    egress-proxy:
+      condition: service_healthy
   networks:
     - gateway-internal
     - terminal-internal
@@ -86,9 +87,17 @@ services:
       - /var/cache/squid:rw,nosuid,nodev,size=64m
       - /var/log/squid:rw,nosuid,nodev,size=32m
       - /var/run/squid:rw,nosuid,nodev,size=8m
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z -w 2 127.0.0.1 3128"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
     networks:
-      - terminal-internal
-      - edge
+      terminal-internal:
+        aliases:
+          - egress-proxy
+      edge: {}
 
   caddy:
     image: caddy:2.10-alpine

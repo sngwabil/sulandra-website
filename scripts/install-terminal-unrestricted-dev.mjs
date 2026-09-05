@@ -28,35 +28,48 @@ const terminalTmpfsBytes = Math.min(
 
   replace(
     "const createSession = async (workspace, owner, cols, rows) => {\n  const active = [...sessions.values()].filter(item => item.workspaceId === workspace.id);",
-    `const ensureProjectsPath = async workspace => {
+    `const ensureDeveloperPaths = async workspace => {
   const projectsPath = path.join(workspace.cwd, '.sulandra-projects');
-  await mkdir(projectsPath, { recursive: true, mode: 0o700 });
+  const homePath = path.join(workspace.cwd, '.sulandra-home');
+  await Promise.all([
+    mkdir(projectsPath, { recursive: true, mode: 0o700 }),
+    mkdir(homePath, { recursive: true, mode: 0o700 }),
+  ]);
   const excludePath = path.join(workspace.cwd, '.git', 'info', 'exclude');
-  const marker = '.sulandra-projects/';
-  const current = await readFile(excludePath, 'utf8').catch(() => '');
-  const lines = current.split(/\\r?\\n/).map(line => line.trim());
-  if (!lines.includes(marker)) {
-    const prefix = current && !current.endsWith('\\n') ? \`\${current}\\n\` : current;
-    await writeFile(excludePath, \`\${prefix}\${marker}\\n\`, { mode: 0o600 });
+  const markers = ['.sulandra-projects/', '.sulandra-home/'];
+  let current = await readFile(excludePath, 'utf8').catch(() => '');
+  const lines = new Set(current.split(/\\r?\\n/).map(line => line.trim()));
+  for (const marker of markers) {
+    if (lines.has(marker)) continue;
+    if (current && !current.endsWith('\\n')) current += '\\n';
+    current += \`\${marker}\\n\`;
+    lines.add(marker);
   }
-  return projectsPath;
+  await writeFile(excludePath, current, { mode: 0o600 });
+  return { projectsPath, homePath };
 };
 
 const createSession = async (workspace, owner, cols, rows) => {
   const active = [...sessions.values()].filter(item => item.workspaceId === workspace.id);`,
-    'persistent clean project root',
+    'persistent project and home directories',
   );
 
   replace(
     "  const sessionId = id('term');\n  const sessionToken = crypto.randomBytes(32).toString('base64url');",
-    "  await ensureProjectsPath(workspace);\n  const sessionId = id('term');\n  const sessionToken = crypto.randomBytes(32).toString('base64url');",
-    'ensure project directory before container create',
+    "  await ensureDeveloperPaths(workspace);\n  const sessionId = id('term');\n  const sessionToken = crypto.randomBytes(32).toString('base64url');",
+    'ensure persistent developer directories before container create',
   );
 
   replace(
     "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,",
     "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,\n      'SULANDRA_TERMINAL_CWD=/projects',",
     'terminal cwd environment',
+  );
+
+  replace(
+    "    WorkingDir: '/workspace',",
+    "    WorkingDir: '/projects',",
+    'container working directory',
   );
 
   replace(
@@ -69,16 +82,23 @@ const createSession = async (workspace, owner, cols, rows) => {
       ReadonlyRootfs: false,
       NetworkMode: networkName,
       Binds: [
-        \`\${workspace.hostCwd}:/workspace:rw\`,
+        \`\${workspace.hostCwd}:/workspace:ro\`,
         \`\${workspace.hostCwd}/.sulandra-projects:/projects:rw\`,
+        \`\${workspace.hostCwd}/.sulandra-home:/home/terminal:rw\`,
       ],`,
-    'mutable isolated developer container',
+    'mutable projects, persistent home, and protected source checkout',
   );
 
   replace(
     "        '/tmp': 'rw,noexec,nosuid,nodev,size=64m,mode=1777',",
     "        '/tmp': `rw,noexec,nosuid,nodev,size=${terminalTmpfsBytes},mode=1777`,",
     'developer temporary filesystem capacity',
+  );
+
+  replace(
+    "        '/home/terminal': 'rw,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=700',\n",
+    '',
+    'persistent home replaces ephemeral tmpfs home',
   );
 
   replace(
@@ -94,22 +114,33 @@ const createSession = async (workspace, owner, cols, rows) => {
   );
 
   replace(
+    "const historyDir = path.join('/workspace', '.sulandra-terminal-history');",
+    "const historyDir = path.join('/home/terminal', '.local', 'state', 'sulandra-terminal', 'history');",
+    'history stored in persistent home',
+  );
+
+  replace(
+    "  HISTFILE: '/workspace/.bash_history',",
+    "  HISTFILE: '/home/terminal/.bash_history',",
+    'Bash history stored in persistent home',
+  );
+
+  replace(
     "    cwd: '/workspace',",
-    "    cwd: terminalCwd,",
+    '    cwd: terminalCwd,',
     'PTY starts in clean project root',
   );
 
   replace(
     "spawnBridge();\npushOutput('\\x1b[1;36mSulandra isolated Docker terminal ready.\\x1b[0m\\r\\n');",
-    "spawnBridge();\npushOutput(`\\x1b[1;36mSulandra developer terminal ready in ${terminalCwd}. Source checkout: /workspace.\\x1b[0m\\r\\n`);",
+    "spawnBridge();\npushOutput(`\\x1b[1;36mSulandra developer terminal ready in ${terminalCwd}. Protected source checkout: /workspace.\\x1b[0m\\r\\n`);",
     'startup message',
   );
 } else if (mode === 'entrypoint') {
-  replace(
-    '  /workspace >/tmp/sulandra-code-server.log 2>&1 &',
-    '  "${SULANDRA_TERMINAL_CWD:-/projects}" >/tmp/sulandra-code-server.log 2>&1 &',
-    'IDE opens clean project root',
-  );
+  const oldValue = '  /workspace >/tmp/sulandra-code-server.log 2>&1 &';
+  const newValue = '  "${TERMINAL_CWD}" >/tmp/sulandra-code-server.log 2>&1 &';
+  if (source.includes(oldValue)) source = source.replace(oldValue, newValue);
+  if (!source.includes(newValue)) throw new Error('Unrestricted dev patch failed (entrypoint): IDE opens clean project root');
 } else {
   throw new Error(`Unknown mode: ${mode}`);
 }

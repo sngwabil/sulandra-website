@@ -53,7 +53,11 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node --check /app/server.mjs \
     && grep -Fq 'CODEBASE_WORKSPACE_REUSE_V1' /app/server.mjs \
     && grep -Fq '.sulandra-projects:/projects:rw' /app/server.mjs \
+    && grep -Fq '.sulandra-home:/home/terminal:rw' /app/server.mjs \
+    && grep -Fq '${workspace.hostCwd}:/workspace:ro' /app/server.mjs \
+    && grep -Fq "WorkingDir: '/projects'" /app/server.mjs \
     && grep -Fq 'ReadonlyRootfs: false' /app/server.mjs \
+    && grep -Fq 'HTTP_PROXY=${egressProxyUrl}' /app/server.mjs \
     && grep -Fq 'TERMINAL_TMPFS_BYTES || 1_073_741_824' /app/server.mjs \
     && grep -Fq 'size=${terminalTmpfsBytes},mode=1777' /app/server.mjs \
     && grep -Fq 'tmpfsBytes: terminalTmpfsBytes' /app/server.mjs \

@@ -4,6 +4,10 @@ ARG CODE_SERVER_VERSION=4.135.0
 ARG CODE_SERVER_SHA256=300ef4e37e469e6368a4673c6a623e1c9ba8a34f42b394fb49c431a8900bc7d1
 ARG NPM_VERSION=10.9.9
 ARG BUN_VERSION=1.4.1
+ARG RAILWAY_CLI_VERSION=5.49.2
+ARG TYPESCRIPT_VERSION=7.0.2
+ARG TYPESCRIPT_LANGUAGE_SERVER_VERSION=6.0.0
+ARG PYTHON_LSP_SERVER_VERSION=1.14.0
 
 ENV NODE_ENV=production \
     NODE_USE_ENV_PROXY=1 \
@@ -25,8 +29,8 @@ ENV NODE_ENV=production \
 # Docker socket and the executor still enforces CPU/memory/PID boundaries.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      bash sudo git gh curl wget ca-certificates openssh-client rsync file \
-      build-essential cmake clang lldb gdb valgrind strace pkg-config ninja-build \
+      bash sudo git gh curl wget ca-certificates openssh-client netcat-openbsd rsync file \
+      build-essential cmake clang clangd lldb gdb valgrind strace pkg-config ninja-build \
       python3 python3-pip python3-venv \
       golang-go rustc cargo default-jdk-headless \
       postgresql-client default-mysql-client redis-tools sqlite3 \
@@ -50,7 +54,11 @@ RUN apt-get update \
     && ln -s "/opt/code-server-${CODE_SERVER_VERSION}-linux-amd64/bin/code-server" /usr/local/bin/code-server \
     && /usr/local/bin/code-server --version \
     && rm -f /tmp/code-server.tar.gz \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && printf '%s\n' \
+      'Acquire::http::Proxy "http://egress-proxy:3128";' \
+      'Acquire::https::Proxy "http://egress-proxy:3128";' \
+      > /etc/apt/apt.conf.d/90sulandra-proxy
 
 # Node 22.23.2 ships npm 10.9.8 with bundled tar 7.5.11 (CVE-2026-59873).
 # Pin the patched npm 10 line; npm 10.9.9 bundles tar 7.5.22.
@@ -62,9 +70,24 @@ RUN npm install --global "npm@${NPM_VERSION}" --no-audit --no-fund \
 RUN npm install --global "bun@${BUN_VERSION}" --no-audit --no-fund \
     && test "$(bun --version)" = "${BUN_VERSION}"
 
+RUN npm install --global \
+      "@railway/cli@${RAILWAY_CLI_VERSION}" \
+      "typescript@${TYPESCRIPT_VERSION}" \
+      "typescript-language-server@${TYPESCRIPT_LANGUAGE_SERVER_VERSION}" \
+      --no-audit --no-fund \
+    && railway --version \
+    && test "$(tsc --version | awk '{print $2}')" = "${TYPESCRIPT_VERSION}" \
+    && typescript-language-server --version
+
+RUN python3 -m venv /opt/sulandra-pylsp \
+    && /opt/sulandra-pylsp/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/sulandra-pylsp/bin/pip install --no-cache-dir "python-lsp-server[all]==${PYTHON_LSP_SERVER_VERSION}" \
+    && ln -s /opt/sulandra-pylsp/bin/pylsp /usr/local/bin/pylsp \
+    && pylsp --version
+
 # Fail the image build if a supported compiler/runtime/database/network CLI disappears.
 RUN set -eux; \
-    for cmd in node npm yarn bun python3 pip3 gcc g++ make cmake clang go rustc cargo java javac git gh psql mysql redis-cli sqlite3 sudo ss netstat wget; do \
+    for cmd in node npm yarn bun railway typescript-language-server tsc python3 pip3 pylsp gcc g++ make cmake clang clangd go rustc cargo java javac git gh psql mysql redis-cli sqlite3 sudo ss netstat wget nc; do \
       command -v "$cmd" >/dev/null; \
     done; \
     node --version; npm --version; yarn --version; bun --version; \
@@ -92,6 +115,11 @@ RUN node /tmp/install-session-agent-ide-bridge.mjs /agent/server.mjs \
     && rm -f /tmp/install-session-agent-ide-bridge.mjs /tmp/install-terminal-prompt-cursor.mjs
 COPY terminal-session-agent/entrypoint.sh ./entrypoint.sh
 COPY terminal-session-agent/bashrc ./bashrc
+COPY terminal-session-agent/profile ./profile
+COPY terminal-session-agent/setup-development-environment.sh /usr/local/bin/sulandra-codebase-setup
+COPY terminal-session-agent/codebase-doctor.sh /usr/local/bin/sulandra-codebase-doctor
+COPY terminal-session-agent/railway-login.sh /usr/local/bin/sulandra-railway-login
+COPY terminal-session-agent/protect-system-repository.sh /usr/local/lib/sulandra/protect-system-repository.sh
 COPY scripts/verify-terminal-ide-settings.mjs /tmp/verify-terminal-ide-settings.mjs
 RUN node /tmp/install-terminal-unrestricted-dev.mjs /agent/entrypoint.sh entrypoint \
     && node /tmp/verify-terminal-ide-settings.mjs /agent/entrypoint.sh \
@@ -103,9 +131,26 @@ RUN node /tmp/install-terminal-unrestricted-dev.mjs /agent/entrypoint.sh entrypo
 COPY terminal-session-agent/tmux.conf /agent/tmux.conf
 COPY terminal-session-agent/github-login.sh /usr/local/bin/sulandra-github-login
 COPY terminal-session-agent/create-pr.sh /usr/local/bin/sulandra-pr
-RUN chmod 0755 /agent/entrypoint.sh /usr/local/bin/sulandra-github-login /usr/local/bin/sulandra-pr \
-    && chmod 0644 /agent/tmux.conf /agent/bashrc \
+RUN chmod 0755 \
+      /agent/entrypoint.sh \
+      /usr/local/bin/sulandra-github-login \
+      /usr/local/bin/sulandra-pr \
+      /usr/local/bin/sulandra-codebase-setup \
+      /usr/local/bin/sulandra-codebase-doctor \
+      /usr/local/bin/sulandra-railway-login \
+      /usr/local/lib/sulandra/protect-system-repository.sh \
+    && chmod 0644 /agent/tmux.conf /agent/bashrc /agent/profile \
+    && install -d -m 0755 /usr/local/lib/sulandra-workspace-hooks \
+    && ln -s /usr/local/lib/sulandra/protect-system-repository.sh /usr/local/lib/sulandra-workspace-hooks/pre-commit \
+    && ln -s /usr/local/lib/sulandra/protect-system-repository.sh /usr/local/lib/sulandra-workspace-hooks/pre-push \
+    && printf '%s\n' '[core]' '    hooksPath = /usr/local/lib/sulandra-workspace-hooks' > /etc/gitconfig-sulandra-workspace \
+    && ln -s /usr/local/bin/sulandra-github-login /usr/local/bin/sulandra-github-auth \
+    && bash -n /usr/local/bin/sulandra-codebase-setup \
+    && bash -n /usr/local/bin/sulandra-codebase-doctor \
+    && bash -n /usr/local/bin/sulandra-github-login \
+    && bash -n /usr/local/bin/sulandra-railway-login \
     && bash --noprofile --norc -n /agent/bashrc \
+    && bash --noprofile --norc -n /agent/profile \
     && profile_check="$(PROMPT_COMMAND='printf "\\033[?25h"' bash --noprofile --rcfile /agent/bashrc -ic 'printf "PS1=%s\n" "$PS1"; alias ls; type ok; printf "PROMPT_COMMAND=%s\n" "$PROMPT_COMMAND"' 2>/dev/null)" \
     && printf '%s\n' "$profile_check" | grep -q 'PS1=.*sulandra' \
     && printf '%s\n' "$profile_check" | grep -q "alias ls='ls --color=auto'" \
