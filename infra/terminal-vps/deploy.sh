@@ -95,6 +95,104 @@ caddy_admin_ready() {
   compose exec -T caddy wget -qO- http://127.0.0.1:2019/config/ >/dev/null 2>&1
 }
 
+verify_codebase_sessions() (
+  set -euo pipefail
+  local owner="codebase:deploy-smoke:${GEN_ID}"
+  local workspace_id=""
+  local session_id=""
+
+  cleanup() {
+    if [[ -n "$session_id" ]]; then
+      curl -fsS --max-time 10 -X DELETE \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "x-sulandra-terminal-owner: $owner" \
+        "https://$DOMAIN/v1/sessions/$session_id" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "$workspace_id" ]]; then
+      curl -fsS --max-time 10 -X DELETE \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "x-sulandra-terminal-owner: $owner" \
+        "https://$DOMAIN/v1/workspaces/$workspace_id" >/dev/null 2>&1 || true
+    fi
+  }
+  trap cleanup EXIT
+
+  local workspace_json
+  workspace_json="$(curl -fsS --connect-timeout 5 --max-time 20 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data '{}' \
+    "https://$DOMAIN/v1/workspaces")"
+  workspace_id="$(sed -n 's/.*"workspaceId":"\([^"]*\)".*/\1/p' <<<"$workspace_json")"
+  if [[ -z "$workspace_id" ]]; then
+    echo "Codebase production smoke did not receive a workspaceId." >&2
+    exit 1
+  fi
+
+  for attempt in 1 2 3; do
+    local session_json output_json input_json marker ready
+    session_json="$(curl -fsS --connect-timeout 5 --max-time 60 -X POST \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "x-sulandra-terminal-owner: $owner" \
+      -H 'Content-Type: application/json' \
+      --data '{"cols":120,"rows":32}' \
+      "https://$DOMAIN/v1/workspaces/$workspace_id/sessions")"
+    session_id="$(sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p' <<<"$session_json")"
+    if [[ -z "$session_id" ]]; then
+      echo "Codebase production smoke attempt $attempt did not receive a sessionId." >&2
+      exit 1
+    fi
+
+    output_json="$(curl -fsS --connect-timeout 5 --max-time 15 \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "x-sulandra-terminal-owner: $owner" \
+      "https://$DOMAIN/v1/sessions/$session_id/output?cursor=0")"
+    grep -Fq '"alive":true' <<<"$output_json"
+
+    marker="CODEBASE_DEPLOY_SMOKE_${attempt}_${GEN_ID}"
+    input_json="{\"data\":\"printf '${marker}'\\r\"}"
+    curl -fsS --connect-timeout 5 --max-time 15 -X POST \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "x-sulandra-terminal-owner: $owner" \
+      -H 'Content-Type: application/json' \
+      --data "$input_json" \
+      "https://$DOMAIN/v1/sessions/$session_id/input" >/dev/null
+
+    ready=false
+    for poll in {1..20}; do
+      output_json="$(curl -fsS --connect-timeout 5 --max-time 15 \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "x-sulandra-terminal-owner: $owner" \
+        "https://$DOMAIN/v1/sessions/$session_id/output?cursor=0")"
+      if grep -Fq "$marker" <<<"$output_json"; then
+        ready=true
+        break
+      fi
+      sleep 0.5
+    done
+    if [[ "$ready" != true ]]; then
+      echo "Codebase production smoke attempt $attempt did not accept PTY input." >&2
+      exit 1
+    fi
+
+    curl -fsS --max-time 10 -X DELETE \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "x-sulandra-terminal-owner: $owner" \
+      "https://$DOMAIN/v1/sessions/$session_id" >/dev/null
+    session_id=""
+    echo "Codebase real-session smoke attempt $attempt passed."
+  done
+
+  curl -fsS --max-time 10 -X DELETE \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    "https://$DOMAIN/v1/workspaces/$workspace_id" >/dev/null
+  workspace_id=""
+  trap - EXIT
+  echo "Three real Codebase terminal sessions provisioned, accepted PTY input, and cleaned up successfully."
+)
+
 install -d -o 10001 -g 10001 -m 0700 /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state
 rm -rf "$SEED_NEXT"
 install -d -o root -g root -m 0755 "$SEED_NEXT"
@@ -218,6 +316,12 @@ for attempt in {1..45}; do
   sleep 2
 done
 
+# A green controller health endpoint is not enough: create real Codebase sessions
+# through the promoted public execution edge and prove each PTY accepts input.
+# Project removal must never be able to leave production with a nominally healthy
+# gateway that cannot actually provision a new terminal.
+verify_codebase_sessions
+
 # Retire only executor generations that have no established client streams.
 # After a graceful Caddy reload, old WebSockets continue through the old
 # controller until they naturally close. A detached collector removes those
@@ -283,6 +387,7 @@ if (( ${#generations[@]} > 12 )); then
 fi
 
 echo "Terminal execution plane is healthy at https://$DOMAIN"
+echo "Codebase real-session smoke: 3/3 passed"
 echo "Zero-downtime executor generation: $GEN_ID"
 echo "HA executors: $GEN_A + $GEN_B"
 echo "Controlled egress: GitHub/npm/PyPI/crates.io/Railway verified through Squid"
