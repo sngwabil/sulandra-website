@@ -6,6 +6,7 @@
     "watchPatterns": [
       "Dockerfile.database-cutover",
       "scripts/database-provider-cutover.sh",
+      "scripts/database-provider-cutover-launcher.sh",
       "railway.database-cutover.json"
     ]
   },
