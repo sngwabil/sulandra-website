@@ -12,6 +12,21 @@ const replace = (from, to, label) => {
 
 if (mode === 'executor') {
   replace(
+    "const pidsLimit = Math.max(64, Number(process.env.TERMINAL_PIDS_LIMIT || 256));",
+    `const pidsLimit = Math.max(64, Number(process.env.TERMINAL_PIDS_LIMIT || 256));
+const requestedTmpfsBytes = Number(process.env.TERMINAL_TMPFS_BYTES || 1_073_741_824);
+const terminalTmpfsCeiling = Math.max(67_108_864, Math.floor(memoryBytes / 2));
+const terminalTmpfsBytes = Math.min(
+  terminalTmpfsCeiling,
+  Math.max(
+    134_217_728,
+    Number.isFinite(requestedTmpfsBytes) ? Math.floor(requestedTmpfsBytes) : 1_073_741_824,
+  ),
+);`,
+    'configurable session temporary filesystem capacity',
+  );
+
+  replace(
     "const createSession = async (workspace, owner, cols, rows) => {\n  const active = [...sessions.values()].filter(item => item.workspaceId === workspace.id);",
     `const ensureProjectsPath = async workspace => {
   const projectsPath = path.join(workspace.cwd, '.sulandra-projects');
@@ -21,8 +36,8 @@ if (mode === 'executor') {
   const current = await readFile(excludePath, 'utf8').catch(() => '');
   const lines = current.split(/\\r?\\n/).map(line => line.trim());
   if (!lines.includes(marker)) {
-    const prefix = current && !current.endsWith('\\n') ? \`\${current}\\n\` : current;
-    await writeFile(excludePath, \`\${prefix}\${marker}\\n\`, { mode: 0o600 });
+    const prefix = current && !current.endsWith('\\n') ? \`${current}\\n\` : current;
+    await writeFile(excludePath, \`${prefix}${marker}\\n\`, { mode: 0o600 });
   }
   return projectsPath;
 };
@@ -39,8 +54,8 @@ const createSession = async (workspace, owner, cols, rows) => {
   );
 
   replace(
-    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,",
-    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,\n      'SULANDRA_TERMINAL_CWD=/projects',",
+    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}` ,",
+    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}` ,\n      'SULANDRA_TERMINAL_CWD=/projects',",
     'terminal cwd environment',
   );
 
@@ -49,15 +64,27 @@ const createSession = async (workspace, owner, cols, rows) => {
       CapDrop: ['ALL'],
       SecurityOpt: ['no-new-privileges:true'],
       NetworkMode: networkName,
-      Binds: [\`\${workspace.hostCwd}:/workspace:rw\`],`,
+      Binds: [\`${workspace.hostCwd}:/workspace:rw\`],`,
     `      Privileged: false,
       ReadonlyRootfs: false,
       NetworkMode: networkName,
       Binds: [
-        \`\${workspace.hostCwd}:/workspace:rw\`,
-        \`\${workspace.hostCwd}/.sulandra-projects:/projects:rw\`,
+        \`${workspace.hostCwd}:/workspace:rw\`,
+        \`${workspace.hostCwd}/.sulandra-projects:/projects:rw\`,
       ],`,
     'mutable isolated developer container',
+  );
+
+  replace(
+    "        '/tmp': 'rw,noexec,nosuid,nodev,size=64m,mode=1777',",
+    "        '/tmp': `rw,noexec,nosuid,nodev,size=${terminalTmpfsBytes},mode=1777`,",
+    'developer temporary filesystem capacity',
+  );
+
+  replace(
+    "      cgroups: { memoryBytes, nanoCpus, pidsLimit },",
+    "      cgroups: { memoryBytes, nanoCpus, pidsLimit, tmpfsBytes: terminalTmpfsBytes },",
+    'temporary filesystem health telemetry',
   );
 } else if (mode === 'session') {
   replace(
