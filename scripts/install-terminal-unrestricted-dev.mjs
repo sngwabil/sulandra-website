@@ -61,7 +61,7 @@ const createSession = async (workspace, owner, cols, rows) => {
   );
 
   replace(
-    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,",
+    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}` ,".replace(' ` ,', '`,'),
     "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,\n      'SULANDRA_TERMINAL_CWD=/projects',",
     'terminal cwd environment',
   );
@@ -135,6 +135,57 @@ const createSession = async (workspace, owner, cols, rows) => {
     "spawnBridge();\npushOutput('\\x1b[1;36mSulandra isolated Docker terminal ready.\\x1b[0m\\r\\n');",
     "spawnBridge();\npushOutput(`\\x1b[1;36mSulandra developer terminal ready in ${terminalCwd}. Protected source checkout: /workspace.\\x1b[0m\\r\\n`);",
     'startup message',
+  );
+
+  replace(
+    `const ensureBridge = () => {
+  if (!alive || !proc) spawnBridge();
+};`,
+    `const ensureBridge = () => {
+  if (!alive || !proc) spawnBridge();
+};
+
+/* TERMINAL_AGENT_DETERMINISTIC_READINESS_V1
+   PTY output is not a reliable readiness signal. A healthy interactive shell can
+   legitimately produce no bytes while tmux is already accepting input. Confirm
+   the tmux session directly so executor startup cannot spend tens of seconds
+   polling a false-negative /health response and surface a generic fetch error. */
+const confirmBridgeReady = async () => {
+  if (!alive || !proc) return false;
+  if (bridgeReady) return true;
+  try {
+    await execFileAsync('tmux', [
+      '-f', tmuxConfigPath,
+      'has-session', '-t', tmuxSession,
+    ], { encoding: 'utf8', env: shellEnv, timeout: 1_000 });
+    bridgeReady = true;
+    return true;
+  } catch {
+    return false;
+  }
+};`,
+    'deterministic tmux readiness',
+  );
+
+  replace(
+    `app.get('/health', authorize, async (_req, res) => {
+  await historyWrite;
+  const info = await stat(historyPath).catch(() => ({ size: 0 }));
+  if (!alive || !bridgeReady) {
+    return res.status(503).json({ ok: false, pty: true, tmux: true, workspaceId, alive, ready: false, transcriptBytes: Number(info.size) || 0 });
+  }
+  res.json({ ok: true, pty: true, tmux: true, workspaceId, alive, ready: true, transcriptBytes: Number(info.size) || 0 });
+});`,
+    `app.get('/health', authorize, async (_req, res) => {
+  await historyWrite;
+  const info = await stat(historyPath).catch(() => ({ size: 0 }));
+  const ready = await confirmBridgeReady();
+  if (!alive || !ready) {
+    return res.status(503).json({ ok: false, pty: true, tmux: true, workspaceId, alive, ready: false, transcriptBytes: Number(info.size) || 0 });
+  }
+  res.json({ ok: true, pty: true, tmux: true, workspaceId, alive, ready: true, transcriptBytes: Number(info.size) || 0 });
+});`,
+    'authenticated health readiness',
   );
 } else if (mode === 'entrypoint') {
   const oldValue = '  /workspace >/tmp/sulandra-code-server.log 2>&1 &';
