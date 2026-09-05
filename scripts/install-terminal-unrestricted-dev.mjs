@@ -82,8 +82,8 @@ const createSession = async (workspace, owner, cols, rows) => {
   );
 
   replace(
-    "      cgroups: { memoryBytes, nanoCpus, pidsLimit },",
-    "      cgroups: { memoryBytes, nanoCpus, pidsLimit, tmpfsBytes: terminalTmpfsBytes },",
+    "      cgroups: { interactive: { memoryBytes, nanoCpus, pidsLimit }, build: { memoryBytes: buildMemoryBytes, nanoCpus: buildNanoCpus, pidsLimit: buildPidsLimit } },",
+    "      cgroups: { interactive: { memoryBytes, nanoCpus, pidsLimit, tmpfsBytes: terminalTmpfsBytes }, build: { memoryBytes: buildMemoryBytes, nanoCpus: buildNanoCpus, pidsLimit: buildPidsLimit, tmpfsBytes: terminalTmpfsBytes } },",
     'temporary filesystem health telemetry',
   );
 } else if (mode === 'session') {
