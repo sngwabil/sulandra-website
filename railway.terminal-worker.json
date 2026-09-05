@@ -19,6 +19,7 @@
       "scripts/install-codebase-pty-session-resume.mjs",
       "scripts/fix-codebase-preview-owner-namespace.mjs",
       "scripts/install-codebase-project-gateway.mjs",
+      "scripts/harden-terminal-execution-http.mjs",
       "terminal-session-agent/**",
       "Dockerfile.terminal-session",
       "terminal-execution-plane/**",
