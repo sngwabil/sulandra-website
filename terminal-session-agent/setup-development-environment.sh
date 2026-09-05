@@ -3,7 +3,26 @@ set -Eeuo pipefail
 
 # Idempotent per-session bootstrap. /home/terminal is a persistent, private
 # bind mount, so one-time GitHub and Railway logins survive session recreation.
-PROJECTS_DIR="${SULANDRA_TERMINAL_CWD:-/projects}"
+# /projects is the durable project root. A selected project is only a requested
+# terminal cwd; never recreate a deleted project merely because an older session
+# still carries that path in SULANDRA_TERMINAL_CWD.
+PROJECTS_DIR="/projects"
+REQUESTED_TERMINAL_CWD="${SULANDRA_TERMINAL_CWD:-/projects}"
+if [[ "${REQUESTED_TERMINAL_CWD}" != "/projects" && "${REQUESTED_TERMINAL_CWD}" != /projects/* ]]; then
+  REQUESTED_TERMINAL_CWD="/projects"
+fi
+mkdir -p "${PROJECTS_DIR}"
+if [[ ! -d "${REQUESTED_TERMINAL_CWD}" ]]; then
+  REQUESTED_TERMINAL_CWD="/projects"
+fi
+export SULANDRA_TERMINAL_CWD="${REQUESTED_TERMINAL_CWD}"
+# entrypoint.sh defines TERMINAL_CWD before sourcing this script. When this file
+# is sourced there, update that shell variable too so a restarted container falls
+# back to /projects instead of entering a restart loop on a removed project path.
+if [[ -n "${TERMINAL_CWD+x}" ]]; then
+  TERMINAL_CWD="${REQUESTED_TERMINAL_CWD}"
+fi
+
 PROXY_URL="${TERMINAL_EGRESS_PROXY_URL:-${HTTPS_PROXY:-${HTTP_PROXY:-http://egress-proxy:3128}}}"
 GIT_NAME="${SULANDRA_GIT_USER_NAME:-Sulpitius Gwabil}"
 GIT_EMAIL="${SULANDRA_GIT_USER_EMAIL:-Sulpitius.gwabil@gmail.com}"
@@ -114,4 +133,3 @@ export HTTP_PROXY="${PROXY_URL}" HTTPS_PROXY="${PROXY_URL}"
 export http_proxy="${PROXY_URL}" https_proxy="${PROXY_URL}"
 export NODE_USE_ENV_PROXY=1
 export NO_PROXY='localhost,127.0.0.1,::1' no_proxy='localhost,127.0.0.1,::1'
-
