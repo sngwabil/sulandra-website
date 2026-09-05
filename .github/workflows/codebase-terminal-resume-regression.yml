@@ -39,7 +39,7 @@ jobs:
     env:
       EXECUTION_TOKEN: ci-execution-token-0123456789abcdef0123456789abcdef
       INTERNAL_TOKEN: ci-terminal-internal-token
-      JWT_SECRET: ci-jwt-secret-0123456789abcdef0123456789abcdef
+      JWT_SECRET: ci-jwt-test-secret
       SESSION_IMAGE: sulandra-terminal-session:codebase-resume-ci
       EXECUTOR_IMAGE: sulandra-terminal-executor:codebase-resume-ci
       NETWORK: sulandra-codebase-resume-ci
