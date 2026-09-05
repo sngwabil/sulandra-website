@@ -11,6 +11,7 @@ const child = spawn(process.execPath, [target], {
     TERMINAL_AUTH_TOKEN: 'ci-internal-token',
     TERMINAL_EXECUTION_BASE_URL: 'https://127.0.0.1:65535',
     TERMINAL_EXECUTION_TOKEN: 'ci-execution-token-0123456789abcdef0123456789abcdef',
+    TERMINAL_DNS_RESULT_ORDER: 'ipv4first',
     TERMINAL_WS_AUTH_PROVIDER: 'sulandra',
     JWT_SECRET: 'ci-workspace-ticket-cors-secret',
   },
@@ -43,6 +44,10 @@ try {
     }
   }
   if (!response) throw new Error(`Gateway did not start for CORS verification:\n${output}`);
+  const health = await fetch(`http://127.0.0.1:${port}/health`).then(response => response.json());
+  if (health.network?.dnsResultOrder !== 'ipv4first') {
+    throw new Error(`Gateway did not apply the IPv4-first execution DNS route: ${JSON.stringify(health.network)}`);
+  }
   if (response.status !== 204) throw new Error(`Expected Sulandra preflight 204, received ${response.status}`);
   if (response.headers.get('access-control-allow-origin') !== 'https://sulandrahealth.com') {
     throw new Error(`Unexpected Access-Control-Allow-Origin: ${response.headers.get('access-control-allow-origin')}`);

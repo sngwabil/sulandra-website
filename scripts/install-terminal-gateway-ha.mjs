@@ -20,10 +20,18 @@ replace(
   'liveness/readiness split',
 );
 
-replace(
+const listenAnchors = [
   `server.listen(port, '0.0.0.0', () => {
   console.log(\`Sulandra terminal gateway listening on 0.0.0.0:\${port}\`);
 });`,
+  `server.listen(port, '0.0.0.0', () => {
+  console.log(\`Sulandra terminal gateway listening on 0.0.0.0:\${port} (execution DNS: \${executionDnsResultOrder})\`);
+});`,
+];
+const listenAnchor = listenAnchors.find(anchor => source.includes(anchor));
+if (!listenAnchor) throw new Error('Terminal gateway HA patch failed: graceful shutdown');
+source = source.replace(
+  listenAnchor,
   `let shuttingDown = false;
 const shutdown = signal => {
   if (shuttingDown) return;
@@ -44,7 +52,6 @@ process.once('SIGINT', () => shutdown('SIGINT'));
 server.listen(port, '0.0.0.0', () => {
   console.log(\`Sulandra terminal gateway listening on 0.0.0.0:\${port}\`);
 });`,
-  'graceful shutdown',
 );
 
 fs.writeFileSync(target, source);

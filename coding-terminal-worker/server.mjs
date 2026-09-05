@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { setDefaultResultOrder } from 'node:dns';
 import { createServer } from 'node:http';
 import express from 'express';
 import jwt from 'jsonwebtoken';
@@ -14,6 +15,10 @@ const port = Number(process.env.PORT || 8080);
 const authToken = String(process.env.TERMINAL_AUTH_TOKEN || '').trim();
 const executionBaseUrl = String(process.env.TERMINAL_EXECUTION_BASE_URL || '').trim().replace(/\/$/, '');
 const executionToken = String(process.env.TERMINAL_EXECUTION_TOKEN || '').trim();
+// Railway production does not have IPv6 egress, while the execution edge
+// publishes both A and AAAA records. Prefer the tested IPv4 route for every
+// fetch and WebSocket connection made by this gateway.
+const executionDnsResultOrder = String(process.env.TERMINAL_DNS_RESULT_ORDER || 'ipv4first').trim().toLowerCase();
 const executionRequestTimeoutMs = Math.max(2_000, Number(process.env.TERMINAL_EXECUTION_TIMEOUT_MS || 20_000));
 const wsBytesPerSecond = Math.max(16_384, Number(process.env.TERMINAL_WS_BYTES_PER_SECOND || 262_144));
 const wsBurstBytes = Math.max(wsBytesPerSecond, Number(process.env.TERMINAL_WS_BURST_BYTES || 524_288));
@@ -30,10 +35,30 @@ if (!executionBaseUrl || !/^https:\/\//i.test(executionBaseUrl)) {
   throw new Error('TERMINAL_EXECUTION_BASE_URL must be an https:// URL');
 }
 if (!executionToken || executionToken.length < 32) throw new Error('TERMINAL_EXECUTION_TOKEN must be at least 32 characters');
+if (!['ipv4first', 'verbatim'].includes(executionDnsResultOrder)) {
+  throw new Error('TERMINAL_DNS_RESULT_ORDER must be ipv4first or verbatim');
+}
 if (!['sulandra', 'firebase'].includes(wsAuthProvider)) throw new Error('TERMINAL_WS_AUTH_PROVIDER must be sulandra or firebase');
 if (wsAuthProvider === 'sulandra' && !jwtSecret) throw new Error('JWT_SECRET is required for Sulandra WebSocket authentication');
 if (wsAuthProvider === 'firebase' && !firebaseProjectId) throw new Error('FIREBASE_PROJECT_ID is required for Firebase WebSocket authentication');
 if (wsAuthProvider === 'firebase' && !getApps().length) initializeApp({ projectId: firebaseProjectId });
+
+setDefaultResultOrder(executionDnsResultOrder);
+const executionWebSocketOptions = executionDnsResultOrder === 'ipv4first' ? { family: 4 } : {};
+
+const executionFailureCode = error => {
+  const code = String(error?.cause?.code || error?.code || '').trim();
+  return /^[A-Za-z0-9_-]{1,48}$/.test(code) ? code.toUpperCase() : '';
+};
+const executionUnavailable = error => {
+  const code = executionFailureCode(error);
+  const unavailable = new Error(code
+    ? `Terminal execution plane network unavailable (${code})`
+    : 'Terminal execution plane network unavailable');
+  unavailable.status = 503;
+  unavailable.cause = error;
+  return unavailable;
+};
 
 const secureEquals = (provided, configured) => {
   if (!provided || !configured) return false;
@@ -94,7 +119,8 @@ const executionRequest = async (req, pathname, options = {}) => {
       timeout.status = 504;
       throw timeout;
     }
-    throw error;
+    if (Number.isFinite(Number(error?.status))) throw error;
+    throw executionUnavailable(error);
   } finally {
     clearTimeout(timer);
   }
@@ -110,7 +136,9 @@ app.get('/health', async (_req, res) => {
     });
     executionHealthy = response.ok;
     executionStatus = response.ok ? 'ready' : `http-${response.status}`;
-  } catch {}
+  } catch (error) {
+    executionStatus = `network-${executionFailureCode(error) || 'error'}`;
+  }
   res.status(executionHealthy ? 200 : 503).json({
     ok: executionHealthy,
     gateway: true,
@@ -119,6 +147,7 @@ app.get('/health', async (_req, res) => {
     browserJwtConfigured: wsAuthProvider === 'sulandra' ? Boolean(jwtSecret) : undefined,
     firebaseCheckRevoked: wsAuthProvider === 'firebase' ? firebaseCheckRevoked : undefined,
     executionPlane: { configured: true, healthy: executionHealthy, status: executionStatus },
+    network: { dnsResultOrder: executionDnsResultOrder },
     rateLimit: { bytesPerSecond: wsBytesPerSecond, burstBytes: wsBurstBytes },
   });
 });
@@ -295,6 +324,7 @@ wss.on('connection', (browser, req) => {
   let pendingBytes = 0;
   const maxPendingBytes = 65_536;
   const upstream = new WebSocket(executionWsUrl(`/v1/ws/sessions/${encodeURIComponent(sessionId)}`), ['sulandra-executor.v1'], {
+    ...executionWebSocketOptions,
     headers: {
       Authorization: `Bearer ${executionToken}`,
       'x-sulandra-terminal-owner': owner,
@@ -370,5 +400,5 @@ const heartbeat = setInterval(() => {
 heartbeat.unref?.();
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`Sulandra terminal gateway listening on 0.0.0.0:${port}`);
+  console.log(`Sulandra terminal gateway listening on 0.0.0.0:${port} (execution DNS: ${executionDnsResultOrder})`);
 });

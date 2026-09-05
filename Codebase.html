@@ -89,10 +89,13 @@
   .header-actions span:hover { opacity: 0.8; }
 
   .main-area { display: flex; flex: 1; min-height: 0; }
-  .global-resizer { width: 6px; background: transparent; cursor: col-resize; z-index: 20; position: relative; margin: 0 -3px; }
+  .global-resizer { width: 6px; flex: 0 0 6px; background: transparent; cursor: col-resize; z-index: 30; position: relative; margin: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .global-resizer::before { content: ''; position: absolute; z-index: 1; inset: 0 -5px; }
   .global-resizer:hover, .global-resizer.resizing { background: rgba(255,255,255,0.2); }
   .global-resizer-bottom { height: 4px; background: transparent; cursor: row-resize; z-index: 20; position: relative; margin: -2px 0; }
   .global-resizer-bottom:hover, .global-resizer-bottom.resizing { background: var(--cb-blue); }
+  .codebase-app.codebase-panel-resizing, .codebase-app.codebase-panel-resizing * { cursor: col-resize !important; user-select: none !important; -webkit-user-select: none !important; }
+  .codebase-app.codebase-panel-resizing iframe { pointer-events: none !important; }
 
   /* Left Toolbox with Dedicated Color Hierarchy */
   .sidebar-toolbox { width: 48px; flex: 0 0 48px; border-right: 1px solid var(--cb-glass-border); display: flex; flex-direction: column; align-items: center; padding-top: 12px; gap: 16px; background: rgba(0,0,0,0.2); }
@@ -225,7 +228,7 @@
     </div>
     <div class="header-actions">
       <span style="color: #81c784;" onclick="fetchFileSystem()">⟳ Refresh</span>
-      <span style="color: #81c784;" onclick="document.getElementById('resizer-right').style.display='block'; document.getElementById('sidebar-right').style.flex='0 0 380px'; switchRightPanel('ide');">⌘ IDE</span>
+      <span style="color: #81c784;" onclick="openRightPanel(); switchRightPanel('ide');">⌘ IDE</span>
       <span onclick="openTerminal()" style="color: #ffffff;">>_ Terminal</span>
       <span onclick="toggleFullScreen()" style="color: #42a5f5;">⛶ Full Screen</span>
       <span style="color: #e57373;">✕ Exit Codebase</span>
@@ -309,7 +312,7 @@
         <div id="sidebar-settings" class="sidebar-view">
           <div class="mock-panel-content">
             <h3 style="color:#fff; margin-top:0;">Workspace Settings</h3>
-            <button class="btn-primary" onclick="document.getElementById('resizer-right').style.display='block'; document.getElementById('sidebar-right').style.flex='0 0 380px'; switchRightPanel('ide');">Open Full Settings</button>
+            <button class="btn-primary" onclick="openRightPanel(); switchRightPanel('ide');">Open Full Settings</button>
           </div>
         </div>
       </div>
@@ -366,7 +369,7 @@
             <h2 style="margin: 0; color: #fff; font-size: 16px;">Preview</h2>
             <div style="display: flex; gap: 8px;">
               <button onclick="window.open(document.getElementById('railway-preview-iframe').src)" style="background: transparent; border: 1px solid var(--cb-glass-border); color: #fff; padding: 4px 8px; border-radius: 4px; cursor: pointer;" title="Open in new window">🗗</button>
-              <button onclick="document.getElementById('sidebar-right').style.flex='0 0 0px'; document.getElementById('resizer-right').style.display='none';" style="background: transparent; border: none; color: #fff; padding: 4px; cursor: pointer;" title="Close Panel">✕</button>
+              <button onclick="closeRightPanel();" style="background: transparent; border: none; color: #fff; padding: 4px; cursor: pointer;" title="Close Panel">✕</button>
             </div>
           </div>
 
@@ -557,29 +560,90 @@
     document.getElementById('sidebar-title-text').innerText = titleMap[viewId] || 'EXPLORER';
   }
 
+  function rightPanelMaxWidth() {
+    const area = document.querySelector('.main-area');
+    const width = area?.getBoundingClientRect().width || window.innerWidth || 0;
+    return Math.max(0, Math.min(760, Math.floor(width * 0.25)));
+  }
+
+  function setRightPanelWidth(width) {
+    const panel = document.getElementById('sidebar-right');
+    if (!panel) return 0;
+    const requested = Math.max(0, Number(width) || 0);
+    const next = requested < 40 ? 0 : Math.min(requested, rightPanelMaxWidth());
+    panel.style.flex = `0 0 ${next}px`;
+    return next;
+  }
+
+  function openRightPanel() {
+    const resizer = document.getElementById('resizer-right');
+    if (resizer) resizer.style.display = 'block';
+    return setRightPanelWidth(Math.min(380, rightPanelMaxWidth()));
+  }
+
+  function closeRightPanel() {
+    setRightPanelWidth(0);
+    const resizer = document.getElementById('resizer-right');
+    if (resizer) resizer.style.display = 'none';
+  }
+
   function switchRightPanel(viewName) {
     document.querySelectorAll('.rp-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.rp-view').forEach(v => v.classList.remove('active'));
     document.getElementById(`tab-${viewName}`).classList.add('active');
     document.getElementById(`view-${viewName}`).classList.add('active');
-    document.getElementById('resizer-right').style.display='block'; 
-    if (document.getElementById('sidebar-right').getBoundingClientRect().width < 10) {
-      document.getElementById('sidebar-right').style.flex='0 0 380px';
-    }
+    document.getElementById('resizer-right').style.display='block';
+    const panel = document.getElementById('sidebar-right');
+    if (panel.getBoundingClientRect().width < 10) openRightPanel();
+    else setRightPanelWidth(panel.getBoundingClientRect().width);
   }
 
   function initGlobalResizer(resizerId, panelId, isLeft) {
     const resizer = document.getElementById(resizerId); const panel = document.getElementById(panelId);
-    resizer.addEventListener('mousedown', (e) => {
-      e.preventDefault(); document.body.style.cursor = 'col-resize'; resizer.classList.add('resizing');
-      let startX = e.clientX; let startWidth = panel.getBoundingClientRect().width;
-      const onMouseMove = (me) => { let newWidth = isLeft ? startWidth + (me.clientX - startX) : startWidth - (me.clientX - startX); panel.style.flex = `0 0 ${Math.max(0, newWidth)}px`; };
-      const onMouseUp = () => { document.body.style.cursor = 'default'; resizer.classList.remove('resizing'); document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); };
-      document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
-    });
+    if (!resizer || !panel) return;
+    resizer.addEventListener('pointerdown', (event) => {
+      if ((event.button !== 0 && event.pointerType !== 'touch') || resizer.dataset.dragging === 'true') return;
+      event.preventDefault(); event.stopPropagation();
+      resizer.dataset.dragging = 'true';
+      const app = document.getElementById('codebase-app');
+      const startX = event.clientX; const startWidth = panel.getBoundingClientRect().width;
+      const pointerId = event.pointerId;
+      const applyWidth = clientX => {
+        const delta = clientX - startX;
+        const raw = isLeft ? startWidth + delta : startWidth - delta;
+        if (isLeft) {
+          const next = raw < 40 ? 0 : Math.min(620, Math.max(180, raw));
+          panel.style.flex = `0 0 ${next}px`;
+        } else {
+          setRightPanelWidth(raw);
+        }
+        window.dispatchEvent(new CustomEvent('sulandra:workspace-layout-resized'));
+      };
+      const finish = () => {
+        if (resizer.dataset.dragging !== 'true') return;
+        resizer.dataset.dragging = 'false';
+        resizer.classList.remove('resizing');
+        app?.classList.remove('codebase-panel-resizing');
+        window.removeEventListener('pointermove', onPointerMove, true);
+        window.removeEventListener('pointerup', finish, true);
+        window.removeEventListener('pointercancel', finish, true);
+        resizer.removeEventListener('lostpointercapture', finish);
+        try { if (resizer.hasPointerCapture?.(pointerId)) resizer.releasePointerCapture(pointerId); } catch {}
+      };
+      const onPointerMove = moveEvent => applyWidth(moveEvent.clientX);
+      resizer.classList.add('resizing');
+      app?.classList.add('codebase-panel-resizing');
+      try { resizer.setPointerCapture?.(pointerId); } catch {}
+      window.addEventListener('pointermove', onPointerMove, true);
+      window.addEventListener('pointerup', finish, true);
+      window.addEventListener('pointercancel', finish, true);
+      resizer.addEventListener('lostpointercapture', finish);
+    }, true);
   }
   initGlobalResizer('resizer-left', 'sidebar-left', true);
   initGlobalResizer('resizer-right', 'sidebar-right', false);
+  requestAnimationFrame(() => setRightPanelWidth(document.getElementById('sidebar-right').getBoundingClientRect().width));
+  window.addEventListener('resize', () => setRightPanelWidth(document.getElementById('sidebar-right').getBoundingClientRect().width), { passive: true });
 
   function initBottomResizer() {
     const resizer = document.getElementById('resizer-bottom'); const bar = document.getElementById('bottom-bar');
