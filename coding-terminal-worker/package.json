@@ -10,6 +10,7 @@
     "express": "^4.21.2",
     "firebase-admin": "^13.4.0",
     "jsonwebtoken": "^9.0.2",
+    "undici": "7.16.0",
     "ws": "^8.18.3"
   }
 }
