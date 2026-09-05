@@ -32,6 +32,10 @@ x-executor-common: &executor-common
     TERMINAL_MEMORY_BYTES: "4294967296"
     TERMINAL_NANO_CPUS: "2000000000"
     TERMINAL_PIDS_LIMIT: "256"
+    # Developer tooling regularly uses /tmp for compiler intermediates, package
+    # extraction, preview servers, and Git helpers. 1 GiB remains capped at no
+    # more than half of the per-session memory limit by the executor.
+    TERMINAL_TMPFS_BYTES: "1073741824"
     TERMINAL_IDE_PORT: "13337"
     TERMINAL_BUILD_MEMORY_BYTES: "4294967296"
     TERMINAL_BUILD_NANO_CPUS: "2000000000"
