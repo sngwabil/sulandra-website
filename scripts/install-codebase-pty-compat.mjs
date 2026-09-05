@@ -108,6 +108,9 @@ codebasePtyWss.on('connection', (browser, req) => {
     handshakeTimeout: 10_000,
     maxPayload: 1_048_576,
   });
+  const pendingFrames = [];
+  let pendingBytes = 0;
+  const maxPendingBytes = 65_536;
   let closed = false;
   const closeBoth = (code = 1011, reason = 'Codebase PTY proxy closed') => {
     const safeCode = normalizeWsCloseCode(code);
@@ -116,6 +119,13 @@ codebasePtyWss.on('connection', (browser, req) => {
     if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) { try { upstream.close(safeCode, safeReason); } catch {} }
   };
   browser.send(JSON.stringify({ type: 'session', sessionId, workspaceId }));
+  upstream.on('open', () => {
+    for (const frame of pendingFrames.splice(0)) {
+      if (upstream.readyState !== WebSocket.OPEN) break;
+      upstream.send(frame.data, { binary: frame.isBinary });
+    }
+    pendingBytes = 0;
+  });
   upstream.on('message', (data, isBinary) => { if (browser.readyState === WebSocket.OPEN) browser.send(data, { binary: isBinary }); });
   upstream.on('close', (code, reason) => { if (browser.readyState === WebSocket.OPEN) browser.close(normalizeWsCloseCode(code), closeReason(reason)); });
   upstream.on('error', () => closeBoth(1011, 'Execution plane unavailable'));
@@ -134,7 +144,19 @@ codebasePtyWss.on('connection', (browser, req) => {
         } catch {}
       }
     }
-    if (upstream.readyState === WebSocket.OPEN) upstream.send(data, { binary: isBinary });
+    const bytes = Buffer.isBuffer(data) ? data.length : Buffer.byteLength(String(data));
+    if (upstream.readyState === WebSocket.OPEN) {
+      upstream.send(data, { binary: isBinary });
+      return;
+    }
+    if (upstream.readyState === WebSocket.CONNECTING) {
+      if (pendingBytes + bytes > maxPendingBytes) {
+        closeBoth(1008, 'Codebase terminal startup input buffer exceeded');
+        return;
+      }
+      pendingFrames.push({ data: isBinary ? Buffer.from(data) : String(data), isBinary });
+      pendingBytes += bytes;
+    }
   });
   browser.on('close', () => {
     if (closed) return;
@@ -142,14 +164,26 @@ codebasePtyWss.on('connection', (browser, req) => {
     if (upstream.readyState === WebSocket.OPEN || upstream.readyState === WebSocket.CONNECTING) { try { upstream.close(1000, 'Browser disconnected'); } catch {} }
     setTimeout(() => void destroyCodebaseCompatSession(owner, sessionId), 1_000).unref?.();
   });
+  browser.on('close', () => {
+    pendingFrames.length = 0;
+    pendingBytes = 0;
+  });
   browser.on('error', () => closeBoth(1011, 'Browser PTY socket failed'));
 });
 
 `;
 replaceOnce("wss.on('connection', (browser, req) => {", `${connectionHandler}wss.on('connection', (browser, req) => {`, 'PTY connection handler');
 
-if (!source.includes('CODEBASE_PTY_COMPAT_V1') || !source.includes('CODEBASE_OWNER_NAMESPACE_V2') || !source.includes("url.pathname === '/pty'") || !source.includes("type: 'session'")) {
-  throw new Error('Codebase PTY compatibility markers are missing after installation');
+for (const required of [
+  'CODEBASE_PTY_COMPAT_V1',
+  'CODEBASE_OWNER_NAMESPACE_V2',
+  "url.pathname === '/pty'",
+  "type: 'session'",
+  'const pendingFrames = [];',
+  "upstream.on('open'",
+  'Codebase terminal startup input buffer exceeded',
+]) {
+  if (!source.includes(required)) throw new Error(`Codebase PTY compatibility marker is missing after installation: ${required}`);
 }
 
 await writeFile(target, source, 'utf8');
