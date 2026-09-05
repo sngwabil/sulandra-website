@@ -304,9 +304,10 @@
 
   async function loadDashboard() {
     try {
-      const data = await api("/api/admin/dashboard");
-      if ($("kpiEmployees")) $("kpiEmployees").textContent = data.staff ?? data.employees ?? "—";
-      if ($("kpiTimesheets")) $("kpiTimesheets").textContent = data.pendingTimesheets ?? data.pendingDocs ?? "—";
+      const result = await api("/api/admin/employees");
+      const employees = Array.isArray(result) ? result : Array.isArray(result?.items) ? result.items : [];
+      if ($("kpiEmployees")) $("kpiEmployees").textContent = employees.length;
+      if ($("kpiTimesheets")) $("kpiTimesheets").textContent = "—";
     } catch (_) {
       if ($("kpiEmployees")) $("kpiEmployees").textContent = "—";
       if ($("kpiTimesheets")) $("kpiTimesheets").textContent = "—";
