@@ -1,0 +1,47 @@
+name: Codebase Independent Branding
+
+on:
+  pull_request:
+    paths:
+      - 'Codebase.html'
+      - 'scripts/install-codebase-backend-adapter.mjs'
+      - 'scripts/fix-codebase-independent-branding.mjs'
+      - 'Dockerfile.frontend'
+      - '.github/workflows/codebase-independent-branding.yml'
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - 'Codebase.html'
+      - 'scripts/install-codebase-backend-adapter.mjs'
+      - 'scripts/fix-codebase-independent-branding.mjs'
+      - 'Dockerfile.frontend'
+      - '.github/workflows/codebase-independent-branding.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  standalone-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Publish production Codebase document
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp Codebase.html /tmp/Codebase.html
+          node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
+          node scripts/fix-codebase-independent-branding.mjs /tmp/Codebase.html
+
+      - name: Prove Sulandra Health engineering identity is absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '<div class="brand-sub">Independent workspace</div>' /tmp/Codebase.html
+          grep -Fq 'Unable to load the Codebase workspace. Check Codebase API authentication or service health.' /tmp/Codebase.html
+          ! grep -Fq 'base/sulandra-1.0' /tmp/Codebase.html
+          ! grep -Fq 'Unable to load the real repository.' /tmp/Codebase.html
+          echo 'Standalone Codebase identity verified.'
