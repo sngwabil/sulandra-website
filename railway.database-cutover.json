@@ -7,6 +7,7 @@
       "Dockerfile.database-cutover",
       "scripts/database-provider-cutover.sh",
       "scripts/database-provider-cutover-launcher.sh",
+      "scripts/prepare-database-provider-cutover.sh",
       "railway.database-cutover.json"
     ]
   },
