@@ -85,12 +85,15 @@ else
   fi
 fi
 
-SOURCE_PSQL_ARGS=(--no-psqlrc --set=ON_ERROR_STOP=1 "--dbname=$SOURCE_DATABASE_URL")
-SOURCE_DUMP_ARGS=("--dbname=$SOURCE_DATABASE_URL")
+SOURCE_CONNECTION_ARGUMENT="$SOURCE_DATABASE_URL"
 if [[ -n "$SOURCE_DATABASE_HOST_OVERRIDE" ]]; then
-  SOURCE_PSQL_ARGS+=("--host=$SOURCE_DATABASE_HOST_OVERRIDE" "--username=$SOURCE_DATABASE_USER_OVERRIDE" --port=5432)
-  SOURCE_DUMP_ARGS+=("--host=$SOURCE_DATABASE_HOST_OVERRIDE" "--username=$SOURCE_DATABASE_USER_OVERRIDE" --port=5432)
+  # libpq expands a URI supplied as dbname before applying the later keyword
+  # parameters. This preserves the URI password/database/TLS settings while
+  # routing through Supabase's IPv4-compatible session pooler.
+  SOURCE_CONNECTION_ARGUMENT="dbname='$SOURCE_DATABASE_URL' host='$SOURCE_DATABASE_HOST_OVERRIDE' user='$SOURCE_DATABASE_USER_OVERRIDE' port=5432"
 fi
+SOURCE_PSQL_ARGS=(--no-psqlrc --set=ON_ERROR_STOP=1 "--dbname=$SOURCE_CONNECTION_ARGUMENT")
+SOURCE_DUMP_ARGS=("--dbname=$SOURCE_CONNECTION_ARGUMENT")
 TARGET_PSQL_ARGS=(--no-psqlrc --set=ON_ERROR_STOP=1 "--dbname=$TARGET_DATABASE_URL")
 TARGET_DUMP_ARGS=("--dbname=$TARGET_DATABASE_URL")
 
