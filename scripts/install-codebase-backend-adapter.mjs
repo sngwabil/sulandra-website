@@ -5,16 +5,19 @@ const target = path.resolve(process.argv[2] || 'Codebase.html');
 const adapter = path.resolve('assets/codebase-backend-adapter.js');
 const previewFix = path.resolve('assets/codebase-preview-terminal-input-fix.js');
 const ipadKeyboardBridge = path.resolve('assets/codebase-ipad-terminal-keyboard-bridge.js');
+const nativePaste = path.resolve('assets/codebase-terminal-native-paste.js');
 const terminalDurability = path.resolve('assets/codebase-terminal-session-durability.js');
 await access(target);
 await access(adapter);
 await access(previewFix);
 await access(ipadKeyboardBridge);
+await access(nativePaste);
 await access(terminalDurability);
 let html = await readFile(target, 'utf8');
 const source = await readFile(adapter, 'utf8');
 const previewSource = await readFile(previewFix, 'utf8');
 const ipadKeyboardSource = await readFile(ipadKeyboardBridge, 'utf8');
+const nativePasteSource = await readFile(nativePaste, 'utf8');
 const durabilitySource = await readFile(terminalDurability, 'utf8');
 
 for (const marker of [
@@ -66,6 +69,17 @@ for (const marker of [
 }
 
 for (const marker of [
+  'CODEBASE_TERMINAL_NATIVE_PASTE_V1',
+  "typeof term.paste!=='function'",
+  'term.paste(text)',
+  "addEventListener('paste'",
+  "insertFromPaste",
+  'stopImmediatePropagation',
+]) {
+  if (!nativePasteSource.includes(marker)) throw new Error(`Codebase native paste runtime missing ${marker}`);
+}
+
+for (const marker of [
   'CODEBASE_TERMINAL_SESSION_DURABILITY_V1',
   'sulandra:codebase:terminal-session-state:v1',
   'freshestToken',
@@ -98,10 +112,12 @@ html = html.replace(
 const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
 const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
 const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
+const nativePasteTag = '<script src="/assets/codebase-terminal-native-paste.js?v=20260905-native-paste-1"></script>';
 const durabilityTag = '<script src="/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-backend-adapter\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script src="\/assets\/codebase-preview-terminal-input-fix\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script src="\/assets\/codebase-ipad-terminal-keyboard-bridge\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
+html = html.replace(/\s*<script src="\/assets\/codebase-terminal-native-paste\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script src="\/assets\/codebase-terminal-session-durability\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 
 // IMPORTANT: Codebase contains sample HTML inside JavaScript template strings,
@@ -113,17 +129,19 @@ const lower = html.toLowerCase();
 const bodyCloseIndex = lower.lastIndexOf('</body>');
 const htmlCloseIndex = lower.lastIndexOf('</html>');
 if (bodyCloseIndex < 0 || htmlCloseIndex < bodyCloseIndex) throw new Error('Codebase final body/html anchor changed');
-html = `${html.slice(0, bodyCloseIndex)}${adapterTag}\n${previewTag}\n${ipadKeyboardTag}\n${durabilityTag}\n${html.slice(bodyCloseIndex)}`;
+html = `${html.slice(0, bodyCloseIndex)}${adapterTag}\n${previewTag}\n${ipadKeyboardTag}\n${nativePasteTag}\n${durabilityTag}\n${html.slice(bodyCloseIndex)}`;
 
 const adapterIndex = html.indexOf(adapterTag);
 const previewIndex = html.indexOf(previewTag);
 const ipadKeyboardIndex = html.indexOf(ipadKeyboardTag);
+const nativePasteIndex = html.indexOf(nativePasteTag);
 const durabilityIndex = html.indexOf(durabilityTag);
 const finalBodyIndex = html.toLowerCase().lastIndexOf('</body>');
-if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || durabilityIndex <= ipadKeyboardIndex || durabilityIndex >= finalBodyIndex) throw new Error('Codebase runtime publication order is invalid');
+if (adapterIndex < 0 || previewIndex <= adapterIndex || ipadKeyboardIndex <= previewIndex || nativePasteIndex <= ipadKeyboardIndex || durabilityIndex <= nativePasteIndex || durabilityIndex >= finalBodyIndex) throw new Error('Codebase runtime publication order is invalid');
 if (html.indexOf(adapterTag, adapterIndex + adapterTag.length) !== -1) throw new Error('Codebase adapter must be published exactly once');
 if (html.indexOf(previewTag, previewIndex + previewTag.length) !== -1) throw new Error('Codebase preview/input repair must be published exactly once');
 if (html.indexOf(ipadKeyboardTag, ipadKeyboardIndex + ipadKeyboardTag.length) !== -1) throw new Error('Codebase iPad keyboard bridge must be published exactly once');
+if (html.indexOf(nativePasteTag, nativePasteIndex + nativePasteTag.length) !== -1) throw new Error('Codebase native paste runtime must be published exactly once');
 if (html.indexOf(durabilityTag, durabilityIndex + durabilityTag.length) !== -1) throw new Error('Codebase terminal durability runtime must be published exactly once');
 if (html.slice(durabilityIndex + durabilityTag.length, finalBodyIndex).trim()) throw new Error('Codebase terminal durability runtime must be the final executable element before </body>');
 const beforeAdapter = html.slice(0, adapterIndex).toLowerCase();
@@ -138,6 +156,7 @@ for (const marker of [
   '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5',
   '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3',
   '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4',
+  '/assets/codebase-terminal-native-paste.js?v=20260905-native-paste-1',
   '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1',
   "sessionStorage.getItem('sulandra:admin:access-token')",
   'createWorkspaceFolder()',
@@ -148,4 +167,4 @@ if (html.includes("|| 'test-token'")) throw new Error('Published Codebase must n
 if (/openFallbackFile\('spire-evv-test-console\.html'\)/.test(html)) throw new Error('Published Codebase must not preload demonstration source files');
 
 await writeFile(target, html, 'utf8');
-console.log(`Sulandra Codebase backend adapter + terminal live-input repair + iPad keyboard bridge + session durability runtime published at the final document body anchor in ${target}`);
+console.log(`Sulandra Codebase backend adapter + terminal live-input repair + iPad keyboard bridge + native paste semantics + session durability runtime published at the final document body anchor in ${target}`);

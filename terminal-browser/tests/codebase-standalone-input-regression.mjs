@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const repo=path.resolve(here,'../..');
 const repairPath=path.join(repo,'assets','codebase-preview-terminal-input-fix.js');
+const nativePastePath=path.join(repo,'assets','codebase-terminal-native-paste.js');
 if(!fs.existsSync(repairPath))throw new Error(`Missing standalone Codebase input repair: ${repairPath}`);
+if(!fs.existsSync(nativePastePath))throw new Error(`Missing Codebase native paste runtime: ${nativePastePath}`);
 
 const html=`<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;width:100%;height:100%;background:#06101a;color:#fff;font-family:system-ui}
@@ -23,10 +25,10 @@ html,body{margin:0;width:100%;height:100%;background:#06101a;color:#fff;font-fam
 let openTabs=[{id:'term1',type:'terminal',sessionId:'session-codebase-1'},{id:'code1',type:'code'}];
 let activeEditors={};
 let activeTerminals={};
-window.__sent=[];window.__sent2=[];window.__editorValue='';window.__fetchCount=0;window.__wsMessages=[];
+window.__sent=[];window.__sent2=[];window.__pastes=[];window.__pastes2=[];window.__editorValue='';window.__fetchCount=0;window.__wsMessages=[];
 const termElement=document.createElement('div');termElement.className='xterm';termElement.innerHTML='<div class="xterm-screen">terminal-1-stable-marker</div>';
 const fakeWs={readyState:1,onmessage:event=>window.__wsMessages.push(event.data),send:data=>window.__sent.push(String(data))};
-activeTerminals.term1={element:termElement,options:{cursorBlink:false},focus(){},__sulandraWs:fakeWs,__sulandraFitAddon:{fit(){}}};
+activeTerminals.term1={element:termElement,options:{cursorBlink:false},focus(){},paste(data){const text=String(data);window.__pastes.push(text);fakeWs.send('\\x1b[200~'+text+'\\x1b[201~')},__sulandraWs:fakeWs,__sulandraFitAddon:{fit(){}}};
 const wrapper=document.getElementById('cm-wrapper');
 activeEditors.code1={getWrapperElement:()=>wrapper,focus(){},replaceSelection(text){window.__editorValue+=String(text)},execCommand(command){window.__editorValue+='['+command+']'}};
 const RAILWAY_CONFIG={PREVIEW_URL:'https://preview.invalid',getToken:()=> 'fixture-token'};
@@ -53,6 +55,7 @@ try{
  const page=await browser.newPage({viewport:{width:1280,height:800}});
  await page.goto(`http://127.0.0.1:${address.port}/`);
  await page.addScriptTag({path:repairPath});
+ await page.addScriptTag({path:nativePastePath});
  await page.waitForTimeout(260);
 
  const previewIdle=await page.evaluate(()=>({state:document.getElementById('railway-preview-iframe')?.dataset?.codebasePreviewState,srcdoc:document.getElementById('railway-preview-iframe')?.getAttribute('srcdoc')||'',fetchCount:window.__fetchCount}));
@@ -76,13 +79,26 @@ try{
   target.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:transfer}));
  });
  sent=await page.evaluate(()=>window.__sent.join(''));
- if(!sent.includes('PASTE_OK'))throw new Error(`Terminal paste did not reach the live socket: ${JSON.stringify(sent)}`);
+ if(!sent.includes('\x1b[200~PASTE_OK\x1b[201~'))throw new Error(`Terminal paste did not use xterm native paste semantics: ${JSON.stringify(sent)}`);
+
+ const multiline='echo line-one\necho line-two\nprintf done';
+ const beforeMultiline=await page.evaluate(()=>window.__sent.join('').length);
+ await page.evaluate(text=>{
+  const target=document.querySelector('#xterm-container-term1 .xterm-screen');
+  const transfer=new DataTransfer();transfer.setData('text/plain',text);
+  target.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:transfer}));
+  target.dispatchEvent(new InputEvent('beforeinput',{bubbles:true,cancelable:true,inputType:'insertFromPaste',data:text}));
+ },multiline);
+ const multilineState=await page.evaluate(()=>({sent:window.__sent.join(''),pastes:[...window.__pastes]}));
+ const expectedPacket=`\x1b[200~${multiline}\x1b[201~`;
+ if(multilineState.pastes.at(-1)!==multiline)throw new Error(`Multiline clipboard text bypassed xterm paste(): ${JSON.stringify(multilineState)}`);
+ if(multilineState.sent.slice(beforeMultiline)!==expectedPacket)throw new Error(`Multiline paste was executed/raw-forwarded or duplicated instead of one native bracketed packet: ${JSON.stringify(multilineState.sent.slice(beforeMultiline))}`);
 
  const stableBefore=await page.evaluate(()=>{window.__term1Node=document.getElementById('xterm-container-term1');return window.__term1Node.querySelector('.xterm-screen')?.textContent||''});
  await page.evaluate(()=>{
   const element=document.createElement('div');element.className='xterm';element.innerHTML='<div class="xterm-screen">terminal-2-marker</div>';
   const ws={readyState:1,onmessage(){},send:data=>window.__sent2.push(String(data))};
-  activeTerminals.term2={element,options:{cursorBlink:false},focus(){},__sulandraWs:ws,__sulandraFitAddon:{fit(){}}};
+  activeTerminals.term2={element,options:{cursorBlink:false},focus(){},paste(data){const text=String(data);window.__pastes2.push(text);ws.send('\\x1b[200~'+text+'\\x1b[201~')},__sulandraWs:ws,__sulandraFitAddon:{fit(){}}};
   openTabs.splice(1,0,{id:'term2',type:'terminal',sessionId:'session-codebase-2'});
   renderWorkspace();
  });
@@ -116,7 +132,7 @@ try{
  const afterOpen=await page.evaluate(()=>({state:document.getElementById('railway-preview-iframe')?.dataset?.codebasePreviewState,fetchCount:window.__fetchCount,src:document.getElementById('railway-preview-iframe')?.getAttribute('src')||''}));
  if(afterOpen.state!=='live'||afterOpen.fetchCount!==1||afterOpen.src!=='/preview-live')throw new Error(`Explicit Preview Open did not activate live preview: ${JSON.stringify(afterOpen)}`);
 
- console.log('Standalone Codebase Chrome input regression passed: terminal descendant keys/paste, independent Terminal 2, live Terminal 1 DOM preservation, resize-reset suppression, editor input, dark Preview isolation, and explicit Preview Open verified.');
+ console.log('Standalone Codebase Chrome input regression passed: terminal descendant keys, native single/multiline bracketed paste without duplicate beforeinput, independent Terminal 2, live Terminal 1 DOM preservation, resize-reset suppression, editor input, dark Preview isolation, and explicit Preview Open verified.');
 }finally{
  await browser?.close();
  await new Promise(resolve=>server.close(resolve));
