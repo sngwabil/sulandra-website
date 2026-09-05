@@ -25,6 +25,7 @@ RUN node --check assets/it-agent-conversational-ui.js \
  && node --check assets/codebase-backend-adapter.js \
  && node --check assets/codebase-preview-terminal-input-fix.js \
  && node --check assets/codebase-ipad-terminal-keyboard-bridge.js \
+ && node --check assets/codebase-terminal-native-paste.js \
  && node --check assets/codebase-terminal-session-durability.js
 RUN node scripts/verify-workspace-same-origin-proxy.mjs
 
@@ -44,11 +45,13 @@ RUN npm run build:web \
  && cp assets/codebase-backend-adapter.js dist-web/assets/codebase-backend-adapter.js \
  && cp assets/codebase-preview-terminal-input-fix.js dist-web/assets/codebase-preview-terminal-input-fix.js \
  && cp assets/codebase-ipad-terminal-keyboard-bridge.js dist-web/assets/codebase-ipad-terminal-keyboard-bridge.js \
+ && cp assets/codebase-terminal-native-paste.js dist-web/assets/codebase-terminal-native-paste.js \
  && cp assets/codebase-terminal-session-durability.js dist-web/assets/codebase-terminal-session-durability.js \
  && cp Codebase.html dist-web/Codebase.html \
  && node scripts/install-codebase-backend-adapter.mjs dist-web/Codebase.html \
  && node --check dist-web/assets/codebase-preview-terminal-input-fix.js \
  && node --check dist-web/assets/codebase-ipad-terminal-keyboard-bridge.js \
+ && node --check dist-web/assets/codebase-terminal-native-paste.js \
  && node --check dist-web/assets/codebase-terminal-session-durability.js \
  && node scripts/install-it-agent-xterm-emulator.mjs \
  && node scripts/fix-it-agent-status-board-api-origin.mjs \
