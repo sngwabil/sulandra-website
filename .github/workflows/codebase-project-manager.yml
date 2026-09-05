@@ -4,9 +4,12 @@ on:
   pull_request:
     paths:
       - 'assets/codebase-project-manager.js'
+      - 'assets/codebase-project-removal-guard.js'
       - 'scripts/install-codebase-project-manager-ui.mjs'
       - 'scripts/install-codebase-project-control.mjs'
       - 'scripts/install-codebase-project-gateway.mjs'
+      - 'scripts/fix-codebase-project-session-recovery.mjs'
+      - 'terminal-session-agent/setup-development-environment.sh'
       - 'Dockerfile.frontend'
       - 'Dockerfile.coding-terminal'
       - 'Dockerfile.terminal-executor'
@@ -16,9 +19,12 @@ on:
       - release/sulandra-1.0
     paths:
       - 'assets/codebase-project-manager.js'
+      - 'assets/codebase-project-removal-guard.js'
       - 'scripts/install-codebase-project-manager-ui.mjs'
       - 'scripts/install-codebase-project-control.mjs'
       - 'scripts/install-codebase-project-gateway.mjs'
+      - 'scripts/fix-codebase-project-session-recovery.mjs'
+      - 'terminal-session-agent/setup-development-environment.sh'
       - 'Dockerfile.frontend'
       - 'Dockerfile.coding-terminal'
       - 'Dockerfile.terminal-executor'
@@ -37,9 +43,15 @@ jobs:
         run: |
           set -euo pipefail
           node --check assets/codebase-project-manager.js
+          node --check assets/codebase-project-removal-guard.js
           node --check scripts/install-codebase-project-manager-ui.mjs
           node --check scripts/install-codebase-project-control.mjs
           node --check scripts/install-codebase-project-gateway.mjs
+          node --check scripts/fix-codebase-project-session-recovery.mjs
+          bash -n terminal-session-agent/setup-development-environment.sh
+          grep -Fq 'PROJECTS_DIR="/projects"' terminal-session-agent/setup-development-environment.sh
+          grep -Fq 'REQUESTED_TERMINAL_CWD' terminal-session-agent/setup-development-environment.sh
+          grep -Fq 'TERMINAL_CWD="${REQUESTED_TERMINAL_CWD}"' terminal-session-agent/setup-development-environment.sh
 
       - name: Build patched executor contract
         run: |
@@ -59,13 +71,19 @@ jobs:
           node scripts/install-terminal-unrestricted-dev.mjs /tmp/executor.mjs executor
           node scripts/fix-codebase-independent-workspace.mjs /tmp/executor.mjs
           node scripts/install-codebase-project-control.mjs /tmp/executor.mjs
+          node scripts/fix-codebase-project-session-recovery.mjs /tmp/executor.mjs
           node --check /tmp/executor.mjs
           grep -Fq 'CODEBASE_PROJECT_CONTROL_V1' /tmp/executor.mjs
+          grep -Fq 'CODEBASE_PROJECT_SESSION_RECOVERY_V1' /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/clone'" /tmp/executor.mjs
           grep -Fq "app.put('/v1/workspaces/:workspaceId/codebase/projects/:project/file'" /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/git/commit'" /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/deploy'" /tmp/executor.mjs
           grep -Fq '.sulandra-projects' /tmp/executor.mjs
+          grep -Fq 'inspect.State?.Restarting' /tmp/executor.mjs
+          grep -Fq 'session = await createSession(workspace, workspace.owner, 120, 32)' /tmp/executor.mjs
+          grep -Fq 'resetCodebaseSessionCwds(workspace)' /tmp/executor.mjs
+          grep -Fq "body: { data: 'cd -- /projects\\r' }" /tmp/executor.mjs
 
       - name: Build patched terminal gateway contract
         run: |
@@ -98,7 +116,9 @@ jobs:
           node scripts/fix-codebase-independent-branding.mjs /tmp/Codebase.html
           grep -Fq '<div class="brand-sub">Independent workspace</div>' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-manager.js?v=20260905-project-manager-1' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1' /tmp/Codebase.html
+          grep -Fq 'CODEBASE_PROJECT_REMOVAL_GUARD_V1' assets/codebase-project-removal-guard.js
           grep -Fq 'Deploy as New Railway Project' assets/codebase-project-manager.js
           grep -Fq 'Connect Existing + Deploy' assets/codebase-project-manager.js
           ! grep -Fq 'base/sulandra-1.0' /tmp/Codebase.html
-          echo 'Codebase project manager publication contract verified.'
+          echo 'Codebase project manager removal/reclone recovery contract verified.'
