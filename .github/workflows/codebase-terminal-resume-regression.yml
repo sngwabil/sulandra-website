@@ -1,0 +1,262 @@
+name: Codebase Terminal Resume Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - coding-terminal-worker/**
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
+      - scripts/install-codebase-pty-compat.mjs
+      - scripts/install-codebase-pty-session-resume.mjs
+      - railway.terminal-worker.json
+      - .github/workflows/codebase-terminal-resume-regression.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - coding-terminal-worker/**
+      - terminal-execution-plane/**
+      - terminal-session-agent/**
+      - Dockerfile.terminal-executor
+      - Dockerfile.terminal-session
+      - scripts/install-codebase-pty-compat.mjs
+      - scripts/install-codebase-pty-session-resume.mjs
+      - railway.terminal-worker.json
+      - .github/workflows/codebase-terminal-resume-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  stale-resume:
+    name: Recover stale browser PTY into /projects
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXECUTION_TOKEN: ci-execution-token-0123456789abcdef0123456789abcdef
+      INTERNAL_TOKEN: ci-terminal-internal-token
+      JWT_SECRET: ci-jwt-secret-0123456789abcdef0123456789abcdef
+      SESSION_IMAGE: sulandra-terminal-session:codebase-resume-ci
+      EXECUTOR_IMAGE: sulandra-terminal-executor:codebase-resume-ci
+      NETWORK: sulandra-codebase-resume-ci
+      CI_ROOT: /tmp/sulandra-codebase-resume-ci
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install runtime dependencies
+        run: |
+          set -euo pipefail
+          npm --prefix coding-terminal-worker install --omit=dev --no-audit --no-fund
+          npm --prefix terminal-execution-plane install --omit=dev --no-audit --no-fund
+
+      - name: Build isolated terminal images
+        run: |
+          set -euo pipefail
+          docker build -f Dockerfile.terminal-session -t "$SESSION_IMAGE" .
+          docker build -f Dockerfile.terminal-executor -t "$EXECUTOR_IMAGE" .
+
+      - name: Start execution plane
+        run: |
+          set -euo pipefail
+          rm -rf "$CI_ROOT"
+          mkdir -p "$CI_ROOT/seed" "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          printf 'Codebase stale-resume regression seed\n' > "$CI_ROOT/seed/README.txt"
+          sudo chown -R 10001:10001 "$CI_ROOT/workspaces" "$CI_ROOT/state"
+          docker network create "$NETWORK"
+          DOCKER_GID="$(stat -c '%g' /var/run/docker.sock)"
+          docker run -d --name sulandra-codebase-resume-executor \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --group-add "$DOCKER_GID" \
+            -e PORT=8081 \
+            -e TERMINAL_EXECUTION_TOKEN="$EXECUTION_TOKEN" \
+            -e DOCKER_SOCKET_PATH=/var/run/docker.sock \
+            -e TERMINAL_SESSION_IMAGE="$SESSION_IMAGE" \
+            -e TERMINAL_SEED_PATH=/seed \
+            -e TERMINAL_WORKSPACE_ROOT=/workspaces \
+            -e TERMINAL_WORKSPACE_HOST_ROOT="$CI_ROOT/workspaces" \
+            -e TERMINAL_STATE_ROOT=/state \
+            -e TERMINAL_DOCKER_NETWORK="$NETWORK" \
+            -e TERMINAL_IDLE_MINUTES=480 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$CI_ROOT/seed:/seed:ro" \
+            -v "$CI_ROOT/workspaces:/workspaces" \
+            -v "$CI_ROOT/state:/state" \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            --network "$NETWORK" \
+            -p 127.0.0.1:18081:8081 \
+            "$EXECUTOR_IMAGE"
+          for i in {1..45}; do
+            if curl -fsS -H "Authorization: Bearer $EXECUTION_TOKEN" http://127.0.0.1:18081/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sulandra-codebase-resume-executor
+          exit 1
+
+      - name: Start TLS execution edge and patched Railway gateway
+        run: |
+          set -euo pipefail
+          cat > /tmp/Caddyfile.codebase-resume <<'CADDY'
+          localhost:443 {
+            tls internal
+            reverse_proxy sulandra-codebase-resume-executor:8081
+          }
+          CADDY
+          docker run -d --name sulandra-codebase-resume-caddy \
+            --network "$NETWORK" \
+            -p 18443:443 \
+            -v /tmp/Caddyfile.codebase-resume:/etc/caddy/Caddyfile:ro \
+            caddy:2.10-alpine
+          for i in {1..30}; do
+            if curl -kfsS -H "Authorization: Bearer $EXECUTION_TOKEN" https://localhost:18443/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -kfsS -H "Authorization: Bearer $EXECUTION_TOKEN" https://localhost:18443/healthz >/dev/null
+
+          cp coding-terminal-worker/server.mjs coding-terminal-worker/server-codebase-resume-ci.mjs
+          node scripts/install-codebase-pty-compat.mjs coding-terminal-worker/server-codebase-resume-ci.mjs
+          node scripts/install-codebase-pty-session-resume.mjs coding-terminal-worker/server-codebase-resume-ci.mjs
+          node --check coding-terminal-worker/server-codebase-resume-ci.mjs
+          grep -Fq 'probeCodebaseCompatResume' coding-terminal-worker/server-codebase-resume-ci.mjs
+          grep -Fq 'Codebase stale PTY resume recovered' coding-terminal-worker/server-codebase-resume-ci.mjs
+
+          NODE_TLS_REJECT_UNAUTHORIZED=0 \
+          TERMINAL_AUTH_TOKEN="$INTERNAL_TOKEN" \
+          TERMINAL_EXECUTION_BASE_URL=https://localhost:18443 \
+          TERMINAL_EXECUTION_TOKEN="$EXECUTION_TOKEN" \
+          TERMINAL_WS_AUTH_PROVIDER=sulandra \
+          JWT_SECRET="$JWT_SECRET" \
+          PORT=18080 \
+          node coding-terminal-worker/server-codebase-resume-ci.mjs > /tmp/codebase-resume-gateway.log 2>&1 &
+          echo $! > /tmp/codebase-resume-gateway.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/health | grep -q '"healthy":true'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/codebase-resume-gateway.log
+          exit 1
+
+      - name: Prove stale PTY recovers to a live /projects shell
+        working-directory: coding-terminal-worker
+        run: |
+          set -euo pipefail
+          NODE_TLS_REJECT_UNAUTHORIZED=0 node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import jwt from 'jsonwebtoken';
+          import { WebSocket } from 'ws';
+
+          const jwtToken = jwt.sign(
+            { organizationId: 'ci-org', role: 'ADMINISTRATOR' },
+            process.env.JWT_SECRET,
+            { subject: 'ci-user', expiresIn: '5m', algorithm: 'HS256' },
+          );
+          const owner = 'codebase:ci-org:ci-user';
+          const headers = {
+            Authorization: `Bearer ${process.env.EXECUTION_TOKEN}`,
+            'x-sulandra-terminal-owner': owner,
+            'Content-Type': 'application/json',
+          };
+
+          const connect = (query, marker) => new Promise((resolve, reject) => {
+            let control = null;
+            let output = '';
+            let commandSent = false;
+            const timer = setTimeout(() => {
+              try { ws.terminate(); } catch {}
+              reject(new Error(`Timed out waiting for ${marker}; control=${JSON.stringify(control)} output=${output}`));
+            }, 20000);
+            const ws = new WebSocket(`ws://127.0.0.1:18080/pty?token=${encodeURIComponent(jwtToken)}&cols=100&rows=30${query}`);
+            ws.on('message', (data, binary) => {
+              const text = Buffer.from(data).toString('utf8');
+              if (!binary && text.startsWith('{')) {
+                try {
+                  const message = JSON.parse(text);
+                  if (message?.type === 'session') {
+                    control = message;
+                    if (!commandSent) {
+                      commandSent = true;
+                      ws.send(Buffer.from(`printf "${marker}:%s\\n" "$PWD"\r`));
+                    }
+                    return;
+                  }
+                } catch {}
+              }
+              output += text;
+              if (control && output.includes(`${marker}:/projects`)) {
+                clearTimeout(timer);
+                resolve({ ws, control, output });
+              }
+            });
+            ws.on('error', error => { clearTimeout(timer); reject(error); });
+            ws.on('close', (code, reason) => {
+              if (!control || !output.includes(`${marker}:/projects`)) {
+                clearTimeout(timer);
+                reject(new Error(`PTY closed early code=${code} reason=${String(reason)} control=${JSON.stringify(control)} output=${output}`));
+              }
+            });
+          });
+
+          const fresh = await connect('', 'CODEBASE_FRESH');
+          if (!fresh.control.sessionId || !fresh.control.workspaceId) throw new Error(`Missing fresh session metadata: ${JSON.stringify(fresh.control)}`);
+          if (fresh.control.resumed) throw new Error('Fresh PTY must not report resumed=true');
+          fresh.ws.close(1001, 'CI simulate browser loss');
+          await new Promise(resolve => setTimeout(resolve, 250));
+
+          const staleSessionId = fresh.control.sessionId;
+          const workspaceId = fresh.control.workspaceId;
+          const deleted = await fetch(`http://127.0.0.1:18081/v1/sessions/${encodeURIComponent(staleSessionId)}`, {
+            method: 'DELETE', headers,
+          });
+          if (!deleted.ok) throw new Error(`Could not remove stale session: ${deleted.status} ${await deleted.text()}`);
+
+          const recovered = await connect(
+            `&sessionId=${encodeURIComponent(staleSessionId)}&workspaceId=${encodeURIComponent(workspaceId)}`,
+            'CODEBASE_RECOVERED',
+          );
+          if (recovered.control.sessionId === staleSessionId) throw new Error('Gateway reused a stale terminal session id');
+          if (recovered.control.workspaceId !== workspaceId) throw new Error(`Expected surviving workspace ${workspaceId}, got ${recovered.control.workspaceId}`);
+          if (recovered.control.resumed) throw new Error('Recovered stale PTY must not report resumed=true');
+          if (!recovered.control.recovered) throw new Error(`Recovered PTY did not report recovered=true: ${JSON.stringify(recovered.control)}`);
+
+          recovered.ws.close(1000, 'Terminal tab closed');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const cleanup = await fetch(`http://127.0.0.1:18081/v1/workspaces/${encodeURIComponent(workspaceId)}`, {
+            method: 'DELETE', headers,
+          });
+          if (!cleanup.ok) throw new Error(`Could not clean workspace: ${cleanup.status} ${await cleanup.text()}`);
+          fs.writeFileSync('/tmp/codebase-resume-result.txt', `stale=${staleSessionId}\nrecovered=${recovered.control.sessionId}\nworkspace=${workspaceId}\n`);
+          console.log('STALE_CODEBASE_PTY_RECOVERY_OK', { staleSessionId, recoveredSessionId: recovered.control.sessionId, workspaceId });
+          NODE
+          cat /tmp/codebase-resume-result.txt
+          grep -Fq 'Codebase stale PTY resume recovered' /tmp/codebase-resume-gateway.log
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if test -f /tmp/codebase-resume-gateway.pid; then kill "$(cat /tmp/codebase-resume-gateway.pid)" || true; fi
+          cat /tmp/codebase-resume-gateway.log 2>/dev/null || true
+          docker logs sulandra-codebase-resume-caddy 2>/dev/null || true
+          docker logs sulandra-codebase-resume-executor 2>/dev/null || true
+          docker ps -aq --filter label=com.sulandra.terminal=true | xargs -r docker rm -f || true
+          docker rm -f sulandra-codebase-resume-caddy sulandra-codebase-resume-executor 2>/dev/null || true
+          docker network rm "$NETWORK" 2>/dev/null || true
+          sudo rm -rf "$CI_ROOT"
+          rm -f coding-terminal-worker/server-codebase-resume-ci.mjs
