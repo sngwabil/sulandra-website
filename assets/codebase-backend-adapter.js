@@ -326,8 +326,7 @@ const wireCoreControls=()=>{
       const text=String(control.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
       if(text.includes('refresh'))return callSafely('Refresh',()=>fetchFileSystem());
       if(text.includes('ide'))return callSafely('IDE',()=>{
-        document.getElementById('resizer-right').style.display='block';
-        document.getElementById('sidebar-right').style.flex='0 0 380px';
+        window.openRightPanel?.();
         switchRightPanel('ide');
       });
       if(text.includes('terminal'))return callSafely('Terminal',()=>openTerminal());

@@ -104,6 +104,7 @@ const connectionHandler = String.raw`
 codebasePtyWss.on('connection', (browser, req) => {
   const { owner, workspaceId, sessionId } = req.sulandraCodebasePty;
   const upstream = new WebSocket(executionWsUrl('/v1/ws/sessions/' + encodeURIComponent(sessionId)), ['sulandra-executor.v1'], {
+    ...executionWebSocketOptions,
     headers: { Authorization: 'Bearer ' + executionToken, 'x-sulandra-terminal-owner': owner },
     handshakeTimeout: 10_000,
     maxPayload: 1_048_576,

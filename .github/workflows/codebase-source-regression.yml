@@ -133,6 +133,8 @@ jobs:
           const repair = fs.readFileSync('assets/codebase-preview-terminal-input-fix.js','utf8');
           const ipadKeyboard = fs.readFileSync('assets/codebase-ipad-terminal-keyboard-bridge.js','utf8');
           const durability = fs.readFileSync('assets/codebase-terminal-session-durability.js','utf8');
+          if (!html.includes('function rightPanelMaxWidth()') || !html.includes("addEventListener('pointerdown'")) throw new Error('Standalone Preview dock must use pointer-captured resize handling');
+          if (!html.includes('codebase-panel-resizing') || !html.includes('pointer-events: none')) throw new Error('Standalone Preview drag must keep the iframe from taking the pointer');
           if (!repair.includes("if(!requested){setPreviewDark")) throw new Error('Preview must remain dark for non-user terminal-triggered preview calls');
           if (!repair.includes("event.target!==container&&!container.contains(event.target)")) throw new Error('Terminal keyboard/paste fallback must remain scoped to the selected terminal and its xterm descendants');
           if (!repair.includes("if(event.target!==wrapper)return")) throw new Error('Editor keyboard fallback must remain scoped to the focused editor wrapper');
