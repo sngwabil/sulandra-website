@@ -29,6 +29,7 @@ COPY scripts/install-terminal-history-proxy.mjs /tmp/install-terminal-history-pr
 COPY scripts/install-codebase-pty-compat.mjs /tmp/install-codebase-pty-compat.mjs
 COPY scripts/install-codebase-pty-session-resume.mjs /tmp/install-codebase-pty-session-resume.mjs
 COPY scripts/fix-codebase-preview-owner-namespace.mjs /tmp/fix-codebase-preview-owner-namespace.mjs
+COPY scripts/install-codebase-project-gateway.mjs /tmp/install-codebase-project-gateway.mjs
 RUN node /tmp/install-terminal-gateway-ha.mjs /gateway/server.mjs \
     && node /tmp/install-workspace-ide-live-preview.mjs /gateway/server.mjs \
     && node /tmp/fix-workspace-proxy-abort.mjs /gateway/server.mjs \
@@ -39,14 +40,19 @@ RUN node /tmp/install-terminal-gateway-ha.mjs /gateway/server.mjs \
     && node /tmp/install-codebase-pty-compat.mjs /gateway/server.mjs \
     && node /tmp/install-codebase-pty-session-resume.mjs /gateway/server.mjs \
     && node /tmp/fix-codebase-preview-owner-namespace.mjs /gateway/server.mjs \
+    && node /tmp/install-codebase-project-gateway.mjs /gateway/server.mjs \
     && node --check /gateway/server.mjs \
     && node /tmp/verify-workspace-browser-session.mjs /gateway/server.mjs \
     && node /tmp/verify-workspace-ticket-cors.mjs /gateway/server.mjs \
     && grep -Fq 'CODEBASE_PTY_COMPAT_V1' /gateway/server.mjs \
     && grep -Fq 'CODEBASE_PTY_SESSION_RESUME_V1' /gateway/server.mjs \
     && grep -Fq 'CODEBASE_PREVIEW_OWNER_NAMESPACE_V1' /gateway/server.mjs \
+    && grep -Fq 'CODEBASE_PROJECT_GATEWAY_V1' /gateway/server.mjs \
     && grep -Fq "url.pathname === '/pty'" /gateway/server.mjs \
-    && rm -f /tmp/install-terminal-gateway-ha.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/fix-workspace-browser-session.mjs /tmp/verify-workspace-browser-session.mjs /tmp/fix-workspace-ticket-cors.mjs /tmp/verify-workspace-ticket-cors.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-codebase-pty-compat.mjs /tmp/install-codebase-pty-session-resume.mjs /tmp/fix-codebase-preview-owner-namespace.mjs
+    && grep -Fq "app.get('/codebase/projects'" /gateway/server.mjs \
+    && grep -Fq "app.post('/codebase/projects/clone'" /gateway/server.mjs \
+    && grep -Fq "app.post('/codebase/projects/:project/railway/deploy'" /gateway/server.mjs \
+    && rm -f /tmp/install-terminal-gateway-ha.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/fix-workspace-browser-session.mjs /tmp/verify-workspace-browser-session.mjs /tmp/fix-workspace-ticket-cors.mjs /tmp/verify-workspace-ticket-cors.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-codebase-pty-compat.mjs /tmp/install-codebase-pty-session-resume.mjs /tmp/fix-codebase-preview-owner-namespace.mjs /tmp/install-codebase-project-gateway.mjs
 
 EXPOSE 8080
 USER node
