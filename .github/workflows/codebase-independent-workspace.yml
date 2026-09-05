@@ -1,0 +1,117 @@
+name: Codebase Independent Workspace
+
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile.terminal-executor'
+      - 'terminal-execution-plane/**'
+      - 'scripts/fix-codebase-independent-workspace.mjs'
+      - 'scripts/install-codebase-workspace-reuse.mjs'
+      - 'scripts/install-terminal-industry-hardening.mjs'
+      - 'scripts/install-terminal-unrestricted-dev.mjs'
+      - '.github/workflows/codebase-independent-workspace.yml'
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - 'Dockerfile.terminal-executor'
+      - 'terminal-execution-plane/**'
+      - 'scripts/fix-codebase-independent-workspace.mjs'
+      - 'scripts/install-codebase-workspace-reuse.mjs'
+      - 'scripts/install-terminal-industry-hardening.mjs'
+      - 'scripts/install-terminal-unrestricted-dev.mjs'
+      - '.github/workflows/codebase-independent-workspace.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  standalone-codebase-root:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Generate ephemeral executor test token
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'CODEBASE_TEST_TOKEN=%s\n' "$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Build terminal executor
+        run: docker build -f Dockerfile.terminal-executor -t sulandra-terminal-executor:codebase-boundary-test .
+
+      - name: Start executor with Sulandra engineering repository configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-codebase/workspaces .ci-codebase/state
+          sudo chown -R 10001:10001 .ci-codebase
+          docker run -d --name codebase-boundary-executor \
+            --group-add "$(stat -c '%g' /var/run/docker.sock)" \
+            -p 127.0.0.1:18081:8081 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.ci-codebase/workspaces:/workspaces" \
+            -v "$PWD/.ci-codebase/state:/state" \
+            -e "TERMINAL_EXECUTION_TOKEN=${CODEBASE_TEST_TOKEN}" \
+            -e TERMINAL_GIT_REPOSITORY=https://github.com/sngwabil/sulandra-website.git \
+            -e TERMINAL_GIT_BASE_BRANCH=release/sulandra-1.0 \
+            sulandra-terminal-executor:codebase-boundary-test
+
+          for attempt in $(seq 1 60); do
+            if curl -fsS \
+              -H "Authorization: Bearer ${CODEBASE_TEST_TOKEN}" \
+              http://127.0.0.1:18081/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs codebase-boundary-executor
+          exit 1
+
+      - name: Prove Codebase does not clone or expose Sulandra Health
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth="Authorization: Bearer ${CODEBASE_TEST_TOKEN}"
+          owner='x-sulandra-terminal-owner: codebase:ci-boundary'
+
+          first="$(curl -fsS -X POST -H "$auth" -H "$owner" -H 'Content-Type: application/json' \
+            http://127.0.0.1:18081/v1/workspaces -d '{}')"
+          printf '%s\n' "$first" | jq .
+
+          first_id="$(printf '%s' "$first" | jq -r '.workspaceId')"
+          test -n "$first_id"
+          test "$(printf '%s' "$first" | jq -r '.gitBacked')" = 'false'
+          test "$(printf '%s' "$first" | jq -r '.repository')" = ''
+          test "$(printf '%s' "$first" | jq -r '.branch')" = ''
+
+          root="$PWD/.ci-codebase/workspaces/$first_id"
+          test -d "$root"
+          test ! -e "$root/.git"
+          test ! -e "$root/api"
+          test ! -e "$root/prisma"
+          test ! -e "$root/public"
+          test ! -e "$root/terminal-session-agent"
+
+          second="$(curl -fsS -X POST -H "$auth" -H "$owner" -H 'Content-Type: application/json' \
+            http://127.0.0.1:18081/v1/workspaces -d '{}')"
+          second_id="$(printf '%s' "$second" | jq -r '.workspaceId')"
+          test "$second_id" = "$first_id"
+
+          if find "$root" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+            echo 'Codebase root was not empty:' >&2
+            find "$root" -mindepth 1 -maxdepth 2 -print >&2
+            exit 1
+          fi
+
+          echo "Standalone Codebase workspace verified: $first_id"
+
+      - name: Show executor logs on failure
+        if: failure()
+        run: docker logs codebase-boundary-executor || true
+
+      - name: Stop executor
+        if: always()
+        run: docker rm -f codebase-boundary-executor >/dev/null 2>&1 || true
