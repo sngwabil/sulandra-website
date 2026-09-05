@@ -11,9 +11,25 @@ on:
       - Dockerfile.terminal-egress
       - terminal-execution-plane/**
       - terminal-session-agent/**
+      # Every script copied by Dockerfile.terminal-executor is listed here.
+      # Keeping this list aligned means Codebase project lifecycle repairs reach
+      # the execution plane instead of stopping at the Railway gateway.
+      - scripts/fix-codebase-independent-workspace.mjs
+      - scripts/fix-codebase-project-session-recovery.mjs
+      - scripts/fix-terminal-resource-monitor.mjs
+      - scripts/fix-workspace-ide-agent-transport.mjs
+      - scripts/fix-workspace-proxy-abort.mjs
+      - scripts/fix-workspace-proxy-streaming.mjs
+      - scripts/install-codebase-project-control.mjs
+      - scripts/install-codebase-workspace-reuse.mjs
+      - scripts/install-terminal-executor-ha-reconcile.mjs
+      - scripts/install-terminal-history-proxy.mjs
       - scripts/install-terminal-industry-hardening.mjs
       - scripts/install-terminal-prompt-cursor.mjs
+      - scripts/install-terminal-security-audit.mjs
+      - scripts/install-terminal-session-recovery.mjs
       - scripts/install-terminal-unrestricted-dev.mjs
+      - scripts/install-workspace-ide-live-preview.mjs
       - infra/terminal-vps/**
       - .github/workflows/terminal-vps-deploy.yml
 
