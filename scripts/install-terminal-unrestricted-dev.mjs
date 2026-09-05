@@ -36,8 +36,8 @@ const terminalTmpfsBytes = Math.min(
   const current = await readFile(excludePath, 'utf8').catch(() => '');
   const lines = current.split(/\\r?\\n/).map(line => line.trim());
   if (!lines.includes(marker)) {
-    const prefix = current && !current.endsWith('\\n') ? \`${current}\\n\` : current;
-    await writeFile(excludePath, \`${prefix}${marker}\\n\`, { mode: 0o600 });
+    const prefix = current && !current.endsWith('\\n') ? \`\${current}\\n\` : current;
+    await writeFile(excludePath, \`\${prefix}\${marker}\\n\`, { mode: 0o600 });
   }
   return projectsPath;
 };
@@ -54,8 +54,8 @@ const createSession = async (workspace, owner, cols, rows) => {
   );
 
   replace(
-    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}` ,",
-    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}` ,\n      'SULANDRA_TERMINAL_CWD=/projects',",
+    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,",
+    "      `SULANDRA_BASE_BRANCH=${gitBaseBranch}`,\n      'SULANDRA_TERMINAL_CWD=/projects',",
     'terminal cwd environment',
   );
 
@@ -64,13 +64,13 @@ const createSession = async (workspace, owner, cols, rows) => {
       CapDrop: ['ALL'],
       SecurityOpt: ['no-new-privileges:true'],
       NetworkMode: networkName,
-      Binds: [\`${workspace.hostCwd}:/workspace:rw\`],`,
+      Binds: [\`\${workspace.hostCwd}:/workspace:rw\`],`,
     `      Privileged: false,
       ReadonlyRootfs: false,
       NetworkMode: networkName,
       Binds: [
-        \`${workspace.hostCwd}:/workspace:rw\`,
-        \`${workspace.hostCwd}/.sulandra-projects:/projects:rw\`,
+        \`\${workspace.hostCwd}:/workspace:rw\`,
+        \`\${workspace.hostCwd}/.sulandra-projects:/projects:rw\`,
       ],`,
     'mutable isolated developer container',
   );
