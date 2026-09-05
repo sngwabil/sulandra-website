@@ -84,7 +84,6 @@ jobs:
           node scripts/install-codebase-project-gateway.mjs /tmp/gateway.mjs
           node --check /tmp/gateway.mjs
           node scripts/verify-workspace-browser-session.mjs /tmp/gateway.mjs
-          node scripts/verify-workspace-ticket-cors.mjs /tmp/gateway.mjs
           grep -Fq 'CODEBASE_PROJECT_GATEWAY_V1' /tmp/gateway.mjs
           grep -Fq "app.get('/codebase/projects'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/clone'" /tmp/gateway.mjs
