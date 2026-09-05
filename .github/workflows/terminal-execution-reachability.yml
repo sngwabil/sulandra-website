@@ -1,0 +1,99 @@
+name: Terminal Execution Reachability
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - fix/codebase-execution-reachability
+    paths:
+      - .github/workflows/terminal-execution-reachability.yml
+
+permissions:
+  contents: read
+
+jobs:
+  external-reachability:
+    name: Verify external execution-plane reachability
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect public DNS
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'A records:'
+          dig +short A terminal-exec.sulandrahealth.com
+          echo 'AAAA records:'
+          dig +short AAAA terminal-exec.sulandrahealth.com
+
+      - name: Probe IPv4 and IPv6 edge paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          ipv4_failures=0
+          for attempt in $(seq 1 10); do
+            code="$(curl -4 -sS --connect-timeout 3 --max-time 6 -o /dev/null -w '%{http_code}' https://terminal-exec.sulandrahealth.com/healthz || true)"
+            echo "IPv4 attempt ${attempt}: HTTP ${code:-transport-failure}"
+            [[ "$code" == "401" ]] || ipv4_failures=$((ipv4_failures + 1))
+            sleep 1
+          done
+          echo "IPv4 failures: $ipv4_failures/10"
+
+          if dig +short AAAA terminal-exec.sulandrahealth.com | grep -q .; then
+            ipv6_failures=0
+            for attempt in $(seq 1 3); do
+              code="$(curl -6 -sS --connect-timeout 3 --max-time 6 -o /dev/null -w '%{http_code}' https://terminal-exec.sulandrahealth.com/healthz || true)"
+              echo "IPv6 attempt ${attempt}: HTTP ${code:-transport-failure}"
+              [[ "$code" == "401" ]] || ipv6_failures=$((ipv6_failures + 1))
+            done
+            echo "IPv6 failures: $ipv6_failures/3"
+          else
+            echo 'No AAAA record published.'
+          fi
+
+          if (( ipv4_failures > 0 )); then
+            echo '::error::Execution-plane IPv4 edge is not consistently reachable.'
+            exit 1
+          fi
+
+      - name: Probe with Node fetch
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const target = 'https://terminal-exec.sulandrahealth.com/healthz';
+          let failed = 0;
+          for (let i = 1; i <= 10; i += 1) {
+            try {
+              const response = await fetch(target, { signal: AbortSignal.timeout(6000) });
+              console.log(`Node attempt ${i}: HTTP ${response.status}`);
+              if (response.status !== 401) failed += 1;
+              await response.body?.cancel();
+            } catch (error) {
+              failed += 1;
+              const cause = error?.cause;
+              console.log(`Node attempt ${i}: ${error?.name || 'Error'} ${error?.message || ''} cause=${cause?.code || cause?.name || ''} ${cause?.message || ''}`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          console.log(`Node failures: ${failed}/10`);
+          if (failed) process.exit(1);
+          NODE
+
+      - name: Probe Railway gateway health
+        shell: bash
+        run: |
+          set -euo pipefail
+          failures=0
+          for attempt in $(seq 1 10); do
+            code="$(curl -sS --connect-timeout 3 --max-time 7 -o /tmp/worker-health.json -w '%{http_code}' https://sulandra-coding-terminal-worker-production.up.railway.app/health || true)"
+            body="$(cat /tmp/worker-health.json 2>/dev/null || true)"
+            echo "Gateway attempt ${attempt}: HTTP ${code:-transport-failure} ${body}"
+            [[ "$code" == "200" ]] || failures=$((failures + 1))
+            sleep 1
+          done
+          echo "Gateway health failures: $failures/10"
+          if (( failures > 0 )); then
+            echo '::error::Railway gateway cannot consistently reach the execution plane.'
+            exit 1
+          fi
