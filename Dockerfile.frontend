@@ -9,6 +9,7 @@ RUN node scripts/optimize-admin-login-performance.mjs
 RUN node scripts/install-employee-support.mjs
 RUN node scripts/fix-sulandra-codebase-editor-state.mjs
 RUN node scripts/install-codebase-backend-adapter.mjs Codebase.html
+RUN node scripts/fix-codebase-independent-branding.mjs Codebase.html
 
 # Build a pinned same-origin browser terminal bundle containing xterm plus all
 # production addons. No CDN runtime dependency is used in production.
@@ -49,6 +50,7 @@ RUN npm run build:web \
  && cp assets/codebase-terminal-session-durability.js dist-web/assets/codebase-terminal-session-durability.js \
  && cp Codebase.html dist-web/Codebase.html \
  && node scripts/install-codebase-backend-adapter.mjs dist-web/Codebase.html \
+ && node scripts/fix-codebase-independent-branding.mjs dist-web/Codebase.html \
  && node --check dist-web/assets/codebase-preview-terminal-input-fix.js \
  && node --check dist-web/assets/codebase-ipad-terminal-keyboard-bridge.js \
  && node --check dist-web/assets/codebase-terminal-native-paste.js \
