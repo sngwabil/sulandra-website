@@ -163,3 +163,43 @@ jobs:
             echo "::error::Unable to run terminal VPS deployment after 5 SSH attempts."
             exit 1
           fi
+
+      - name: Verify execution edge from outside the VPS
+        if: steps.gate.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          failures=0
+          for attempt in $(seq 1 10); do
+            code="$(curl -4 -sS --connect-timeout 3 --max-time 6 -o /dev/null -w '%{http_code}' https://terminal-exec.sulandrahealth.com/healthz || true)"
+            echo "External execution edge attempt ${attempt}: HTTP ${code:-transport-failure}"
+            [[ "$code" == "401" ]] || failures=$((failures + 1))
+            sleep 1
+          done
+          if (( failures > 0 )); then
+            echo "::error::Execution plane passed its VPS-local check but failed ${failures}/10 public IPv4 probes."
+            exit 1
+          fi
+
+      - name: Verify Railway gateway readiness after promotion
+        if: steps.gate.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=false
+          for attempt in $(seq 1 30); do
+            code="$(curl -sS --connect-timeout 3 --max-time 7 -o /tmp/gateway-health.json -w '%{http_code}' https://sulandra-coding-terminal-worker-production.up.railway.app/health || true)"
+            body="$(cat /tmp/gateway-health.json 2>/dev/null || true)"
+            if [[ "$code" == "200" ]] && grep -Fq '"ready":true' <<<"$body" && grep -Fq '"healthy":true' <<<"$body"; then
+              echo "Railway gateway reached the promoted execution plane on attempt ${attempt}."
+              ready=true
+              break
+            fi
+            echo "Railway gateway readiness attempt ${attempt}: HTTP ${code:-transport-failure}; waiting..."
+            sleep 4
+          done
+          if [[ "$ready" != true ]]; then
+            echo '::error::Promoted execution plane is not reachable from the Railway gateway after two minutes.'
+            cat /tmp/gateway-health.json 2>/dev/null || true
+            exit 1
+          fi
