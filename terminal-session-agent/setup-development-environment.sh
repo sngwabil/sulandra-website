@@ -66,6 +66,17 @@ ensure_file_target() {
   fi
 }
 
+repair_owned_tree() {
+  local target="$1"
+  if root_exec test -d "${target}"; then
+    # These paths are platform/runtime-owned inside the user's private Codebase
+    # home. Previous images or user sudo commands may leave nested files owned by
+    # root. A directory-only chown is not enough: code-server, terminal history,
+    # and auth helpers must be able to update existing descendants on restart.
+    root_exec chown -R -h "${TERMINAL_UID}:${TERMINAL_GID}" "${target}"
+  fi
+}
+
 # Existing Codebase workspaces can outlive many session images. Repair only the
 # runtime-owned directory/file shapes needed to boot a new terminal; user project
 # content and saved authentication data are preserved. This specifically prevents
@@ -76,13 +87,27 @@ ensure_directory "${HOME}/.config" 0700
 ensure_directory "${HOME}/.config/git" 0700
 ensure_directory "${HOME}/.config/pip" 0700
 ensure_directory "${HOME}/.config/sulandra" 0700
+ensure_directory "${HOME}/.config/code-server" 0700
 ensure_directory "${HOME}/.cargo" 0700
 ensure_directory "${HOME}/.ssh" 0700
 ensure_directory "${HOME}/.ssh/config.d" 0700
 ensure_directory "${HOME}/.local" 0700
+ensure_directory "${HOME}/.local/share" 0700
+ensure_directory "${HOME}/.local/share/code-server" 0700
+ensure_directory "${HOME}/.local/share/code-server/User" 0700
 ensure_directory "${HOME}/.local/state" 0700
 ensure_directory "${HOME}/.local/state/sulandra-terminal" 0700
 ensure_directory "${HOME}/.local/state/sulandra-terminal/history" 0700
+
+# entrypoint.sh writes code-server settings before starting the session agent, and
+# the agent immediately opens terminal history. If either managed tree contains a
+# nested root-owned file from an older image, startup exits before port 9000 can
+# become healthy and the executor surfaces only a generic `fetch failed`. Repair
+# those complete managed trees here while leaving project files untouched.
+repair_owned_tree "${HOME}/.config/code-server"
+repair_owned_tree "${HOME}/.local/share/code-server"
+repair_owned_tree "${HOME}/.local/state/sulandra-terminal"
+ensure_file_target "${HOME}/.local/share/code-server/User/settings.json"
 
 if [[ ! -d "${REQUESTED_TERMINAL_CWD}" ]]; then
   REQUESTED_TERMINAL_CWD="/projects"
