@@ -11,13 +11,18 @@ WORKDIR /cutover
 
 COPY scripts/database-provider-cutover.sh /cutover/scripts/database-provider-cutover.sh
 COPY scripts/database-provider-cutover-launcher.sh /cutover/scripts/database-provider-cutover-launcher.sh
-RUN sed -i 's|--dbname=\$SOURCE_DATABASE_URL|--dbname=${SOURCE_DATABASE_EFFECTIVE_URL:-$SOURCE_DATABASE_URL}|g' /cutover/scripts/database-provider-cutover.sh \
+COPY scripts/prepare-database-provider-cutover.sh /cutover/scripts/prepare-database-provider-cutover.sh
+RUN chmod 0500 /cutover/scripts/prepare-database-provider-cutover.sh \
+    && /cutover/scripts/prepare-database-provider-cutover.sh /cutover/scripts/database-provider-cutover.sh \
+    && sed -i 's|--dbname=\$SOURCE_DATABASE_URL|--dbname=${SOURCE_DATABASE_EFFECTIVE_URL:-$SOURCE_DATABASE_URL}|g' /cutover/scripts/database-provider-cutover.sh \
     && chown postgres:postgres \
       /cutover/scripts/database-provider-cutover.sh \
       /cutover/scripts/database-provider-cutover-launcher.sh \
+      /cutover/scripts/prepare-database-provider-cutover.sh \
     && chmod 0500 \
       /cutover/scripts/database-provider-cutover.sh \
       /cutover/scripts/database-provider-cutover-launcher.sh \
+      /cutover/scripts/prepare-database-provider-cutover.sh \
     && mkdir -p /tmp/sulandra-database-cutover \
     && chown -R postgres:postgres /tmp/sulandra-database-cutover
 
