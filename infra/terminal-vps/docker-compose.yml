@@ -32,6 +32,10 @@ x-executor-common: &executor-common
     TERMINAL_MEMORY_BYTES: "4294967296"
     TERMINAL_NANO_CPUS: "2000000000"
     TERMINAL_PIDS_LIMIT: "256"
+    # Developer tooling regularly uses /tmp for compiler intermediates, package
+    # extraction, preview servers, and Git helpers. 1 GiB remains capped at no
+    # more than half of the per-session memory limit by the executor.
+    TERMINAL_TMPFS_BYTES: "1073741824"
     TERMINAL_IDE_PORT: "13337"
     TERMINAL_BUILD_MEMORY_BYTES: "4294967296"
     TERMINAL_BUILD_NANO_CPUS: "2000000000"
@@ -54,7 +58,8 @@ x-executor-common: &executor-common
   tmpfs:
     - /tmp:rw,noexec,nosuid,nodev,size=64m
   depends_on:
-    - egress-proxy
+    egress-proxy:
+      condition: service_healthy
   networks:
     - gateway-internal
     - terminal-internal
@@ -82,9 +87,17 @@ services:
       - /var/cache/squid:rw,nosuid,nodev,size=64m
       - /var/log/squid:rw,nosuid,nodev,size=32m
       - /var/run/squid:rw,nosuid,nodev,size=8m
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z -w 2 127.0.0.1 3128"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
     networks:
-      - terminal-internal
-      - edge
+      terminal-internal:
+        aliases:
+          - egress-proxy
+      edge: {}
 
   caddy:
     image: caddy:2.10-alpine

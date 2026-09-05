@@ -1,0 +1,9 @@
+# Sulandra Codebase login profile.
+[[ -r "${HOME}/.config/sulandra/proxy.env" ]] && source "${HOME}/.config/sulandra/proxy.env"
+if [[ -n "${BASH_VERSION:-}" && -r /agent/bashrc ]]; then
+  source /agent/bashrc
+fi
+if [[ -d "${SULANDRA_TERMINAL_CWD:-/projects}" ]]; then
+  cd "${SULANDRA_TERMINAL_CWD:-/projects}"
+fi
+

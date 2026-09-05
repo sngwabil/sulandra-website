@@ -41,6 +41,37 @@ compose() {
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
 }
 
+wait_egress_proxy() {
+  local container_id status
+  for attempt in {1..60}; do
+    container_id="$(compose ps -q egress-proxy 2>/dev/null || true)"
+    if [[ -n "$container_id" ]]; then
+      status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)"
+      [[ "$status" == healthy ]] && return 0
+    fi
+    sleep 1
+  done
+  echo "Terminal egress proxy did not become healthy." >&2
+  compose logs --tail=150 egress-proxy >&2 || true
+  return 1
+}
+
+verify_developer_environment() {
+  docker run --rm \
+    --network sulandra-terminal-internal \
+    -e HOME=/tmp/sulandra-smoke-home \
+    -e SULANDRA_TERMINAL_CWD=/projects \
+    -e TERMINAL_EGRESS_PROXY_URL=http://egress-proxy:3128 \
+    -e HTTP_PROXY=http://egress-proxy:3128 \
+    -e HTTPS_PROXY=http://egress-proxy:3128 \
+    -e http_proxy=http://egress-proxy:3128 \
+    -e https_proxy=http://egress-proxy:3128 \
+    -e NODE_USE_ENV_PROXY=1 \
+    --entrypoint bash \
+    "sulandra-terminal-session:$TAG" \
+    -lc 'source /usr/local/bin/sulandra-codebase-setup; cd /projects; sulandra-codebase-doctor --deployment'
+}
+
 wait_controller() {
   local name="$1"
   for attempt in {1..60}; do
@@ -120,6 +151,8 @@ compose build executor-a executor-b egress-proxy
 # Keep the egress service available, but do not touch the currently serving
 # executor generation while the replacement pair is being prepared.
 compose up -d --no-deps egress-proxy
+wait_egress_proxy
+verify_developer_environment
 
 # Start a completely new controller generation beside the old one. Workspace
 # session containers and persistent workspaces are shared, so either generation
@@ -252,7 +285,7 @@ fi
 echo "Terminal execution plane is healthy at https://$DOMAIN"
 echo "Zero-downtime executor generation: $GEN_ID"
 echo "HA executors: $GEN_A + $GEN_B"
-echo "Controlled egress: GitHub/npm/PyPI allowlist via Squid"
+echo "Controlled egress: GitHub/npm/PyPI/crates.io/Railway verified through Squid"
 echo "Git workspaces: ${TERMINAL_GIT_REPOSITORY:-https://github.com/sngwabil/sulandra-website.git} @ ${TERMINAL_GIT_BASE_BRANCH:-release/sulandra-1.0}"
 echo "Set Railway TERMINAL_EXECUTION_BASE_URL=https://$DOMAIN"
 echo "Set Railway TERMINAL_EXECUTION_TOKEN to the value stored in $ENV_FILE"

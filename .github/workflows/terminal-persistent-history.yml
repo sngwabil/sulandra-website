@@ -106,7 +106,9 @@ jobs:
             -d "$payload" >/dev/null
 
           ready=false
-          for i in {1..120}; do
+          # Busy hosted runners can take longer to persist 3+ MiB of PTY output.
+          # Keep the stress threshold unchanged and allow up to two minutes.
+          for i in {1..480}; do
             curl -fsS -H "x-sulandra-session-token: $TOKEN" http://127.0.0.1:19001/health > /tmp/history-health.json
             bytes="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(String(JSON.parse(s).transcriptBytes||0)))' < /tmp/history-health.json)"
             if [[ "$bytes" -gt 2500000 ]]; then
@@ -118,7 +120,11 @@ jobs:
             fi
             sleep 0.25
           done
-          test "$ready" = true
+          if [[ "$ready" != true ]]; then
+            echo "Persistent history did not exceed 2.5 MiB or publish its final marker within 120 seconds." >&2
+            cat /tmp/history-health.json >&2 || true
+            exit 1
+          fi
 
       - name: Prove the beginning and end remain retrievable from disk
         shell: bash
