@@ -1,0 +1,131 @@
+name: Codebase Terminal Session Smoke
+
+on:
+  workflow_run:
+    workflows:
+      - Terminal VPS Deploy
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provision-real-codebase-sessions:
+    name: Provision real Codebase sessions after VPS promotion
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'release/sulandra-1.0')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      VPS_HOST: ${{ secrets.TERMINAL_VPS_HOST }}
+      VPS_USER: ${{ secrets.TERMINAL_VPS_USER }}
+      VPS_SSH_KEY: ${{ secrets.TERMINAL_VPS_SSH_KEY }}
+    steps:
+      - name: Require terminal VPS credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST"
+          test -n "$VPS_USER"
+          test -n "$VPS_SSH_KEY"
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 0700 ~/.ssh
+          KEY_FILE="$HOME/.ssh/terminal-vps"
+          if grep -q 'BEGIN OPENSSH PRIVATE KEY' <<<"$VPS_SSH_KEY"; then
+            printf '%s\n' "$VPS_SSH_KEY" | tr -d '\r' > "$KEY_FILE"
+          else
+            printf '%s' "$VPS_SSH_KEY" | tr -d '\r\n ' | base64 --decode > "$KEY_FILE"
+          fi
+          chmod 0600 "$KEY_FILE"
+          ssh-keygen -y -f "$KEY_FILE" >/dev/null
+          if ! ssh-keyscan -T 10 -t ed25519 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
+            ssh-keyscan -T 10 -t rsa -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          fi
+
+      - name: Create, read, and destroy three real terminal sessions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=10 \
+            -o ServerAliveCountMax=3 \
+            -i ~/.ssh/terminal-vps \
+            "$VPS_USER@$VPS_HOST" \
+            "SMOKE_SUFFIX='${GITHUB_RUN_ID}' bash -se" <<'REMOTE'
+          set -euo pipefail
+          ENV_FILE=/srv/sulandra-terminal/source/infra/terminal-vps/.env
+          test -r "$ENV_FILE"
+          DOMAIN="$(awk -F= '/^TERMINAL_EXECUTION_DOMAIN=/{print substr($0,index($0,"=")+1); exit}' "$ENV_FILE")"
+          TOKEN="$(awk -F= '/^TERMINAL_EXECUTION_TOKEN=/{print substr($0,index($0,"=")+1); exit}' "$ENV_FILE")"
+          test -n "$DOMAIN"
+          test -n "$TOKEN"
+
+          owner="codebase:smoke:${SMOKE_SUFFIX}"
+          workspace_id=''
+          session_id=''
+          cleanup() {
+            if [[ -n "$session_id" ]]; then
+              curl -fsS --max-time 10 -X DELETE \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "x-sulandra-terminal-owner: $owner" \
+                "https://$DOMAIN/v1/sessions/$session_id" >/dev/null 2>&1 || true
+            fi
+            if [[ -n "$workspace_id" ]]; then
+              curl -fsS --max-time 10 -X DELETE \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "x-sulandra-terminal-owner: $owner" \
+                "https://$DOMAIN/v1/workspaces/$workspace_id" >/dev/null 2>&1 || true
+            fi
+          }
+          trap cleanup EXIT
+
+          for attempt in 1 2 3; do
+            workspace_json="$(curl -fsS --connect-timeout 5 --max-time 20 -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "x-sulandra-terminal-owner: $owner" \
+              -H 'Content-Type: application/json' \
+              --data '{}' \
+              "https://$DOMAIN/v1/workspaces")"
+            workspace_id="$(sed -n 's/.*"workspaceId":"\([^"]*\)".*/\1/p' <<<"$workspace_json")"
+            test -n "$workspace_id"
+
+            session_json="$(curl -fsS --connect-timeout 5 --max-time 55 -X POST \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "x-sulandra-terminal-owner: $owner" \
+              -H 'Content-Type: application/json' \
+              --data '{"cols":120,"rows":32}' \
+              "https://$DOMAIN/v1/workspaces/$workspace_id/sessions")"
+            session_id="$(sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p' <<<"$session_json")"
+            test -n "$session_id"
+
+            output_json="$(curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "x-sulandra-terminal-owner: $owner" \
+              "https://$DOMAIN/v1/sessions/$session_id/output?cursor=0")"
+            grep -Fq '"alive":true' <<<"$output_json"
+
+            curl -fsS --max-time 10 -X DELETE \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "x-sulandra-terminal-owner: $owner" \
+              "https://$DOMAIN/v1/sessions/$session_id" >/dev/null
+            session_id=''
+            echo "Codebase terminal provisioning attempt $attempt passed."
+          done
+
+          curl -fsS --max-time 10 -X DELETE \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "x-sulandra-terminal-owner: $owner" \
+            "https://$DOMAIN/v1/workspaces/$workspace_id" >/dev/null
+          workspace_id=''
+          trap - EXIT
+          echo 'Three real Codebase terminal session provisioning checks passed.'
+          REMOTE
