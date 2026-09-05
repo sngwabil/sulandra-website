@@ -24,22 +24,11 @@ $0 == "normalize_schema_dump() {" {
   print "    # generated constraint names when re-dumping a pre-18 restore. The"
   print "    # names are metadata-only; canonicalize them so parity remains strict"
   print "    # for every schema property that existed on the PostgreSQL 17 source."
-  print "    sed -E \\\""
-  print "      -e '\''/^-- Dumped from database version /d'\'' \\\""
-  print "      -e '\''/^-- Dumped by pg_dump version /d'\'' \\\""
-  print "      -e '\''/^\\\\restrict /d'\'' \\\""
-  print "      -e '\''/^\\\\unrestrict /d'\'' \\\""
-  print "      -e '\''s/ CONSTRAINT \"[^\"]+\" NOT NULL/ NOT NULL/g'\'' \\\""
-  print "      \"$input\" > \"$output\""
+  print "    sed -E -e \"/^-- Dumped from database version /d\" -e \"/^-- Dumped by pg_dump version /d\" -e \"/^\\\\restrict /d\" -e \"/^\\\\unrestrict /d\" -e \"s/ CONSTRAINT \\\"[^\\\"]+\\\" NOT NULL/ NOT NULL/g\" \"$input\" > \"$output\""
   print "    return"
   print "  fi"
   print ""
-  print "  sed -E \\\""
-  print "    -e '\''/^-- Dumped from database version /d'\'' \\\""
-  print "    -e '\''/^-- Dumped by pg_dump version /d'\'' \\\""
-  print "    -e '\''/^\\\\restrict /d'\'' \\\""
-  print "    -e '\''/^\\\\unrestrict /d'\'' \\\""
-  print "    \"$input\" > \"$output\""
+  print "  sed -E -e \"/^-- Dumped from database version /d\" -e \"/^-- Dumped by pg_dump version /d\" -e \"/^\\\\restrict /d\" -e \"/^\\\\unrestrict /d\" \"$input\" > \"$output\""
   print "}"
   replacing = 1
   replaced = 1
@@ -64,6 +53,6 @@ mv "$tmp_path" "$script_path"
 chmod 0500 "$script_path"
 
 grep -F 'source_major:-0' "$script_path" >/dev/null
-grep -F 'CONSTRAINT "[^"]+" NOT NULL' "$script_path" >/dev/null
+grep -F 'CONSTRAINT \"[^\"]+\" NOT NULL' "$script_path" >/dev/null
 
 echo "prepare-database-provider-cutover: PostgreSQL 17 -> 18 schema canonicalizer installed"
