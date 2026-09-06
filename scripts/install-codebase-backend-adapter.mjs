@@ -109,7 +109,7 @@ html = html.replace(
   "      listEl.innerHTML = '<div style=\"padding:16px;color:#e57373;line-height:1.5\">Unable to load the real repository. Check Codebase API authentication or service health.</div>';",
 );
 
-const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
+const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260906-async-pty-startup-1"></script>';
 const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
 const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
 const nativePasteTag = '<script src="/assets/codebase-terminal-native-paste.js?v=20260905-native-paste-1"></script>';
@@ -153,7 +153,7 @@ for (const marker of [
   'https://codebase-e2e-api-production.up.railway.app',
   'wss://sulandra-coding-terminal-worker-production.up.railway.app',
   'https://codebase-e2e-web-production.up.railway.app',
-  '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5',
+  '/assets/codebase-backend-adapter.js?v=20260906-async-pty-startup-1',
   '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3',
   '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4',
   '/assets/codebase-terminal-native-paste.js?v=20260905-native-paste-1',

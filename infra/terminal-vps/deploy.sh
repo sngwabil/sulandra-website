@@ -193,6 +193,140 @@ verify_codebase_sessions() (
   echo "Three real Codebase terminal sessions provisioned, accepted PTY input, and cleaned up successfully."
 )
 
+verify_codebase_project_removal_recovery() (
+  set -euo pipefail
+  local owner="codebase:project-removal-smoke:${GEN_ID}"
+  local workspace_id=""
+  local session_id=""
+  local fresh_session_id=""
+  local project="terminal-removal-smoke"
+
+  cleanup() {
+    local id
+    for id in "$session_id" "$fresh_session_id"; do
+      if [[ -n "$id" ]]; then
+        curl -fsS --max-time 10 -X DELETE \
+          -H "Authorization: Bearer $TOKEN" \
+          -H "x-sulandra-terminal-owner: $owner" \
+          "https://$DOMAIN/v1/sessions/$id" >/dev/null 2>&1 || true
+      fi
+    done
+    if [[ -n "$workspace_id" ]]; then
+      curl -fsS --max-time 10 -X DELETE \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "x-sulandra-terminal-owner: $owner" \
+        "https://$DOMAIN/v1/workspaces/$workspace_id" >/dev/null 2>&1 || true
+    fi
+  }
+  wait_for_marker() {
+    local id="$1"
+    local marker="$2"
+    local output_json=""
+    for poll in {1..24}; do
+      output_json="$(curl -fsS --connect-timeout 5 --max-time 15 \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "x-sulandra-terminal-owner: $owner" \
+        "https://$DOMAIN/v1/sessions/$id/output?cursor=0")"
+      if grep -Fq "$marker" <<<"$output_json"; then
+        return 0
+      fi
+      sleep 0.5
+    done
+    echo "Codebase project-removal smoke did not observe $marker." >&2
+    return 1
+  }
+  trap cleanup EXIT
+
+  local workspace_json project_json removal_json session_json input_json marker
+  workspace_json="$(curl -fsS --connect-timeout 5 --max-time 20 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data '{}' \
+    "https://$DOMAIN/v1/workspaces")"
+  workspace_id="$(sed -n 's/.*"workspaceId":"\([^"]*\)".*/\1/p' <<<"$workspace_json")"
+  if [[ -z "$workspace_id" ]]; then
+    echo "Codebase project-removal smoke did not receive a workspaceId." >&2
+    exit 1
+  fi
+
+  session_json="$(curl -fsS --connect-timeout 5 --max-time 60 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data '{"cols":120,"rows":32}' \
+    "https://$DOMAIN/v1/workspaces/$workspace_id/sessions")"
+  session_id="$(sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p' <<<"$session_json")"
+  if [[ -z "$session_id" ]]; then
+    echo "Codebase project-removal smoke did not receive the initial sessionId." >&2
+    exit 1
+  fi
+
+  project_json="$(curl -fsS --connect-timeout 5 --max-time 30 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data "{\"name\":\"$project\",\"gitInit\":false}" \
+    "https://$DOMAIN/v1/workspaces/$workspace_id/codebase/projects")"
+  grep -Fq "\"path\":\"/projects/$project\"" <<<"$project_json"
+  grep -Fq '"active":true' <<<"$project_json"
+
+  marker="CODEBASE_PROJECT_BEFORE_REMOVE_${GEN_ID}"
+  input_json="{\"data\":\"cd -- /projects/$project && printf '${marker}:%s\\\\n' \\\"\$PWD\\\"\\r\"}"
+  curl -fsS --connect-timeout 5 --max-time 15 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data "$input_json" \
+    "https://$DOMAIN/v1/sessions/$session_id/input" >/dev/null
+  wait_for_marker "$session_id" "$marker:/projects/$project"
+
+  removal_json="$(curl -fsS --connect-timeout 5 --max-time 30 -X DELETE \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    "https://$DOMAIN/v1/workspaces/$workspace_id/codebase/projects/$project")"
+  grep -Fq '"ok":true' <<<"$removal_json"
+  grep -Fq '"activeProject":""' <<<"$removal_json"
+
+  marker="CODEBASE_PROJECT_AFTER_REMOVE_${GEN_ID}"
+  input_json="{\"data\":\"printf '${marker}:%s\\\\n' \\\"\$PWD\\\"\\r\"}"
+  curl -fsS --connect-timeout 5 --max-time 15 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data "$input_json" \
+    "https://$DOMAIN/v1/sessions/$session_id/input" >/dev/null
+  wait_for_marker "$session_id" "$marker:/projects"
+
+  session_json="$(curl -fsS --connect-timeout 5 --max-time 60 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data '{"cols":120,"rows":32}' \
+    "https://$DOMAIN/v1/workspaces/$workspace_id/sessions")"
+  fresh_session_id="$(sed -n 's/.*"sessionId":"\([^"]*\)".*/\1/p' <<<"$session_json")"
+  if [[ -z "$fresh_session_id" || "$fresh_session_id" == "$session_id" ]]; then
+    echo "Codebase project-removal smoke did not create a fresh terminal session." >&2
+    exit 1
+  fi
+  marker="CODEBASE_PROJECT_FRESH_AFTER_REMOVE_${GEN_ID}"
+  input_json="{\"data\":\"printf '${marker}:%s\\\\n' \\\"\$PWD\\\"\\r\"}"
+  curl -fsS --connect-timeout 5 --max-time 15 -X POST \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "x-sulandra-terminal-owner: $owner" \
+    -H 'Content-Type: application/json' \
+    --data "$input_json" \
+    "https://$DOMAIN/v1/sessions/$fresh_session_id/input" >/dev/null
+  wait_for_marker "$fresh_session_id" "$marker:/projects"
+
+  cleanup
+  session_id=""
+  fresh_session_id=""
+  workspace_id=""
+  trap - EXIT
+  echo "Codebase project-removal recovery smoke passed: live and fresh terminals stayed in /projects."
+)
+
 install -d -o 10001 -g 10001 -m 0700 /srv/sulandra-terminal/workspaces /srv/sulandra-terminal/state
 rm -rf "$SEED_NEXT"
 install -d -o root -g root -m 0755 "$SEED_NEXT"
@@ -321,6 +455,7 @@ done
 # Project removal must never be able to leave production with a nominally healthy
 # gateway that cannot actually provision a new terminal.
 verify_codebase_sessions
+verify_codebase_project_removal_recovery
 
 # Retire only executor generations that have no established client streams.
 # After a graceful Caddy reload, old WebSockets continue through the old
@@ -388,6 +523,7 @@ fi
 
 echo "Terminal execution plane is healthy at https://$DOMAIN"
 echo "Codebase real-session smoke: 3/3 passed"
+echo "Codebase project-removal recovery smoke: passed"
 echo "Zero-downtime executor generation: $GEN_ID"
 echo "HA executors: $GEN_A + $GEN_B"
 echo "Controlled egress: GitHub/npm/PyPI/crates.io/Railway verified through Squid"

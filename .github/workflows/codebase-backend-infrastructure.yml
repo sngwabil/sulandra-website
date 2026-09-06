@@ -18,6 +18,7 @@ on:
       - 'Dockerfile.frontend'
       - 'scripts/install-codebase-pty-compat.mjs'
       - 'scripts/install-codebase-pty-session-resume.mjs'
+      - 'scripts/fix-codebase-async-pty-startup.mjs'
       - 'scripts/fix-codebase-preview-owner-namespace.mjs'
       - 'scripts/install-workspace-ide-live-preview.mjs'
       - 'scripts/install-codebase-backend-adapter.mjs'
@@ -43,6 +44,7 @@ jobs:
           node --check assets/codebase-terminal-session-durability.js
           node --check scripts/install-codebase-pty-compat.mjs
           node --check scripts/install-codebase-pty-session-resume.mjs
+          node --check scripts/fix-codebase-async-pty-startup.mjs
           node --check scripts/fix-codebase-preview-owner-namespace.mjs
           node --check scripts/install-workspace-ide-live-preview.mjs
           node --check scripts/install-codebase-backend-adapter.mjs
@@ -76,6 +78,8 @@ jobs:
           grep -Fq 'No separate GitHub login is required.' assets/codebase-backend-adapter.js
           grep -Fq 'No JWT paste is required.' assets/codebase-backend-adapter.js
           grep -Fq '▶ Open Debug Terminal' assets/codebase-backend-adapter.js
+          grep -Fq "type==='terminal-starting'" assets/codebase-backend-adapter.js
+          grep -Fq "type==='terminal-error'" assets/codebase-backend-adapter.js
           grep -Fq 'CODEBASE_PREVIEW_TERMINAL_INPUT_V2' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'CODEBASE_PREVIEW_TERMINAL_INPUT_V3' assets/codebase-preview-terminal-input-fix.js
           grep -Fq 'codebase-preview-toolbar' assets/codebase-preview-terminal-input-fix.js
@@ -108,7 +112,7 @@ jobs:
           set -euo pipefail
           cp Codebase.html /tmp/Codebase.html
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260906-async-pty-startup-1' /tmp/Codebase.html
           grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3' /tmp/Codebase.html
           grep -Fq '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4' /tmp/Codebase.html
           grep -Fq '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1' /tmp/Codebase.html
@@ -122,7 +126,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('/tmp/Codebase.html', 'utf8');
-          const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
+          const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260906-async-pty-startup-1"></script>';
           const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
           const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
           const durabilityTag = '<script src="/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1"></script>';
@@ -160,10 +164,14 @@ jobs:
           node scripts/install-workspace-ide-live-preview.mjs /tmp/codebase-terminal-gateway.mjs
           node scripts/install-codebase-pty-compat.mjs /tmp/codebase-terminal-gateway.mjs
           node scripts/install-codebase-pty-session-resume.mjs /tmp/codebase-terminal-gateway.mjs
+          node scripts/fix-codebase-async-pty-startup.mjs /tmp/codebase-terminal-gateway.mjs
           node scripts/fix-codebase-preview-owner-namespace.mjs /tmp/codebase-terminal-gateway.mjs
           node --check /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_PTY_COMPAT_V1' /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_PTY_SESSION_RESUME_V1' /tmp/codebase-terminal-gateway.mjs
+          grep -Fq 'CODEBASE_ASYNC_PTY_STARTUP_V1' /tmp/codebase-terminal-gateway.mjs
+          grep -Fq "type: 'terminal-starting'" /tmp/codebase-terminal-gateway.mjs
+          grep -Fq "type: 'terminal-error'" /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_OWNER_NAMESPACE_V2' /tmp/codebase-terminal-gateway.mjs
           grep -Fq 'CODEBASE_PREVIEW_OWNER_NAMESPACE_V1' /tmp/codebase-terminal-gateway.mjs
           grep -Fq "const owner = 'codebase:' + verification.auth.organizationId + ':' + verification.auth.userId" /tmp/codebase-terminal-gateway.mjs
