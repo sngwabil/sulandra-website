@@ -1,0 +1,89 @@
+name: Codebase Public Git Clone Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/codebase-public-git-clone.js
+      - scripts/install-codebase-public-git-clone-ui.mjs
+      - scripts/fix-codebase-public-git-clone.mjs
+      - Dockerfile.frontend
+      - Dockerfile.terminal-executor
+      - .github/workflows/codebase-public-git-clone.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/codebase-public-git-clone.js
+      - scripts/install-codebase-public-git-clone-ui.mjs
+      - scripts/fix-codebase-public-git-clone.mjs
+      - Dockerfile.frontend
+      - Dockerfile.terminal-executor
+      - .github/workflows/codebase-public-git-clone.yml
+
+permissions:
+  contents: read
+
+jobs:
+  https-first-clone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify repair scripts and browser runtime
+        run: |
+          set -euo pipefail
+          node --check assets/codebase-public-git-clone.js
+          node --check scripts/install-codebase-public-git-clone-ui.mjs
+          node --check scripts/fix-codebase-public-git-clone.mjs
+          grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_UI_V1' assets/codebase-public-git-clone.js
+          grep -Fq "#codebase-clone-project" assets/codebase-public-git-clone.js
+          grep -Fq "window.SulandraCodebaseProjects.clone=cloneGithubProject" assets/codebase-public-git-clone.js
+          ! grep -Fq 'If this is your first project' assets/codebase-public-git-clone.js
+
+      - name: Build patched executor and verify HTTPS-first order
+        run: |
+          set -euo pipefail
+          cp terminal-execution-plane/server.mjs /tmp/executor.mjs
+          node scripts/install-terminal-industry-hardening.mjs /tmp/executor.mjs
+          node scripts/fix-terminal-resource-monitor.mjs /tmp/executor.mjs
+          node scripts/install-workspace-ide-live-preview.mjs /tmp/executor.mjs
+          node scripts/fix-workspace-proxy-abort.mjs /tmp/executor.mjs
+          node scripts/fix-workspace-ide-agent-transport.mjs /tmp/executor.mjs
+          node scripts/fix-workspace-proxy-streaming.mjs /tmp/executor.mjs
+          node scripts/install-terminal-security-audit.mjs /tmp/executor.mjs
+          node scripts/install-terminal-history-proxy.mjs /tmp/executor.mjs
+          node scripts/install-terminal-session-recovery.mjs /tmp/executor.mjs
+          node scripts/install-terminal-executor-ha-reconcile.mjs /tmp/executor.mjs
+          node scripts/install-codebase-workspace-reuse.mjs /tmp/executor.mjs
+          node scripts/install-terminal-unrestricted-dev.mjs /tmp/executor.mjs executor
+          node scripts/fix-codebase-independent-workspace.mjs /tmp/executor.mjs
+          node scripts/harden-codebase-project-persistence.mjs /tmp/executor.mjs
+          node scripts/install-codebase-project-control.mjs /tmp/executor.mjs
+          node scripts/fix-codebase-public-git-clone.mjs /tmp/executor.mjs
+          node --check /tmp/executor.mjs
+          grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_V1' /tmp/executor.mjs
+          grep -Fq "'GIT_TERMINAL_PROMPT=0', 'git', ...gitArgs" /tmp/executor.mjs
+          grep -Fq "const httpsUrl = 'https://github.com/' + repository + '.git'" /tmp/executor.mjs
+          grep -Fq "const ghArgs = ['repo', 'clone', repository, name]" /tmp/executor.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('/tmp/executor.mjs').read_text()
+          route=text.index("app.post('/v1/workspaces/:workspaceId/codebase/projects/clone'")
+          anon=text.index("'GIT_TERMINAL_PROMPT=0', 'git', ...gitArgs",route)
+          fallback=text.index("const ghArgs = ['repo', 'clone', repository, name]",anon)
+          assert route < anon < fallback, 'authenticated gh fallback must come after anonymous HTTPS Git clone'
+          PY
+
+      - name: Publish repaired Codebase document
+        run: |
+          set -euo pipefail
+          cp Codebase.html /tmp/Codebase.html
+          node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
+          node scripts/install-codebase-project-manager-ui.mjs /tmp/Codebase.html
+          node scripts/install-codebase-public-git-clone-ui.mjs /tmp/Codebase.html
+          grep -Fq '/assets/codebase-public-git-clone.js?v=20260906-public-git-clone-1' /tmp/Codebase.html
+          grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_UI_V1' assets/codebase-public-git-clone.js
+          echo 'Codebase public HTTPS-first clone contract verified.'
