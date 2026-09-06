@@ -15,7 +15,7 @@ await access(removalGuard);
 await access(manageRuntime);
 const source = await readFile(runtime, 'utf8');
 const bridgeSource = await readFile(explorerBridge, 'utf8');
-const explorerSource = await readFile(explorerRuntime, 'utf8');
+let explorerSource = await readFile(explorerRuntime, 'utf8');
 const guardSource = await readFile(removalGuard, 'utf8');
 const manageSource = await readFile(manageRuntime, 'utf8');
 for (const marker of [
@@ -72,10 +72,63 @@ for (const marker of [
   if (!manageSource.includes(marker)) throw new Error(`Codebase Manage runtime missing ${marker}`);
 }
 
+// The permanent Explorer header delegates to these public runtime actions.
+// Keep the canonical source runtime compact, but expose create-file/create-folder
+// in the published artifact alongside the already-public upload/move operations.
+const explorerApiOld = 'window.SulandraCodebaseExplorerFiles={refresh:refreshExplorer,move:movePath,rename:renamePath,duplicate:duplicatePath,remove:deletePath,moveToFolder:showFolderPicker,upload:uploadFiles};';
+const explorerApiNew = 'window.SulandraCodebaseExplorerFiles={createFile,createFolder,refresh:refreshExplorer,move:movePath,rename:renamePath,duplicate:duplicatePath,remove:deletePath,moveToFolder:showFolderPicker,upload:uploadFiles};';
+if (explorerSource.includes(explorerApiOld)) {
+  explorerSource = explorerSource.replace(explorerApiOld, explorerApiNew);
+  await writeFile(explorerRuntime, explorerSource, 'utf8');
+}
+if (!explorerSource.includes(explorerApiNew)) throw new Error('Codebase Explorer public create/upload action surface is missing');
+
 let html = await readFile(target, 'utf8');
+
+// Publish the four Explorer controls in the canonical HTML itself so they are
+// visible immediately and cannot disappear merely because a late runtime did
+// not repaint the sidebar header. The runtime replaces these nodes with bound
+// handlers after it loads, while the native delegates remain safe fallbacks.
+const legacyExplorerHeader = `      <div class="sidebar-header" id="sidebar-title-text" style="display: flex; gap: 8px; align-items: center;">
+        EXPLORER
+        <div style="display: flex; gap: 8px; color: var(--cb-blue);">
+          <span style="cursor: pointer;" title="New File" onclick="openFallbackFile('new_script.js', 'javascript')">📄</span>
+          <span style="cursor: pointer;" title="New Folder" onclick="alert('Folder created in workspace')">📁</span>
+          <span style="cursor: pointer;" onclick="fetchFileSystem()" title="Refresh">⟳</span>
+        </div>
+      </div>`;
+const nativeExplorerHeader = `      <div class="sidebar-header" id="sidebar-title-text" style="display: flex; gap: 8px; align-items: center;">
+        EXPLORER
+        <div id="codebase-explorer-actions" style="display:flex;gap:8px;align-items:center;margin-left:auto;color:var(--cb-blue);">
+          <span style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:16px;" title="New File" onclick="window.SulandraCodebaseExplorerFiles?.createFile?.('')">📄</span>
+          <span style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:16px;" title="New Folder" onclick="window.SulandraCodebaseExplorerFiles?.createFolder?.('')">📁</span>
+          <span style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:16px;" title="Upload Files" onclick="window.SulandraCodebaseExplorerFiles?.upload?.('')">⇧</span>
+          <span style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:16px;" title="Refresh" onclick="window.SulandraCodebaseExplorerFiles?.refresh?.()">⟳</span>
+        </div>
+      </div>`;
+if (html.includes(legacyExplorerHeader)) html = html.replace(legacyExplorerHeader, nativeExplorerHeader);
+
+// Legacy switchSidebar used innerText on the whole header, which deleted every
+// Explorer action whenever the user visited another sidebar and came back.
+// Update only the leading title text node and show/hide the permanent actions.
+const legacySidebarTitleUpdate = "    document.getElementById('sidebar-title-text').innerText = titleMap[viewId] || 'EXPLORER';";
+const durableSidebarTitleUpdate = `    const sidebarTitle = document.getElementById('sidebar-title-text');
+    if (sidebarTitle) {
+      const titleTextNode = [...sidebarTitle.childNodes].find(node => node.nodeType === Node.TEXT_NODE && String(node.nodeValue || '').trim());
+      if (titleTextNode) titleTextNode.nodeValue = '\\n        ' + (titleMap[viewId] || 'EXPLORER') + '\\n        ';
+      else sidebarTitle.prepend(document.createTextNode(titleMap[viewId] || 'EXPLORER'));
+    }
+    const explorerActions = document.getElementById('codebase-explorer-actions');
+    if (explorerActions) explorerActions.style.display = viewId === 'explorer' ? 'flex' : 'none';`;
+if (html.includes(legacySidebarTitleUpdate)) html = html.replace(legacySidebarTitleUpdate, durableSidebarTitleUpdate);
+
+if (!html.includes('id="codebase-explorer-actions"')) throw new Error('Permanent Explorer action toolbar was not published');
+if (!html.includes('title="Upload Files"')) throw new Error('Permanent Explorer Upload control was not published');
+if (html.includes(legacySidebarTitleUpdate)) throw new Error('Legacy destructive Explorer title rewrite is still present');
+
 const tag = '<script src="/assets/codebase-project-manager.js?v=20260905-project-manager-1"></script>';
 const bridgeTag = '<script src="/assets/codebase-explorer-global-bridge.js?v=20260906-explorer-bridge-1"></script>';
-const explorerTag = '<script src="/assets/codebase-explorer-file-management.js?v=20260906-explorer-upload-2"></script>';
+const explorerTag = '<script src="/assets/codebase-explorer-file-management.js?v=20260906-explorer-upload-3"></script>';
 const guardTag = '<script src="/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1"></script>';
 const manageTag = '<script src="/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-3"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-project-manager\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
@@ -104,4 +157,4 @@ if (html.indexOf(explorerTag, explorerIndex + explorerTag.length) !== -1) throw 
 if (html.indexOf(guardTag, guardIndex + guardTag.length) !== -1) throw new Error('Codebase project removal guard must be published exactly once');
 if (html.indexOf(manageTag, manageIndex + manageTag.length) !== -1) throw new Error('Codebase Manage runtime must be published exactly once');
 await writeFile(target, html, 'utf8');
-console.log(`Published Codebase project manager, persistent Explorer controls/uploads, removal guard, and Manage tab before terminal durability runtime in ${target}`);
+console.log(`Published Codebase project manager, permanent Explorer controls/uploads, removal guard, and Manage tab before terminal durability runtime in ${target}`);
