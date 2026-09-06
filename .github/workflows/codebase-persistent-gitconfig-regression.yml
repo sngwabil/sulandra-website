@@ -1,0 +1,68 @@
+name: Codebase persistent Git config regression
+
+on:
+  pull_request:
+    paths:
+      - 'terminal-session-agent/setup-development-environment.sh'
+      - '.github/workflows/codebase-persistent-gitconfig-regression.yml'
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - 'terminal-session-agent/setup-development-environment.sh'
+      - '.github/workflows/codebase-persistent-gitconfig-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  duplicate-managed-git-values:
+    name: Recover duplicate managed Git values
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Seed persistent home with duplicate Git values
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export HOME="$RUNNER_TEMP/codebase-home"
+          mkdir -p "$HOME"
+          git config --global --add user.name 'Legacy One'
+          git config --global --add user.name 'Legacy Two'
+          git config --global --add user.email 'legacy-one@example.invalid'
+          git config --global --add user.email 'legacy-two@example.invalid'
+          git config --global --add http.proxy 'http://old-proxy-one.invalid:3128'
+          git config --global --add http.proxy 'http://old-proxy-two.invalid:3128'
+          git config --global --add credential.https://github.com.helper 'legacy-helper-one'
+          git config --global --add credential.https://github.com.helper 'legacy-helper-two'
+          test "$(git config --global --get-all user.name | wc -l)" -eq 2
+          test "$(git config --global --get-all http.proxy | wc -l)" -eq 2
+
+      - name: Run Codebase bootstrap against the persistent home
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export HOME="$RUNNER_TEMP/codebase-home"
+          export SULANDRA_TERMINAL_CWD=/projects
+          export TERMINAL_EGRESS_PROXY_URL=http://egress-proxy:3128
+          sudo install -d -m 0755 /agent /projects
+          printf '%s\n' 'set -g history-limit 10000' | sudo tee /agent/tmux.conf >/dev/null
+          source terminal-session-agent/setup-development-environment.sh
+
+      - name: Verify managed values were collapsed without wiping unrelated config
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export HOME="$RUNNER_TEMP/codebase-home"
+          test "$(git config --global --get-all user.name | wc -l)" -eq 1
+          test "$(git config --global --get user.name)" = 'Sulpitius Gwabil'
+          test "$(git config --global --get-all user.email | wc -l)" -eq 1
+          test "$(git config --global --get user.email)" = 'Sulpitius.gwabil@gmail.com'
+          test "$(git config --global --get-all http.proxy | wc -l)" -eq 1
+          test "$(git config --global --get http.proxy)" = 'http://egress-proxy:3128'
+          test "$(git config --global --get-all credential.https://github.com.helper | wc -l)" -eq 1
+          test "$(git config --global --get credential.https://github.com.helper)" = '!gh auth git-credential'
+          test -f "$HOME/.tmux.conf"
+          test -f "$HOME/.bashrc"
+          git config --global --list >/dev/null
