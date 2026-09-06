@@ -159,9 +159,15 @@ for (const marker of [
   '/assets/codebase-terminal-native-paste.js?v=20260905-native-paste-1',
   '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1',
   "sessionStorage.getItem('sulandra:admin:access-token')",
-  'createWorkspaceFolder()',
 ]) {
   if (!html.includes(marker)) throw new Error(`Published Codebase contract missing ${marker}`);
+}
+// First publication still owns the legacy createWorkspaceFolder handler. After
+// the project-manager installer runs, that legacy button is intentionally
+// replaced by the permanent Explorer action bar, whose New Folder delegates to
+// SulandraCodebaseExplorerFiles. Both are valid publication states.
+if (!html.includes('createWorkspaceFolder()') && !html.includes('id="codebase-explorer-actions"')) {
+  throw new Error('Published Codebase contract missing a functional Explorer folder-creation control');
 }
 if (html.includes("|| 'test-token'")) throw new Error('Published Codebase must not use the public test-token fallback');
 if (/openFallbackFile\('spire-evv-test-console\.html'\)/.test(html)) throw new Error('Published Codebase must not preload demonstration source files');
