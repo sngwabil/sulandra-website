@@ -12,6 +12,7 @@ on:
       - Dockerfile.terminal-session
       - scripts/install-codebase-pty-compat.mjs
       - scripts/install-codebase-pty-session-resume.mjs
+      - scripts/fix-codebase-async-pty-startup.mjs
       - railway.terminal-worker.json
       - .github/workflows/codebase-terminal-resume-regression.yml
   push:
@@ -25,6 +26,7 @@ on:
       - Dockerfile.terminal-session
       - scripts/install-codebase-pty-compat.mjs
       - scripts/install-codebase-pty-session-resume.mjs
+      - scripts/fix-codebase-async-pty-startup.mjs
       - railway.terminal-worker.json
       - .github/workflows/codebase-terminal-resume-regression.yml
 
@@ -132,9 +134,11 @@ jobs:
           cp coding-terminal-worker/server.mjs coding-terminal-worker/server-codebase-resume-ci.mjs
           node scripts/install-codebase-pty-compat.mjs coding-terminal-worker/server-codebase-resume-ci.mjs
           node scripts/install-codebase-pty-session-resume.mjs coding-terminal-worker/server-codebase-resume-ci.mjs
+          node scripts/fix-codebase-async-pty-startup.mjs coding-terminal-worker/server-codebase-resume-ci.mjs
           node --check coding-terminal-worker/server-codebase-resume-ci.mjs
           grep -Fq 'probeCodebaseCompatResume' coding-terminal-worker/server-codebase-resume-ci.mjs
           grep -Fq 'Codebase stale PTY resume recovered' coding-terminal-worker/server-codebase-resume-ci.mjs
+          grep -Fq 'CODEBASE_ASYNC_PTY_STARTUP_V1' coding-terminal-worker/server-codebase-resume-ci.mjs
 
           NODE_TLS_REJECT_UNAUTHORIZED=0 \
           TERMINAL_AUTH_TOKEN="$INTERNAL_TOKEN" \
@@ -179,6 +183,7 @@ jobs:
             let control = null;
             let output = '';
             let commandSent = false;
+            let starting = false;
             const timer = setTimeout(() => {
               try { ws.terminate(); } catch {}
               reject(new Error(`Timed out waiting for ${marker}; control=${JSON.stringify(control)} output=${output}`));
@@ -189,8 +194,17 @@ jobs:
               if (!binary && text.startsWith('{')) {
                 try {
                   const message = JSON.parse(text);
+                  if (message?.type === 'terminal-starting') {
+                    starting = true;
+                    return;
+                  }
                   if (message?.type === 'session') {
                     control = message;
+                    if (!starting) {
+                      clearTimeout(timer);
+                      reject(new Error(`PTY session arrived before terminal-starting; control=${JSON.stringify(control)}`));
+                      return;
+                    }
                     if (!commandSent) {
                       commandSent = true;
                       ws.send(Buffer.from(`printf "${marker}:%s\\n" "$PWD"\r`));

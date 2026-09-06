@@ -9,6 +9,7 @@ on:
       - 'scripts/install-codebase-project-control.mjs'
       - 'scripts/install-codebase-project-gateway.mjs'
       - 'scripts/fix-codebase-project-session-recovery.mjs'
+      - 'scripts/fix-codebase-async-pty-startup.mjs'
       - 'terminal-session-agent/setup-development-environment.sh'
       - 'Dockerfile.frontend'
       - 'Dockerfile.coding-terminal'
@@ -24,6 +25,7 @@ on:
       - 'scripts/install-codebase-project-control.mjs'
       - 'scripts/install-codebase-project-gateway.mjs'
       - 'scripts/fix-codebase-project-session-recovery.mjs'
+      - 'scripts/fix-codebase-async-pty-startup.mjs'
       - 'terminal-session-agent/setup-development-environment.sh'
       - 'Dockerfile.frontend'
       - 'Dockerfile.coding-terminal'
@@ -48,6 +50,7 @@ jobs:
           node --check scripts/install-codebase-project-control.mjs
           node --check scripts/install-codebase-project-gateway.mjs
           node --check scripts/fix-codebase-project-session-recovery.mjs
+          node --check scripts/fix-codebase-async-pty-startup.mjs
           bash -n terminal-session-agent/setup-development-environment.sh
           grep -Fq 'PROJECTS_DIR="/projects"' terminal-session-agent/setup-development-environment.sh
           grep -Fq 'REQUESTED_TERMINAL_CWD' terminal-session-agent/setup-development-environment.sh
@@ -98,11 +101,13 @@ jobs:
           node scripts/install-terminal-history-proxy.mjs /tmp/gateway.mjs
           node scripts/install-codebase-pty-compat.mjs /tmp/gateway.mjs
           node scripts/install-codebase-pty-session-resume.mjs /tmp/gateway.mjs
+          node scripts/fix-codebase-async-pty-startup.mjs /tmp/gateway.mjs
           node scripts/fix-codebase-preview-owner-namespace.mjs /tmp/gateway.mjs
           node scripts/install-codebase-project-gateway.mjs /tmp/gateway.mjs
           node --check /tmp/gateway.mjs
           node scripts/verify-workspace-browser-session.mjs /tmp/gateway.mjs
           grep -Fq 'CODEBASE_PROJECT_GATEWAY_V1' /tmp/gateway.mjs
+          grep -Fq 'CODEBASE_ASYNC_PTY_STARTUP_V1' /tmp/gateway.mjs
           grep -Fq "app.get('/codebase/projects'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/clone'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/:project/railway/deploy'" /tmp/gateway.mjs

@@ -15,6 +15,7 @@ on:
       - assets/sulandra-codebase-nav-entry.js
       - scripts/install-codebase-backend-adapter.mjs
       - scripts/install-codebase-pty-session-resume.mjs
+      - scripts/fix-codebase-async-pty-startup.mjs
       - scripts/install-workspace-ide-ui.mjs
       - scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
       - terminal-browser/tests/codebase-session-durability-regression.mjs
@@ -51,6 +52,7 @@ jobs:
           node --check assets/codebase-terminal-session-durability.js
           node --check scripts/install-codebase-backend-adapter.mjs
           node --check scripts/install-codebase-pty-session-resume.mjs
+          node --check scripts/fix-codebase-async-pty-startup.mjs
           node --check assets/sulandra-codebase-nav-entry.js
           node --check scripts/install-workspace-ide-ui.mjs
           node --check scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
@@ -70,12 +72,14 @@ jobs:
           node scripts/install-workspace-ide-ui.mjs
           node scripts/install-it-solutions-ipad-visible-codebase-hotfix.mjs
 
-          grep -Fq '/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5' Codebase.html
+          grep -Fq '/assets/codebase-backend-adapter.js?v=20260906-async-pty-startup-1' Codebase.html
           grep -Fq '/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3' Codebase.html
           grep -Fq '/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4' Codebase.html
           grep -Fq '/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1' Codebase.html
           grep -Fq 'SULANDRA_CODEBASE_STANDALONE_CONTROLS_V1' assets/codebase-backend-adapter.js
           grep -Fq 'CODEBASE_VISIBLE_REGRESSIONS_V1' assets/codebase-backend-adapter.js
+          grep -Fq "type==='terminal-starting'" assets/codebase-backend-adapter.js
+          grep -Fq "type==='terminal-error'" assets/codebase-backend-adapter.js
           grep -Fq 'installSafeWorkspaceRenderer' assets/codebase-backend-adapter.js
           grep -Fq 'reattachTerminal' assets/codebase-backend-adapter.js
           grep -Fq 'setGridMode(modes[index],{currentTarget:gridButton})' assets/codebase-backend-adapter.js
@@ -108,7 +112,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('Codebase.html', 'utf8');
-          const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260903-visible-regressions-5"></script>';
+          const adapterTag = '<script src="/assets/codebase-backend-adapter.js?v=20260906-async-pty-startup-1"></script>';
           const previewTag = '<script src="/assets/codebase-preview-terminal-input-fix.js?v=20260904-terminal-live-input-3"></script>';
           const ipadKeyboardTag = '<script src="/assets/codebase-ipad-terminal-keyboard-bridge.js?v=20260904-ipad-keyboard-4"></script>';
           const durabilityTag = '<script src="/assets/codebase-terminal-session-durability.js?v=20260904-session-durability-1"></script>';

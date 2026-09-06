@@ -154,11 +154,24 @@ window.initXterm=(containerId,tabId)=>{
   const ws=new WebSocket(`${RAILWAY_CONFIG.WSS_URL}/pty?token=${encodeURIComponent(token)}&cols=${term.cols}&rows=${term.rows}`);
   ws.binaryType='arraybuffer';
   term.__sulandraWs=ws;
+  term.__sulandraStartupError=false;
   ws.onopen=()=>status('TERMINAL connecting to isolated Codebase workspace...');
   ws.onmessage=event=>{
     if(typeof event.data==='string'&&event.data.startsWith('{')){
       try{
         const control=JSON.parse(event.data);
+        if(control?.type==='terminal-starting'){
+          term.writeln('\r\n\x1b[36mStarting isolated Codebase terminal…\x1b[0m\r\n');
+          status('TERMINAL starting isolated Codebase workspace…');
+          return;
+        }
+        if(control?.type==='terminal-error'){
+          term.__sulandraStartupError=true;
+          const message=String(control.message||'Terminal startup failed.');
+          term.writeln('\r\n\x1b[31m'+message+'\x1b[0m\r\n');
+          status('TERMINAL STARTUP RETRYING: '+message);
+          return;
+        }
         if(control?.type==='session'&&control.sessionId){
           const tab=openTabs.find(item=>item.id===tabId);
           if(tab){tab.sessionId=control.sessionId;tab.workspaceId=control.workspaceId||''}
@@ -173,8 +186,8 @@ window.initXterm=(containerId,tabId)=>{
     if(event.data instanceof ArrayBuffer)term.write(new Uint8Array(event.data));
     else term.write(String(event.data||''));
   };
-  ws.onerror=()=>{term.writeln('\r\n\x1b[31mTerminal connection failed. Check terminal-worker health/authentication.\x1b[0m');status('TERMINAL connection failed.')};
-  ws.onclose=event=>{if(event.code!==1000)term.writeln(`\r\n\x1b[33mTerminal disconnected (${event.code}).\x1b[0m`)};
+  ws.onerror=()=>{if(!term.__sulandraStartupError){term.writeln('\r\n\x1b[31mTerminal connection failed. Check terminal-worker health/authentication.\x1b[0m');status('TERMINAL connection failed.')}};
+  ws.onclose=event=>{if(event.code!==1000&&!term.__sulandraStartupError)term.writeln(`\r\n\x1b[33mTerminal disconnected (${event.code}).\x1b[0m`)};
   term.onData(data=>{if(ws.readyState===WebSocket.OPEN)ws.send(data)});
   const observer=new ResizeObserver(()=>resizeTerminal(term,container));observer.observe(container);term.__sulandraResizeObserver=observer;
 };
