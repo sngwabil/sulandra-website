@@ -39,9 +39,15 @@ for (const marker of [
   if (!bridgeSource.includes(marker)) throw new Error(`Codebase Explorer bridge missing ${marker}`);
 }
 for (const marker of [
-  'CODEBASE_EXPLORER_FILE_MANAGEMENT_V1',
+  'CODEBASE_EXPLORER_FILE_MANAGEMENT_V2',
   'Move to Folder…',
   'Search folders…',
+  'Upload Files…',
+  'Upload Files Here…',
+  'ensureExplorerToolbar',
+  "projectApi('/upload/start'",
+  "projectApi('/upload/chunk'",
+  "projectApi('/upload/finish'",
   "addEventListener('contextmenu'",
   "addEventListener('dragstart'",
   "projectApi('/move'",
@@ -69,7 +75,7 @@ for (const marker of [
 let html = await readFile(target, 'utf8');
 const tag = '<script src="/assets/codebase-project-manager.js?v=20260905-project-manager-1"></script>';
 const bridgeTag = '<script src="/assets/codebase-explorer-global-bridge.js?v=20260906-explorer-bridge-1"></script>';
-const explorerTag = '<script src="/assets/codebase-explorer-file-management.js?v=20260906-explorer-files-1"></script>';
+const explorerTag = '<script src="/assets/codebase-explorer-file-management.js?v=20260906-explorer-upload-2"></script>';
 const guardTag = '<script src="/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1"></script>';
 const manageTag = '<script src="/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-3"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-project-manager\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
@@ -98,4 +104,4 @@ if (html.indexOf(explorerTag, explorerIndex + explorerTag.length) !== -1) throw 
 if (html.indexOf(guardTag, guardIndex + guardTag.length) !== -1) throw new Error('Codebase project removal guard must be published exactly once');
 if (html.indexOf(manageTag, manageIndex + manageTag.length) !== -1) throw new Error('Codebase Manage runtime must be published exactly once');
 await writeFile(target, html, 'utf8');
-console.log(`Published Codebase project manager, Explorer bridge/file management, removal guard, and Manage tab before terminal durability runtime in ${target}`);
+console.log(`Published Codebase project manager, persistent Explorer controls/uploads, removal guard, and Manage tab before terminal durability runtime in ${target}`);
