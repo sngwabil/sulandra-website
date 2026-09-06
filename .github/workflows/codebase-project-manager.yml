@@ -67,9 +67,15 @@ jobs:
           grep -Fq 'PROJECTS_DIR="/projects"' terminal-session-agent/setup-development-environment.sh
           grep -Fq 'REQUESTED_TERMINAL_CWD' terminal-session-agent/setup-development-environment.sh
           grep -Fq 'TERMINAL_CWD="${REQUESTED_TERMINAL_CWD}"' terminal-session-agent/setup-development-environment.sh
-          grep -Fq 'CODEBASE_EXPLORER_FILE_MANAGEMENT_V1' assets/codebase-explorer-file-management.js
+          grep -Fq 'CODEBASE_EXPLORER_FILE_MANAGEMENT_V2' assets/codebase-explorer-file-management.js
           grep -Fq 'Move to Folder…' assets/codebase-explorer-file-management.js
           grep -Fq 'Search folders…' assets/codebase-explorer-file-management.js
+          grep -Fq 'Upload Files…' assets/codebase-explorer-file-management.js
+          grep -Fq 'Upload Files Here…' assets/codebase-explorer-file-management.js
+          grep -Fq 'ensureExplorerToolbar' assets/codebase-explorer-file-management.js
+          grep -Fq "projectApi('/upload/start'" assets/codebase-explorer-file-management.js
+          grep -Fq "projectApi('/upload/chunk'" assets/codebase-explorer-file-management.js
+          grep -Fq "projectApi('/upload/finish'" assets/codebase-explorer-file-management.js
           grep -Fq "addEventListener('contextmenu'" assets/codebase-explorer-file-management.js
           grep -Fq "addEventListener('dragstart'" assets/codebase-explorer-file-management.js
           grep -Fq "projectApi('/move'" assets/codebase-explorer-file-management.js
@@ -109,6 +115,7 @@ jobs:
           grep -Fq 'CODEBASE_PROJECT_PERSISTENCE_V2' /tmp/executor.mjs
           grep -Fq 'CODEBASE_PROJECT_CONTROL_V1' /tmp/executor.mjs
           grep -Fq 'CODEBASE_EXPLORER_FILE_OPERATIONS_V1' /tmp/executor.mjs
+          grep -Fq 'CODEBASE_EXPLORER_BINARY_UPLOAD_V2' /tmp/executor.mjs
           grep -Fq 'CODEBASE_PROJECT_SESSION_RECOVERY_V1' /tmp/executor.mjs
           grep -Fq 'restoreCodebaseWorkspaceRegistry(owner)' /tmp/executor.mjs
           grep -Fq 'consolidateCodebaseProjects(workspace, reusableCodebase)' /tmp/executor.mjs
@@ -118,6 +125,11 @@ jobs:
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/clone'" /tmp/executor.mjs
           grep -Fq "app.put('/v1/workspaces/:workspaceId/codebase/projects/:project/file'" /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/move'" /tmp/executor.mjs
+          grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/upload/start'" /tmp/executor.mjs
+          grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/upload/chunk'" /tmp/executor.mjs
+          grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/upload/finish'" /tmp/executor.mjs
+          grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/upload/abort'" /tmp/executor.mjs
+          grep -Fq 'CODEBASE_PROJECT_UPLOAD_CHUNK_BYTES = 64 * 1024' /tmp/executor.mjs
           grep -Fq 'codebaseRename(sourceInfo.target, targetInfo.target)' /tmp/executor.mjs
           grep -Fq 'A folder cannot be moved or copied inside itself.' /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/git/commit'" /tmp/executor.mjs
@@ -149,11 +161,16 @@ jobs:
           node scripts/verify-workspace-browser-session.mjs /tmp/gateway.mjs
           grep -Fq 'CODEBASE_PROJECT_GATEWAY_V1' /tmp/gateway.mjs
           grep -Fq 'CODEBASE_EXPLORER_FILE_OPERATIONS_GATEWAY_V1' /tmp/gateway.mjs
+          grep -Fq 'CODEBASE_EXPLORER_BINARY_UPLOAD_GATEWAY_V2' /tmp/gateway.mjs
           grep -Fq 'CODEBASE_ASYNC_PTY_STARTUP_V1' /tmp/gateway.mjs
           grep -Fq "app.get('/codebase/projects'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/clone'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/:project/move'" /tmp/gateway.mjs
           grep -Fq "projectSuffix(req) + '/move'" /tmp/gateway.mjs
+          grep -Fq "app.post('/codebase/projects/:project/upload/start'" /tmp/gateway.mjs
+          grep -Fq "app.post('/codebase/projects/:project/upload/chunk'" /tmp/gateway.mjs
+          grep -Fq "app.post('/codebase/projects/:project/upload/finish'" /tmp/gateway.mjs
+          grep -Fq "app.post('/codebase/projects/:project/upload/abort'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/:project/railway/deploy'" /tmp/gateway.mjs
 
       - name: Publish and inspect production Codebase document
@@ -165,12 +182,14 @@ jobs:
           node scripts/fix-codebase-independent-branding.mjs /tmp/Codebase.html
           grep -Fq '<div class="brand-sub">Independent workspace</div>' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-manager.js?v=20260905-project-manager-1' /tmp/Codebase.html
-          grep -Fq '/assets/codebase-explorer-file-management.js?v=20260906-explorer-files-1' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-explorer-file-management.js?v=20260906-explorer-upload-2' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-3' /tmp/Codebase.html
-          grep -Fq 'CODEBASE_EXPLORER_FILE_MANAGEMENT_V1' assets/codebase-explorer-file-management.js
+          grep -Fq 'CODEBASE_EXPLORER_FILE_MANAGEMENT_V2' assets/codebase-explorer-file-management.js
           grep -Fq 'Move to Folder…' assets/codebase-explorer-file-management.js
           grep -Fq 'Search folders…' assets/codebase-explorer-file-management.js
+          grep -Fq 'Upload Files…' assets/codebase-explorer-file-management.js
+          grep -Fq 'ensureExplorerToolbar' assets/codebase-explorer-file-management.js
           grep -Fq 'CODEBASE_PROJECT_REMOVAL_GUARD_V1' assets/codebase-project-removal-guard.js
           grep -Fq 'CODEBASE_PROJECT_MANAGE_TAB_V1' assets/codebase-project-manage-tab.js
           grep -Fq 'CODEBASE_PROJECT_MANAGE_NATIVE_V3' assets/codebase-project-manage-tab.js
@@ -178,4 +197,4 @@ jobs:
           grep -Fq 'Deploy as New Railway Project' assets/codebase-project-manager.js
           grep -Fq 'Connect Existing + Deploy' assets/codebase-project-manager.js
           ! grep -Fq 'base/sulandra-1.0' /tmp/Codebase.html
-          echo 'Codebase Explorer file management, Manage V3, header lines, and project persistence contract verified.'
+          echo 'Codebase Explorer persistent actions, arbitrary-format uploads, Manage V3, header lines, and project persistence contract verified.'
