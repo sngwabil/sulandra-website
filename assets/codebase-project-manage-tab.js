@@ -1,11 +1,17 @@
 /* CODEBASE_PROJECT_MANAGE_TAB_V1
+ * CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2
  * Dedicated Codebase Manage tab. Keeps Explorer focused on files while project
  * lifecycle controls and the complete project list live under Manage.
+ *
+ * V2 hardening: the Manage icon can be recreated/reparented by later Codebase
+ * runtimes, so activation is owned by a document-level capture listener instead
+ * of relying only on the original SVG node listener. openManage() also repairs
+ * the Manage view before switching to it.
  */
 (()=>{
 'use strict';
-if(window.__CODEBASE_PROJECT_MANAGE_TAB_V1__)return;
-window.__CODEBASE_PROJECT_MANAGE_TAB_V1__=true;
+if(window.__CODEBASE_PROJECT_MANAGE_TAB_V2__)return;
+window.__CODEBASE_PROJECT_MANAGE_TAB_V2__=true;
 
 const config=()=>typeof RAILWAY_CONFIG!=='undefined'?RAILWAY_CONFIG:(window.RAILWAY_CONFIG||{});
 const gatewayBase=()=>String(config().WSS_URL||'').replace(/^wss:/i,'https:').replace(/^ws:/i,'http:').replace(/\/$/,'');
@@ -29,42 +35,19 @@ const setSidebarTitle=title=>{
   else header.prepend(document.createTextNode(title));
 };
 
-const openManage=()=>{
-  document.querySelectorAll('.sidebar-view').forEach(view=>view.classList.remove('active'));
-  document.querySelectorAll('.act-icon').forEach(icon=>icon.classList.remove('active'));
-  document.getElementById('sidebar-manage')?.classList.add('active');
-  document.querySelector('.act-icon.icon-manage')?.classList.add('active');
-  setSidebarTitle('MANAGE');
-  void renderProjects();
-};
-
-const ensureManageIcon=()=>{
-  if(document.querySelector('.act-icon.icon-manage'))return;
-  const db=document.querySelector('.sidebar-toolbox .act-icon.icon-db');
-  if(!db?.parentElement)return;
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('class','act-icon icon-manage');
-  svg.setAttribute('title','Manage Projects');
-  svg.setAttribute('viewBox','0 0 24 24');
-  svg.setAttribute('fill','none');
-  svg.setAttribute('stroke','currentColor');
-  svg.setAttribute('stroke-width','2');
-  svg.style.color='#4dd0e1';
-  svg.innerHTML='<path d="M3 7h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 7V5a2 2 0 0 1 2-2h5l2 2"/><path d="M8 14h8M12 10v8"/>';
-  svg.addEventListener('click',openManage);
-  db.insertAdjacentElement('afterend',svg);
-};
-
 const ensureManageView=()=>{
   let view=document.getElementById('sidebar-manage');
   if(!view){
     view=document.createElement('div');
     view.id='sidebar-manage';
     view.className='sidebar-view';
-    view.innerHTML='<div class="sidebar-filter"><span style="font-size:10px;opacity:.8">PROJECTS & FOLDERS</span></div><div id="codebase-manage-body" style="padding-bottom:18px"><div id="codebase-manage-projects" style="padding:0 12px"></div></div>';
     const db=document.getElementById('sidebar-db');
     if(db?.parentElement)db.insertAdjacentElement('afterend',view);
     else document.querySelector('.sidebar-view-container')?.appendChild(view);
+  }
+  if(!view)return null;
+  if(!view.querySelector('#codebase-manage-body')){
+    view.innerHTML='<div class="sidebar-filter"><span style="font-size:10px;opacity:.8">PROJECTS & FOLDERS</span></div><div id="codebase-manage-body" style="padding-bottom:18px"><div id="codebase-manage-projects" style="padding:0 12px"></div></div>';
   }
   const manager=document.getElementById('codebase-project-manager');
   const body=view.querySelector('#codebase-manage-body');
@@ -73,14 +56,69 @@ const ensureManageView=()=>{
     manager.style.background='rgba(0,0,0,.12)';
     manager.style.padding='10px 12px 12px';
     body.insertBefore(manager,body.firstChild);
-    const observer=new MutationObserver(()=>scheduleRender(120));
-    observer.observe(manager,{childList:true,subtree:true});
+    if(manager.dataset.manageObserverBound!=='true'){
+      manager.dataset.manageObserverBound='true';
+      const observer=new MutationObserver(()=>scheduleRender(120));
+      observer.observe(manager,{childList:true,subtree:true});
+    }
   }
   return view;
 };
 
+const openManage=()=>{
+  const view=ensureManageView();
+  if(!view){status('MANAGE unavailable: sidebar view could not be created');return}
+  document.querySelectorAll('.sidebar-view').forEach(node=>node.classList.remove('active'));
+  document.querySelectorAll('.act-icon').forEach(icon=>icon.classList.remove('active'));
+  view.classList.add('active');
+  document.querySelector('.act-icon.icon-manage')?.classList.add('active');
+  setSidebarTitle('MANAGE');
+  status('MANAGE: project controls ready');
+  void renderProjects();
+};
+
+const bindManageIcon=icon=>{
+  if(!icon||icon.dataset.manageClickBound==='true')return icon;
+  icon.dataset.manageClickBound='true';
+  icon.setAttribute('role','button');
+  icon.setAttribute('tabindex','0');
+  icon.setAttribute('aria-label','Manage Projects');
+  icon.addEventListener('click',event=>{
+    event.preventDefault();
+    event.stopPropagation();
+    openManage();
+  });
+  icon.addEventListener('keydown',event=>{
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    event.preventDefault();
+    event.stopPropagation();
+    openManage();
+  });
+  return icon;
+};
+
+const ensureManageIcon=()=>{
+  let icon=document.querySelector('.act-icon.icon-manage');
+  if(!icon){
+    const db=document.querySelector('.sidebar-toolbox .act-icon.icon-db');
+    if(!db?.parentElement)return null;
+    icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    icon.setAttribute('class','act-icon icon-manage');
+    icon.setAttribute('title','Manage Projects');
+    icon.setAttribute('viewBox','0 0 24 24');
+    icon.setAttribute('fill','none');
+    icon.setAttribute('stroke','currentColor');
+    icon.setAttribute('stroke-width','2');
+    icon.style.color='#4dd0e1';
+    icon.innerHTML='<path d="M3 7h7l2 2h9v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M3 7V5a2 2 0 0 1 2-2h5l2 2"/><path d="M8 14h8M12 10v8"/>';
+    db.insertAdjacentElement('afterend',icon);
+  }
+  return bindManageIcon(icon);
+};
+
 const renderProjects=async()=>{
-  const root=document.getElementById('codebase-manage-projects');
+  const view=ensureManageView();
+  const root=view?.querySelector('#codebase-manage-projects');
   if(!root)return;
   root.innerHTML='<div style="padding:12px 2px;color:#8ea6b8;font-size:11px">Loading projects…</div>';
   try{
@@ -124,23 +162,49 @@ const scheduleRender=(delay=250)=>{
   renderTimer=setTimeout(()=>void renderProjects(),delay);
 };
 
+const onDocumentManageClick=event=>{
+  const target=event.target;
+  const icon=target&&typeof target.closest==='function'?target.closest('.act-icon.icon-manage'):null;
+  if(!icon)return;
+  event.preventDefault();
+  event.stopPropagation();
+  bindManageIcon(icon);
+  openManage();
+};
+
+const installCaptureListener=()=>{
+  if(window.__CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2__)return;
+  window.__CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2__=true;
+  document.addEventListener('click',onDocumentManageClick,true);
+};
+
 const install=()=>{
+  installCaptureListener();
   ensureManageIcon();
   const view=ensureManageView();
   if(!view)return;
-  view.addEventListener('click',event=>{
-    if(event.target?.closest?.('#codebase-new-project,#codebase-clone-project,#codebase-project-refresh,#codebase-disconnect-project,#codebase-remove-project')){
-      scheduleRender(500);
-      setTimeout(()=>scheduleRender(0),1400);
-    }
-  });
+  if(view.dataset.manageActionsBound!=='true'){
+    view.dataset.manageActionsBound='true';
+    view.addEventListener('click',event=>{
+      if(event.target?.closest?.('#codebase-new-project,#codebase-clone-project,#codebase-project-refresh,#codebase-disconnect-project,#codebase-remove-project')){
+        scheduleRender(500);
+        setTimeout(()=>scheduleRender(0),1400);
+      }
+    });
+  }
   void renderProjects();
   window.SulandraCodebaseManage={open:openManage,refresh:renderProjects};
 };
 
 const waitForProjectManager=attempt=>{
   if(document.getElementById('codebase-project-manager')&&window.SulandraCodebaseProjects){install();return}
-  if(attempt>=80)return;
+  if(attempt>=120){
+    installCaptureListener();
+    ensureManageIcon();
+    ensureManageView();
+    window.SulandraCodebaseManage={open:openManage,refresh:renderProjects};
+    return;
+  }
   setTimeout(()=>waitForProjectManager(attempt+1),50);
 };
 waitForProjectManager(0);
