@@ -73,8 +73,9 @@ for (const marker of [
 }
 
 // The permanent Explorer header delegates to these public runtime actions.
-// Keep the canonical source runtime compact, but expose create-file/create-folder
-// in the published artifact alongside the already-public upload/move operations.
+// Expose create-file/create-folder in the published artifact alongside the
+// existing upload/move operations. Existing cached V2 runtimes remain safe
+// because ensureExplorerToolbar already binds all four actions directly.
 const explorerApiOld = 'window.SulandraCodebaseExplorerFiles={refresh:refreshExplorer,move:movePath,rename:renamePath,duplicate:duplicatePath,remove:deletePath,moveToFolder:showFolderPicker,upload:uploadFiles};';
 const explorerApiNew = 'window.SulandraCodebaseExplorerFiles={createFile,createFolder,refresh:refreshExplorer,move:movePath,rename:renamePath,duplicate:duplicatePath,remove:deletePath,moveToFolder:showFolderPicker,upload:uploadFiles};';
 if (explorerSource.includes(explorerApiOld)) {
@@ -87,17 +88,10 @@ let html = await readFile(target, 'utf8');
 
 // Publish the four Explorer controls in the canonical HTML itself so they are
 // visible immediately and cannot disappear merely because a late runtime did
-// not repaint the sidebar header. The runtime replaces these nodes with bound
-// handlers after it loads, while the native delegates remain safe fallbacks.
-const legacyExplorerHeader = `      <div class="sidebar-header" id="sidebar-title-text" style="display: flex; gap: 8px; align-items: center;">
-        EXPLORER
-        <div style="display: flex; gap: 8px; color: var(--cb-blue);">
-          <span style="cursor: pointer;" title="New File" onclick="openFallbackFile('new_script.js', 'javascript')">📄</span>
-          <span style="cursor: pointer;" title="New Folder" onclick="alert('Folder created in workspace')">📁</span>
-          <span style="cursor: pointer;" onclick="fetchFileSystem()" title="Refresh">⟳</span>
-        </div>
-      </div>`;
-const nativeExplorerHeader = `      <div class="sidebar-header" id="sidebar-title-text" style="display: flex; gap: 8px; align-items: center;">
+// not repaint the sidebar header. Match the header after backend-adapter
+// publication too (its New Folder handler is intentionally rewritten there).
+const explorerHeaderPattern = /<div class="sidebar-header" id="sidebar-title-text" style="display: flex; gap: 8px; align-items: center;">\s*EXPLORER\s*<div style="display: flex; gap: 8px; color: var\(--cb-blue\);">[\s\S]*?<\/div>\s*<\/div>/;
+const nativeExplorerHeader = `<div class="sidebar-header" id="sidebar-title-text" style="display: flex; gap: 8px; align-items: center;">
         EXPLORER
         <div id="codebase-explorer-actions" style="display:flex;gap:8px;align-items:center;margin-left:auto;color:var(--cb-blue);">
           <span style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:16px;" title="New File" onclick="window.SulandraCodebaseExplorerFiles?.createFile?.('')">📄</span>
@@ -106,7 +100,10 @@ const nativeExplorerHeader = `      <div class="sidebar-header" id="sidebar-titl
           <span style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-width:16px;" title="Refresh" onclick="window.SulandraCodebaseExplorerFiles?.refresh?.()">⟳</span>
         </div>
       </div>`;
-if (html.includes(legacyExplorerHeader)) html = html.replace(legacyExplorerHeader, nativeExplorerHeader);
+if (!html.includes('id="codebase-explorer-actions"')) {
+  if (!explorerHeaderPattern.test(html)) throw new Error('Legacy Explorer header changed; permanent toolbar cannot be published safely');
+  html = html.replace(explorerHeaderPattern, nativeExplorerHeader);
+}
 
 // Legacy switchSidebar used innerText on the whole header, which deleted every
 // Explorer action whenever the user visited another sidebar and came back.
@@ -128,7 +125,7 @@ if (html.includes(legacySidebarTitleUpdate)) throw new Error('Legacy destructive
 
 const tag = '<script src="/assets/codebase-project-manager.js?v=20260905-project-manager-1"></script>';
 const bridgeTag = '<script src="/assets/codebase-explorer-global-bridge.js?v=20260906-explorer-bridge-1"></script>';
-const explorerTag = '<script src="/assets/codebase-explorer-file-management.js?v=20260906-explorer-upload-3"></script>';
+const explorerTag = '<script src="/assets/codebase-explorer-file-management.js?v=20260906-explorer-upload-2"></script>';
 const guardTag = '<script src="/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1"></script>';
 const manageTag = '<script src="/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-3"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-project-manager\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
