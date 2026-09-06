@@ -39,8 +39,13 @@ jobs:
           node --check scripts/install-codebase-public-git-clone-ui.mjs
           node --check scripts/fix-codebase-public-git-clone.mjs
           grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_UI_V1' assets/codebase-public-git-clone.js
+          grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_GATEWAY_FIX_V2' assets/codebase-public-git-clone.js
           grep -Fq "#codebase-clone-project" assets/codebase-public-git-clone.js
           grep -Fq "window.SulandraCodebaseProjects.clone=cloneGithubProject" assets/codebase-public-git-clone.js
+          grep -Fq "typeof RAILWAY_CONFIG!=='undefined'" assets/codebase-public-git-clone.js
+          grep -Fq "runtimeConfig().WSS_URL" assets/codebase-public-git-clone.js
+          grep -Fq "runtimeConfig().getToken" assets/codebase-public-git-clone.js
+          ! grep -Fq "window.RAILWAY_CONFIG?.WSS_URL" assets/codebase-public-git-clone.js
           ! grep -Fq 'If this is your first project' assets/codebase-public-git-clone.js
 
       - name: Build patched executor and verify HTTPS-first order
@@ -84,6 +89,6 @@ jobs:
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
           node scripts/install-codebase-project-manager-ui.mjs /tmp/Codebase.html
           node scripts/install-codebase-public-git-clone-ui.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-public-git-clone.js?v=20260906-public-git-clone-1' /tmp/Codebase.html
-          grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_UI_V1' assets/codebase-public-git-clone.js
-          echo 'Codebase public HTTPS-first clone contract verified.'
+          grep -Fq '/assets/codebase-public-git-clone.js?v=20260906-public-git-clone-2' /tmp/Codebase.html
+          grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_GATEWAY_FIX_V2' assets/codebase-public-git-clone.js
+          echo 'Codebase public HTTPS-first clone and terminal-worker gateway contract verified.'
