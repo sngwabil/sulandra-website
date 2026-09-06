@@ -62,6 +62,9 @@ jobs:
           grep -Fq 'REQUESTED_TERMINAL_CWD' terminal-session-agent/setup-development-environment.sh
           grep -Fq 'TERMINAL_CWD="${REQUESTED_TERMINAL_CWD}"' terminal-session-agent/setup-development-environment.sh
           grep -Fq 'CODEBASE_PROJECT_MANAGE_TAB_V1' assets/codebase-project-manage-tab.js
+          grep -Fq 'CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2' assets/codebase-project-manage-tab.js
+          grep -Fq '__CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2__' assets/codebase-project-manage-tab.js
+          grep -Fq "document.addEventListener('click',onDocumentManageClick,true)" assets/codebase-project-manage-tab.js
           grep -Fq 'sidebar-manage' assets/codebase-project-manage-tab.js
           grep -Fq 'PROJECTS & FOLDERS' assets/codebase-project-manage-tab.js
           grep -Fq 'ALL PROJECTS' assets/codebase-project-manage-tab.js
@@ -139,9 +142,10 @@ jobs:
           grep -Fq '<div class="brand-sub">Independent workspace</div>' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-manager.js?v=20260905-project-manager-1' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1' /tmp/Codebase.html
-          grep -Fq '/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-1' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-2' /tmp/Codebase.html
           grep -Fq 'CODEBASE_PROJECT_REMOVAL_GUARD_V1' assets/codebase-project-removal-guard.js
           grep -Fq 'CODEBASE_PROJECT_MANAGE_TAB_V1' assets/codebase-project-manage-tab.js
+          grep -Fq 'CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2' assets/codebase-project-manage-tab.js
           grep -Fq 'Deploy as New Railway Project' assets/codebase-project-manager.js
           grep -Fq 'Connect Existing + Deploy' assets/codebase-project-manager.js
           ! grep -Fq 'base/sulandra-1.0' /tmp/Codebase.html
