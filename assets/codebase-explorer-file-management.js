@@ -461,8 +461,9 @@ const ensureExplorerToolbar=()=>{
     toolbar.style.cssText='display:flex;gap:8px;align-items:center;margin-left:auto;color:var(--cb-blue);';
     header.appendChild(toolbar);
   }
-  toolbar.innerHTML='';
-  toolbar.append(
+  if(toolbar.dataset.codebaseToolbarVersion==='2'&&toolbar.childElementCount===4)return;
+  toolbar.dataset.codebaseToolbarVersion='2';
+  toolbar.replaceChildren(
     makeToolbarButton('New File','📄',()=>void createFile('')),
     makeToolbarButton('New Folder','📁',()=>void createFolder('')),
     makeToolbarButton('Upload Files','⇧',()=>void uploadFiles('')),
