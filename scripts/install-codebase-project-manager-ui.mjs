@@ -29,13 +29,15 @@ if (!guardSource.includes('CODEBASE_PROJECT_REMOVAL_GUARD_V1')) {
 }
 for (const marker of [
   'CODEBASE_PROJECT_MANAGE_TAB_V1',
-  'CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2',
-  '__CODEBASE_PROJECT_MANAGE_CLICK_CAPTURE_V2__',
+  'CODEBASE_PROJECT_MANAGE_NATIVE_V3',
+  '__CODEBASE_PROJECT_MANAGE_TAB_V3__',
+  '__CODEBASE_PROJECT_MANAGE_CAPTURE_V3__',
+  'codebase-header-definition-lines-v3',
   'sidebar-manage',
   'PROJECTS & FOLDERS',
   'ALL PROJECTS',
-  "document.getElementById('codebase-project-manager')",
-  "document.addEventListener('click',onDocumentManageClick,true)",
+  "setAttribute('onclick'",
+  "document.addEventListener('pointerup',captureManage,true)",
 ]) {
   if (!manageSource.includes(marker)) throw new Error(`Codebase Manage runtime missing ${marker}`);
 }
@@ -43,7 +45,7 @@ for (const marker of [
 let html = await readFile(target, 'utf8');
 const tag = '<script src="/assets/codebase-project-manager.js?v=20260905-project-manager-1"></script>';
 const guardTag = '<script src="/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1"></script>';
-const manageTag = '<script src="/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-2"></script>';
+const manageTag = '<script src="/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-3"></script>';
 html = html.replace(/\s*<script src="\/assets\/codebase-project-manager\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script src="\/assets\/codebase-project-removal-guard\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
 html = html.replace(/\s*<script src="\/assets\/codebase-project-manage-tab\.js(?:\?v=[^\"]*)?"><\/script>\s*/g, '\n');
