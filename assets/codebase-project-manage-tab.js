@@ -7,8 +7,9 @@
 if(window.__CODEBASE_PROJECT_MANAGE_TAB_V1__)return;
 window.__CODEBASE_PROJECT_MANAGE_TAB_V1__=true;
 
-const gatewayBase=()=>String(window.RAILWAY_CONFIG?.WSS_URL||'').replace(/^wss:/i,'https:').replace(/^ws:/i,'http:').replace(/\/$/,'');
-const token=()=>String(window.RAILWAY_CONFIG?.getToken?.()||'').trim();
+const config=()=>typeof RAILWAY_CONFIG!=='undefined'?RAILWAY_CONFIG:(window.RAILWAY_CONFIG||{});
+const gatewayBase=()=>String(config().WSS_URL||'').replace(/^wss:/i,'https:').replace(/^ws:/i,'http:').replace(/\/$/,'');
+const token=()=>String(config().getToken?.()||'').trim();
 const headers=()=>{const auth=token();return {Accept:'application/json',...(auth?{Authorization:'Bearer '+auth}:{})}};
 const api=async path=>{
   const response=await fetch(gatewayBase()+'/codebase'+path,{headers:headers()});
