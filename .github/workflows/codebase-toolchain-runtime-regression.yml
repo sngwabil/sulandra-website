@@ -1,0 +1,82 @@
+name: Codebase Toolchain Runtime Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.terminal-session
+      - terminal-session-agent/**
+      - .github/workflows/codebase-toolchain-runtime-regression.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - Dockerfile.terminal-session
+      - terminal-session-agent/**
+      - .github/workflows/codebase-toolchain-runtime-regression.yml
+
+permissions:
+  contents: read
+
+jobs:
+  noexec-toolchain:
+    name: Go + Vim + controlled DNS under noexec /tmp
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SESSION_IMAGE: sulandra-terminal-session:toolchain-runtime-ci
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Codebase session image
+        run: |
+          set -euo pipefail
+          docker build -f Dockerfile.terminal-session -t "$SESSION_IMAGE" .
+
+      - name: Verify noexec runtime toolchain contract
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            --add-host egress-proxy:127.0.0.1 \
+            --entrypoint /bin/bash \
+            "$SESSION_IMAGE" \
+            --noprofile --norc -c '
+              set -euo pipefail
+              source /usr/local/bin/sulandra-codebase-setup
+
+              mount | grep -E "[[:space:]]/tmp[[:space:]]" | grep -q noexec
+              test "$GOTMPDIR" = "/home/terminal/.local/state/sulandra-terminal"
+              test -d "$GOTMPDIR"
+              test -w "$GOTMPDIR"
+
+              printf "%s\n" "package main" "import \"fmt\"" "func main(){fmt.Println(\"GO_NOEXEC_OK\")}" > /projects/toolchain-smoke.go
+              go run /projects/toolchain-smoke.go | grep -Fq GO_NOEXEC_OK
+
+              command -v vim >/dev/null
+              vim --version | head -n1 | grep -Fq "VIM - Vi IMproved"
+
+              printf "#include <stdio.h>\nint main(void){puts(\"EXEC_OK\");return 0;}\n" > /projects/exec-smoke.c
+              gcc /projects/exec-smoke.c -o /projects/exec-smoke
+              /projects/exec-smoke | grep -Fq EXEC_OK
+              cp /projects/exec-smoke /tmp/exec-smoke
+              if /tmp/exec-smoke >/dev/null 2>&1; then
+                echo "noexec protection was bypassed" >&2
+                exit 1
+              fi
+
+              getent hosts egress-proxy >/dev/null
+              rm -f /projects/toolchain-smoke.go /projects/exec-smoke.c /projects/exec-smoke
+            '
+
+      - name: Verify controlled DNS test is architecture-aware
+        run: |
+          set -euo pipefail
+          grep -Fq 'getent hosts egress-proxy' terminal-session-agent/codebase-doctor.sh
+          if grep -Fq 'getent hosts github.com' terminal-session-agent/codebase-doctor.sh; then
+            echo 'Codebase doctor must not require direct public DNS resolution; outbound traffic is proxy-controlled.' >&2
+            exit 1
+          fi
