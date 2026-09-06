@@ -7,11 +7,13 @@ await access(target);
 await access(runtime);
 const runtimeSource=await readFile(runtime,'utf8');
 if(!runtimeSource.includes('CODEBASE_PUBLIC_GIT_CLONE_UI_V1'))throw new Error('Codebase public Git clone UI marker is missing');
+if(!runtimeSource.includes('CODEBASE_PUBLIC_GIT_CLONE_GATEWAY_FIX_V2'))throw new Error('Codebase public Git clone gateway repair marker is missing');
 if(!runtimeSource.includes("#codebase-clone-project"))throw new Error('Codebase public Git clone UI does not own the GitHub button');
 if(!runtimeSource.includes("window.SulandraCodebaseProjects.clone=cloneGithubProject"))throw new Error('Codebase public Git clone UI does not expose the repaired clone action');
+if(runtimeSource.includes("window.RAILWAY_CONFIG?.WSS_URL"))throw new Error('Codebase clone must not read lexical RAILWAY_CONFIG through window');
 
 let html=await readFile(target,'utf8');
-const tag='<script src="/assets/codebase-public-git-clone.js?v=20260906-public-git-clone-1"></script>';
+const tag='<script src="/assets/codebase-public-git-clone.js?v=20260906-public-git-clone-2"></script>';
 html=html.replace(/\s*<script src="\/assets\/codebase-public-git-clone\.js(?:\?v=[^\"]*)?"><\/script>\s*/g,'\n');
 const projectManagerPattern=/<script src="\/assets\/codebase-project-manager\.js(?:\?v=[^\"]*)?"><\/script>/;
 const match=html.match(projectManagerPattern);
