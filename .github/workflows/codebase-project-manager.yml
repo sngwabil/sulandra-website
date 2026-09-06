@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - 'assets/codebase-project-manager.js'
+      - 'assets/codebase-explorer-file-management.js'
       - 'assets/codebase-project-manage-tab.js'
       - 'assets/codebase-project-removal-guard.js'
       - 'scripts/install-codebase-project-manager-ui.mjs'
       - 'scripts/install-codebase-project-control.mjs'
+      - 'scripts/install-codebase-explorer-file-management.mjs'
       - 'scripts/harden-codebase-project-persistence.mjs'
       - 'scripts/install-codebase-project-gateway.mjs'
       - 'scripts/fix-codebase-project-session-recovery.mjs'
@@ -22,10 +24,12 @@ on:
       - release/sulandra-1.0
     paths:
       - 'assets/codebase-project-manager.js'
+      - 'assets/codebase-explorer-file-management.js'
       - 'assets/codebase-project-manage-tab.js'
       - 'assets/codebase-project-removal-guard.js'
       - 'scripts/install-codebase-project-manager-ui.mjs'
       - 'scripts/install-codebase-project-control.mjs'
+      - 'scripts/install-codebase-explorer-file-management.mjs'
       - 'scripts/harden-codebase-project-persistence.mjs'
       - 'scripts/install-codebase-project-gateway.mjs'
       - 'scripts/fix-codebase-project-session-recovery.mjs'
@@ -49,10 +53,12 @@ jobs:
         run: |
           set -euo pipefail
           node --check assets/codebase-project-manager.js
+          node --check assets/codebase-explorer-file-management.js
           node --check assets/codebase-project-manage-tab.js
           node --check assets/codebase-project-removal-guard.js
           node --check scripts/install-codebase-project-manager-ui.mjs
           node --check scripts/install-codebase-project-control.mjs
+          node --check scripts/install-codebase-explorer-file-management.mjs
           node --check scripts/harden-codebase-project-persistence.mjs
           node --check scripts/install-codebase-project-gateway.mjs
           node --check scripts/fix-codebase-project-session-recovery.mjs
@@ -61,6 +67,12 @@ jobs:
           grep -Fq 'PROJECTS_DIR="/projects"' terminal-session-agent/setup-development-environment.sh
           grep -Fq 'REQUESTED_TERMINAL_CWD' terminal-session-agent/setup-development-environment.sh
           grep -Fq 'TERMINAL_CWD="${REQUESTED_TERMINAL_CWD}"' terminal-session-agent/setup-development-environment.sh
+          grep -Fq 'CODEBASE_EXPLORER_FILE_MANAGEMENT_V1' assets/codebase-explorer-file-management.js
+          grep -Fq 'Move to Folder…' assets/codebase-explorer-file-management.js
+          grep -Fq 'Search folders…' assets/codebase-explorer-file-management.js
+          grep -Fq "addEventListener('contextmenu'" assets/codebase-explorer-file-management.js
+          grep -Fq "addEventListener('dragstart'" assets/codebase-explorer-file-management.js
+          grep -Fq "projectApi('/move'" assets/codebase-explorer-file-management.js
           grep -Fq 'CODEBASE_PROJECT_MANAGE_TAB_V1' assets/codebase-project-manage-tab.js
           grep -Fq 'CODEBASE_PROJECT_MANAGE_NATIVE_V3' assets/codebase-project-manage-tab.js
           grep -Fq '__CODEBASE_PROJECT_MANAGE_TAB_V3__' assets/codebase-project-manage-tab.js
@@ -91,10 +103,12 @@ jobs:
           node scripts/fix-codebase-independent-workspace.mjs /tmp/executor.mjs
           node scripts/harden-codebase-project-persistence.mjs /tmp/executor.mjs
           node scripts/install-codebase-project-control.mjs /tmp/executor.mjs
+          node scripts/install-codebase-explorer-file-management.mjs /tmp/executor.mjs
           node scripts/fix-codebase-project-session-recovery.mjs /tmp/executor.mjs
           node --check /tmp/executor.mjs
           grep -Fq 'CODEBASE_PROJECT_PERSISTENCE_V2' /tmp/executor.mjs
           grep -Fq 'CODEBASE_PROJECT_CONTROL_V1' /tmp/executor.mjs
+          grep -Fq 'CODEBASE_EXPLORER_FILE_OPERATIONS_V1' /tmp/executor.mjs
           grep -Fq 'CODEBASE_PROJECT_SESSION_RECOVERY_V1' /tmp/executor.mjs
           grep -Fq 'restoreCodebaseWorkspaceRegistry(owner)' /tmp/executor.mjs
           grep -Fq 'consolidateCodebaseProjects(workspace, reusableCodebase)' /tmp/executor.mjs
@@ -103,6 +117,9 @@ jobs:
           grep -Fq '__recovered_' /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/clone'" /tmp/executor.mjs
           grep -Fq "app.put('/v1/workspaces/:workspaceId/codebase/projects/:project/file'" /tmp/executor.mjs
+          grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/move'" /tmp/executor.mjs
+          grep -Fq 'codebaseRename(sourceInfo.target, targetInfo.target)' /tmp/executor.mjs
+          grep -Fq 'A folder cannot be moved or copied inside itself.' /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/git/commit'" /tmp/executor.mjs
           grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/deploy'" /tmp/executor.mjs
           grep -Fq '.sulandra-projects' /tmp/executor.mjs
@@ -127,12 +144,16 @@ jobs:
           node scripts/fix-codebase-async-pty-startup.mjs /tmp/gateway.mjs
           node scripts/fix-codebase-preview-owner-namespace.mjs /tmp/gateway.mjs
           node scripts/install-codebase-project-gateway.mjs /tmp/gateway.mjs
+          node scripts/install-codebase-explorer-file-management.mjs /tmp/gateway.mjs
           node --check /tmp/gateway.mjs
           node scripts/verify-workspace-browser-session.mjs /tmp/gateway.mjs
           grep -Fq 'CODEBASE_PROJECT_GATEWAY_V1' /tmp/gateway.mjs
+          grep -Fq 'CODEBASE_EXPLORER_FILE_OPERATIONS_GATEWAY_V1' /tmp/gateway.mjs
           grep -Fq 'CODEBASE_ASYNC_PTY_STARTUP_V1' /tmp/gateway.mjs
           grep -Fq "app.get('/codebase/projects'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/clone'" /tmp/gateway.mjs
+          grep -Fq "app.post('/codebase/projects/:project/move'" /tmp/gateway.mjs
+          grep -Fq "projectSuffix(req) + '/move'" /tmp/gateway.mjs
           grep -Fq "app.post('/codebase/projects/:project/railway/deploy'" /tmp/gateway.mjs
 
       - name: Publish and inspect production Codebase document
@@ -144,8 +165,12 @@ jobs:
           node scripts/fix-codebase-independent-branding.mjs /tmp/Codebase.html
           grep -Fq '<div class="brand-sub">Independent workspace</div>' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-manager.js?v=20260905-project-manager-1' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-explorer-file-management.js?v=20260906-explorer-files-1' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1' /tmp/Codebase.html
           grep -Fq '/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-3' /tmp/Codebase.html
+          grep -Fq 'CODEBASE_EXPLORER_FILE_MANAGEMENT_V1' assets/codebase-explorer-file-management.js
+          grep -Fq 'Move to Folder…' assets/codebase-explorer-file-management.js
+          grep -Fq 'Search folders…' assets/codebase-explorer-file-management.js
           grep -Fq 'CODEBASE_PROJECT_REMOVAL_GUARD_V1' assets/codebase-project-removal-guard.js
           grep -Fq 'CODEBASE_PROJECT_MANAGE_TAB_V1' assets/codebase-project-manage-tab.js
           grep -Fq 'CODEBASE_PROJECT_MANAGE_NATIVE_V3' assets/codebase-project-manage-tab.js
@@ -153,4 +178,4 @@ jobs:
           grep -Fq 'Deploy as New Railway Project' assets/codebase-project-manager.js
           grep -Fq 'Connect Existing + Deploy' assets/codebase-project-manager.js
           ! grep -Fq 'base/sulandra-1.0' /tmp/Codebase.html
-          echo 'Codebase Manage V3, header lines, and project persistence contract verified.'
+          echo 'Codebase Explorer file management, Manage V3, header lines, and project persistence contract verified.'
