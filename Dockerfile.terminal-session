@@ -21,7 +21,8 @@ ENV NODE_ENV=production \
     TERM=xterm-256color \
     COLORTERM=truecolor \
     LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8
+    LC_ALL=C.UTF-8 \
+    GOTMPDIR=/home/terminal/.local/state/sulandra-terminal
 
 # Full developer image for heavy software/app/game work. The terminal user may
 # elevate to root *inside its own isolated session container* so apt/dpkg and
@@ -35,7 +36,7 @@ RUN apt-get update \
       golang-go rustc cargo default-jdk-headless \
       postgresql-client default-mysql-client redis-tools sqlite3 \
       iproute2 net-tools dnsutils iputils-ping lsof procps \
-      jq ripgrep less nano vim-tiny tmux tree zip unzip \
+      jq ripgrep less nano vim tmux tree zip unzip \
       libgl1-mesa-dev libglu1-mesa-dev libsdl2-dev libvulkan-dev \
       libx11-dev libxrandr-dev libxi-dev libxinerama-dev libxcursor-dev \
       libasound2-dev libpulse-dev xvfb ffmpeg \
@@ -91,7 +92,7 @@ RUN python3 -m venv /opt/sulandra-pylsp \
 
 # Fail the image build if a supported compiler/runtime/database/network CLI disappears.
 RUN set -eux; \
-    for cmd in node npm yarn bun railway typescript-language-server tsc python3 pip3 pylsp gcc g++ make cmake clang clangd go rustc cargo java javac git gh psql mysql redis-cli sqlite3 sudo ss netstat wget nc; do \
+    for cmd in node npm yarn bun railway typescript-language-server tsc python3 pip3 pylsp gcc g++ make cmake clang clangd go rustc cargo java javac git gh psql mysql redis-cli sqlite3 sudo ss netstat wget nc vim; do \
       command -v "$cmd" >/dev/null; \
     done; \
     node --version; npm --version; yarn --version; bun --version; \
@@ -99,6 +100,7 @@ RUN set -eux; \
     make --version | head -n1; cmake --version | head -n1; clang --version | head -n1; \
     go version; rustc --version; cargo --version; java -version; javac -version; \
     git --version; gh --version | head -n1; psql --version; mysql --version; redis-cli --version; sqlite3 --version; \
+    vim --version | head -n1; \
     sudo -u terminal sudo -n id -u | grep -qx '0'
 
 # Host isolation remains enforced by the executor: session containers are not
