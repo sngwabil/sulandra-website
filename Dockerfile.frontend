@@ -6,6 +6,7 @@ COPY . .
 
 RUN node --check assets/it-agent-conversational-ui.js
 RUN node --check assets/codebase-project-manager.js
+RUN node --check assets/codebase-project-manage-tab.js
 RUN node scripts/optimize-admin-login-performance.mjs
 RUN node scripts/install-employee-support.mjs
 RUN node scripts/fix-sulandra-codebase-editor-state.mjs
@@ -27,6 +28,7 @@ RUN node scripts/install-it-agent-conversational-ui.mjs \
 RUN node --check assets/it-agent-conversational-ui.js \
  && node --check assets/codebase-backend-adapter.js \
  && node --check assets/codebase-project-manager.js \
+ && node --check assets/codebase-project-manage-tab.js \
  && node --check assets/codebase-preview-terminal-input-fix.js \
  && node --check assets/codebase-ipad-terminal-keyboard-bridge.js \
  && node --check assets/codebase-terminal-native-paste.js \
@@ -48,6 +50,7 @@ RUN npm run build:web \
  && cp assets/sulandra-codebase-sia-bridge.js dist-web/assets/sulandra-codebase-sia-bridge.js \
  && cp assets/codebase-backend-adapter.js dist-web/assets/codebase-backend-adapter.js \
  && cp assets/codebase-project-manager.js dist-web/assets/codebase-project-manager.js \
+ && cp assets/codebase-project-manage-tab.js dist-web/assets/codebase-project-manage-tab.js \
  && cp assets/codebase-preview-terminal-input-fix.js dist-web/assets/codebase-preview-terminal-input-fix.js \
  && cp assets/codebase-ipad-terminal-keyboard-bridge.js dist-web/assets/codebase-ipad-terminal-keyboard-bridge.js \
  && cp assets/codebase-terminal-native-paste.js dist-web/assets/codebase-terminal-native-paste.js \
@@ -57,6 +60,7 @@ RUN npm run build:web \
  && node scripts/install-codebase-project-manager-ui.mjs dist-web/Codebase.html \
  && node scripts/fix-codebase-independent-branding.mjs dist-web/Codebase.html \
  && node --check dist-web/assets/codebase-project-manager.js \
+ && node --check dist-web/assets/codebase-project-manage-tab.js \
  && node --check dist-web/assets/codebase-preview-terminal-input-fix.js \
  && node --check dist-web/assets/codebase-ipad-terminal-keyboard-bridge.js \
  && node --check dist-web/assets/codebase-terminal-native-paste.js \
