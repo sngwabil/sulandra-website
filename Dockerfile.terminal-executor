@@ -39,6 +39,7 @@ COPY scripts/install-terminal-executor-ha-reconcile.mjs /tmp/install-terminal-ex
 COPY scripts/install-codebase-workspace-reuse.mjs /tmp/install-codebase-workspace-reuse.mjs
 COPY scripts/install-terminal-unrestricted-dev.mjs /tmp/install-terminal-unrestricted-dev.mjs
 COPY scripts/fix-codebase-independent-workspace.mjs /tmp/fix-codebase-independent-workspace.mjs
+COPY scripts/harden-codebase-project-persistence.mjs /tmp/harden-codebase-project-persistence.mjs
 COPY scripts/install-codebase-project-control.mjs /tmp/install-codebase-project-control.mjs
 COPY scripts/fix-codebase-project-session-recovery.mjs /tmp/fix-codebase-project-session-recovery.mjs
 COPY scripts/install-terminal-session-startup-diagnostics.mjs /tmp/install-terminal-session-startup-diagnostics.mjs
@@ -55,17 +56,22 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/install-codebase-workspace-reuse.mjs /app/server.mjs \
     && node /tmp/install-terminal-unrestricted-dev.mjs /app/server.mjs executor \
     && node /tmp/fix-codebase-independent-workspace.mjs /app/server.mjs \
+    && node /tmp/harden-codebase-project-persistence.mjs /app/server.mjs \
     && node /tmp/install-codebase-project-control.mjs /app/server.mjs \
     && node /tmp/fix-codebase-project-session-recovery.mjs /app/server.mjs \
     && node /tmp/install-terminal-session-startup-diagnostics.mjs /app/server.mjs executor \
     && node --check /app/server.mjs \
     && grep -Fq 'CODEBASE_WORKSPACE_REUSE_V1' /app/server.mjs \
     && grep -Fq 'CODEBASE_INDEPENDENT_WORKSPACE_V1' /app/server.mjs \
+    && grep -Fq 'CODEBASE_PROJECT_PERSISTENCE_V2' /app/server.mjs \
     && grep -Fq 'CODEBASE_PROJECT_CONTROL_V1' /app/server.mjs \
     && grep -Fq 'CODEBASE_PROJECT_SESSION_RECOVERY_V1' /app/server.mjs \
     && grep -Fq 'TERMINAL_SESSION_STARTUP_DIAGNOSTICS_V1' /app/server.mjs \
     && grep -Fq "workspaceKind: 'codebase'" /app/server.mjs \
     && grep -Fq "gitBacked: Boolean(workspace.repository)" /app/server.mjs \
+    && grep -Fq 'restoreCodebaseWorkspaceRegistry(owner)' /app/server.mjs \
+    && grep -Fq 'consolidateCodebaseProjects(workspace, reusableCodebase)' /app/server.mjs \
+    && grep -Fq '.sulandra-codebase-owner.json' /app/server.mjs \
     && grep -Fq '.sulandra-projects:/projects:rw' /app/server.mjs \
     && grep -Fq '.sulandra-home:/home/terminal:rw' /app/server.mjs \
     && grep -Fq '${workspace.hostCwd}:/workspace:ro' /app/server.mjs \
@@ -81,7 +87,7 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && grep -Fq 'TERMINAL_TMPFS_BYTES || 1_073_741_824' /app/server.mjs \
     && grep -Fq 'size=${terminalTmpfsBytes},mode=1777' /app/server.mjs \
     && grep -Fq 'tmpfsBytes: terminalTmpfsBytes' /app/server.mjs \
-    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs /tmp/install-terminal-executor-ha-reconcile.mjs /tmp/install-codebase-workspace-reuse.mjs /tmp/install-terminal-unrestricted-dev.mjs /tmp/fix-codebase-independent-workspace.mjs /tmp/install-codebase-project-control.mjs /tmp/fix-codebase-project-session-recovery.mjs /tmp/install-terminal-session-startup-diagnostics.mjs
+    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs /tmp/install-terminal-executor-ha-reconcile.mjs /tmp/install-codebase-workspace-reuse.mjs /tmp/install-terminal-unrestricted-dev.mjs /tmp/fix-codebase-independent-workspace.mjs /tmp/harden-codebase-project-persistence.mjs /tmp/install-codebase-project-control.mjs /tmp/fix-codebase-project-session-recovery.mjs /tmp/install-terminal-session-startup-diagnostics.mjs
 
 RUN mkdir -p /workspaces /state /state/audit /seed \
     && chown -R 10001:10001 /workspaces /state /app
