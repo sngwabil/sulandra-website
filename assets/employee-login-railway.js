@@ -4,7 +4,7 @@
   const API_BASE = "https://sulandra-website-production-5fc4.up.railway.app";
   const TOKEN_KEY = "sulandra:employee:access-token";
   const SESSION_KEY = "sulandra:employee:session";
-  const PROTECTED_SESSION_ASSET = "/assets/sulandra-protected-session.js?v=20260902-protected-session-1";
+  const PROTECTED_SESSION_ASSET = "/assets/sulandra-protected-session.js?v=20260906-dedicated-fullscreen-1";
   const message = document.getElementById("msg");
   const usernamePanel = document.getElementById("usernameRecoveryPanel");
   const passwordPanel = document.getElementById("passwordRecoveryPanel");
@@ -35,28 +35,6 @@
       script.addEventListener("error", () => resolve(null), { once: true });
     });
     return protectedSessionPromise;
-  }
-
-  function fullscreenElement() {
-    return document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || null;
-  }
-
-  function armProtectedFullscreenFromGesture() {
-    loadProtectedSessionRuntime();
-    if (fullscreenElement()) return;
-    try { sessionStorage.setItem("sulandra:protected-session:fullscreen-intent", "1"); } catch {}
-    const element = document.documentElement;
-    const request = element.requestFullscreen || element.webkitRequestFullscreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullscreen;
-    if (!request) return;
-    try {
-      const result = request === element.requestFullscreen ? request.call(element, { navigationUI: "hide" }) : request.call(element);
-      if (result && typeof result.catch === "function") result.catch(() => {});
-    } catch {
-      try {
-        const result = request.call(element);
-        if (result && typeof result.catch === "function") result.catch(() => {});
-      } catch {}
-    }
   }
 
   async function enterProtectedSession(target) {
@@ -255,10 +233,6 @@
     }
   }
 
-  document.querySelector(".auth-card")?.addEventListener("click", (event) => {
-    if (event.isTrusted) armProtectedFullscreenFromGesture();
-  }, { capture: true });
-
   document.getElementById("clear").addEventListener("click", () => {
     document.getElementById("username").value = "";
     document.getElementById("password").value = "";
@@ -285,7 +259,6 @@
     recoveryRequest("/api/auth/forgot-password", { username }, document.getElementById("sendPasswordRecovery"));
   });
   resendMfaCode.addEventListener("click", () => {
-    armProtectedFullscreenFromGesture();
     resetMfaChallenge();
     performLogin({ resend: true });
   });
@@ -294,7 +267,6 @@
   });
   document.getElementById("form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    armProtectedFullscreenFromGesture();
     await performLogin();
   });
 })();
