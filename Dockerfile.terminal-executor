@@ -41,6 +41,7 @@ COPY scripts/install-terminal-unrestricted-dev.mjs /tmp/install-terminal-unrestr
 COPY scripts/fix-codebase-independent-workspace.mjs /tmp/fix-codebase-independent-workspace.mjs
 COPY scripts/harden-codebase-project-persistence.mjs /tmp/harden-codebase-project-persistence.mjs
 COPY scripts/install-codebase-project-control.mjs /tmp/install-codebase-project-control.mjs
+COPY scripts/install-codebase-explorer-file-management.mjs /tmp/install-codebase-explorer-file-management.mjs
 COPY scripts/fix-codebase-project-session-recovery.mjs /tmp/fix-codebase-project-session-recovery.mjs
 COPY scripts/install-terminal-session-startup-diagnostics.mjs /tmp/install-terminal-session-startup-diagnostics.mjs
 RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
@@ -58,6 +59,7 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && node /tmp/fix-codebase-independent-workspace.mjs /app/server.mjs \
     && node /tmp/harden-codebase-project-persistence.mjs /app/server.mjs \
     && node /tmp/install-codebase-project-control.mjs /app/server.mjs \
+    && node /tmp/install-codebase-explorer-file-management.mjs /app/server.mjs \
     && node /tmp/fix-codebase-project-session-recovery.mjs /app/server.mjs \
     && node /tmp/install-terminal-session-startup-diagnostics.mjs /app/server.mjs executor \
     && node --check /app/server.mjs \
@@ -65,6 +67,7 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && grep -Fq 'CODEBASE_INDEPENDENT_WORKSPACE_V1' /app/server.mjs \
     && grep -Fq 'CODEBASE_PROJECT_PERSISTENCE_V2' /app/server.mjs \
     && grep -Fq 'CODEBASE_PROJECT_CONTROL_V1' /app/server.mjs \
+    && grep -Fq 'CODEBASE_EXPLORER_FILE_OPERATIONS_V1' /app/server.mjs \
     && grep -Fq 'CODEBASE_PROJECT_SESSION_RECOVERY_V1' /app/server.mjs \
     && grep -Fq 'TERMINAL_SESSION_STARTUP_DIAGNOSTICS_V1' /app/server.mjs \
     && grep -Fq "workspaceKind: 'codebase'" /app/server.mjs \
@@ -79,6 +82,7 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && grep -Fq 'ReadonlyRootfs: false' /app/server.mjs \
     && grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/clone'" /app/server.mjs \
     && grep -Fq "app.put('/v1/workspaces/:workspaceId/codebase/projects/:project/file'" /app/server.mjs \
+    && grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/move'" /app/server.mjs \
     && grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/deploy'" /app/server.mjs \
     && grep -Fq 'activeProject: workspace.activeProject' /app/server.mjs \
     && grep -Fq 'inspect.State?.Restarting' /app/server.mjs \
@@ -87,7 +91,7 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && grep -Fq 'TERMINAL_TMPFS_BYTES || 1_073_741_824' /app/server.mjs \
     && grep -Fq 'size=${terminalTmpfsBytes},mode=1777' /app/server.mjs \
     && grep -Fq 'tmpfsBytes: terminalTmpfsBytes' /app/server.mjs \
-    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs /tmp/install-terminal-executor-ha-reconcile.mjs /tmp/install-codebase-workspace-reuse.mjs /tmp/install-terminal-unrestricted-dev.mjs /tmp/fix-codebase-independent-workspace.mjs /tmp/harden-codebase-project-persistence.mjs /tmp/install-codebase-project-control.mjs /tmp/fix-codebase-project-session-recovery.mjs /tmp/install-terminal-session-startup-diagnostics.mjs
+    && rm -f /tmp/install-terminal-industry-hardening.mjs /tmp/fix-terminal-resource-monitor.mjs /tmp/install-workspace-ide-live-preview.mjs /tmp/fix-workspace-proxy-abort.mjs /tmp/fix-workspace-ide-agent-transport.mjs /tmp/fix-workspace-proxy-streaming.mjs /tmp/install-terminal-security-audit.mjs /tmp/install-terminal-history-proxy.mjs /tmp/install-terminal-session-recovery.mjs /tmp/install-terminal-executor-ha-reconcile.mjs /tmp/install-codebase-workspace-reuse.mjs /tmp/install-terminal-unrestricted-dev.mjs /tmp/fix-codebase-independent-workspace.mjs /tmp/harden-codebase-project-persistence.mjs /tmp/install-codebase-project-control.mjs /tmp/install-codebase-explorer-file-management.mjs /tmp/fix-codebase-project-session-recovery.mjs /tmp/install-terminal-session-startup-diagnostics.mjs
 
 RUN mkdir -p /workspaces /state /state/audit /seed \
     && chown -R 10001:10001 /workspaces /state /app
