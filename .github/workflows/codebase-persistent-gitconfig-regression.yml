@@ -47,7 +47,9 @@ jobs:
           export SULANDRA_TERMINAL_CWD=/projects
           export TERMINAL_EGRESS_PROXY_URL=http://egress-proxy:3128
           sudo install -d -m 0755 /agent /projects
-          printf '%s\n' 'set -g history-limit 10000' | sudo tee /agent/tmux.conf >/dev/null
+          sudo cp terminal-session-agent/tmux.conf /agent/tmux.conf
+          sudo cp terminal-session-agent/profile /agent/profile
+          sudo cp terminal-session-agent/bashrc /agent/bashrc
           source terminal-session-agent/setup-development-environment.sh
 
       - name: Verify managed values were collapsed without wiping unrelated config
@@ -65,4 +67,5 @@ jobs:
           test "$(git config --global --get credential.https://github.com.helper)" = '!gh auth git-credential'
           test -f "$HOME/.tmux.conf"
           test -f "$HOME/.bashrc"
+          test -f "$HOME/.profile"
           git config --global --list >/dev/null
