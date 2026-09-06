@@ -1,0 +1,50 @@
+name: Codebase Explorer Filter Regression
+
+on:
+  pull_request:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/codebase-explorer-global-bridge.js
+      - scripts/install-codebase-project-manager-ui.mjs
+      - .github/workflows/codebase-explorer-filter.yml
+  push:
+    branches:
+      - release/sulandra-1.0
+    paths:
+      - assets/codebase-explorer-global-bridge.js
+      - scripts/install-codebase-project-manager-ui.mjs
+      - .github/workflows/codebase-explorer-filter.yml
+
+permissions:
+  contents: read
+
+jobs:
+  explorer-filter:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Explorer filter runtime
+        run: |
+          set -euo pipefail
+          node --check assets/codebase-explorer-global-bridge.js
+          grep -Fq 'CODEBASE_EXPLORER_FILTER_V1' assets/codebase-explorer-global-bridge.js
+          grep -Fq "#sidebar-explorer .sidebar-filter input" assets/codebase-explorer-global-bridge.js
+          grep -Fq "addEventListener('input',applyExplorerFilter)" assets/codebase-explorer-global-bridge.js
+          grep -Fq "node.hidden=!visible" assets/codebase-explorer-global-bridge.js
+          grep -Fq "root.dataset.codebaseExplorerFilter=query" assets/codebase-explorer-global-bridge.js
+          grep -Fq "window.SulandraCodebaseExplorerFilter" assets/codebase-explorer-global-bridge.js
+          grep -Fq "String(event.key).toLowerCase()!=='p'" assets/codebase-explorer-global-bridge.js
+
+      - name: Verify Codebase publication still includes Explorer bridge
+        run: |
+          set -euo pipefail
+          cp Codebase.html /tmp/Codebase.html
+          node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
+          node scripts/install-codebase-project-manager-ui.mjs /tmp/Codebase.html
+          grep -Fq '/assets/codebase-explorer-global-bridge.js' /tmp/Codebase.html
+          grep -Fq 'id="dynamic-file-list"' /tmp/Codebase.html
+          grep -Fq 'placeholder="Filter files (⌘/Ctrl+P)"' /tmp/Codebase.html
+          echo 'Codebase Explorer filter publication contract verified.'
