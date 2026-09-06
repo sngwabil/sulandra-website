@@ -190,15 +190,24 @@ if [[ -s "${HOME}/.gitconfig" ]] && ! git config --global --list >/dev/null 2>&1
   backup_conflict "${HOME}/.gitconfig"
 fi
 
-git config --global user.name "${GIT_NAME}"
-git config --global user.email "${GIT_EMAIL}"
-git config --global init.defaultBranch main
-git config --global fetch.prune true
-git config --global push.autoSetupRemote true
-git config --global core.excludesFile "${GIT_IGNORE}"
-git config --global http.proxy "${PROXY_URL}"
-git config --global credential.useHttpPath true
-git config --global credential.https://github.com.helper '!gh auth git-credential'
+# Persistent Codebase homes can contain duplicate values left by older images or
+# previous bootstrap revisions. Plain `git config key value` exits with code 5 when
+# a key has multiple existing values ("cannot overwrite multiple values with a
+# single value"), which traps the isolated terminal in a restart loop. These keys
+# are platform-managed scalars, so collapse only their duplicate values in place;
+# do not wipe the user's .gitconfig or unrelated settings.
+set_managed_git_value() {
+  git config --global --replace-all "$1" "$2"
+}
+set_managed_git_value user.name "${GIT_NAME}"
+set_managed_git_value user.email "${GIT_EMAIL}"
+set_managed_git_value init.defaultBranch main
+set_managed_git_value fetch.prune true
+set_managed_git_value push.autoSetupRemote true
+set_managed_git_value core.excludesFile "${GIT_IGNORE}"
+set_managed_git_value http.proxy "${PROXY_URL}"
+set_managed_git_value credential.useHttpPath true
+set_managed_git_value credential.https://github.com.helper '!gh auth git-credential'
 git config --global --replace-all 'includeIf.gitdir:/workspace/.git/.path' /etc/gitconfig-sulandra-workspace
 
 # HTTPS is the default, prompt-free Git transport after one `sulandra-github-login`.
