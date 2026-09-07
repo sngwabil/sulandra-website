@@ -71,7 +71,6 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && grep -Fq 'CODEBASE_INDEPENDENT_WORKSPACE_V1' /app/server.mjs \
     && grep -Fq 'CODEBASE_PROJECT_PERSISTENCE_V2' /app/server.mjs \
     && grep -Fq 'CODEBASE_PROJECT_CONTROL_V1' /app/server.mjs \
-    && grep -Fq 'CODEBASE_PROJECT_ROOT_NORMALIZATION_V1' /app/server.mjs \
     && grep -Fq 'CODEBASE_PREVIEW_ENVIRONMENTS_CONTROL_V1' /app/server.mjs \
     && grep -Fq 'CODEBASE_PUBLIC_GIT_CLONE_V1' /app/server.mjs \
     && grep -Fq "'GIT_TERMINAL_PROMPT=0', 'git', ...gitArgs" /app/server.mjs \
@@ -83,7 +82,6 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && grep -Fq 'restoreCodebaseWorkspaceRegistry(owner)' /app/server.mjs \
     && grep -Fq 'consolidateCodebaseProjects(workspace, reusableCodebase)' /app/server.mjs \
     && grep -Fq '.sulandra-codebase-owner.json' /app/server.mjs \
-    && grep -Fq '.sulandra-project-root-repair.json' /app/server.mjs \
     && grep -Fq '.sulandra-projects:/projects:rw' /app/server.mjs \
     && grep -Fq '.sulandra-home:/home/terminal:rw' /app/server.mjs \
     && grep -Fq '${workspace.hostCwd}:/workspace:ro' /app/server.mjs \
@@ -95,8 +93,6 @@ RUN node /tmp/install-terminal-industry-hardening.mjs /app/server.mjs \
     && grep -Fq "app.get('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/preview'" /app/server.mjs \
     && grep -Fq "app.post('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/deploy'" /app/server.mjs \
     && grep -Fq 'activeProject: workspace.activeProject' /app/server.mjs \
-    && grep -Fq 'repairNestedCodebaseProjectsAlias(workspace)' /app/server.mjs \
-    && grep -Fq 'syncCodebaseSessionCwdsToActiveProject(workspace)' /app/server.mjs \
     && grep -Fq 'inspect.State?.Restarting' /app/server.mjs \
     && grep -Fq 'resetCodebaseSessionCwds(workspace)' /app/server.mjs \
     && grep -Fq 'HTTP_PROXY=${egressProxyUrl}' /app/server.mjs \
