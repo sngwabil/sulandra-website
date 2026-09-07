@@ -22,7 +22,7 @@ const codebasePreviewDomainCandidates = value => {
     if(typeof node!=='string')return;
     const raw=node.trim();
     if(!raw||/\s/.test(raw))return;
-    let host=raw.replace(/^https?:\/\//i,'').split('/')[0].replace(/\.$/,'');
+    const host=raw.replace(/^https?:\/\//i,'').split('/')[0].replace(/\.$/,'');
     if(!/^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\.[A-Za-z]{2,}$/.test(host))return;
     found.push(host.toLowerCase());
   };
@@ -59,7 +59,7 @@ app.get('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/preview'
 `;
 
 source=source.replace(anchor,patch+anchor);
-for(const required of [marker,"app.get('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/preview'","'domain', 'list', '--json'",'productionUrl:domain']){
+for(const required of [marker,"app.get('/v1/workspaces/:workspaceId/codebase/projects/:project/railway/preview'","['domain','list','--json']",'productionUrl:domain']){
   if(!source.includes(required))throw new Error(`Codebase preview control verification missing: ${required}`);
 }
 fs.writeFileSync(target,source);
