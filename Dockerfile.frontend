@@ -11,12 +11,15 @@ RUN node --check scripts/install-codebase-public-git-clone-ui.mjs
 RUN node --check assets/codebase-explorer-global-bridge.js
 RUN node --check assets/codebase-explorer-file-management.js
 RUN node --check assets/codebase-project-manage-tab.js
+RUN node --check assets/codebase-preview-environments.js
+RUN node --check scripts/install-codebase-preview-environments-ui.mjs
 RUN node scripts/optimize-admin-login-performance.mjs
 RUN node scripts/install-employee-support.mjs
 RUN node scripts/fix-sulandra-codebase-editor-state.mjs
 RUN node scripts/install-codebase-backend-adapter.mjs Codebase.html
 RUN node scripts/install-codebase-project-manager-ui.mjs Codebase.html
 RUN node scripts/install-codebase-public-git-clone-ui.mjs Codebase.html
+RUN node scripts/install-codebase-preview-environments-ui.mjs Codebase.html
 RUN node scripts/fix-codebase-independent-branding.mjs Codebase.html
 
 # Build a pinned same-origin browser terminal bundle containing xterm plus all
@@ -37,6 +40,7 @@ RUN node --check assets/it-agent-conversational-ui.js \
  && node --check assets/codebase-explorer-global-bridge.js \
  && node --check assets/codebase-explorer-file-management.js \
  && node --check assets/codebase-project-manage-tab.js \
+ && node --check assets/codebase-preview-environments.js \
  && node --check assets/codebase-preview-terminal-input-fix.js \
  && node --check assets/codebase-ipad-terminal-keyboard-bridge.js \
  && node --check assets/codebase-terminal-native-paste.js \
@@ -62,6 +66,7 @@ RUN npm run build:web \
  && cp assets/codebase-explorer-global-bridge.js dist-web/assets/codebase-explorer-global-bridge.js \
  && cp assets/codebase-explorer-file-management.js dist-web/assets/codebase-explorer-file-management.js \
  && cp assets/codebase-project-manage-tab.js dist-web/assets/codebase-project-manage-tab.js \
+ && cp assets/codebase-preview-environments.js dist-web/assets/codebase-preview-environments.js \
  && cp assets/codebase-preview-terminal-input-fix.js dist-web/assets/codebase-preview-terminal-input-fix.js \
  && cp assets/codebase-ipad-terminal-keyboard-bridge.js dist-web/assets/codebase-ipad-terminal-keyboard-bridge.js \
  && cp assets/codebase-terminal-native-paste.js dist-web/assets/codebase-terminal-native-paste.js \
@@ -70,12 +75,14 @@ RUN npm run build:web \
  && node scripts/install-codebase-backend-adapter.mjs dist-web/Codebase.html \
  && node scripts/install-codebase-project-manager-ui.mjs dist-web/Codebase.html \
  && node scripts/install-codebase-public-git-clone-ui.mjs dist-web/Codebase.html \
+ && node scripts/install-codebase-preview-environments-ui.mjs dist-web/Codebase.html \
  && node scripts/fix-codebase-independent-branding.mjs dist-web/Codebase.html \
  && node --check dist-web/assets/codebase-project-manager.js \
  && node --check dist-web/assets/codebase-public-git-clone.js \
  && node --check dist-web/assets/codebase-explorer-global-bridge.js \
  && node --check dist-web/assets/codebase-explorer-file-management.js \
  && node --check dist-web/assets/codebase-project-manage-tab.js \
+ && node --check dist-web/assets/codebase-preview-environments.js \
  && node --check dist-web/assets/codebase-preview-terminal-input-fix.js \
  && node --check dist-web/assets/codebase-ipad-terminal-keyboard-bridge.js \
  && node --check dist-web/assets/codebase-terminal-native-paste.js \
