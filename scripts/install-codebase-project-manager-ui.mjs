@@ -32,9 +32,12 @@ for (const marker of [
 }
 for (const marker of [
   'CODEBASE_EXPLORER_GLOBAL_BRIDGE_V1',
+  'CODEBASE_EXPLORER_FILTER_V2',
   "expose('openTabs'",
   "expose('activeEditors'",
   "get:()=>renderWorkspace",
+  '__CODEBASE_EXPLORER_FILTER_EVENTS_V2__',
+  "style.setProperty('display','none','important')",
 ]) {
   if (!bridgeSource.includes(marker)) throw new Error(`Codebase Explorer bridge missing ${marker}`);
 }
@@ -124,7 +127,7 @@ if (!html.includes('title="Upload Files"')) throw new Error('Permanent Explorer 
 if (html.includes(legacySidebarTitleUpdate)) throw new Error('Legacy destructive Explorer title rewrite is still present');
 
 const tag = '<script src="/assets/codebase-project-manager.js?v=20260905-project-manager-1"></script>';
-const bridgeTag = '<script src="/assets/codebase-explorer-global-bridge.js?v=20260906-explorer-bridge-1"></script>';
+const bridgeTag = '<script src="/assets/codebase-explorer-global-bridge.js?v=20260906-explorer-filter-2"></script>';
 const explorerTag = '<script src="/assets/codebase-explorer-file-management.js?v=20260906-explorer-upload-2"></script>';
 const guardTag = '<script src="/assets/codebase-project-removal-guard.js?v=20260905-remove-reclone-1"></script>';
 const manageTag = '<script src="/assets/codebase-project-manage-tab.js?v=20260906-manage-projects-3"></script>';

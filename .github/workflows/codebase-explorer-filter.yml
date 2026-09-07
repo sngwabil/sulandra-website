@@ -30,21 +30,89 @@ jobs:
         run: |
           set -euo pipefail
           node --check assets/codebase-explorer-global-bridge.js
-          grep -Fq 'CODEBASE_EXPLORER_FILTER_V1' assets/codebase-explorer-global-bridge.js
-          grep -Fq "#sidebar-explorer .sidebar-filter input" assets/codebase-explorer-global-bridge.js
-          grep -Fq "addEventListener('input',applyExplorerFilter)" assets/codebase-explorer-global-bridge.js
-          grep -Fq "node.hidden=!visible" assets/codebase-explorer-global-bridge.js
-          grep -Fq "root.dataset.codebaseExplorerFilter=query" assets/codebase-explorer-global-bridge.js
-          grep -Fq "window.SulandraCodebaseExplorerFilter" assets/codebase-explorer-global-bridge.js
-          grep -Fq "String(event.key).toLowerCase()!=='p'" assets/codebase-explorer-global-bridge.js
+          grep -Fq 'CODEBASE_EXPLORER_FILTER_V2' assets/codebase-explorer-global-bridge.js
+          grep -Fq '__CODEBASE_EXPLORER_FILTER_EVENTS_V2__' assets/codebase-explorer-global-bridge.js
+          grep -Fq 'data-codebase-path' <(sed 's/codebasePath/data-codebase-path/g' assets/codebase-explorer-global-bridge.js)
+          grep -Fq "style.setProperty('display','none','important')" assets/codebase-explorer-global-bridge.js
+          grep -Fq "document.addEventListener('input'" assets/codebase-explorer-global-bridge.js
+          grep -Fq "terms.every" assets/codebase-explorer-global-bridge.js
+          grep -Fq '20260906-explorer-filter-2' scripts/install-codebase-project-manager-ui.mjs
 
-      - name: Verify Codebase publication still includes Explorer bridge
+      - name: Exercise real Explorer filtering in headless Chrome
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME"
+          {
+            cat <<'HTML'
+          <!doctype html><html><head><meta charset="utf-8"><style>
+          .folder-group{display:flex;flex-direction:column}.folder-contents{display:block}.folder-group.collapsed .folder-contents{display:none}.file-item{display:flex}
+          </style></head><body>
+          <div id="sidebar-explorer"><div class="sidebar-filter"><input placeholder="Filter files (⌘/Ctrl+P)"></div></div>
+          <div id="dynamic-file-list">
+            <div class="folder-group collapsed">
+              <div class="file-item"><span>▼</span><span>📁 .github</span></div>
+              <div class="folder-contents">
+                <div class="folder-group collapsed">
+                  <div class="file-item"><span>▼</span><span>📁 workflows</span></div>
+                  <div class="folder-contents">
+                    <div class="file-item" data-fixture-file="ci" title="/projects/sulandra-website/.github/workflows/ci.yml"><span>YML</span><span>ci.yml</span></div>
+                    <div class="file-item" data-fixture-file="manager" title="/projects/sulandra-website/.github/workflows/codebase-project-manager.yml"><span>YML</span><span>codebase-project-manager.yml</span></div>
+                    <div class="file-item" data-fixture-file="employee" title="/projects/sulandra-website/.github/workflows/employee360-validation.yml"><span>YML</span><span>employee360-validation.yml</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="file-item" data-fixture-file="readme" title="/projects/sulandra-website/README.md"><span>M</span><span>README.md</span></div>
+          </div>
+          <script>
+          HTML
+            cat assets/codebase-explorer-global-bridge.js
+            cat <<'HTML'
+          </script>
+          <script>
+          (()=>{
+            const result=document.createElement('pre');result.id='result';document.body.appendChild(result);
+            const fail=message=>{result.textContent='FAIL: '+message;document.documentElement.dataset.test='fail'};
+            const pass=()=>{result.textContent='PASS';document.documentElement.dataset.test='pass'};
+            const files=()=>[...document.querySelectorAll('[data-fixture-file]')];
+            const visible=row=>!row.hidden&&row.style.getPropertyValue('display')!=='none';
+            const run=(input,value)=>{input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));};
+            try{
+              let input=document.querySelector('#sidebar-explorer input');
+              run(input,'sulandra');
+              if(files().some(visible))throw new Error('project/root name matched every absolute file title');
+              run(input,'manager');
+              const managerVisible=files().filter(visible).map(row=>row.dataset.fixtureFile);
+              if(managerVisible.join(',')!=='manager')throw new Error('manager query returned '+managerVisible.join(','));
+              run(input,'codebase manager');
+              if(files().filter(visible).map(row=>row.dataset.fixtureFile).join(',')!=='manager')throw new Error('multi-term query is inaccurate');
+              const replacement=input.cloneNode(true);input.replaceWith(replacement);input=replacement;
+              run(input,'CI.YML');
+              if(files().filter(visible).map(row=>row.dataset.fixtureFile).join(',')!=='ci')throw new Error('replacement input was not rebound through delegated filtering');
+              input.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+              if(input.value!=='')throw new Error('Escape did not clear the current filter input');
+              if(files().some(row=>row.hidden||row.style.getPropertyValue('display')==='none'))throw new Error('clearing filter did not restore all files');
+              if(!document.querySelector('.folder-group')?.classList.contains('collapsed'))throw new Error('folder collapse state was not restored');
+              const manager=document.querySelector('[data-fixture-file="manager"]');
+              if(manager.dataset.codebasePath!=='.github/workflows/codebase-project-manager.yml')throw new Error('file path was not normalized to project-relative scope');
+              pass();
+            }catch(error){fail(error.message)}
+          })();
+          </script></body></html>
+          HTML
+          } > /tmp/codebase-explorer-filter.html
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --allow-file-access-from-files --dump-dom file:///tmp/codebase-explorer-filter.html > /tmp/codebase-explorer-filter.dom
+          grep -Fq 'data-test="pass"' /tmp/codebase-explorer-filter.dom
+          grep -Fq '<pre id="result">PASS</pre>' /tmp/codebase-explorer-filter.dom
+
+      - name: Verify Codebase publication still includes fresh Explorer bridge
         run: |
           set -euo pipefail
           cp Codebase.html /tmp/Codebase.html
           node scripts/install-codebase-backend-adapter.mjs /tmp/Codebase.html
           node scripts/install-codebase-project-manager-ui.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-explorer-global-bridge.js' /tmp/Codebase.html
+          grep -Fq '/assets/codebase-explorer-global-bridge.js?v=20260906-explorer-filter-2' /tmp/Codebase.html
           grep -Fq 'id="dynamic-file-list"' /tmp/Codebase.html
           grep -Fq 'placeholder="Filter files (⌘/Ctrl+P)"' /tmp/Codebase.html
-          echo 'Codebase Explorer filter publication contract verified.'
+          echo 'Codebase Explorer filter V2 publication and browser behavior verified.'

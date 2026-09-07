@@ -1,7 +1,7 @@
 /* CODEBASE_EXPLORER_GLOBAL_BRIDGE_V1
  * Exposes Codebase's lexical workspace state to late-loaded Explorer runtimes
- * and gives dynamically rendered folder rows durable project-relative paths.
- * CODEBASE_EXPLORER_FILTER_V1 keeps the Explorer filter wired across rerenders.
+ * and gives dynamically rendered Explorer rows durable project-relative paths.
+ * CODEBASE_EXPLORER_FILTER_V2 keeps filtering accurate across rerenders/input replacement.
  */
 (()=>{
 'use strict';
@@ -28,19 +28,24 @@ try{
   }
 }catch{}
 
-const folderName=row=>String(row?.lastElementChild?.textContent||'').replace(/^\s*📁\s*/u,'').trim();
+const rowName=row=>String(row?.lastElementChild?.textContent||'').replace(/^\s*📁\s*/u,'').trim();
 const folderPath=row=>{
   if(!row)return '';
-  const existing=String(row.dataset?.codebasePath||row.title||'').trim();
-  if(existing)return existing;
   const group=row.parentElement?.classList?.contains('folder-group')&&row.parentElement.firstElementChild===row?row.parentElement:null;
   if(!group)return '';
   const parentGroup=group.parentElement?.closest?.('.folder-group')||null;
   const parentPath=parentGroup?folderPath(parentGroup.firstElementChild):'';
-  const name=folderName(row);
+  const name=rowName(row);
   return [parentPath,name].filter(Boolean).join('/');
 };
-const labelFolderRows=()=>{
+const filePath=row=>{
+  if(!row)return '';
+  const parentGroup=row.parentElement?.closest?.('.folder-group')||null;
+  const parentPath=parentGroup?folderPath(parentGroup.firstElementChild):'';
+  const name=rowName(row);
+  return [parentPath,name].filter(Boolean).join('/');
+};
+const labelExplorerRows=()=>{
   const root=document.getElementById('dynamic-file-list');
   if(!root)return false;
   let changed=false;
@@ -52,15 +57,25 @@ const labelFolderRows=()=>{
     if(row.dataset.codebasePath!==path){row.dataset.codebasePath=path;changed=true}
     if(row.title!==path){row.title=path;changed=true}
   });
+  root.querySelectorAll('.file-item').forEach(row=>{
+    const isFolderRow=row.parentElement?.classList?.contains('folder-group')&&row.parentElement.firstElementChild===row;
+    if(isFolderRow)return;
+    const path=filePath(row);
+    if(!path)return;
+    if(row.dataset.codebasePath!==path){row.dataset.codebasePath=path;changed=true}
+    // Project file rows can arrive with absolute or stale titles from older runtimes.
+    // Normalize them to the active project's relative path so a project-name query
+    // cannot accidentally match every file in the tree.
+    if(row.title!==path){row.title=path;changed=true}
+  });
   return changed;
 };
 
-const explorerFilterInput=()=>document.querySelector('#sidebar-explorer .sidebar-filter input');
-const filterHaystack=row=>[
-  row?.textContent||'',
-  row?.title||'',
-  row?.dataset?.codebasePath||''
-].join(' ').toLocaleLowerCase();
+const explorerFilterInput=()=>document.querySelector('#sidebar-explorer input[placeholder*="Filter files"], #sidebar-explorer .sidebar-filter input');
+const normalizeSearch=value=>String(value||'').normalize('NFKC').trim().toLocaleLowerCase();
+const searchTerms=value=>normalizeSearch(value).split(/\s+/).filter(Boolean);
+const filterHaystack=row=>normalizeSearch([rowName(row),row?.dataset?.codebasePath||''].filter(Boolean).join(' '));
+const rowMatches=(row,terms)=>!terms.length||terms.every(term=>filterHaystack(row).includes(term));
 const rememberCollapsed=group=>{
   if(!group||group.dataset.codebaseFilterCollapsed!==undefined)return;
   group.dataset.codebaseFilterCollapsed=group.classList.contains('collapsed')?'1':'0';
@@ -70,11 +85,19 @@ const restoreCollapsed=group=>{
   group.classList.toggle('collapsed',group.dataset.codebaseFilterCollapsed==='1');
   delete group.dataset.codebaseFilterCollapsed;
 };
+const setFilterVisible=(node,visible)=>{
+  if(!node)return;
+  node.hidden=!visible;
+  if(visible)node.style.removeProperty('display');
+  else node.style.setProperty('display','none','important');
+};
 const applyExplorerFilter=()=>{
   const root=document.getElementById('dynamic-file-list');
   const input=explorerFilterInput();
   if(!root||!input)return 0;
-  const query=String(input.value||'').trim().toLocaleLowerCase();
+  labelExplorerRows();
+  const query=normalizeSearch(input.value);
+  const terms=searchTerms(query);
   root.dataset.codebaseExplorerFilter=query;
   let matches=0;
 
@@ -83,28 +106,28 @@ const applyExplorerFilter=()=>{
     if(node.classList.contains('folder-group')){
       const row=node.firstElementChild;
       const contents=Array.from(node.children).find(child=>child.classList?.contains('folder-contents'))||null;
-      if(!query){
-        node.hidden=false;
+      if(!terms.length){
+        setFilterVisible(node,true);
         restoreCollapsed(node);
         for(const child of Array.from(contents?.children||[]))visit(child);
         return true;
       }
       rememberCollapsed(node);
-      const selfMatch=filterHaystack(row).includes(query);
+      const selfMatch=rowMatches(row,terms);
       if(selfMatch)matches+=1;
       let descendantMatch=false;
       for(const child of Array.from(contents?.children||[])){
         if(visit(child))descendantMatch=true;
       }
       const visible=selfMatch||descendantMatch;
-      node.hidden=!visible;
+      setFilterVisible(node,visible);
       if(visible)node.classList.remove('collapsed');
       return visible;
     }
     if(node.classList.contains('file-item')){
-      const visible=!query||filterHaystack(node).includes(query);
-      node.hidden=!visible;
-      if(query&&visible)matches+=1;
+      const visible=rowMatches(node,terms);
+      setFilterVisible(node,visible);
+      if(terms.length&&visible)matches+=1;
       return visible;
     }
     return false;
@@ -115,29 +138,26 @@ const applyExplorerFilter=()=>{
   input.dataset.codebaseFilterMatches=String(matches);
   return matches;
 };
+const isExplorerFilterInput=target=>target instanceof HTMLInputElement&&target===explorerFilterInput();
 const installExplorerFilter=()=>{
   const input=explorerFilterInput();
   if(!input)return false;
-  if(input.dataset.codebaseExplorerFilterBound==='true'){
-    applyExplorerFilter();
-    return true;
-  }
-  input.dataset.codebaseExplorerFilterBound='true';
-  input.addEventListener('input',applyExplorerFilter);
-  input.addEventListener('search',applyExplorerFilter);
-  input.addEventListener('keydown',event=>{
-    if(event.key!=='Escape')return;
-    event.preventDefault();
-    input.value='';
-    applyExplorerFilter();
-    input.focus();
-  });
+  input.dataset.codebaseExplorerFilterBound='delegated-v2';
   applyExplorerFilter();
   return true;
 };
-if(!window.__CODEBASE_EXPLORER_FILTER_SHORTCUT_V1__){
-  window.__CODEBASE_EXPLORER_FILTER_SHORTCUT_V1__=true;
+if(!window.__CODEBASE_EXPLORER_FILTER_EVENTS_V2__){
+  window.__CODEBASE_EXPLORER_FILTER_EVENTS_V2__=true;
+  document.addEventListener('input',event=>{if(isExplorerFilterInput(event.target))applyExplorerFilter()},true);
+  document.addEventListener('search',event=>{if(isExplorerFilterInput(event.target))applyExplorerFilter()},true);
   document.addEventListener('keydown',event=>{
+    if(isExplorerFilterInput(event.target)&&event.key==='Escape'){
+      event.preventDefault();
+      event.target.value='';
+      applyExplorerFilter();
+      event.target.focus();
+      return;
+    }
     if(!(event.metaKey||event.ctrlKey)||String(event.key).toLowerCase()!=='p')return;
     const input=explorerFilterInput();
     if(!input)return;
@@ -147,17 +167,25 @@ if(!window.__CODEBASE_EXPLORER_FILTER_SHORTCUT_V1__){
     input.select();
   },true);
 }
-window.SulandraCodebaseExplorerFilter={apply:applyExplorerFilter,focus:()=>explorerFilterInput()?.focus()};
+window.SulandraCodebaseExplorerFilter={
+  apply:applyExplorerFilter,
+  focus:()=>explorerFilterInput()?.focus(),
+  matches:(query,name,path='')=>{
+    const terms=searchTerms(query);
+    const haystack=normalizeSearch([name,path].filter(Boolean).join(' '));
+    return !terms.length||terms.every(term=>haystack.includes(term));
+  }
+};
 
 const installFolderPathBridge=()=>{
   const root=document.getElementById('dynamic-file-list');
   if(!root)return false;
-  labelFolderRows();
+  labelExplorerRows();
   installExplorerFilter();
   if(root.dataset.codebaseFolderPathBridge==='true')return true;
   root.dataset.codebaseFolderPathBridge='true';
   const observer=new MutationObserver(()=>{
-    const changed=labelFolderRows();
+    const changed=labelExplorerRows();
     installExplorerFilter();
     applyExplorerFilter();
     if(!changed)return;
