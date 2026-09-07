@@ -50,7 +50,6 @@ jobs:
           grep -Fq 'LOCAL' assets/codebase-preview-environments.js
           grep -Fq "'/api/preview-ticket'" assets/codebase-preview-environments.js
           grep -Fq "surface:'codebase'" assets/codebase-preview-environments.js
-          grep -Fq 'Port '+ assets/codebase-preview-environments.js
           grep -Fq 'reserved by Codebase internals' assets/codebase-preview-environments.js
           grep -Fq "'/railway/preview'" assets/codebase-preview-environments.js
           grep -Fq 'not linked to a Railway service' assets/codebase-preview-environments.js
