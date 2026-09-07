@@ -4,6 +4,12 @@
 
 [[ $- == *i* ]] || return
 
+# PORT=9000 and SULANDRA_IDE_PORT=13337 belong to the Codebase control plane.
+# Do not leak them into developer commands: Node/Vite/Express and other tools
+# commonly consume process.env.PORT and would otherwise bind the internal agent
+# port instead of their normal local development port.
+unset PORT SULANDRA_IDE_PORT
+
 [[ -r "${HOME}/.config/sulandra/proxy.env" ]] && source "${HOME}/.config/sulandra/proxy.env"
 shopt -s histappend checkwinsize cmdhist
 
