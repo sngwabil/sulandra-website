@@ -5,11 +5,11 @@ const target=path.resolve(process.argv[2]||'Codebase.html');
 const runtime=path.resolve('assets/codebase-preview-environments.js');
 await access(target);await access(runtime);
 const source=await readFile(runtime,'utf8');
-for(const marker of ['CODEBASE_PREVIEW_ENVIRONMENTS_V1','Railway Production','codebase-preview-env-badge','/railway/preview']){
+for(const marker of ['CODEBASE_PREVIEW_ENVIRONMENTS_V2','Railway Production','codebase-preview-env-badge','/api/preview-ticket','/railway/preview']){
   if(!source.includes(marker))throw new Error(`Codebase preview runtime missing ${marker}`);
 }
 let html=await readFile(target,'utf8');
-const tag='<script src="/assets/codebase-preview-environments.js?v=20260906-preview-environments-1"></script>';
+const tag='<script src="/assets/codebase-preview-environments.js?v=20260907-preview-environments-2"></script>';
 html=html.replace(/\s*<script src="\/assets\/codebase-preview-environments\.js(?:\?v=[^\"]*)?"><\/script>\s*/g,'\n');
 const bodyIndex=html.toLowerCase().lastIndexOf('</body>');
 if(bodyIndex<0)throw new Error('Codebase document body closing tag is missing');

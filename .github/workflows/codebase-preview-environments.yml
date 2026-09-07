@@ -9,6 +9,7 @@ on:
       - 'scripts/install-codebase-preview-environments-ui.mjs'
       - 'scripts/install-codebase-preview-control.mjs'
       - 'scripts/install-codebase-preview-gateway.mjs'
+      - 'terminal-session-agent/bashrc'
       - 'Dockerfile.frontend'
       - 'Dockerfile.coding-terminal'
       - 'Dockerfile.terminal-executor'
@@ -21,6 +22,7 @@ on:
       - 'scripts/install-codebase-preview-environments-ui.mjs'
       - 'scripts/install-codebase-preview-control.mjs'
       - 'scripts/install-codebase-preview-gateway.mjs'
+      - 'terminal-session-agent/bashrc'
       - 'Dockerfile.frontend'
       - 'Dockerfile.coding-terminal'
       - 'Dockerfile.terminal-executor'
@@ -43,13 +45,27 @@ jobs:
           node --check scripts/install-codebase-preview-environments-ui.mjs
           node --check scripts/install-codebase-preview-control.mjs
           node --check scripts/install-codebase-preview-gateway.mjs
-          grep -Fq 'CODEBASE_PREVIEW_ENVIRONMENTS_V1' assets/codebase-preview-environments.js
+          grep -Fq 'CODEBASE_PREVIEW_ENVIRONMENTS_V2' assets/codebase-preview-environments.js
           grep -Fq 'Railway Production' assets/codebase-preview-environments.js
           grep -Fq 'LOCAL' assets/codebase-preview-environments.js
-          grep -Fq "searchParams.set('port',port())" assets/codebase-preview-environments.js
+          grep -Fq "'/api/preview-ticket'" assets/codebase-preview-environments.js
+          grep -Fq "surface:'codebase'" assets/codebase-preview-environments.js
+          grep -Fq 'reserved by Codebase internals' assets/codebase-preview-environments.js
           grep -Fq "'/railway/preview'" assets/codebase-preview-environments.js
           grep -Fq 'not linked to a Railway service' assets/codebase-preview-environments.js
           grep -Fq 'no public domain' assets/codebase-preview-environments.js
+          if grep -Fq "searchParams.set('port',port())" assets/codebase-preview-environments.js; then
+            echo 'Local Preview must use authenticated preview tickets, not direct broker GET routing.' >&2
+            exit 1
+          fi
+
+      - name: Verify local shell port isolation
+        run: |
+          set -euo pipefail
+          grep -Fq 'unset PORT SULANDRA_IDE_PORT' terminal-session-agent/bashrc
+          env PORT=9000 SULANDRA_IDE_PORT=13337 HOME=/tmp/sulandra-preview-shell-test \
+            bash --noprofile --rcfile terminal-session-agent/bashrc -ic \
+            'test -z "${PORT+x}"; test -z "${SULANDRA_IDE_PORT+x}"'
 
       - name: Verify executor production-domain route
         run: |
@@ -110,8 +126,8 @@ jobs:
           node scripts/install-codebase-public-git-clone-ui.mjs /tmp/Codebase.html
           node scripts/install-codebase-preview-environments-ui.mjs /tmp/Codebase.html
           node scripts/fix-codebase-independent-branding.mjs /tmp/Codebase.html
-          grep -Fq '/assets/codebase-preview-environments.js?v=20260906-preview-environments-1' /tmp/Codebase.html
-          test "$(grep -Fc '/assets/codebase-preview-environments.js?v=20260906-preview-environments-1' /tmp/Codebase.html)" = 1
+          grep -Fq '/assets/codebase-preview-environments.js?v=20260907-preview-environments-2' /tmp/Codebase.html
+          test "$(grep -Fc '/assets/codebase-preview-environments.js?v=20260907-preview-environments-2' /tmp/Codebase.html)" = 1
           grep -Fq 'cp assets/codebase-preview-environments.js dist-web/assets/codebase-preview-environments.js' Dockerfile.frontend
           grep -Fq 'install-codebase-preview-control.mjs' Dockerfile.terminal-executor
           grep -Fq 'install-codebase-preview-gateway.mjs' Dockerfile.coding-terminal
